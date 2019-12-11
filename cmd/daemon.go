@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"path"
-
-	"github.com/mitchellh/go-homedir"
+	"strconv"
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
-	"github.com/textileio/go-textile-threads/api"
+	threadsapi "github.com/textileio/go-textile-threads/api"
+	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/textile/api"
 )
 
 var log = logging.Logger("textile")
@@ -37,8 +39,8 @@ var daemonCmd = &cobra.Command{
 			repoPath = repoFlag.Value.String()
 		}
 
-		ipfsApiAddrStr := getStringFlag(cmd.Flag("ipfsApiAddr"))
-		ipfsApiAddr, err := ma.NewMultiaddr(ipfsApiAddrStr)
+		apiBindAddrStr := getStringFlag(cmd.Flag("apiBindAddr"))
+		apiBindAddr, err := ma.NewMultiaddr(apiBindAddrStr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -60,6 +62,12 @@ var daemonCmd = &cobra.Command{
 		}
 		threadsApiProxyBindAddrStr := getStringFlag(cmd.Flag("threadsApiProxyBindAddr"))
 		threadsApiProxyBindAddr, err := ma.NewMultiaddr(threadsApiProxyBindAddrStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		ipfsApiAddrStr := getStringFlag(cmd.Flag("ipfsApiAddr"))
+		ipfsApiAddr, err := ma.NewMultiaddr(ipfsApiAddrStr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -88,11 +96,39 @@ var daemonCmd = &cobra.Command{
 		defer ts.Close()
 		ts.Bootstrap(util.DefaultBoostrapPeers())
 
-		server, err := api.NewServer(context.Background(), ts, api.Config{
+		threadsServer, err := threadsapi.NewServer(context.Background(), ts, threadsapi.Config{
 			RepoPath:  repoPath,
 			Addr:      threadsApiBindAddr,
 			ProxyAddr: threadsApiProxyBindAddr,
 			Debug:     debug,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer threadsServer.Close()
+
+		// @todo: Threads Client should take a multiaddress.
+		threadsHost, err := threadsApiBindAddr.ValueForProtocol(ma.P_IP4)
+		if err != nil {
+			log.Fatal(err)
+		}
+		threadsPortStr, err := threadsApiBindAddr.ValueForProtocol(ma.P_TCP)
+		if err != nil {
+			log.Fatal(err)
+		}
+		threadsPort, err := strconv.Atoi(threadsPortStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		threadsClient, err := threadsclient.NewClient(threadsHost, threadsPort)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		server, err := api.NewServer(context.Background(), threadsClient, api.Config{
+			Addr:  apiBindAddr,
+			Debug: debug,
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -118,12 +154,14 @@ func init() {
 	daemonCmd.Flags().StringP(
 		"repoPath",
 		"r",
-		"~/.textile",
+		"$HOME/.textile",
 		"Path to repository")
+
 	daemonCmd.Flags().String(
-		"ipfsApiAddr",
-		"/ip4/127.0.0.1/tcp/5001",
-		"IPFS API address")
+		"apiBindAddr",
+		"/ip4/127.0.0.1/tcp/3006",
+		"Textile API listen address")
+
 	daemonCmd.Flags().String(
 		"threadsHostBindAddr",
 		"/ip4/0.0.0.0/tcp/4006",
@@ -140,4 +178,14 @@ func init() {
 		"threadsApiProxyBindAddr",
 		"/ip4/127.0.0.1/tcp/7006",
 		"Threads API gRPC proxy address")
+
+	daemonCmd.Flags().String(
+		"ipfsApiAddr",
+		"/ip4/127.0.0.1/tcp/5001",
+		"IPFS API address")
+
+	//_ = viper.BindPFlag("author", rootCmd.PersistentFlags().Lookup("author"))
+	//_ = viper.BindPFlag("useViper", rootCmd.PersistentFlags().Lookup("viper"))
+	//viper.SetDefault("author", "NAME HERE <EMAIL ADDRESS>")
+	//viper.SetDefault("license", "apache")
 }
