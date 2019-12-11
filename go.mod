@@ -11,7 +11,5 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
-	github.com/textileio/go-textile-threads v0.0.0-20191210171228-f3ca92f83ed9
+	github.com/textileio/go-textile-threads v0.0.0-20191211170544-de33254f4512
 )
-
-replace github.com/textileio/go-textile-threads => ../go-textile-threads

@@ -110,11 +110,34 @@ var daemonCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(daemonCmd)
-	daemonCmd.Flags().BoolP("debug", "d", false, "Enable debug logging")
-	daemonCmd.Flags().StringP("repoPath", "r", "~/.textile", "Path to repository")
-	daemonCmd.Flags().String("ipfsApiAddr", "/ip4/127.0.0.1/tcp/5001", "IPFS API address")
-	daemonCmd.Flags().String("threadsHostBindAddr", "/ip4/0.0.0.0/tcp/4006", "Threads peer host listen address")
-	daemonCmd.Flags().String("threadsHostProxyBindAddr", "/ip4/0.0.0.0/tcp/5006", "Threads peer host gRPC proxy address")
-	daemonCmd.Flags().String("threadsApiBindAddr", "/ip4/127.0.0.1/tcp/6006", "Threads API listen address")
-	daemonCmd.Flags().String("threadsApiProxyBindAddr", "/ip4/127.0.0.1/tcp/7006", "Threads API gRPC proxy address")
+	daemonCmd.Flags().BoolP(
+		"debug",
+		"d",
+		false,
+		"Enable debug logging")
+	daemonCmd.Flags().StringP(
+		"repoPath",
+		"r",
+		"~/.textile",
+		"Path to repository")
+	daemonCmd.Flags().String(
+		"ipfsApiAddr",
+		"/ip4/127.0.0.1/tcp/5001",
+		"IPFS API address")
+	daemonCmd.Flags().String(
+		"threadsHostBindAddr",
+		"/ip4/0.0.0.0/tcp/4006",
+		"Threads peer host listen address")
+	daemonCmd.Flags().String(
+		"threadsHostProxyBindAddr",
+		"/ip4/0.0.0.0/tcp/5006",
+		"Threads peer host gRPC proxy address")
+	daemonCmd.Flags().String(
+		"threadsApiBindAddr",
+		"/ip4/127.0.0.1/tcp/6006",
+		"Threads API listen address")
+	daemonCmd.Flags().String(
+		"threadsApiProxyBindAddr",
+		"/ip4/127.0.0.1/tcp/7006",
+		"Threads API gRPC proxy address")
 }
