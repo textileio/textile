@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	shutdown   func()
-	client     *Client
-	serverAddr = ma.Cast([]byte("/ip4/127.0.0.1/tcp/9090"))
+	shutdown func()
+	client   *Client
+	apiAddr  = ma.Cast([]byte("/ip4/127.0.0.1/tcp/9090"))
 )
 
 func TestMain(m *testing.M) {
 	var err error
 	_, shutdown = makeServer()
-	client, err = NewClient(serverAddr)
+	client, err = NewClient(apiAddr)
 	if err != nil {
 		panic(err)
 	}
