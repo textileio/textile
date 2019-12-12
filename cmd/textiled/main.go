@@ -19,6 +19,7 @@ import (
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/users"
 )
 
 var (
@@ -30,14 +31,17 @@ var (
 			key:      "repo",
 			defValue: "${HOME}/.textiled/repo",
 		},
+
 		"debug": {
 			key:      "log.debug",
 			defValue: false,
 		},
+
 		"logFile": {
 			key:      "log.file",
 			defValue: "${HOME}/.textiled/log",
 		},
+
 		"addrApi": {
 			key:      "addr.api",
 			defValue: "/ip4/127.0.0.1/tcp/3006",
@@ -61,6 +65,10 @@ var (
 		"addrIpfsApi": {
 			key:      "addr.ipfs.api",
 			defValue: "/ip4/127.0.0.1/tcp/5001",
+		},
+
+		"usersStoreId": {
+			key: "users.store.id",
 		},
 	}
 )
@@ -123,6 +131,11 @@ func init() {
 		flags["addrIpfsApi"].defValue.(string),
 		"IPFS API address")
 
+	rootCmd.PersistentFlags().String(
+		"usersStoreId",
+		"",
+		"Users store ID")
+
 	for n, f := range flags {
 		if err := viper.BindPFlag(f.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {
 			log.Fatal(err)
@@ -144,12 +157,11 @@ var rootCmd = &cobra.Command{
 	Long:  `The Textile daemon.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Expand environment variables in config
-		for n, f := range flags {
+		for _, f := range flags {
 			if f.key != "" {
 				if str, ok := viper.Get(f.key).(string); ok {
 					viper.Set(f.key, os.ExpandEnv(str))
 				}
-				fmt.Println(n, viper.Get(f.key))
 			}
 		}
 
@@ -247,6 +259,24 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer server.Close()
+
+		var usersStoreID string
+		if viper.GetString("users.store.id") == "" {
+			usersStoreID, err = threadsClient.NewStore()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if err = threadsClient.RegisterSchema(
+				usersStoreID, "User", string(users.Schema())); err != nil {
+				log.Fatal(err)
+			}
+			viper.Set("users.store.id", usersStoreID)
+			if viper.ConfigFileUsed() != "" {
+				if err := viper.WriteConfig(); err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
 
 		fmt.Println("Welcome to Textile!")
 		fmt.Println("Your peer ID is " + ts.Host().ID().String())

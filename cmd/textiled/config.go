@@ -17,7 +17,7 @@ func init() {
 	createCmd.Flags().String(
 		"dir",
 		"",
-		"Directory to write config (default $HOME/.textiled)")
+		"Directory to write config (default ${HOME}/.textiled)")
 }
 
 var configCmd = &cobra.Command{
