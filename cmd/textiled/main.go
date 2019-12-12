@@ -13,56 +13,59 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/api"
-	common "github.com/textileio/textile/cmd"
 )
 
 var (
 	log = logging.Logger("textiled")
 
 	configFile string
-	configKeys = map[string]configKey{
+	flags      = map[string]flag{
+		"repo": {
+			key:      "repo",
+			defValue: "${HOME}/.textiled/repo",
+		},
 		"debug": {
-			key:      "debug",
+			key:      "log.debug",
 			defValue: false,
 		},
-		"repoPath": {
-			key: "repo",
+		"logFile": {
+			key:      "log.file",
+			defValue: "${HOME}/.textiled/log",
 		},
-		"apiAddr": {
-			key:      "api.addr",
+		"addrApi": {
+			key:      "addr.api",
 			defValue: "/ip4/127.0.0.1/tcp/3006",
 		},
-		"threadsHostAddr": {
-			key:      "threads.host.addr",
+		"addrThreadsHost": {
+			key:      "addr.threads.host",
 			defValue: "/ip4/0.0.0.0/tcp/4006",
 		},
-		"threadsHostProxyAddr": {
-			key:      "threads.host.proxy-addr",
+		"addrThreadsHostProxy": {
+			key:      "addr.threads.host_proxy",
 			defValue: "/ip4/0.0.0.0/tcp/5006",
 		},
-		"threadsApiAddr": {
-			key:      "threads.api.addr",
+		"addrThreadsApi": {
+			key:      "addr.threads.api",
 			defValue: "/ip4/127.0.0.1/tcp/6006",
 		},
-		"threadsApiProxyAddr": {
-			key:      "threads.api.proxy-addr",
+		"addrThreadsApiProxy": {
+			key:      "addr.threads.api_proxy",
 			defValue: "/ip4/127.0.0.1/tcp/7006",
 		},
-		"ipfsApiAddr": {
-			key:      "ipfs.addr",
+		"addrIpfsApi": {
+			key:      "addr.ipfs.api",
 			defValue: "/ip4/127.0.0.1/tcp/5001",
 		},
 	}
 )
 
-type configKey struct {
+type flag struct {
 	key      string
 	defValue interface{}
 }
@@ -74,52 +77,57 @@ func init() {
 		&configFile,
 		"config",
 		"",
-		"Config file (default $HOME/.textiled/config.yaml)")
+		"Config file (default ${HOME}/.textiled/config.yaml)")
 
 	rootCmd.PersistentFlags().StringP(
-		"repoPath",
+		"repo",
 		"r",
-		"",
-		"Path to repository (default $HOME/.textiled/repo)")
+		flags["repo"].defValue.(string),
+		"Path to repository")
 
 	rootCmd.PersistentFlags().BoolP(
 		"debug",
 		"d",
-		configKeys["debug"].defValue.(bool),
+		flags["debug"].defValue.(bool),
 		"Enable debug logging")
 
 	rootCmd.PersistentFlags().String(
-		"apiAddr",
-		configKeys["apiAddr"].defValue.(string),
+		"logFile",
+		flags["logFile"].defValue.(string),
+		"Write logs to file")
+
+	rootCmd.PersistentFlags().String(
+		"addrApi",
+		flags["addrApi"].defValue.(string),
 		"Textile API listen address")
 
 	rootCmd.PersistentFlags().String(
-		"threadsHostAddr",
-		configKeys["threadsHostAddr"].defValue.(string),
+		"addrThreadsHost",
+		flags["addrThreadsHost"].defValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
-		"threadsHostProxyAddr",
-		configKeys["threadsHostProxyAddr"].defValue.(string),
+		"addrThreadsHostProxy",
+		flags["addrThreadsHostProxy"].defValue.(string),
 		"Threads peer host gRPC proxy address")
 	rootCmd.PersistentFlags().String(
-		"threadsApiAddr",
-		configKeys["threadsApiAddr"].defValue.(string),
+		"addrThreadsApi",
+		flags["addrThreadsApi"].defValue.(string),
 		"Threads API listen address")
 	rootCmd.PersistentFlags().String(
-		"threadsApiProxyAddr",
-		configKeys["threadsApiProxyAddr"].defValue.(string),
+		"addrThreadsApiProxy",
+		flags["addrThreadsApiProxy"].defValue.(string),
 		"Threads API gRPC proxy address")
 
 	rootCmd.PersistentFlags().String(
-		"ipfsApiAddr",
-		configKeys["ipfsApiAddr"].defValue.(string),
+		"addrIpfsApi",
+		flags["addrIpfsApi"].defValue.(string),
 		"IPFS API address")
 
-	for n, k := range configKeys {
-		if err := viper.BindPFlag(k.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {
+	for n, f := range flags {
+		if err := viper.BindPFlag(f.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {
 			log.Fatal(err)
 		}
-		viper.SetDefault(k.key, k.defValue)
+		viper.SetDefault(f.key, f.defValue)
 	}
 }
 
@@ -135,62 +143,65 @@ var rootCmd = &cobra.Command{
 	Short: "Textile daemon",
 	Long:  `The Textile daemon.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-			if !flag.Changed {
-				configVal := viper.GetString(configKeys[flag.Name].key)
-				if configVal != "" {
-					if err := cmd.Flag(flag.Name).Value.Set(os.ExpandEnv(configVal)); err != nil {
-						log.Fatal(err)
-					}
+		// Expand environment variables in config
+		for n, f := range flags {
+			if f.key != "" {
+				if str, ok := viper.Get(f.key).(string); ok {
+					viper.Set(f.key, os.ExpandEnv(str))
 				}
+				fmt.Println(n, viper.Get(f.key))
 			}
-		})
-
-		apiAddr, err := ma.NewMultiaddr(cmd.Flag("apiAddr").Value.String())
-		if err != nil {
-			log.Fatal(err)
 		}
 
-		threadsHostAddr, err := ma.NewMultiaddr(cmd.Flag("threadsHostAddr").Value.String())
-		if err != nil {
-			log.Fatal(err)
-		}
-		threadsHostProxyAddr, err := ma.NewMultiaddr(cmd.Flag("threadsHostProxyAddr").Value.String())
-		if err != nil {
-			log.Fatal(err)
-		}
-		threadsApiAddr, err := ma.NewMultiaddr(cmd.Flag("threadsApiAddr").Value.String())
-		if err != nil {
-			log.Fatal(err)
-		}
-		threadsApiProxyAddr, err := ma.NewMultiaddr(cmd.Flag("threadsApiProxyAddr").Value.String())
+		addrApi, err := ma.NewMultiaddr(viper.GetString("addr.api"))
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		ipfsApiAddr, err := ma.NewMultiaddr(cmd.Flag("ipfsApiAddr").Value.String())
+		addrThreadsHost, err := ma.NewMultiaddr(viper.GetString("addr.threads.host"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		addrThreadsHostProxy, err := ma.NewMultiaddr(viper.GetString("addr.threads.host_proxy"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		addrThreadsApi, err := ma.NewMultiaddr(viper.GetString("addr.threads.api"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		addrThreadsApiProxy, err := ma.NewMultiaddr(viper.GetString("addr.threads.api_proxy"))
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		repoPath := cmd.Flag("repoPath").Value.String()
-		util.SetupDefaultLoggingConfig(repoPath)
-		debug := common.GetBoolFlag(cmd.Flag("debug"))
+		addrIpfsApi, err := ma.NewMultiaddr(viper.GetString("addr.ipfs.api"))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		logFile := viper.GetString("log.file")
+		if logFile != "" {
+			util.SetupDefaultLoggingConfig(logFile)
+		}
+
+		debug := viper.GetBool("log.debug")
 		if debug {
 			if err := logging.SetLogLevel("textiled", "debug"); err != nil {
 				log.Fatal(err)
 			}
 		}
 
-		_, err = httpapi.NewApi(ipfsApiAddr)
+		_, err = httpapi.NewApi(addrIpfsApi)
 		if err != nil {
 			log.Fatal(err)
 		}
 
+		repoPath := viper.GetString("repo")
 		ts, err := es.DefaultThreadservice(
 			repoPath,
-			es.HostAddr(threadsHostAddr),
-			es.HostProxyAddr(threadsHostProxyAddr),
+			es.HostAddr(addrThreadsHost),
+			es.HostProxyAddr(addrThreadsHostProxy),
 			es.Debug(debug))
 		if err != nil {
 			log.Fatal(err)
@@ -200,8 +211,8 @@ var rootCmd = &cobra.Command{
 
 		threadsServer, err := threadsapi.NewServer(context.Background(), ts, threadsapi.Config{
 			RepoPath:  repoPath,
-			Addr:      threadsApiAddr,
-			ProxyAddr: threadsApiProxyAddr,
+			Addr:      addrThreadsApi,
+			ProxyAddr: addrThreadsApiProxy,
 			Debug:     debug,
 		})
 		if err != nil {
@@ -210,11 +221,11 @@ var rootCmd = &cobra.Command{
 		defer threadsServer.Close()
 
 		// @todo: Threads Client should take a multiaddress.
-		threadsHost, err := threadsApiAddr.ValueForProtocol(ma.P_IP4)
+		threadsHost, err := addrThreadsApi.ValueForProtocol(ma.P_IP4)
 		if err != nil {
 			log.Fatal(err)
 		}
-		threadsPortStr, err := threadsApiAddr.ValueForProtocol(ma.P_TCP)
+		threadsPortStr, err := addrThreadsApi.ValueForProtocol(ma.P_TCP)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -229,7 +240,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		server, err := api.NewServer(context.Background(), threadsClient, api.Config{
-			Addr:  apiAddr,
+			Addr:  addrApi,
 			Debug: debug,
 		})
 		if err != nil {
