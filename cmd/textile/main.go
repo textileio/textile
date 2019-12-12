@@ -14,7 +14,7 @@ import (
 var (
 	log = logging.Logger("textile")
 
-	cfgFile string
+	configFile string
 )
 
 var rootCmd = &cobra.Command{
@@ -27,7 +27,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(
-		&cfgFile,
+		&configFile,
 		"config",
 		"",
 		"config file (default is $HOME/.textile/config.yaml)")
@@ -41,8 +41,8 @@ func main() {
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
 	} else {
 		home, err := homedir.Dir()
 		if err != nil {

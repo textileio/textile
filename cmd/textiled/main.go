@@ -6,12 +6,14 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
 	homedir "github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
@@ -24,30 +26,55 @@ import (
 var (
 	log = logging.Logger("textiled")
 
-	apiAddrDef              = "/ip4/127.0.0.1/tcp/3006"
-	threadsHostAddrDef      = "/ip4/0.0.0.0/tcp/4006"
-	threadsHostProxyAddrDef = "/ip4/0.0.0.0/tcp/5006"
-	threadsApiAddrDef       = "/ip4/127.0.0.1/tcp/6006"
-	threadsApiProxyAddrDef  = "/ip4/127.0.0.1/tcp/7006"
-	ipfsApiAddrDef          = "/ip4/127.0.0.1/tcp/5001"
-
-	cfgFile string
+	configFile string
+	configKeys = map[string]configKey{
+		"debug": {
+			key:      "debug",
+			defValue: false,
+		},
+		"repoPath": {
+			key: "repo",
+		},
+		"apiAddr": {
+			key:      "api.addr",
+			defValue: "/ip4/127.0.0.1/tcp/3006",
+		},
+		"threadsHostAddr": {
+			key:      "threads.host.addr",
+			defValue: "/ip4/0.0.0.0/tcp/4006",
+		},
+		"threadsHostProxyAddr": {
+			key:      "threads.host.proxy-addr",
+			defValue: "/ip4/0.0.0.0/tcp/5006",
+		},
+		"threadsApiAddr": {
+			key:      "threads.api.addr",
+			defValue: "/ip4/127.0.0.1/tcp/6006",
+		},
+		"threadsApiProxyAddr": {
+			key:      "threads.api.proxy-addr",
+			defValue: "/ip4/127.0.0.1/tcp/7006",
+		},
+		"ipfsApiAddr": {
+			key:      "ipfs.addr",
+			defValue: "/ip4/127.0.0.1/tcp/5001",
+		},
+	}
 )
+
+type configKey struct {
+	key      string
+	defValue interface{}
+}
 
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(
-		&cfgFile,
+		&configFile,
 		"config",
 		"",
 		"Config file (default $HOME/.textiled/config.yaml)")
-
-	rootCmd.PersistentFlags().BoolP(
-		"debug",
-		"d",
-		false,
-		"Enable debug logging")
 
 	rootCmd.PersistentFlags().StringP(
 		"repoPath",
@@ -55,50 +82,45 @@ func init() {
 		"",
 		"Path to repository (default $HOME/.textiled/repo)")
 
+	rootCmd.PersistentFlags().BoolP(
+		"debug",
+		"d",
+		configKeys["debug"].defValue.(bool),
+		"Enable debug logging")
+
 	rootCmd.PersistentFlags().String(
 		"apiAddr",
-		apiAddrDef,
+		configKeys["apiAddr"].defValue.(string),
 		"Textile API listen address")
 
 	rootCmd.PersistentFlags().String(
 		"threadsHostAddr",
-		threadsHostAddrDef,
+		configKeys["threadsHostAddr"].defValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
 		"threadsHostProxyAddr",
-		threadsHostProxyAddrDef,
+		configKeys["threadsHostProxyAddr"].defValue.(string),
 		"Threads peer host gRPC proxy address")
 	rootCmd.PersistentFlags().String(
 		"threadsApiAddr",
-		threadsApiAddrDef,
+		configKeys["threadsApiAddr"].defValue.(string),
 		"Threads API listen address")
 	rootCmd.PersistentFlags().String(
 		"threadsApiProxyAddr",
-		threadsApiProxyAddrDef,
+		configKeys["threadsApiProxyAddr"].defValue.(string),
 		"Threads API gRPC proxy address")
 
 	rootCmd.PersistentFlags().String(
 		"ipfsApiAddr",
-		ipfsApiAddrDef,
+		configKeys["ipfsApiAddr"].defValue.(string),
 		"IPFS API address")
 
-	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
-	_ = viper.BindPFlag("repo", rootCmd.PersistentFlags().Lookup("repoPath"))
-	_ = viper.BindPFlag("api.addr", rootCmd.PersistentFlags().Lookup("apiAddr"))
-	_ = viper.BindPFlag("threads.host.addr", rootCmd.PersistentFlags().Lookup("threadsHostAddr"))
-	_ = viper.BindPFlag("threads.host.proxy-addr", rootCmd.PersistentFlags().Lookup("threadsHostProxyAddr"))
-	_ = viper.BindPFlag("threads.api.addr", rootCmd.PersistentFlags().Lookup("threadsApiAddr"))
-	_ = viper.BindPFlag("threads.api.proxy-addr", rootCmd.PersistentFlags().Lookup("threadsApiProxyAddr"))
-	_ = viper.BindPFlag("ipfs.addr", rootCmd.PersistentFlags().Lookup("ipfsApiAddr"))
-
-	viper.SetDefault("debug", false)
-	viper.SetDefault("repo", "${HOME}/.textiled/repo")
-	viper.SetDefault("api.addr", apiAddrDef)
-	viper.SetDefault("threads.host.addr", threadsHostAddrDef)
-	viper.SetDefault("threads.host.proxy-addr", threadsHostProxyAddrDef)
-	viper.SetDefault("threads.api.addr", threadsApiAddrDef)
-	viper.SetDefault("threads.api.proxy-addr", threadsApiProxyAddrDef)
-	viper.SetDefault("ipfs.addr", ipfsApiAddrDef)
+	for n, k := range configKeys {
+		if err := viper.BindPFlag(k.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {
+			log.Fatal(err)
+		}
+		viper.SetDefault(k.key, k.defValue)
+	}
 }
 
 func main() {
@@ -113,18 +135,16 @@ var rootCmd = &cobra.Command{
 	Short: "Textile daemon",
 	Long:  `The Textile daemon.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		repoFlag := cmd.Flag("repoPath")
-
-		var repoPath string
-		if !repoFlag.Changed {
-			home, err := homedir.Dir()
-			if err != nil {
-				log.Fatal(err)
+		cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+			if !flag.Changed {
+				configVal := viper.GetString(configKeys[flag.Name].key)
+				if configVal != "" {
+					if err := cmd.Flag(flag.Name).Value.Set(os.ExpandEnv(configVal)); err != nil {
+						log.Fatal(err)
+					}
+				}
 			}
-			repoPath = path.Join(home, ".textiled")
-		} else {
-			repoPath = repoFlag.Value.String()
-		}
+		})
 
 		apiAddr, err := ma.NewMultiaddr(cmd.Flag("apiAddr").Value.String())
 		if err != nil {
@@ -153,6 +173,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		repoPath := cmd.Flag("repoPath").Value.String()
 		util.SetupDefaultLoggingConfig(repoPath)
 		debug := common.GetBoolFlag(cmd.Flag("debug"))
 		if debug {
@@ -226,8 +247,8 @@ var rootCmd = &cobra.Command{
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
 	} else {
 		home, err := homedir.Dir()
 		if err != nil {
@@ -238,6 +259,8 @@ func initConfig() {
 		viper.SetConfigName("config")
 	}
 
+	viper.SetEnvPrefix("TXTL")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
