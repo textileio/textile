@@ -4,15 +4,15 @@ package api.pb;
 option java_multiple_files = true;
 option java_package = "io.textile.grpc_textile";
 option java_outer_classname = "Textile";
-option objc_class_prefix = "TTE";
+option objc_class_prefix = "TXTL";
 
-message NewUserRequest {}
+message SignUpRequest {}
 
-message NewUserReply {
+message SignUpReply {
     string ID = 1;
     string token = 2;
 }
 
 service API {
-    rpc NewUser(NewUserRequest) returns (NewUserReply) {}
+    rpc SignUp(SignUpRequest) returns (SignUpReply) {}
 }

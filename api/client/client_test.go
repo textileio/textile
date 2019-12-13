@@ -1,23 +1,25 @@
 package client
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/core"
 )
 
 var (
 	shutdown func()
 	client   *Client
-	apiAddr  = ma.Cast([]byte("/ip4/127.0.0.1/tcp/9090"))
+
+	addrApi = parseAddr("/ip4/127.0.0.1/tcp/3006")
 )
 
 func TestMain(m *testing.M) {
 	var err error
-	_, shutdown = makeServer()
-	client, err = NewClient(apiAddr)
+	shutdown = makeTextile()
+	client, err = NewClient(addrApi)
 	if err != nil {
 		panic(err)
 	}
@@ -26,10 +28,10 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func TestNewUser(t *testing.T) {
-	_, err := client.NewUser()
+func TestSignUp(t *testing.T) {
+	_, err := client.SignUp()
 	if err != nil {
-		t.Fatalf("failed to create new user: %v", err)
+		t.Fatalf("failed to sign up: %v", err)
 	}
 }
 
@@ -40,43 +42,39 @@ func TestClose(t *testing.T) {
 	}
 }
 
-func makeServer() (*api.Server, func()) {
-	return nil, func() {}
-	//dir, err := ioutil.TempDir("", "")
-	//if err != nil {
-	//	panic(err)
-	//}
-	//ts, err := es.DefaultThreadservice(
-	//	dir,
-	//	es.Debug(true))
-	//if err != nil {
-	//	panic(err)
-	//}
-	//ts.Bootstrap(util.DefaultBoostrapPeers())
-	//apiAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", clientHost, clientPort))
-	//if err != nil {
-	//	panic(err)
-	//}
-	//apiProxyAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/0", clientHost))
-	//if err != nil {
-	//	panic(err)
-	//}
-	//server, err := api.NewServer(context.Background(), ts, api.Config{
-	//	RepoPath:  dir,
-	//	Addr:      apiAddr,
-	//	ProxyAddr: apiProxyAddr,
-	//	Debug:     true,
-	//})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//return server, func() {
-	//	server.Close()
-	//	if err := ts.Close(); err != nil {
-	//		panic(err)
-	//	}
-	//	_ = os.RemoveAll(dir)
-	//}
+func makeTextile() func() {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+
+	textile, err := core.NewTextile(core.Config{
+		RepoPath:             dir,
+		AddrApi:              addrApi,
+		AddrThreadsHost:      parseAddr("/ip4/0.0.0.0/tcp/4006"),
+		AddrThreadsHostProxy: parseAddr("/ip4/0.0.0.0/tcp/5006"),
+		AddrThreadsApi:       parseAddr("/ip4/127.0.0.1/tcp/6006"),
+		AddrThreadsApiProxy:  parseAddr("/ip4/127.0.0.1/tcp/7006"),
+		AddrIpfsApi:          parseAddr("/ip4/127.0.0.1/tcp/5001"),
+		Debug:                true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	textile.Bootstrap()
+
+	return func() {
+		textile.Close()
+		_ = os.RemoveAll(dir)
+	}
+}
+
+func parseAddr(str string) ma.Multiaddr {
+	addr, err := ma.NewMultiaddr(str)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 func checkErr(t *testing.T, err error) {

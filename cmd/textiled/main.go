@@ -1,25 +1,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
-	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
 	homedir "github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	threadsapi "github.com/textileio/go-textile-threads/api"
-	threadsclient "github.com/textileio/go-textile-threads/api/client"
-	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
-	"github.com/textileio/textile/api"
-	"github.com/textileio/textile/users"
+	"github.com/textileio/textile/core"
 )
 
 var (
@@ -197,91 +190,26 @@ var rootCmd = &cobra.Command{
 			util.SetupDefaultLoggingConfig(logFile)
 		}
 
-		debug := viper.GetBool("log.debug")
-		if debug {
-			if err := logging.SetLogLevel("textiled", "debug"); err != nil {
-				log.Fatal(err)
-			}
-		}
-
-		_, err = httpapi.NewApi(addrIpfsApi)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		repoPath := viper.GetString("repo")
-		ts, err := es.DefaultThreadservice(
-			repoPath,
-			es.HostAddr(addrThreadsHost),
-			es.HostProxyAddr(addrThreadsHostProxy),
-			es.Debug(debug))
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer ts.Close()
-		ts.Bootstrap(util.DefaultBoostrapPeers())
-
-		threadsServer, err := threadsapi.NewServer(context.Background(), ts, threadsapi.Config{
-			RepoPath:  repoPath,
-			Addr:      addrThreadsApi,
-			ProxyAddr: addrThreadsApiProxy,
-			Debug:     debug,
+		textile, err := core.NewTextile(core.Config{
+			RepoPath:             viper.GetString("repo"),
+			AddrApi:              addrApi,
+			AddrThreadsHost:      addrThreadsHost,
+			AddrThreadsHostProxy: addrThreadsHostProxy,
+			AddrThreadsApi:       addrThreadsApi,
+			AddrThreadsApiProxy:  addrThreadsApiProxy,
+			AddrIpfsApi:          addrIpfsApi,
+			Debug:                viper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer threadsServer.Close()
-
-		// @todo: Threads Client should take a multiaddress.
-		threadsHost, err := addrThreadsApi.ValueForProtocol(ma.P_IP4)
-		if err != nil {
-			log.Fatal(err)
-		}
-		threadsPortStr, err := addrThreadsApi.ValueForProtocol(ma.P_TCP)
-		if err != nil {
-			log.Fatal(err)
-		}
-		threadsPort, err := strconv.Atoi(threadsPortStr)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		threadsClient, err := threadsclient.NewClient(threadsHost, threadsPort)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		server, err := api.NewServer(context.Background(), threadsClient, api.Config{
-			Addr:  addrApi,
-			Debug: debug,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer server.Close()
-
-		var usersStoreID string
-		if viper.GetString("users.store.id") == "" {
-			usersStoreID, err = threadsClient.NewStore()
-			if err != nil {
-				log.Fatal(err)
-			}
-			if err = threadsClient.RegisterSchema(
-				usersStoreID, "User", string(users.Schema())); err != nil {
-				log.Fatal(err)
-			}
-			viper.Set("users.store.id", usersStoreID)
-			if viper.ConfigFileUsed() != "" {
-				if err := viper.WriteConfig(); err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
+		defer textile.Close()
+		textile.Bootstrap()
 
 		fmt.Println("Welcome to Textile!")
-		fmt.Println("Your peer ID is " + ts.Host().ID().String())
+		fmt.Println("Your peer ID is " + textile.HostID().String())
 
-		log.Debug("daemon started")
+		log.Debug("textiled started")
 
 		select {}
 	},

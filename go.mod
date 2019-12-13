@@ -6,9 +6,12 @@ require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
+	github.com/ipfs/go-datastore v0.1.1
+	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ipfs-http-client v0.0.5
 	github.com/ipfs/go-log v0.0.1
-	github.com/ipfs/interface-go-ipfs-core v0.2.5 // indirect
+	github.com/ipfs/interface-go-ipfs-core v0.2.5
+	github.com/libp2p/go-libp2p-core v0.2.3
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/spf13/cobra v0.0.5

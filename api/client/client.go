@@ -43,9 +43,9 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// NewUser cereates a new User.
-func (c *Client) NewUser() (string, error) {
-	resp, err := c.client.NewUser(c.ctx, &pb.NewUserRequest{})
+// SignUp creates a new user.
+func (c *Client) SignUp() (string, error) {
+	resp, err := c.client.SignUp(c.ctx, &pb.SignUpRequest{})
 	if err != nil {
 		return "", err
 	}

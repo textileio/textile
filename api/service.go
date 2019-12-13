@@ -3,18 +3,25 @@ package api
 import (
 	"context"
 
-	"github.com/textileio/go-textile-threads/api/client"
 	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/resources"
+	"github.com/textileio/textile/resources/users"
 )
 
 // service is a gRPC service for textile.
 type service struct {
-	threads *client.Client
+	users    resources.Resource
+	projects resources.Resource
 }
 
-// NewUser adds a new user to the user store.
-func (s *service) NewUser(ctx context.Context, req *pb.NewUserRequest) (*pb.NewUserReply, error) {
-	log.Debugf("received new user request")
+// SignUp handles a signup request.
+func (s *service) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpReply, error) {
+	log.Debugf("received sign up request")
 
-	return &pb.NewUserReply{}, nil
+	user := &users.User{}
+	if err := s.users.Create(user); err != nil {
+		return nil, err
+	}
+
+	return &pb.SignUpReply{ID: user.ID}, nil
 }

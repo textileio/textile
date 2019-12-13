@@ -6,9 +6,9 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-textile-threads/api/client"
 	"github.com/textileio/go-textile-threads/util"
 	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/resources"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
 )
@@ -28,13 +28,15 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr  ma.Multiaddr
-	Debug bool
+	Addr     ma.Multiaddr
+	Users    resources.Resource
+	Projects resources.Resource
+	Debug    bool
 }
 
 // NewServer starts and returns a new server.
 // @todo: load or create user store
-func NewServer(ctx context.Context, tc *client.Client, conf Config) (*Server, error) {
+func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	var err error
 	if conf.Debug {
 		err = util.SetLogLevels(map[string]logger.Level{
@@ -47,10 +49,13 @@ func NewServer(ctx context.Context, tc *client.Client, conf Config) (*Server, er
 
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
-		rpc:     grpc.NewServer(),
-		service: &service{},
-		ctx:     ctx,
-		cancel:  cancel,
+		rpc: grpc.NewServer(),
+		service: &service{
+			users:    conf.Users,
+			projects: conf.Projects,
+		},
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
