@@ -2,73 +2,68 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"strings"
 
 	logging "github.com/ipfs/go-log"
-	homedir "github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/core"
+	logger "github.com/whyrusleeping/go-logging"
 )
 
 var (
 	log = logging.Logger("textiled")
 
 	configFile string
-	flags      = map[string]flag{
+	flags      = map[string]cmd.Flag{
 		"repo": {
-			key:      "repo",
-			defValue: "${HOME}/.textiled/repo",
+			Key:      "repo",
+			DefValue: "${HOME}/.textiled/repo",
 		},
 
 		"debug": {
-			key:      "log.debug",
-			defValue: false,
+			Key:      "log.debug",
+			DefValue: false,
 		},
 
 		"logFile": {
-			key:      "log.file",
-			defValue: "${HOME}/.textiled/log",
+			Key:      "log.file",
+			DefValue: "${HOME}/.textiled/log",
 		},
 
 		"addrApi": {
-			key:      "addr.api",
-			defValue: "/ip4/127.0.0.1/tcp/3006",
+			Key:      "addr.api",
+			DefValue: "/ip4/127.0.0.1/tcp/3006",
 		},
 		"addrThreadsHost": {
-			key:      "addr.threads.host",
-			defValue: "/ip4/0.0.0.0/tcp/4006",
+			Key:      "addr.threads.host",
+			DefValue: "/ip4/0.0.0.0/tcp/4006",
 		},
 		"addrThreadsHostProxy": {
-			key:      "addr.threads.host_proxy",
-			defValue: "/ip4/0.0.0.0/tcp/5006",
+			Key:      "addr.threads.host_proxy",
+			DefValue: "/ip4/0.0.0.0/tcp/5006",
 		},
 		"addrThreadsApi": {
-			key:      "addr.threads.api",
-			defValue: "/ip4/127.0.0.1/tcp/6006",
+			Key:      "addr.threads.api",
+			DefValue: "/ip4/127.0.0.1/tcp/6006",
 		},
 		"addrThreadsApiProxy": {
-			key:      "addr.threads.api_proxy",
-			defValue: "/ip4/127.0.0.1/tcp/7006",
+			Key:      "addr.threads.api_proxy",
+			DefValue: "/ip4/127.0.0.1/tcp/7006",
 		},
 		"addrIpfsApi": {
-			key:      "addr.ipfs.api",
-			defValue: "/ip4/127.0.0.1/tcp/5001",
+			Key:      "addr.ipfs.api",
+			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
 	}
 )
 
-type flag struct {
-	key      string
-	defValue interface{}
-}
-
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(cmd.InitConfig(configFile, ".textiled", func() {
+		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
+	}))
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,
@@ -79,59 +74,55 @@ func init() {
 	rootCmd.PersistentFlags().StringP(
 		"repo",
 		"r",
-		flags["repo"].defValue.(string),
+		flags["repo"].DefValue.(string),
 		"Path to repository")
 
 	rootCmd.PersistentFlags().BoolP(
 		"debug",
 		"d",
-		flags["debug"].defValue.(bool),
+		flags["debug"].DefValue.(bool),
 		"Enable debug logging")
 
 	rootCmd.PersistentFlags().String(
 		"logFile",
-		flags["logFile"].defValue.(string),
+		flags["logFile"].DefValue.(string),
 		"Write logs to file")
 
 	rootCmd.PersistentFlags().String(
 		"addrApi",
-		flags["addrApi"].defValue.(string),
+		flags["addrApi"].DefValue.(string),
 		"Textile API listen address")
 
 	rootCmd.PersistentFlags().String(
 		"addrThreadsHost",
-		flags["addrThreadsHost"].defValue.(string),
+		flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
 		"addrThreadsHostProxy",
-		flags["addrThreadsHostProxy"].defValue.(string),
+		flags["addrThreadsHostProxy"].DefValue.(string),
 		"Threads peer host gRPC proxy address")
 	rootCmd.PersistentFlags().String(
 		"addrThreadsApi",
-		flags["addrThreadsApi"].defValue.(string),
+		flags["addrThreadsApi"].DefValue.(string),
 		"Threads API listen address")
 	rootCmd.PersistentFlags().String(
 		"addrThreadsApiProxy",
-		flags["addrThreadsApiProxy"].defValue.(string),
+		flags["addrThreadsApiProxy"].DefValue.(string),
 		"Threads API gRPC proxy address")
 
 	rootCmd.PersistentFlags().String(
 		"addrIpfsApi",
-		flags["addrIpfsApi"].defValue.(string),
+		flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
-	for n, f := range flags {
-		if err := viper.BindPFlag(f.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {
-			log.Fatal(err)
-		}
-		viper.SetDefault(f.key, f.defValue)
+	if err := cmd.BindFlags(rootCmd, flags); err != nil {
+		log.Fatal(err)
 	}
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		cmd.Fatal(err)
 	}
 }
 
@@ -139,16 +130,18 @@ var rootCmd = &cobra.Command{
 	Use:   "textiled",
 	Short: "Textile daemon",
 	Long:  `The Textile daemon.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Expand environment variables in config
-		for _, f := range flags {
-			if f.key != "" {
-				if str, ok := viper.Get(f.key).(string); ok {
-					viper.Set(f.key, os.ExpandEnv(str))
-				}
+	PersistentPreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(flags)
+
+		if viper.GetBool("log.debug") {
+			if err := util.SetLogLevels(map[string]logger.Level{
+				"textiled": logger.DEBUG,
+			}); err != nil {
+				log.Fatal(err)
 			}
 		}
-
+	},
+	Run: func(c *cobra.Command, args []string) {
 		addrApi, err := ma.NewMultiaddr(viper.GetString("addr.api"))
 		if err != nil {
 			log.Fatal(err)
@@ -204,26 +197,4 @@ var rootCmd = &cobra.Command{
 
 		select {}
 	},
-}
-
-func initConfig() {
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
-	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		viper.AddConfigPath(path.Join(home, ".textiled"))
-		viper.SetConfigName("config")
-	}
-
-	viper.SetEnvPrefix("TXTL")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file:", viper.ConfigFileUsed())
-	}
 }
