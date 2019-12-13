@@ -6,21 +6,20 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-
-	badger "github.com/ipfs/go-ds-badger"
-	"github.com/textileio/textile/resources/users"
-
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
-
+	badger "github.com/ipfs/go-ds-badger"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/resources"
+	u "github.com/textileio/textile/resources/users"
 )
 
 var (
@@ -101,18 +100,19 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	usersStoreID, err := storeIDAtKey(ds, dsUsersKey.ChildString("store"))
+	usersID, err := storeIDAtKey(ds, dsUsersKey.ChildString("store"))
 	if err != nil {
 		return nil, err
 	}
-	usersResourse, err := users.NewUsers(usersStoreID, threadsClient)
-	if err != nil {
+	users := u.NewUsers(usersID)
+
+	if err := resources.AddResource(threadsClient, users); err != nil {
 		return nil, err
 	}
 
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:  conf.AddrApi,
-		Users: usersResourse,
+		Users: users,
 		Debug: conf.Debug,
 	})
 	if err != nil {
@@ -142,20 +142,21 @@ func (t *Textile) Close() error {
 	}
 	t.threadsServer.Close()
 	t.server.Close()
-	return nil
+	return t.ds.Close()
 }
 
 func (t *Textile) HostID() peer.ID {
 	return t.threadservice.Host().ID()
 }
 
-func storeIDAtKey(ds datastore.Datastore, key datastore.Key) (string, error) {
+func storeIDAtKey(ds datastore.Datastore, key datastore.Key) (*uuid.UUID, error) {
 	idv, err := ds.Get(key)
 	if err != nil {
 		if errors.Is(err, datastore.ErrNotFound) {
-			return "", nil
+			return nil, nil
 		}
-		return "", err
+		return nil, err
 	}
-	return string(idv), nil
+	id, err := uuid.ParseBytes(idv)
+	return &id, nil
 }

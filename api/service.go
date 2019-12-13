@@ -4,14 +4,13 @@ import (
 	"context"
 
 	pb "github.com/textileio/textile/api/pb"
-	"github.com/textileio/textile/resources"
 	"github.com/textileio/textile/resources/users"
 )
 
 // service is a gRPC service for textile.
 type service struct {
-	users    resources.Resource
-	projects resources.Resource
+	users *users.Users
+	//projects *projects.Projects
 }
 
 // SignUp handles a signup request.

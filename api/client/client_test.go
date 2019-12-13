@@ -29,9 +29,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestSignUp(t *testing.T) {
-	_, err := client.SignUp()
+	id, err := client.SignUp()
 	if err != nil {
 		t.Fatalf("failed to sign up: %v", err)
+	}
+	if id == "" {
+		t.Fatal("got empty id from sign up")
 	}
 }
 

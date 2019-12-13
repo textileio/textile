@@ -59,10 +59,6 @@ var (
 			key:      "addr.ipfs.api",
 			defValue: "/ip4/127.0.0.1/tcp/5001",
 		},
-
-		"usersStoreId": {
-			key: "users.store.id",
-		},
 	}
 )
 
@@ -123,11 +119,6 @@ func init() {
 		"addrIpfsApi",
 		flags["addrIpfsApi"].defValue.(string),
 		"IPFS API address")
-
-	rootCmd.PersistentFlags().String(
-		"usersStoreId",
-		"",
-		"Users store ID")
 
 	for n, f := range flags {
 		if err := viper.BindPFlag(f.key, rootCmd.PersistentFlags().Lookup(n)); err != nil {

@@ -1,10 +1,10 @@
 package users
 
 import (
-	"encoding/json"
+	"github.com/google/uuid"
 
-	"github.com/alecthomas/jsonschema"
 	"github.com/textileio/go-textile-threads/api/client"
+	es "github.com/textileio/go-textile-threads/eventstore"
 )
 
 type User struct {
@@ -12,55 +12,58 @@ type User struct {
 }
 
 type Users struct {
-	storeID string
-	schema  *jsonschema.Schema
+	storeID *uuid.UUID
 	threads *client.Client
 }
 
-func NewUsers(storeID string, threads *client.Client) (*Users, error) {
-	var schema *jsonschema.Schema
-	if storeID == "" {
-		var err error
-		storeID, err = threads.NewStore()
-		if err != nil {
-			return nil, err
-		}
-		schema = jsonschema.Reflect(&User{})
-		schemaBytes, err := json.Marshal(schema)
-		if err != nil {
-			panic(err)
-		}
-		if err = threads.RegisterSchema(storeID, "User", string(schemaBytes)); err != nil {
-			return nil, err
-		}
+func NewUsers(storeID *uuid.UUID) *Users {
+	return &Users{storeID: storeID}
+}
+
+func (u *Users) GetName() string {
+	return "User"
+}
+
+func (u *Users) GetInstance() interface{} {
+	return &User{}
+}
+
+func (u *Users) SetThreads(threads *client.Client) {
+	u.threads = threads
+}
+
+func (u *Users) GetStoreID() *uuid.UUID {
+	return u.storeID
+}
+
+func (u *Users) SetStoreID(id *uuid.UUID) {
+	u.storeID = id
+}
+
+func (u *Users) Create(user *User) error {
+	return u.threads.ModelCreate(u.storeID.String(), u.GetName(), user)
+}
+
+func (u *Users) Get(id string) (*User, error) {
+	user := &User{}
+	if err := u.threads.ModelFindByID(u.storeID.String(), u.GetName(), id, user); err != nil {
+		return nil, err
 	}
-	return &Users{
-		storeID: storeID,
-		schema:  schema,
-		threads: threads,
-	}, nil
+	return user, nil
 }
 
-func (r *Users) StoreID() string {
-	return r.storeID
+func (u *Users) List() ([]*User, error) {
+	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, &User{})
+	if err != nil {
+		return nil, err
+	}
+	return res.([]*User), nil
 }
 
-func (r *Users) Create(docs ...interface{}) error {
-	return nil
+func (u *Users) Update(user *User) error {
+	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }
 
-func (r *Users) Get(id string, doc interface{}) error {
-	return nil
-}
-
-func (r *Users) List(dummy interface{}) (interface{}, error) {
-	return nil, nil
-}
-
-func (r *Users) Update(doc interface{}) error {
-	return nil
-}
-
-func (r *Users) Delete(id string) error {
-	return nil
+func (u *Users) Delete(id string) error {
+	return u.threads.ModelDelete(u.storeID.String(), u.GetName(), id)
 }
