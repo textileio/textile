@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/textileio/textile/cmd"
+
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,30 +32,30 @@ var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create config",
 	Long:  `Create a default config file.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(c *cobra.Command, args []string) {
 		viper.SetConfigType("yaml")
 
 		var dir string
-		if !cmd.Flag("dir").Changed {
+		if !c.Flag("dir").Changed {
 			home, err := homedir.Dir()
 			if err != nil {
 				log.Fatal(err)
 			}
 			dir = path.Join(home, ".textiled")
-			_ = os.MkdirAll(dir, os.ModePerm)
+			if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+				log.Fatal(err)
+			}
 		} else {
-			dir = cmd.Flag("dir").Value.String()
+			dir = c.Flag("dir").Value.String()
 		}
-		filename := path.Join(dir, "config.yaml")
+		filename := path.Join(dir, "config.yml")
 
 		if _, err := os.Stat(filename); err == nil {
-			fmt.Println(fmt.Sprintf("%s already exists", filename))
-			os.Exit(1)
+			cmd.Fatal(fmt.Errorf("%s already exists", filename))
 		}
 
 		if err := viper.WriteConfigAs(filename); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			cmd.Fatal(err)
 		}
 	},
 }

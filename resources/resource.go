@@ -2,39 +2,62 @@ package resources
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/google/uuid"
+	"github.com/ipfs/go-datastore"
 	"github.com/textileio/go-textile-threads/api/client"
 )
 
 type Resource interface {
 	GetName() string
 	GetInstance() interface{}
-	SetThreads(threads *client.Client)
+	SetThreads(*client.Client)
 	GetStoreID() *uuid.UUID
-	SetStoreID(id *uuid.UUID)
+	SetStoreID(*uuid.UUID)
 }
 
-func AddResource(threads *client.Client, res ...Resource) error {
-	for _, r := range res {
-		if r.GetStoreID() == nil {
-			var err error
-			storeID, err := threads.NewStore()
-			if err != nil {
-				return err
-			}
-			schema, err := json.Marshal(jsonschema.Reflect(r.GetInstance()))
-			if err != nil {
-				panic(err)
-			}
-			if err = threads.RegisterSchema(storeID, r.GetName(), string(schema)); err != nil {
-				return err
-			}
-			id := uuid.MustParse(storeID)
-			r.SetStoreID(&id)
-		}
-		r.SetThreads(threads)
+func AddResource(threads *client.Client, ds datastore.Datastore, key datastore.Key, res Resource) error {
+	storeID, err := storeIDAtKey(ds, key)
+	if err != nil {
+		return err
 	}
+	if storeID == nil {
+		ids, err := threads.NewStore()
+		if err != nil {
+			return err
+		}
+		id := uuid.MustParse(ids)
+		storeID = &id
+
+		schema, err := json.Marshal(jsonschema.Reflect(res.GetInstance()))
+		if err != nil {
+			panic(err)
+		}
+		if err = threads.RegisterSchema(storeID.String(), res.GetName(), string(schema)); err != nil {
+			return err
+		}
+		if err = ds.Put(key, storeID[:]); err != nil {
+			return err
+		}
+	}
+	res.SetThreads(threads)
+	res.SetStoreID(storeID)
 	return nil
+}
+
+func storeIDAtKey(ds datastore.Datastore, key datastore.Key) (*uuid.UUID, error) {
+	idv, err := ds.Get(key)
+	if err != nil {
+		if errors.Is(err, datastore.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	id := &uuid.UUID{}
+	if err = id.UnmarshalBinary(idv); err != nil {
+		return nil, err
+	}
+	return id, nil
 }

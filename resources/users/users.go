@@ -12,12 +12,8 @@ type User struct {
 }
 
 type Users struct {
-	storeID *uuid.UUID
 	threads *client.Client
-}
-
-func NewUsers(storeID *uuid.UUID) *Users {
-	return &Users{storeID: storeID}
+	storeID *uuid.UUID
 }
 
 func (u *Users) GetName() string {

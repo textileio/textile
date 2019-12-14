@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,7 +17,7 @@ type Flag struct {
 	DefValue interface{}
 }
 
-func InitConfig(file string, defDir string, foundConfig func()) func() {
+func InitConfig(file string, defDir string) func() {
 	return func() {
 		if file != "" {
 			viper.SetConfigFile(file)
@@ -25,6 +26,7 @@ func InitConfig(file string, defDir string, foundConfig func()) func() {
 			if err != nil {
 				panic(err)
 			}
+			viper.AddConfigPath("") // local config takes priority
 			viper.AddConfigPath(path.Join(home, defDir))
 			viper.SetConfigName("config")
 		}
@@ -32,10 +34,7 @@ func InitConfig(file string, defDir string, foundConfig func()) func() {
 		viper.SetEnvPrefix("TXTL")
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		viper.AutomaticEnv()
-
-		if err := viper.ReadInConfig(); err == nil {
-			foundConfig()
-		}
+		_ = viper.ReadInConfig()
 	}
 }
 
@@ -57,6 +56,14 @@ func ExpandConfigVars(flags map[string]Flag) {
 			}
 		}
 	}
+}
+
+func AddrFromStr(str string) ma.Multiaddr {
+	addr, err := ma.NewMultiaddr(str)
+	if err != nil {
+		Fatal(err)
+	}
+	return addr
 }
 
 func Fatal(err error) {

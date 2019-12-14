@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-textile-threads/util"
@@ -61,15 +60,13 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(configFile, ".textiled", func() {
-		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
-	}))
+	cobra.OnInitialize(cmd.InitConfig(configFile, ".textiled"))
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,
 		"config",
 		"",
-		"Config file (default ${HOME}/.textiled/config.yaml)")
+		"Config file (default ${HOME}/.textiled/config.yml)")
 
 	rootCmd.PersistentFlags().StringP(
 		"repo",
@@ -142,32 +139,12 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		addrApi, err := ma.NewMultiaddr(viper.GetString("addr.api"))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		addrThreadsHost, err := ma.NewMultiaddr(viper.GetString("addr.threads.host"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		addrThreadsHostProxy, err := ma.NewMultiaddr(viper.GetString("addr.threads.host_proxy"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		addrThreadsApi, err := ma.NewMultiaddr(viper.GetString("addr.threads.api"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		addrThreadsApiProxy, err := ma.NewMultiaddr(viper.GetString("addr.threads.api_proxy"))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		addrIpfsApi, err := ma.NewMultiaddr(viper.GetString("addr.ipfs.api"))
-		if err != nil {
-			log.Fatal(err)
-		}
+		addrApi := cmd.AddrFromStr(viper.GetString("addr.api"))
+		addrThreadsHost := cmd.AddrFromStr(viper.GetString("addr.threads.host"))
+		addrThreadsHostProxy := cmd.AddrFromStr(viper.GetString("addr.threads.host_proxy"))
+		addrThreadsApi := cmd.AddrFromStr(viper.GetString("addr.threads.api"))
+		addrThreadsApiProxy := cmd.AddrFromStr(viper.GetString("addr.threads.api_proxy"))
+		addrIpfsApi := cmd.AddrFromStr(viper.GetString("addr.ipfs.api"))
 
 		logFile := viper.GetString("log.file")
 		if logFile != "" {
@@ -192,8 +169,6 @@ var rootCmd = &cobra.Command{
 
 		fmt.Println("Welcome to Textile!")
 		fmt.Println("Your peer ID is " + textile.HostID().String())
-
-		log.Debug("textiled started")
 
 		select {}
 	},
