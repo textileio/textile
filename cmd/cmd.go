@@ -17,42 +17,42 @@ type Flag struct {
 	DefValue interface{}
 }
 
-func InitConfig(file string, defDir string) func() {
+func InitConfig(v *viper.Viper, file string, defDir string, name string) func() {
 	return func() {
 		if file != "" {
-			viper.SetConfigFile(file)
+			v.SetConfigFile(file)
 		} else {
 			home, err := homedir.Dir()
 			if err != nil {
 				panic(err)
 			}
-			viper.AddConfigPath("") // local config takes priority
-			viper.AddConfigPath(path.Join(home, defDir))
-			viper.SetConfigName("config")
+			v.AddConfigPath("") // local config takes priority
+			v.AddConfigPath(path.Join(home, defDir))
+			v.SetConfigName(name)
 		}
 
-		viper.SetEnvPrefix("TXTL")
-		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-		viper.AutomaticEnv()
-		_ = viper.ReadInConfig()
+		v.SetEnvPrefix("TXTL")
+		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		v.AutomaticEnv()
+		_ = v.ReadInConfig()
 	}
 }
 
-func BindFlags(root *cobra.Command, flags map[string]Flag) error {
+func BindFlags(v *viper.Viper, root *cobra.Command, flags map[string]Flag) error {
 	for n, f := range flags {
-		if err := viper.BindPFlag(f.Key, root.PersistentFlags().Lookup(n)); err != nil {
+		if err := v.BindPFlag(f.Key, root.PersistentFlags().Lookup(n)); err != nil {
 			return err
 		}
-		viper.SetDefault(f.Key, f.DefValue)
+		v.SetDefault(f.Key, f.DefValue)
 	}
 	return nil
 }
 
-func ExpandConfigVars(flags map[string]Flag) {
+func ExpandConfigVars(v *viper.Viper, flags map[string]Flag) {
 	for _, f := range flags {
 		if f.Key != "" {
-			if str, ok := viper.Get(f.Key).(string); ok {
-				viper.Set(f.Key, os.ExpandEnv(str))
+			if str, ok := v.Get(f.Key).(string); ok {
+				v.Set(f.Key, os.ExpandEnv(str))
 			}
 		}
 	}

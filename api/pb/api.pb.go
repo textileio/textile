@@ -23,37 +23,45 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type SignUpRequest struct {
+type LoginRequest struct {
+	Email                string   `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SignUpRequest) Reset()         { *m = SignUpRequest{} }
-func (m *SignUpRequest) String() string { return proto.CompactTextString(m) }
-func (*SignUpRequest) ProtoMessage()    {}
-func (*SignUpRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_cd505496ba016707, []int{0}
+func (m *LoginRequest) Reset()         { *m = LoginRequest{} }
+func (m *LoginRequest) String() string { return proto.CompactTextString(m) }
+func (*LoginRequest) ProtoMessage()    {}
+func (*LoginRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_9d64e0ffef252ea8, []int{0}
 }
-func (m *SignUpRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SignUpRequest.Unmarshal(m, b)
+func (m *LoginRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LoginRequest.Unmarshal(m, b)
 }
-func (m *SignUpRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SignUpRequest.Marshal(b, m, deterministic)
+func (m *LoginRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LoginRequest.Marshal(b, m, deterministic)
 }
-func (dst *SignUpRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SignUpRequest.Merge(dst, src)
+func (dst *LoginRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LoginRequest.Merge(dst, src)
 }
-func (m *SignUpRequest) XXX_Size() int {
-	return xxx_messageInfo_SignUpRequest.Size(m)
+func (m *LoginRequest) XXX_Size() int {
+	return xxx_messageInfo_LoginRequest.Size(m)
 }
-func (m *SignUpRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_SignUpRequest.DiscardUnknown(m)
+func (m *LoginRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LoginRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SignUpRequest proto.InternalMessageInfo
+var xxx_messageInfo_LoginRequest proto.InternalMessageInfo
 
-type SignUpReply struct {
+func (m *LoginRequest) GetEmail() string {
+	if m != nil {
+		return m.Email
+	}
+	return ""
+}
+
+type LoginReply struct {
 	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Token                string   `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -61,38 +69,38 @@ type SignUpReply struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SignUpReply) Reset()         { *m = SignUpReply{} }
-func (m *SignUpReply) String() string { return proto.CompactTextString(m) }
-func (*SignUpReply) ProtoMessage()    {}
-func (*SignUpReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_cd505496ba016707, []int{1}
+func (m *LoginReply) Reset()         { *m = LoginReply{} }
+func (m *LoginReply) String() string { return proto.CompactTextString(m) }
+func (*LoginReply) ProtoMessage()    {}
+func (*LoginReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_9d64e0ffef252ea8, []int{1}
 }
-func (m *SignUpReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SignUpReply.Unmarshal(m, b)
+func (m *LoginReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LoginReply.Unmarshal(m, b)
 }
-func (m *SignUpReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SignUpReply.Marshal(b, m, deterministic)
+func (m *LoginReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LoginReply.Marshal(b, m, deterministic)
 }
-func (dst *SignUpReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SignUpReply.Merge(dst, src)
+func (dst *LoginReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LoginReply.Merge(dst, src)
 }
-func (m *SignUpReply) XXX_Size() int {
-	return xxx_messageInfo_SignUpReply.Size(m)
+func (m *LoginReply) XXX_Size() int {
+	return xxx_messageInfo_LoginReply.Size(m)
 }
-func (m *SignUpReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_SignUpReply.DiscardUnknown(m)
+func (m *LoginReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_LoginReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SignUpReply proto.InternalMessageInfo
+var xxx_messageInfo_LoginReply proto.InternalMessageInfo
 
-func (m *SignUpReply) GetID() string {
+func (m *LoginReply) GetID() string {
 	if m != nil {
 		return m.ID
 	}
 	return ""
 }
 
-func (m *SignUpReply) GetToken() string {
+func (m *LoginReply) GetToken() string {
 	if m != nil {
 		return m.Token
 	}
@@ -100,8 +108,8 @@ func (m *SignUpReply) GetToken() string {
 }
 
 func init() {
-	proto.RegisterType((*SignUpRequest)(nil), "api.pb.SignUpRequest")
-	proto.RegisterType((*SignUpReply)(nil), "api.pb.SignUpReply")
+	proto.RegisterType((*LoginRequest)(nil), "api.pb.LoginRequest")
+	proto.RegisterType((*LoginReply)(nil), "api.pb.LoginReply")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -116,7 +124,7 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type APIClient interface {
-	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpReply, error)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
 }
 
 type aPIClient struct {
@@ -127,9 +135,9 @@ func NewAPIClient(cc *grpc.ClientConn) APIClient {
 	return &aPIClient{cc}
 }
 
-func (c *aPIClient) SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpReply, error) {
-	out := new(SignUpReply)
-	err := c.cc.Invoke(ctx, "/api.pb.API/SignUp", in, out, opts...)
+func (c *aPIClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error) {
+	out := new(LoginReply)
+	err := c.cc.Invoke(ctx, "/api.pb.API/Login", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,27 +146,27 @@ func (c *aPIClient) SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.
 
 // APIServer is the server API for API service.
 type APIServer interface {
-	SignUp(context.Context, *SignUpRequest) (*SignUpReply, error)
+	Login(context.Context, *LoginRequest) (*LoginReply, error)
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
 	s.RegisterService(&_API_serviceDesc, srv)
 }
 
-func _API_SignUp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignUpRequest)
+func _API_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).SignUp(ctx, in)
+		return srv.(APIServer).Login(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.pb.API/SignUp",
+		FullMethod: "/api.pb.API/Login",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).SignUp(ctx, req.(*SignUpRequest))
+		return srv.(APIServer).Login(ctx, req.(*LoginRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -168,27 +176,28 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*APIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SignUp",
-			Handler:    _API_SignUp_Handler,
+			MethodName: "Login",
+			Handler:    _API_Login_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api.proto",
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_cd505496ba016707) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_9d64e0ffef252ea8) }
 
-var fileDescriptor_api_cd505496ba016707 = []byte{
-	// 168 bytes of a gzipped FileDescriptorProto
+var fileDescriptor_api_9d64e0ffef252ea8 = []byte{
+	// 178 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4c, 0x2c, 0xc8, 0xd4,
-	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x03, 0x33, 0x93, 0x94, 0xf8, 0xb9, 0x78, 0x83, 0x33,
-	0xd3, 0xf3, 0x42, 0x0b, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x94, 0x8c, 0xb9, 0xb8, 0x61,
-	0x02, 0x05, 0x39, 0x95, 0x42, 0x7c, 0x5c, 0x4c, 0x9e, 0x2e, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0x9c,
-	0x41, 0x4c, 0x9e, 0x2e, 0x42, 0x22, 0x5c, 0xac, 0x25, 0xf9, 0xd9, 0xa9, 0x79, 0x12, 0x4c, 0x60,
-	0x21, 0x08, 0xc7, 0xc8, 0x96, 0x8b, 0xd9, 0x31, 0xc0, 0x53, 0xc8, 0x8c, 0x8b, 0x0d, 0xa2, 0x57,
-	0x48, 0x54, 0x0f, 0x62, 0xbe, 0x1e, 0x8a, 0xe1, 0x52, 0xc2, 0xe8, 0xc2, 0x05, 0x39, 0x95, 0x4a,
-	0x0c, 0x4e, 0xda, 0x5c, 0xe2, 0x99, 0xf9, 0x7a, 0x25, 0xa9, 0x15, 0x25, 0x99, 0x39, 0xa9, 0x7a,
-	0xe9, 0x45, 0x05, 0xc9, 0xf1, 0x50, 0x8e, 0x13, 0x7b, 0x08, 0x84, 0x11, 0xc0, 0xb8, 0x88, 0x89,
-	0x25, 0x24, 0x22, 0xc4, 0x27, 0x89, 0x0d, 0xec, 0x01, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0x7e, 0x7c, 0x86, 0xe6, 0xcd, 0x00, 0x00, 0x00,
+	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x03, 0x33, 0x93, 0x94, 0x54, 0xb8, 0x78, 0x7c, 0xf2,
+	0xd3, 0x33, 0xf3, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x84, 0x44, 0xb8, 0x58, 0x53, 0x73,
+	0x13, 0x33, 0x73, 0x24, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0x20, 0x1c, 0x25, 0x23, 0x2e, 0x2e,
+	0xa8, 0xaa, 0x82, 0x9c, 0x4a, 0x21, 0x3e, 0x2e, 0x26, 0x4f, 0x17, 0xa8, 0x02, 0x26, 0x4f, 0x17,
+	0x90, 0x9e, 0x92, 0xfc, 0xec, 0xd4, 0x3c, 0x09, 0x26, 0x88, 0x1e, 0x30, 0xc7, 0xc8, 0x8a, 0x8b,
+	0xd9, 0x31, 0xc0, 0x53, 0xc8, 0x98, 0x8b, 0x15, 0xac, 0x55, 0x48, 0x44, 0x0f, 0x62, 0xa5, 0x1e,
+	0xb2, 0x7d, 0x52, 0x42, 0x68, 0xa2, 0x05, 0x39, 0x95, 0x4a, 0x0c, 0x4e, 0xda, 0x5c, 0xe2, 0x99,
+	0xf9, 0x7a, 0x25, 0xa9, 0x15, 0x25, 0x99, 0x39, 0xa9, 0x7a, 0xe9, 0x45, 0x05, 0xc9, 0xf1, 0x50,
+	0x8e, 0x13, 0x7b, 0x08, 0x84, 0x11, 0xc0, 0xb8, 0x88, 0x89, 0x25, 0x24, 0x22, 0xc4, 0x27, 0x89,
+	0x0d, 0xec, 0x23, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x6b, 0x50, 0x1b, 0x12, 0xde, 0x00,
+	0x00, 0x00,
 }

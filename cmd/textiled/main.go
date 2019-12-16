@@ -15,8 +15,10 @@ import (
 var (
 	log = logging.Logger("textiled")
 
-	configFile string
-	flags      = map[string]cmd.Flag{
+	configViper = viper.New()
+	configFile  string
+
+	flags = map[string]cmd.Flag{
 		"repo": {
 			Key:      "repo",
 			DefValue: "${HOME}/.textiled/repo",
@@ -60,7 +62,7 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(configFile, ".textiled"))
+	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textiled", "config"))
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,
@@ -112,7 +114,7 @@ func init() {
 		flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
-	if err := cmd.BindFlags(rootCmd, flags); err != nil {
+	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -128,9 +130,10 @@ var rootCmd = &cobra.Command{
 	Short: "Textile daemon",
 	Long:  `The Textile daemon.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(flags)
+		configViper.SetConfigType("yaml")
+		cmd.ExpandConfigVars(configViper, flags)
 
-		if viper.GetBool("log.debug") {
+		if configViper.GetBool("log.debug") {
 			if err := util.SetLogLevels(map[string]logger.Level{
 				"textiled": logger.DEBUG,
 			}); err != nil {
@@ -139,27 +142,27 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		addrApi := cmd.AddrFromStr(viper.GetString("addr.api"))
-		addrThreadsHost := cmd.AddrFromStr(viper.GetString("addr.threads.host"))
-		addrThreadsHostProxy := cmd.AddrFromStr(viper.GetString("addr.threads.host_proxy"))
-		addrThreadsApi := cmd.AddrFromStr(viper.GetString("addr.threads.api"))
-		addrThreadsApiProxy := cmd.AddrFromStr(viper.GetString("addr.threads.api_proxy"))
-		addrIpfsApi := cmd.AddrFromStr(viper.GetString("addr.ipfs.api"))
+		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
+		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
+		addrThreadsHostProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.host_proxy"))
+		addrThreadsApi := cmd.AddrFromStr(configViper.GetString("addr.threads.api"))
+		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
+		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
-		logFile := viper.GetString("log.file")
+		logFile := configViper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
 		}
 
 		textile, err := core.NewTextile(core.Config{
-			RepoPath:             viper.GetString("repo"),
+			RepoPath:             configViper.GetString("repo"),
 			AddrApi:              addrApi,
 			AddrThreadsHost:      addrThreadsHost,
 			AddrThreadsHostProxy: addrThreadsHostProxy,
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
-			Debug:                viper.GetBool("log.debug"),
+			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)

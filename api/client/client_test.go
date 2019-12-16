@@ -28,13 +28,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func TestSignUp(t *testing.T) {
-	id, err := client.SignUp()
+func TestLogin(t *testing.T) {
+	id, err := client.Login("jon@doe.com")
 	if err != nil {
-		t.Fatalf("failed to sign up: %v", err)
+		t.Fatalf("failed to login: %v", err)
 	}
 	if id == "" {
-		t.Fatal("got empty id from sign up")
+		t.Fatal("got empty id from login")
 	}
 }
 

@@ -13,14 +13,17 @@ type service struct {
 	//projects *projects.Projects
 }
 
-// SignUp handles a signup request.
-func (s *service) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpReply, error) {
-	log.Debugf("received sign up request")
+// Login handles a login request.
+func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
+	log.Debugf("received login request")
 
-	user := &users.User{}
+	user := &users.User{Email: req.Email}
 	if err := s.users.Create(user); err != nil {
 		return nil, err
 	}
 
-	return &pb.SignUpReply{ID: user.ID}, nil
+	return &pb.LoginReply{
+		ID:    user.ID,
+		Token: "dummy-token", // @todo
+	}, nil
 }

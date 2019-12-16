@@ -6,13 +6,15 @@ option java_package = "io.textile.grpc_textile";
 option java_outer_classname = "Textile";
 option objc_class_prefix = "TXTL";
 
-message SignUpRequest {}
+message LoginRequest {
+    string email = 1;
+}
 
-message SignUpReply {
+message LoginReply {
     string ID = 1;
     string token = 2;
 }
 
 service API {
-    rpc SignUp(SignUpRequest) returns (SignUpReply) {}
+    rpc Login(LoginRequest) returns (LoginReply) {}
 }

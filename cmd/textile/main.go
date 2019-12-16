@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -13,8 +15,20 @@ import (
 var (
 	log = logging.Logger("textile")
 
-	configFile string
-	flags      = map[string]cmd.Flag{
+	authFile  string
+	authViper = viper.New()
+
+	authFlags = map[string]cmd.Flag{
+		"token": {
+			Key:      "token",
+			DefValue: "",
+		},
+	}
+
+	configFile  string
+	configViper = viper.New()
+
+	flags = map[string]cmd.Flag{
 		"debug": {
 			Key:      "log.debug",
 			DefValue: false,
@@ -30,7 +44,18 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(configFile, ".textile"))
+	cobra.OnInitialize(cmd.InitConfig(authViper, authFile, ".textile", "auth"))
+	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textile", "config"))
+
+	rootCmd.PersistentFlags().StringP(
+		"token",
+		"t",
+		authFlags["token"].DefValue.(string),
+		"Authorization token")
+
+	if err := cmd.BindFlags(authViper, rootCmd, authFlags); err != nil {
+		log.Fatal(err)
+	}
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,
@@ -49,7 +74,7 @@ func init() {
 		flags["addrApi"].DefValue.(string),
 		"Textile API listen address")
 
-	if err := cmd.BindFlags(rootCmd, flags); err != nil {
+	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -65,9 +90,18 @@ var rootCmd = &cobra.Command{
 	Short: "Textile client",
 	Long:  `The Textile client.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(flags)
+		authViper.SetConfigType("yaml")
+		configViper.SetConfigType("yaml")
 
-		if viper.GetBool("log.debug") {
+		cmd.ExpandConfigVars(authViper, flags)
+		cmd.ExpandConfigVars(configViper, flags)
+
+		if authViper.GetString("token") == "" && c.Use != "login" {
+			cmd.Fatal(fmt.Errorf(
+				"unauthorized! run 'textile login' or use the --token flag to authorize"))
+		}
+
+		if configViper.GetBool("log.debug") {
 			if err := util.SetLogLevels(map[string]logger.Level{
 				"textile": logger.DEBUG,
 			}); err != nil {
@@ -76,7 +110,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		var err error
-		client, err = api.NewClient(cmd.AddrFromStr(viper.GetString("addr.api")))
+		client, err = api.NewClient(cmd.AddrFromStr(configViper.GetString("addr.api")))
 		if err != nil {
 			log.Fatal(err)
 		}

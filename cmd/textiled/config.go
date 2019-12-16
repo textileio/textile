@@ -9,7 +9,6 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func init() {
@@ -33,8 +32,6 @@ var createCmd = &cobra.Command{
 	Short: "Create config",
 	Long:  `Create a default config file.`,
 	Run: func(c *cobra.Command, args []string) {
-		viper.SetConfigType("yaml")
-
 		var dir string
 		if !c.Flag("dir").Changed {
 			home, err := homedir.Dir()
@@ -54,7 +51,7 @@ var createCmd = &cobra.Command{
 			cmd.Fatal(fmt.Errorf("%s already exists", filename))
 		}
 
-		if err := viper.WriteConfigAs(filename); err != nil {
+		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
 	},

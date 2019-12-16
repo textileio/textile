@@ -8,7 +8,8 @@ import (
 )
 
 type User struct {
-	ID string
+	ID    string
+	Email string
 }
 
 type Users struct {

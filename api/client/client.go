@@ -43,11 +43,11 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// SignUp creates a new user.
-func (c *Client) SignUp() (string, error) {
-	resp, err := c.client.SignUp(c.ctx, &pb.SignUpRequest{})
+// Login returns an authorization token.
+func (c *Client) Login(email string) (string, error) {
+	resp, err := c.client.Login(c.ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
 		return "", err
 	}
-	return resp.GetID(), nil
+	return resp.GetToken(), nil
 }
