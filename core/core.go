@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path"
-	"strconv"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -94,21 +93,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	// @todo: Threads Client should take a multiaddress.
-	threadsHost, err := conf.AddrThreadsApi.ValueForProtocol(ma.P_IP4)
-	if err != nil {
-		return nil, err
-	}
-	threadsPortStr, err := conf.AddrThreadsApi.ValueForProtocol(ma.P_TCP)
-	if err != nil {
-		return nil, err
-	}
-	threadsPort, err := strconv.Atoi(threadsPortStr)
-	if err != nil {
-		return nil, err
-	}
-
-	threadsClient, err := threadsclient.NewClient(threadsHost, threadsPort)
+	threadsClient, err := threadsclient.NewClient(conf.AddrThreadsApi)
 	if err != nil {
 		return nil, err
 	}

@@ -35,7 +35,6 @@ type Config struct {
 }
 
 // NewServer starts and returns a new server.
-// @todo: load or create user store
 func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	var err error
 	if conf.Debug {

@@ -1,16 +1,15 @@
 package main
 
 import (
+	"context"
 	"net/mail"
 	"os"
 	"path"
 
-	"github.com/textileio/textile/cmd"
-
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/manifoldco/promptui"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/textileio/textile/cmd"
 )
 
 func init() {
@@ -34,7 +33,9 @@ var loginCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		token, err := client.Login(email)
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		token, err := client.Login(ctx, email)
 		if err != nil {
 			log.Fatal(err)
 		}

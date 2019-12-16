@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -10,66 +11,76 @@ import (
 )
 
 var (
-	shutdown func()
-	client   *Client
-
 	addrApi = parseAddr("/ip4/127.0.0.1/tcp/3006")
 )
 
-func TestMain(m *testing.M) {
-	var err error
-	shutdown = makeTextile()
-	client, err = NewClient(addrApi)
-	if err != nil {
-		panic(err)
-	}
-	exitVal := m.Run()
-	shutdown()
-	os.Exit(exitVal)
-}
-
 func TestLogin(t *testing.T) {
-	id, err := client.Login("jon@doe.com")
+	shutdown, err := makeTextile()
 	if err != nil {
-		t.Fatalf("failed to login: %v", err)
+		t.Fatal(err)
 	}
-	if id == "" {
-		t.Fatal("got empty id from login")
+	defer shutdown()
+	client, err := NewClient(addrApi)
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	t.Run("test login", func(t *testing.T) {
+		id, err := client.Login(context.Background(), "jon@doe.com")
+		if err != nil {
+			t.Fatalf("failed to login: %v", err)
+		}
+		if id == "" {
+			t.Fatal("got empty id from login")
+		}
+	})
 }
 
 func TestClose(t *testing.T) {
-	err := client.Close()
+	shutdown, err := makeTextile()
 	if err != nil {
-		t.Fatalf("failed to close client: %v", err)
+		t.Fatal(err)
 	}
+	defer shutdown()
+	client, err := NewClient(addrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test close", func(t *testing.T) {
+		if err := client.Close(); err != nil {
+			t.Fatalf("failed to close client: %v", err)
+		}
+	})
 }
 
-func makeTextile() func() {
+func makeTextile() (func(), error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	textile, err := core.NewTextile(core.Config{
 		RepoPath:             dir,
 		AddrApi:              addrApi,
-		AddrThreadsHost:      parseAddr("/ip4/0.0.0.0/tcp/4006"),
-		AddrThreadsHostProxy: parseAddr("/ip4/0.0.0.0/tcp/5006"),
-		AddrThreadsApi:       parseAddr("/ip4/127.0.0.1/tcp/6006"),
-		AddrThreadsApiProxy:  parseAddr("/ip4/127.0.0.1/tcp/7006"),
-		AddrIpfsApi:          parseAddr("/ip4/127.0.0.1/tcp/5001"),
-		Debug:                true,
+		AddrThreadsHost:      parseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsHostProxy: parseAddr("/ip4/0.0.0.0/tcp/0"),
+		// @todo: Currently, this can't be port zero because the client would not
+		// know the randomly chosen listen port.
+		AddrThreadsApi:      parseAddr("/ip4/127.0.0.1/tcp/6006"),
+		AddrThreadsApiProxy: parseAddr("/ip4/127.0.0.1/tcp/0"),
+		AddrIpfsApi:         parseAddr("/ip4/127.0.0.1/tcp/5001"),
+		Debug:               true,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	textile.Bootstrap()
 
 	return func() {
 		textile.Close()
 		_ = os.RemoveAll(dir)
-	}
+	}, nil
 }
 
 func parseAddr(str string) ma.Multiaddr {

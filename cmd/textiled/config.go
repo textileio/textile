@@ -5,10 +5,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/textileio/textile/cmd"
-
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/textileio/textile/cmd"
 )
 
 func init() {

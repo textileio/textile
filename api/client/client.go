@@ -12,8 +12,6 @@ import (
 // Client provides the client api.
 type Client struct {
 	client pb.APIClient
-	ctx    context.Context
-	cancel context.CancelFunc
 	conn   *grpc.ClientConn
 }
 
@@ -27,11 +25,8 @@ func NewClient(maddr ma.Multiaddr) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	client := &Client{
 		client: pb.NewAPIClient(conn),
-		ctx:    ctx,
-		cancel: cancel,
 		conn:   conn,
 	}
 	return client, nil
@@ -39,13 +34,12 @@ func NewClient(maddr ma.Multiaddr) (*Client, error) {
 
 // Close closes the client's grpc connection and cancels any active requests.
 func (c *Client) Close() error {
-	c.cancel()
 	return c.conn.Close()
 }
 
 // Login returns an authorization token.
-func (c *Client) Login(email string) (string, error) {
-	resp, err := c.client.Login(c.ctx, &pb.LoginRequest{Email: email})
+func (c *Client) Login(ctx context.Context, email string) (string, error) {
+	resp, err := c.client.Login(ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
 		return "", err
 	}
