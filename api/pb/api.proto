@@ -1,0 +1,20 @@
+syntax = "proto3";
+package api.pb;
+
+option java_multiple_files = true;
+option java_package = "io.textile.grpc_textile";
+option java_outer_classname = "Textile";
+option objc_class_prefix = "TXTL";
+
+message LoginRequest {
+    string email = 1;
+}
+
+message LoginReply {
+    string ID = 1;
+    string token = 2;
+}
+
+service API {
+    rpc Login(LoginRequest) returns (LoginReply) {}
+}
