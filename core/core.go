@@ -13,7 +13,6 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
@@ -37,7 +36,6 @@ type Textile struct {
 
 	threadservice es.ThreadserviceBoostrapper
 
-	threadsServer *threadsapi.Server
 	threadsClient *threadsclient.Client
 
 	server *api.Server
@@ -84,12 +82,6 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadsServer, err := threadsapi.NewServer(context.Background(), threadservice, threadsapi.Config{
-		RepoPath:  conf.RepoPath,
-		Addr:      conf.AddrThreadsApi,
-		ProxyAddr: conf.AddrThreadsApiProxy,
-		Debug:     conf.Debug,
-	})
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +128,6 @@ func NewTextile(conf Config) (*Textile, error) {
 		ipfs: ipfs,
 
 		threadservice: threadservice,
-		threadsServer: threadsServer,
 		threadsClient: threadsClient,
 
 		server: server,
@@ -151,7 +142,6 @@ func (t *Textile) Close() error {
 	if err := t.threadservice.Close(); err != nil {
 		return err
 	}
-	t.threadsServer.Close()
 	t.server.Close()
 	return t.ds.Close()
 }

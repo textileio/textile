@@ -22,7 +22,7 @@ if [[ -z "${DOCKER_COMPOSE}" ]]; then
 else
 	IP=$(ping -c 2 textile_threads | head -1 | awk -F "(" '{print $2}' | awk -F ")" '{print $1}')
 	echo "Threads service found: $IP"
-	exec /usr/local/bin/textiled --addrThreadsApi=/ip4/$IP/tcp/9090
+	exec /usr/local/bin/textiled --addrThreadsHostProxy=/ip4/$IP/tcp/4006 --addrThreadsHostProxy=/ip4/$IP/tcp/5050 --addrThreadsApi=/ip4/$IP/tcp/9090 --addrThreadsApiProxy=/ip4/$IP/tcp/9091
 fi
 
 

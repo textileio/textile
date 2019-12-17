@@ -4,7 +4,7 @@ services:
     container_name: "textile_threads"
     build: 
       context: ../go-textile-threads/.
-    command: "daemon --repo=/data/threads --hostAddr=/ip4/0.0.0.0/tcp/4006 --hostProxyAddr=/ip4/0.0.0.0/tcp/5050 --apiAddr=/ip4/0.0.0.0/tcp/9090 --apiProxyAddr=/ip4/127.0.0.1/tcp/9091"
+    command: "daemon --repo=/data/threads --hostAddr=/ip4/127.0.0.1/tcp/4006 --hostProxyAddr=/ip4/127.0.0.1/tcp/5050 --apiAddr=/ip4/127.0.0.1/tcp/9090 --apiProxyAddr=/ip4/127.0.0.1/tcp/9091"
     ports:
       - "4006:4006"
       - "5050:5050"
@@ -20,5 +20,4 @@ services:
     links: 
       - textile_threads
     ports:
-      - target: 3006
-        published: 3006
+      - "3006:3006"
