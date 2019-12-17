@@ -16,7 +16,7 @@ COPY . $SRC_DIR
 
 # build source
 RUN cd $SRC_DIR \
-  && go install github.com/textileio/textile/cmd/textiled
+  && go install ./cmd/textiled
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -47,11 +47,8 @@ COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
-# This shared lib (part of glibc) doesn't seem to be included with busybox.
-# COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
-
 # Create the fs-repo directory
-ENV TEXTILE_REPO /data/textile
+ENV TEXTILE_REPO /data/textiled
 RUN mkdir -p $TEXTILE_REPO \
   && adduser -D -h $TEXTILE_REPO -u 1000 -G users textile \
   && chown -R textile:users $TEXTILE_REPO
@@ -59,17 +56,11 @@ RUN mkdir -p $TEXTILE_REPO \
 # Switch to a non-privileged user
 USER textile
 
-# Expose the fs-repo as a volume.
-# start_threads initializes an fs-repo if none is mounted.
 # Important this happens after the USER directive so permission are correct.
 VOLUME $TEXTILE_REPO
 
 EXPOSE 3006
 
-# This just makes sure that:
-# 1. There's an fs-repo, and initializes one if there isn't.
-# 2. The API and Gateway are accessible from outside the container.
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_textile"]
 
-# Execute the daemon subcommand by default
-CMD ["--repo=/data/textile", "--addrApi=/ip4/0.0.0.0/tcp/3006"]
+CMD ["--addrApi=/ip4/0.0.0.0/tcp/3006"]

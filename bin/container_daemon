@@ -12,4 +12,17 @@ if [ $(id -u) -eq 0 ]; then
 	exec su-exec "$user" "$0" "$@"
 fi
 
-exec textiled "$@"
+# ensure that threads service boots
+sleep 2
+
+# https://docs.docker.com/network/network-tutorial-standalone/
+# clearest way i could find to programatically set the IP address of the service
+if [[ -z "${DOCKER_COMPOSE}" ]]; then
+	exec /usr/local/bin/textiled "$@"
+else
+	IP=$(ping -c 2 textile_threads | head -1 | awk -F "(" '{print $2}' | awk -F ")" '{print $1}')
+	echo "Threads service found: $IP"
+	exec /usr/local/bin/textiled --addrThreadsApi=/ip4/$IP/tcp/9090
+fi
+
+
