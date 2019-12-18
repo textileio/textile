@@ -65,11 +65,16 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return s.newUserChallenge(ctx, req, user)
 	}
 
-	// challenge issued but not completed
+	// user attempting to respond to non-existant challenge
+	if user.Challenge.Shared != req.Challenge {
+		return nil, fmt.Errorf("Invalid Attempt")
+	}
+
+	// challenge still pending
 	if user.Challenge.Token == "" {
 		return &pb.LoginReply{
 			ID:        user.ID,
-			Challenge: user.Challenge.Shared,
+			Challenge: req.Challenge,
 		}, nil
 	}
 
