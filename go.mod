@@ -12,6 +12,7 @@ require (
 	github.com/ipfs/go-log v0.0.1
 	github.com/ipfs/interface-go-ipfs-core v0.2.5
 	github.com/libp2p/go-libp2p-core v0.3.0
+	github.com/mailgun/mailgun-go/v3 v3.6.3
 	github.com/manifoldco/promptui v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0

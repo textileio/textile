@@ -17,6 +17,7 @@ import (
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources"
 	u "github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
@@ -98,6 +99,12 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	email := &messaging.EmailService{
+		From:       "verify@email.textile.io",
+		Domain:     "email.textile.io",
+		PrivateKey: "secrets",
+	}
+
 	users := &u.Users{}
 	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
 		return nil, err
@@ -107,6 +114,7 @@ func NewTextile(conf Config) (*Textile, error) {
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:  conf.AddrApi,
 		Users: users,
+		Email: email,
 		Debug: conf.Debug,
 	})
 	if err != nil {

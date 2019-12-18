@@ -7,9 +7,17 @@ import (
 	es "github.com/textileio/go-textile-threads/eventstore"
 )
 
+type Challenge struct {
+	Shared string
+	Secret string
+	Token  string
+}
+
 type User struct {
-	ID    string
-	Email string
+	ID        string
+	Email     string
+	Challenge *Challenge
+	Tokens    []string
 }
 
 type Users struct {
@@ -47,6 +55,16 @@ func (u *Users) Get(id string) (*User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (u *Users) GetByEmail(email string) ([]*User, error) {
+	query := es.JSONWhere("Email").Eq(&email)
+	rawResults, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), query, []*User{})
+	if err != nil {
+		return nil, err
+	}
+	users := rawResults.([]*User)
+	return users, nil
 }
 
 func (u *Users) List() ([]*User, error) {

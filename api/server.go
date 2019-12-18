@@ -8,6 +8,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-threads/util"
 	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
@@ -30,6 +31,7 @@ type Server struct {
 type Config struct {
 	Addr  ma.Multiaddr
 	Users *users.Users
+	Email *messaging.EmailService
 	//Projects *projects.Projects
 	Debug bool
 }
@@ -51,6 +53,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		rpc: grpc.NewServer(),
 		service: &service{
 			users: conf.Users,
+			email: conf.Email,
 			//projects: conf.Projects,
 		},
 		ctx:    ctx,
