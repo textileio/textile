@@ -13,14 +13,15 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	threadsapi "github.com/textileio/go-textile-threads/api"
-	threadsclient "github.com/textileio/go-textile-threads/api/client"
-	es "github.com/textileio/go-textile-threads/eventstore"
-	"github.com/textileio/go-textile-threads/util"
+	threadsapi "github.com/textileio/go-threads/api"
+	threadsclient "github.com/textileio/go-threads/api/client"
+	es "github.com/textileio/go-threads/eventstore"
+	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources"
+	p "github.com/textileio/textile/resources/projects"
 	u "github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 )
@@ -28,8 +29,8 @@ import (
 var (
 	log = logging.Logger("core")
 
-	dsUsersKey = datastore.NewKey("/users")
-	//dsProjectsKey = datastore.NewKey("/projects")
+	dsUsersKey    = datastore.NewKey("/users")
+	dsProjectsKey = datastore.NewKey("/projects")
 )
 
 type Textile struct {
@@ -125,6 +126,12 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 	log.Debugf("users store: %s", users.GetStoreID().String())
+
+	projects := &p.Projects{}
+	if err := resources.AddResource(threadsClient, ds, dsProjectsKey, projects); err != nil {
+		return nil, err
+	}
+	log.Debugf("projects store: %s", projects.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:           conf.AddrApi,

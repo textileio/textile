@@ -3,8 +3,8 @@ package users
 import (
 	"github.com/google/uuid"
 
-	"github.com/textileio/go-textile-threads/api/client"
-	es "github.com/textileio/go-textile-threads/eventstore"
+	"github.com/textileio/go-threads/api/client"
+	es "github.com/textileio/go-threads/eventstore"
 )
 
 type User struct {

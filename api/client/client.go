@@ -5,7 +5,7 @@ import (
 	"io"
 
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	"google.golang.org/grpc"
 )

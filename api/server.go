@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-core/broadcast"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources/users"

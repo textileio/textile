@@ -7,7 +7,7 @@ import (
 	"github.com/alecthomas/jsonschema"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
-	"github.com/textileio/go-textile-threads/api/client"
+	"github.com/textileio/go-threads/api/client"
 )
 
 type Resource interface {
@@ -39,6 +39,9 @@ func AddResource(threads *client.Client, ds datastore.Datastore, key datastore.K
 			return err
 		}
 		if err = ds.Put(key, storeID[:]); err != nil {
+			return err
+		}
+		if err = threads.Start(storeID.String()); err != nil {
 			return err
 		}
 	}

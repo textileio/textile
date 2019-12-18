@@ -6,7 +6,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/core"
 	logger "github.com/whyrusleeping/go-logging"
