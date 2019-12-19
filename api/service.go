@@ -12,6 +12,8 @@ import (
 	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources/projects"
 	"github.com/textileio/textile/resources/users"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -138,18 +140,30 @@ func generateAuthToken() (string, error) {
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
 	log.Debugf("received add project request")
 
-	// @todo: look up current user / team and get group ID
-	// @todo: create store for the project
-
-	project := &projects.Project{
-		Name: req.Name,
+	var scopeID string
+	if req.ScopeID == "" {
+		// @todo: look up user from session
+	} else {
+		user, err := s.users.Get(req.ScopeID)
+		if err != nil {
+			return nil, err
+		}
+		if user == nil {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		scopeID = user.ID
 	}
-	if err := s.projects.Create(project); err != nil {
+
+	proj := &projects.Project{
+		Name:    req.Name,
+		ScopeID: scopeID,
+	}
+	if err := s.projects.Create(proj); err != nil {
 		return nil, err
 	}
 
 	return &pb.AddProjectReply{
-		ID:      project.ID,
-		StoreID: "", // @todo
+		ID:      proj.ID,
+		StoreID: proj.StoreID,
 	}, nil
 }

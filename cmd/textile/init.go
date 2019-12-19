@@ -57,10 +57,12 @@ var initCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		_, err = client.AddProject(ctx, name)
+		proj, err := client.AddProject(ctx, name, configViper.GetString("scope"))
 		if err != nil {
 			log.Fatal(err)
 		}
+		configViper.Set("id", proj.ID)
+		configViper.Set("store", proj.StoreID)
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)

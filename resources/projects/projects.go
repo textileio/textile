@@ -10,7 +10,7 @@ import (
 type Project struct {
 	ID      string
 	Name    string
-	GroupID string // user or team
+	ScopeID string // user or team
 	StoreID string
 }
 
@@ -20,7 +20,7 @@ type Projects struct {
 }
 
 func (p *Projects) GetName() string {
-	return "User"
+	return "Project"
 }
 
 func (p *Projects) GetInstance() interface{} {
@@ -40,6 +40,12 @@ func (p *Projects) SetStoreID(id *uuid.UUID) {
 }
 
 func (p *Projects) Create(proj *Project) error {
+	// Create a dedicated store for the project
+	var err error
+	proj.StoreID, err = p.threads.NewStore()
+	if err != nil {
+		return err
+	}
 	return p.threads.ModelCreate(p.storeID.String(), p.GetName(), proj)
 }
 
@@ -52,7 +58,7 @@ func (p *Projects) Get(id string) (*Project, error) {
 }
 
 func (p *Projects) List(groupID string) ([]*Project, error) {
-	query := es.JSONWhere("GroupID").Eq(groupID)
+	query := es.JSONWhere("ScopeID").Eq(groupID)
 	res, err := p.threads.ModelFind(p.storeID.String(), p.GetName(), query, &Project{})
 	if err != nil {
 		return nil, err

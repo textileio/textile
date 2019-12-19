@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -34,13 +35,29 @@ var (
 			DefValue: false,
 		},
 
+		"id": {
+			Key:      "id",
+			DefValue: "",
+		},
+
+		"store": {
+			Key:      "store",
+			DefValue: "",
+		},
+
+		"scope": {
+			Key:      "scope",
+			DefValue: "",
+		},
+
 		"addrApi": {
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
 		},
 	}
 
-	client *api.Client
+	client     *api.Client
+	cmdTimeout = time.Second * 10
 )
 
 func init() {
@@ -68,6 +85,21 @@ func init() {
 		"d",
 		flags["debug"].DefValue.(bool),
 		"Enable debug logging")
+
+	rootCmd.PersistentFlags().String(
+		"id",
+		flags["id"].DefValue.(string),
+		"Project ID")
+
+	rootCmd.PersistentFlags().String(
+		"store",
+		flags["store"].DefValue.(string),
+		"Project Store ID")
+
+	rootCmd.PersistentFlags().String(
+		"scope",
+		flags["scope"].DefValue.(string),
+		"Project Scope (User or Team ID)")
 
 	rootCmd.PersistentFlags().String(
 		"addrApi",

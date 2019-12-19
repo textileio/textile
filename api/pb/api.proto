@@ -17,7 +17,7 @@ message LoginReply {
 
 message AddProjectRequest {
     string name = 1;
-    string groupID = 2;
+    string scopeID = 2;
 }
 
 message AddProjectReply {

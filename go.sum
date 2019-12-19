@@ -855,6 +855,8 @@ github.com/textileio/go-textile-core v0.0.0-20191205233641-31fc120682c9 h1:DIK7m
 github.com/textileio/go-textile-core v0.0.0-20191205233641-31fc120682c9/go.mod h1:zZIyxcCQ8EDdOJmv3goBIYs5nsCG/DPhNdWTEvToDWA=
 github.com/textileio/go-threads v0.0.0-20191218213154-b8a8147b2c23 h1:tJvhfnzqSW8MiOYye6x+AOah8ueOUwQ/OoMYAU+oeTw=
 github.com/textileio/go-threads v0.0.0-20191218213154-b8a8147b2c23/go.mod h1:E5Hh+wDiWndDYpE+L/Q00xK6fZ9dgHpLFEpxOVVhDWA=
+github.com/textileio/go-threads v0.0.0-20191219202210-9adbd883e580 h1:Du14H3qhD3TWyNReE4Cuk/53cLma7tHq65G9Fo41Y94=
+github.com/textileio/go-threads v0.0.0-20191219202210-9adbd883e580/go.mod h1:E5Hh+wDiWndDYpE+L/Q00xK6fZ9dgHpLFEpxOVVhDWA=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tsenart/deadcode v0.0.0-20160724212837-210d2dc333e9 h1:vY5WqiEon0ZSTGM3ayVVi+twaHKHDFUVloaQ/wug9/c=
 github.com/tsenart/deadcode v0.0.0-20160724212837-210d2dc333e9/go.mod h1:q+QjxYvZ+fpjMXqs+XEriussHjSYqeXVnAdSV1tkMYk=

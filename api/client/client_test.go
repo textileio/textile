@@ -70,13 +70,19 @@ func TestAddProject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test add project", func(t *testing.T) {
-		id, err := client.AddProject(context.Background(), "foo")
-		if err != nil {
-			t.Fatalf("failed to add project: %v", err)
+	user, err := client.Login(context.Background(), "jon@doe.com")
+	if err != nil {
+		t.Fatalf("failed to login: %v", err)
+	}
+
+	t.Run("test add project without scope", func(t *testing.T) {
+		if _, err := client.AddProject(context.Background(), "foo", ""); err != nil {
+			t.Fatalf("add project without scope should succeed: %v", err)
 		}
-		if id == "" {
-			t.Fatal("got empty id from add project")
+	})
+	t.Run("test add project with team scope", func(t *testing.T) {
+		if _, err := client.AddProject(context.Background(), "foo", user.ID); err != nil {
+			t.Fatalf("add project with team scope should succeed: %v", err)
 		}
 	})
 }
