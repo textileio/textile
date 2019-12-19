@@ -70,3 +70,12 @@ func (c *Client) Login(ctx context.Context, email string) (string, error) {
 	output := <-result
 	return output.Token, output.Error
 }
+
+// AddProject add a new project under the current scope.
+func (c *Client) AddProject(ctx context.Context, name string) (string, error) {
+	resp, err := c.client.AddProject(ctx, &pb.AddProjectRequest{Name: name})
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}

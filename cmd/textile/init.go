@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -13,6 +14,11 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 
 	initCmd.Flags().String(
+		"name",
+		"",
+		"Project name")
+
+	initCmd.Flags().String(
 		"path",
 		".",
 		"Project path")
@@ -23,10 +29,22 @@ var initCmd = &cobra.Command{
 	Short: "Init",
 	Long:  `Initialize a new project.`,
 	Run: func(c *cobra.Command, args []string) {
-		pth := "."
-		if c.Flag("path").Changed {
+		var pth, name string
+		var err error
+		if !c.Flag("path").Changed {
+			pth, err = os.Getwd()
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
 			pth = c.Flag("path").Value.String()
 		}
+		if !c.Flag("name").Changed {
+			name = path.Base(pth)
+		} else {
+			name = c.Flag("name").Value.String()
+		}
+
 		pth = path.Join(pth, ".textile")
 		if err := os.MkdirAll(pth, os.ModePerm); err != nil {
 			log.Fatal(err)
@@ -35,6 +53,13 @@ var initCmd = &cobra.Command{
 
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("project is already initialized"))
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		_, err = client.AddProject(ctx, name)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {

@@ -59,6 +59,28 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+func TestAddProject(t *testing.T) {
+	shutdown, err := makeTextile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer shutdown()
+	client, err := NewClient(addrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test add project", func(t *testing.T) {
+		id, err := client.AddProject(context.Background(), "foo")
+		if err != nil {
+			t.Fatalf("failed to add project: %v", err)
+		}
+		if id == "" {
+			t.Fatal("got empty id from add project")
+		}
+	})
+}
+
 func TestClose(t *testing.T) {
 	shutdown, err := makeTextile()
 	if err != nil {

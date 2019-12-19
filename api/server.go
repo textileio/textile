@@ -10,6 +10,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/messaging"
+	"github.com/textileio/textile/resources/projects"
 	"github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
@@ -32,15 +33,14 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr       ma.Multiaddr
-	Users      *users.Users
-	Email      *messaging.EmailService
-	Bus        *broadcast.Broadcaster
-	GatewayURL string
-	//Projects *projects.Projects
+	Addr           ma.Multiaddr
+	Users          *users.Users
+	Projects       *projects.Projects
+	Email          *messaging.EmailService
+	Bus            *broadcast.Broadcaster
+	GatewayURL     string
 	TestUserSecret []byte
-
-	Debug bool
+	Debug          bool
 }
 
 // NewServer starts and returns a new server.
@@ -64,7 +64,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			bus:            conf.Bus,
 			gatewayURL:     conf.GatewayURL,
 			testUserSecret: conf.TestUserSecret,
-			//projects: conf.Projects,
+			projects:       conf.Projects,
 		},
 		ctx:    ctx,
 		cancel: cancel,

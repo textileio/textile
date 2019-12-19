@@ -134,6 +134,7 @@ func NewTextile(conf Config) (*Textile, error) {
 	log.Debugf("projects store: %s", projects.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
+<<<<<<< HEAD
 		Addr:           conf.AddrApi,
 		Users:          users,
 		Email:          email,
@@ -141,6 +142,12 @@ func NewTextile(conf Config) (*Textile, error) {
 		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
 		TestUserSecret: conf.TestUserSecret,
 		Debug:          conf.Debug,
+=======
+		Addr:     conf.AddrApi,
+		Users:    users,
+		Projects: projects,
+		Debug:    conf.Debug,
+>>>>>>> projects: stub in client methods and cmd
 	})
 	if err != nil {
 		return nil, err

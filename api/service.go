@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/textileio/go-textile-core/broadcast"
 	pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/messaging"
+	"github.com/textileio/textile/resources/projects"
 	"github.com/textileio/textile/resources/users"
 )
 
@@ -23,7 +25,7 @@ type service struct {
 	bus            *broadcast.Broadcaster
 	gatewayURL     string
 	testUserSecret []byte
-	//projects *projects.Projects
+	projects       *projects.Projects
 }
 
 // Login handles a login request.
@@ -65,7 +67,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return err
 	}
 
-	success := s.awaitVerification(string(verification))
+	success := s.awaitVerification(verification)
 
 	if success == false {
 		return fmt.Errorf("email not verified")
@@ -130,4 +132,24 @@ func generateVerificationToken(size int) (string, error) {
 func generateAuthToken() (string, error) {
 	// @todo: finalize auth token design
 	return generateVerificationToken(256)
+}
+
+// AddProject handles an add project request.
+func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
+	log.Debugf("received add project request")
+
+	// @todo: look up current user / team and get group ID
+	// @todo: create store for the project
+
+	project := &projects.Project{
+		Name: req.Name,
+	}
+	if err := s.projects.Create(project); err != nil {
+		return nil, err
+	}
+
+	return &pb.AddProjectReply{
+		ID:      project.ID,
+		StoreID: "", // @todo
+	}, nil
 }
