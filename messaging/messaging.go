@@ -49,6 +49,10 @@ func (n *EmailService) VerifyAddress(recipient string, link string) error {
 
 	result := tpl.String()
 
+	// Treat as dummy service if no key set
+	if n.PrivateKey == "" {
+		return nil
+	}
 	return n.sendWithMailgun(recipient, subject, result)
 }
 

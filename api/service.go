@@ -18,10 +18,11 @@ var (
 
 // service is a gRPC service for textile.
 type service struct {
-	users      *users.Users
-	email      *messaging.EmailService
-	bus        *broadcast.Broadcaster
-	gatewayURL string
+	users          *users.Users
+	email          *messaging.EmailService
+	bus            *broadcast.Broadcaster
+	gatewayURL     string
+	testUserSecret []byte
 	//projects *projects.Projects
 }
 
@@ -52,24 +53,6 @@ func (s *service) awaitVerification(secret string) chan bool {
 	return ch
 }
 
-func (s *service) generateVerificationToken(size int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	rbytes := make([]byte, size)
-	_, err := rand.Read(rbytes)
-	if err != nil {
-		return "", err
-	}
-	for i, b := range rbytes {
-		rbytes[i] = letters[b%byte(len(letters))]
-	}
-	return base64.URLEncoding.EncodeToString(rbytes), err
-}
-
-func (s *service) generateAuthToken() (string, error) {
-	// @todo: finalize auth token design
-	return s.generateVerificationToken(256)
-}
-
 // Login handles a login request.
 func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	log.Debugf("received login request")
@@ -91,9 +74,16 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 
 	// create a single-use token
-	verification, err := s.generateVerificationToken(48)
-	if err != nil {
-		return err
+	var verification string
+	if s.testUserSecret != nil {
+		// enables token override for test-suite
+		verification = string(s.testUserSecret)
+	} else {
+		verification, err = generateVerificationToken(48)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// send challenge email
@@ -109,7 +99,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return fmt.Errorf("email not verified")
 	}
 
-	token, err := s.generateAuthToken()
+	token, err := generateAuthToken()
 	if err != nil {
 		return err
 	}
@@ -125,4 +115,22 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 	stream.Send(reply)
 	return nil
+}
+
+func generateVerificationToken(size int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	rbytes := make([]byte, size)
+	_, err := rand.Read(rbytes)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range rbytes {
+		rbytes[i] = letters[b%byte(len(letters))]
+	}
+	return base64.URLEncoding.EncodeToString(rbytes), err
+}
+
+func generateAuthToken() (string, error) {
+	// @todo: finalize auth token design
+	return generateVerificationToken(256)
 }

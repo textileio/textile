@@ -44,6 +44,8 @@ type Textile struct {
 	threadsClient *threadsclient.Client
 
 	server *api.Server
+
+	bus *broadcast.Broadcaster
 }
 
 type Config struct {
@@ -59,6 +61,7 @@ type Config struct {
 	EmailFrom            string
 	EmailDomain          string
 	EmailPrivateKey      string
+	TestUserSecret       []byte // allow nil
 	Debug                bool
 }
 
@@ -124,12 +127,13 @@ func NewTextile(conf Config) (*Textile, error) {
 	log.Debugf("users store: %s", users.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
-		Addr:       conf.AddrApi,
-		Users:      users,
-		Email:      email,
-		Bus:        bus,
-		GatewayURL: fmt.Sprintf(conf.GatewayURL),
-		Debug:      conf.Debug,
+		Addr:           conf.AddrApi,
+		Users:          users,
+		Email:          email,
+		Bus:            bus,
+		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
+		TestUserSecret: conf.TestUserSecret,
+		Debug:          conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -147,6 +151,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		threadsClient: threadsClient,
 
 		server: server,
+		bus:    bus,
 	}, nil
 }
 
@@ -163,6 +168,7 @@ func (t *Textile) Close() error {
 	if err := gateway.Host.Stop(); err != nil {
 		return err
 	}
+	t.bus.Discard()
 	return t.ds.Close()
 }
 
