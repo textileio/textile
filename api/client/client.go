@@ -27,11 +27,8 @@ func NewClient(maddr ma.Multiaddr) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-	}
 
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +68,6 @@ func (c *Client) Login(ctx context.Context, email string) (string, error) {
 		}
 	}()
 	stream.CloseSend()
-	// @todo: return message here instead of token
 	output := <-result
 	return output.Token, output.Error
 }

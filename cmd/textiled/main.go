@@ -160,8 +160,6 @@ func init() {
 		flags["emailPrivateKey"].DefValue.(string),
 		"Private key for sending emails")
 
-	// @todo: add skip_verification flag
-
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}

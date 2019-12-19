@@ -27,7 +27,6 @@ type service struct {
 }
 
 func (s *service) awaitVerification(secret string) chan bool {
-	// @todo match supplied secret, not just true/false
 	listen := s.bus.Listen()
 	ch := make(chan bool, 1)
 	go func() {
