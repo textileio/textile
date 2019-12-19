@@ -8,16 +8,13 @@ option objc_class_prefix = "TXTL";
 
 message LoginRequest {
     string email = 1;
-    string ID = 2;
-    string challenge = 3;
 }
 
 message LoginReply {
     string ID = 1;
     string token = 2;
-    string challenge = 3;
 }
 
 service API {
-    rpc Login(LoginRequest) returns (LoginReply) {}
+    rpc Login(LoginRequest) returns (stream LoginReply) {}
 }

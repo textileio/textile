@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"io"
+	"log"
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-threads/util"
@@ -21,7 +23,11 @@ func NewClient(maddr ma.Multiaddr) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+	}
+
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -39,9 +45,28 @@ func (c *Client) Close() error {
 
 // Login returns an authorization token.
 func (c *Client) Login(ctx context.Context, email string) (string, error) {
-	resp, err := c.client.Login(ctx, &pb.LoginRequest{Email: email})
+	stream, err := c.client.Login(ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
 		return "", err
 	}
-	return resp.GetToken(), nil
+	token := make(chan string)
+	go func() {
+		for {
+			in, err := stream.Recv()
+			if err == io.EOF {
+				// read done.
+				close(token)
+				return
+			}
+			if err != nil {
+				// @todo ensure server errors aren't returned to the CLI
+				log.Fatalf("%v", err)
+			}
+			log.Printf("%v", in.Token)
+			token <- in.Token
+		}
+	}()
+	stream.CloseSend()
+	// @todo: return message here instead of token
+	return <-token, nil
 }

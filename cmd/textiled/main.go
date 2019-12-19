@@ -58,6 +58,18 @@ var (
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
+		"emailFrom": {
+			Key:      "email.from",
+			DefValue: "verify@email.textile.io",
+		},
+		"emailDomain": {
+			Key:      "email.domain",
+			DefValue: "email.textile.io",
+		},
+		"emailPrivateKey": {
+			Key:      "email.keys.private",
+			DefValue: "",
+		},
 	}
 )
 
@@ -114,6 +126,23 @@ func init() {
 		flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
+	rootCmd.PersistentFlags().String(
+		"emailFrom",
+		flags["emailFrom"].DefValue.(string),
+		"Source address of system emails")
+
+	rootCmd.PersistentFlags().String(
+		"emailDomain",
+		flags["emailDomain"].DefValue.(string),
+		"Domain of system emails")
+
+	rootCmd.PersistentFlags().String(
+		"emailPrivateKey",
+		flags["emailPrivateKey"].DefValue.(string),
+		"Private key for sending emails")
+
+	// @todo: add skip_verification flag
+
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
@@ -149,6 +178,10 @@ var rootCmd = &cobra.Command{
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
+		emailFrom := configViper.GetString("email.from")
+		emailDomain := configViper.GetString("email.domain")
+		emailPrivateKey := configViper.GetString("email.keys.private")
+
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -162,6 +195,9 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
+			EmailFrom:            emailFrom,
+			EmailDomain:          emailDomain,
+			EmailPrivateKey:      emailPrivateKey,
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {

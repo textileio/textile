@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 
@@ -12,11 +13,13 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/go-textile-core/broadcast"
 	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources"
 	u "github.com/textileio/textile/resources/users"
@@ -51,6 +54,9 @@ type Config struct {
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
+	EmailFrom            string
+	EmailDomain          string
+	EmailPrivateKey      string
 	Debug                bool
 }
 
@@ -100,10 +106,15 @@ func NewTextile(conf Config) (*Textile, error) {
 	}
 
 	email := &messaging.EmailService{
-		From:       "verify@email.textile.io",
-		Domain:     "email.textile.io",
-		PrivateKey: "secrets",
+		From:       conf.EmailFrom,
+		Domain:     conf.EmailDomain,
+		PrivateKey: conf.EmailPrivateKey,
 	}
+
+	bus := broadcast.NewBroadcaster(0)
+	gateway.Host = &gateway.Gateway{Bus: bus}
+	gatewayAddr := "127.0.0.1:5058"
+	gateway.Host.Start(gatewayAddr)
 
 	users := &u.Users{}
 	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
@@ -112,10 +123,12 @@ func NewTextile(conf Config) (*Textile, error) {
 	log.Debugf("users store: %s", users.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
-		Addr:  conf.AddrApi,
-		Users: users,
-		Email: email,
-		Debug: conf.Debug,
+		Addr:       conf.AddrApi,
+		Users:      users,
+		Email:      email,
+		Bus:        bus,
+		GatewayURL: fmt.Sprintf("http://%s", gatewayAddr),
+		Debug:      conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -146,6 +159,9 @@ func (t *Textile) Close() error {
 	}
 	t.threadsServer.Close()
 	t.server.Close()
+	if err := gateway.Host.Stop(); err != nil {
+		return err
+	}
 	return t.ds.Close()
 }
 
