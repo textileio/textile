@@ -3,12 +3,13 @@ package gateway
 import (
 	"testing"
 
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-core/broadcast"
 )
 
 var (
 	bus         = broadcast.NewBroadcaster(0)
-	gatewayAddr = "127.0.0.1:9998"
+	gatewayAddr = parseToAddr("/ip4/127.0.0.1/tcp/9998")
 )
 
 func TestGateway_Creation(t *testing.T) {
@@ -28,4 +29,12 @@ func TestGateway_Stop(t *testing.T) {
 	if err != nil {
 		t.Errorf("stop gateway failed: %s", err)
 	}
+}
+
+func parseToAddr(str string) ma.Multiaddr {
+	addr, err := ma.NewMultiaddr(str)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }

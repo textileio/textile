@@ -15,7 +15,8 @@ import (
 
 var (
 	addrApi                = parseAddr("/ip4/127.0.0.1/tcp/3006")
-	addrGateway            = "127.0.0.1:9997"
+	addrGateway            = parseAddr("/ip4/127.0.0.1/tcp/9998")
+	urlGateway             = "http://127.0.0.1:9998"
 	testVerificationSecret = "test_runner"
 )
 
@@ -42,7 +43,7 @@ func TestLogin(t *testing.T) {
 
 		// Ensure our login request has processed
 		time.Sleep(1 * time.Second)
-		verificationURL := fmt.Sprintf("http://%s/verify/%s", addrGateway, testVerificationSecret)
+		verificationURL := fmt.Sprintf("%s/verify/%s", urlGateway, testVerificationSecret)
 		_, err := http.Get(verificationURL)
 		if err != nil {
 			t.Fatalf("failed to reach gateway: %v", err)
@@ -94,7 +95,7 @@ func makeTextile() (func(), error) {
 		AddrIpfsApi:         parseAddr("/ip4/127.0.0.1/tcp/5001"),
 
 		GatewayAddr:     addrGateway,
-		GatewayURL:      fmt.Sprintf("http://%s", addrGateway),
+		GatewayURL:      urlGateway,
 		EmailFrom:       "test@email.textile.io",
 		EmailDomain:     "email.textile.io",
 		EmailPrivateKey: "",

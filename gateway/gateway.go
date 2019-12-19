@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/render"
 	logger "github.com/ipfs/go-log"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
 	"github.com/textileio/go-textile-core/broadcast"
@@ -32,7 +34,12 @@ type Gateway struct {
 }
 
 // Start creates a gateway server
-func (g *Gateway) Start(addr string) {
+func (g *Gateway) Start(addr ma.Multiaddr) {
+	loc, err := parseFromAddr(addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	gin.SetMode(gin.ReleaseMode)
 
 	// @todo: conf based headers
@@ -71,7 +78,7 @@ func (g *Gateway) Start(addr string) {
 	})
 
 	g.server = &http.Server{
-		Addr:    addr,
+		Addr:    loc,
 		Handler: router,
 	}
 
@@ -154,4 +161,23 @@ func parseTemplates() *template.Template {
 		panic(err)
 	}
 	return temp
+}
+
+func parseFromAddr(addr ma.Multiaddr) (string, error) {
+	parts := strings.Split(addr.String(), "/")
+	fmt.Printf("%s", parts)
+	if len(parts) < 3 {
+		return "", fmt.Errorf("invalid gateway address")
+	}
+	parsed := net.ParseIP(parts[2])
+	if parsed == nil {
+		return "", fmt.Errorf("unsupported multiformat")
+	}
+	if len(parts) < 5 {
+		return parsed.String(), nil
+	}
+	if parts[3] == "tcp" {
+		return fmt.Sprintf("%s:%s", parsed.String(), parts[4]), nil
+	}
+	return "", fmt.Errorf("no address was found")
 }

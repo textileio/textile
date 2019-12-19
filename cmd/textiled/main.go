@@ -60,7 +60,7 @@ var (
 		},
 		"addrGateway": {
 			Key:      "addr.gateway.host",
-			DefValue: "127.0.0.1:9998",
+			DefValue: "/ip4/127.0.0.1/tcp/9998",
 		},
 		"urlGateway": {
 			Key:      "addr.gateway.url",
@@ -75,7 +75,7 @@ var (
 			DefValue: "email.textile.io",
 		},
 		"emailPrivateKey": {
-			Key:      "email.keys.private",
+			Key:      "email.private_key",
 			DefValue: "",
 		},
 	}
@@ -195,12 +195,12 @@ var rootCmd = &cobra.Command{
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
-		addrGateway := configViper.GetString("addr.gateway.host")
+		addrGateway := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		urlGateway := configViper.GetString("addr.gateway.url")
 
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
-		emailPrivateKey := configViper.GetString("email.keys.private")
+		emailPrivateKey := configViper.GetString("email.private_key")
 
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {

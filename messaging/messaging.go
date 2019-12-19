@@ -3,7 +3,6 @@ package messaging
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"text/template"
 	"time"
 
@@ -22,6 +21,10 @@ type EmailService struct {
 	PrivateKey string
 }
 
+type messageValue struct {
+	Link string
+}
+
 // VerifyAddress sends a verification link to a receipient
 func (n *EmailService) VerifyAddress(recipient string, link string) error {
 	subject := "Email Confirmation"
@@ -36,9 +39,7 @@ func (n *EmailService) VerifyAddress(recipient string, link string) error {
 		return err
 	}
 
-	data := struct {
-		Link string
-	}{
+	data := messageValue{
 		Link: link,
 	}
 
@@ -57,26 +58,21 @@ func (n *EmailService) VerifyAddress(recipient string, link string) error {
 }
 
 func (n *EmailService) sendWithMailgun(recipient string, subject string, body string) error {
-	// Non-erroring skip if email service not configured
 	if n.PrivateKey == "" {
 		return nil
 	}
 	mg := mailgun.NewMailgun(n.Domain, n.PrivateKey)
 
-	// The message object allows you to add attachments and Bcc recipients
 	message := mg.NewMessage(n.From, subject, body, recipient)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	// Send the message	with a 10 second timeout
-	resp, id, err := mg.Send(ctx, message)
+	_, _, err := mg.Send(ctx, message)
 
 	if err != nil {
 		log.Error(err)
 	}
-
-	fmt.Printf("ID: %s Resp: %s\n", id, resp)
 
 	return err
 }

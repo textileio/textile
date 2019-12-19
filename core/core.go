@@ -56,7 +56,7 @@ type Config struct {
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
-	GatewayAddr          string
+	GatewayAddr          ma.Multiaddr
 	GatewayURL           string
 	EmailFrom            string
 	EmailDomain          string

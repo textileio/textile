@@ -26,32 +26,6 @@ type service struct {
 	//projects *projects.Projects
 }
 
-func (s *service) awaitVerification(secret string) chan bool {
-	listen := s.bus.Listen()
-	ch := make(chan bool, 1)
-	go func() {
-		sub := make(chan bool, 1)
-		go func() {
-			for i := range listen.Channel() {
-				r, ok := i.(string)
-				if ok {
-					if r == secret {
-						fmt.Println("true")
-						sub <- true
-					}
-				}
-			}
-		}()
-		select {
-		case ret := <-sub:
-			ch <- ret
-		case <-time.After(loginTimeout):
-			ch <- false
-		}
-	}()
-	return ch
-}
-
 // Login handles a login request.
 func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	log.Debugf("received login request")
@@ -114,6 +88,31 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 	stream.Send(reply)
 	return nil
+}
+
+func (s *service) awaitVerification(secret string) chan bool {
+	listen := s.bus.Listen()
+	ch := make(chan bool, 1)
+	go func() {
+		sub := make(chan bool, 1)
+		go func() {
+			for i := range listen.Channel() {
+				r, ok := i.(string)
+				if ok {
+					if r == secret {
+						sub <- true
+					}
+				}
+			}
+		}()
+		select {
+		case ret := <-sub:
+			ch <- ret
+		case <-time.After(loginTimeout):
+			ch <- false
+		}
+	}()
+	return ch
 }
 
 func generateVerificationToken(size int) (string, error) {
