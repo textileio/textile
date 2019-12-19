@@ -4,6 +4,8 @@ go 1.13
 
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
+	github.com/caarlos0/spin v1.1.0
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-contrib/location v0.0.0-20190301062650-0462caccbb9c
 	github.com/gin-gonic/gin v1.4.0
 	github.com/golang/protobuf v1.3.2

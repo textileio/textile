@@ -54,6 +54,8 @@ type Config struct {
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
+	GatewayAddr          string
+	GatewayURL           string
 	EmailFrom            string
 	EmailDomain          string
 	EmailPrivateKey      string
@@ -113,8 +115,7 @@ func NewTextile(conf Config) (*Textile, error) {
 
 	bus := broadcast.NewBroadcaster(0)
 	gateway.Host = &gateway.Gateway{Bus: bus}
-	gatewayAddr := "127.0.0.1:5058"
-	gateway.Host.Start(gatewayAddr)
+	gateway.Host.Start(conf.GatewayAddr)
 
 	users := &u.Users{}
 	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
@@ -127,7 +128,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		Users:      users,
 		Email:      email,
 		Bus:        bus,
-		GatewayURL: fmt.Sprintf("http://%s", gatewayAddr),
+		GatewayURL: fmt.Sprintf(conf.GatewayURL),
 		Debug:      conf.Debug,
 	})
 	if err != nil {

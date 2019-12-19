@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/caarlos0/spin"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -33,12 +34,18 @@ var loginCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		s := spin.New("%s please verify your email...")
+		s.Start()
+
+		ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
 		defer cancel()
 		token, err := client.Login(ctx, email)
+		s.Stop()
+
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		authViper.Set("token", token)
 
 		home, err := homedir.Dir()

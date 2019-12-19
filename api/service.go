@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -8,6 +10,10 @@ import (
 	pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources/users"
+)
+
+var (
+	loginTimeout = 120 * time.Second
 )
 
 // service is a gRPC service for textile.
@@ -35,17 +41,33 @@ func (s *service) awaitVerification(secret string) chan bool {
 					}
 				}
 			}
-			// TODO: timeout close
 		}()
-		// wrap with a simple 1s timeout
 		select {
 		case ret := <-sub:
 			ch <- ret
-		case <-time.After(30 * time.Second):
+		case <-time.After(loginTimeout):
 			ch <- false
 		}
 	}()
 	return ch
+}
+
+func (s *service) generateVerificationToken(size int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	rbytes := make([]byte, size)
+	_, err := rand.Read(rbytes)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range rbytes {
+		rbytes[i] = letters[b%byte(len(letters))]
+	}
+	return base64.URLEncoding.EncodeToString(rbytes), err
+}
+
+func (s *service) generateAuthToken() (string, error) {
+	// @todo: finalize auth token design
+	return s.generateVerificationToken(256)
 }
 
 // Login handles a login request.
@@ -57,7 +79,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 
 	var user = &users.User{}
-	// @todo: how to ensure never >1
+	// @todo: can we ensure in threads that a model never >1 by field?
 	if len(matches) == 0 {
 		// create new user
 		user = &users.User{Email: req.Email}
@@ -68,25 +90,30 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		user = matches[0]
 	}
 
-	// create 1-time-use secret
-	secret := "acz01r4i89skel3kls"
-
-	// send challenge email
-	err = s.email.VerifyAddress(user.Email, fmt.Sprintf("%s/verify/%s", s.gatewayURL, secret))
+	// create a single-use token
+	verification, err := s.generateVerificationToken(48)
 	if err != nil {
 		return err
 	}
 
-	ch := s.awaitVerification(secret)
+	// send challenge email
+	err = s.email.VerifyAddress(user.Email, fmt.Sprintf("%s/verify/%s", s.gatewayURL, verification))
+	if err != nil {
+		return err
+	}
+
+	ch := s.awaitVerification(string(verification))
 	success := <-ch
 
 	if success == false {
 		return fmt.Errorf("email not verified")
 	}
 
-	token := "buffalo sauce"
+	token, err := s.generateAuthToken()
+	if err != nil {
+		return err
+	}
 
-	// @todo: this should be an array (?)
 	user.Token = token
 	if err := s.users.Save(user); err != nil {
 		return err

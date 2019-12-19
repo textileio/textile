@@ -43,7 +43,7 @@ var (
 
 	client *api.Client
 
-	cmdTimeout = time.Second * 30
+	loginTimeout = time.Minute * 2
 )
 
 func init() {

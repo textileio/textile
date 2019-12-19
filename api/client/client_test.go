@@ -70,7 +70,13 @@ func makeTextile() (func(), error) {
 		AddrThreadsApi:      parseAddr("/ip4/127.0.0.1/tcp/6006"),
 		AddrThreadsApiProxy: parseAddr("/ip4/127.0.0.1/tcp/0"),
 		AddrIpfsApi:         parseAddr("/ip4/127.0.0.1/tcp/5001"),
-		Debug:               true,
+
+		GatewayAddr:     "127.0.0.1:9997",
+		GatewayURL:      "http://127.0.0.1:9997",
+		EmailFrom:       "test@email.textile.io",
+		EmailDomain:     "email.textile.io",
+		EmailPrivateKey: "",
+		Debug:           true,
 	})
 	if err != nil {
 		return nil, err

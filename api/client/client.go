@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"io"
-	"log"
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-threads/util"
@@ -15,6 +14,11 @@ import (
 type Client struct {
 	client pb.APIClient
 	conn   *grpc.ClientConn
+}
+
+type loginResponse struct {
+	Token string
+	Error error
 }
 
 // NewClient starts the client.
@@ -49,24 +53,25 @@ func (c *Client) Login(ctx context.Context, email string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	token := make(chan string)
+
+	result := make(chan loginResponse)
 	go func() {
 		for {
 			in, err := stream.Recv()
 			if err == io.EOF {
-				// read done.
-				close(token)
+				close(result)
 				return
 			}
 			if err != nil {
-				// @todo ensure server errors aren't returned to the CLI
-				log.Fatalf("%v", err)
+				result <- loginResponse{Token: "", Error: err}
+				close(result)
+				return
 			}
-			log.Printf("%v", in.Token)
-			token <- in.Token
+			result <- loginResponse{Token: in.Token, Error: nil}
 		}
 	}()
 	stream.CloseSend()
 	// @todo: return message here instead of token
-	return <-token, nil
+	output := <-result
+	return output.Token, output.Error
 }

@@ -58,6 +58,14 @@ var (
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
+		"addrGateway": {
+			Key:      "addr.gateway.host",
+			DefValue: "127.0.0.1:9998",
+		},
+		"urlGateway": {
+			Key:      "addr.gateway.url",
+			DefValue: "http://127.0.0.1:9998",
+		},
 		"emailFrom": {
 			Key:      "email.from",
 			DefValue: "verify@email.textile.io",
@@ -126,6 +134,17 @@ func init() {
 		flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
+	// Gateway settings
+	rootCmd.PersistentFlags().String(
+		"addrGateway",
+		flags["addrGateway"].DefValue.(string),
+		"Local address of gateway")
+	rootCmd.PersistentFlags().String(
+		"urlGateway",
+		flags["urlGateway"].DefValue.(string),
+		"Public address of gateway")
+
+	// Verification email settings
 	rootCmd.PersistentFlags().String(
 		"emailFrom",
 		flags["emailFrom"].DefValue.(string),
@@ -178,6 +197,9 @@ var rootCmd = &cobra.Command{
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
+		addrGateway := configViper.GetString("addr.gateway.host")
+		urlGateway := configViper.GetString("addr.gateway.url")
+
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
 		emailPrivateKey := configViper.GetString("email.keys.private")
@@ -195,6 +217,8 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
+			GatewayAddr:          addrGateway,
+			GatewayURL:           urlGateway,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailPrivateKey:      emailPrivateKey,
