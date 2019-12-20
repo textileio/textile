@@ -38,7 +38,7 @@ var loginCmd = &cobra.Command{
 		s.Start()
 
 		ctx := context.Background()
-		token, err := client.Login(ctx, email, loginTimeout)
+		token, err := client.Login(ctx, email)
 		s.Stop()
 
 		if err != nil {

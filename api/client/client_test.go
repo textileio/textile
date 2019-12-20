@@ -34,7 +34,7 @@ func TestLogin(t *testing.T) {
 	t.Run("test login", func(t *testing.T) {
 		res := make(chan loginResponse)
 		go func() {
-			id, err := client.Login(context.Background(), "jon@doe.com", 5*time.Second)
+			id, err := client.Login(context.Background(), "jon@doe.com")
 			res <- loginResponse{
 				Token: id,
 				Error: err,

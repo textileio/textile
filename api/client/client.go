@@ -2,9 +2,7 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"time"
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile-threads/util"
@@ -47,13 +45,11 @@ func (c *Client) Close() error {
 }
 
 // Login returns an authorization token.
-func (c *Client) Login(ctx context.Context, email string, timeout time.Duration) (string, error) {
+func (c *Client) Login(ctx context.Context, email string) (string, error) {
 	stream, err := c.client.Login(ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
 		return "", err
 	}
-
-	timer := time.NewTimer(timeout)
 	result := make(chan loginResponse)
 	go func() {
 		for {
@@ -70,14 +66,7 @@ func (c *Client) Login(ctx context.Context, email string, timeout time.Duration)
 			result <- loginResponse{Token: in.Token, Error: nil}
 		}
 	}()
-
-	select {
-	case output := <-result:
-		timer.Stop()
-		stream.CloseSend()
-		return output.Token, output.Error
-	case <-timer.C:
-		stream.CloseSend()
-		return "", fmt.Errorf("too long. please try again.")
-	}
+	stream.CloseSend()
+	output := <-result
+	return output.Token, output.Error
 }
