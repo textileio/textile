@@ -13,7 +13,6 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-textile-core/broadcast"
 	threadsapi "github.com/textileio/go-textile-threads/api"
 	threadsclient "github.com/textileio/go-textile-threads/api/client"
 	es "github.com/textileio/go-textile-threads/eventstore"
@@ -45,7 +44,7 @@ type Textile struct {
 
 	server *api.Server
 
-	bus *broadcast.Broadcaster
+	gateway *gateway.Gateway
 }
 
 type Config struct {
@@ -116,9 +115,10 @@ func NewTextile(conf Config) (*Textile, error) {
 		PrivateKey: conf.EmailPrivateKey,
 	}
 
-	bus := broadcast.NewBroadcaster(0)
-	gateway.Host = &gateway.Gateway{Bus: bus}
-	gateway.Host.Start(conf.GatewayAddr)
+	gateway := gateway.NewGateway(gateway.Config{
+		GatewayAddr: conf.GatewayAddr,
+	})
+	gateway.Start()
 
 	users := &u.Users{}
 	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
@@ -130,7 +130,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		Addr:           conf.AddrApi,
 		Users:          users,
 		Email:          email,
-		Bus:            bus,
+		Bus:            gateway.Bus(),
 		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
 		TestUserSecret: conf.TestUserSecret,
 		Debug:          conf.Debug,
@@ -150,8 +150,8 @@ func NewTextile(conf Config) (*Textile, error) {
 		threadsServer: threadsServer,
 		threadsClient: threadsClient,
 
-		server: server,
-		bus:    bus,
+		server:  server,
+		gateway: gateway,
 	}, nil
 }
 
@@ -165,10 +165,9 @@ func (t *Textile) Close() error {
 	}
 	t.threadsServer.Close()
 	t.server.Close()
-	if err := gateway.Host.Stop(); err != nil {
+	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
-	t.bus.Discard()
 	return t.ds.Close()
 }
 

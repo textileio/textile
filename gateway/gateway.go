@@ -25,17 +25,31 @@ import (
 var log = logger.Logger("gateway")
 
 // Host is the instance used by the daemon
-var Host *Gateway // @todo: still best to run it this way?
+// var Host *Gateway // @todo: still best to run it this way?
 
 // Gateway is a HTTP API for getting files and links from IPFS
 type Gateway struct {
-	Bus    *broadcast.Broadcaster
+	addr   ma.Multiaddr
+	bus    *broadcast.Broadcaster
 	server *http.Server
 }
 
+type Config struct {
+	GatewayAddr ma.Multiaddr
+}
+
+// NewGateway returns a new gateway
+func NewGateway(conf Config) *Gateway {
+	bus := broadcast.NewBroadcaster(0)
+	return &Gateway{
+		addr: conf.GatewayAddr,
+		bus:  bus,
+	}
+}
+
 // Start creates a gateway server
-func (g *Gateway) Start(addr ma.Multiaddr) {
-	loc, err := parseFromAddr(addr)
+func (g *Gateway) Start() {
+	loc, err := parseFromAddr(g.addr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,6 +118,16 @@ func (g *Gateway) Start(addr ma.Multiaddr) {
 	log.Infof("gateway listening at %s", g.server.Addr)
 }
 
+// Addr returns the gateway's address
+func (g *Gateway) Addr() string {
+	return g.server.Addr
+}
+
+// Bus returns the broadcast bus instance
+func (g *Gateway) Bus() *broadcast.Broadcaster {
+	return g.bus
+}
+
 // Stop stops the gateway
 func (g *Gateway) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -112,12 +136,8 @@ func (g *Gateway) Stop() error {
 		log.Errorf("error shutting down gateway: %s", err)
 		return err
 	}
+	g.bus.Discard()
 	return nil
-}
-
-// Addr returns the gateway's address
-func (g *Gateway) Addr() string {
-	return g.server.Addr
 }
 
 // emailVerification accepts a secret to verify
@@ -126,7 +146,7 @@ func (g *Gateway) emailVerification(c *gin.Context) {
 	var data []byte
 	if secret != "" {
 		data = []byte("Success")
-		g.Bus.Send(secret)
+		g.bus.Send(secret)
 	} else {
 		data = []byte("Error")
 	}
@@ -165,7 +185,6 @@ func parseTemplates() *template.Template {
 
 func parseFromAddr(addr ma.Multiaddr) (string, error) {
 	parts := strings.Split(addr.String(), "/")
-	fmt.Printf("%s", parts)
 	if len(parts) < 3 {
 		return "", fmt.Errorf("invalid gateway address")
 	}
