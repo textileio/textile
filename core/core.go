@@ -28,6 +28,7 @@ var (
 	log = logging.Logger("core")
 
 	dsUsersKey    = datastore.NewKey("/users")
+	dsTeamsKey    = datastore.NewKey("/teams")
 	dsProjectsKey = datastore.NewKey("/projects")
 )
 
@@ -119,11 +120,18 @@ func NewTextile(conf Config) (*Textile, error) {
 	})
 	gateway.Start()
 
+	// Create collections
 	users := &c.Users{}
 	if err := c.AddCollection(threadsClient, ds, dsUsersKey, users); err != nil {
 		return nil, err
 	}
 	log.Debugf("users store: %s", users.GetStoreID().String())
+
+	teams := &c.Teams{}
+	if err := c.AddCollection(threadsClient, ds, dsTeamsKey, teams); err != nil {
+		return nil, err
+	}
+	log.Debugf("teams store: %s", teams.GetStoreID().String())
 
 	projects := &c.Projects{}
 	if err := c.AddCollection(threadsClient, ds, dsProjectsKey, projects); err != nil {
