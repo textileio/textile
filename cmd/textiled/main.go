@@ -215,11 +215,11 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
-			GatewayAddr:          addrGateway,
+			AddrGateway:          addrGateway,
 			GatewayURL:           urlGateway,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
-			EmailPrivateKey:      emailPrivateKey,
+			EmailApiKey:          emailPrivateKey,
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {

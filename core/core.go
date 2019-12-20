@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 
@@ -19,8 +18,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
-	"github.com/textileio/textile/gateway"
-	"github.com/textileio/textile/messaging"
+	"github.com/textileio/textile/email"
 	logger "github.com/whyrusleeping/go-logging"
 )
 
@@ -44,25 +42,26 @@ type Textile struct {
 	threadsClient *threadsclient.Client
 
 	server *api.Server
-
-	gateway *gateway.Gateway
 }
 
 type Config struct {
-	RepoPath             string
+	RepoPath string
+
 	AddrApi              ma.Multiaddr
 	AddrThreadsHost      ma.Multiaddr
 	AddrThreadsHostProxy ma.Multiaddr
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
-	GatewayAddr          ma.Multiaddr
-	GatewayURL           string
-	EmailFrom            string
-	EmailDomain          string
-	EmailPrivateKey      string
-	TestUserSecret       []byte // allow nil
-	Debug                bool
+	AddrGateway          ma.Multiaddr
+	AddrGatewayUrl       string
+
+	EmailFrom   string
+	EmailDomain string
+	EmailApiKey string
+
+	SessionSecret []byte
+	Debug         bool
 }
 
 func NewTextile(conf Config) (*Textile, error) {
@@ -110,17 +109,6 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	email := &messaging.EmailService{
-		From:       conf.EmailFrom,
-		Domain:     conf.EmailDomain,
-		PrivateKey: conf.EmailPrivateKey,
-	}
-
-	gateway := gateway.NewGateway(gateway.Config{
-		GatewayAddr: conf.GatewayAddr,
-	})
-	gateway.Start()
-
 	// Create collections
 	users := &c.Users{}
 	if err := c.AddCollection(threadsClient, ds, dsUsersKey, users); err != nil {
@@ -146,16 +134,22 @@ func NewTextile(conf Config) (*Textile, error) {
 	}
 	log.Debugf("projects store: %s", projects.GetStoreID().String())
 
+	emailClient, err := email.NewClient(
+		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
+	if err != nil {
+		return nil, err
+	}
+
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:           conf.AddrApi,
+		AddrGateway:    conf.AddrGateway,
+		AddrGatewayUrl: conf.AddrGatewayUrl,
 		Users:          users,
 		Sessions:       sessions,
 		Projects:       projects,
 		Teams:          teams,
-		Email:          email,
-		Bus:            gateway.Bus(),
-		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
-		TestUserSecret: conf.TestUserSecret,
+		EmailClient:    emailClient,
+		SessionSecret:  conf.SessionSecret,
 		Debug:          conf.Debug,
 	})
 	if err != nil {
@@ -173,8 +167,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		threadsServer: threadsServer,
 		threadsClient: threadsClient,
 
-		server:  server,
-		gateway: gateway,
+		server: server,
 	}, nil
 }
 
@@ -187,8 +180,7 @@ func (t *Textile) Close() error {
 		return err
 	}
 	t.threadsServer.Close()
-	t.server.Close()
-	if err := t.gateway.Stop(); err != nil {
+	if err := t.server.Close(); err != nil {
 		return err
 	}
 	return t.ds.Close()
