@@ -15,6 +15,14 @@ message LoginReply {
     string token = 2;
 }
 
+message AddTeamRequest {
+    string name = 1;
+}
+
+message AddTeamReply {
+    string ID = 1;
+}
+
 message AddProjectRequest {
     string name = 1;
     string scopeID = 2;
@@ -27,5 +35,6 @@ message AddProjectReply {
 
 service API {
     rpc Login(LoginRequest) returns (stream LoginReply) {}
+    rpc AddTeam (AddTeamRequest) returns (AddTeamReply) {}
     rpc AddProject (AddProjectRequest) returns (AddProjectReply) {}
 }

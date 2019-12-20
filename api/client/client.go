@@ -71,6 +71,12 @@ func (c *Client) Login(ctx context.Context, email string) (string, error) {
 	return output.Token, output.Error
 }
 
+// AddTeam add a new team under the current scope.
+func (c *Client) AddTeam(ctx context.Context, name string) (*pb.AddTeamReply, error) {
+	resp, err := c.client.AddTeam(ctx, &pb.AddTeamRequest{Name: name})
+	return resp, err
+}
+
 // AddProject add a new project under the current scope.
 func (c *Client) AddProject(ctx context.Context, name string, scopeID string) (*pb.AddProjectReply, error) {
 	resp, err := c.client.AddProject(ctx, &pb.AddProjectRequest{

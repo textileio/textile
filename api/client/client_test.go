@@ -59,6 +59,24 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+func TestAddTeam(t *testing.T) {
+	shutdown, err := makeTextile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer shutdown()
+	client, err := NewClient(addrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test add team", func(t *testing.T) {
+		if _, err := client.AddTeam(context.Background(), "foo"); err != nil {
+			t.Fatalf("add team should succeed: %v", err)
+		}
+	})
+}
+
 func TestAddProject(t *testing.T) {
 	shutdown, err := makeTextile()
 	if err != nil {

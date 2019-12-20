@@ -143,6 +143,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		Addr:           conf.AddrApi,
 		Users:          users,
 		Projects:       projects,
+		Teams:          teams,
 		Email:          email,
 		Bus:            gateway.Bus(),
 		GatewayURL:     fmt.Sprintf(conf.GatewayURL),

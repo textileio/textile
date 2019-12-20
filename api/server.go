@@ -34,6 +34,7 @@ type Server struct {
 type Config struct {
 	Addr           ma.Multiaddr
 	Users          *c.Users
+	Teams          *c.Teams
 	Projects       *c.Projects
 	Email          *messaging.EmailService
 	Bus            *broadcast.Broadcaster
@@ -59,11 +60,12 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		rpc: grpc.NewServer(),
 		service: &service{
 			users:          conf.Users,
+			teams:          conf.Teams,
+			projects:       conf.Projects,
 			email:          conf.Email,
 			bus:            conf.Bus,
 			gatewayURL:     conf.GatewayURL,
 			testUserSecret: conf.TestUserSecret,
-			projects:       conf.Projects,
 		},
 		ctx:    ctx,
 		cancel: cancel,

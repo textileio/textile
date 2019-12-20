@@ -22,6 +22,7 @@ var (
 // service is a gRPC service for textile.
 type service struct {
 	users          *c.Users
+	teams          *c.Teams
 	projects       *c.Projects
 	email          *messaging.EmailService
 	bus            *broadcast.Broadcaster
@@ -133,6 +134,24 @@ func generateVerificationToken(size int) (string, error) {
 func generateAuthToken() (string, error) {
 	// @todo: finalize auth token design
 	return generateVerificationToken(256)
+}
+
+// AddTeam handles an add team request.
+func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
+	log.Debugf("received add team request")
+
+	// @todo: update user team list
+
+	team := &c.Team{
+		Name: req.Name,
+	}
+	if err := s.teams.Create(team); err != nil {
+		return nil, err
+	}
+
+	return &pb.AddTeamReply{
+		ID: team.ID,
+	}, nil
 }
 
 // AddProject handles an add project request.
