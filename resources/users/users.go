@@ -42,10 +42,6 @@ func (u *Users) Create(user *User) error {
 	return u.threads.ModelCreate(u.storeID.String(), u.GetName(), user)
 }
 
-func (u *Users) Save(user *User) error {
-	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
-}
-
 func (u *Users) Get(id string) (*User, error) {
 	user := &User{}
 	if err := u.threads.ModelFindByID(u.storeID.String(), u.GetName(), id, user); err != nil {

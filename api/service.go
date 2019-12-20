@@ -78,7 +78,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 
 	user.Token = token
-	if err := s.users.Save(user); err != nil {
+	if err := s.users.Update(user); err != nil {
 		return err
 	}
 
