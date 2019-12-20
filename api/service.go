@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	loginTimeout = 120 * time.Second
+	loginTimeout = 3 * time.Minute
 )
 
 // service is a gRPC service for textile.
@@ -110,7 +110,6 @@ func (s *service) awaitVerification(secret string) bool {
 		return ret
 	case <-timer.C:
 		listen.Discard()
-		close(ch)
 		return false
 	}
 }
