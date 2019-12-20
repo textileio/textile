@@ -6,8 +6,10 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/go-textile-core/broadcast"
 	"github.com/textileio/go-textile-threads/util"
 	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/messaging"
 	"github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
@@ -22,15 +24,22 @@ type Server struct {
 	rpc     *grpc.Server
 	service *service
 
+	bus *broadcast.Broadcaster
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // Config specifies server settings.
 type Config struct {
-	Addr  ma.Multiaddr
-	Users *users.Users
+	Addr       ma.Multiaddr
+	Users      *users.Users
+	Email      *messaging.EmailService
+	Bus        *broadcast.Broadcaster
+	GatewayURL string
 	//Projects *projects.Projects
+	TestUserSecret []byte
+
 	Debug bool
 }
 
@@ -50,7 +59,11 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		rpc: grpc.NewServer(),
 		service: &service{
-			users: conf.Users,
+			users:          conf.Users,
+			email:          conf.Email,
+			bus:            conf.Bus,
+			gatewayURL:     conf.GatewayURL,
+			testUserSecret: conf.TestUserSecret,
 			//projects: conf.Projects,
 		},
 		ctx:    ctx,

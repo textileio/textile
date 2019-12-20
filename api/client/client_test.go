@@ -2,16 +2,22 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/textile/core"
 )
 
 var (
-	addrApi = parseAddr("/ip4/127.0.0.1/tcp/3006")
+	addrApi                = parseAddr("/ip4/127.0.0.1/tcp/3006")
+	addrGateway            = parseAddr("/ip4/127.0.0.1/tcp/9998")
+	urlGateway             = "http://127.0.0.1:9998"
+	testVerificationSecret = "test_runner"
 )
 
 func TestLogin(t *testing.T) {
@@ -26,12 +32,29 @@ func TestLogin(t *testing.T) {
 	}
 
 	t.Run("test login", func(t *testing.T) {
-		id, err := client.Login(context.Background(), "jon@doe.com")
+		res := make(chan loginResponse)
+		go func() {
+			id, err := client.Login(context.Background(), "jon@doe.com")
+			res <- loginResponse{
+				Token: id,
+				Error: err,
+			}
+		}()
+
+		// Ensure our login request has processed
+		time.Sleep(1 * time.Second)
+		verificationURL := fmt.Sprintf("%s/verify/%s", urlGateway, testVerificationSecret)
+		_, err := http.Get(verificationURL)
 		if err != nil {
+			t.Fatalf("failed to reach gateway: %v", err)
+		}
+
+		output := <-res
+		if output.Error != nil {
 			t.Fatalf("failed to login: %v", err)
 		}
-		if id == "" {
-			t.Fatal("got empty id from login")
+		if output.Token == "" {
+			t.Fatal("got empty token from login")
 		}
 	})
 }
@@ -70,7 +93,14 @@ func makeTextile() (func(), error) {
 		AddrThreadsApi:      parseAddr("/ip4/127.0.0.1/tcp/6006"),
 		AddrThreadsApiProxy: parseAddr("/ip4/127.0.0.1/tcp/0"),
 		AddrIpfsApi:         parseAddr("/ip4/127.0.0.1/tcp/5001"),
-		Debug:               true,
+
+		GatewayAddr:     addrGateway,
+		GatewayURL:      urlGateway,
+		EmailFrom:       "test@email.textile.io",
+		EmailDomain:     "email.textile.io",
+		EmailPrivateKey: "",
+		TestUserSecret:  []byte(testVerificationSecret),
+		Debug:           true,
 	})
 	if err != nil {
 		return nil, err

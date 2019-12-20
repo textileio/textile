@@ -16,5 +16,5 @@ message LoginReply {
 }
 
 service API {
-    rpc Login(LoginRequest) returns (LoginReply) {}
+    rpc Login(LoginRequest) returns (stream LoginReply) {}
 }

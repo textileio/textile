@@ -58,6 +58,26 @@ var (
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
+		"addrGateway": {
+			Key:      "addr.gateway.host",
+			DefValue: "/ip4/127.0.0.1/tcp/9998",
+		},
+		"urlGateway": {
+			Key:      "addr.gateway.url",
+			DefValue: "http://127.0.0.1:9998",
+		},
+		"emailFrom": {
+			Key:      "email.from",
+			DefValue: "verify@email.textile.io",
+		},
+		"emailDomain": {
+			Key:      "email.domain",
+			DefValue: "email.textile.io",
+		},
+		"emailPrivateKey": {
+			Key:      "email.private_key",
+			DefValue: "",
+		},
 	}
 )
 
@@ -114,6 +134,32 @@ func init() {
 		flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
+	// Gateway settings
+	rootCmd.PersistentFlags().String(
+		"addrGateway",
+		flags["addrGateway"].DefValue.(string),
+		"Local address of gateway")
+	rootCmd.PersistentFlags().String(
+		"urlGateway",
+		flags["urlGateway"].DefValue.(string),
+		"Public address of gateway")
+
+	// Verification email settings
+	rootCmd.PersistentFlags().String(
+		"emailFrom",
+		flags["emailFrom"].DefValue.(string),
+		"Source address of system emails")
+
+	rootCmd.PersistentFlags().String(
+		"emailDomain",
+		flags["emailDomain"].DefValue.(string),
+		"Domain of system emails")
+
+	rootCmd.PersistentFlags().String(
+		"emailPrivateKey",
+		flags["emailPrivateKey"].DefValue.(string),
+		"Private key for sending emails")
+
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
@@ -149,6 +195,13 @@ var rootCmd = &cobra.Command{
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
+		addrGateway := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
+		urlGateway := configViper.GetString("addr.gateway.url")
+
+		emailFrom := configViper.GetString("email.from")
+		emailDomain := configViper.GetString("email.domain")
+		emailPrivateKey := configViper.GetString("email.private_key")
+
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -162,6 +215,11 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
+			GatewayAddr:          addrGateway,
+			GatewayURL:           urlGateway,
+			EmailFrom:            emailFrom,
+			EmailDomain:          emailDomain,
+			EmailPrivateKey:      emailPrivateKey,
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {
