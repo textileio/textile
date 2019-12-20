@@ -28,6 +28,7 @@ var (
 	log = logging.Logger("core")
 
 	dsUsersKey    = datastore.NewKey("/users")
+	dsSessionsKey = datastore.NewKey("/sessions")
 	dsTeamsKey    = datastore.NewKey("/teams")
 	dsProjectsKey = datastore.NewKey("/projects")
 )
@@ -127,6 +128,12 @@ func NewTextile(conf Config) (*Textile, error) {
 	}
 	log.Debugf("users store: %s", users.GetStoreID().String())
 
+	sessions := &c.Sessions{}
+	if err := c.AddCollection(threadsClient, ds, dsSessionsKey, sessions); err != nil {
+		return nil, err
+	}
+	log.Debugf("sessions store: %s", sessions.GetStoreID().String())
+
 	teams := &c.Teams{}
 	if err := c.AddCollection(threadsClient, ds, dsTeamsKey, teams); err != nil {
 		return nil, err
@@ -142,6 +149,7 @@ func NewTextile(conf Config) (*Textile, error) {
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:           conf.AddrApi,
 		Users:          users,
+		Sessions:       sessions,
 		Projects:       projects,
 		Teams:          teams,
 		Email:          email,

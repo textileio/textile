@@ -7,8 +7,9 @@ import (
 )
 
 type Team struct {
-	ID   string
-	Name string
+	ID      string
+	OwnerID string
+	Name    string
 }
 
 type Teams struct {
@@ -48,8 +49,9 @@ func (t *Teams) Get(id string) (*Team, error) {
 	return team, nil
 }
 
-func (t *Teams) List() ([]*Team, error) {
-	res, err := t.threads.ModelFind(t.storeID.String(), t.GetName(), &es.JSONQuery{}, &Team{})
+func (t *Teams) List(ownerID string) ([]*Team, error) {
+	query := es.JSONWhere("OwnerID").Eq(ownerID)
+	res, err := t.threads.ModelFind(t.storeID.String(), t.GetName(), query, &Team{})
 	if err != nil {
 		return nil, err
 	}

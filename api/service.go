@@ -22,6 +22,7 @@ var (
 // service is a gRPC service for textile.
 type service struct {
 	users          *c.Users
+	sessions       *c.Sessions
 	teams          *c.Teams
 	projects       *c.Projects
 	email          *messaging.EmailService
@@ -140,7 +141,13 @@ func generateAuthToken() (string, error) {
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
 
-	// @todo: update user team list
+	// @todo: Session middlewear
+	// 1. get session from token
+	// 2. inflate user from session
+	// 3. check user is or is part of scope
+
+	// 1. set team owner to session user
+	// 1. update user team list
 
 	team := &c.Team{
 		Name: req.Name,
