@@ -18,11 +18,9 @@ import (
 	es "github.com/textileio/go-threads/eventstore"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
+	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources"
-	p "github.com/textileio/textile/resources/projects"
-	u "github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 )
 
@@ -121,33 +119,27 @@ func NewTextile(conf Config) (*Textile, error) {
 	})
 	gateway.Start()
 
-	users := &u.Users{}
-	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
+	users := &c.Users{}
+	if err := c.AddCollection(threadsClient, ds, dsUsersKey, users); err != nil {
 		return nil, err
 	}
 	log.Debugf("users store: %s", users.GetStoreID().String())
 
-	projects := &p.Projects{}
-	if err := resources.AddResource(threadsClient, ds, dsProjectsKey, projects); err != nil {
+	projects := &c.Projects{}
+	if err := c.AddCollection(threadsClient, ds, dsProjectsKey, projects); err != nil {
 		return nil, err
 	}
 	log.Debugf("projects store: %s", projects.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
-<<<<<<< HEAD
 		Addr:           conf.AddrApi,
 		Users:          users,
+		Projects:       projects,
 		Email:          email,
 		Bus:            gateway.Bus(),
 		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
 		TestUserSecret: conf.TestUserSecret,
 		Debug:          conf.Debug,
-=======
-		Addr:     conf.AddrApi,
-		Users:    users,
-		Projects: projects,
-		Debug:    conf.Debug,
->>>>>>> projects: stub in client methods and cmd
 	})
 	if err != nil {
 		return nil, err

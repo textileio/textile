@@ -148,10 +148,3 @@ func parseAddr(str string) ma.Multiaddr {
 	}
 	return addr
 }
-
-func checkErr(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
-}

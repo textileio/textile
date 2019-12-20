@@ -1,4 +1,4 @@
-package projects
+package collections
 
 import (
 	"github.com/google/uuid"

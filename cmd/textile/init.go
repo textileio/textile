@@ -62,7 +62,9 @@ var initCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		configViper.Set("id", proj.ID)
-		configViper.Set("store", proj.StoreID)
+		if proj.StoreID != "" {
+			configViper.Set("store", proj.StoreID)
+		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)

@@ -1,4 +1,4 @@
-package resources
+package collections
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"github.com/textileio/go-threads/api/client"
 )
 
-type Resource interface {
+type Collection interface {
 	GetName() string
 	GetInstance() interface{}
 	SetThreads(*client.Client)
@@ -18,7 +18,7 @@ type Resource interface {
 	SetStoreID(*uuid.UUID)
 }
 
-func AddResource(threads *client.Client, ds datastore.Datastore, key datastore.Key, res Resource) error {
+func AddCollection(threads *client.Client, ds datastore.Datastore, key datastore.Key, col Collection) error {
 	storeID, err := storeIDAtKey(ds, key)
 	if err != nil {
 		return err
@@ -31,11 +31,11 @@ func AddResource(threads *client.Client, ds datastore.Datastore, key datastore.K
 		id := uuid.MustParse(ids)
 		storeID = &id
 
-		schema, err := json.Marshal(jsonschema.Reflect(res.GetInstance()))
+		schema, err := json.Marshal(jsonschema.Reflect(col.GetInstance()))
 		if err != nil {
 			panic(err)
 		}
-		if err = threads.RegisterSchema(storeID.String(), res.GetName(), string(schema)); err != nil {
+		if err = threads.RegisterSchema(storeID.String(), col.GetName(), string(schema)); err != nil {
 			return err
 		}
 		if err = ds.Put(key, storeID[:]); err != nil {
@@ -45,8 +45,8 @@ func AddResource(threads *client.Client, ds datastore.Datastore, key datastore.K
 			return err
 		}
 	}
-	res.SetThreads(threads)
-	res.SetStoreID(storeID)
+	col.SetThreads(threads)
+	col.SetStoreID(storeID)
 	return nil
 }
 

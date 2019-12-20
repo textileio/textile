@@ -9,9 +9,8 @@ import (
 	"github.com/textileio/go-textile-core/broadcast"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
+	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources/projects"
-	"github.com/textileio/textile/resources/users"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
 )
@@ -34,8 +33,8 @@ type Server struct {
 // Config specifies server settings.
 type Config struct {
 	Addr           ma.Multiaddr
-	Users          *users.Users
-	Projects       *projects.Projects
+	Users          *c.Users
+	Projects       *c.Projects
 	Email          *messaging.EmailService
 	Bus            *broadcast.Broadcaster
 	GatewayURL     string

@@ -9,9 +9,8 @@ import (
 
 	"github.com/textileio/go-textile-core/broadcast"
 	pb "github.com/textileio/textile/api/pb"
+	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources/projects"
-	"github.com/textileio/textile/resources/users"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,12 +21,12 @@ var (
 
 // service is a gRPC service for textile.
 type service struct {
-	users          *users.Users
+	users          *c.Users
+	projects       *c.Projects
 	email          *messaging.EmailService
 	bus            *broadcast.Broadcaster
 	gatewayURL     string
 	testUserSecret []byte
-	projects       *projects.Projects
 }
 
 // Login handles a login request.
@@ -38,11 +37,11 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return err
 	}
 
-	var user = &users.User{}
+	var user = &c.User{}
 	// @todo: can we ensure in threads that a model never >1 by field?
 	if len(matches) == 0 {
 		// create new user
-		user = &users.User{Email: req.Email}
+		user = &c.User{Email: req.Email}
 		if err := s.users.Create(user); err != nil {
 			return err
 		}
@@ -154,7 +153,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		scopeID = user.ID
 	}
 
-	proj := &projects.Project{
+	proj := &c.Project{
 		Name:    req.Name,
 		ScopeID: scopeID,
 	}
