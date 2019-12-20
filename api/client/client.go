@@ -50,7 +50,6 @@ func (c *Client) Login(ctx context.Context, email string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	result := make(chan loginResponse)
 	go func() {
 		for {

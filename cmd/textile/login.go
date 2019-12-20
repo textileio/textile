@@ -37,8 +37,7 @@ var loginCmd = &cobra.Command{
 		s := spin.New("%s please verify your email...")
 		s.Start()
 
-		ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
-		defer cancel()
+		ctx := context.Background()
 		token, err := client.Login(ctx, email)
 		s.Stop()
 

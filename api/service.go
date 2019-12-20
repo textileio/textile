@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	loginTimeout = 120 * time.Second
+	loginTimeout = 3 * time.Minute
 )
 
 // service is a gRPC service for textile.
@@ -65,8 +65,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return err
 	}
 
-	ch := s.awaitVerification(string(verification))
-	success := <-ch
+	success := s.awaitVerification(string(verification))
 
 	if success == false {
 		return fmt.Errorf("email not verified")
@@ -90,29 +89,29 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	return nil
 }
 
-func (s *service) awaitVerification(secret string) chan bool {
+func (s *service) awaitVerification(secret string) bool {
 	listen := s.bus.Listen()
 	ch := make(chan bool, 1)
+	timer := time.NewTimer(loginTimeout)
 	go func() {
-		sub := make(chan bool, 1)
-		go func() {
-			for i := range listen.Channel() {
-				r, ok := i.(string)
-				if ok {
-					if r == secret {
-						sub <- true
-					}
+		for i := range listen.Channel() {
+			r, ok := i.(string)
+			if ok {
+				if r == secret {
+					ch <- true
 				}
 			}
-		}()
-		select {
-		case ret := <-sub:
-			ch <- ret
-		case <-time.After(loginTimeout):
-			ch <- false
 		}
 	}()
-	return ch
+	select {
+	case ret := <-ch:
+		listen.Discard()
+		timer.Stop()
+		return ret
+	case <-timer.C:
+		listen.Discard()
+		return false
+	}
 }
 
 func generateVerificationToken(size int) (string, error) {

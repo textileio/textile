@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -42,8 +41,6 @@ var (
 	}
 
 	client *api.Client
-
-	loginTimeout = time.Minute * 2
 )
 
 func init() {
