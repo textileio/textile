@@ -9,6 +9,7 @@ import (
 	"github.com/textileio/go-textile-threads/util"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/core"
+	"github.com/textileio/textile/api"
 	logger "github.com/whyrusleeping/go-logging"
 )
 
@@ -220,6 +221,7 @@ var rootCmd = &cobra.Command{
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailPrivateKey:      emailPrivateKey,
+			EmailToken: 					api.Dynamic,
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {
