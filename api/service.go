@@ -149,22 +149,20 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 // awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
 	listen := s.gateway.SessionListener()
-	ch := make(chan bool, 1)
+	ch := make(chan struct{}, 1)
 	timer := time.NewTimer(loginTimeout)
 	go func() {
 		for i := range listen.Channel() {
-			if r, ok := i.(string); ok {
-				if r == secret {
-					ch <- true
-				}
+			if r, ok := i.(string); ok && r == secret {
+				ch <- struct{}{}
 			}
 		}
 	}()
 	select {
-	case ret := <-ch:
+	case <-ch:
 		listen.Discard()
 		timer.Stop()
-		return ret
+		return true
 	case <-timer.C:
 		listen.Discard()
 		return false

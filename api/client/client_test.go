@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
 )
 
@@ -32,27 +33,24 @@ func TestLogin(t *testing.T) {
 	}
 
 	t.Run("test login", func(t *testing.T) {
-		res := make(chan loginResponse)
+		var res *pb.LoginReply
 		go func() {
-			id, err := client.Login(context.Background(), "jon@doe.com")
-			res <- loginResponse{
-				Token: id,
-				Error: err,
+			res, err = client.Login(context.Background(), "jon@doe.com")
+			if err != nil {
+				t.Fatal(err)
 			}
 		}()
 
-		// Ensure our login request has processed
-		time.Sleep(1 * time.Second)
+		// Ensure login request has processed
+		time.Sleep(time.Second)
 		verificationURL := fmt.Sprintf("%s/verify/%s", addrGatewayUrl, sessionSecret)
 		if _, err := http.Get(verificationURL); err != nil {
 			t.Fatalf("failed to reach gateway: %v", err)
 		}
 
-		output := <-res
-		if output.Error != nil {
-			t.Fatalf("failed to login: %v", err)
-		}
-		if output.Token == "" {
+		// Ensure login response has been received
+		time.Sleep(time.Second)
+		if res == nil || res.Token == "" {
 			t.Fatal("got empty token from login")
 		}
 	})

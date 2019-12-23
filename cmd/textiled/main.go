@@ -196,7 +196,7 @@ var rootCmd = &cobra.Command{
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
 		addrGateway := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
-		urlGateway := configViper.GetString("addr.gateway.url")
+		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
@@ -216,7 +216,7 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
 			AddrGateway:          addrGateway,
-			GatewayURL:           urlGateway,
+			AddrGatewayUrl:       addrGatewayUrl,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailPrivateKey,

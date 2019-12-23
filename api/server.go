@@ -23,7 +23,6 @@ var (
 type Server struct {
 	rpc     *grpc.Server
 	service *service
-	gateway *gateway.Gateway
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,8 +58,6 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}
 
-	gw := gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl)
-
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
 		rpc: grpc.NewServer(),
@@ -69,7 +66,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			sessions:      conf.Sessions,
 			teams:         conf.Teams,
 			projects:      conf.Projects,
-			gateway:       gw,
+			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
 			emailClient:   conf.EmailClient,
 			sessionSecret: conf.SessionSecret,
 		},
@@ -92,7 +89,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
-	s.gateway.Start()
+	s.service.gateway.Start()
 
 	return s, nil
 }
@@ -100,7 +97,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 // Close the server.
 func (s *Server) Close() error {
 	s.rpc.GracefulStop()
-	if err := s.gateway.Stop(); err != nil {
+	if err := s.service.gateway.Stop(); err != nil {
 		return err
 	}
 	s.cancel()

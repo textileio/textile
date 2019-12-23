@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
@@ -14,11 +13,6 @@ import (
 type Client struct {
 	client pb.APIClient
 	conn   *grpc.ClientConn
-}
-
-type loginResponse struct {
-	Token string
-	Error error
 }
 
 // NewClient starts the client.
@@ -45,30 +39,12 @@ func (c *Client) Close() error {
 }
 
 // Login returns an authorization token.
-func (c *Client) Login(ctx context.Context, email string) (string, error) {
+func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error) {
 	stream, err := c.client.Login(ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	result := make(chan loginResponse)
-	go func() {
-		for {
-			in, err := stream.Recv()
-			if err == io.EOF {
-				close(result)
-				return
-			}
-			if err != nil {
-				result <- loginResponse{Token: "", Error: err}
-				close(result)
-				return
-			}
-			result <- loginResponse{Token: in.Token, Error: nil}
-		}
-	}()
-	stream.CloseSend()
-	output := <-result
-	return output.Token, output.Error
+	return stream.Recv()
 }
 
 // AddTeam add a new team under the current scope.
