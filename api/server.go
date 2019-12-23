@@ -38,7 +38,7 @@ type Config struct {
 	Bus        *broadcast.Broadcaster
 	GatewayURL string
 	//Projects *projects.Projects
-	TestUserSecret []byte
+	EmailToken EmailToken
 
 	Debug bool
 }
@@ -59,11 +59,11 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		rpc: grpc.NewServer(),
 		service: &service{
-			users:          conf.Users,
-			email:          conf.Email,
-			bus:            conf.Bus,
-			gatewayURL:     conf.GatewayURL,
-			testUserSecret: conf.TestUserSecret,
+			users:      conf.Users,
+			email:      conf.Email,
+			bus:        conf.Bus,
+			gatewayURL: conf.GatewayURL,
+			token:      conf.EmailToken,
 			//projects: conf.Projects,
 		},
 		ctx:    ctx,

@@ -18,12 +18,30 @@ var (
 
 // service is a gRPC service for textile.
 type service struct {
-	users          *users.Users
-	email          *messaging.EmailService
-	bus            *broadcast.Broadcaster
-	gatewayURL     string
-	testUserSecret []byte
+	users      *users.Users
+	email      *messaging.EmailService
+	bus        *broadcast.Broadcaster
+	gatewayURL string
+	token      EmailToken
 	//projects *projects.Projects
+}
+
+type EmailToken int
+
+const (
+	// Dynamic uses the build in token generator.
+	Dynamic EmailToken = iota
+	// Static is only used in non-production environments.
+	Static
+)
+
+func (et EmailToken) String() (string, error) {
+	switch et {
+	case Static:
+		return "09a1fd3d+4r8opX", nil
+	default:
+		return generateVerificationToken(48)
+	}
 }
 
 // Login handles a login request.
@@ -47,16 +65,10 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	}
 
 	// create a single-use token
-	var verification string
-	if s.testUserSecret != nil {
-		// enables token override for test-suite
-		verification = string(s.testUserSecret)
-	} else {
-		verification, err = generateVerificationToken(48)
-		if err != nil {
-			return err
-		}
 
+	verification, err := s.token.String()
+	if err != nil {
+		return err
 	}
 
 	// send challenge email

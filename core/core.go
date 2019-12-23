@@ -60,7 +60,7 @@ type Config struct {
 	EmailFrom            string
 	EmailDomain          string
 	EmailPrivateKey      string
-	TestUserSecret       []byte // allow nil
+	EmailToken           api.EmailToken
 	Debug                bool
 }
 
@@ -127,13 +127,13 @@ func NewTextile(conf Config) (*Textile, error) {
 	log.Debugf("users store: %s", users.GetStoreID().String())
 
 	server, err := api.NewServer(context.Background(), api.Config{
-		Addr:           conf.AddrApi,
-		Users:          users,
-		Email:          email,
-		Bus:            gateway.Bus(),
-		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
-		TestUserSecret: conf.TestUserSecret,
-		Debug:          conf.Debug,
+		Addr:       conf.AddrApi,
+		Users:      users,
+		Email:      email,
+		Bus:        gateway.Bus(),
+		GatewayURL: fmt.Sprintf(conf.GatewayURL),
+		EmailToken: conf.EmailToken,
+		Debug:      conf.Debug,
 	})
 	if err != nil {
 		return nil, err

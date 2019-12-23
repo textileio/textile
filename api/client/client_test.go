@@ -10,14 +10,15 @@ import (
 	"time"
 
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/textile/api"
 	"github.com/textileio/textile/core"
 )
 
 var (
-	addrApi                = parseAddr("/ip4/127.0.0.1/tcp/3006")
-	addrGateway            = parseAddr("/ip4/127.0.0.1/tcp/9998")
-	urlGateway             = "http://127.0.0.1:9998"
-	testVerificationSecret = "test_runner"
+	addrApi     = parseAddr("/ip4/127.0.0.1/tcp/3006")
+	addrGateway = parseAddr("/ip4/127.0.0.1/tcp/9998")
+	urlGateway  = "http://127.0.0.1:9998"
+	emailToken  = api.Static
 )
 
 func TestLogin(t *testing.T) {
@@ -43,7 +44,8 @@ func TestLogin(t *testing.T) {
 
 		// Ensure our login request has processed
 		time.Sleep(1 * time.Second)
-		verificationURL := fmt.Sprintf("%s/verify/%s", urlGateway, testVerificationSecret)
+		token, _ := emailToken.String()
+		verificationURL := fmt.Sprintf("%s/verify/%s", urlGateway, token)
 		_, err := http.Get(verificationURL)
 		if err != nil {
 			t.Fatalf("failed to reach gateway: %v", err)
@@ -99,7 +101,7 @@ func makeTextile() (func(), error) {
 		EmailFrom:       "test@email.textile.io",
 		EmailDomain:     "email.textile.io",
 		EmailPrivateKey: "",
-		TestUserSecret:  []byte(testVerificationSecret),
+		EmailToken:      emailToken,
 		Debug:           true,
 	})
 	if err != nil {
