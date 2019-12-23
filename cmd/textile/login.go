@@ -39,14 +39,14 @@ var loginCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		token, err := client.Login(ctx, email)
+		res, err := client.Login(ctx, email)
 		s.Stop()
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		authViper.Set("token", token)
+		authViper.Set("token", res.Token)
 
 		home, err := homedir.Dir()
 		if err != nil {

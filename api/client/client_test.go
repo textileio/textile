@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
+	"github.com/textileio/textile/util"
 )
 
 var (
-	addrApi        = parseAddr("/ip4/127.0.0.1/tcp/3006")
-	addrGateway    = parseAddr("/ip4/127.0.0.1/tcp/9998")
-	addrGatewayUrl = "http://127.0.0.1:9998"
+	addrApi        = util.MustParseAddr("/ip4/127.0.0.1/tcp/3006")
+	addrGateway    = util.MustParseAddr("/ip4/127.0.0.1/tcp/8006")
+	addrGatewayUrl = "http://127.0.0.1:8006"
 	sessionSecret  = "test_runner"
 )
 
@@ -129,13 +129,13 @@ func makeTextile() (func(), error) {
 	textile, err := core.NewTextile(core.Config{
 		RepoPath:             dir,
 		AddrApi:              addrApi,
-		AddrThreadsHost:      parseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsHostProxy: parseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsHost:      util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsHostProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 		// @todo: Currently, this can't be port zero because the client would not
 		// know the randomly chosen listen port.
-		AddrThreadsApi:      parseAddr("/ip4/127.0.0.1/tcp/6006"),
-		AddrThreadsApiProxy: parseAddr("/ip4/127.0.0.1/tcp/0"),
-		AddrIpfsApi:         parseAddr("/ip4/127.0.0.1/tcp/5001"),
+		AddrThreadsApi:      util.MustParseAddr("/ip4/127.0.0.1/tcp/6006"),
+		AddrThreadsApiProxy: util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
+		AddrIpfsApi:         util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 
 		AddrGateway:    addrGateway,
 		AddrGatewayUrl: addrGatewayUrl,
@@ -157,12 +157,4 @@ func makeTextile() (func(), error) {
 		textile.Close()
 		_ = os.RemoveAll(dir)
 	}, nil
-}
-
-func parseAddr(str string) ma.Multiaddr {
-	addr, err := ma.NewMultiaddr(str)
-	if err != nil {
-		panic(err)
-	}
-	return addr
 }
