@@ -26,16 +26,8 @@ func (u *Users) GetInstance() interface{} {
 	return &User{}
 }
 
-func (u *Users) SetThreads(threads *client.Client) {
-	u.threads = threads
-}
-
 func (u *Users) GetStoreID() *uuid.UUID {
 	return u.storeID
-}
-
-func (u *Users) SetStoreID(id *uuid.UUID) {
-	u.storeID = id
 }
 
 func (u *Users) Create(user *User) error {

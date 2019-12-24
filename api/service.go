@@ -21,10 +21,7 @@ var (
 
 // service is a gRPC service for textile.
 type service struct {
-	users    *c.Users
-	sessions *c.Sessions
-	teams    *c.Teams
-	projects *c.Projects
+	collections *c.Collections
 
 	gateway     *gateway.Gateway
 	emailClient *email.Client
@@ -36,7 +33,7 @@ type service struct {
 func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	log.Debugf("received login request")
 
-	matches, err := s.users.GetByEmail(req.Email)
+	matches, err := s.collections.Users.GetByEmail(req.Email)
 	if err != nil {
 		return err
 	}
@@ -44,7 +41,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	// @todo: can we ensure in threads that a model never >1 by field?
 	if len(matches) == 0 {
 		user = &c.User{Email: req.Email}
-		if err := s.users.Create(user); err != nil {
+		if err := s.collections.Users.Create(user); err != nil {
 			return err
 		}
 	} else {
@@ -79,7 +76,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	if err != nil {
 		return err
 	}
-	if err := s.users.Update(user); err != nil {
+	if err := s.collections.Users.Update(user); err != nil {
 		return err
 	}
 
@@ -105,7 +102,7 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 	team := &c.Team{
 		Name: req.Name,
 	}
-	if err := s.teams.Create(team); err != nil {
+	if err := s.collections.Teams.Create(team); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +119,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 	if req.ScopeID == "" {
 		// @todo: look up user from session
 	} else {
-		user, err := s.users.Get(req.ScopeID)
+		user, err := s.collections.Users.Get(req.ScopeID)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +133,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		Name:    req.Name,
 		ScopeID: scopeID,
 	}
-	if err := s.projects.Create(proj); err != nil {
+	if err := s.collections.Projects.Create(proj); err != nil {
 		return nil, err
 	}
 
@@ -149,7 +146,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 // awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
 	listen := s.gateway.SessionListener()
-	ch := make(chan struct{}, 1)
+	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {
 		for i := range listen.Channel() {

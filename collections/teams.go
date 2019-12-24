@@ -25,16 +25,8 @@ func (t *Teams) GetInstance() interface{} {
 	return &Team{}
 }
 
-func (t *Teams) SetThreads(threads *client.Client) {
-	t.threads = threads
-}
-
 func (t *Teams) GetStoreID() *uuid.UUID {
 	return t.storeID
-}
-
-func (t *Teams) SetStoreID(id *uuid.UUID) {
-	t.storeID = id
 }
 
 func (t *Teams) Create(team *Team) error {

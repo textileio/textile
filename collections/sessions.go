@@ -31,16 +31,8 @@ func (s *Sessions) GetInstance() interface{} {
 	return &Session{}
 }
 
-func (s *Sessions) SetThreads(threads *client.Client) {
-	s.threads = threads
-}
-
 func (s *Sessions) GetStoreID() *uuid.UUID {
 	return s.storeID
-}
-
-func (s *Sessions) SetStoreID(id *uuid.UUID) {
-	s.storeID = id
 }
 
 func (s *Sessions) Create(session *Session) error {

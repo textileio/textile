@@ -34,10 +34,7 @@ type Config struct {
 	AddrGateway    ma.Multiaddr
 	AddrGatewayUrl string
 
-	Users    *c.Users
-	Sessions *c.Sessions
-	Teams    *c.Teams
-	Projects *c.Projects
+	Collections *c.Collections
 
 	EmailClient *email.Client
 
@@ -62,10 +59,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		rpc: grpc.NewServer(),
 		service: &service{
-			users:         conf.Users,
-			sessions:      conf.Sessions,
-			teams:         conf.Teams,
-			projects:      conf.Projects,
+			collections:   conf.Collections,
 			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
 			emailClient:   conf.EmailClient,
 			sessionSecret: conf.SessionSecret,

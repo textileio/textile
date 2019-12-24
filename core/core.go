@@ -24,11 +24,6 @@ import (
 
 var (
 	log = logging.Logger("core")
-
-	dsUsersKey    = datastore.NewKey("/users")
-	dsSessionsKey = datastore.NewKey("/sessions")
-	dsTeamsKey    = datastore.NewKey("/teams")
-	dsProjectsKey = datastore.NewKey("/projects")
 )
 
 type Textile struct {
@@ -61,7 +56,8 @@ type Config struct {
 	EmailApiKey string
 
 	SessionSecret []byte
-	Debug         bool
+
+	Debug bool
 }
 
 func NewTextile(conf Config) (*Textile, error) {
@@ -109,30 +105,10 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	// Create collections
-	users := &c.Users{}
-	if err := c.AddCollection(threadsClient, ds, dsUsersKey, users); err != nil {
+	collections, err := c.NewCollections(threadsClient, ds)
+	if err != nil {
 		return nil, err
 	}
-	log.Debugf("users store: %s", users.GetStoreID().String())
-
-	sessions := &c.Sessions{}
-	if err := c.AddCollection(threadsClient, ds, dsSessionsKey, sessions); err != nil {
-		return nil, err
-	}
-	log.Debugf("sessions store: %s", sessions.GetStoreID().String())
-
-	teams := &c.Teams{}
-	if err := c.AddCollection(threadsClient, ds, dsTeamsKey, teams); err != nil {
-		return nil, err
-	}
-	log.Debugf("teams store: %s", teams.GetStoreID().String())
-
-	projects := &c.Projects{}
-	if err := c.AddCollection(threadsClient, ds, dsProjectsKey, projects); err != nil {
-		return nil, err
-	}
-	log.Debugf("projects store: %s", projects.GetStoreID().String())
 
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
@@ -144,10 +120,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		Addr:           conf.AddrApi,
 		AddrGateway:    conf.AddrGateway,
 		AddrGatewayUrl: conf.AddrGatewayUrl,
-		Users:          users,
-		Sessions:       sessions,
-		Projects:       projects,
-		Teams:          teams,
+		Collections:    collections,
 		EmailClient:    emailClient,
 		SessionSecret:  conf.SessionSecret,
 		Debug:          conf.Debug,
