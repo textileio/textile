@@ -25,7 +25,6 @@ message AddTeamReply {
 
 message AddProjectRequest {
     string name = 1;
-    string scopeID = 2;
 }
 
 message AddProjectReply {

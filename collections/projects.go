@@ -10,7 +10,7 @@ import (
 type Project struct {
 	ID      string
 	Name    string
-	ScopeID string // user or team
+	Scope   string // user or team
 	StoreID string
 }
 
@@ -57,8 +57,8 @@ func (p *Projects) Get(id string) (*Project, error) {
 	return proj, nil
 }
 
-func (p *Projects) List(groupID string) ([]*Project, error) {
-	query := es.JSONWhere("ScopeID").Eq(groupID)
+func (p *Projects) List(scope string) ([]*Project, error) {
+	query := es.JSONWhere("Scope").Eq(scope)
 	res, err := p.threads.ModelFind(p.storeID.String(), p.GetName(), query, &Project{})
 	if err != nil {
 		return nil, err

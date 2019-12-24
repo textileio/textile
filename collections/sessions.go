@@ -63,29 +63,11 @@ func (s *Sessions) List(userID string) ([]*Session, error) {
 	return res.([]*Session), nil
 }
 
-func (s *Sessions) Delete(id string) error {
-	return s.threads.ModelDelete(s.storeID.String(), s.GetName(), id)
+func (s *Sessions) Touch(session *Session) (err error) {
+	session.Expiry = int(time.Now().Add(sessionDur).Unix())
+	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
 }
 
-func (s *Sessions) Touch(id string) (err error) {
-	txn, err := s.threads.WriteTransaction(s.storeID.String(), s.GetName())
-	if err != nil {
-		return
-	}
-	done, err := txn.Start()
-	if err != nil {
-		return
-	}
-	defer func() {
-		doneErr := done()
-		if err == nil {
-			err = doneErr
-		}
-	}()
-	session := &Session{}
-	if err = txn.FindByID(id, session); err != nil {
-		return
-	}
-	session.Expiry = int(time.Now().Add(sessionDur).Unix())
-	return txn.Save(session)
+func (s *Sessions) Delete(id string) error {
+	return s.threads.ModelDelete(s.storeID.String(), s.GetName(), id)
 }

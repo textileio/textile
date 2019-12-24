@@ -81,16 +81,15 @@ func TestAddProject(t *testing.T) {
 			t.Fatal("got empty store ID from add project")
 		}
 	})
-	//t.Run("test add project with team scope", func(t *testing.T) {
-	//	team, err := client.AddTeam(context.Background(), "foo", user.Token)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	if _, err := client.AddProject(context.Background(), "foo", user.Token, team.ID); err != nil {
-	//		t.Fatalf("add project with team scope should succeed: %v", err)
-	//	}
-	//})
+	t.Run("test add project with team scope", func(t *testing.T) {
+		team, err := client.AddTeam(context.Background(), "foo", user.Token)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := client.AddProject(context.Background(), "foo", user.Token, team.ID); err != nil {
+			t.Fatalf("add project with team scope should succeed: %v", err)
+		}
+	})
 }
 
 func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {

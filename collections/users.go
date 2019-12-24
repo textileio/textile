@@ -10,6 +10,7 @@ import (
 type User struct {
 	ID    string
 	Email string
+	Teams []string
 }
 
 type Users struct {
@@ -30,7 +31,7 @@ func (u *Users) GetStoreID() *uuid.UUID {
 }
 
 func (u *Users) Create(email string) (*User, error) {
-	user := &User{Email: email}
+	user := &User{Email: email, Teams: []string{}}
 	if err := u.threads.ModelCreate(u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
 	}
@@ -63,7 +64,17 @@ func (u *Users) List() ([]*User, error) {
 	return res.([]*User), nil
 }
 
-func (u *Users) Update(user *User) error {
+func (u *Users) HasTeam(user *User, team *Team) bool {
+	for _, t := range user.Teams {
+		if team.ID == t {
+			return true
+		}
+	}
+	return false
+}
+
+func (u *Users) AddTeam(user *User, team *Team) error {
+	user.Teams = append(user.Teams, team.ID)
 	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }
 

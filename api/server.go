@@ -4,6 +4,8 @@ import (
 	"context"
 	"net"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
@@ -122,12 +124,32 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	}
 	session, err := s.service.collections.Sessions.Get(token)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "invalid auth token")
+		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
 	user, err := s.service.collections.Users.Get(session.UserID)
 	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "user not found")
+		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
 	newCtx := context.WithValue(ctx, "user", user)
+
+	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
+	if scope != "" && scope != user.ID {
+		team, err := s.service.collections.Teams.Get(scope)
+		if err != nil {
+			return nil, err
+		}
+		if team == nil {
+			return nil, status.Error(codes.NotFound, "Scope not found")
+		}
+		if !s.service.collections.Users.HasTeam(user, team) {
+			return nil, status.Error(codes.PermissionDenied, "User is not a team member")
+		}
+		newCtx = context.WithValue(newCtx, "team", team)
+	}
+
+	if err := s.service.collections.Sessions.Touch(session); err != nil {
+		return nil, err
+	}
+
 	return newCtx, nil
 }

@@ -6,13 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -88,20 +85,20 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
 
-	headers := tags.Extract(ctx).Values()
-	for k, v := range headers {
-		fmt.Println(k, v)
+	user, ok := ctx.Value("user").(*c.User)
+	if !ok {
+		log.Fatal("user required")
 	}
-
-	// 3. check user is or is part of scope
-
-	// 1. set team owner to session user
-	// 1. update user team list
 
 	team := &c.Team{
-		Name: req.Name,
+		Name:    req.Name,
+		OwnerID: user.ID,
 	}
 	if err := s.collections.Teams.Create(team); err != nil {
+		return nil, err
+	}
+
+	if err := s.collections.Users.AddTeam(user, team); err != nil {
 		return nil, err
 	}
 
@@ -114,24 +111,20 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
 	log.Debugf("received add project request")
 
-	var scopeID string
-	if req.ScopeID == "" {
-		// @todo: look up user from session
-	} else {
-		user, err := s.collections.Users.Get(req.ScopeID)
-		if err != nil {
-			return nil, err
-		}
-		if user == nil {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		scopeID = user.ID
+	user, ok := ctx.Value("user").(*c.User)
+	if !ok {
+		log.Fatal("user required")
 	}
 
-	proj := &c.Project{
-		Name:    req.Name,
-		ScopeID: scopeID,
+	proj := &c.Project{Name: req.Name}
+
+	team, ok := ctx.Value("team").(*c.Team)
+	if ok {
+		proj.Scope = team.ID
+	} else {
+		proj.Scope = user.ID
 	}
+
 	if err := s.collections.Projects.Create(proj); err != nil {
 		return nil, err
 	}

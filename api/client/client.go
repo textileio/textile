@@ -38,7 +38,7 @@ func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error
 
 // AddTeam add a new team under the current scope.
 func (c *Client) AddTeam(ctx context.Context, name, token string) (*pb.AddTeamReply, error) {
-	conn, err := c.dialWithToken(token)
+	conn, err := c.dialWithToken(token, "")
 	if err != nil {
 		return nil, err
 	}
@@ -48,24 +48,25 @@ func (c *Client) AddTeam(ctx context.Context, name, token string) (*pb.AddTeamRe
 
 // AddProject add a new project under the current scope.
 func (c *Client) AddProject(ctx context.Context, name, token, scope string) (*pb.AddProjectReply, error) {
-	conn, err := c.dialWithToken(token)
+	conn, err := c.dialWithToken(token, scope)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := pb.NewAPIClient(conn).AddProject(ctx, &pb.AddProjectRequest{
-		Name:    name,
-		ScopeID: scope,
+		Name: name,
 	})
 	return resp, err
 }
 
 type tokenAuth struct {
 	token string
+	scope string
 }
 
 func (t tokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[string]string, error) {
 	return map[string]string{
-		"authorization": "Bearer " + t.token,
+		"Authorization": "Bearer " + t.token,
+		"X-Scope":       t.scope,
 	}, nil
 }
 
@@ -77,8 +78,9 @@ func (c *Client) dial() (*grpc.ClientConn, error) {
 	return grpc.Dial(c.addr, grpc.WithInsecure())
 }
 
-func (c *Client) dialWithToken(token string) (*grpc.ClientConn, error) {
+func (c *Client) dialWithToken(token, scope string) (*grpc.ClientConn, error) {
 	return grpc.Dial(c.addr, grpc.WithInsecure(), grpc.WithPerRPCCredentials(tokenAuth{
 		token: token,
+		scope: scope,
 	}))
 }
