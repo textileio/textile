@@ -73,5 +73,7 @@ var initCmd = &cobra.Command{
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
+
+		fmt.Println(fmt.Sprintf("> Initialized empty project in %s", pth))
 	},
 }

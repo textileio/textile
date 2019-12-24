@@ -26,7 +26,7 @@ func InitConfig(v *viper.Viper, file string, defDir string, name string) func() 
 			if err != nil {
 				panic(err)
 			}
-			v.AddConfigPath("") // local config takes priority
+			v.AddConfigPath(path.Join("./", defDir)) // local config takes priority
 			v.AddConfigPath(path.Join(home, defDir))
 			v.SetConfigName(name)
 		}

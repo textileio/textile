@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/mail"
 	"os"
 	"path"
@@ -31,17 +32,21 @@ var loginCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Debug(err)
+			return
 		}
 
-		s := spin.New("%s please verify your email...")
+		// @todo: Add a security code that can be visually verified in the email.
+		fmt.Println(fmt.Sprintf(
+			"> We sent an email to %s. Please follow the steps provided inside it.", email))
+
+		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
 		defer cancel()
 		res, err := client.Login(ctx, email)
 		s.Stop()
-
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -62,5 +67,8 @@ var loginCmd = &cobra.Command{
 		if err := authViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
+
+		fmt.Println("✔ Email confirmed")
+		fmt.Println("> Congratulations! You are now logged in. Initialize a new project with `textile init`.")
 	},
 }

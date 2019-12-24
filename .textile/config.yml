@@ -1,7 +1,0 @@
-addr:
-  api: /ip4/127.0.0.1/tcp/3006
-id: 97dc842e-5477-445b-90ca-028f9e6edcdd
-log:
-  debug: false
-scope: ""
-store: f447c094-bdcc-495f-b33a-c3cef41eefe8
