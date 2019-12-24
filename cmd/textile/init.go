@@ -57,7 +57,11 @@ var initCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		proj, err := client.AddProject(ctx, name, configViper.GetString("scope"))
+		proj, err := client.AddProject(
+			ctx,
+			name,
+			authViper.GetString("token"),
+			configViper.GetString("scope"))
 		if err != nil {
 			log.Fatal(err)
 		}

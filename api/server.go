@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
@@ -13,10 +14,16 @@ import (
 	"github.com/textileio/textile/gateway"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
 	log = logging.Logger("textileapi")
+
+	ignoreMethods = []string{
+		"/pb.API/Login",
+	}
 )
 
 // Server provides a gRPC API to the textile daemon.
@@ -57,7 +64,6 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
-		rpc: grpc.NewServer(),
 		service: &service{
 			collections:   conf.Collections,
 			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
@@ -67,6 +73,10 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		ctx:    ctx,
 		cancel: cancel,
 	}
+	s.rpc = grpc.NewServer(
+		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
+	)
 
 	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
 	if err != nil {
@@ -96,4 +106,28 @@ func (s *Server) Close() error {
 	}
 	s.cancel()
 	return nil
+}
+
+func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
+	method, _ := grpc.Method(ctx)
+	for _, ignored := range ignoreMethods {
+		if method == ignored {
+			return ctx, nil
+		}
+	}
+
+	token, err := auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.service.collections.Sessions.Get(token)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid auth token")
+	}
+	user, err := s.service.collections.Users.Get(session.UserID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "user not found")
+	}
+	newCtx := context.WithValue(ctx, "user", user)
+	return newCtx, nil
 }

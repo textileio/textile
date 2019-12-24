@@ -10,6 +10,7 @@ require (
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
+	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.0.5

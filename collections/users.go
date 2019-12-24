@@ -10,7 +10,6 @@ import (
 type User struct {
 	ID    string
 	Email string
-	Token string
 }
 
 type Users struct {
@@ -30,8 +29,12 @@ func (u *Users) GetStoreID() *uuid.UUID {
 	return u.storeID
 }
 
-func (u *Users) Create(user *User) error {
-	return u.threads.ModelCreate(u.storeID.String(), u.GetName(), user)
+func (u *Users) Create(email string) (*User, error) {
+	user := &User{Email: email}
+	if err := u.threads.ModelCreate(u.storeID.String(), u.GetName(), user); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (u *Users) Get(id string) (*User, error) {

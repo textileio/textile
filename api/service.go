@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
@@ -38,10 +39,9 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return err
 	}
 	var user *c.User
-	// @todo: can we ensure in threads that a model never >1 by field?
 	if len(matches) == 0 {
-		user = &c.User{Email: req.Email}
-		if err := s.collections.Users.Create(user); err != nil {
+		user, err = s.collections.Users.Create(req.Email)
+		if err != nil {
 			return err
 		}
 	} else {
@@ -72,17 +72,14 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 		return fmt.Errorf("email not verified")
 	}
 
-	user.Token, err = generateAuthToken()
+	session, err := s.collections.Sessions.Create(user.ID)
 	if err != nil {
-		return err
-	}
-	if err := s.collections.Users.Update(user); err != nil {
 		return err
 	}
 
 	reply := &pb.LoginReply{
 		ID:    user.ID,
-		Token: user.Token,
+		Token: session.ID,
 	}
 	return stream.Send(reply)
 }
@@ -91,9 +88,11 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
 
-	// @todo: Session middlewear
-	// 1. get session from token
-	// 2. inflate user from session
+	headers := tags.Extract(ctx).Values()
+	for k, v := range headers {
+		fmt.Println(k, v)
+	}
+
 	// 3. check user is or is part of scope
 
 	// 1. set team owner to session user
@@ -164,13 +163,4 @@ func (s *service) awaitVerification(secret string) bool {
 		listen.Discard()
 		return false
 	}
-}
-
-// @todo: finalize auth token design
-func generateAuthToken() (token string, err error) {
-	uid, err := uuid.NewRandom()
-	if err != nil {
-		return
-	}
-	return uid.String(), nil
 }

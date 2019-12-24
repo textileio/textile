@@ -35,8 +35,15 @@ func (s *Sessions) GetStoreID() *uuid.UUID {
 	return s.storeID
 }
 
-func (s *Sessions) Create(session *Session) error {
-	return s.threads.ModelCreate(s.storeID.String(), s.GetName(), session)
+func (s *Sessions) Create(userID string) (*Session, error) {
+	session := &Session{
+		UserID: userID,
+		Expiry: int(time.Now().Add(sessionDur).Unix()),
+	}
+	if err := s.threads.ModelCreate(s.storeID.String(), s.GetName(), session); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func (s *Sessions) Get(id string) (*Session, error) {
@@ -54,10 +61,6 @@ func (s *Sessions) List(userID string) ([]*Session, error) {
 		return nil, err
 	}
 	return res.([]*Session), nil
-}
-
-func (s *Sessions) Update(session *Session) error {
-	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
 }
 
 func (s *Sessions) Delete(id string) error {
