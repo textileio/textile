@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net"
+	"time"
 
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
@@ -128,6 +129,9 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
+	if session.Expiry > int(time.Now().Unix()) {
+		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
+	}
 	user, err := s.service.collections.Users.Get(session.UserID)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
@@ -136,15 +140,9 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope != "" && scope != user.ID {
-		team, err := s.service.collections.Teams.Get(scope)
+		team, err := s.service.getTeamForUser(scope, user)
 		if err != nil {
 			return nil, err
-		}
-		if team == nil {
-			return nil, status.Error(codes.NotFound, "Scope not found")
-		}
-		if !s.service.collections.Users.HasTeam(user, team) {
-			return nil, status.Error(codes.PermissionDenied, "User is not a team member")
 		}
 		newCtx = context.WithValue(newCtx, reqKey("team"), team)
 	}

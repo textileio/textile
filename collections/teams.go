@@ -1,6 +1,8 @@
 package collections
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
 	es "github.com/textileio/go-threads/eventstore"
@@ -10,6 +12,7 @@ type Team struct {
 	ID      string
 	OwnerID string
 	Name    string
+	Created int64
 }
 
 type Teams struct {
@@ -29,8 +32,16 @@ func (t *Teams) GetStoreID() *uuid.UUID {
 	return t.storeID
 }
 
-func (t *Teams) Create(team *Team) error {
-	return t.threads.ModelCreate(t.storeID.String(), t.GetName(), team)
+func (t *Teams) Create(ownerID, name string) (*Team, error) {
+	team := &Team{
+		OwnerID: ownerID,
+		Name:    name,
+		Created: time.Now().Unix(),
+	}
+	if err := t.threads.ModelCreate(t.storeID.String(), t.GetName(), team); err != nil {
+		return nil, err
+	}
+	return team, nil
 }
 
 func (t *Teams) Get(id string) (*Team, error) {
@@ -41,17 +52,13 @@ func (t *Teams) Get(id string) (*Team, error) {
 	return team, nil
 }
 
-func (t *Teams) List(ownerID string) ([]*Team, error) {
+func (t *Teams) ListByOwner(ownerID string) ([]*Team, error) {
 	query := es.JSONWhere("OwnerID").Eq(ownerID)
 	res, err := t.threads.ModelFind(t.storeID.String(), t.GetName(), query, &Team{})
 	if err != nil {
 		return nil, err
 	}
 	return res.([]*Team), nil
-}
-
-func (t *Teams) Update(team *Team) error {
-	return t.threads.ModelSave(t.storeID.String(), t.GetName(), team)
 }
 
 func (t *Teams) Delete(id string) error {

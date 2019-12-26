@@ -31,8 +31,13 @@ message GetTeamReply {
     string ID = 1;
     string ownerID = 2;
     string name = 3;
-    int32 created = 4;
-    repeated string members = 5;
+    int64 created = 4;
+    repeated Member members = 5;
+
+    message Member {
+        string ID = 1;
+        string email = 2;
+    }
 }
 
 message ListTeamsRequest {}
@@ -77,7 +82,7 @@ message GetProjectReply {
     string ID = 1;
     string name = 2;
     string storeID = 3;
-    int32 created = 4;
+    int64 created = 4;
 }
 
 message ListProjectsRequest {}

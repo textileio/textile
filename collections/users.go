@@ -1,16 +1,18 @@
 package collections
 
 import (
-	"github.com/google/uuid"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
 	es "github.com/textileio/go-threads/eventstore"
 )
 
 type User struct {
-	ID    string
-	Email string
-	Teams []string
+	ID      string
+	Email   string
+	Teams   []string
+	Created int64
 }
 
 type Users struct {
@@ -31,7 +33,11 @@ func (u *Users) GetStoreID() *uuid.UUID {
 }
 
 func (u *Users) Create(email string) (*User, error) {
-	user := &User{Email: email, Teams: []string{}}
+	user := &User{
+		Email:   email,
+		Teams:   []string{},
+		Created: time.Now().Unix(),
+	}
 	if err := u.threads.ModelCreate(u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
 	}
@@ -56,12 +62,22 @@ func (u *Users) GetByEmail(email string) ([]*User, error) {
 	return users, nil
 }
 
-func (u *Users) List() ([]*User, error) {
+func (u *Users) ListByTeam(teamID string) ([]*User, error) {
 	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, &User{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*User), nil
+	// @todo: Enable indexes :)
+	// @todo: Enable a 'contains' query condition.
+	var users []*User
+	for _, u := range res.([]*User) {
+		for _, t := range u.Teams {
+			if t == teamID {
+				users = append(users, u)
+			}
+		}
+	}
+	return users, nil
 }
 
 func (u *Users) HasTeam(user *User, team *Team) bool {
