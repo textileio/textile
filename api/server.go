@@ -4,27 +4,36 @@ import (
 	"context"
 	"net"
 
+	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-textile-core/broadcast"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
-	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources/users"
+	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/email"
+	"github.com/textileio/textile/gateway"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	log = logging.Logger("api")
+	log = logging.Logger("textileapi")
+
+	ignoreMethods = []string{
+		"/pb.API/Login",
+	}
 )
+
+// reqKey provides a concrete type for request context values.
+type reqKey string
 
 // Server provides a gRPC API to the textile daemon.
 type Server struct {
 	rpc     *grpc.Server
 	service *service
-
-	bus *broadcast.Broadcaster
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -32,13 +41,15 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr       ma.Multiaddr
-	Users      *users.Users
-	Email      *messaging.EmailService
-	Bus        *broadcast.Broadcaster
-	GatewayURL string
-	//Projects *projects.Projects
-	TestUserSecret []byte
+	Addr           ma.Multiaddr
+	AddrGateway    ma.Multiaddr
+	AddrGatewayUrl string
+
+	Collections *c.Collections
+
+	EmailClient *email.Client
+
+	SessionSecret []byte
 
 	Debug bool
 }
@@ -48,7 +59,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	var err error
 	if conf.Debug {
 		err = util.SetLogLevels(map[string]logger.Level{
-			"api": logger.DEBUG,
+			"textileapi": logger.DEBUG,
 		})
 		if err != nil {
 			return nil, err
@@ -57,18 +68,19 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
-		rpc: grpc.NewServer(),
 		service: &service{
-			users:          conf.Users,
-			email:          conf.Email,
-			bus:            conf.Bus,
-			gatewayURL:     conf.GatewayURL,
-			testUserSecret: conf.TestUserSecret,
-			//projects: conf.Projects,
+			collections:   conf.Collections,
+			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
+			emailClient:   conf.EmailClient,
+			sessionSecret: conf.SessionSecret,
 		},
 		ctx:    ctx,
 		cancel: cancel,
 	}
+	s.rpc = grpc.NewServer(
+		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
+	)
 
 	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
 	if err != nil {
@@ -80,14 +92,66 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	}
 	go func() {
 		pb.RegisterAPIServer(s.rpc, s.service)
-		_ = s.rpc.Serve(listener)
+		if err := s.rpc.Serve(listener); err != nil {
+			log.Errorf("error registering server: %v", err)
+		}
 	}()
+
+	s.service.gateway.Start()
 
 	return s, nil
 }
 
 // Close the server.
-func (s *Server) Close() {
+func (s *Server) Close() error {
 	s.rpc.GracefulStop()
+	if err := s.service.gateway.Stop(); err != nil {
+		return err
+	}
 	s.cancel()
+	return nil
+}
+
+func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
+	method, _ := grpc.Method(ctx)
+	for _, ignored := range ignoreMethods {
+		if method == ignored {
+			return ctx, nil
+		}
+	}
+
+	token, err := auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.service.collections.Sessions.Get(token)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
+	}
+	user, err := s.service.collections.Users.Get(session.UserID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "User not found")
+	}
+	newCtx := context.WithValue(ctx, reqKey("user"), user)
+
+	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
+	if scope != "" && scope != user.ID {
+		team, err := s.service.collections.Teams.Get(scope)
+		if err != nil {
+			return nil, err
+		}
+		if team == nil {
+			return nil, status.Error(codes.NotFound, "Scope not found")
+		}
+		if !s.service.collections.Users.HasTeam(user, team) {
+			return nil, status.Error(codes.PermissionDenied, "User is not a team member")
+		}
+		newCtx = context.WithValue(newCtx, reqKey("team"), team)
+	}
+
+	if err := s.service.collections.Sessions.Touch(session); err != nil {
+		return nil, err
+	}
+
+	return newCtx, nil
 }

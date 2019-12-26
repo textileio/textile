@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 
@@ -13,23 +12,18 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	threadsapi "github.com/textileio/go-textile-threads/api"
-	threadsclient "github.com/textileio/go-textile-threads/api/client"
-	es "github.com/textileio/go-textile-threads/eventstore"
-	"github.com/textileio/go-textile-threads/util"
+	threadsapi "github.com/textileio/go-threads/api"
+	threadsclient "github.com/textileio/go-threads/api/client"
+	es "github.com/textileio/go-threads/eventstore"
+	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
-	"github.com/textileio/textile/gateway"
-	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources"
-	u "github.com/textileio/textile/resources/users"
+	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/email"
 	logger "github.com/whyrusleeping/go-logging"
 )
 
 var (
 	log = logging.Logger("core")
-
-	dsUsersKey = datastore.NewKey("/users")
-	//dsProjectsKey = datastore.NewKey("/projects")
 )
 
 type Textile struct {
@@ -43,25 +37,27 @@ type Textile struct {
 	threadsClient *threadsclient.Client
 
 	server *api.Server
-
-	gateway *gateway.Gateway
 }
 
 type Config struct {
-	RepoPath             string
+	RepoPath string
+
 	AddrApi              ma.Multiaddr
 	AddrThreadsHost      ma.Multiaddr
 	AddrThreadsHostProxy ma.Multiaddr
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
-	GatewayAddr          ma.Multiaddr
-	GatewayURL           string
-	EmailFrom            string
-	EmailDomain          string
-	EmailPrivateKey      string
-	TestUserSecret       []byte // allow nil
-	Debug                bool
+	AddrGateway          ma.Multiaddr
+	AddrGatewayUrl       string
+
+	EmailFrom   string
+	EmailDomain string
+	EmailApiKey string
+
+	SessionSecret []byte
+
+	Debug bool
 }
 
 func NewTextile(conf Config) (*Textile, error) {
@@ -109,30 +105,24 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	email := &messaging.EmailService{
-		From:       conf.EmailFrom,
-		Domain:     conf.EmailDomain,
-		PrivateKey: conf.EmailPrivateKey,
-	}
-
-	gateway := gateway.NewGateway(gateway.Config{
-		GatewayAddr: conf.GatewayAddr,
-	})
-	gateway.Start()
-
-	users := &u.Users{}
-	if err := resources.AddResource(threadsClient, ds, dsUsersKey, users); err != nil {
+	collections, err := c.NewCollections(threadsClient, ds)
+	if err != nil {
 		return nil, err
 	}
-	log.Debugf("users store: %s", users.GetStoreID().String())
+
+	emailClient, err := email.NewClient(
+		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
+	if err != nil {
+		return nil, err
+	}
 
 	server, err := api.NewServer(context.Background(), api.Config{
 		Addr:           conf.AddrApi,
-		Users:          users,
-		Email:          email,
-		Bus:            gateway.Bus(),
-		GatewayURL:     fmt.Sprintf(conf.GatewayURL),
-		TestUserSecret: conf.TestUserSecret,
+		AddrGateway:    conf.AddrGateway,
+		AddrGatewayUrl: conf.AddrGatewayUrl,
+		Collections:    collections,
+		EmailClient:    emailClient,
+		SessionSecret:  conf.SessionSecret,
 		Debug:          conf.Debug,
 	})
 	if err != nil {
@@ -150,8 +140,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		threadsServer: threadsServer,
 		threadsClient: threadsClient,
 
-		server:  server,
-		gateway: gateway,
+		server: server,
 	}, nil
 }
 
@@ -164,8 +153,7 @@ func (t *Textile) Close() error {
 		return err
 	}
 	t.threadsServer.Close()
-	t.server.Close()
-	if err := t.gateway.Stop(); err != nil {
+	if err := t.server.Close(); err != nil {
 		return err
 	}
 	return t.ds.Close()

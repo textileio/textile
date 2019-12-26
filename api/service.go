@@ -1,133 +1,157 @@
 package api
 
 import (
-	"crypto/rand"
-	"encoding/base64"
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/textileio/go-textile-core/broadcast"
+	"github.com/google/uuid"
 	pb "github.com/textileio/textile/api/pb"
-	"github.com/textileio/textile/messaging"
-	"github.com/textileio/textile/resources/users"
+	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/email"
+	"github.com/textileio/textile/gateway"
 )
 
 var (
-	loginTimeout = 3 * time.Minute
+	loginTimeout = time.Minute * 3
+	emailTimeout = time.Second * 10
 )
 
 // service is a gRPC service for textile.
 type service struct {
-	users          *users.Users
-	email          *messaging.EmailService
-	bus            *broadcast.Broadcaster
-	gatewayURL     string
-	testUserSecret []byte
-	//projects *projects.Projects
+	collections *c.Collections
+
+	gateway     *gateway.Gateway
+	emailClient *email.Client
+
+	sessionSecret []byte
 }
 
 // Login handles a login request.
-func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
+func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
 	log.Debugf("received login request")
-	matches, err := s.users.GetByEmail(req.Email)
-	if err != nil {
-		return err
-	}
 
-	var user = &users.User{}
-	// @todo: can we ensure in threads that a model never >1 by field?
+	matches, err := s.collections.Users.GetByEmail(req.Email)
+	if err != nil {
+		return nil, err
+	}
+	var user *c.User
 	if len(matches) == 0 {
-		// create new user
-		user = &users.User{Email: req.Email}
-		if err := s.users.Create(user); err != nil {
-			return err
+		user, err = s.collections.Users.Create(req.Email)
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		user = matches[0]
 	}
 
-	// create a single-use token
 	var verification string
-	if s.testUserSecret != nil {
-		// enables token override for test-suite
-		verification = string(s.testUserSecret)
+	if s.sessionSecret != nil {
+		verification = string(s.sessionSecret)
 	} else {
-		verification, err = generateVerificationToken(48)
+		uid, err := uuid.NewRandom()
 		if err != nil {
-			return err
+			return nil, err
 		}
-
+		verification = uid.String()
 	}
 
-	// send challenge email
-	err = s.email.VerifyAddress(user.Email, fmt.Sprintf("%s/verify/%s", s.gatewayURL, verification))
+	// Send challenge email
+	link := fmt.Sprintf("%s/verify/%s", s.gateway.Url(), verification)
+	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
+	defer cancel()
+	if err = s.emailClient.VerifyAddress(ectx, user.Email, link); err != nil {
+		return nil, err
+	}
+
+	if !s.awaitVerification(verification) {
+		return nil, fmt.Errorf("email not verified")
+	}
+
+	session, err := s.collections.Sessions.Create(user.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	success := s.awaitVerification(string(verification))
-
-	if success == false {
-		return fmt.Errorf("email not verified")
-	}
-
-	token, err := generateAuthToken()
-	if err != nil {
-		return err
-	}
-
-	user.Token = token
-	if err := s.users.Update(user); err != nil {
-		return err
-	}
-
-	reply := &pb.LoginReply{
+	return &pb.LoginReply{
 		ID:    user.ID,
-		Token: token,
-	}
-	stream.Send(reply)
-	return nil
+		Token: session.ID,
+	}, nil
 }
 
+// AddTeam handles an add team request.
+func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
+	log.Debugf("received add team request")
+
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+
+	team := &c.Team{
+		Name:    req.Name,
+		OwnerID: user.ID,
+	}
+	if err := s.collections.Teams.Create(team); err != nil {
+		return nil, err
+	}
+
+	if err := s.collections.Users.AddTeam(user, team); err != nil {
+		return nil, err
+	}
+
+	return &pb.AddTeamReply{
+		ID: team.ID,
+	}, nil
+}
+
+// AddProject handles an add project request.
+func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
+	log.Debugf("received add project request")
+
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+
+	proj := &c.Project{Name: req.Name}
+
+	team, ok := ctx.Value(reqKey("team")).(*c.Team)
+	if ok {
+		proj.Scope = team.ID
+	} else {
+		proj.Scope = user.ID
+	}
+
+	if err := s.collections.Projects.Create(proj); err != nil {
+		return nil, err
+	}
+
+	return &pb.AddProjectReply{
+		ID:      proj.ID,
+		StoreID: proj.StoreID,
+	}, nil
+}
+
+// awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
-	listen := s.bus.Listen()
-	ch := make(chan bool, 1)
+	listen := s.gateway.SessionListener()
+	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {
 		for i := range listen.Channel() {
-			r, ok := i.(string)
-			if ok {
-				if r == secret {
-					ch <- true
-				}
+			if r, ok := i.(string); ok && r == secret {
+				ch <- struct{}{}
 			}
 		}
 	}()
 	select {
-	case ret := <-ch:
+	case <-ch:
 		listen.Discard()
 		timer.Stop()
-		return ret
+		return true
 	case <-timer.C:
 		listen.Discard()
 		return false
 	}
-}
-
-func generateVerificationToken(size int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	rbytes := make([]byte, size)
-	_, err := rand.Read(rbytes)
-	if err != nil {
-		return "", err
-	}
-	for i, b := range rbytes {
-		rbytes[i] = letters[b%byte(len(letters))]
-	}
-	return base64.URLEncoding.EncodeToString(rbytes), err
-}
-
-func generateAuthToken() (string, error) {
-	// @todo: finalize auth token design
-	return generateVerificationToken(256)
 }

@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	api "github.com/textileio/textile/api/client"
 	"github.com/textileio/textile/cmd"
 	logger "github.com/whyrusleeping/go-logging"
@@ -34,6 +35,21 @@ var (
 			DefValue: false,
 		},
 
+		"id": {
+			Key:      "id",
+			DefValue: "",
+		},
+
+		"store": {
+			Key:      "store",
+			DefValue: "",
+		},
+
+		"scope": {
+			Key:      "scope",
+			DefValue: "",
+		},
+
 		"addrApi": {
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
@@ -41,6 +57,9 @@ var (
 	}
 
 	client *api.Client
+
+	cmdTimeout   = time.Second * 10
+	loginTimeout = time.Minute * 3
 )
 
 func init() {
@@ -68,6 +87,21 @@ func init() {
 		"d",
 		flags["debug"].DefValue.(bool),
 		"Enable debug logging")
+
+	rootCmd.PersistentFlags().String(
+		"id",
+		flags["id"].DefValue.(string),
+		"Project ID")
+
+	rootCmd.PersistentFlags().String(
+		"store",
+		flags["store"].DefValue.(string),
+		"Project Store ID")
+
+	rootCmd.PersistentFlags().String(
+		"scope",
+		flags["scope"].DefValue.(string),
+		"Project Scope (User or Team ID)")
 
 	rootCmd.PersistentFlags().String(
 		"addrApi",
@@ -113,13 +147,6 @@ var rootCmd = &cobra.Command{
 		client, err = api.NewClient(cmd.AddrFromStr(configViper.GetString("addr.api")))
 		if err != nil {
 			log.Fatal(err)
-		}
-	},
-	PersistentPostRun: func(c *cobra.Command, args []string) {
-		if client != nil {
-			if err := client.Close(); err != nil {
-				log.Fatal(err)
-			}
 		}
 	},
 }

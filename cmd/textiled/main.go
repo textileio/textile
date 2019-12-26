@@ -6,7 +6,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/textileio/go-textile-threads/util"
+	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/core"
 	logger "github.com/whyrusleeping/go-logging"
@@ -74,8 +74,8 @@ var (
 			Key:      "email.domain",
 			DefValue: "email.textile.io",
 		},
-		"emailPrivateKey": {
-			Key:      "email.private_key",
+		"emailApiKey": {
+			Key:      "email.api_key",
 			DefValue: "",
 		},
 	}
@@ -156,9 +156,9 @@ func init() {
 		"Domain of system emails")
 
 	rootCmd.PersistentFlags().String(
-		"emailPrivateKey",
-		flags["emailPrivateKey"].DefValue.(string),
-		"Private key for sending emails")
+		"emailApiKey",
+		flags["emailApiKey"].DefValue.(string),
+		"Mailgun API key for sending emails")
 
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
@@ -196,11 +196,11 @@ var rootCmd = &cobra.Command{
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
 		addrGateway := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
-		urlGateway := configViper.GetString("addr.gateway.url")
+		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
-		emailPrivateKey := configViper.GetString("email.private_key")
+		emailApiKey := configViper.GetString("email.api_key")
 
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
@@ -215,11 +215,11 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
-			GatewayAddr:          addrGateway,
-			GatewayURL:           urlGateway,
+			AddrGateway:          addrGateway,
+			AddrGatewayUrl:       addrGatewayUrl,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
-			EmailPrivateKey:      emailPrivateKey,
+			EmailApiKey:          emailApiKey,
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {
