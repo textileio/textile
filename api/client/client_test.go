@@ -45,13 +45,13 @@ func TestAddTeam(t *testing.T) {
 	user := login(t, client, conf)
 
 	t.Run("test add team without token", func(t *testing.T) {
-		if _, err := client.AddTeam(context.Background(), "foo", ""); err == nil {
+		if _, err := client.AddTeam(context.Background(), "foo", Auth{}); err == nil {
 			t.Fatal("add team without token should fail")
 		}
 	})
 
 	t.Run("test add team", func(t *testing.T) {
-		team, err := client.AddTeam(context.Background(), "foo", user.Token)
+		team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
 		if err != nil {
 			t.Fatalf("add team should succeed: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestAddProject(t *testing.T) {
 	user := login(t, client, conf)
 
 	t.Run("test add project without scope", func(t *testing.T) {
-		proj, err := client.AddProject(context.Background(), "foo", user.Token, "")
+		proj, err := client.AddProject(context.Background(), "foo", Auth{Token: user.Token})
 		if err != nil {
 			t.Fatalf("add project without scope should succeed: %v", err)
 		}
@@ -85,11 +85,12 @@ func TestAddProject(t *testing.T) {
 		}
 	})
 	t.Run("test add project with team scope", func(t *testing.T) {
-		team, err := client.AddTeam(context.Background(), "foo", user.Token)
+		team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := client.AddProject(context.Background(), "foo", user.Token, team.ID); err != nil {
+		if _, err := client.AddProject(context.Background(), "foo",
+			Auth{Token: user.Token, Scope: team.ID}); err != nil {
 			t.Fatalf("add project with team scope should succeed: %v", err)
 		}
 	})

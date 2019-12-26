@@ -63,6 +63,8 @@ var (
 )
 
 func init() {
+	rootCmd.AddCommand(whoamiCmd, switchCmd)
+
 	cobra.OnInitialize(cmd.InitConfig(authViper, authFile, ".textile", "auth"))
 	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textile", "config"))
 
@@ -148,5 +150,23 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+	},
+}
+
+var whoamiCmd = &cobra.Command{
+	Use:   "whoami",
+	Short: "Show username and team of currently logged in user",
+	Long:  `Show the username and active team of the currently logged in user.`,
+	Run: func(c *cobra.Command, args []string) {
+
+	},
+}
+
+var switchCmd = &cobra.Command{
+	Use:   "switch",
+	Short: "Switch teams or personal account",
+	Long:  `Switch between teams and your personal account.`,
+	Run: func(c *cobra.Command, args []string) {
+
 	},
 }

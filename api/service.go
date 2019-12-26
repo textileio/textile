@@ -105,6 +105,31 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 	}, nil
 }
 
+// GetTeam handles a get team request.
+func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetTeamReply, error) {
+	panic("implement me")
+}
+
+// ListTeams handles a list teams request.
+func (s *service) ListTeams(ctx context.Context, req *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
+	panic("implement me")
+}
+
+// RemoveTeam handles a remove team request.
+func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*pb.RemoveTeamReply, error) {
+	panic("implement me")
+}
+
+// LeaveTeam handles a leave team request.
+func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
+	panic("implement me")
+}
+
+// InviteToTeam handles a team invite request.
+func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest) (*pb.InviteToTeamReply, error) {
+	panic("implement me")
+}
+
 // AddProject handles an add project request.
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
 	log.Debugf("received add project request")
@@ -131,6 +156,21 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		ID:      proj.ID,
 		StoreID: proj.StoreID,
 	}, nil
+}
+
+// GetProject handles a get project request.
+func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectReply, error) {
+	panic("implement me")
+}
+
+// ListProjects handles a list projects request.
+func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
+	panic("implement me")
+}
+
+// RemoveProject handles a remove project request.
+func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectRequest) (*pb.RemoveProjectReply, error) {
+	panic("implement me")
 }
 
 // awaitVerification waits for a user to verify their email via a sent email.
