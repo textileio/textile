@@ -4,9 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
-
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
@@ -27,6 +26,9 @@ var (
 		"/pb.API/Login",
 	}
 )
+
+// reqKey provides a concrete type for request context values.
+type reqKey string
 
 // Server provides a gRPC API to the textile daemon.
 type Server struct {
@@ -130,7 +132,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
-	newCtx := context.WithValue(ctx, "user", user)
+	newCtx := context.WithValue(ctx, reqKey("user"), user)
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope != "" && scope != user.ID {
@@ -144,7 +146,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 		if !s.service.collections.Users.HasTeam(user, team) {
 			return nil, status.Error(codes.PermissionDenied, "User is not a team member")
 		}
-		newCtx = context.WithValue(newCtx, "team", team)
+		newCtx = context.WithValue(newCtx, reqKey("team"), team)
 	}
 
 	if err := s.service.collections.Sessions.Touch(session); err != nil {

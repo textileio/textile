@@ -11,7 +11,7 @@ import (
 
 // Client provides the client api.
 type Client struct {
-	addr string
+	conn *grpc.ClientConn
 }
 
 // NewClient starts the client.
@@ -20,67 +20,63 @@ func NewClient(maddr ma.Multiaddr) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{addr: addr}, nil
-}
-
-// Login returns an authorization token.
-func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error) {
-	conn, err := c.dial()
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithPerRPCCredentials(tokenAuth{}))
 	if err != nil {
 		return nil, err
 	}
-	stream, err := pb.NewAPIClient(conn).Login(ctx, &pb.LoginRequest{Email: email})
+	return &Client{conn: conn}, nil
+}
+
+// Close closes the client's grpc connection and cancels any active requests.
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
+
+// Login currently gets or creates a user for the given email address,
+// and then waits for email-based verification.
+// @todo: Create a dedicated signup flow that collects more info like name, etc.
+func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error) {
+	stream, err := pb.NewAPIClient(c.conn).Login(ctx, &pb.LoginRequest{Email: email})
 	if err != nil {
 		return nil, err
 	}
 	return stream.Recv()
 }
 
-// AddTeam add a new team under the current scope.
+// AddTeam add a new team.
 func (c *Client) AddTeam(ctx context.Context, name, token string) (*pb.AddTeamReply, error) {
-	conn, err := c.dialWithToken(token, "")
-	if err != nil {
-		return nil, err
-	}
-	resp, err := pb.NewAPIClient(conn).AddTeam(ctx, &pb.AddTeamRequest{Name: name})
+	ctx = context.WithValue(ctx, authKey("token"), token)
+	resp, err := pb.NewAPIClient(c.conn).AddTeam(ctx, &pb.AddTeamRequest{Name: name})
 	return resp, err
 }
 
-// AddProject add a new project under the current scope.
+// AddProject add a new project under the given scope.
 func (c *Client) AddProject(ctx context.Context, name, token, scope string) (*pb.AddProjectReply, error) {
-	conn, err := c.dialWithToken(token, scope)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := pb.NewAPIClient(conn).AddProject(ctx, &pb.AddProjectRequest{
+	ctx = context.WithValue(ctx, authKey("token"), token)
+	ctx = context.WithValue(ctx, authKey("scope"), scope)
+	resp, err := pb.NewAPIClient(c.conn).AddProject(ctx, &pb.AddProjectRequest{
 		Name: name,
 	})
 	return resp, err
 }
 
-type tokenAuth struct {
-	token string
-	scope string
-}
+type tokenAuth struct{}
 
-func (t tokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": "Bearer " + t.token,
-		"X-Scope":       t.scope,
-	}, nil
+type authKey string
+
+func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	md := map[string]string{}
+	token, ok := ctx.Value(authKey("token")).(string)
+	if ok && token != "" {
+		md["Authorization"] = "Bearer " + token
+	}
+	scope, ok := ctx.Value(authKey("scope")).(string)
+	if ok && scope != "" {
+		md["X-Scope"] = scope
+	}
+	return md, nil
 }
 
 func (tokenAuth) RequireTransportSecurity() bool {
 	return false
-}
-
-func (c *Client) dial() (*grpc.ClientConn, error) {
-	return grpc.Dial(c.addr, grpc.WithInsecure())
-}
-
-func (c *Client) dialWithToken(token, scope string) (*grpc.ClientConn, error) {
-	return grpc.Dial(c.addr, grpc.WithInsecure(), grpc.WithPerRPCCredentials(tokenAuth{
-		token: token,
-		scope: scope,
-	}))
 }

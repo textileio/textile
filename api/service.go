@@ -85,7 +85,7 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
 
-	user, ok := ctx.Value("user").(*c.User)
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
 	if !ok {
 		log.Fatal("user required")
 	}
@@ -111,14 +111,14 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
 	log.Debugf("received add project request")
 
-	user, ok := ctx.Value("user").(*c.User)
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
 	if !ok {
 		log.Fatal("user required")
 	}
 
 	proj := &c.Project{Name: req.Name}
 
-	team, ok := ctx.Value("team").(*c.Team)
+	team, ok := ctx.Value(reqKey("team")).(*c.Team)
 	if ok {
 		proj.Scope = team.ID
 	} else {

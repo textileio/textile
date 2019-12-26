@@ -26,6 +26,7 @@ func TestLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 
 	t.Run("test login", func(t *testing.T) {
 		_ = login(t, client, conf)
@@ -39,6 +40,7 @@ func TestAddTeam(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 
 	user := login(t, client, conf)
 
@@ -66,6 +68,7 @@ func TestAddProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 
 	user := login(t, client, conf)
 
@@ -88,6 +91,21 @@ func TestAddProject(t *testing.T) {
 		}
 		if _, err := client.AddProject(context.Background(), "foo", user.Token, team.ID); err != nil {
 			t.Fatalf("add project with team scope should succeed: %v", err)
+		}
+	})
+}
+
+func TestClose(t *testing.T) {
+	conf, shutdown := makeTextile(t)
+	defer shutdown()
+	client, err := NewClient(conf.AddrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test close", func(t *testing.T) {
+		if err := client.Close(); err != nil {
+			t.Fatalf("failed to close client: %v", err)
 		}
 	})
 }
