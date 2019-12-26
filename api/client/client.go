@@ -36,28 +36,22 @@ func (c *Client) Close() error {
 // and then waits for email-based verification.
 // @todo: Create a dedicated signup flow that collects more info like name, etc.
 func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error) {
-	stream, err := pb.NewAPIClient(c.conn).Login(ctx, &pb.LoginRequest{Email: email})
-	if err != nil {
-		return nil, err
-	}
-	return stream.Recv()
+	return pb.NewAPIClient(c.conn).Login(ctx, &pb.LoginRequest{Email: email})
 }
 
 // AddTeam add a new team.
 func (c *Client) AddTeam(ctx context.Context, name, token string) (*pb.AddTeamReply, error) {
 	ctx = context.WithValue(ctx, authKey("token"), token)
-	resp, err := pb.NewAPIClient(c.conn).AddTeam(ctx, &pb.AddTeamRequest{Name: name})
-	return resp, err
+	return pb.NewAPIClient(c.conn).AddTeam(ctx, &pb.AddTeamRequest{Name: name})
 }
 
 // AddProject add a new project under the given scope.
 func (c *Client) AddProject(ctx context.Context, name, token, scope string) (*pb.AddProjectReply, error) {
 	ctx = context.WithValue(ctx, authKey("token"), token)
 	ctx = context.WithValue(ctx, authKey("scope"), scope)
-	resp, err := pb.NewAPIClient(c.conn).AddProject(ctx, &pb.AddProjectRequest{
+	return pb.NewAPIClient(c.conn).AddProject(ctx, &pb.AddProjectRequest{
 		Name: name,
 	})
-	return resp, err
 }
 
 type tokenAuth struct{}

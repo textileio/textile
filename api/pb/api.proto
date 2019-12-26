@@ -33,7 +33,7 @@ message AddProjectReply {
 }
 
 service API {
-    rpc Login(LoginRequest) returns (stream LoginReply) {}
+    rpc Login(LoginRequest) returns (LoginReply) {}
     rpc AddTeam (AddTeamRequest) returns (AddTeamReply) {}
     rpc AddProject (AddProjectRequest) returns (AddProjectReply) {}
 }

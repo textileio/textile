@@ -28,18 +28,18 @@ type service struct {
 }
 
 // Login handles a login request.
-func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
+func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
 	log.Debugf("received login request")
 
 	matches, err := s.collections.Users.GetByEmail(req.Email)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var user *c.User
 	if len(matches) == 0 {
 		user, err = s.collections.Users.Create(req.Email)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		user = matches[0]
@@ -51,34 +51,32 @@ func (s *service) Login(req *pb.LoginRequest, stream pb.API_LoginServer) error {
 	} else {
 		uid, err := uuid.NewRandom()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		verification = uid.String()
 	}
 
 	// Send challenge email
 	link := fmt.Sprintf("%s/verify/%s", s.gateway.Url(), verification)
-	ctx, cancel := context.WithTimeout(context.Background(), emailTimeout)
+	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	err = s.emailClient.VerifyAddress(ctx, user.Email, link)
-	if err != nil {
-		return err
+	if err = s.emailClient.VerifyAddress(ectx, user.Email, link); err != nil {
+		return nil, err
 	}
 
 	if !s.awaitVerification(verification) {
-		return fmt.Errorf("email not verified")
+		return nil, fmt.Errorf("email not verified")
 	}
 
 	session, err := s.collections.Sessions.Create(user.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	reply := &pb.LoginReply{
+	return &pb.LoginReply{
 		ID:    user.ID,
 		Token: session.ID,
-	}
-	return stream.Send(reply)
+	}, nil
 }
 
 // AddTeam handles an add team request.
