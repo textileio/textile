@@ -68,7 +68,7 @@ var (
 		},
 		"emailFrom": {
 			Key:      "email.from",
-			DefValue: "verify@email.textile.io",
+			DefValue: "Textile <verify@email.textile.io>",
 		},
 		"emailDomain": {
 			Key:      "email.domain",

@@ -3,6 +3,7 @@ package email
 import (
 	"bytes"
 	"context"
+	"net/mail"
 	"text/template"
 
 	logging "github.com/ipfs/go-log"
@@ -32,6 +33,10 @@ func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 		}); err != nil {
 			return nil, err
 		}
+	}
+
+	if _, err := mail.ParseAddress(from); err != nil {
+		log.Fatalf("error parsing from email address: %v", err)
 	}
 
 	vt, err := template.New("verification").Parse(verificationMsg)
@@ -81,7 +86,7 @@ type inviteData struct {
 // InviteAddress sends an invite link to a recipient.
 func (e *Client) InviteAddress(ctx context.Context, team, from, to, link string) error {
 	var tpl bytes.Buffer
-	if err := e.verificationTmp.Execute(&tpl, &inviteData{
+	if err := e.inviteTmp.Execute(&tpl, &inviteData{
 		From: from,
 		Team: team,
 		Link: link,

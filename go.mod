@@ -23,6 +23,7 @@ require (
 	github.com/manifoldco/promptui v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0
+	github.com/olekukonko/tablewriter v0.0.4
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/rs/cors v1.7.0
 	github.com/spf13/cobra v0.0.5

@@ -92,7 +92,7 @@ var lsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		_, err := client.ListProjects(
+		projects, err := client.ListProjects(
 			ctx,
 			api.Auth{
 				Token: authViper.GetString("token"),
@@ -101,17 +101,32 @@ var lsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		fmt.Println(fmt.Sprintf("> Found %d projects\n", len(projects.List)))
+
+		data := make([][]string, len(projects.List))
+		for i, p := range projects.List {
+			data[i] = []string{p.Name, p.ID, p.StoreID}
+		}
+		cmd.RenderTable([]string{"name", "id", "store id"}, data)
 	},
 }
 
+// @todo: Display something more meaningful when the info is available, e.g., Filecoin and sync info.
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Display project information",
 	Long:  `Display detailed information about a project.`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		_, err := client.GetProject(
+		proj, err := client.GetProject(
 			ctx,
 			args[0],
 			api.Auth{
@@ -121,6 +136,9 @@ var inspectCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		cmd.RenderTable([]string{"name", "id", "store id"},
+			[][]string{{proj.Name, proj.ID, proj.StoreID}})
 	},
 }
 
@@ -131,6 +149,12 @@ var rmCmd = &cobra.Command{
 	},
 	Short: "Remove a project",
 	Long:  `Removes a project by its unique identifier (ID).`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -143,5 +167,6 @@ var rmCmd = &cobra.Command{
 			}); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("> Success")
 	},
 }

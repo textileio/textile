@@ -80,7 +80,7 @@ var lsTeamsCmd = &cobra.Command{
 func lsTeams() {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	_, err := client.ListTeams(
+	teams, err := client.ListTeams(
 		ctx,
 		api.Auth{
 			Token: authViper.GetString("token"),
@@ -88,6 +88,14 @@ func lsTeams() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println(fmt.Sprintf("> Found %d teams\n", len(teams.List)))
+
+	data := make([][]string, len(teams.List))
+	for i, t := range teams.List {
+		data[i] = []string{t.Name, t.ID}
+	}
+	cmd.RenderTable([]string{"name", "id"}, data)
 }
 
 var membersTeamsCmd = &cobra.Command{
@@ -97,7 +105,7 @@ var membersTeamsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		_, err := client.GetTeam(
+		team, err := client.GetTeam(
 			ctx,
 			args[0],
 			api.Auth{
@@ -106,6 +114,14 @@ var membersTeamsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		fmt.Println(fmt.Sprintf("> Found %d members\n", len(team.Members)))
+
+		data := make([][]string, len(team.Members))
+		for i, m := range team.Members {
+			data[i] = []string{m.Email, m.ID}
+		}
+		cmd.RenderTable([]string{"email", "id"}, data)
 	},
 }
 
@@ -116,6 +132,12 @@ var rmTeamsCmd = &cobra.Command{
 	},
 	Short: "Remove a team",
 	Long:  `Removes a team by its unique identifier (ID). You must be the team owner.`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -127,13 +149,24 @@ var rmTeamsCmd = &cobra.Command{
 			}); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("> Success")
 	},
 }
 
+// @todo: Make interactive
 var inviteTeamsCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members",
 	Long:  `Invite a new member to a team.`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		if len(args) < 2 {
+			return fmt.Errorf("requires an email argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -146,6 +179,7 @@ var inviteTeamsCmd = &cobra.Command{
 			}); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println(fmt.Sprintf("> We sent an invitation to %s", args[1]))
 	},
 }
 
@@ -153,6 +187,12 @@ var leaveTeamsCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave a team",
 	Long:  `Leaves a team by its unique identifier (ID).`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -164,13 +204,21 @@ var leaveTeamsCmd = &cobra.Command{
 			}); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("> Success")
 	},
 }
 
+// @todo: Make interactive
 var switchTeamsCmd = &cobra.Command{
 	Use:   "switch",
 	Short: "Switch teams",
 	Long:  `Switch to a different team.`,
+	Args: func(c *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires an ID argument")
+		}
+		return nil
+	},
 	Run: func(c *cobra.Command, args []string) {
 
 	},

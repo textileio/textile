@@ -183,7 +183,7 @@ func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamRe
 	return &pb.GetTeamReply{
 		ID:      team.ID,
 		OwnerID: team.OwnerID,
-		Name:    team.OwnerID,
+		Name:    team.Name,
 		Created: team.Created,
 		Members: members,
 	}

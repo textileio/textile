@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -69,4 +70,23 @@ func AddrFromStr(str string) ma.Multiaddr {
 func Fatal(err error) {
 	fmt.Println(err)
 	os.Exit(1)
+}
+
+func RenderTable(header []string, data [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(true)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetHeaderLine(false)
+	table.SetBorder(false)
+	table.SetTablePadding("\t") // pad with tabs
+	table.SetNoWhiteSpace(true)
+	table.AppendBulk(data) // Add Bulk Data
+	table.Render()
+	fmt.Println()
 }
