@@ -156,7 +156,7 @@ var rmTeamsCmd = &cobra.Command{
 		"remove",
 	},
 	Short: "Remove a team",
-	Long:  `Removes a team by its unique identifier (ID) if you are the only member.`,
+	Long:  `Removes a team by its unique identifier (ID). You must be the team owner.`,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()

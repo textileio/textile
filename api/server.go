@@ -144,7 +144,9 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 		if err != nil {
 			return nil, err
 		}
-		newCtx = context.WithValue(newCtx, reqKey("team"), team)
+		newCtx = context.WithValue(newCtx, reqKey("scope"), team.ID)
+	} else {
+		newCtx = context.WithValue(newCtx, reqKey("scope"), user.ID)
 	}
 
 	if err := s.service.collections.Sessions.Touch(session); err != nil {

@@ -80,17 +80,29 @@ func (u *Users) ListByTeam(teamID string) ([]*User, error) {
 	return users, nil
 }
 
-func (u *Users) HasTeam(user *User, team *Team) bool {
+func (u *Users) HasTeam(user *User, teamID string) bool {
 	for _, t := range user.Teams {
-		if team.ID == t {
+		if teamID == t {
 			return true
 		}
 	}
 	return false
 }
 
-func (u *Users) AddTeam(user *User, team *Team) error {
-	user.Teams = append(user.Teams, team.ID)
+func (u *Users) JoinTeam(user *User, teamID string) error {
+	user.Teams = append(user.Teams, teamID)
+	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
+}
+
+func (u *Users) LeaveTeam(user *User, teamID string) error {
+	n := 0
+	for _, x := range user.Teams {
+		if x != teamID {
+			user.Teams[n] = x
+			n++
+		}
+	}
+	user.Teams = user.Teams[:n]
 	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }
 

@@ -58,7 +58,6 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		verification = uid.String()
 	}
 
-	// Send challenge email
 	link := fmt.Sprintf("%s/verify/%s", s.gateway.Url(), verification)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
@@ -81,6 +80,29 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}, nil
 }
 
+// awaitVerification waits for a user to verify their email via a sent email.
+func (s *service) awaitVerification(secret string) bool {
+	listen := s.gateway.SessionListener()
+	ch := make(chan struct{})
+	timer := time.NewTimer(loginTimeout)
+	go func() {
+		for i := range listen.Channel() {
+			if r, ok := i.(string); ok && r == secret {
+				ch <- struct{}{}
+			}
+		}
+	}()
+	select {
+	case <-ch:
+		listen.Discard()
+		timer.Stop()
+		return true
+	case <-timer.C:
+		listen.Discard()
+		return false
+	}
+}
+
 // AddTeam handles an add team request.
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
@@ -94,8 +116,7 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 	if err != nil {
 		return nil, err
 	}
-
-	if err := s.collections.Users.AddTeam(user, team); err != nil {
+	if err = s.collections.Users.JoinTeam(user, team.ID); err != nil {
 		return nil, err
 	}
 
@@ -141,15 +162,16 @@ func (s *service) ListTeams(ctx context.Context, req *pb.ListTeamsRequest) (*pb.
 		log.Fatal("user required")
 	}
 
-	teams := make([]*pb.GetTeamReply, len(user.Teams))
+	list := make([]*pb.GetTeamReply, len(user.Teams))
 	for i, id := range user.Teams {
 		team, err := s.collections.Teams.Get(id)
 		if err != nil {
 			return nil, err
 		}
-		teams[i] = teamToPbTeam(team, nil) // don't inflate members
+		list[i] = teamToPbTeam(team, nil) // don't inflate members
 	}
-	return &pb.ListTeamsReply{List: teams}, nil
+
+	return &pb.ListTeamsReply{List: list}, nil
 }
 
 func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
@@ -166,14 +188,52 @@ func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamRe
 func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*pb.RemoveTeamReply, error) {
 	log.Debugf("received remove team request")
 
-	panic("implement me")
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+	team, err := s.getTeamForUser(req.ID, user)
+	if err != nil {
+		return nil, err
+	}
+	if team.OwnerID != user.ID {
+		return nil, status.Error(codes.PermissionDenied, "User is not the team owner")
+	}
+
+	if err = s.collections.Teams.Delete(team.ID); err != nil {
+		return nil, err
+	}
+	users, err := s.collections.Users.ListByTeam(team.ID)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range users {
+		if err = s.collections.Users.LeaveTeam(u, team.ID); err != nil {
+			return nil, err
+		}
+	}
+
+	return &pb.RemoveTeamReply{}, nil
 }
 
 // LeaveTeam handles a leave team request.
 func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
 	log.Debugf("received leave team request")
 
-	panic("implement me")
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+	team, err := s.getTeamForUser(req.ID, user)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.Users.LeaveTeam(user, team.ID); err != nil {
+		return nil, err
+	}
+
+	return &pb.LeaveTeamReply{}, nil
 }
 
 // InviteToTeam handles a team invite request.
@@ -187,17 +247,9 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
 	log.Debugf("received add project request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
-		log.Fatal("user required")
-	}
-
-	var scope string
-	team, ok := ctx.Value(reqKey("team")).(*c.Team)
-	if ok {
-		scope = team.ID
-	} else {
-		scope = user.ID
+		log.Fatal("scope required")
 	}
 
 	proj, err := s.collections.Projects.Create(req.Name, scope)
@@ -215,44 +267,66 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectReply, error) {
 	log.Debugf("received get project request")
 
-	panic("implement me")
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(req.ID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return projectToPbProject(proj), nil
 }
 
 // ListProjects handles a list projects request.
 func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
 	log.Debugf("received list projects request")
 
-	panic("implement me")
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+
+	projs, err := s.collections.Projects.List(scope)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*pb.GetProjectReply, len(projs))
+	for i, proj := range projs {
+		list[i] = projectToPbProject(proj)
+	}
+
+	return &pb.ListProjectsReply{List: list}, nil
+}
+
+func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
+	return &pb.GetProjectReply{
+		ID:      proj.ID,
+		Name:    proj.Name,
+		StoreID: proj.StoreID,
+		Created: proj.Created,
+	}
 }
 
 // RemoveProject handles a remove project request.
 func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectRequest) (*pb.RemoveProjectReply, error) {
 	log.Debugf("received remove project request")
 
-	panic("implement me")
-}
-
-// awaitVerification waits for a user to verify their email via a sent email.
-func (s *service) awaitVerification(secret string) bool {
-	listen := s.gateway.SessionListener()
-	ch := make(chan struct{})
-	timer := time.NewTimer(loginTimeout)
-	go func() {
-		for i := range listen.Channel() {
-			if r, ok := i.(string); ok && r == secret {
-				ch <- struct{}{}
-			}
-		}
-	}()
-	select {
-	case <-ch:
-		listen.Discard()
-		timer.Stop()
-		return true
-	case <-timer.C:
-		listen.Discard()
-		return false
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
 	}
+	proj, err := s.getProjectForScope(req.ID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.Projects.Delete(proj.ID); err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveProjectReply{}, nil
 }
 
 // getTeamForUser returns a team if the user is authorized.
@@ -264,8 +338,23 @@ func (s *service) getTeamForUser(teamID string, user *c.User) (*c.Team, error) {
 	if team == nil {
 		return nil, status.Error(codes.NotFound, "Team not found")
 	}
-	if !s.collections.Users.HasTeam(user, team) {
+	if !s.collections.Users.HasTeam(user, team.ID) {
 		return nil, status.Error(codes.PermissionDenied, "User is not a team member")
 	}
 	return team, nil
+}
+
+// getProjectForScope returns a project if the scope is authorized.
+func (s *service) getProjectForScope(projID string, scope string) (*c.Project, error) {
+	proj, err := s.collections.Projects.Get(projID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, status.Error(codes.NotFound, "Project not found")
+	}
+	if proj.Scope != scope {
+		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
+	}
+	return proj, nil
 }
