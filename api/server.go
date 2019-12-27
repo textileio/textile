@@ -129,7 +129,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
-	if session.Expiry > int(time.Now().Unix()) {
+	if session.Expiry < int(time.Now().Unix()) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
 	user, err := s.service.collections.Users.Get(session.UserID)

@@ -74,19 +74,19 @@ func (c *Client) RemoveTeam(ctx context.Context, teamID string, auth Auth) error
 	return err
 }
 
-// LeaveTeam removes the authorized user from a team by ID.
-func (c *Client) LeaveTeam(ctx context.Context, teamID string, auth Auth) error {
-	_, err := c.c.LeaveTeam(authCtx(ctx, auth), &pb.LeaveTeamRequest{
-		ID: teamID,
-	})
-	return err
-}
-
 // InviteToTeam invites the given email to a team by ID.
 func (c *Client) InviteToTeam(ctx context.Context, teamID, email string, auth Auth) error {
 	_, err := c.c.InviteToTeam(authCtx(ctx, auth), &pb.InviteToTeamRequest{
 		ID:    teamID,
 		Email: email,
+	})
+	return err
+}
+
+// LeaveTeam removes the authorized user from a team by ID.
+func (c *Client) LeaveTeam(ctx context.Context, teamID string, auth Auth) error {
+	_, err := c.c.LeaveTeam(authCtx(ctx, auth), &pb.LeaveTeamRequest{
+		ID: teamID,
 	})
 	return err
 }

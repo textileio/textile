@@ -34,7 +34,7 @@ func (m *LoginRequest) Reset()         { *m = LoginRequest{} }
 func (m *LoginRequest) String() string { return proto.CompactTextString(m) }
 func (*LoginRequest) ProtoMessage()    {}
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{0}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{0}
 }
 func (m *LoginRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LoginRequest.Unmarshal(m, b)
@@ -73,7 +73,7 @@ func (m *LoginReply) Reset()         { *m = LoginReply{} }
 func (m *LoginReply) String() string { return proto.CompactTextString(m) }
 func (*LoginReply) ProtoMessage()    {}
 func (*LoginReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{1}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{1}
 }
 func (m *LoginReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LoginReply.Unmarshal(m, b)
@@ -118,7 +118,7 @@ func (m *AddTeamRequest) Reset()         { *m = AddTeamRequest{} }
 func (m *AddTeamRequest) String() string { return proto.CompactTextString(m) }
 func (*AddTeamRequest) ProtoMessage()    {}
 func (*AddTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{2}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{2}
 }
 func (m *AddTeamRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddTeamRequest.Unmarshal(m, b)
@@ -156,7 +156,7 @@ func (m *AddTeamReply) Reset()         { *m = AddTeamReply{} }
 func (m *AddTeamReply) String() string { return proto.CompactTextString(m) }
 func (*AddTeamReply) ProtoMessage()    {}
 func (*AddTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{3}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{3}
 }
 func (m *AddTeamReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddTeamReply.Unmarshal(m, b)
@@ -194,7 +194,7 @@ func (m *GetTeamRequest) Reset()         { *m = GetTeamRequest{} }
 func (m *GetTeamRequest) String() string { return proto.CompactTextString(m) }
 func (*GetTeamRequest) ProtoMessage()    {}
 func (*GetTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{4}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{4}
 }
 func (m *GetTeamRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetTeamRequest.Unmarshal(m, b)
@@ -236,7 +236,7 @@ func (m *GetTeamReply) Reset()         { *m = GetTeamReply{} }
 func (m *GetTeamReply) String() string { return proto.CompactTextString(m) }
 func (*GetTeamReply) ProtoMessage()    {}
 func (*GetTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{5}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{5}
 }
 func (m *GetTeamReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetTeamReply.Unmarshal(m, b)
@@ -303,7 +303,7 @@ func (m *GetTeamReply_Member) Reset()         { *m = GetTeamReply_Member{} }
 func (m *GetTeamReply_Member) String() string { return proto.CompactTextString(m) }
 func (*GetTeamReply_Member) ProtoMessage()    {}
 func (*GetTeamReply_Member) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{5, 0}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{5, 0}
 }
 func (m *GetTeamReply_Member) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetTeamReply_Member.Unmarshal(m, b)
@@ -347,7 +347,7 @@ func (m *ListTeamsRequest) Reset()         { *m = ListTeamsRequest{} }
 func (m *ListTeamsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListTeamsRequest) ProtoMessage()    {}
 func (*ListTeamsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{6}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{6}
 }
 func (m *ListTeamsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListTeamsRequest.Unmarshal(m, b)
@@ -378,7 +378,7 @@ func (m *ListTeamsReply) Reset()         { *m = ListTeamsReply{} }
 func (m *ListTeamsReply) String() string { return proto.CompactTextString(m) }
 func (*ListTeamsReply) ProtoMessage()    {}
 func (*ListTeamsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{7}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{7}
 }
 func (m *ListTeamsReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListTeamsReply.Unmarshal(m, b)
@@ -416,7 +416,7 @@ func (m *RemoveTeamRequest) Reset()         { *m = RemoveTeamRequest{} }
 func (m *RemoveTeamRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveTeamRequest) ProtoMessage()    {}
 func (*RemoveTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{8}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{8}
 }
 func (m *RemoveTeamRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveTeamRequest.Unmarshal(m, b)
@@ -453,7 +453,7 @@ func (m *RemoveTeamReply) Reset()         { *m = RemoveTeamReply{} }
 func (m *RemoveTeamReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveTeamReply) ProtoMessage()    {}
 func (*RemoveTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{9}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{9}
 }
 func (m *RemoveTeamReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveTeamReply.Unmarshal(m, b)
@@ -473,74 +473,6 @@ func (m *RemoveTeamReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RemoveTeamReply proto.InternalMessageInfo
 
-type LeaveTeamRequest struct {
-	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *LeaveTeamRequest) Reset()         { *m = LeaveTeamRequest{} }
-func (m *LeaveTeamRequest) String() string { return proto.CompactTextString(m) }
-func (*LeaveTeamRequest) ProtoMessage()    {}
-func (*LeaveTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{10}
-}
-func (m *LeaveTeamRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LeaveTeamRequest.Unmarshal(m, b)
-}
-func (m *LeaveTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LeaveTeamRequest.Marshal(b, m, deterministic)
-}
-func (dst *LeaveTeamRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LeaveTeamRequest.Merge(dst, src)
-}
-func (m *LeaveTeamRequest) XXX_Size() int {
-	return xxx_messageInfo_LeaveTeamRequest.Size(m)
-}
-func (m *LeaveTeamRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_LeaveTeamRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LeaveTeamRequest proto.InternalMessageInfo
-
-func (m *LeaveTeamRequest) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
-type LeaveTeamReply struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *LeaveTeamReply) Reset()         { *m = LeaveTeamReply{} }
-func (m *LeaveTeamReply) String() string { return proto.CompactTextString(m) }
-func (*LeaveTeamReply) ProtoMessage()    {}
-func (*LeaveTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{11}
-}
-func (m *LeaveTeamReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LeaveTeamReply.Unmarshal(m, b)
-}
-func (m *LeaveTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LeaveTeamReply.Marshal(b, m, deterministic)
-}
-func (dst *LeaveTeamReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LeaveTeamReply.Merge(dst, src)
-}
-func (m *LeaveTeamReply) XXX_Size() int {
-	return xxx_messageInfo_LeaveTeamReply.Size(m)
-}
-func (m *LeaveTeamReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_LeaveTeamReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LeaveTeamReply proto.InternalMessageInfo
-
 type InviteToTeamRequest struct {
 	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Email                string   `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
@@ -553,7 +485,7 @@ func (m *InviteToTeamRequest) Reset()         { *m = InviteToTeamRequest{} }
 func (m *InviteToTeamRequest) String() string { return proto.CompactTextString(m) }
 func (*InviteToTeamRequest) ProtoMessage()    {}
 func (*InviteToTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{12}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{10}
 }
 func (m *InviteToTeamRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InviteToTeamRequest.Unmarshal(m, b)
@@ -597,7 +529,7 @@ func (m *InviteToTeamReply) Reset()         { *m = InviteToTeamReply{} }
 func (m *InviteToTeamReply) String() string { return proto.CompactTextString(m) }
 func (*InviteToTeamReply) ProtoMessage()    {}
 func (*InviteToTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{13}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{11}
 }
 func (m *InviteToTeamReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InviteToTeamReply.Unmarshal(m, b)
@@ -617,6 +549,74 @@ func (m *InviteToTeamReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_InviteToTeamReply proto.InternalMessageInfo
 
+type LeaveTeamRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LeaveTeamRequest) Reset()         { *m = LeaveTeamRequest{} }
+func (m *LeaveTeamRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaveTeamRequest) ProtoMessage()    {}
+func (*LeaveTeamRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_4d8d992870b24ce5, []int{12}
+}
+func (m *LeaveTeamRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LeaveTeamRequest.Unmarshal(m, b)
+}
+func (m *LeaveTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LeaveTeamRequest.Marshal(b, m, deterministic)
+}
+func (dst *LeaveTeamRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveTeamRequest.Merge(dst, src)
+}
+func (m *LeaveTeamRequest) XXX_Size() int {
+	return xxx_messageInfo_LeaveTeamRequest.Size(m)
+}
+func (m *LeaveTeamRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveTeamRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveTeamRequest proto.InternalMessageInfo
+
+func (m *LeaveTeamRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type LeaveTeamReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LeaveTeamReply) Reset()         { *m = LeaveTeamReply{} }
+func (m *LeaveTeamReply) String() string { return proto.CompactTextString(m) }
+func (*LeaveTeamReply) ProtoMessage()    {}
+func (*LeaveTeamReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_4d8d992870b24ce5, []int{13}
+}
+func (m *LeaveTeamReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LeaveTeamReply.Unmarshal(m, b)
+}
+func (m *LeaveTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LeaveTeamReply.Marshal(b, m, deterministic)
+}
+func (dst *LeaveTeamReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveTeamReply.Merge(dst, src)
+}
+func (m *LeaveTeamReply) XXX_Size() int {
+	return xxx_messageInfo_LeaveTeamReply.Size(m)
+}
+func (m *LeaveTeamReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveTeamReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveTeamReply proto.InternalMessageInfo
+
 type AddProjectRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -628,7 +628,7 @@ func (m *AddProjectRequest) Reset()         { *m = AddProjectRequest{} }
 func (m *AddProjectRequest) String() string { return proto.CompactTextString(m) }
 func (*AddProjectRequest) ProtoMessage()    {}
 func (*AddProjectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{14}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{14}
 }
 func (m *AddProjectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddProjectRequest.Unmarshal(m, b)
@@ -667,7 +667,7 @@ func (m *AddProjectReply) Reset()         { *m = AddProjectReply{} }
 func (m *AddProjectReply) String() string { return proto.CompactTextString(m) }
 func (*AddProjectReply) ProtoMessage()    {}
 func (*AddProjectReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{15}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{15}
 }
 func (m *AddProjectReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddProjectReply.Unmarshal(m, b)
@@ -712,7 +712,7 @@ func (m *GetProjectRequest) Reset()         { *m = GetProjectRequest{} }
 func (m *GetProjectRequest) String() string { return proto.CompactTextString(m) }
 func (*GetProjectRequest) ProtoMessage()    {}
 func (*GetProjectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{16}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{16}
 }
 func (m *GetProjectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetProjectRequest.Unmarshal(m, b)
@@ -753,7 +753,7 @@ func (m *GetProjectReply) Reset()         { *m = GetProjectReply{} }
 func (m *GetProjectReply) String() string { return proto.CompactTextString(m) }
 func (*GetProjectReply) ProtoMessage()    {}
 func (*GetProjectReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{17}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{17}
 }
 func (m *GetProjectReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetProjectReply.Unmarshal(m, b)
@@ -811,7 +811,7 @@ func (m *ListProjectsRequest) Reset()         { *m = ListProjectsRequest{} }
 func (m *ListProjectsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListProjectsRequest) ProtoMessage()    {}
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{18}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{18}
 }
 func (m *ListProjectsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListProjectsRequest.Unmarshal(m, b)
@@ -842,7 +842,7 @@ func (m *ListProjectsReply) Reset()         { *m = ListProjectsReply{} }
 func (m *ListProjectsReply) String() string { return proto.CompactTextString(m) }
 func (*ListProjectsReply) ProtoMessage()    {}
 func (*ListProjectsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{19}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{19}
 }
 func (m *ListProjectsReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListProjectsReply.Unmarshal(m, b)
@@ -880,7 +880,7 @@ func (m *RemoveProjectRequest) Reset()         { *m = RemoveProjectRequest{} }
 func (m *RemoveProjectRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveProjectRequest) ProtoMessage()    {}
 func (*RemoveProjectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{20}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{20}
 }
 func (m *RemoveProjectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveProjectRequest.Unmarshal(m, b)
@@ -917,7 +917,7 @@ func (m *RemoveProjectReply) Reset()         { *m = RemoveProjectReply{} }
 func (m *RemoveProjectReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveProjectReply) ProtoMessage()    {}
 func (*RemoveProjectReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_27b15a890f70a997, []int{21}
+	return fileDescriptor_api_4d8d992870b24ce5, []int{21}
 }
 func (m *RemoveProjectReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveProjectReply.Unmarshal(m, b)
@@ -949,10 +949,10 @@ func init() {
 	proto.RegisterType((*ListTeamsReply)(nil), "pb.ListTeamsReply")
 	proto.RegisterType((*RemoveTeamRequest)(nil), "pb.RemoveTeamRequest")
 	proto.RegisterType((*RemoveTeamReply)(nil), "pb.RemoveTeamReply")
-	proto.RegisterType((*LeaveTeamRequest)(nil), "pb.LeaveTeamRequest")
-	proto.RegisterType((*LeaveTeamReply)(nil), "pb.LeaveTeamReply")
 	proto.RegisterType((*InviteToTeamRequest)(nil), "pb.InviteToTeamRequest")
 	proto.RegisterType((*InviteToTeamReply)(nil), "pb.InviteToTeamReply")
+	proto.RegisterType((*LeaveTeamRequest)(nil), "pb.LeaveTeamRequest")
+	proto.RegisterType((*LeaveTeamReply)(nil), "pb.LeaveTeamReply")
 	proto.RegisterType((*AddProjectRequest)(nil), "pb.AddProjectRequest")
 	proto.RegisterType((*AddProjectReply)(nil), "pb.AddProjectReply")
 	proto.RegisterType((*GetProjectRequest)(nil), "pb.GetProjectRequest")
@@ -980,8 +980,8 @@ type APIClient interface {
 	GetTeam(ctx context.Context, in *GetTeamRequest, opts ...grpc.CallOption) (*GetTeamReply, error)
 	ListTeams(ctx context.Context, in *ListTeamsRequest, opts ...grpc.CallOption) (*ListTeamsReply, error)
 	RemoveTeam(ctx context.Context, in *RemoveTeamRequest, opts ...grpc.CallOption) (*RemoveTeamReply, error)
-	LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error)
 	InviteToTeam(ctx context.Context, in *InviteToTeamRequest, opts ...grpc.CallOption) (*InviteToTeamReply, error)
+	LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error)
 	AddProject(ctx context.Context, in *AddProjectRequest, opts ...grpc.CallOption) (*AddProjectReply, error)
 	GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectReply, error)
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsReply, error)
@@ -1041,18 +1041,18 @@ func (c *aPIClient) RemoveTeam(ctx context.Context, in *RemoveTeamRequest, opts 
 	return out, nil
 }
 
-func (c *aPIClient) LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error) {
-	out := new(LeaveTeamReply)
-	err := c.cc.Invoke(ctx, "/pb.API/LeaveTeam", in, out, opts...)
+func (c *aPIClient) InviteToTeam(ctx context.Context, in *InviteToTeamRequest, opts ...grpc.CallOption) (*InviteToTeamReply, error) {
+	out := new(InviteToTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/InviteToTeam", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *aPIClient) InviteToTeam(ctx context.Context, in *InviteToTeamRequest, opts ...grpc.CallOption) (*InviteToTeamReply, error) {
-	out := new(InviteToTeamReply)
-	err := c.cc.Invoke(ctx, "/pb.API/InviteToTeam", in, out, opts...)
+func (c *aPIClient) LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error) {
+	out := new(LeaveTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/LeaveTeam", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1102,8 +1102,8 @@ type APIServer interface {
 	GetTeam(context.Context, *GetTeamRequest) (*GetTeamReply, error)
 	ListTeams(context.Context, *ListTeamsRequest) (*ListTeamsReply, error)
 	RemoveTeam(context.Context, *RemoveTeamRequest) (*RemoveTeamReply, error)
-	LeaveTeam(context.Context, *LeaveTeamRequest) (*LeaveTeamReply, error)
 	InviteToTeam(context.Context, *InviteToTeamRequest) (*InviteToTeamReply, error)
+	LeaveTeam(context.Context, *LeaveTeamRequest) (*LeaveTeamReply, error)
 	AddProject(context.Context, *AddProjectRequest) (*AddProjectReply, error)
 	GetProject(context.Context, *GetProjectRequest) (*GetProjectReply, error)
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsReply, error)
@@ -1204,24 +1204,6 @@ func _API_RemoveTeam_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_LeaveTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LeaveTeamRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServer).LeaveTeam(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.API/LeaveTeam",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).LeaveTeam(ctx, req.(*LeaveTeamRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _API_InviteToTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteToTeamRequest)
 	if err := dec(in); err != nil {
@@ -1236,6 +1218,24 @@ func _API_InviteToTeam_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(APIServer).InviteToTeam(ctx, req.(*InviteToTeamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_LeaveTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveTeamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).LeaveTeam(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/LeaveTeam",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).LeaveTeam(ctx, req.(*LeaveTeamRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1337,12 +1337,12 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_RemoveTeam_Handler,
 		},
 		{
-			MethodName: "LeaveTeam",
-			Handler:    _API_LeaveTeam_Handler,
-		},
-		{
 			MethodName: "InviteToTeam",
 			Handler:    _API_InviteToTeam_Handler,
+		},
+		{
+			MethodName: "LeaveTeam",
+			Handler:    _API_LeaveTeam_Handler,
 		},
 		{
 			MethodName: "AddProject",
@@ -1365,47 +1365,47 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	Metadata: "api.proto",
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_27b15a890f70a997) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_4d8d992870b24ce5) }
 
-var fileDescriptor_api_27b15a890f70a997 = []byte{
-	// 622 bytes of a gzipped FileDescriptorProto
+var fileDescriptor_api_4d8d992870b24ce5 = []byte{
+	// 623 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x55, 0xdf, 0x8e, 0xd2, 0x4e,
 	0x14, 0xa6, 0x05, 0x96, 0x70, 0x7e, 0xfc, 0x0a, 0x0c, 0xa0, 0x4d, 0x2f, 0x0c, 0x19, 0xc9, 0x2e,
 	0x89, 0x49, 0x13, 0x31, 0xd1, 0xc4, 0xf5, 0x42, 0x56, 0x92, 0x0d, 0x09, 0x26, 0xa4, 0xe1, 0xc2,
 	0xdb, 0xb2, 0x4c, 0x4c, 0xb5, 0xa5, 0xb5, 0x1d, 0x57, 0x79, 0x02, 0xdf, 0xc3, 0xb7, 0xf1, 0xad,
-	0xcc, 0xfc, 0x69, 0x3b, 0xfd, 0x03, 0x5e, 0xd1, 0x39, 0xf3, 0x7d, 0xe7, 0x7c, 0x73, 0xe6, 0x3b,
+	0xcc, 0xfc, 0x69, 0x3b, 0xfd, 0x03, 0x5e, 0xd1, 0x39, 0xf3, 0x7d, 0x73, 0xbe, 0x73, 0xe6, 0x3b,
 	0x03, 0x74, 0xdd, 0xc8, 0xb3, 0xa3, 0x38, 0xa4, 0x21, 0xd2, 0xa3, 0x3d, 0x9e, 0x41, 0x6f, 0x13,
 	0x7e, 0xf6, 0x8e, 0x0e, 0xf9, 0xf6, 0x9d, 0x24, 0x14, 0x8d, 0xa1, 0x4d, 0x02, 0xd7, 0xf3, 0x4d,
 	0x6d, 0xaa, 0xcd, 0xbb, 0x8e, 0x58, 0xe0, 0x05, 0x80, 0x44, 0x45, 0xfe, 0x09, 0x19, 0xa0, 0xaf,
 	0x57, 0x12, 0xa0, 0xaf, 0x57, 0x8c, 0x43, 0xc3, 0xaf, 0xe4, 0x68, 0xea, 0x82, 0xc3, 0x17, 0x78,
-	0x06, 0xc6, 0xf2, 0x70, 0xd8, 0x11, 0x37, 0x48, 0x73, 0x23, 0x68, 0x1d, 0xdd, 0x80, 0x48, 0x26,
-	0xff, 0xc6, 0xcf, 0xa0, 0x97, 0xa1, 0x6a, 0x72, 0xe3, 0x29, 0x18, 0xf7, 0x84, 0xaa, 0x59, 0xca,
-	0x88, 0x3f, 0x1a, 0xf4, 0x32, 0x48, 0x9d, 0x3c, 0x13, 0x3a, 0xe1, 0x8f, 0x23, 0x89, 0xd7, 0x2b,
-	0x29, 0x30, 0x5d, 0x66, 0x82, 0x9a, 0xb9, 0x20, 0x86, 0x7e, 0x88, 0x89, 0x4b, 0xc9, 0xc1, 0x6c,
-	0x4d, 0xb5, 0x79, 0xd3, 0x49, 0x97, 0xe8, 0x25, 0x74, 0x02, 0x12, 0xec, 0x49, 0x9c, 0x98, 0xed,
-	0x69, 0x73, 0xfe, 0xdf, 0xe2, 0xa9, 0x1d, 0xed, 0x6d, 0xb5, 0xb4, 0xfd, 0x91, 0xef, 0x3b, 0x29,
-	0xce, 0xb2, 0xe1, 0x4a, 0x84, 0xea, 0x7a, 0x26, 0xfa, 0xac, 0xab, 0x7d, 0x46, 0x30, 0xd8, 0x78,
-	0x09, 0x4f, 0x98, 0xc8, 0xf3, 0xe2, 0xd7, 0x60, 0x28, 0x31, 0x76, 0xc0, 0x19, 0xb4, 0x7c, 0x2f,
-	0xa1, 0xa6, 0xc6, 0x55, 0x0c, 0xca, 0x2a, 0x1c, 0xbe, 0x8b, 0x9f, 0xc3, 0xd0, 0x21, 0x41, 0xf8,
-	0x48, 0x2e, 0x35, 0x6f, 0x08, 0x7d, 0x15, 0x14, 0xf9, 0x27, 0x8c, 0x61, 0xb0, 0x21, 0xee, 0x65,
-	0xda, 0x00, 0x0c, 0x05, 0xc3, 0x58, 0xb7, 0x30, 0x5a, 0x1f, 0x1f, 0x3d, 0x4a, 0x76, 0xe1, 0x05,
-	0xe2, 0x99, 0x63, 0x8f, 0x60, 0x58, 0x24, 0xb3, 0x8c, 0x37, 0x30, 0x5c, 0x1e, 0x0e, 0xdb, 0x38,
-	0xfc, 0x42, 0x1e, 0xe8, 0x25, 0x0b, 0xdd, 0x42, 0x5f, 0x05, 0x9e, 0xb1, 0x40, 0x42, 0xc3, 0x98,
-	0xe4, 0x16, 0x90, 0x4b, 0xd6, 0xa5, 0x7b, 0x42, 0x4b, 0x55, 0xca, 0xc7, 0xf5, 0xa0, 0xaf, 0x82,
-	0xea, 0x2a, 0xa4, 0xc2, 0xf4, 0xa2, 0x95, 0xd2, 0xaa, 0xcd, 0x42, 0xd5, 0xf3, 0x26, 0xc3, 0x13,
-	0x18, 0xb1, 0xdb, 0x96, 0xb5, 0x32, 0x13, 0xbc, 0x83, 0x61, 0x31, 0xcc, 0x34, 0xdc, 0x14, 0x7c,
-	0x30, 0x92, 0x3e, 0x50, 0x65, 0x4a, 0x2b, 0x5c, 0xc3, 0x58, 0xdc, 0xf2, 0x3f, 0xce, 0x39, 0x06,
-	0x54, 0xc2, 0x45, 0xfe, 0x69, 0xf1, 0xab, 0x0d, 0xcd, 0xe5, 0x76, 0x8d, 0x5e, 0x40, 0x9b, 0x3f,
-	0x02, 0x88, 0x3b, 0x4e, 0x7d, 0x35, 0x2c, 0x43, 0x89, 0xb0, 0xbb, 0x6b, 0xb0, 0x61, 0x91, 0x73,
-	0x8d, 0x10, 0xdb, 0x2c, 0x3e, 0x05, 0xd6, 0xa0, 0x10, 0xcb, 0x28, 0xd2, 0xc6, 0x82, 0x52, 0x9c,
-	0x7b, 0xab, 0xe2, 0x73, 0xdc, 0x40, 0x6f, 0xa0, 0x9b, 0xcd, 0x06, 0x1a, 0x73, 0x11, 0xa5, 0xf1,
-	0xb1, 0x50, 0x29, 0x2a, 0x88, 0x6f, 0x01, 0x72, 0xdf, 0xa3, 0x09, 0xc3, 0x54, 0x86, 0xc5, 0x1a,
-	0x95, 0xc3, 0x79, 0xd1, 0xd4, 0xfc, 0xb2, 0x68, 0x69, 0x5e, 0x64, 0xd1, 0xe2, 0x84, 0x34, 0xd0,
-	0x7b, 0xe8, 0xa9, 0x36, 0x47, 0xfc, 0xfd, 0xa8, 0x99, 0x1a, 0x6b, 0x52, 0xdd, 0xc8, 0x64, 0xe7,
+	0x06, 0xc6, 0xf2, 0x70, 0xd8, 0x11, 0x37, 0x48, 0xcf, 0x46, 0xd0, 0x3a, 0xba, 0x01, 0x91, 0x4c,
+	0xfe, 0x8d, 0x9f, 0x41, 0x2f, 0x43, 0xd5, 0x9c, 0x8d, 0xa7, 0x60, 0xdc, 0x13, 0xaa, 0x9e, 0x52,
+	0x46, 0xfc, 0xd1, 0xa0, 0x97, 0x41, 0xea, 0xe4, 0x99, 0xd0, 0x09, 0x7f, 0x1c, 0x49, 0xbc, 0x5e,
+	0x49, 0x81, 0xe9, 0x32, 0x13, 0xd4, 0xcc, 0x05, 0x31, 0xf4, 0x43, 0x4c, 0x5c, 0x4a, 0x0e, 0x66,
+	0x6b, 0xaa, 0xcd, 0x9b, 0x4e, 0xba, 0x44, 0x2f, 0xa1, 0x13, 0x90, 0x60, 0x4f, 0xe2, 0xc4, 0x6c,
+	0x4f, 0x9b, 0xf3, 0xff, 0x16, 0x4f, 0xed, 0x68, 0x6f, 0xab, 0xa9, 0xed, 0x8f, 0x7c, 0xdf, 0x49,
+	0x71, 0x96, 0x0d, 0x57, 0x22, 0x54, 0xd7, 0x33, 0xd1, 0x67, 0x5d, 0xed, 0x33, 0x82, 0xc1, 0xc6,
+	0x4b, 0xf8, 0x81, 0x89, 0xac, 0x17, 0xbf, 0x06, 0x43, 0x89, 0xb1, 0x02, 0x67, 0xd0, 0xf2, 0xbd,
+	0x84, 0x9a, 0x1a, 0x57, 0x31, 0x28, 0xab, 0x70, 0xf8, 0x2e, 0x7e, 0x0e, 0x43, 0x87, 0x04, 0xe1,
+	0x23, 0xb9, 0xd4, 0xbc, 0x21, 0xf4, 0x55, 0x50, 0xe4, 0x9f, 0xf0, 0x2d, 0x8c, 0xd6, 0xc7, 0x47,
+	0x8f, 0x92, 0x5d, 0x78, 0x81, 0x79, 0xa6, 0x80, 0x11, 0x0c, 0x8b, 0x64, 0x76, 0x22, 0x86, 0xc1,
+	0x86, 0xb8, 0x97, 0x85, 0x0c, 0xc0, 0x50, 0x30, 0x8c, 0x75, 0x03, 0xc3, 0xe5, 0xe1, 0xb0, 0x8d,
+	0xc3, 0x2f, 0xe4, 0x81, 0x5e, 0xb2, 0xd0, 0x2d, 0xf4, 0x55, 0xe0, 0x19, 0x0b, 0x24, 0x34, 0x8c,
+	0x49, 0x6e, 0x01, 0xb9, 0x64, 0x5d, 0xba, 0x27, 0xb4, 0x94, 0xa5, 0x2c, 0xce, 0x83, 0xbe, 0x0a,
+	0xaa, 0xcb, 0x90, 0x0a, 0xd3, 0x8b, 0x56, 0x4a, 0xb3, 0x36, 0x0b, 0x59, 0xcf, 0x9b, 0x0c, 0x4f,
+	0x60, 0xc4, 0x6e, 0x5b, 0xe6, 0xca, 0x4c, 0xf0, 0x0e, 0x86, 0xc5, 0x30, 0xd3, 0x70, 0x53, 0xf0,
+	0xc1, 0x48, 0xfa, 0x40, 0x95, 0x29, 0xad, 0x70, 0x0d, 0x63, 0x71, 0xcb, 0xff, 0xa8, 0x73, 0x0c,
+	0xa8, 0x84, 0x8b, 0xfc, 0xd3, 0xe2, 0x57, 0x1b, 0x9a, 0xcb, 0xed, 0x1a, 0xbd, 0x80, 0x36, 0x7f,
+	0x04, 0x10, 0x77, 0x9c, 0xfa, 0x6a, 0x58, 0x86, 0x12, 0x61, 0x77, 0xd7, 0x60, 0xc3, 0x22, 0xe7,
+	0x1a, 0x21, 0xb6, 0x59, 0x7c, 0x0a, 0xac, 0x41, 0x21, 0x96, 0x51, 0xa4, 0x8d, 0x05, 0xa5, 0x38,
+	0xf7, 0x56, 0xc5, 0xe7, 0xb8, 0x81, 0xde, 0x40, 0x37, 0x9b, 0x0d, 0x34, 0xe6, 0x22, 0x4a, 0xe3,
+	0x63, 0xa1, 0x52, 0x54, 0x10, 0xdf, 0x02, 0xe4, 0xbe, 0x47, 0x13, 0x86, 0xa9, 0x0c, 0x8b, 0x35,
+	0x2a, 0x87, 0x05, 0xf7, 0x3d, 0xf4, 0x54, 0x8f, 0x23, 0xfe, 0x0c, 0xd4, 0x8c, 0x8c, 0x35, 0xa9,
+	0x6e, 0xe4, 0xb2, 0x53, 0xb3, 0x4b, 0xd9, 0xa5, 0xf9, 0x90, 0xb2, 0x8b, 0x13, 0xc1, 0x65, 0xe7,
 	0x56, 0x17, 0xb2, 0x2b, 0x33, 0x22, 0x64, 0x97, 0x26, 0x42, 0x70, 0x73, 0x77, 0x08, 0x6e, 0xc5,
-	0xf9, 0x56, 0x9d, 0x89, 0x84, 0x72, 0xd5, 0x7e, 0x42, 0x79, 0x8d, 0x4f, 0x85, 0xf2, 0x8a, 0x53,
-	0x71, 0x03, 0x7d, 0x80, 0xff, 0x0b, 0xd6, 0x42, 0x66, 0xde, 0xdc, 0x92, 0x86, 0x27, 0x35, 0x3b,
-	0x3c, 0xc9, 0xdd, 0x35, 0x20, 0x2f, 0xb4, 0x29, 0xf9, 0x49, 0x3d, 0x9f, 0xa4, 0xbf, 0x77, 0x9d,
-	0x9d, 0xf8, 0xd8, 0x6a, 0xbf, 0xf5, 0xd6, 0xee, 0xd3, 0x6e, 0xb3, 0xbf, 0xe2, 0xff, 0x6f, 0xaf,
-	0xfe, 0x06, 0x00, 0x00, 0xff, 0xff, 0xca, 0x2f, 0x72, 0x9a, 0xec, 0x06, 0x00, 0x00,
+	0xf9, 0x56, 0x9d, 0x89, 0x44, 0xc9, 0xaa, 0xfd, 0x44, 0xc9, 0x35, 0x3e, 0x15, 0x25, 0x57, 0x9c,
+	0x8a, 0x1b, 0xe8, 0x03, 0xfc, 0x5f, 0xb0, 0x16, 0x32, 0xf3, 0xe6, 0x96, 0x34, 0x3c, 0xa9, 0xd9,
+	0xe1, 0x87, 0xdc, 0x5d, 0x03, 0xf2, 0x42, 0x9b, 0x92, 0x9f, 0xd4, 0xf3, 0x49, 0xfa, 0x7b, 0xd7,
+	0xd9, 0x89, 0x8f, 0xad, 0xf6, 0x5b, 0x6f, 0xed, 0x3e, 0xed, 0x36, 0xfb, 0x2b, 0xfe, 0xff, 0xf6,
+	0xea, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x06, 0x63, 0x01, 0xe5, 0xec, 0x06, 0x00, 0x00,
 }

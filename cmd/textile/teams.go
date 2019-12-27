@@ -14,10 +14,10 @@ func init() {
 	teamsCmd.AddCommand(
 		addTeamsCmd,
 		lsTeamsCmd,
-		inviteTeamsCmd,
 		membersTeamsCmd,
-		leaveTeamsCmd,
 		rmTeamsCmd,
+		inviteTeamsCmd,
+		leaveTeamsCmd,
 		switchTeamsCmd)
 }
 
@@ -84,31 +84,10 @@ func lsTeams() {
 		ctx,
 		api.Auth{
 			Token: authViper.GetString("token"),
-			Scope: configViper.GetString("scope"),
 		})
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-var inviteTeamsCmd = &cobra.Command{
-	Use:   "invite",
-	Short: "Invite members",
-	Long:  `Invite a new member to a team.`,
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		if err := client.InviteToTeam(
-			ctx,
-			args[0],
-			args[1],
-			api.Auth{
-				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
-			}); err != nil {
-			log.Fatal(err)
-		}
-	},
 }
 
 var membersTeamsCmd = &cobra.Command{
@@ -123,28 +102,8 @@ var membersTeamsCmd = &cobra.Command{
 			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
-			log.Fatal(err)
-		}
-	},
-}
-
-var leaveTeamsCmd = &cobra.Command{
-	Use:   "leave",
-	Short: "Leave a team",
-	Long:  `Leaves a team by its unique identifier (ID).`,
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		if err := client.LeaveTeam(
-			ctx,
-			args[0],
-			api.Auth{
-				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
-			}); err != nil {
 			log.Fatal(err)
 		}
 	},
@@ -165,7 +124,43 @@ var rmTeamsCmd = &cobra.Command{
 			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
+			}); err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+var inviteTeamsCmd = &cobra.Command{
+	Use:   "invite",
+	Short: "Invite members",
+	Long:  `Invite a new member to a team.`,
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.InviteToTeam(
+			ctx,
+			args[0],
+			args[1],
+			api.Auth{
+				Token: authViper.GetString("token"),
+			}); err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+var leaveTeamsCmd = &cobra.Command{
+	Use:   "leave",
+	Short: "Leave a team",
+	Long:  `Leaves a team by its unique identifier (ID).`,
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.LeaveTeam(
+			ctx,
+			args[0],
+			api.Auth{
+				Token: authViper.GetString("token"),
 			}); err != nil {
 			log.Fatal(err)
 		}

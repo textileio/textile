@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,10 @@ type service struct {
 // Login handles a login request.
 func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
 	log.Debugf("received login request")
+
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
+	}
 
 	matches, err := s.collections.Users.GetByEmail(req.Email)
 	if err != nil {
@@ -66,7 +71,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}
 
 	if !s.awaitVerification(verification) {
-		return nil, fmt.Errorf("email not verified")
+		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
 	session, err := s.collections.Sessions.Create(user.ID)
@@ -185,6 +190,7 @@ func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamRe
 }
 
 // RemoveTeam handles a remove team request.
+// @todo: Delete team projects.
 func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*pb.RemoveTeamReply, error) {
 	log.Debugf("received remove team request")
 
@@ -216,26 +222,6 @@ func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*p
 	return &pb.RemoveTeamReply{}, nil
 }
 
-// LeaveTeam handles a leave team request.
-func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
-	log.Debugf("received leave team request")
-
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
-	if !ok {
-		log.Fatal("user required")
-	}
-	team, err := s.getTeamForUser(req.ID, user)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = s.collections.Users.LeaveTeam(user, team.ID); err != nil {
-		return nil, err
-	}
-
-	return &pb.LeaveTeamReply{}, nil
-}
-
 // InviteToTeam handles a team invite request.
 func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest) (*pb.InviteToTeamReply, error) {
 	log.Debugf("received invite to team request")
@@ -247,6 +233,10 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	team, err := s.getTeamForUser(req.ID, user)
 	if err != nil {
 		return nil, err
+	}
+
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
 	invite, err := s.collections.Invites.Create(team.ID, user.ID, req.Email)
@@ -262,6 +252,29 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	}
 
 	return &pb.InviteToTeamReply{}, nil
+}
+
+// LeaveTeam handles a leave team request.
+func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
+	log.Debugf("received leave team request")
+
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+	team, err := s.getTeamForUser(req.ID, user)
+	if err != nil {
+		return nil, err
+	}
+	if team.OwnerID == user.ID {
+		return nil, status.Error(codes.PermissionDenied, "Team owner cannot leave")
+	}
+
+	if err = s.collections.Users.LeaveTeam(user, team.ID); err != nil {
+		return nil, err
+	}
+
+	return &pb.LeaveTeamReply{}, nil
 }
 
 // AddProject handles an add project request.

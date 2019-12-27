@@ -63,7 +63,7 @@ func (u *Users) GetByEmail(email string) ([]*User, error) {
 }
 
 func (u *Users) ListByTeam(teamID string) ([]*User, error) {
-	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, &User{})
+	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, []*User{})
 	if err != nil {
 		return nil, err
 	}

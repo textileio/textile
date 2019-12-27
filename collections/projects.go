@@ -62,7 +62,7 @@ func (p *Projects) Get(id string) (*Project, error) {
 
 func (p *Projects) List(scope string) ([]*Project, error) {
 	query := es.JSONWhere("Scope").Eq(scope)
-	res, err := p.threads.ModelFind(p.storeID.String(), p.GetName(), query, &Project{})
+	res, err := p.threads.ModelFind(p.storeID.String(), p.GetName(), query, []*Project{})
 	if err != nil {
 		return nil, err
 	}

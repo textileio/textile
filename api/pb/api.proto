@@ -52,18 +52,18 @@ message RemoveTeamRequest {
 
 message RemoveTeamReply {}
 
-message LeaveTeamRequest {
-    string ID = 1;
-}
-
-message LeaveTeamReply {}
-
 message InviteToTeamRequest {
     string ID = 1;
     string email = 2;
 }
 
 message InviteToTeamReply {}
+
+message LeaveTeamRequest {
+    string ID = 1;
+}
+
+message LeaveTeamReply {}
 
 message AddProjectRequest {
     string name = 1;
@@ -104,8 +104,8 @@ service API {
     rpc GetTeam (GetTeamRequest) returns (GetTeamReply) {}
     rpc ListTeams (ListTeamsRequest) returns (ListTeamsReply) {}
     rpc RemoveTeam (RemoveTeamRequest) returns (RemoveTeamReply) {}
-    rpc LeaveTeam (LeaveTeamRequest) returns (LeaveTeamReply) {}
     rpc InviteToTeam (InviteToTeamRequest) returns (InviteToTeamReply) {}
+    rpc LeaveTeam (LeaveTeamRequest) returns (LeaveTeamReply) {}
 
     rpc AddProject (AddProjectRequest) returns (AddProjectReply) {}
     rpc GetProject (GetProjectRequest) returns (GetProjectReply) {}
