@@ -106,6 +106,7 @@ func (u *Users) LeaveTeam(user *User, teamID string) error {
 	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }
 
+// @todo: Add a destroy method that calls this. User must first delete projects and teams they own.
 func (u *Users) Delete(id string) error {
 	return u.threads.ModelDelete(u.storeID.String(), u.GetName(), id)
 }

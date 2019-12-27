@@ -1,0 +1,62 @@
+package collections
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/textileio/go-threads/api/client"
+)
+
+var (
+	inviteDur = time.Hour * 24 * 7 * 30
+)
+
+type Invite struct {
+	ID      string
+	TeamID  string
+	FromID  string
+	ToEmail string
+	Expiry  int
+}
+
+type Invites struct {
+	threads *client.Client
+	storeID *uuid.UUID
+}
+
+func (i *Invites) GetName() string {
+	return "Invite"
+}
+
+func (i *Invites) GetInstance() interface{} {
+	return &Invite{}
+}
+
+func (i *Invites) GetStoreID() *uuid.UUID {
+	return i.storeID
+}
+
+func (i *Invites) Create(teamID, fromID, toEmail string) (*Invite, error) {
+	invite := &Invite{
+		TeamID:  teamID,
+		FromID:  fromID,
+		ToEmail: toEmail,
+		Expiry:  int(time.Now().Add(inviteDur).Unix()),
+	}
+	if err := i.threads.ModelCreate(i.storeID.String(), i.GetName(), invite); err != nil {
+		return nil, err
+	}
+	return invite, nil
+}
+
+func (i *Invites) Get(id string) (*Invite, error) {
+	invite := &Invite{}
+	if err := i.threads.ModelFindByID(i.storeID.String(), i.GetName(), id, invite); err != nil {
+		return nil, err
+	}
+	return invite, nil
+}
+
+func (i *Invites) Delete(id string) error {
+	return i.threads.ModelDelete(i.storeID.String(), i.GetName(), id)
+}

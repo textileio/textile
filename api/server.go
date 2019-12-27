@@ -139,14 +139,14 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	newCtx := context.WithValue(ctx, reqKey("user"), user)
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
-	if scope != "" && scope != user.ID {
+	if scope == "" || scope == user.ID {
+		newCtx = context.WithValue(newCtx, reqKey("scope"), user.ID)
+	} else {
 		team, err := s.service.getTeamForUser(scope, user)
 		if err != nil {
 			return nil, err
 		}
 		newCtx = context.WithValue(newCtx, reqKey("scope"), team.ID)
-	} else {
-		newCtx = context.WithValue(newCtx, reqKey("scope"), user.ID)
 	}
 
 	if err := s.service.collections.Sessions.Touch(session); err != nil {

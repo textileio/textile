@@ -17,6 +17,7 @@ var (
 	dsUsersKey    = datastore.NewKey("/users")
 	dsSessionsKey = datastore.NewKey("/sessions")
 	dsTeamsKey    = datastore.NewKey("/teams")
+	dsInvitesKey  = datastore.NewKey("/invites")
 	dsProjectsKey = datastore.NewKey("/projects")
 )
 
@@ -33,6 +34,7 @@ type Collections struct {
 	Users    *Users
 	Sessions *Sessions
 	Teams    *Teams
+	Invites  *Invites
 	Projects *Projects
 }
 
@@ -45,6 +47,7 @@ func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collecti
 		Users:    &Users{threads: threads},
 		Sessions: &Sessions{threads: threads},
 		Teams:    &Teams{threads: threads},
+		Invites:  &Invites{threads: threads},
 		Projects: &Projects{threads: threads},
 	}
 
@@ -60,6 +63,10 @@ func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collecti
 	if err != nil {
 		return nil, err
 	}
+	c.Invites.storeID, err = c.addCollection(c.Invites, dsInvitesKey)
+	if err != nil {
+		return nil, err
+	}
 	c.Projects.storeID, err = c.addCollection(c.Projects, dsProjectsKey)
 	if err != nil {
 		return nil, err
@@ -68,6 +75,7 @@ func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collecti
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
+	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
 
 	return c, nil

@@ -151,6 +151,13 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 	},
+	PersistentPostRun: func(c *cobra.Command, args []string) {
+		if client != nil {
+			if err := client.Close(); err != nil {
+				log.Fatal(err)
+			}
+		}
+	},
 }
 
 var whoamiCmd = &cobra.Command{

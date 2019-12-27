@@ -240,7 +240,28 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest) (*pb.InviteToTeamReply, error) {
 	log.Debugf("received invite to team request")
 
-	panic("implement me")
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+	team, err := s.getTeamForUser(req.ID, user)
+	if err != nil {
+		return nil, err
+	}
+
+	invite, err := s.collections.Invites.Create(team.ID, user.ID, req.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	link := fmt.Sprintf("%s/consent/%s", s.gateway.Url(), invite.ID)
+	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
+	defer cancel()
+	if err = s.emailClient.InviteAddress(ectx, team.Name, user.Email, req.Email, link); err != nil {
+		return nil, err
+	}
+
+	return &pb.InviteToTeamReply{}, nil
 }
 
 // AddProject handles an add project request.

@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
 )
 
 var (
@@ -54,20 +53,12 @@ func (s *Sessions) Get(id string) (*Session, error) {
 	return session, nil
 }
 
-func (s *Sessions) List(userID string) ([]*Session, error) {
-	query := es.JSONWhere("UserID").Eq(userID)
-	res, err := s.threads.ModelFind(s.storeID.String(), s.GetName(), query, &Session{})
-	if err != nil {
-		return nil, err
-	}
-	return res.([]*Session), nil
-}
-
 func (s *Sessions) Touch(session *Session) (err error) {
 	session.Expiry = int(time.Now().Add(sessionDur).Unix())
 	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
 }
 
+// @todo: Delete session on logout
 func (s *Sessions) Delete(id string) error {
 	return s.threads.ModelDelete(s.storeID.String(), s.GetName(), id)
 }

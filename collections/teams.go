@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
 )
 
 type Team struct {
@@ -50,15 +49,6 @@ func (t *Teams) Get(id string) (*Team, error) {
 		return nil, err
 	}
 	return team, nil
-}
-
-func (t *Teams) ListByOwner(ownerID string) ([]*Team, error) {
-	query := es.JSONWhere("OwnerID").Eq(ownerID)
-	res, err := t.threads.ModelFind(t.storeID.String(), t.GetName(), query, &Team{})
-	if err != nil {
-		return nil, err
-	}
-	return res.([]*Team), nil
 }
 
 func (t *Teams) Delete(id string) error {
