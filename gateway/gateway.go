@@ -2,40 +2,59 @@ package gateway
 
 import (
 	"context"
-	"encoding/base64"
+	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/location"
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/render"
 	logger "github.com/ipfs/go-log"
+	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
 	"github.com/textileio/go-textile-core/broadcast"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/gateway/static/css"
-	"github.com/textileio/textile/gateway/templates"
+	"github.com/textileio/textile/collections"
 )
 
 var log = logger.Logger("gateway")
 
+// fileSystem extends the binary asset file system with Exists,
+// enabling its use with the static middleware.
+type fileSystem struct {
+	*assets.FileSystem
+}
+
+// Exists returns whether or not the path exists in the binary assets.
+func (f *fileSystem) Exists(prefix, path string) bool {
+	if p := strings.TrimPrefix(path, prefix); len(p) < len(path) {
+		_, ok := f.Files[p]
+		return ok
+	}
+	return false
+}
+
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
-	addr       ma.Multiaddr
-	url        string
-	server     *http.Server
-	sessionBus *broadcast.Broadcaster
+	addr        ma.Multiaddr
+	url         string
+	server      *http.Server
+	collections *collections.Collections
+	sessionBus  *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr ma.Multiaddr, url string) *Gateway {
+func NewGateway(addr ma.Multiaddr, url string, collections *collections.Collections) *Gateway {
 	return &Gateway{
-		addr:       addr,
-		url:        url,
-		sessionBus: broadcast.NewBroadcaster(0),
+		addr:        addr,
+		url:         url,
+		collections: collections,
+		sessionBus:  broadcast.NewBroadcaster(0),
 	}
 }
 
@@ -54,27 +73,20 @@ func (g *Gateway) Start() {
 	options := cors.Options{}
 	router.Use(gincors.New(options))
 
-	router.SetHTMLTemplate(parseTemplates())
+	temp, err := loadTemplate()
+	if err != nil {
+		log.Fatal(err)
+	}
+	router.SetHTMLTemplate(temp)
+
+	router.Use(static.Serve("/public", &fileSystem{Assets}))
 
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
-	router.GET("/favicon.ico", func(c *gin.Context) {
-		img, err := base64.StdEncoding.DecodeString(favicon)
-		if err != nil {
-			c.Writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-		c.Header("Cache-Control", "public, max-age=172800")
-		c.Render(http.StatusOK, render.Data{Data: img})
-	})
-	router.GET("/static/css/style.css", func(c *gin.Context) {
-		c.Header("Content-Type", "text/css; charset=utf-8")
-		c.Header("Cache-Control", "public, max-age=172800")
-		c.String(http.StatusOK, css.Style)
-	})
 
-	router.GET("/verify/:secret", g.emailVerification)
+	router.GET("/confirm/:secret", g.confirmEmail)
+	router.GET("/consent/:invite", g.consentInvite)
 
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
@@ -137,40 +149,103 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// emailVerification accepts a secret to verify
-func (g *Gateway) emailVerification(c *gin.Context) {
+// confirmEmail verifies an emailed secret.
+func (g *Gateway) confirmEmail(c *gin.Context) {
 	secret := c.Param("secret")
-	if secret != "" {
-		if err := g.sessionBus.Send(secret); err != nil {
-			c.Render(http.StatusInternalServerError, render.Data{
-				Data: []byte(err.Error()),
-			})
-		} else {
-			c.Render(http.StatusOK, render.Data{
-				Data: []byte("Success"),
-			})
+	if secret == "" {
+		g.render404(c)
+		return
+	}
+	if err := g.sessionBus.Send(secret); err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "/html/confirm.gohtml", nil)
+}
+
+// consentInvite adds a user to a team.
+func (g *Gateway) consentInvite(c *gin.Context) {
+	inviteID := c.Param("invite")
+	if inviteID == "" {
+		g.render404(c)
+		return
+	}
+	invite, err := g.collections.Invites.Get(inviteID)
+	if err != nil {
+		g.render404(c)
+		return
+	}
+	if invite.Expiry < int(time.Now().Unix()) {
+		g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
+		return
+	}
+
+	matches, err := g.collections.Users.GetByEmail(invite.ToEmail)
+	if err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+	var user *collections.User
+	if len(matches) == 0 {
+		user, err = g.collections.Users.Create(invite.ToEmail)
+		if err != nil {
+			g.renderError(c, http.StatusInternalServerError, err)
+			return
 		}
 	} else {
-		c.Render(http.StatusBadRequest, render.Data{
-			Data: []byte("Bad request"),
-		})
+		user = matches[0]
 	}
+
+	team, err := g.collections.Teams.Get(invite.TeamID)
+	if err != nil {
+		g.render404(c)
+		return
+	}
+	if err = g.collections.Users.JoinTeam(user, team.ID); err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "/html/consent.gohtml", gin.H{
+		"Team": team.Name,
+	})
 }
 
-// render404 renders the 404 template
+// render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {
-	c.HTML(http.StatusNotFound, "404", nil)
+	c.HTML(http.StatusNotFound, "/html/404.gohtml", nil)
 }
 
-// parseTemplates loads HTML templates
-func parseTemplates() *template.Template {
-	temp, err := template.New("index").Parse(templates.Index)
-	if err != nil {
-		panic(err)
+// renderError renders the error template.
+func (g *Gateway) renderError(c *gin.Context, code int, err error) {
+	c.HTML(code, "/html/error.gohtml", gin.H{
+		"Code":  code,
+		"Error": formatError(err),
+	})
+}
+
+// loadTemplate loads HTML templates.
+func loadTemplate() (*template.Template, error) {
+	t := template.New("")
+	for name, file := range Assets.Files {
+		if file.IsDir() || !strings.HasSuffix(name, ".gohtml") {
+			continue
+		}
+		h, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		t, err = t.New(name).Parse(string(h))
+		if err != nil {
+			return nil, err
+		}
 	}
-	temp, err = temp.New("404").Parse(templates.NotFound)
-	if err != nil {
-		panic(err)
-	}
-	return temp
+	return t, nil
+}
+
+func formatError(err error) string {
+	words := strings.SplitN(err.Error(), " ", 2)
+	words[0] = strings.Title(words[0])
+	return strings.Join(words, " ") + "."
 }

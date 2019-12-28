@@ -71,7 +71,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:   conf.Collections,
-			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
+			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
 			sessionSecret: conf.SessionSecret,
 		},

@@ -90,6 +90,11 @@ func (u *Users) HasTeam(user *User, teamID string) bool {
 }
 
 func (u *Users) JoinTeam(user *User, teamID string) error {
+	for _, t := range user.Teams {
+		if t == teamID {
+			return nil
+		}
+	}
 	user.Teams = append(user.Teams, teamID)
 	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }

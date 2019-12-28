@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/mail"
 	"time"
 
@@ -52,25 +51,24 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		user = matches[0]
 	}
 
-	var verification string
+	var secret string
 	if s.sessionSecret != nil {
-		verification = string(s.sessionSecret)
+		secret = string(s.sessionSecret)
 	} else {
 		uid, err := uuid.NewRandom()
 		if err != nil {
 			return nil, err
 		}
-		verification = uid.String()
+		secret = uid.String()
 	}
 
-	link := fmt.Sprintf("%s/verify/%s", s.gateway.Url(), verification)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.emailClient.VerifyAddress(ectx, user.Email, link); err != nil {
+	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gateway.Url(), secret); err != nil {
 		return nil, err
 	}
 
-	if !s.awaitVerification(verification) {
+	if !s.awaitVerification(secret) {
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
@@ -244,10 +242,10 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/consent/%s", s.gateway.Url(), invite.ID)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.emailClient.InviteAddress(ectx, team.Name, user.Email, req.Email, link); err != nil {
+	if err = s.emailClient.InviteAddress(
+		ectx, team.Name, user.Email, req.Email, s.gateway.Url(), invite.ID); err != nil {
 		return nil, err
 	}
 

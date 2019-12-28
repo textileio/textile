@@ -3,6 +3,7 @@ package email
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/mail"
 	"text/template"
 
@@ -61,15 +62,15 @@ func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 	return client, nil
 }
 
-type verificationData struct {
+type confirmData struct {
 	Link string
 }
 
-// VerifyAddress sends a verification link to a recipient.
-func (e *Client) VerifyAddress(ctx context.Context, to, link string) error {
+// ConfirmAddress sends a confirmation link to a recipient.
+func (e *Client) ConfirmAddress(ctx context.Context, to, url, secret string) error {
 	var tpl bytes.Buffer
-	if err := e.verificationTmp.Execute(&tpl, &verificationData{
-		Link: link,
+	if err := e.verificationTmp.Execute(&tpl, &confirmData{
+		Link: fmt.Sprintf("%s/confirm/%s", url, secret),
 	}); err != nil {
 		return err
 	}
@@ -84,12 +85,12 @@ type inviteData struct {
 }
 
 // InviteAddress sends an invite link to a recipient.
-func (e *Client) InviteAddress(ctx context.Context, team, from, to, link string) error {
+func (e *Client) InviteAddress(ctx context.Context, team, from, to, url, inviteID string) error {
 	var tpl bytes.Buffer
 	if err := e.inviteTmp.Execute(&tpl, &inviteData{
 		From: from,
 		Team: team,
-		Link: link,
+		Link: fmt.Sprintf("%s/consent/%s", url, inviteID),
 	}); err != nil {
 		return err
 	}
