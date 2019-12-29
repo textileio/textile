@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/mail"
 
+	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -46,22 +50,16 @@ var addTeamsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		team, err := client.AddTeam(
+		if _, err := client.AddTeam(
 			ctx,
 			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
-			})
-		if err != nil {
-			log.Fatal(err)
-		}
-		configViper.Set("scope", team.ID)
-
-		if err := configViper.WriteConfig(); err != nil {
+			}); err != nil {
 			cmd.Fatal(err)
 		}
 
-		fmt.Println(fmt.Sprintf("> Created new team, '%s'", args[0]))
+		cmd.Success("Added new team %s", aurora.White(args[0]).Bold())
 	},
 }
 
@@ -86,22 +84,22 @@ func lsTeams() {
 			Token: authViper.GetString("token"),
 		})
 	if err != nil {
-		log.Fatal(err)
+		cmd.Fatal(err)
 	}
-
-	fmt.Println(fmt.Sprintf("> Found %d teams\n", len(teams.List)))
 
 	data := make([][]string, len(teams.List))
 	for i, t := range teams.List {
 		data[i] = []string{t.Name, t.ID}
 	}
 	cmd.RenderTable([]string{"name", "id"}, data)
+
+	cmd.Message("Found %d teams", aurora.White(len(teams.List)).Bold())
 }
 
 var membersTeamsCmd = &cobra.Command{
 	Use:   "members",
-	Short: "Display team members",
-	Long:  `Display a list of current team members.`,
+	Short: "List team members",
+	Long:  `List current team members.`,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -112,16 +110,16 @@ var membersTeamsCmd = &cobra.Command{
 				Token: authViper.GetString("token"),
 			})
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
-
-		fmt.Println(fmt.Sprintf("> Found %d members\n", len(team.Members)))
 
 		data := make([][]string, len(team.Members))
 		for i, m := range team.Members {
 			data[i] = []string{m.Email, m.ID}
 		}
 		cmd.RenderTable([]string{"email", "id"}, data)
+
+		cmd.Message("Found %d members", aurora.White(len(team.Members)).Bold())
 	},
 }
 
@@ -131,95 +129,143 @@ var rmTeamsCmd = &cobra.Command{
 		"remove",
 	},
 	Short: "Remove a team",
-	Long:  `Removes a team by its unique identifier (ID). You must be the team owner.`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		return nil
-	},
+	Long:  `Remove a team (interactive). You must be the team owner.`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectTeam(aurora.Sprintf(
+			aurora.BrightBlack("> Removing team {{ .Name | white | bold }}")))
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if err := client.RemoveTeam(
 			ctx,
-			args[0],
+			selected.ID,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
-		fmt.Println("> Success")
+
+		cmd.Success("Removed team %s", aurora.White(selected.Name).Bold())
 	},
 }
 
-// @todo: Make interactive
 var inviteTeamsCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members",
 	Long:  `Invite a new member to a team.`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		if len(args) < 2 {
-			return fmt.Errorf("requires an email argument")
-		}
-		return nil
-	},
 	Run: func(c *cobra.Command, args []string) {
+		scope := configViper.GetString("scope")
+		if scope == "" {
+			cmd.Fatal(fmt.Errorf(
+				"please select a team scope using `textile switch` or use `--scope`"))
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		if err := client.InviteToTeam(
+		team, err := client.GetTeam(
 			ctx,
-			args[0],
-			args[1],
+			scope,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		prompt := promptui.Prompt{
+			Label: "Enter email to invite",
+			Validate: func(email string) error {
+				_, err := mail.ParseAddress(email)
+				return err
+			},
+		}
+		email, err := prompt.Run()
+		if err != nil {
+			cmd.Fatal(err)
+			return
+		}
+
+		ctx2, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.InviteToTeam(
+			ctx2,
+			team.ID,
+			email,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
-		fmt.Println(fmt.Sprintf("> We sent an invitation to %s", args[1]))
+
+		cmd.Success("We sent %s an invitation to %s", aurora.White(email).Bold(),
+			aurora.White(team.Name).Bold())
 	},
 }
 
 var leaveTeamsCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave a team",
-	Long:  `Leaves a team by its unique identifier (ID).`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		return nil
-	},
+	Long:  `Leave a team (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectTeam(aurora.Sprintf(
+			aurora.BrightBlack("> Leaving team {{ .Name | white | bold }}")))
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if err := client.LeaveTeam(
 			ctx,
-			args[0],
+			selected.ID,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
-		fmt.Println("> Success")
+
+		cmd.Success("Left team %s", aurora.White(selected.Name).Bold())
 	},
 }
 
-// @todo: Make interactive
 var switchTeamsCmd = &cobra.Command{
 	Use:   "switch",
 	Short: "Switch teams",
 	Long:  `Switch to a different team.`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		return nil
-	},
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectTeam(aurora.Sprintf(aurora.Cyan("> Success! %s"),
+			aurora.Sprintf(aurora.BrightBlack("Switched to team {{ .Name | white | bold }}"))))
 
+		configViper.Set("scope", selected.ID)
+		if err := configViper.WriteConfig(); err != nil {
+			cmd.Fatal(err)
+		}
 	},
+}
+
+func selectTeam(successMsg string) *pb.GetTeamReply {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	teams, err := client.ListTeams(
+		ctx,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	prompt := promptui.Select{
+		Label: "Switch to team",
+		Items: teams.List,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Name | faint }}`,
+			Details:  `{{ "(ID:" | faint }} {{ .ID | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	return teams.List[index]
 }

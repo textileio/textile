@@ -22,6 +22,7 @@ require (
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.3.0
+	github.com/logrusorgru/aurora v0.0.0-20191116043053-66b7ad493a23
 	github.com/mailgun/mailgun-go/v3 v3.6.3
 	github.com/manifoldco/promptui v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0

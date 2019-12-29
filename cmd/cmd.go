@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/olekukonko/tablewriter"
@@ -67,8 +68,20 @@ func AddrFromStr(str string) ma.Multiaddr {
 	return addr
 }
 
+func Message(format string, args ...interface{}) {
+	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
+}
+
+func Success(format string, args ...interface{}) {
+	fmt.Println(aurora.Sprintf(aurora.Cyan("> Success! %s"),
+		aurora.Sprintf(aurora.BrightBlack(format), args...)))
+}
+
 func Fatal(err error) {
-	fmt.Println(err)
+	words := strings.SplitN(err.Error(), " ", 2)
+	words[0] = strings.Title(words[0])
+	msg := strings.Join(words, " ")
+	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"), aurora.BrightBlack(msg)))
 	os.Exit(1)
 }
 
@@ -84,9 +97,14 @@ func RenderTable(header []string, data [][]string) {
 	table.SetRowSeparator("")
 	table.SetHeaderLine(false)
 	table.SetBorder(false)
-	table.SetTablePadding("\t") // pad with tabs
+	table.SetTablePadding("\t")
 	table.SetNoWhiteSpace(true)
-	table.AppendBulk(data) // Add Bulk Data
+	headersColors := make([]tablewriter.Colors, len(data[0]))
+	for i := range headersColors {
+		headersColors[i] = tablewriter.Colors{tablewriter.FgHiBlackColor}
+	}
+	table.SetHeaderColor(headersColors...)
+	table.AppendBulk(data)
 	table.Render()
 	fmt.Println()
 }

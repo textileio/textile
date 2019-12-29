@@ -15,9 +15,9 @@ To complete the login process, follow the link below:
 ` + footerMsg
 
 const inviteMsg = headerMsg + `
-{{.From}} has invited you to be a member of the team, {{.Team}}.
+{{.From}} has invited you to the {{.Team}} team on Textile.
 
-To accept the invitation, please follow the link below:
+To accept the invitation, follow the link below:
 
 {{.Link}}
 
