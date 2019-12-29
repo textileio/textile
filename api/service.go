@@ -249,7 +249,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 		return nil, err
 	}
 
-	return &pb.InviteToTeamReply{}, nil
+	return &pb.InviteToTeamReply{ID: invite.ID}, nil
 }
 
 // LeaveTeam handles a leave team request.

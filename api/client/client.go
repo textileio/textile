@@ -75,12 +75,11 @@ func (c *Client) RemoveTeam(ctx context.Context, teamID string, auth Auth) error
 }
 
 // InviteToTeam invites the given email to a team by ID.
-func (c *Client) InviteToTeam(ctx context.Context, teamID, email string, auth Auth) error {
-	_, err := c.c.InviteToTeam(authCtx(ctx, auth), &pb.InviteToTeamRequest{
+func (c *Client) InviteToTeam(ctx context.Context, teamID, email string, auth Auth) (*pb.InviteToTeamReply, error) {
+	return c.c.InviteToTeam(authCtx(ctx, auth), &pb.InviteToTeamRequest{
 		ID:    teamID,
 		Email: email,
 	})
-	return err
 }
 
 // LeaveTeam removes the authorized user from a team by ID.

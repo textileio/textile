@@ -160,16 +160,20 @@ func TestInviteToTeam(t *testing.T) {
 	}
 
 	t.Run("test invite bad email to team", func(t *testing.T) {
-		if err := client.InviteToTeam(context.Background(), team.ID, "jane",
+		if _, err := client.InviteToTeam(context.Background(), team.ID, "jane",
 			Auth{Token: user.Token}); err == nil {
 			t.Fatal("invite bad email to team should fail")
 		}
 	})
 
 	t.Run("test invite to team", func(t *testing.T) {
-		if err := client.InviteToTeam(context.Background(), team.ID, "jane@doe.com",
-			Auth{Token: user.Token}); err != nil {
+		res, err := client.InviteToTeam(context.Background(), team.ID, "jane@doe.com",
+			Auth{Token: user.Token})
+		if err != nil {
 			t.Fatalf("invite to team should succeed: %v", err)
+		}
+		if res.ID == "" {
+			t.Fatal("got empty ID from invite to team")
 		}
 	})
 }
@@ -199,13 +203,22 @@ func TestLeaveTeam(t *testing.T) {
 		}
 	})
 
-	// @todo: Get user2 into the team.
-	//t.Run("test leave team", func(t *testing.T) {
-	//	err := client.LeaveTeam(context.Background(), team.ID, Auth{Token: user2.Token})
-	//	if err != nil {
-	//		t.Fatalf("leave team should succeed: %v", err)
-	//	}
-	//})
+	invite, err := client.InviteToTeam(context.Background(), team.ID, "jane@doe.com",
+		Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.ID)
+	if _, err := http.Get(url); err != nil {
+		t.Fatalf("failed to reach gateway: %v", err)
+	}
+
+	t.Run("test leave team", func(t *testing.T) {
+		err := client.LeaveTeam(context.Background(), team.ID, Auth{Token: user2.Token})
+		if err != nil {
+			t.Fatalf("leave team should succeed: %v", err)
+		}
+	})
 }
 
 func TestAddProject(t *testing.T) {
@@ -468,8 +481,8 @@ func login(t *testing.T, client *Client, conf core.Config, email string) *pb.Log
 
 	// Ensure login request has processed
 	time.Sleep(time.Second)
-	verificationURL := fmt.Sprintf("%s/verify/%s", conf.AddrGatewayUrl, sessionSecret)
-	if _, err := http.Get(verificationURL); err != nil {
+	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, sessionSecret)
+	if _, err := http.Get(url); err != nil {
 		t.Fatalf("failed to reach gateway: %v", err)
 	}
 

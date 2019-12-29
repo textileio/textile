@@ -57,7 +57,9 @@ message InviteToTeamRequest {
     string email = 2;
 }
 
-message InviteToTeamReply {}
+message InviteToTeamReply {
+    string ID = 1;
+}
 
 message LeaveTeamRequest {
     string ID = 1;

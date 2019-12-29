@@ -15,7 +15,7 @@ func TestNewGateway(t *testing.T) {
 	}
 	addr := util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
 	url := fmt.Sprintf("http://127.0.0.1:%d", port)
-	gateway := NewGateway(addr, url)
+	gateway := NewGateway(addr, url, nil)
 
 	t.Run("test start", func(t *testing.T) {
 		gateway.Start()

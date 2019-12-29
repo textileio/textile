@@ -196,7 +196,7 @@ var inviteTeamsCmd = &cobra.Command{
 
 		ctx2, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		if err := client.InviteToTeam(
+		if _, err := client.InviteToTeam(
 			ctx2,
 			team.ID,
 			email,
