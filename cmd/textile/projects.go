@@ -6,8 +6,11 @@ import (
 	"os"
 	"path"
 
+	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -36,7 +39,7 @@ var initCmd = &cobra.Command{
 		if !c.Flag("path").Changed {
 			pth, err = os.Getwd()
 			if err != nil {
-				log.Fatal(err)
+				cmd.Fatal(err)
 			}
 		} else {
 			pth = c.Flag("path").Value.String()
@@ -49,7 +52,7 @@ var initCmd = &cobra.Command{
 
 		pth = path.Join(pth, ".textile")
 		if err := os.MkdirAll(pth, os.ModePerm); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 		filename := path.Join(pth, "config.yml")
 
@@ -67,7 +70,7 @@ var initCmd = &cobra.Command{
 				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 		configViper.Set("id", proj.ID)
 		if proj.StoreID != "" {
@@ -78,7 +81,7 @@ var initCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		fmt.Println(fmt.Sprintf("> Initialized empty project in %s", pth))
+		cmd.Success("Initialized empty project in %s", aurora.White(pth).Bold())
 	},
 }
 
@@ -99,16 +102,18 @@ var lsCmd = &cobra.Command{
 				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 
-		fmt.Println(fmt.Sprintf("> Found %d projects\n", len(projects.List)))
-
-		data := make([][]string, len(projects.List))
-		for i, p := range projects.List {
-			data[i] = []string{p.Name, p.ID, p.StoreID}
+		if len(projects.List) > 0 {
+			data := make([][]string, len(projects.List))
+			for i, p := range projects.List {
+				data[i] = []string{p.Name, p.ID, p.StoreID}
+			}
+			cmd.RenderTable([]string{"name", "id", "store id"}, data)
 		}
-		cmd.RenderTable([]string{"name", "id", "store id"}, data)
+
+		cmd.Message("Found %d projects for current scope", aurora.White(len(projects.List)).Bold())
 	},
 }
 
@@ -116,29 +121,13 @@ var lsCmd = &cobra.Command{
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Display project information",
-	Long:  `Display detailed information about a project.`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		return nil
-	},
+	Long:  `Display detailed information about a project (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		proj, err := client.GetProject(
-			ctx,
-			args[0],
-			api.Auth{
-				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
-			})
-		if err != nil {
-			log.Fatal(err)
-		}
+		selected := selectProject("Select project", aurora.Sprintf(
+			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
 
 		cmd.RenderTable([]string{"name", "id", "store id"},
-			[][]string{{proj.Name, proj.ID, proj.StoreID}})
+			[][]string{{selected.Name, selected.ID, selected.StoreID}})
 	},
 }
 
@@ -148,25 +137,56 @@ var rmCmd = &cobra.Command{
 		"remove",
 	},
 	Short: "Remove a project",
-	Long:  `Removes a project by its unique identifier (ID).`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires an ID argument")
-		}
-		return nil
-	},
+	Long:  `Remove a project (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectProject("Remove project", aurora.Sprintf(
+			aurora.BrightBlack("> Removing project {{ .Name | white | bold }}")))
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if err := client.RemoveProject(
 			ctx,
-			args[0],
+			selected.ID,
 			api.Auth{
 				Token: authViper.GetString("token"),
 				Scope: configViper.GetString("scope"),
 			}); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
-		fmt.Println("> Success")
+
+		_ = os.RemoveAll(configViper.ConfigFileUsed())
+
+		cmd.Success("Removed project %s", aurora.White(selected.Name).Bold())
 	},
+}
+
+func selectProject(label, successMsg string) *pb.GetProjectReply {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	projects, err := client.ListProjects(
+		ctx,
+		api.Auth{
+			Token: authViper.GetString("token"),
+			Scope: configViper.GetString("scope"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	prompt := promptui.Select{
+		Label: label,
+		Items: projects.List,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Name | faint }}`,
+			Details:  `{{ "(ID:" | faint }} {{ .ID | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return projects.List[index]
 }

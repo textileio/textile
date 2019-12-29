@@ -32,11 +32,8 @@ type fileSystem struct {
 
 // Exists returns whether or not the path exists in the binary assets.
 func (f *fileSystem) Exists(prefix, path string) bool {
-	if p := strings.TrimPrefix(path, prefix); len(p) < len(path) {
-		_, ok := f.Files[p]
-		return ok
-	}
-	return false
+	_, ok := f.Files[strings.TrimPrefix(path, prefix)]
+	return ok
 }
 
 // Gateway provides HTTP-based access to Textile.
@@ -79,7 +76,7 @@ func (g *Gateway) Start() {
 	}
 	router.SetHTMLTemplate(temp)
 
-	router.Use(static.Serve("/public", &fileSystem{Assets}))
+	router.Use(static.Serve("", &fileSystem{Assets}))
 
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusNoContent)
@@ -161,7 +158,7 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "/html/confirm.gohtml", nil)
+	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
 }
 
 // consentInvite adds a user to a team.
@@ -207,19 +204,19 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "/html/consent.gohtml", gin.H{
+	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
 		"Team": team.Name,
 	})
 }
 
 // render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {
-	c.HTML(http.StatusNotFound, "/html/404.gohtml", nil)
+	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
 }
 
 // renderError renders the error template.
 func (g *Gateway) renderError(c *gin.Context, code int, err error) {
-	c.HTML(code, "/html/error.gohtml", gin.H{
+	c.HTML(code, "/public/html/error.gohtml", gin.H{
 		"Code":  code,
 		"Error": formatError(err),
 	})

@@ -77,11 +77,12 @@ func Success(format string, args ...interface{}) {
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))
 }
 
-func Fatal(err error) {
+func Fatal(err error, args ...interface{}) {
 	words := strings.SplitN(err.Error(), " ", 2)
 	words[0] = strings.Title(words[0])
 	msg := strings.Join(words, " ")
-	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"), aurora.BrightBlack(msg)))
+	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
+		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
 	os.Exit(1)
 }
 

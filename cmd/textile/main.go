@@ -1,8 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"time"
+
+	"github.com/logrusorgru/aurora"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -75,7 +77,7 @@ func init() {
 		"Authorization token")
 
 	if err := cmd.BindFlags(authViper, rootCmd, authFlags); err != nil {
-		log.Fatal(err)
+		cmd.Fatal(err)
 	}
 
 	rootCmd.PersistentFlags().StringVar(
@@ -111,7 +113,7 @@ func init() {
 		"Textile API listen address")
 
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
-		log.Fatal(err)
+		cmd.Fatal(err)
 	}
 }
 
@@ -133,28 +135,29 @@ var rootCmd = &cobra.Command{
 		cmd.ExpandConfigVars(configViper, flags)
 
 		if authViper.GetString("token") == "" && c.Use != "login" {
-			cmd.Fatal(fmt.Errorf(
-				"unauthorized! run 'textile login' or use the --token flag to authorize"))
+			msg := "unauthorized! run `%s` or use `%s` to authorize"
+			cmd.Fatal(errors.New(msg),
+				aurora.Cyan("textile login"), aurora.Cyan("--token"))
 		}
 
 		if configViper.GetBool("log.debug") {
 			if err := util.SetLogLevels(map[string]logger.Level{
 				"textile": logger.DEBUG,
 			}); err != nil {
-				log.Fatal(err)
+				cmd.Fatal(err)
 			}
 		}
 
 		var err error
 		client, err = api.NewClient(cmd.AddrFromStr(configViper.GetString("addr.api")))
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
 		if client != nil {
 			if err := client.Close(); err != nil {
-				log.Fatal(err)
+				cmd.Fatal(err)
 			}
 		}
 	},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/mail"
 
@@ -40,26 +41,34 @@ var teamsCmd = &cobra.Command{
 var addTeamsCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add team",
-	Long:  `Add a new team with the given name.`,
-	Args: func(c *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("requires a name argument")
-		}
-		return nil
-	},
+	Long:  `Add a new team (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
+		prompt := promptui.Prompt{
+			Label: "Enter a team name",
+			Validate: func(name string) error {
+				if len(name) < 3 {
+					return errors.New("name too short")
+				}
+				return nil
+			},
+		}
+		name, err := prompt.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if _, err := client.AddTeam(
 			ctx,
-			args[0],
+			name,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("Added new team %s", aurora.White(args[0]).Bold())
+		cmd.Success("Added new team %s", aurora.White(name).Bold())
 	},
 }
 
@@ -131,7 +140,7 @@ var rmTeamsCmd = &cobra.Command{
 	Short: "Remove a team",
 	Long:  `Remove a team (interactive). You must be the team owner.`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam(aurora.Sprintf(
+		selected := selectTeam("Remove team", aurora.Sprintf(
 			aurora.BrightBlack("> Removing team {{ .Name | white | bold }}")))
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -156,8 +165,9 @@ var inviteTeamsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		scope := configViper.GetString("scope")
 		if scope == "" {
-			cmd.Fatal(fmt.Errorf(
-				"please select a team scope using `textile switch` or use `--scope`"))
+			msg := "please select a team scope using `%s` or use `%s`"
+			cmd.Fatal(errors.New(msg),
+				aurora.Cyan("textile switch"), aurora.Cyan("--scope"))
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -181,8 +191,7 @@ var inviteTeamsCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			cmd.Fatal(err)
-			return
+			log.Fatal(err)
 		}
 
 		ctx2, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -207,7 +216,7 @@ var leaveTeamsCmd = &cobra.Command{
 	Short: "Leave a team",
 	Long:  `Leave a team (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam(aurora.Sprintf(
+		selected := selectTeam("Leave team", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving team {{ .Name | white | bold }}")))
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -230,7 +239,7 @@ var switchTeamsCmd = &cobra.Command{
 	Short: "Switch teams",
 	Long:  `Switch to a different team.`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam(aurora.Sprintf(aurora.Cyan("> Success! %s"),
+		selected := selectTeam("Switch to team", aurora.Sprintf(aurora.Cyan("> Success! %s"),
 			aurora.Sprintf(aurora.BrightBlack("Switched to team {{ .Name | white | bold }}"))))
 
 		configViper.Set("scope", selected.ID)
@@ -240,7 +249,7 @@ var switchTeamsCmd = &cobra.Command{
 	},
 }
 
-func selectTeam(successMsg string) *pb.GetTeamReply {
+func selectTeam(label, successMsg string) *pb.GetTeamReply {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	teams, err := client.ListTeams(
@@ -253,7 +262,7 @@ func selectTeam(successMsg string) *pb.GetTeamReply {
 	}
 
 	prompt := promptui.Select{
-		Label: "Switch to team",
+		Label: label,
 		Items: teams.List,
 		Templates: &promptui.SelectTemplates{
 			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
@@ -264,7 +273,7 @@ func selectTeam(successMsg string) *pb.GetTeamReply {
 	}
 	index, _, err := prompt.Run()
 	if err != nil {
-		cmd.Fatal(err)
+		log.Fatal(err)
 	}
 
 	return teams.List[index]
