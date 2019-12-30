@@ -107,13 +107,17 @@ func lsTeams() {
 var membersTeamsCmd = &cobra.Command{
 	Use:   "members",
 	Short: "List team members",
-	Long:  `List current team members.`,
+	Long:  `List current team members (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectTeam("Select team", aurora.Sprintf(
+			aurora.BrightBlack("> Selected team {{ .Name | white | bold }}")),
+			false)
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		team, err := client.GetTeam(
 			ctx,
-			args[0],
+			selected.ID,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			})
