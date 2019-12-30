@@ -83,6 +83,50 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}, nil
 }
 
+// Logout handles a logout request.
+func (s *service) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutReply, error) {
+	log.Debugf("received logout request")
+
+	session, ok := ctx.Value(reqKey("session")).(string)
+	if !ok {
+		log.Fatal("session required")
+	}
+	if err := s.collections.Sessions.Delete(session); err != nil {
+		return nil, err
+	}
+
+	return &pb.LogoutReply{}, nil
+}
+
+// Whoami handles a whoami request.
+func (s *service) Whoami(ctx context.Context, req *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
+	log.Debugf("received whoami request")
+
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if !ok {
+		log.Fatal("user required")
+	}
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+
+	reply := &pb.WhoamiReply{}
+	if scope == user.ID {
+		reply.ID = user.ID
+		reply.Name = user.Email
+	} else {
+		team, err := s.collections.Teams.Get(scope)
+		if err != nil {
+			return nil, err
+		}
+		reply.ID = team.ID
+		reply.Name = team.Name
+	}
+
+	return reply, nil
+}
+
 // awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
 	listen := s.gateway.SessionListener()
@@ -249,7 +293,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 		return nil, err
 	}
 
-	return &pb.InviteToTeamReply{ID: invite.ID}, nil
+	return &pb.InviteToTeamReply{InviteID: invite.ID}, nil
 }
 
 // LeaveTeam handles a leave team request.

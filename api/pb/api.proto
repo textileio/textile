@@ -15,6 +15,17 @@ message LoginReply {
     string token = 2;
 }
 
+message LogoutRequest {}
+
+message LogoutReply {}
+
+message WhoamiRequest {}
+
+message WhoamiReply {
+    string ID = 1;
+    string Name = 2;
+}
+
 message AddTeamRequest {
     string name = 1;
 }
@@ -58,7 +69,7 @@ message InviteToTeamRequest {
 }
 
 message InviteToTeamReply {
-    string ID = 1;
+    string inviteID = 1;
 }
 
 message LeaveTeamRequest {
@@ -101,6 +112,8 @@ message RemoveProjectReply {}
 
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
+    rpc Logout(LogoutRequest) returns (LogoutReply) {}
+    rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
 
     rpc AddTeam (AddTeamRequest) returns (AddTeamReply) {}
     rpc GetTeam (GetTeamRequest) returns (GetTeamReply) {}

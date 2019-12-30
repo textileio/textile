@@ -49,6 +49,17 @@ func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error
 	return c.c.Login(ctx, &pb.LoginRequest{Email: email})
 }
 
+// Logout deletes a remote session.
+func (c *Client) Logout(ctx context.Context, auth Auth) error {
+	_, err := c.c.Logout(authCtx(ctx, auth), &pb.LogoutRequest{})
+	return err
+}
+
+// Whoami returns session info.
+func (c *Client) Whoami(ctx context.Context, auth Auth) (*pb.WhoamiReply, error) {
+	return c.c.Whoami(authCtx(ctx, auth), &pb.WhoamiRequest{})
+}
+
 // AddTeam add a new team.
 func (c *Client) AddTeam(ctx context.Context, name string, auth Auth) (*pb.AddTeamReply, error) {
 	return c.c.AddTeam(authCtx(ctx, auth), &pb.AddTeamRequest{Name: name})

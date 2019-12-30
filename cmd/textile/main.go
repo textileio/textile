@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"time"
 
-	"github.com/logrusorgru/aurora"
-
 	logging "github.com/ipfs/go-log"
+	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -165,10 +165,21 @@ var rootCmd = &cobra.Command{
 
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
-	Short: "Show username and team of currently logged in user",
-	Long:  `Show the username and active team of the currently logged in user.`,
+	Short: "Show user or team",
+	Long:  `Show the user or team for the current session.`,
 	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		who, err := client.Whoami(
+			ctx,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
 
+		cmd.RenderTable([]string{"email / name", "id"}, [][]string{{who.Name, who.ID}})
 	},
 }
 

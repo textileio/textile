@@ -136,7 +136,9 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
-	newCtx := context.WithValue(ctx, reqKey("user"), user)
+
+	newCtx := context.WithValue(ctx, reqKey("session"), session.ID)
+	newCtx = context.WithValue(newCtx, reqKey("user"), user)
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope == "" || scope == user.ID {

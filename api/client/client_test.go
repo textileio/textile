@@ -25,7 +25,75 @@ func TestLogin(t *testing.T) {
 	defer done()
 
 	t.Run("test login", func(t *testing.T) {
-		_ = login(t, client, conf, "jon@doe.com")
+		user := login(t, client, conf, "jon@doe.com")
+		if user.Token == "" {
+			t.Fatal("got empty token from login")
+		}
+	})
+}
+
+func TestLogout(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	t.Run("test logout without token", func(t *testing.T) {
+		if err := client.Logout(context.Background(), Auth{}); err == nil {
+			t.Fatal("logout without token should fail")
+		}
+	})
+
+	user := login(t, client, conf, "jon@doe.com")
+
+	t.Run("test logout", func(t *testing.T) {
+		if err := client.Logout(context.Background(), Auth{Token: user.Token}); err != nil {
+			t.Fatalf("logout should succeed: %v", err)
+		}
+	})
+}
+
+func TestWhoami(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	t.Run("test whoami without token", func(t *testing.T) {
+		if _, err := client.Whoami(context.Background(), Auth{}); err == nil {
+			t.Fatal("whoami without token should fail")
+		}
+	})
+
+	user := login(t, client, conf, "jon@doe.com")
+
+	t.Run("test whoami", func(t *testing.T) {
+		who, err := client.Whoami(context.Background(), Auth{Token: user.Token})
+		if err != nil {
+			t.Fatalf("whoami should succeed: %v", err)
+		}
+		if who.ID != user.ID {
+			t.Fatal("got bad ID from whoami")
+		}
+		if who.Name != "jon@doe.com" {
+			t.Fatal("got bad name from whoami")
+		}
+	})
+
+	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test whoami as team", func(t *testing.T) {
+		who, err := client.Whoami(context.Background(), Auth{Token: user.Token, Scope: team.ID})
+		if err != nil {
+			t.Fatalf("whoami as team should succeed: %v", err)
+		}
+		if who.ID != team.ID {
+			t.Fatal("got bad ID from whoami")
+		}
+		if who.Name != "foo" {
+			t.Fatal("got bad name from whoami")
+		}
 	})
 }
 
@@ -172,7 +240,7 @@ func TestInviteToTeam(t *testing.T) {
 		if err != nil {
 			t.Fatalf("invite to team should succeed: %v", err)
 		}
-		if res.ID == "" {
+		if res.InviteID == "" {
 			t.Fatal("got empty ID from invite to team")
 		}
 	})
@@ -208,7 +276,7 @@ func TestLeaveTeam(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	url := fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.ID)
+	url := fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.InviteID)
 	if _, err := http.Get(url); err != nil {
 		t.Fatalf("failed to reach gateway: %v", err)
 	}
