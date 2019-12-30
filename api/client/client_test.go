@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"testing"
@@ -516,6 +517,8 @@ func setup(t *testing.T) (core.Config, *Client, func()) {
 }
 
 func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
+	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
