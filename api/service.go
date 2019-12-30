@@ -111,17 +111,17 @@ func (s *service) Whoami(ctx context.Context, req *pb.WhoamiRequest) (*pb.Whoami
 		log.Fatal("scope required")
 	}
 
-	reply := &pb.WhoamiReply{}
-	if scope == user.ID {
-		reply.ID = user.ID
-		reply.Name = user.Email
-	} else {
+	reply := &pb.WhoamiReply{
+		ID:    user.ID,
+		Email: user.Email,
+	}
+	if scope != user.ID {
 		team, err := s.collections.Teams.Get(scope)
 		if err != nil {
 			return nil, err
 		}
-		reply.ID = team.ID
-		reply.Name = team.Name
+		reply.TeamID = team.ID
+		reply.TeamName = team.Name
 	}
 
 	return reply, nil

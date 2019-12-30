@@ -174,12 +174,16 @@ var whoamiCmd = &cobra.Command{
 			ctx,
 			api.Auth{
 				Token: authViper.GetString("token"),
+				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
 		}
 
-		cmd.RenderTable([]string{"email / name", "id"}, [][]string{{who.Name, who.ID}})
+		cmd.Message("You are %s", aurora.White(who.Email).Bold())
+		if who.TeamID != "" {
+			cmd.Message("Your current team is %s", aurora.White(who.TeamName).Bold())
+		}
 	},
 }
 
@@ -188,6 +192,13 @@ var switchCmd = &cobra.Command{
 	Short: "Switch teams or personal account",
 	Long:  `Switch between teams and your personal account.`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectTeam("Switch to", aurora.Sprintf(aurora.Cyan("> Success! %s"),
+			aurora.Sprintf(aurora.BrightBlack("Switched to {{ .Name | white | bold }}"))),
+			true)
 
+		configViper.Set("scope", selected.ID)
+		if err := configViper.WriteConfig(); err != nil {
+			cmd.Fatal(err)
+		}
 	},
 }

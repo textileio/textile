@@ -10,7 +10,6 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
-	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -141,7 +140,8 @@ var rmTeamsCmd = &cobra.Command{
 	Long:  `Remove a team (interactive). You must be the team owner.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectTeam("Remove team", aurora.Sprintf(
-			aurora.BrightBlack("> Removing team {{ .Name | white | bold }}")))
+			aurora.BrightBlack("> Removing team {{ .Name | white | bold }}")),
+			false)
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -217,7 +217,8 @@ var leaveTeamsCmd = &cobra.Command{
 	Long:  `Leave a team (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectTeam("Leave team", aurora.Sprintf(
-			aurora.BrightBlack("> Leaving team {{ .Name | white | bold }}")))
+			aurora.BrightBlack("> Leaving team {{ .Name | white | bold }}")),
+			false)
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -240,7 +241,8 @@ var switchTeamsCmd = &cobra.Command{
 	Long:  `Switch to a different team.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectTeam("Switch to team", aurora.Sprintf(aurora.Cyan("> Success! %s"),
-			aurora.Sprintf(aurora.BrightBlack("Switched to team {{ .Name | white | bold }}"))))
+			aurora.Sprintf(aurora.BrightBlack("Switched to team {{ .Name | white | bold }}"))),
+			false)
 
 		configViper.Set("scope", selected.ID)
 		if err := configViper.WriteConfig(); err != nil {
@@ -249,7 +251,13 @@ var switchTeamsCmd = &cobra.Command{
 	},
 }
 
-func selectTeam(label, successMsg string) *pb.GetTeamReply {
+type teamItem struct {
+	ID      string
+	Name    string
+	Display string
+}
+
+func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	teams, err := client.ListTeams(
@@ -261,12 +269,43 @@ func selectTeam(label, successMsg string) *pb.GetTeamReply {
 		cmd.Fatal(err)
 	}
 
+	items := make([]teamItem, len(teams.List))
+	for i, t := range teams.List {
+		items[i] = teamItem{ID: t.ID, Name: t.Name, Display: t.Name}
+	}
+
+	if includeAccount {
+		ctx2, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		who, err := client.Whoami(
+			ctx2,
+			api.Auth{
+				Token: authViper.GetString("token"),
+				Scope: configViper.GetString("scope"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		items = append([]teamItem{{
+			ID:      who.ID,
+			Name:    who.Email,
+			Display: who.Email,
+		}}, items...)
+
+		for i, t := range items {
+			fmt.Println(t.ID, who.TeamID)
+			if t.ID == who.TeamID {
+				items[i].Display += " (current)"
+			}
+		}
+	}
+
 	prompt := promptui.Select{
 		Label: label,
-		Items: teams.List,
+		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .Name | faint }}`,
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Display | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Display | faint }}`,
 			Details:  `{{ "(ID:" | faint }} {{ .ID | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
@@ -276,5 +315,5 @@ func selectTeam(label, successMsg string) *pb.GetTeamReply {
 		log.Fatal(err)
 	}
 
-	return teams.List[index]
+	return &items[index]
 }

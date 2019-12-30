@@ -73,7 +73,7 @@ func TestWhoami(t *testing.T) {
 		if who.ID != user.ID {
 			t.Fatal("got bad ID from whoami")
 		}
-		if who.Name != "jon@doe.com" {
+		if who.Email != "jon@doe.com" {
 			t.Fatal("got bad name from whoami")
 		}
 	})
@@ -88,10 +88,10 @@ func TestWhoami(t *testing.T) {
 		if err != nil {
 			t.Fatalf("whoami as team should succeed: %v", err)
 		}
-		if who.ID != team.ID {
+		if who.TeamID != team.ID {
 			t.Fatal("got bad ID from whoami")
 		}
-		if who.Name != "foo" {
+		if who.TeamName != "foo" {
 			t.Fatal("got bad name from whoami")
 		}
 	})

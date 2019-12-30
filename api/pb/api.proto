@@ -23,7 +23,9 @@ message WhoamiRequest {}
 
 message WhoamiReply {
     string ID = 1;
-    string Name = 2;
+    string Email = 2;
+    string teamID = 3;
+    string teamName = 4;
 }
 
 message AddTeamRequest {
