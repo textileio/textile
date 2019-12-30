@@ -32,6 +32,36 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+func TestSwitch(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	t.Run("test switch without token", func(t *testing.T) {
+		if err := client.Switch(context.Background(), Auth{}); err == nil {
+			t.Fatal("switch without token should fail")
+		}
+	})
+
+	user := login(t, client, conf, "jon@doe.com")
+	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test switch to team scope", func(t *testing.T) {
+		if err := client.Switch(context.Background(), Auth{Token: user.Token, Scope: team.ID}); err != nil {
+			t.Fatalf("switch to team scope should succeed: %v", err)
+		}
+	})
+
+	t.Run("test switch to user scope", func(t *testing.T) {
+		if err := client.Switch(context.Background(), Auth{Token: user.Token, Scope: user.ID}); err != nil {
+			t.Fatalf("switch to user scope should succeed: %v", err)
+		}
+	})
+}
+
 func TestLogout(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)

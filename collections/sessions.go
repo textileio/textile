@@ -14,6 +14,7 @@ var (
 type Session struct {
 	ID     string
 	UserID string
+	Scope  string // user or team ID
 	Expiry int
 }
 
@@ -34,9 +35,10 @@ func (s *Sessions) GetStoreID() *uuid.UUID {
 	return s.storeID
 }
 
-func (s *Sessions) Create(userID string) (*Session, error) {
+func (s *Sessions) Create(userID, scope string) (*Session, error) {
 	session := &Session{
 		UserID: userID,
+		Scope:  scope,
 		Expiry: int(time.Now().Add(sessionDur).Unix()),
 	}
 	if err := s.threads.ModelCreate(s.storeID.String(), s.GetName(), session); err != nil {
@@ -53,12 +55,16 @@ func (s *Sessions) Get(id string) (*Session, error) {
 	return session, nil
 }
 
-func (s *Sessions) Touch(session *Session) (err error) {
+func (s *Sessions) Touch(session *Session) error {
 	session.Expiry = int(time.Now().Add(sessionDur).Unix())
 	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
 }
 
-// @todo: Delete session on logout
+func (s *Sessions) SwitchScope(session *Session, scope string) error {
+	session.Scope = scope
+	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
+}
+
 func (s *Sessions) Delete(id string) error {
 	return s.threads.ModelDelete(s.storeID.String(), s.GetName(), id)
 }

@@ -36,22 +36,18 @@ var (
 			Key:      "log.debug",
 			DefValue: false,
 		},
-
 		"id": {
 			Key:      "id",
 			DefValue: "",
 		},
-
 		"store": {
 			Key:      "store",
 			DefValue: "",
 		},
-
 		"scope": {
 			Key:      "scope",
 			DefValue: "",
 		},
-
 		"addrApi": {
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
@@ -105,12 +101,12 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"scope",
 		flags["scope"].DefValue.(string),
-		"Project Scope (User or Team ID)")
+		"Scope (User or Team ID)")
 
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		flags["addrApi"].DefValue.(string),
-		"Textile API listen address")
+		"Textile API address")
 
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		cmd.Fatal(err)
@@ -180,9 +176,11 @@ var whoamiCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Message("You are %s", aurora.White(who.Email).Bold())
 		if who.TeamID != "" {
-			cmd.Message("Your current team is %s", aurora.White(who.TeamName).Bold())
+			cmd.Message("You are %s in the %s team",
+				aurora.White(who.Email).Bold(), aurora.White(who.TeamName).Bold())
+		} else {
+			cmd.Message("You are %s", aurora.White(who.Email).Bold())
 		}
 	},
 }
@@ -192,13 +190,21 @@ var switchCmd = &cobra.Command{
 	Short: "Switch teams or personal account",
 	Long:  `Switch between teams and your personal account.`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam("Switch to", aurora.Sprintf(aurora.Cyan("> Success! %s"),
-			aurora.Sprintf(aurora.BrightBlack("Switched to {{ .Name | white | bold }}"))),
+		selected := selectTeam("Switch to", aurora.Sprintf(
+			aurora.BrightBlack("> Switching to {{ .Name | white | bold }}")),
 			true)
 
-		configViper.Set("scope", selected.ID)
-		if err := configViper.WriteConfig(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.Switch(
+			ctx,
+			api.Auth{
+				Token: authViper.GetString("token"),
+				Scope: selected.ID,
+			}); err != nil {
 			cmd.Fatal(err)
 		}
+
+		cmd.Success("Switched to %s", aurora.White(selected.Name).Bold())
 	},
 }

@@ -72,7 +72,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.collections.Sessions.Create(user.ID)
+	session, err := s.collections.Sessions.Create(user.ID, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,15 +83,34 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}, nil
 }
 
+// Switch handles a switch request.
+func (s *service) Switch(ctx context.Context, req *pb.SwitchRequest) (*pb.SwitchReply, error) {
+	log.Debugf("received switch request")
+
+	session, ok := ctx.Value(reqKey("session")).(*c.Session)
+	if !ok {
+		log.Fatal("session required")
+	}
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	if err := s.collections.Sessions.SwitchScope(session, scope); err != nil {
+		return nil, err
+	}
+
+	return &pb.SwitchReply{}, nil
+}
+
 // Logout handles a logout request.
 func (s *service) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutReply, error) {
 	log.Debugf("received logout request")
 
-	session, ok := ctx.Value(reqKey("session")).(string)
+	session, ok := ctx.Value(reqKey("session")).(*c.Session)
 	if !ok {
 		log.Fatal("session required")
 	}
-	if err := s.collections.Sessions.Delete(session); err != nil {
+	if err := s.collections.Sessions.Delete(session.ID); err != nil {
 		return nil, err
 	}
 

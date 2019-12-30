@@ -49,6 +49,12 @@ func (c *Client) Login(ctx context.Context, email string) (*pb.LoginReply, error
 	return c.c.Login(ctx, &pb.LoginRequest{Email: email})
 }
 
+// Switch changes session scope.
+func (c *Client) Switch(ctx context.Context, auth Auth) error {
+	_, err := c.c.Switch(authCtx(ctx, auth), &pb.SwitchRequest{})
+	return err
+}
+
 // Logout deletes a remote session.
 func (c *Client) Logout(ctx context.Context, auth Auth) error {
 	_, err := c.c.Logout(authCtx(ctx, auth), &pb.LogoutRequest{})

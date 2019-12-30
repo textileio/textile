@@ -15,6 +15,10 @@ message LoginReply {
     string token = 2;
 }
 
+message SwitchRequest {}
+
+message SwitchReply {}
+
 message LogoutRequest {}
 
 message LogoutReply {}
@@ -115,6 +119,7 @@ message RemoveProjectReply {}
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
+    rpc Switch(SwitchRequest) returns (SwitchReply) {}
     rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
 
     rpc AddTeam (AddTeamRequest) returns (AddTeamReply) {}

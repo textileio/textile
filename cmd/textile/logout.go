@@ -28,6 +28,6 @@ var logoutCmd = &cobra.Command{
 
 		_ = os.RemoveAll(authViper.ConfigFileUsed())
 
-		cmd.Success("See ya later :)")
+		cmd.Success("Bye :)")
 	},
 }

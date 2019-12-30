@@ -163,23 +163,22 @@ var inviteTeamsCmd = &cobra.Command{
 	Short: "Invite members",
 	Long:  `Invite a new member to a team.`,
 	Run: func(c *cobra.Command, args []string) {
-		scope := configViper.GetString("scope")
-		if scope == "" {
-			msg := "please select a team scope using `%s` or use `%s`"
-			cmd.Fatal(errors.New(msg),
-				aurora.Cyan("textile switch"), aurora.Cyan("--scope"))
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		team, err := client.GetTeam(
+		who, err := client.Whoami(
 			ctx,
-			scope,
 			api.Auth{
 				Token: authViper.GetString("token"),
+				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
+		}
+
+		if who.TeamID == "" {
+			msg := "please select a team scope using `%s` or use `%s`"
+			cmd.Fatal(errors.New(msg),
+				aurora.Cyan("textile switch"), aurora.Cyan("--scope"))
 		}
 
 		prompt := promptui.Prompt{
@@ -198,7 +197,7 @@ var inviteTeamsCmd = &cobra.Command{
 		defer cancel()
 		if _, err := client.InviteToTeam(
 			ctx2,
-			team.ID,
+			who.TeamID,
 			email,
 			api.Auth{
 				Token: authViper.GetString("token"),
@@ -206,8 +205,8 @@ var inviteTeamsCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("We sent %s an invitation to %s", aurora.White(email).Bold(),
-			aurora.White(team.Name).Bold())
+		cmd.Success("We sent %s an invitation to the %s team", aurora.White(email).Bold(),
+			aurora.White(who.TeamName).Bold())
 	},
 }
 
@@ -240,21 +239,29 @@ var switchTeamsCmd = &cobra.Command{
 	Short: "Switch teams",
 	Long:  `Switch to a different team.`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam("Switch to team", aurora.Sprintf(aurora.Cyan("> Success! %s"),
-			aurora.Sprintf(aurora.BrightBlack("Switched to team {{ .Name | white | bold }}"))),
+		selected := selectTeam("Switch to team", aurora.Sprintf(
+			aurora.BrightBlack("> Switching to team {{ .Name | white | bold }}")),
 			false)
 
-		configViper.Set("scope", selected.ID)
-		if err := configViper.WriteConfig(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.Switch(
+			ctx,
+			api.Auth{
+				Token: authViper.GetString("token"),
+				Scope: selected.ID,
+			}); err != nil {
 			cmd.Fatal(err)
 		}
+
+		cmd.Success("Switched to team %s", aurora.White(selected.Name).Bold())
 	},
 }
 
 type teamItem struct {
-	ID      string
-	Name    string
-	Display string
+	ID    string
+	Name  string
+	Extra string
 }
 
 func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
@@ -269,9 +276,9 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 		cmd.Fatal(err)
 	}
 
-	items := make([]teamItem, len(teams.List))
+	items := make([]*teamItem, len(teams.List))
 	for i, t := range teams.List {
-		items[i] = teamItem{ID: t.ID, Name: t.Name, Display: t.Name}
+		items[i] = &teamItem{ID: t.ID, Name: t.Name}
 	}
 
 	if includeAccount {
@@ -286,26 +293,30 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		items = append([]teamItem{{
-			ID:      who.ID,
-			Name:    who.Email,
-			Display: who.Email,
-		}}, items...)
 
-		for i, t := range items {
-			fmt.Println(t.ID, who.TeamID)
-			if t.ID == who.TeamID {
-				items[i].Display += " (current)"
+		account := &teamItem{
+			ID:   who.ID,
+			Name: who.Email,
+		}
+		if who.TeamID == "" {
+			account.Extra = "(current)"
+		} else {
+			for i, t := range items {
+				if t.ID == who.TeamID {
+					items[i].Extra = "(current)"
+				}
 			}
 		}
+		items = append([]*teamItem{account}, items...)
 	}
 
 	prompt := promptui.Select{
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Display | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .Display | faint }}`,
+			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Extra | faint | bold }}`,
+				promptui.IconSelect),
+			Inactive: `{{ .Name | faint }} {{ .Extra | faint | bold }}`,
 			Details:  `{{ "(ID:" | faint }} {{ .ID | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
@@ -315,5 +326,5 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 		log.Fatal(err)
 	}
 
-	return &items[index]
+	return items[index]
 }

@@ -137,19 +137,20 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
 
-	newCtx := context.WithValue(ctx, reqKey("session"), session.ID)
+	newCtx := context.WithValue(ctx, reqKey("session"), session)
 	newCtx = context.WithValue(newCtx, reqKey("user"), user)
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
-	if scope == "" || scope == user.ID {
-		newCtx = context.WithValue(newCtx, reqKey("scope"), user.ID)
-	} else {
-		team, err := s.service.getTeamForUser(scope, user)
-		if err != nil {
-			return nil, err
+	if scope != "" {
+		if scope != user.ID {
+			if _, err := s.service.getTeamForUser(scope, user); err != nil {
+				return nil, err
+			}
 		}
-		newCtx = context.WithValue(newCtx, reqKey("scope"), team.ID)
+	} else {
+		scope = session.Scope
 	}
+	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 
 	if err := s.service.collections.Sessions.Touch(session); err != nil {
 		return nil, err

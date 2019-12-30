@@ -23,17 +23,14 @@ var (
 			Key:      "repo",
 			DefValue: "${HOME}/.textiled/repo",
 		},
-
 		"debug": {
 			Key:      "log.debug",
 			DefValue: false,
 		},
-
 		"logFile": {
 			Key:      "log.file",
 			DefValue: "${HOME}/.textiled/log",
 		},
-
 		"addrApi": {
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
