@@ -95,11 +95,13 @@ func lsTeams() {
 		cmd.Fatal(err)
 	}
 
-	data := make([][]string, len(teams.List))
-	for i, t := range teams.List {
-		data[i] = []string{t.Name, t.ID}
+	if len(teams.List) > 0 {
+		data := make([][]string, len(teams.List))
+		for i, t := range teams.List {
+			data[i] = []string{t.Name, t.ID}
+		}
+		cmd.RenderTable([]string{"name", "id"}, data)
 	}
-	cmd.RenderTable([]string{"name", "id"}, data)
 
 	cmd.Message("Found %d teams", aurora.White(len(teams.List)).Bold())
 }
@@ -125,11 +127,13 @@ var membersTeamsCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		data := make([][]string, len(team.Members))
-		for i, m := range team.Members {
-			data[i] = []string{m.Email, m.ID}
+		if len(team.Members) > 0 {
+			data := make([][]string, len(team.Members))
+			for i, m := range team.Members {
+				data[i] = []string{m.Email, m.ID}
+			}
+			cmd.RenderTable([]string{"email", "id"}, data)
 		}
-		cmd.RenderTable([]string{"email", "id"}, data)
 
 		cmd.Message("Found %d members", aurora.White(len(team.Members)).Bold())
 	},

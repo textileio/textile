@@ -31,7 +31,7 @@ func init() {
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Init",
+	Short: "Init a new project",
 	Long:  `Initialize a new project.`,
 	Run: func(c *cobra.Command, args []string) {
 		var pth, name string
