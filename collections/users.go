@@ -1,16 +1,18 @@
 package collections
 
 import (
-	"github.com/google/uuid"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
 	es "github.com/textileio/go-threads/eventstore"
 )
 
 type User struct {
-	ID    string
-	Email string
-	Teams []string
+	ID      string
+	Email   string
+	Teams   []string
+	Created int64
 }
 
 type Users struct {
@@ -31,7 +33,11 @@ func (u *Users) GetStoreID() *uuid.UUID {
 }
 
 func (u *Users) Create(email string) (*User, error) {
-	user := &User{Email: email, Teams: []string{}}
+	user := &User{
+		Email:   email,
+		Teams:   []string{},
+		Created: time.Now().Unix(),
+	}
 	if err := u.threads.ModelCreate(u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
 	}
@@ -56,28 +62,58 @@ func (u *Users) GetByEmail(email string) ([]*User, error) {
 	return users, nil
 }
 
-func (u *Users) List() ([]*User, error) {
-	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, &User{})
+func (u *Users) ListByTeam(teamID string) ([]*User, error) {
+	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, []*User{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*User), nil
+	// @todo: Enable indexes :)
+	// @todo: Enable a 'contains' query condition.
+	var users []*User
+loop:
+	for _, u := range res.([]*User) {
+		for _, t := range u.Teams {
+			if t == teamID {
+				users = append(users, u)
+				continue loop
+			}
+		}
+	}
+	return users, nil
 }
 
-func (u *Users) HasTeam(user *User, team *Team) bool {
+func (u *Users) HasTeam(user *User, teamID string) bool {
 	for _, t := range user.Teams {
-		if team.ID == t {
+		if teamID == t {
 			return true
 		}
 	}
 	return false
 }
 
-func (u *Users) AddTeam(user *User, team *Team) error {
-	user.Teams = append(user.Teams, team.ID)
+func (u *Users) JoinTeam(user *User, teamID string) error {
+	for _, t := range user.Teams {
+		if t == teamID {
+			return nil
+		}
+	}
+	user.Teams = append(user.Teams, teamID)
 	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
 }
 
+func (u *Users) LeaveTeam(user *User, teamID string) error {
+	n := 0
+	for _, x := range user.Teams {
+		if x != teamID {
+			user.Teams[n] = x
+			n++
+		}
+	}
+	user.Teams = user.Teams[:n]
+	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
+}
+
+// @todo: Add a destroy method that calls this. User must first delete projects and teams they own.
 func (u *Users) Delete(id string) error {
 	return u.threads.ModelDelete(u.storeID.String(), u.GetName(), id)
 }

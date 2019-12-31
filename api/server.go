@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net"
+	"time"
 
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
@@ -70,7 +71,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:   conf.Collections,
-			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl),
+			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
 			sessionSecret: conf.SessionSecret,
 		},
@@ -128,26 +129,28 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
+	if session.Expiry < int(time.Now().Unix()) {
+		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
+	}
 	user, err := s.service.collections.Users.Get(session.UserID)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
-	newCtx := context.WithValue(ctx, reqKey("user"), user)
+
+	newCtx := context.WithValue(ctx, reqKey("session"), session)
+	newCtx = context.WithValue(newCtx, reqKey("user"), user)
 
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
-	if scope != "" && scope != user.ID {
-		team, err := s.service.collections.Teams.Get(scope)
-		if err != nil {
-			return nil, err
+	if scope != "" {
+		if scope != user.ID {
+			if _, err := s.service.getTeamForUser(scope, user); err != nil {
+				return nil, err
+			}
 		}
-		if team == nil {
-			return nil, status.Error(codes.NotFound, "Scope not found")
-		}
-		if !s.service.collections.Users.HasTeam(user, team) {
-			return nil, status.Error(codes.PermissionDenied, "User is not a team member")
-		}
-		newCtx = context.WithValue(newCtx, reqKey("team"), team)
+	} else {
+		scope = session.Scope
 	}
+	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 
 	if err := s.service.collections.Sessions.Touch(session); err != nil {
 		return nil, err

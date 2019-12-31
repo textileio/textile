@@ -3,6 +3,8 @@ package email
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"net/mail"
 	"text/template"
 
 	logging "github.com/ipfs/go-log"
@@ -15,21 +17,13 @@ var (
 	log = logging.Logger("email")
 )
 
-const (
-	verificationMsg = `To confirm your email click here: {{.Link}}`
-)
-
-// Client holds MailGun account details.
+// Client wraps a MailGun client.
 type Client struct {
 	from            string
 	gun             *mailgun.MailgunImpl
 	verificationTmp *template.Template
+	inviteTmp       *template.Template
 	debug           bool
-}
-
-// messageValue holds message data.
-type messageValue struct {
-	Link string
 }
 
 // NewClient return a mailgun-backed email client.
@@ -42,7 +36,15 @@ func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 		}
 	}
 
+	if _, err := mail.ParseAddress(from); err != nil {
+		log.Fatalf("error parsing from email address: %v", err)
+	}
+
 	vt, err := template.New("verification").Parse(verificationMsg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	it, err := template.New("invite").Parse(inviteMsg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,6 +52,7 @@ func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 	client := &Client{
 		from:            from,
 		verificationTmp: vt,
+		inviteTmp:       it,
 		debug:           debug,
 	}
 
@@ -59,23 +62,47 @@ func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 	return client, nil
 }
 
-// VerifyAddress sends a verification link to a recipient.
-func (e *Client) VerifyAddress(ctx context.Context, recipient, link string) error {
+type confirmData struct {
+	Link string
+}
+
+// ConfirmAddress sends a confirmation link to a recipient.
+func (e *Client) ConfirmAddress(ctx context.Context, to, url, secret string) error {
 	var tpl bytes.Buffer
-	if err := e.verificationTmp.Execute(&tpl, &messageValue{
-		Link: link,
+	if err := e.verificationTmp.Execute(&tpl, &confirmData{
+		Link: fmt.Sprintf("%s/confirm/%s", url, secret),
 	}); err != nil {
 		return err
 	}
 
-	// Treat as dummy service if the underlying client doesn't exist.
+	return e.send(ctx, to, "Textile Login Verification", tpl.String())
+}
+
+type inviteData struct {
+	From string
+	Team string
+	Link string
+}
+
+// InviteAddress sends an invite link to a recipient.
+func (e *Client) InviteAddress(ctx context.Context, team, from, to, url, inviteID string) error {
+	var tpl bytes.Buffer
+	if err := e.inviteTmp.Execute(&tpl, &inviteData{
+		From: from,
+		Team: team,
+		Link: fmt.Sprintf("%s/consent/%s", url, inviteID),
+	}); err != nil {
+		return err
+	}
+
+	return e.send(ctx, to, "Textile Team Invitation", tpl.String())
+}
+
+// send wraps the MailGun client's send method.
+func (e *Client) send(ctx context.Context, recipient, subject, body string) error {
 	if e.gun == nil {
 		return nil
 	}
-	return e.send(ctx, recipient, "Email Confirmation", tpl.String())
-}
-
-func (e *Client) send(ctx context.Context, recipient, subject, body string) error {
 	_, _, err := e.gun.Send(ctx, e.gun.NewMessage(e.from, subject, body, recipient))
 	return err
 }

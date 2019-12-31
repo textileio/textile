@@ -23,17 +23,14 @@ var (
 			Key:      "repo",
 			DefValue: "${HOME}/.textiled/repo",
 		},
-
 		"debug": {
 			Key:      "log.debug",
 			DefValue: false,
 		},
-
 		"logFile": {
 			Key:      "log.file",
 			DefValue: "${HOME}/.textiled/log",
 		},
-
 		"addrApi": {
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
@@ -54,21 +51,21 @@ var (
 			Key:      "addr.threads.api_proxy",
 			DefValue: "/ip4/127.0.0.1/tcp/7006",
 		},
+		"addrGateway": {
+			Key:      "addr.gateway.host",
+			DefValue: "/ip4/127.0.0.1/tcp/8006",
+		},
+		"addrGatewayUrl": {
+			Key:      "addr.gateway.url",
+			DefValue: "http://127.0.0.1:8006",
+		},
 		"addrIpfsApi": {
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
-		"addrGateway": {
-			Key:      "addr.gateway.host",
-			DefValue: "/ip4/127.0.0.1/tcp/9998",
-		},
-		"urlGateway": {
-			Key:      "addr.gateway.url",
-			DefValue: "http://127.0.0.1:9998",
-		},
 		"emailFrom": {
 			Key:      "email.from",
-			DefValue: "verify@email.textile.io",
+			DefValue: "Textile <verify@email.textile.io>",
 		},
 		"emailDomain": {
 			Key:      "email.domain",
@@ -140,8 +137,8 @@ func init() {
 		flags["addrGateway"].DefValue.(string),
 		"Local address of gateway")
 	rootCmd.PersistentFlags().String(
-		"urlGateway",
-		flags["urlGateway"].DefValue.(string),
+		"addrGatewayUrl",
+		flags["addrGatewayUrl"].DefValue.(string),
 		"Public address of gateway")
 
 	// Verification email settings

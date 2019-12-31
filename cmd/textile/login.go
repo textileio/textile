@@ -7,6 +7,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/logrusorgru/aurora"
+
 	"github.com/caarlos0/spin"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
@@ -32,13 +34,12 @@ var loginCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			log.Debug(err)
-			return
+			log.Fatal(err)
 		}
 
 		// @todo: Add a security code that can be visually verified in the email.
-		fmt.Println(fmt.Sprintf(
-			"> We sent an email to %s. Please follow the steps provided inside it.", email))
+		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
+			aurora.White(email).Bold())
 
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
@@ -48,18 +49,18 @@ var loginCmd = &cobra.Command{
 		res, err := client.Login(ctx, email)
 		s.Stop()
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 
 		authViper.Set("token", res.Token)
 
 		home, err := homedir.Dir()
 		if err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 		dir := path.Join(home, ".textile")
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-			log.Fatal(err)
+			cmd.Fatal(err)
 		}
 
 		filename := path.Join(dir, "auth.yml")
@@ -68,7 +69,8 @@ var loginCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		fmt.Println("✔ Email confirmed")
-		fmt.Println("> Congratulations! You are now logged in. Initialize a new project with `textile init`.")
+		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
+		cmd.Success("You are now logged in. Initialize a new project directory with `%s`.",
+			aurora.Cyan("textile init"))
 	},
 }

@@ -6,8 +6,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -66,7 +68,44 @@ func AddrFromStr(str string) ma.Multiaddr {
 	return addr
 }
 
-func Fatal(err error) {
-	fmt.Println(err)
+func Message(format string, args ...interface{}) {
+	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
+}
+
+func Success(format string, args ...interface{}) {
+	fmt.Println(aurora.Sprintf(aurora.Cyan("> Success! %s"),
+		aurora.Sprintf(aurora.BrightBlack(format), args...)))
+}
+
+func Fatal(err error, args ...interface{}) {
+	words := strings.SplitN(err.Error(), " ", 2)
+	words[0] = strings.Title(words[0])
+	msg := strings.Join(words, " ")
+	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
+		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
 	os.Exit(1)
+}
+
+func RenderTable(header []string, data [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(true)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetHeaderLine(false)
+	table.SetBorder(false)
+	table.SetTablePadding("\t")
+	table.SetNoWhiteSpace(true)
+	headersColors := make([]tablewriter.Colors, len(data[0]))
+	for i := range headersColors {
+		headersColors[i] = tablewriter.Colors{tablewriter.FgHiBlackColor}
+	}
+	table.SetHeaderColor(headersColors...)
+	table.AppendBulk(data)
+	table.Render()
+	fmt.Println()
 }

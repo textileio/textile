@@ -34,7 +34,7 @@ func (m *LoginRequest) Reset()         { *m = LoginRequest{} }
 func (m *LoginRequest) String() string { return proto.CompactTextString(m) }
 func (*LoginRequest) ProtoMessage()    {}
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{0}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{0}
 }
 func (m *LoginRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LoginRequest.Unmarshal(m, b)
@@ -73,7 +73,7 @@ func (m *LoginReply) Reset()         { *m = LoginReply{} }
 func (m *LoginReply) String() string { return proto.CompactTextString(m) }
 func (*LoginReply) ProtoMessage()    {}
 func (*LoginReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{1}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{1}
 }
 func (m *LoginReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LoginReply.Unmarshal(m, b)
@@ -107,6 +107,218 @@ func (m *LoginReply) GetToken() string {
 	return ""
 }
 
+type SwitchRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SwitchRequest) Reset()         { *m = SwitchRequest{} }
+func (m *SwitchRequest) String() string { return proto.CompactTextString(m) }
+func (*SwitchRequest) ProtoMessage()    {}
+func (*SwitchRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{2}
+}
+func (m *SwitchRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SwitchRequest.Unmarshal(m, b)
+}
+func (m *SwitchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SwitchRequest.Marshal(b, m, deterministic)
+}
+func (dst *SwitchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SwitchRequest.Merge(dst, src)
+}
+func (m *SwitchRequest) XXX_Size() int {
+	return xxx_messageInfo_SwitchRequest.Size(m)
+}
+func (m *SwitchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SwitchRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SwitchRequest proto.InternalMessageInfo
+
+type SwitchReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SwitchReply) Reset()         { *m = SwitchReply{} }
+func (m *SwitchReply) String() string { return proto.CompactTextString(m) }
+func (*SwitchReply) ProtoMessage()    {}
+func (*SwitchReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{3}
+}
+func (m *SwitchReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SwitchReply.Unmarshal(m, b)
+}
+func (m *SwitchReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SwitchReply.Marshal(b, m, deterministic)
+}
+func (dst *SwitchReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SwitchReply.Merge(dst, src)
+}
+func (m *SwitchReply) XXX_Size() int {
+	return xxx_messageInfo_SwitchReply.Size(m)
+}
+func (m *SwitchReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SwitchReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SwitchReply proto.InternalMessageInfo
+
+type LogoutRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LogoutRequest) Reset()         { *m = LogoutRequest{} }
+func (m *LogoutRequest) String() string { return proto.CompactTextString(m) }
+func (*LogoutRequest) ProtoMessage()    {}
+func (*LogoutRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{4}
+}
+func (m *LogoutRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogoutRequest.Unmarshal(m, b)
+}
+func (m *LogoutRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogoutRequest.Marshal(b, m, deterministic)
+}
+func (dst *LogoutRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogoutRequest.Merge(dst, src)
+}
+func (m *LogoutRequest) XXX_Size() int {
+	return xxx_messageInfo_LogoutRequest.Size(m)
+}
+func (m *LogoutRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogoutRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogoutRequest proto.InternalMessageInfo
+
+type LogoutReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LogoutReply) Reset()         { *m = LogoutReply{} }
+func (m *LogoutReply) String() string { return proto.CompactTextString(m) }
+func (*LogoutReply) ProtoMessage()    {}
+func (*LogoutReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{5}
+}
+func (m *LogoutReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogoutReply.Unmarshal(m, b)
+}
+func (m *LogoutReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogoutReply.Marshal(b, m, deterministic)
+}
+func (dst *LogoutReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogoutReply.Merge(dst, src)
+}
+func (m *LogoutReply) XXX_Size() int {
+	return xxx_messageInfo_LogoutReply.Size(m)
+}
+func (m *LogoutReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogoutReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogoutReply proto.InternalMessageInfo
+
+type WhoamiRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *WhoamiRequest) Reset()         { *m = WhoamiRequest{} }
+func (m *WhoamiRequest) String() string { return proto.CompactTextString(m) }
+func (*WhoamiRequest) ProtoMessage()    {}
+func (*WhoamiRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{6}
+}
+func (m *WhoamiRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WhoamiRequest.Unmarshal(m, b)
+}
+func (m *WhoamiRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WhoamiRequest.Marshal(b, m, deterministic)
+}
+func (dst *WhoamiRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WhoamiRequest.Merge(dst, src)
+}
+func (m *WhoamiRequest) XXX_Size() int {
+	return xxx_messageInfo_WhoamiRequest.Size(m)
+}
+func (m *WhoamiRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WhoamiRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WhoamiRequest proto.InternalMessageInfo
+
+type WhoamiReply struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Email                string   `protobuf:"bytes,2,opt,name=Email,proto3" json:"Email,omitempty"`
+	TeamID               string   `protobuf:"bytes,3,opt,name=teamID,proto3" json:"teamID,omitempty"`
+	TeamName             string   `protobuf:"bytes,4,opt,name=teamName,proto3" json:"teamName,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *WhoamiReply) Reset()         { *m = WhoamiReply{} }
+func (m *WhoamiReply) String() string { return proto.CompactTextString(m) }
+func (*WhoamiReply) ProtoMessage()    {}
+func (*WhoamiReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{7}
+}
+func (m *WhoamiReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WhoamiReply.Unmarshal(m, b)
+}
+func (m *WhoamiReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WhoamiReply.Marshal(b, m, deterministic)
+}
+func (dst *WhoamiReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WhoamiReply.Merge(dst, src)
+}
+func (m *WhoamiReply) XXX_Size() int {
+	return xxx_messageInfo_WhoamiReply.Size(m)
+}
+func (m *WhoamiReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_WhoamiReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WhoamiReply proto.InternalMessageInfo
+
+func (m *WhoamiReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *WhoamiReply) GetEmail() string {
+	if m != nil {
+		return m.Email
+	}
+	return ""
+}
+
+func (m *WhoamiReply) GetTeamID() string {
+	if m != nil {
+		return m.TeamID
+	}
+	return ""
+}
+
+func (m *WhoamiReply) GetTeamName() string {
+	if m != nil {
+		return m.TeamName
+	}
+	return ""
+}
+
 type AddTeamRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -118,7 +330,7 @@ func (m *AddTeamRequest) Reset()         { *m = AddTeamRequest{} }
 func (m *AddTeamRequest) String() string { return proto.CompactTextString(m) }
 func (*AddTeamRequest) ProtoMessage()    {}
 func (*AddTeamRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{2}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{8}
 }
 func (m *AddTeamRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddTeamRequest.Unmarshal(m, b)
@@ -156,7 +368,7 @@ func (m *AddTeamReply) Reset()         { *m = AddTeamReply{} }
 func (m *AddTeamReply) String() string { return proto.CompactTextString(m) }
 func (*AddTeamReply) ProtoMessage()    {}
 func (*AddTeamReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{3}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{9}
 }
 func (m *AddTeamReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddTeamReply.Unmarshal(m, b)
@@ -183,6 +395,448 @@ func (m *AddTeamReply) GetID() string {
 	return ""
 }
 
+type GetTeamRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetTeamRequest) Reset()         { *m = GetTeamRequest{} }
+func (m *GetTeamRequest) String() string { return proto.CompactTextString(m) }
+func (*GetTeamRequest) ProtoMessage()    {}
+func (*GetTeamRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{10}
+}
+func (m *GetTeamRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetTeamRequest.Unmarshal(m, b)
+}
+func (m *GetTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetTeamRequest.Marshal(b, m, deterministic)
+}
+func (dst *GetTeamRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetTeamRequest.Merge(dst, src)
+}
+func (m *GetTeamRequest) XXX_Size() int {
+	return xxx_messageInfo_GetTeamRequest.Size(m)
+}
+func (m *GetTeamRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetTeamRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetTeamRequest proto.InternalMessageInfo
+
+func (m *GetTeamRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type GetTeamReply struct {
+	ID                   string                 `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	OwnerID              string                 `protobuf:"bytes,2,opt,name=ownerID,proto3" json:"ownerID,omitempty"`
+	Name                 string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Created              int64                  `protobuf:"varint,4,opt,name=created,proto3" json:"created,omitempty"`
+	Members              []*GetTeamReply_Member `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
+}
+
+func (m *GetTeamReply) Reset()         { *m = GetTeamReply{} }
+func (m *GetTeamReply) String() string { return proto.CompactTextString(m) }
+func (*GetTeamReply) ProtoMessage()    {}
+func (*GetTeamReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{11}
+}
+func (m *GetTeamReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetTeamReply.Unmarshal(m, b)
+}
+func (m *GetTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetTeamReply.Marshal(b, m, deterministic)
+}
+func (dst *GetTeamReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetTeamReply.Merge(dst, src)
+}
+func (m *GetTeamReply) XXX_Size() int {
+	return xxx_messageInfo_GetTeamReply.Size(m)
+}
+func (m *GetTeamReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetTeamReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetTeamReply proto.InternalMessageInfo
+
+func (m *GetTeamReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *GetTeamReply) GetOwnerID() string {
+	if m != nil {
+		return m.OwnerID
+	}
+	return ""
+}
+
+func (m *GetTeamReply) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetTeamReply) GetCreated() int64 {
+	if m != nil {
+		return m.Created
+	}
+	return 0
+}
+
+func (m *GetTeamReply) GetMembers() []*GetTeamReply_Member {
+	if m != nil {
+		return m.Members
+	}
+	return nil
+}
+
+type GetTeamReply_Member struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Email                string   `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetTeamReply_Member) Reset()         { *m = GetTeamReply_Member{} }
+func (m *GetTeamReply_Member) String() string { return proto.CompactTextString(m) }
+func (*GetTeamReply_Member) ProtoMessage()    {}
+func (*GetTeamReply_Member) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{11, 0}
+}
+func (m *GetTeamReply_Member) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetTeamReply_Member.Unmarshal(m, b)
+}
+func (m *GetTeamReply_Member) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetTeamReply_Member.Marshal(b, m, deterministic)
+}
+func (dst *GetTeamReply_Member) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetTeamReply_Member.Merge(dst, src)
+}
+func (m *GetTeamReply_Member) XXX_Size() int {
+	return xxx_messageInfo_GetTeamReply_Member.Size(m)
+}
+func (m *GetTeamReply_Member) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetTeamReply_Member.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetTeamReply_Member proto.InternalMessageInfo
+
+func (m *GetTeamReply_Member) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *GetTeamReply_Member) GetEmail() string {
+	if m != nil {
+		return m.Email
+	}
+	return ""
+}
+
+type ListTeamsRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListTeamsRequest) Reset()         { *m = ListTeamsRequest{} }
+func (m *ListTeamsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListTeamsRequest) ProtoMessage()    {}
+func (*ListTeamsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{12}
+}
+func (m *ListTeamsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListTeamsRequest.Unmarshal(m, b)
+}
+func (m *ListTeamsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListTeamsRequest.Marshal(b, m, deterministic)
+}
+func (dst *ListTeamsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListTeamsRequest.Merge(dst, src)
+}
+func (m *ListTeamsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListTeamsRequest.Size(m)
+}
+func (m *ListTeamsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListTeamsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListTeamsRequest proto.InternalMessageInfo
+
+type ListTeamsReply struct {
+	List                 []*GetTeamReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
+}
+
+func (m *ListTeamsReply) Reset()         { *m = ListTeamsReply{} }
+func (m *ListTeamsReply) String() string { return proto.CompactTextString(m) }
+func (*ListTeamsReply) ProtoMessage()    {}
+func (*ListTeamsReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{13}
+}
+func (m *ListTeamsReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListTeamsReply.Unmarshal(m, b)
+}
+func (m *ListTeamsReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListTeamsReply.Marshal(b, m, deterministic)
+}
+func (dst *ListTeamsReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListTeamsReply.Merge(dst, src)
+}
+func (m *ListTeamsReply) XXX_Size() int {
+	return xxx_messageInfo_ListTeamsReply.Size(m)
+}
+func (m *ListTeamsReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListTeamsReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListTeamsReply proto.InternalMessageInfo
+
+func (m *ListTeamsReply) GetList() []*GetTeamReply {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type RemoveTeamRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveTeamRequest) Reset()         { *m = RemoveTeamRequest{} }
+func (m *RemoveTeamRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveTeamRequest) ProtoMessage()    {}
+func (*RemoveTeamRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{14}
+}
+func (m *RemoveTeamRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveTeamRequest.Unmarshal(m, b)
+}
+func (m *RemoveTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveTeamRequest.Marshal(b, m, deterministic)
+}
+func (dst *RemoveTeamRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveTeamRequest.Merge(dst, src)
+}
+func (m *RemoveTeamRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveTeamRequest.Size(m)
+}
+func (m *RemoveTeamRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveTeamRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveTeamRequest proto.InternalMessageInfo
+
+func (m *RemoveTeamRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type RemoveTeamReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveTeamReply) Reset()         { *m = RemoveTeamReply{} }
+func (m *RemoveTeamReply) String() string { return proto.CompactTextString(m) }
+func (*RemoveTeamReply) ProtoMessage()    {}
+func (*RemoveTeamReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{15}
+}
+func (m *RemoveTeamReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveTeamReply.Unmarshal(m, b)
+}
+func (m *RemoveTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveTeamReply.Marshal(b, m, deterministic)
+}
+func (dst *RemoveTeamReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveTeamReply.Merge(dst, src)
+}
+func (m *RemoveTeamReply) XXX_Size() int {
+	return xxx_messageInfo_RemoveTeamReply.Size(m)
+}
+func (m *RemoveTeamReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveTeamReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveTeamReply proto.InternalMessageInfo
+
+type InviteToTeamRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Email                string   `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InviteToTeamRequest) Reset()         { *m = InviteToTeamRequest{} }
+func (m *InviteToTeamRequest) String() string { return proto.CompactTextString(m) }
+func (*InviteToTeamRequest) ProtoMessage()    {}
+func (*InviteToTeamRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{16}
+}
+func (m *InviteToTeamRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InviteToTeamRequest.Unmarshal(m, b)
+}
+func (m *InviteToTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InviteToTeamRequest.Marshal(b, m, deterministic)
+}
+func (dst *InviteToTeamRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InviteToTeamRequest.Merge(dst, src)
+}
+func (m *InviteToTeamRequest) XXX_Size() int {
+	return xxx_messageInfo_InviteToTeamRequest.Size(m)
+}
+func (m *InviteToTeamRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InviteToTeamRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InviteToTeamRequest proto.InternalMessageInfo
+
+func (m *InviteToTeamRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *InviteToTeamRequest) GetEmail() string {
+	if m != nil {
+		return m.Email
+	}
+	return ""
+}
+
+type InviteToTeamReply struct {
+	InviteID             string   `protobuf:"bytes,1,opt,name=inviteID,proto3" json:"inviteID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InviteToTeamReply) Reset()         { *m = InviteToTeamReply{} }
+func (m *InviteToTeamReply) String() string { return proto.CompactTextString(m) }
+func (*InviteToTeamReply) ProtoMessage()    {}
+func (*InviteToTeamReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{17}
+}
+func (m *InviteToTeamReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InviteToTeamReply.Unmarshal(m, b)
+}
+func (m *InviteToTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InviteToTeamReply.Marshal(b, m, deterministic)
+}
+func (dst *InviteToTeamReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InviteToTeamReply.Merge(dst, src)
+}
+func (m *InviteToTeamReply) XXX_Size() int {
+	return xxx_messageInfo_InviteToTeamReply.Size(m)
+}
+func (m *InviteToTeamReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_InviteToTeamReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InviteToTeamReply proto.InternalMessageInfo
+
+func (m *InviteToTeamReply) GetInviteID() string {
+	if m != nil {
+		return m.InviteID
+	}
+	return ""
+}
+
+type LeaveTeamRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LeaveTeamRequest) Reset()         { *m = LeaveTeamRequest{} }
+func (m *LeaveTeamRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaveTeamRequest) ProtoMessage()    {}
+func (*LeaveTeamRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{18}
+}
+func (m *LeaveTeamRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LeaveTeamRequest.Unmarshal(m, b)
+}
+func (m *LeaveTeamRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LeaveTeamRequest.Marshal(b, m, deterministic)
+}
+func (dst *LeaveTeamRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveTeamRequest.Merge(dst, src)
+}
+func (m *LeaveTeamRequest) XXX_Size() int {
+	return xxx_messageInfo_LeaveTeamRequest.Size(m)
+}
+func (m *LeaveTeamRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveTeamRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveTeamRequest proto.InternalMessageInfo
+
+func (m *LeaveTeamRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type LeaveTeamReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LeaveTeamReply) Reset()         { *m = LeaveTeamReply{} }
+func (m *LeaveTeamReply) String() string { return proto.CompactTextString(m) }
+func (*LeaveTeamReply) ProtoMessage()    {}
+func (*LeaveTeamReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{19}
+}
+func (m *LeaveTeamReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LeaveTeamReply.Unmarshal(m, b)
+}
+func (m *LeaveTeamReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LeaveTeamReply.Marshal(b, m, deterministic)
+}
+func (dst *LeaveTeamReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveTeamReply.Merge(dst, src)
+}
+func (m *LeaveTeamReply) XXX_Size() int {
+	return xxx_messageInfo_LeaveTeamReply.Size(m)
+}
+func (m *LeaveTeamReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveTeamReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveTeamReply proto.InternalMessageInfo
+
 type AddProjectRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -194,7 +848,7 @@ func (m *AddProjectRequest) Reset()         { *m = AddProjectRequest{} }
 func (m *AddProjectRequest) String() string { return proto.CompactTextString(m) }
 func (*AddProjectRequest) ProtoMessage()    {}
 func (*AddProjectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{4}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{20}
 }
 func (m *AddProjectRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddProjectRequest.Unmarshal(m, b)
@@ -233,7 +887,7 @@ func (m *AddProjectReply) Reset()         { *m = AddProjectReply{} }
 func (m *AddProjectReply) String() string { return proto.CompactTextString(m) }
 func (*AddProjectReply) ProtoMessage()    {}
 func (*AddProjectReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_api_3c5b2b3c39f20d90, []int{5}
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{21}
 }
 func (m *AddProjectReply) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddProjectReply.Unmarshal(m, b)
@@ -267,13 +921,272 @@ func (m *AddProjectReply) GetStoreID() string {
 	return ""
 }
 
+type GetProjectRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetProjectRequest) Reset()         { *m = GetProjectRequest{} }
+func (m *GetProjectRequest) String() string { return proto.CompactTextString(m) }
+func (*GetProjectRequest) ProtoMessage()    {}
+func (*GetProjectRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{22}
+}
+func (m *GetProjectRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetProjectRequest.Unmarshal(m, b)
+}
+func (m *GetProjectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetProjectRequest.Marshal(b, m, deterministic)
+}
+func (dst *GetProjectRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetProjectRequest.Merge(dst, src)
+}
+func (m *GetProjectRequest) XXX_Size() int {
+	return xxx_messageInfo_GetProjectRequest.Size(m)
+}
+func (m *GetProjectRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetProjectRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetProjectRequest proto.InternalMessageInfo
+
+func (m *GetProjectRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type GetProjectReply struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	StoreID              string   `protobuf:"bytes,3,opt,name=storeID,proto3" json:"storeID,omitempty"`
+	Created              int64    `protobuf:"varint,4,opt,name=created,proto3" json:"created,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetProjectReply) Reset()         { *m = GetProjectReply{} }
+func (m *GetProjectReply) String() string { return proto.CompactTextString(m) }
+func (*GetProjectReply) ProtoMessage()    {}
+func (*GetProjectReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{23}
+}
+func (m *GetProjectReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetProjectReply.Unmarshal(m, b)
+}
+func (m *GetProjectReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetProjectReply.Marshal(b, m, deterministic)
+}
+func (dst *GetProjectReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetProjectReply.Merge(dst, src)
+}
+func (m *GetProjectReply) XXX_Size() int {
+	return xxx_messageInfo_GetProjectReply.Size(m)
+}
+func (m *GetProjectReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetProjectReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetProjectReply proto.InternalMessageInfo
+
+func (m *GetProjectReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *GetProjectReply) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetProjectReply) GetStoreID() string {
+	if m != nil {
+		return m.StoreID
+	}
+	return ""
+}
+
+func (m *GetProjectReply) GetCreated() int64 {
+	if m != nil {
+		return m.Created
+	}
+	return 0
+}
+
+type ListProjectsRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListProjectsRequest) Reset()         { *m = ListProjectsRequest{} }
+func (m *ListProjectsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListProjectsRequest) ProtoMessage()    {}
+func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{24}
+}
+func (m *ListProjectsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListProjectsRequest.Unmarshal(m, b)
+}
+func (m *ListProjectsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListProjectsRequest.Marshal(b, m, deterministic)
+}
+func (dst *ListProjectsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListProjectsRequest.Merge(dst, src)
+}
+func (m *ListProjectsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListProjectsRequest.Size(m)
+}
+func (m *ListProjectsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListProjectsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListProjectsRequest proto.InternalMessageInfo
+
+type ListProjectsReply struct {
+	List                 []*GetProjectReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
+}
+
+func (m *ListProjectsReply) Reset()         { *m = ListProjectsReply{} }
+func (m *ListProjectsReply) String() string { return proto.CompactTextString(m) }
+func (*ListProjectsReply) ProtoMessage()    {}
+func (*ListProjectsReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{25}
+}
+func (m *ListProjectsReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListProjectsReply.Unmarshal(m, b)
+}
+func (m *ListProjectsReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListProjectsReply.Marshal(b, m, deterministic)
+}
+func (dst *ListProjectsReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListProjectsReply.Merge(dst, src)
+}
+func (m *ListProjectsReply) XXX_Size() int {
+	return xxx_messageInfo_ListProjectsReply.Size(m)
+}
+func (m *ListProjectsReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListProjectsReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListProjectsReply proto.InternalMessageInfo
+
+func (m *ListProjectsReply) GetList() []*GetProjectReply {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type RemoveProjectRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveProjectRequest) Reset()         { *m = RemoveProjectRequest{} }
+func (m *RemoveProjectRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveProjectRequest) ProtoMessage()    {}
+func (*RemoveProjectRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{26}
+}
+func (m *RemoveProjectRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveProjectRequest.Unmarshal(m, b)
+}
+func (m *RemoveProjectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveProjectRequest.Marshal(b, m, deterministic)
+}
+func (dst *RemoveProjectRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveProjectRequest.Merge(dst, src)
+}
+func (m *RemoveProjectRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveProjectRequest.Size(m)
+}
+func (m *RemoveProjectRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveProjectRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveProjectRequest proto.InternalMessageInfo
+
+func (m *RemoveProjectRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type RemoveProjectReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveProjectReply) Reset()         { *m = RemoveProjectReply{} }
+func (m *RemoveProjectReply) String() string { return proto.CompactTextString(m) }
+func (*RemoveProjectReply) ProtoMessage()    {}
+func (*RemoveProjectReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_api_2d0ec8b776b99cca, []int{27}
+}
+func (m *RemoveProjectReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveProjectReply.Unmarshal(m, b)
+}
+func (m *RemoveProjectReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveProjectReply.Marshal(b, m, deterministic)
+}
+func (dst *RemoveProjectReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveProjectReply.Merge(dst, src)
+}
+func (m *RemoveProjectReply) XXX_Size() int {
+	return xxx_messageInfo_RemoveProjectReply.Size(m)
+}
+func (m *RemoveProjectReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveProjectReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveProjectReply proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*LoginRequest)(nil), "pb.LoginRequest")
 	proto.RegisterType((*LoginReply)(nil), "pb.LoginReply")
+	proto.RegisterType((*SwitchRequest)(nil), "pb.SwitchRequest")
+	proto.RegisterType((*SwitchReply)(nil), "pb.SwitchReply")
+	proto.RegisterType((*LogoutRequest)(nil), "pb.LogoutRequest")
+	proto.RegisterType((*LogoutReply)(nil), "pb.LogoutReply")
+	proto.RegisterType((*WhoamiRequest)(nil), "pb.WhoamiRequest")
+	proto.RegisterType((*WhoamiReply)(nil), "pb.WhoamiReply")
 	proto.RegisterType((*AddTeamRequest)(nil), "pb.AddTeamRequest")
 	proto.RegisterType((*AddTeamReply)(nil), "pb.AddTeamReply")
+	proto.RegisterType((*GetTeamRequest)(nil), "pb.GetTeamRequest")
+	proto.RegisterType((*GetTeamReply)(nil), "pb.GetTeamReply")
+	proto.RegisterType((*GetTeamReply_Member)(nil), "pb.GetTeamReply.Member")
+	proto.RegisterType((*ListTeamsRequest)(nil), "pb.ListTeamsRequest")
+	proto.RegisterType((*ListTeamsReply)(nil), "pb.ListTeamsReply")
+	proto.RegisterType((*RemoveTeamRequest)(nil), "pb.RemoveTeamRequest")
+	proto.RegisterType((*RemoveTeamReply)(nil), "pb.RemoveTeamReply")
+	proto.RegisterType((*InviteToTeamRequest)(nil), "pb.InviteToTeamRequest")
+	proto.RegisterType((*InviteToTeamReply)(nil), "pb.InviteToTeamReply")
+	proto.RegisterType((*LeaveTeamRequest)(nil), "pb.LeaveTeamRequest")
+	proto.RegisterType((*LeaveTeamReply)(nil), "pb.LeaveTeamReply")
 	proto.RegisterType((*AddProjectRequest)(nil), "pb.AddProjectRequest")
 	proto.RegisterType((*AddProjectReply)(nil), "pb.AddProjectReply")
+	proto.RegisterType((*GetProjectRequest)(nil), "pb.GetProjectRequest")
+	proto.RegisterType((*GetProjectReply)(nil), "pb.GetProjectReply")
+	proto.RegisterType((*ListProjectsRequest)(nil), "pb.ListProjectsRequest")
+	proto.RegisterType((*ListProjectsReply)(nil), "pb.ListProjectsReply")
+	proto.RegisterType((*RemoveProjectRequest)(nil), "pb.RemoveProjectRequest")
+	proto.RegisterType((*RemoveProjectReply)(nil), "pb.RemoveProjectReply")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -289,8 +1202,19 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type APIClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error)
+	Switch(ctx context.Context, in *SwitchRequest, opts ...grpc.CallOption) (*SwitchReply, error)
+	Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error)
 	AddTeam(ctx context.Context, in *AddTeamRequest, opts ...grpc.CallOption) (*AddTeamReply, error)
+	GetTeam(ctx context.Context, in *GetTeamRequest, opts ...grpc.CallOption) (*GetTeamReply, error)
+	ListTeams(ctx context.Context, in *ListTeamsRequest, opts ...grpc.CallOption) (*ListTeamsReply, error)
+	RemoveTeam(ctx context.Context, in *RemoveTeamRequest, opts ...grpc.CallOption) (*RemoveTeamReply, error)
+	InviteToTeam(ctx context.Context, in *InviteToTeamRequest, opts ...grpc.CallOption) (*InviteToTeamReply, error)
+	LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error)
 	AddProject(ctx context.Context, in *AddProjectRequest, opts ...grpc.CallOption) (*AddProjectReply, error)
+	GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectReply, error)
+	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsReply, error)
+	RemoveProject(ctx context.Context, in *RemoveProjectRequest, opts ...grpc.CallOption) (*RemoveProjectReply, error)
 }
 
 type aPIClient struct {
@@ -310,9 +1234,81 @@ func (c *aPIClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.Ca
 	return out, nil
 }
 
+func (c *aPIClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error) {
+	out := new(LogoutReply)
+	err := c.cc.Invoke(ctx, "/pb.API/Logout", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) Switch(ctx context.Context, in *SwitchRequest, opts ...grpc.CallOption) (*SwitchReply, error) {
+	out := new(SwitchReply)
+	err := c.cc.Invoke(ctx, "/pb.API/Switch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error) {
+	out := new(WhoamiReply)
+	err := c.cc.Invoke(ctx, "/pb.API/Whoami", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *aPIClient) AddTeam(ctx context.Context, in *AddTeamRequest, opts ...grpc.CallOption) (*AddTeamReply, error) {
 	out := new(AddTeamReply)
 	err := c.cc.Invoke(ctx, "/pb.API/AddTeam", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) GetTeam(ctx context.Context, in *GetTeamRequest, opts ...grpc.CallOption) (*GetTeamReply, error) {
+	out := new(GetTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/GetTeam", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListTeams(ctx context.Context, in *ListTeamsRequest, opts ...grpc.CallOption) (*ListTeamsReply, error) {
+	out := new(ListTeamsReply)
+	err := c.cc.Invoke(ctx, "/pb.API/ListTeams", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) RemoveTeam(ctx context.Context, in *RemoveTeamRequest, opts ...grpc.CallOption) (*RemoveTeamReply, error) {
+	out := new(RemoveTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/RemoveTeam", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) InviteToTeam(ctx context.Context, in *InviteToTeamRequest, opts ...grpc.CallOption) (*InviteToTeamReply, error) {
+	out := new(InviteToTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/InviteToTeam", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) LeaveTeam(ctx context.Context, in *LeaveTeamRequest, opts ...grpc.CallOption) (*LeaveTeamReply, error) {
+	out := new(LeaveTeamReply)
+	err := c.cc.Invoke(ctx, "/pb.API/LeaveTeam", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -328,11 +1324,49 @@ func (c *aPIClient) AddProject(ctx context.Context, in *AddProjectRequest, opts 
 	return out, nil
 }
 
+func (c *aPIClient) GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectReply, error) {
+	out := new(GetProjectReply)
+	err := c.cc.Invoke(ctx, "/pb.API/GetProject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsReply, error) {
+	out := new(ListProjectsReply)
+	err := c.cc.Invoke(ctx, "/pb.API/ListProjects", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) RemoveProject(ctx context.Context, in *RemoveProjectRequest, opts ...grpc.CallOption) (*RemoveProjectReply, error) {
+	out := new(RemoveProjectReply)
+	err := c.cc.Invoke(ctx, "/pb.API/RemoveProject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // APIServer is the server API for API service.
 type APIServer interface {
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
+	Logout(context.Context, *LogoutRequest) (*LogoutReply, error)
+	Switch(context.Context, *SwitchRequest) (*SwitchReply, error)
+	Whoami(context.Context, *WhoamiRequest) (*WhoamiReply, error)
 	AddTeam(context.Context, *AddTeamRequest) (*AddTeamReply, error)
+	GetTeam(context.Context, *GetTeamRequest) (*GetTeamReply, error)
+	ListTeams(context.Context, *ListTeamsRequest) (*ListTeamsReply, error)
+	RemoveTeam(context.Context, *RemoveTeamRequest) (*RemoveTeamReply, error)
+	InviteToTeam(context.Context, *InviteToTeamRequest) (*InviteToTeamReply, error)
+	LeaveTeam(context.Context, *LeaveTeamRequest) (*LeaveTeamReply, error)
 	AddProject(context.Context, *AddProjectRequest) (*AddProjectReply, error)
+	GetProject(context.Context, *GetProjectRequest) (*GetProjectReply, error)
+	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsReply, error)
+	RemoveProject(context.Context, *RemoveProjectRequest) (*RemoveProjectReply, error)
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
@@ -357,6 +1391,60 @@ func _API_Login_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _API_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/Logout",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Logout(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_Switch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SwitchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Switch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/Switch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Switch(ctx, req.(*SwitchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_Whoami_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WhoamiRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Whoami(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/Whoami",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Whoami(ctx, req.(*WhoamiRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _API_AddTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTeamRequest)
 	if err := dec(in); err != nil {
@@ -371,6 +1459,96 @@ func _API_AddTeam_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(APIServer).AddTeam(ctx, req.(*AddTeamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_GetTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTeamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).GetTeam(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/GetTeam",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).GetTeam(ctx, req.(*GetTeamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListTeams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTeamsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListTeams(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/ListTeams",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListTeams(ctx, req.(*ListTeamsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_RemoveTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTeamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).RemoveTeam(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/RemoveTeam",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).RemoveTeam(ctx, req.(*RemoveTeamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_InviteToTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InviteToTeamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).InviteToTeam(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/InviteToTeam",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).InviteToTeam(ctx, req.(*InviteToTeamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_LeaveTeam_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveTeamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).LeaveTeam(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/LeaveTeam",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).LeaveTeam(ctx, req.(*LeaveTeamRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -393,6 +1571,60 @@ func _API_AddProject_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _API_GetProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).GetProject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/GetProject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).GetProject(ctx, req.(*GetProjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListProjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListProjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListProjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/ListProjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListProjects(ctx, req.(*ListProjectsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_RemoveProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveProjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).RemoveProject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/RemoveProject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).RemoveProject(ctx, req.(*RemoveProjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _API_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.API",
 	HandlerType: (*APIServer)(nil),
@@ -402,38 +1634,111 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_Login_Handler,
 		},
 		{
+			MethodName: "Logout",
+			Handler:    _API_Logout_Handler,
+		},
+		{
+			MethodName: "Switch",
+			Handler:    _API_Switch_Handler,
+		},
+		{
+			MethodName: "Whoami",
+			Handler:    _API_Whoami_Handler,
+		},
+		{
 			MethodName: "AddTeam",
 			Handler:    _API_AddTeam_Handler,
 		},
 		{
+			MethodName: "GetTeam",
+			Handler:    _API_GetTeam_Handler,
+		},
+		{
+			MethodName: "ListTeams",
+			Handler:    _API_ListTeams_Handler,
+		},
+		{
+			MethodName: "RemoveTeam",
+			Handler:    _API_RemoveTeam_Handler,
+		},
+		{
+			MethodName: "InviteToTeam",
+			Handler:    _API_InviteToTeam_Handler,
+		},
+		{
+			MethodName: "LeaveTeam",
+			Handler:    _API_LeaveTeam_Handler,
+		},
+		{
 			MethodName: "AddProject",
 			Handler:    _API_AddProject_Handler,
+		},
+		{
+			MethodName: "GetProject",
+			Handler:    _API_GetProject_Handler,
+		},
+		{
+			MethodName: "ListProjects",
+			Handler:    _API_ListProjects_Handler,
+		},
+		{
+			MethodName: "RemoveProject",
+			Handler:    _API_RemoveProject_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api.proto",
 }
 
-func init() { proto.RegisterFile("api.proto", fileDescriptor_api_3c5b2b3c39f20d90) }
+func init() { proto.RegisterFile("api.proto", fileDescriptor_api_2d0ec8b776b99cca) }
 
-var fileDescriptor_api_3c5b2b3c39f20d90 = []byte{
-	// 277 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x51, 0x41, 0x4b, 0xf3, 0x40,
-	0x14, 0xfc, 0x92, 0xaf, 0x35, 0xf4, 0x51, 0x62, 0x7d, 0x2a, 0x84, 0x1c, 0x44, 0x96, 0xa2, 0x82,
-	0x10, 0xb0, 0xde, 0xf4, 0x94, 0x92, 0x4b, 0xa0, 0x87, 0x50, 0x72, 0xf0, 0x9a, 0x98, 0x87, 0xac,
-	0x26, 0xd9, 0x35, 0x5d, 0xc1, 0xfe, 0x1c, 0xfd, 0xa5, 0xd2, 0xcd, 0x46, 0x13, 0x29, 0x9e, 0xf6,
-	0xbd, 0xd9, 0x99, 0x61, 0x66, 0x17, 0x26, 0x99, 0xe4, 0x81, 0x6c, 0x84, 0x12, 0x68, 0xcb, 0x9c,
-	0xcd, 0x61, 0xba, 0x12, 0x4f, 0xbc, 0x5e, 0xd3, 0xeb, 0x1b, 0x6d, 0x14, 0x9e, 0xc0, 0x98, 0xaa,
-	0x8c, 0x97, 0x9e, 0x75, 0x6e, 0x5d, 0x4d, 0xd6, 0xed, 0xc2, 0x16, 0x00, 0x86, 0x25, 0xcb, 0x2d,
-	0xba, 0x60, 0xc7, 0x91, 0x21, 0xd8, 0x71, 0xb4, 0xd3, 0x28, 0xf1, 0x42, 0xb5, 0x67, 0xb7, 0x1a,
-	0xbd, 0xb0, 0x39, 0xb8, 0x61, 0x51, 0xa4, 0x94, 0x55, 0x9d, 0x37, 0xc2, 0xa8, 0xce, 0x2a, 0x32,
-	0x4a, 0x3d, 0xb3, 0x33, 0x98, 0x7e, 0xb3, 0xf6, 0x78, 0xb3, 0x4b, 0x38, 0x0a, 0x8b, 0x22, 0x69,
-	0xc4, 0x33, 0x3d, 0xaa, 0xbf, 0x8c, 0xee, 0xe1, 0xb0, 0x4f, 0xdc, 0x97, 0xd3, 0x03, 0x67, 0xa3,
-	0x44, 0x43, 0x71, 0x64, 0x92, 0x76, 0xeb, 0xe2, 0xc3, 0x82, 0xff, 0x61, 0x12, 0xe3, 0x35, 0x8c,
-	0x75, 0x4f, 0x9c, 0x05, 0x32, 0x0f, 0xfa, 0x0f, 0xe3, 0xbb, 0x3d, 0x44, 0x96, 0x5b, 0xf6, 0x0f,
-	0x6f, 0xc0, 0x31, 0xd1, 0x11, 0x77, 0x97, 0xc3, 0xb6, 0xfe, 0x6c, 0x80, 0xb5, 0x92, 0x3b, 0x80,
-	0x9f, 0x90, 0x78, 0x6a, 0x18, 0xc3, 0x76, 0xfe, 0xf1, 0x6f, 0x58, 0x6b, 0x97, 0x17, 0x80, 0x5c,
-	0x04, 0x8a, 0xde, 0x15, 0x2f, 0xa9, 0x3b, 0x97, 0x4e, 0xda, 0x0e, 0x89, 0xf5, 0x69, 0x8f, 0xd2,
-	0x87, 0x74, 0x95, 0x1f, 0xe8, 0xcf, 0xbd, 0xfd, 0x0a, 0x00, 0x00, 0xff, 0xff, 0xdd, 0xeb, 0x99,
-	0x2f, 0xe9, 0x01, 0x00, 0x00,
+var fileDescriptor_api_2d0ec8b776b99cca = []byte{
+	// 741 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x56, 0x5d, 0x4f, 0x13, 0x41,
+	0x14, 0xed, 0x17, 0x05, 0x2e, 0xa5, 0x1f, 0xd3, 0x82, 0x9b, 0x7d, 0x30, 0x64, 0x24, 0x40, 0x62,
+	0xb2, 0x46, 0x4c, 0x34, 0x11, 0x1f, 0x04, 0x6b, 0x48, 0x93, 0x6a, 0x48, 0x6d, 0xa2, 0xaf, 0x5b,
+	0x3a, 0x81, 0xd5, 0x6e, 0x67, 0x6d, 0x07, 0x90, 0x5f, 0xe2, 0xbb, 0xff, 0xc6, 0x7f, 0x65, 0x66,
+	0xee, 0xcc, 0xee, 0xec, 0x47, 0xeb, 0x13, 0x7b, 0xef, 0x3d, 0x77, 0xe6, 0xdc, 0xe9, 0x39, 0x37,
+	0xc0, 0xb6, 0x1f, 0x05, 0x5e, 0xb4, 0xe0, 0x82, 0x93, 0x4a, 0x34, 0xa1, 0x87, 0xd0, 0x18, 0xf2,
+	0x9b, 0x60, 0x3e, 0x62, 0x3f, 0xef, 0xd8, 0x52, 0x90, 0x1e, 0x6c, 0xb0, 0xd0, 0x0f, 0x66, 0x4e,
+	0xf9, 0xa0, 0x7c, 0xb2, 0x3d, 0xc2, 0x80, 0x9e, 0x02, 0x68, 0x54, 0x34, 0x7b, 0x24, 0x4d, 0xa8,
+	0x0c, 0xfa, 0x1a, 0x50, 0x19, 0xf4, 0x65, 0x8f, 0xe0, 0x3f, 0xd8, 0xdc, 0xa9, 0x60, 0x8f, 0x0a,
+	0x68, 0x0b, 0x76, 0xbf, 0x3c, 0x04, 0xe2, 0xfa, 0x56, 0x1f, 0x4d, 0x77, 0x61, 0xc7, 0x24, 0xa2,
+	0xd9, 0xa3, 0xac, 0x0f, 0xf9, 0x0d, 0xbf, 0x13, 0x56, 0xdd, 0x24, 0x74, 0xfd, 0xeb, 0x2d, 0xf7,
+	0xc3, 0xc0, 0xd4, 0x6f, 0x60, 0xc7, 0x24, 0x56, 0xb0, 0xf8, 0xa8, 0x98, 0x6b, 0x16, 0x2a, 0x20,
+	0xfb, 0x50, 0x17, 0xcc, 0x0f, 0x07, 0x7d, 0xa7, 0xaa, 0xd2, 0x3a, 0x22, 0x2e, 0x6c, 0xc9, 0xaf,
+	0xcf, 0x7e, 0xc8, 0x9c, 0x9a, 0xaa, 0xc4, 0x31, 0x3d, 0x84, 0xe6, 0xf9, 0x74, 0x3a, 0x66, 0x7e,
+	0x68, 0x5e, 0x85, 0x40, 0x6d, 0x2e, 0x91, 0x78, 0x9b, 0xfa, 0xa6, 0x4f, 0xa1, 0x11, 0xa3, 0x0a,
+	0xf8, 0xd0, 0x03, 0x68, 0x5e, 0x32, 0x61, 0x9f, 0x92, 0x45, 0xfc, 0x2d, 0x43, 0x23, 0x86, 0x14,
+	0x8d, 0xe4, 0xc0, 0x26, 0x7f, 0x98, 0xb3, 0xc5, 0xa0, 0xaf, 0x87, 0x32, 0x61, 0x4c, 0xa8, 0x9a,
+	0x10, 0x92, 0xe8, 0xeb, 0x05, 0xf3, 0x05, 0x9b, 0xaa, 0x89, 0xaa, 0x23, 0x13, 0x92, 0x97, 0xb0,
+	0x19, 0xb2, 0x70, 0xc2, 0x16, 0x4b, 0x67, 0xe3, 0xa0, 0x7a, 0xb2, 0x73, 0xfa, 0xc4, 0x8b, 0x26,
+	0x9e, 0x7d, 0xb5, 0xf7, 0x49, 0xd5, 0x47, 0x06, 0xe7, 0x7a, 0x50, 0xc7, 0x54, 0xd1, 0x3b, 0x33,
+	0xfb, 0x9d, 0x51, 0x21, 0x04, 0xda, 0xc3, 0x60, 0xa9, 0x0e, 0x5c, 0x9a, 0x1f, 0xec, 0x35, 0x34,
+	0xad, 0x9c, 0x1c, 0xf0, 0x10, 0x6a, 0xb3, 0x60, 0x29, 0x9c, 0xb2, 0x62, 0xd1, 0xce, 0xb2, 0x18,
+	0xa9, 0x2a, 0x7d, 0x06, 0x9d, 0x11, 0x0b, 0xf9, 0x3d, 0x5b, 0xf7, 0x78, 0x1d, 0x68, 0xd9, 0x20,
+	0xa9, 0x98, 0x33, 0xe8, 0x0e, 0xe6, 0xf7, 0x81, 0x60, 0x63, 0xbe, 0xa6, 0x73, 0xc5, 0x00, 0x2f,
+	0xa0, 0x93, 0x6e, 0x96, 0x7c, 0x5d, 0xd8, 0x0a, 0x54, 0x32, 0x3e, 0x20, 0x8e, 0x29, 0x85, 0xf6,
+	0x90, 0xf9, 0xeb, 0x49, 0xb6, 0xa1, 0x69, 0x61, 0x24, 0xc7, 0x63, 0xe8, 0x9c, 0x4f, 0xa7, 0x57,
+	0x0b, 0xfe, 0x9d, 0x5d, 0x8b, 0x75, 0xf2, 0x3a, 0x83, 0x96, 0x0d, 0x5c, 0x21, 0x8f, 0xa5, 0xe0,
+	0x0b, 0x96, 0xc8, 0x43, 0x87, 0xf2, 0x05, 0x2f, 0x99, 0xc8, 0xdc, 0x92, 0x25, 0x17, 0x40, 0xcb,
+	0x06, 0x15, 0xdd, 0x60, 0x88, 0x55, 0xd2, 0x32, 0x33, 0xb7, 0x56, 0x53, 0xb7, 0xae, 0x16, 0x20,
+	0xdd, 0x83, 0xae, 0x54, 0x82, 0xbe, 0x2b, 0x16, 0xc8, 0x3b, 0xe8, 0xa4, 0xd3, 0x92, 0xc3, 0x71,
+	0x4a, 0x23, 0x5d, 0xad, 0x11, 0x9b, 0xa6, 0x96, 0xc9, 0x11, 0xf4, 0x50, 0x01, 0xff, 0x99, 0xb3,
+	0x07, 0x24, 0x83, 0x8b, 0x66, 0x8f, 0xa7, 0xbf, 0xeb, 0x50, 0x3d, 0xbf, 0x1a, 0x90, 0xe7, 0xb0,
+	0xa1, 0x56, 0x1b, 0x51, 0x6a, 0xb4, 0x77, 0xa1, 0xdb, 0xb4, 0x32, 0xf2, 0xb7, 0x2b, 0x11, 0x0f,
+	0xea, 0xb8, 0xa2, 0x48, 0x47, 0xd7, 0x92, 0xfd, 0xe5, 0xb6, 0xec, 0x54, 0x8c, 0xc7, 0x95, 0x87,
+	0xf8, 0xd4, 0x3e, 0x44, 0xbc, 0xbd, 0x11, 0x15, 0x1e, 0x57, 0x1c, 0xe2, 0x53, 0xfb, 0x0f, 0xf1,
+	0xd6, 0x06, 0xa4, 0x25, 0x69, 0x6c, 0xbd, 0x83, 0x08, 0x91, 0xd5, 0xf4, 0xda, 0x72, 0xdb, 0xa9,
+	0x5c, 0xdc, 0xa2, 0x2d, 0x87, 0x2d, 0xe9, 0x1d, 0xe5, 0xe6, 0x3c, 0x49, 0x4b, 0xe4, 0x0d, 0x6c,
+	0xc7, 0x3e, 0x26, 0x3d, 0x35, 0x65, 0xc6, 0xea, 0x2e, 0xc9, 0x64, 0xb1, 0xf1, 0x2d, 0x40, 0xe2,
+	0x51, 0xb2, 0x27, 0x31, 0x39, 0x63, 0xbb, 0xdd, 0x6c, 0x1a, 0x7b, 0xdf, 0x43, 0xc3, 0xf6, 0x23,
+	0x51, 0x2b, 0xab, 0xc0, 0xde, 0xee, 0x5e, 0xbe, 0x90, 0xd0, 0x36, 0xe6, 0xd3, 0xb4, 0x33, 0x7e,
+	0xd5, 0xb4, 0xd3, 0x0e, 0x55, 0xb4, 0x13, 0xeb, 0x21, 0xed, 0x9c, 0x67, 0x91, 0x76, 0xc6, 0xa1,
+	0xd8, 0x9b, 0xa8, 0x15, 0x7b, 0x73, 0x4e, 0x74, 0x8b, 0x44, 0x8d, 0x23, 0xdb, 0x76, 0xc0, 0x91,
+	0x0b, 0x7c, 0x83, 0x23, 0xe7, 0x9c, 0x43, 0x4b, 0xe4, 0x03, 0xec, 0xa6, 0xa4, 0x4e, 0x9c, 0xe4,
+	0x71, 0x33, 0x1c, 0xf6, 0x0b, 0x2a, 0xea, 0x90, 0x8b, 0x23, 0x20, 0x01, 0xf7, 0x04, 0xfb, 0x25,
+	0x82, 0x19, 0x33, 0x7f, 0x2f, 0x36, 0xc7, 0xf8, 0x71, 0x55, 0xfe, 0x53, 0xa9, 0x8d, 0xbf, 0x8d,
+	0x87, 0x93, 0xba, 0xfa, 0x2f, 0xe2, 0xd5, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x31, 0x7f, 0xdd,
+	0x2c, 0x52, 0x08, 0x00, 0x00,
 }

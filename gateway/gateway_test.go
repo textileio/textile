@@ -1,28 +1,33 @@
 package gateway
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/phayes/freeport"
 	"github.com/textileio/textile/util"
 )
 
-var (
-	addrGateway    = util.MustParseAddr("/ip4/127.0.0.1/tcp/8006")
-	addrGatewayUrl = "http://127.0.0.1:8006"
-	host           = NewGateway(addrGateway, addrGatewayUrl)
-)
-
-func TestGateway_Start(t *testing.T) {
-	host.Start()
-	if len(host.Addr()) == 0 {
-		t.Error("get gateway address failed")
-		return
-	}
-}
-
-func TestGateway_Stop(t *testing.T) {
-	err := host.Stop()
+func TestNewGateway(t *testing.T) {
+	port, err := freeport.GetFreePort()
 	if err != nil {
-		t.Errorf("stop gateway failed: %s", err)
+		t.Fatal(err)
 	}
+	addr := util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
+	url := fmt.Sprintf("http://127.0.0.1:%d", port)
+	gateway := NewGateway(addr, url, nil)
+
+	t.Run("test start", func(t *testing.T) {
+		gateway.Start()
+		if len(gateway.Addr()) == 0 {
+			t.Error("get gateway address failed")
+			return
+		}
+	})
+
+	t.Run("test stop", func(t *testing.T) {
+		if err := gateway.Stop(); err != nil {
+			t.Errorf("stop gateway failed: %s", err)
+		}
+	})
 }
