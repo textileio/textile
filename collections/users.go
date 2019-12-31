@@ -70,10 +70,12 @@ func (u *Users) ListByTeam(teamID string) ([]*User, error) {
 	// @todo: Enable indexes :)
 	// @todo: Enable a 'contains' query condition.
 	var users []*User
+loop:
 	for _, u := range res.([]*User) {
 		for _, t := range u.Teams {
 			if t == teamID {
 				users = append(users, u)
+				continue loop
 			}
 		}
 	}
