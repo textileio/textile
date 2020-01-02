@@ -19,6 +19,7 @@ import (
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
+	s "github.com/textileio/textile/storage"
 	logger "github.com/whyrusleeping/go-logging"
 )
 
@@ -50,6 +51,7 @@ type Config struct {
 	AddrIpfsApi          ma.Multiaddr
 	AddrGateway          ma.Multiaddr
 	AddrGatewayUrl       string
+	AddrFilecoinServer   ma.Multiaddr
 
 	EmailFrom   string
 	EmailDomain string
@@ -110,6 +112,11 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	storage, err := s.NewStorage(s.FcServiceAddress(conf.AddrFilecoinServer))
+	if err != nil {
+		return nil, err
+	}
+
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
@@ -121,6 +128,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		AddrGateway:    conf.AddrGateway,
 		AddrGatewayUrl: conf.AddrGatewayUrl,
 		Collections:    collections,
+		Storage:        storage,
 		EmailClient:    emailClient,
 		SessionSecret:  conf.SessionSecret,
 		Debug:          conf.Debug,

@@ -14,6 +14,7 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
+	s "github.com/textileio/textile/storage"
 	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,6 +49,8 @@ type Config struct {
 
 	Collections *c.Collections
 
+	Storage *s.Storage
+
 	EmailClient *email.Client
 
 	SessionSecret []byte
@@ -71,6 +74,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:   conf.Collections,
+			storage:       conf.Storage,
 			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
 			sessionSecret: conf.SessionSecret,
