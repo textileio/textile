@@ -38,5 +38,6 @@ require (
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.25.1
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 )

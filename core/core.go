@@ -14,12 +14,11 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
+	ls "github.com/textileio/go-threads/logstore"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
-	logger "github.com/whyrusleeping/go-logging"
 )
 
 var (
@@ -31,7 +30,7 @@ type Textile struct {
 
 	ipfs iface.CoreAPI
 
-	threadservice es.ThreadserviceBoostrapper
+	threadservice ls.ThreadserviceBoostrapper
 
 	threadsServer *threadsapi.Server
 	threadsClient *threadsclient.Client
@@ -61,8 +60,8 @@ type Config struct {
 }
 
 func NewTextile(conf Config) (*Textile, error) {
-	if err := util.SetLogLevels(map[string]logger.Level{
-		"core": logger.DEBUG,
+	if err := util.SetLogLevels(map[string]logging.LogLevel{
+		"core": logging.LevelDebug,
 	}); err != nil {
 		return nil, err
 	}
@@ -81,11 +80,11 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadservice, err := es.DefaultThreadservice(
+	threadservice, err := ls.DefaultThreadservice(
 		conf.RepoPath,
-		es.HostAddr(conf.AddrThreadsHost),
-		es.HostProxyAddr(conf.AddrThreadsHostProxy),
-		es.Debug(conf.Debug))
+		ls.HostAddr(conf.AddrThreadsHost),
+		ls.HostProxyAddr(conf.AddrThreadsHostProxy),
+		ls.Debug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}

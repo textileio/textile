@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
+	ls "github.com/textileio/go-threads/logstore"
 )
 
 type Project struct {
@@ -61,7 +61,7 @@ func (p *Projects) Get(id string) (*Project, error) {
 }
 
 func (p *Projects) List(scope string) ([]*Project, error) {
-	query := es.JSONWhere("Scope").Eq(scope)
+	query := ls.JSONWhere("Scope").Eq(scope)
 	res, err := p.threads.ModelFind(p.storeID.String(), p.GetName(), query, []*Project{})
 	if err != nil {
 		return nil, err

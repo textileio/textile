@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
+	ls "github.com/textileio/go-threads/logstore"
 )
 
 type User struct {
@@ -53,7 +53,7 @@ func (u *Users) Get(id string) (*User, error) {
 }
 
 func (u *Users) GetByEmail(email string) ([]*User, error) {
-	query := es.JSONWhere("Email").Eq(email)
+	query := ls.JSONWhere("Email").Eq(email)
 	rawResults, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), query, []*User{})
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (u *Users) GetByEmail(email string) ([]*User, error) {
 }
 
 func (u *Users) ListByTeam(teamID string) ([]*User, error) {
-	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &es.JSONQuery{}, []*User{})
+	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &ls.JSONQuery{}, []*User{})
 	if err != nil {
 		return nil, err
 	}

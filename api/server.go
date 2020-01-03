@@ -14,7 +14,6 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
-	logger "github.com/whyrusleeping/go-logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,8 +58,8 @@ type Config struct {
 func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	var err error
 	if conf.Debug {
-		err = util.SetLogLevels(map[string]logger.Level{
-			"textileapi": logger.DEBUG,
+		err = util.SetLogLevels(map[string]logging.LogLevel{
+			"textileapi": logging.LevelDebug,
 		})
 		if err != nil {
 			return nil, err

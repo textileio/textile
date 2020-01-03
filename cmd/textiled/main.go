@@ -9,7 +9,6 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/core"
-	logger "github.com/whyrusleeping/go-logging"
 )
 
 var (
@@ -177,8 +176,8 @@ var rootCmd = &cobra.Command{
 		cmd.ExpandConfigVars(configViper, flags)
 
 		if configViper.GetBool("log.debug") {
-			if err := util.SetLogLevels(map[string]logger.Level{
-				"textiled": logger.DEBUG,
+			if err := util.SetLogLevels(map[string]logging.LogLevel{
+				"textiled": logging.LevelDebug,
 			}); err != nil {
 				log.Fatal(err)
 			}

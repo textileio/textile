@@ -17,7 +17,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
-	"github.com/textileio/go-textile-core/broadcast"
+	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/collections"
 )
