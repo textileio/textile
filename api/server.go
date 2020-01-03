@@ -14,8 +14,7 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
-	s "github.com/textileio/textile/storage"
-	logger "github.com/whyrusleeping/go-logging"
+	"github.com/textileio/textile/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,7 +48,7 @@ type Config struct {
 
 	Collections *c.Collections
 
-	Storage *s.Storage
+	Storage *storage.Storage
 
 	EmailClient *email.Client
 
@@ -62,8 +61,8 @@ type Config struct {
 func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	var err error
 	if conf.Debug {
-		err = util.SetLogLevels(map[string]logger.Level{
-			"textileapi": logger.DEBUG,
+		err = util.SetLogLevels(map[string]logging.LogLevel{
+			"textileapi": logging.LevelDebug,
 		})
 		if err != nil {
 			return nil, err
@@ -129,14 +128,14 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.service.collections.Sessions.Get(token)
+	session, err := s.service.collections.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
 	if session.Expiry < int(time.Now().Unix()) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
-	user, err := s.service.collections.Users.Get(session.UserID)
+	user, err := s.service.collections.Users.Get(ctx, session.UserID)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
@@ -147,7 +146,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope != "" {
 		if scope != user.ID {
-			if _, err := s.service.getTeamForUser(scope, user); err != nil {
+			if _, err := s.service.getTeamForUser(ctx, scope, user); err != nil {
 				return nil, err
 			}
 		}
@@ -156,7 +155,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	}
 	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 
-	if err := s.service.collections.Sessions.Touch(session); err != nil {
+	if err := s.service.collections.Sessions.Touch(ctx, session); err != nil {
 		return nil, err
 	}
 

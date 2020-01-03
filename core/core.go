@@ -14,13 +14,12 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
-	es "github.com/textileio/go-threads/eventstore"
+	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
-	s "github.com/textileio/textile/storage"
-	logger "github.com/whyrusleeping/go-logging"
+	"github.com/textileio/textile/storage"
 )
 
 var (
@@ -32,7 +31,7 @@ type Textile struct {
 
 	ipfs iface.CoreAPI
 
-	threadservice es.ThreadserviceBoostrapper
+	threadservice s.ServiceBoostrapper
 
 	threadsServer *threadsapi.Server
 	threadsClient *threadsclient.Client
@@ -62,9 +61,9 @@ type Config struct {
 	Debug bool
 }
 
-func NewTextile(conf Config) (*Textile, error) {
-	if err := util.SetLogLevels(map[string]logger.Level{
-		"core": logger.DEBUG,
+func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
+	if err := util.SetLogLevels(map[string]logging.LogLevel{
+		"core": logging.LevelDebug,
 	}); err != nil {
 		return nil, err
 	}
@@ -83,16 +82,16 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadservice, err := es.DefaultThreadservice(
+	threadservice, err := s.DefaultService(
 		conf.RepoPath,
-		es.HostAddr(conf.AddrThreadsHost),
-		es.HostProxyAddr(conf.AddrThreadsHostProxy),
-		es.Debug(conf.Debug))
+		s.WithServiceHostAddr(conf.AddrThreadsHost),
+		s.WithServiceHostProxyAddr(conf.AddrThreadsHostProxy),
+		s.WithServiceDebug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}
 
-	threadsServer, err := threadsapi.NewServer(context.Background(), threadservice, threadsapi.Config{
+	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
 		Addr:      conf.AddrThreadsApi,
 		ProxyAddr: conf.AddrThreadsApiProxy,
@@ -107,12 +106,12 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(threadsClient, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, ds)
 	if err != nil {
 		return nil, err
 	}
 
-	storage, err := s.NewStorage(s.FcServiceAddress(conf.AddrFilecoinServer))
+	storage, err := storage.NewStorage(storage.FcServiceAddress(conf.AddrFilecoinServer))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	server, err := api.NewServer(context.Background(), api.Config{
+	server, err := api.NewServer(ctx, api.Config{
 		Addr:           conf.AddrApi,
 		AddrGateway:    conf.AddrGateway,
 		AddrGatewayUrl: conf.AddrGatewayUrl,

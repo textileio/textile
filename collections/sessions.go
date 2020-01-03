@@ -1,6 +1,7 @@
 package collections
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,36 +36,36 @@ func (s *Sessions) GetStoreID() *uuid.UUID {
 	return s.storeID
 }
 
-func (s *Sessions) Create(userID, scope string) (*Session, error) {
+func (s *Sessions) Create(ctx context.Context, userID, scope string) (*Session, error) {
 	session := &Session{
 		UserID: userID,
 		Scope:  scope,
 		Expiry: int(time.Now().Add(sessionDur).Unix()),
 	}
-	if err := s.threads.ModelCreate(s.storeID.String(), s.GetName(), session); err != nil {
+	if err := s.threads.ModelCreate(ctx, s.storeID.String(), s.GetName(), session); err != nil {
 		return nil, err
 	}
 	return session, nil
 }
 
-func (s *Sessions) Get(id string) (*Session, error) {
+func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
 	session := &Session{}
-	if err := s.threads.ModelFindByID(s.storeID.String(), s.GetName(), id, session); err != nil {
+	if err := s.threads.ModelFindByID(ctx, s.storeID.String(), s.GetName(), id, session); err != nil {
 		return nil, err
 	}
 	return session, nil
 }
 
-func (s *Sessions) Touch(session *Session) error {
+func (s *Sessions) Touch(ctx context.Context, session *Session) error {
 	session.Expiry = int(time.Now().Add(sessionDur).Unix())
-	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
+	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 
-func (s *Sessions) SwitchScope(session *Session, scope string) error {
+func (s *Sessions) SwitchScope(ctx context.Context, session *Session, scope string) error {
 	session.Scope = scope
-	return s.threads.ModelSave(s.storeID.String(), s.GetName(), session)
+	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 
-func (s *Sessions) Delete(id string) error {
-	return s.threads.ModelDelete(s.storeID.String(), s.GetName(), id)
+func (s *Sessions) Delete(ctx context.Context, id string) error {
+	return s.threads.ModelDelete(ctx, s.storeID.String(), s.GetName(), id)
 }

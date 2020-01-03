@@ -39,13 +39,13 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	matches, err := s.collections.Users.GetByEmail(req.Email)
+	matches, err := s.collections.Users.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
 	}
 	var user *c.User
 	if len(matches) == 0 {
-		user, err = s.collections.Users.Create(req.Email)
+		user, err = s.collections.Users.Create(ctx, req.Email)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.collections.Sessions.Create(user.ID, user.ID)
+	session, err := s.collections.Sessions.Create(ctx, user.ID, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (s *service) Switch(ctx context.Context, req *pb.SwitchRequest) (*pb.Switch
 	if !ok {
 		log.Fatal("scope required")
 	}
-	if err := s.collections.Sessions.SwitchScope(session, scope); err != nil {
+	if err := s.collections.Sessions.SwitchScope(ctx, session, scope); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +112,7 @@ func (s *service) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.Logout
 	if !ok {
 		log.Fatal("session required")
 	}
-	if err := s.collections.Sessions.Delete(session.ID); err != nil {
+	if err := s.collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func (s *service) Whoami(ctx context.Context, req *pb.WhoamiRequest) (*pb.Whoami
 		Email: user.Email,
 	}
 	if scope != user.ID {
-		team, err := s.collections.Teams.Get(scope)
+		team, err := s.collections.Teams.Get(ctx, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -180,11 +180,11 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 		log.Fatal("user required")
 	}
 
-	team, err := s.collections.Teams.Create(user.ID, req.Name)
+	team, err := s.collections.Teams.Create(ctx, user.ID, req.Name)
 	if err != nil {
 		return nil, err
 	}
-	if err = s.collections.Users.JoinTeam(user, team.ID); err != nil {
+	if err = s.collections.Users.JoinTeam(ctx, user, team.ID); err != nil {
 		return nil, err
 	}
 
@@ -201,12 +201,12 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, user)
 	if err != nil {
 		return nil, err
 	}
 
-	users, err := s.collections.Users.ListByTeam(team.ID)
+	users, err := s.collections.Users.ListByTeam(ctx, team.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *service) ListTeams(ctx context.Context, req *pb.ListTeamsRequest) (*pb.
 
 	list := make([]*pb.GetTeamReply, len(user.Teams))
 	for i, id := range user.Teams {
-		team, err := s.collections.Teams.Get(id)
+		team, err := s.collections.Teams.Get(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +261,7 @@ func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*p
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, user)
 	if err != nil {
 		return nil, err
 	}
@@ -269,15 +269,15 @@ func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*p
 		return nil, status.Error(codes.PermissionDenied, "User is not the team owner")
 	}
 
-	if err = s.collections.Teams.Delete(team.ID); err != nil {
+	if err = s.collections.Teams.Delete(ctx, team.ID); err != nil {
 		return nil, err
 	}
-	users, err := s.collections.Users.ListByTeam(team.ID)
+	users, err := s.collections.Users.ListByTeam(ctx, team.ID)
 	if err != nil {
 		return nil, err
 	}
 	for _, u := range users {
-		if err = s.collections.Users.LeaveTeam(u, team.ID); err != nil {
+		if err = s.collections.Users.LeaveTeam(ctx, u, team.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -293,7 +293,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, user)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	invite, err := s.collections.Invites.Create(team.ID, user.ID, req.Email)
+	invite, err := s.collections.Invites.Create(ctx, team.ID, user.ID, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, user)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 		return nil, status.Error(codes.PermissionDenied, "Team owner cannot leave")
 	}
 
-	if err = s.collections.Users.LeaveTeam(user, team.ID); err != nil {
+	if err = s.collections.Users.LeaveTeam(ctx, user, team.ID); err != nil {
 		return nil, err
 	}
 
@@ -349,7 +349,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		log.Fatal("scope required")
 	}
 
-	proj, err := s.collections.Projects.Create(req.Name, scope)
+	proj, err := s.collections.Projects.Create(ctx, req.Name, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(req.ID, scope)
+	proj, err := s.getProjectForScope(ctx, req.ID, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +385,7 @@ func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest)
 		log.Fatal("scope required")
 	}
 
-	projs, err := s.collections.Projects.List(scope)
+	projs, err := s.collections.Projects.List(ctx, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -414,12 +414,12 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(req.ID, scope)
+	proj, err := s.getProjectForScope(ctx, req.ID, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = s.collections.Projects.Delete(proj.ID); err != nil {
+	if err = s.collections.Projects.Delete(ctx, proj.ID); err != nil {
 		return nil, err
 	}
 
@@ -427,8 +427,8 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 }
 
 // getTeamForUser returns a team if the user is authorized.
-func (s *service) getTeamForUser(teamID string, user *c.User) (*c.Team, error) {
-	team, err := s.collections.Teams.Get(teamID)
+func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
+	team, err := s.collections.Teams.Get(ctx, teamID)
 	if err != nil {
 		return nil, err
 	}
@@ -442,8 +442,8 @@ func (s *service) getTeamForUser(teamID string, user *c.User) (*c.Team, error) {
 }
 
 // getProjectForScope returns a project if the scope is authorized.
-func (s *service) getProjectForScope(projID string, scope string) (*c.Project, error) {
-	proj, err := s.collections.Projects.Get(projID)
+func (s *service) getProjectForScope(ctx context.Context, projID string, scope string) (*c.Project, error) {
+	proj, err := s.collections.Projects.Get(ctx, projID)
 	if err != nil {
 		return nil, err
 	}

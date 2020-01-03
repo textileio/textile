@@ -10,7 +10,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	mailgun "github.com/mailgun/mailgun-go/v3"
 	"github.com/textileio/go-threads/util"
-	logger "github.com/whyrusleeping/go-logging"
 )
 
 var (
@@ -29,8 +28,8 @@ type Client struct {
 // NewClient return a mailgun-backed email client.
 func NewClient(from, domain, apiKey string, debug bool) (*Client, error) {
 	if debug {
-		if err := util.SetLogLevels(map[string]logger.Level{
-			"email": logger.DEBUG,
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"email": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}

@@ -34,9 +34,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/textileio/filecoin v0.0.0-00010101000000-000000000000
-	github.com/textileio/go-textile-core v0.0.0-20191205233641-31fc120682c9
-	github.com/textileio/go-threads v0.0.0-20191219202210-9adbd883e580
-	github.com/whyrusleeping/go-logging v0.0.1
+	github.com/textileio/go-threads v0.1.2
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.25.1
