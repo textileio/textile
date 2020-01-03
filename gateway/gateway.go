@@ -163,12 +163,15 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 
 // consentInvite adds a user to a team.
 func (g *Gateway) consentInvite(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	inviteID := c.Param("invite")
 	if inviteID == "" {
 		g.render404(c)
 		return
 	}
-	invite, err := g.collections.Invites.Get(inviteID)
+	invite, err := g.collections.Invites.Get(ctx, inviteID)
 	if err != nil {
 		g.render404(c)
 		return
@@ -178,14 +181,14 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	matches, err := g.collections.Users.GetByEmail(invite.ToEmail)
+	matches, err := g.collections.Users.GetByEmail(ctx, invite.ToEmail)
 	if err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
 	var user *collections.User
 	if len(matches) == 0 {
-		user, err = g.collections.Users.Create(invite.ToEmail)
+		user, err = g.collections.Users.Create(ctx, invite.ToEmail)
 		if err != nil {
 			g.renderError(c, http.StatusInternalServerError, err)
 			return
@@ -194,12 +197,12 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		user = matches[0]
 	}
 
-	team, err := g.collections.Teams.Get(invite.TeamID)
+	team, err := g.collections.Teams.Get(ctx, invite.TeamID)
 	if err != nil {
 		g.render404(c)
 		return
 	}
-	if err = g.collections.Users.JoinTeam(user, team.ID); err != nil {
+	if err = g.collections.Users.JoinTeam(ctx, user, team.ID); err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}

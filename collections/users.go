@@ -1,11 +1,12 @@
 package collections
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
-	ls "github.com/textileio/go-threads/logstore"
+	s "github.com/textileio/go-threads/store"
 )
 
 type User struct {
@@ -32,29 +33,29 @@ func (u *Users) GetStoreID() *uuid.UUID {
 	return u.storeID
 }
 
-func (u *Users) Create(email string) (*User, error) {
+func (u *Users) Create(ctx context.Context, email string) (*User, error) {
 	user := &User{
 		Email:   email,
 		Teams:   []string{},
 		Created: time.Now().Unix(),
 	}
-	if err := u.threads.ModelCreate(u.storeID.String(), u.GetName(), user); err != nil {
+	if err := u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (u *Users) Get(id string) (*User, error) {
+func (u *Users) Get(ctx context.Context, id string) (*User, error) {
 	user := &User{}
-	if err := u.threads.ModelFindByID(u.storeID.String(), u.GetName(), id, user); err != nil {
+	if err := u.threads.ModelFindByID(ctx, u.storeID.String(), u.GetName(), id, user); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (u *Users) GetByEmail(email string) ([]*User, error) {
-	query := ls.JSONWhere("Email").Eq(email)
-	rawResults, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), query, []*User{})
+func (u *Users) GetByEmail(ctx context.Context, email string) ([]*User, error) {
+	query := s.JSONWhere("Email").Eq(email)
+	rawResults, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +63,8 @@ func (u *Users) GetByEmail(email string) ([]*User, error) {
 	return users, nil
 }
 
-func (u *Users) ListByTeam(teamID string) ([]*User, error) {
-	res, err := u.threads.ModelFind(u.storeID.String(), u.GetName(), &ls.JSONQuery{}, []*User{})
+func (u *Users) ListByTeam(ctx context.Context, teamID string) ([]*User, error) {
+	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), &s.JSONQuery{}, []*User{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,17 +92,17 @@ func (u *Users) HasTeam(user *User, teamID string) bool {
 	return false
 }
 
-func (u *Users) JoinTeam(user *User, teamID string) error {
+func (u *Users) JoinTeam(ctx context.Context, user *User, teamID string) error {
 	for _, t := range user.Teams {
 		if t == teamID {
 			return nil
 		}
 	}
 	user.Teams = append(user.Teams, teamID)
-	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
+	return u.threads.ModelSave(ctx, u.storeID.String(), u.GetName(), user)
 }
 
-func (u *Users) LeaveTeam(user *User, teamID string) error {
+func (u *Users) LeaveTeam(ctx context.Context, user *User, teamID string) error {
 	n := 0
 	for _, x := range user.Teams {
 		if x != teamID {
@@ -110,10 +111,10 @@ func (u *Users) LeaveTeam(user *User, teamID string) error {
 		}
 	}
 	user.Teams = user.Teams[:n]
-	return u.threads.ModelSave(u.storeID.String(), u.GetName(), user)
+	return u.threads.ModelSave(ctx, u.storeID.String(), u.GetName(), user)
 }
 
 // @todo: Add a destroy method that calls this. User must first delete projects and teams they own.
-func (u *Users) Delete(id string) error {
-	return u.threads.ModelDelete(u.storeID.String(), u.GetName(), id)
+func (u *Users) Delete(ctx context.Context, id string) error {
+	return u.threads.ModelDelete(ctx, u.storeID.String(), u.GetName(), id)
 }

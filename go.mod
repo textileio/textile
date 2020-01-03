@@ -15,7 +15,7 @@ require (
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.0.5
-	github.com/ipfs/go-log v0.0.1
+	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.5
 	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15
 	github.com/json-iterator/go v1.1.9 // indirect
@@ -31,13 +31,10 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
-	github.com/textileio/go-textile-core v0.0.0-20191205233641-31fc120682c9
-	github.com/textileio/go-threads v0.0.0-20191219202210-9adbd883e580
-	github.com/whyrusleeping/go-logging v0.0.1
+	github.com/textileio/go-threads v0.1.2
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.25.1
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 )

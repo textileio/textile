@@ -1,6 +1,7 @@
 package collections
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,26 +32,26 @@ func (t *Teams) GetStoreID() *uuid.UUID {
 	return t.storeID
 }
 
-func (t *Teams) Create(ownerID, name string) (*Team, error) {
+func (t *Teams) Create(ctx context.Context, ownerID, name string) (*Team, error) {
 	team := &Team{
 		OwnerID: ownerID,
 		Name:    name,
 		Created: time.Now().Unix(),
 	}
-	if err := t.threads.ModelCreate(t.storeID.String(), t.GetName(), team); err != nil {
+	if err := t.threads.ModelCreate(ctx, t.storeID.String(), t.GetName(), team); err != nil {
 		return nil, err
 	}
 	return team, nil
 }
 
-func (t *Teams) Get(id string) (*Team, error) {
+func (t *Teams) Get(ctx context.Context, id string) (*Team, error) {
 	team := &Team{}
-	if err := t.threads.ModelFindByID(t.storeID.String(), t.GetName(), id, team); err != nil {
+	if err := t.threads.ModelFindByID(ctx, t.storeID.String(), t.GetName(), id, team); err != nil {
 		return nil, err
 	}
 	return team, nil
 }
 
-func (t *Teams) Delete(id string) error {
-	return t.threads.ModelDelete(t.storeID.String(), t.GetName(), id)
+func (t *Teams) Delete(ctx context.Context, id string) error {
+	return t.threads.ModelDelete(ctx, t.storeID.String(), t.GetName(), id)
 }

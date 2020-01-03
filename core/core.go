@@ -14,7 +14,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
-	ls "github.com/textileio/go-threads/logstore"
+	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
@@ -30,7 +30,7 @@ type Textile struct {
 
 	ipfs iface.CoreAPI
 
-	threadservice ls.ThreadserviceBoostrapper
+	threadservice s.ServiceBoostrapper
 
 	threadsServer *threadsapi.Server
 	threadsClient *threadsclient.Client
@@ -80,11 +80,11 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadservice, err := ls.DefaultThreadservice(
+	threadservice, err := s.DefaultService(
 		conf.RepoPath,
-		ls.HostAddr(conf.AddrThreadsHost),
-		ls.HostProxyAddr(conf.AddrThreadsHostProxy),
-		ls.Debug(conf.Debug))
+		s.WithServiceHostAddr(conf.AddrThreadsHost),
+		s.WithServiceHostProxyAddr(conf.AddrThreadsHostProxy),
+		s.WithServiceDebug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(threadsClient, ds)
+	collections, err := c.NewCollections(context.Background(), threadsClient, ds)
 	if err != nil {
 		return nil, err
 	}
