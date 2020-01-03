@@ -59,7 +59,7 @@ type Config struct {
 	Debug bool
 }
 
-func NewTextile(conf Config) (*Textile, error) {
+func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err := util.SetLogLevels(map[string]logging.LogLevel{
 		"core": logging.LevelDebug,
 	}); err != nil {
@@ -89,7 +89,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadsServer, err := threadsapi.NewServer(context.Background(), threadservice, threadsapi.Config{
+	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
 		Addr:      conf.AddrThreadsApi,
 		ProxyAddr: conf.AddrThreadsApiProxy,
@@ -104,7 +104,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(context.Background(), threadsClient, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func NewTextile(conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	server, err := api.NewServer(context.Background(), api.Config{
+	server, err := api.NewServer(ctx, api.Config{
 		Addr:           conf.AddrApi,
 		AddrGateway:    conf.AddrGateway,
 		AddrGatewayUrl: conf.AddrGatewayUrl,

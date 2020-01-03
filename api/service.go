@@ -72,7 +72,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.collections.Sessions.Create(ectx, user.ID, user.ID)
+	session, err := s.collections.Sessions.Create(ctx, user.ID, user.ID)
 	if err != nil {
 		return nil, err
 	}

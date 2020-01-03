@@ -142,7 +142,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope != "" {
 		if scope != user.ID {
-			if _, err := s.service.getTeamForUser(newCtx, scope, user); err != nil {
+			if _, err := s.service.getTeamForUser(ctx, scope, user); err != nil {
 				return nil, err
 			}
 		}
@@ -151,7 +151,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	}
 	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 
-	if err := s.service.collections.Sessions.Touch(newCtx, session); err != nil {
+	if err := s.service.collections.Sessions.Touch(ctx, session); err != nil {
 		return nil, err
 	}
 

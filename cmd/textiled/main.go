@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
@@ -203,7 +204,10 @@ var rootCmd = &cobra.Command{
 			util.SetupDefaultLoggingConfig(logFile)
 		}
 
-		textile, err := core.NewTextile(core.Config{
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		textile, err := core.NewTextile(ctx, core.Config{
 			RepoPath:             configViper.GetString("repo"),
 			AddrApi:              addrApi,
 			AddrThreadsHost:      addrThreadsHost,
