@@ -1,6 +1,7 @@
 package collections
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -39,7 +40,7 @@ type Collections struct {
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collections, err error) {
+func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore) (c *Collections, err error) {
 	c = &Collections{
 		threads: threads,
 		ds:      ds,
@@ -51,23 +52,23 @@ func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collecti
 		Projects: &Projects{threads: threads},
 	}
 
-	c.Users.storeID, err = c.addCollection(c.Users, dsUsersKey)
+	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
 	if err != nil {
 		return nil, err
 	}
-	c.Sessions.storeID, err = c.addCollection(c.Sessions, dsSessionsKey)
+	c.Sessions.storeID, err = c.addCollection(ctx, c.Sessions, dsSessionsKey)
 	if err != nil {
 		return nil, err
 	}
-	c.Teams.storeID, err = c.addCollection(c.Teams, dsTeamsKey)
+	c.Teams.storeID, err = c.addCollection(ctx, c.Teams, dsTeamsKey)
 	if err != nil {
 		return nil, err
 	}
-	c.Invites.storeID, err = c.addCollection(c.Invites, dsInvitesKey)
+	c.Invites.storeID, err = c.addCollection(ctx, c.Invites, dsInvitesKey)
 	if err != nil {
 		return nil, err
 	}
-	c.Projects.storeID, err = c.addCollection(c.Projects, dsProjectsKey)
+	c.Projects.storeID, err = c.addCollection(ctx, c.Projects, dsProjectsKey)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +82,13 @@ func NewCollections(threads *client.Client, ds datastore.Datastore) (c *Collecti
 	return c, nil
 }
 
-func (c *Collections) addCollection(col Collection, key datastore.Key) (*uuid.UUID, error) {
+func (c *Collections) addCollection(ctx context.Context, col Collection, key datastore.Key) (*uuid.UUID, error) {
 	storeID, err := storeIDAtKey(c.ds, key)
 	if err != nil {
 		return nil, err
 	}
 	if storeID == nil {
-		ids, err := c.threads.NewStore()
+		ids, err := c.threads.NewStore(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -98,13 +99,13 @@ func (c *Collections) addCollection(col Collection, key datastore.Key) (*uuid.UU
 		if err != nil {
 			panic(err)
 		}
-		if err = c.threads.RegisterSchema(storeID.String(), col.GetName(), string(schema)); err != nil {
+		if err = c.threads.RegisterSchema(ctx, storeID.String(), col.GetName(), string(schema)); err != nil {
 			return nil, err
 		}
 		if err = c.ds.Put(key, storeID[:]); err != nil {
 			return nil, err
 		}
-		if err = c.threads.Start(storeID.String()); err != nil {
+		if err = c.threads.Start(ctx, storeID.String()); err != nil {
 			return nil, err
 		}
 	}

@@ -557,7 +557,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 
 		Debug: true,
 	}
-	textile, err := core.NewTextile(conf)
+	textile, err := core.NewTextile(context.Background(), conf)
 	if err != nil {
 		t.Fatal(err)
 	}
