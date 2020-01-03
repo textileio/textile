@@ -545,6 +545,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		AddrThreadsApi:       util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsApiPort)),
 		AddrThreadsApiProxy:  util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
 		AddrIpfsApi:          util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
+		AddrFilecoinServer:   util.MustParseAddr("/ip4/127.0.0.1/tcp/5002"),
 
 		AddrGateway:    util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayUrl: fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),

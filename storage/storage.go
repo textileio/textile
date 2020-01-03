@@ -54,7 +54,7 @@ func StoreToFilecoin(address string, duration int64) StoreOption {
 
 // NewStorage creates a storage manager
 func NewStorage(opts ...Option) (*Storage, error) {
-	addr, err := ma.NewMultiaddr("/ipv4/127.0.0.1/tcp/50006")
+	addr, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/50006")
 	if err != nil {
 		return nil, err
 	}
