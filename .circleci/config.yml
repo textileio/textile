@@ -17,6 +17,9 @@ jobs:
           paths:
             - /go/pkg/mod
       - run:
+          name: clone filecoin
+          command: git clone git@github.com:textileio/filecoin.git ~/filecoin
+      - run:
           name: run tests
           command: |
             go test -v ./...
