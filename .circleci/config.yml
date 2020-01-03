@@ -6,9 +6,6 @@ jobs:
       - image: circleci/golang:1.13
     steps:
       - checkout
-      - run:
-          name: clone filecoin
-          command: git clone git@github.com:textileio/filecoin.git ~/filecoin
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
