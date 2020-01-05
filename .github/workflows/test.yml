@@ -18,6 +18,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v1
       - name: Checkout filecoin repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: actions/checkout@v2
         with:
           repository: textileio/filecoin
