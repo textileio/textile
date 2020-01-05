@@ -37,5 +37,7 @@ jobs:
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           go mod download
+        with:
+          path: filecoin
       - name: Test
         run: go test ./... -run none
