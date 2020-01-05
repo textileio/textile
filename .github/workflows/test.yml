@@ -22,7 +22,7 @@ jobs:
         with:
           repository: textileio/filecoin
           token: ${{ secrets.ACCESS_TOKEN }}
-          path: filecoin
+          path: ../filecoin
       - name: Cache dependencies
         id: cache-dependencies
         uses: actions/cache@v1
