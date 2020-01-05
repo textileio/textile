@@ -17,6 +17,11 @@ jobs:
           go-version: 1.13
       - name: Check out code
         uses: actions/checkout@v1
+      - name: Checkout filecoin repo
+        uses: actions/checkout@v1
+        with:
+          repository: textileio/filecoin
+          path: filecoin
       - name: Cache dependencies
         id: cache-dependencies
         uses: actions/cache@v1
