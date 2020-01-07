@@ -1,0 +1,23 @@
+version: "3"
+services:
+  textile:
+    image: textile/textile:latest
+    hostname: textile_host
+    volumes:
+      - "./data/textile:/data/textile"
+    ports:
+      - "3006:3006"
+      - "4006:4006"
+      - "5006:5006"
+      - "6006:6006"
+      - "7006:7006"
+      - "8006:8006"
+  ipfs:
+    image: ipfs/go-ipfs:latest
+    hostname: ipfs_host
+    volumes:
+      - "./data/ipfs:/data/ipfs"
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
