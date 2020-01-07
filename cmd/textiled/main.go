@@ -186,8 +186,12 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		all, err := json.MarshalIndent(configViper.AllSettings(), "", "  ")
-		fmt.Println(string(all))
+		settings, err := json.MarshalIndent(configViper.AllSettings(), "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Debug(string(settings))
+
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
 		addrThreadsHostProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.host_proxy"))
