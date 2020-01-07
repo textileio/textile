@@ -5,7 +5,7 @@ import (
 	"io"
 
 	ma "github.com/multiformats/go-multiaddr"
-	fc "github.com/textileio/filecoin/api"
+	fc "github.com/textileio/filecoin/api/client"
 )
 
 // Storage provides the storage API
