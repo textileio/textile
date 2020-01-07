@@ -50,7 +50,7 @@ type Config struct {
 	AddrIpfsApi          ma.Multiaddr
 	AddrGateway          ma.Multiaddr
 	AddrGatewayUrl       string
-	AddrFilecoinServer   ma.Multiaddr
+	AddrFilecoinApi      ma.Multiaddr
 
 	EmailFrom   string
 	EmailDomain string
@@ -111,7 +111,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	storage, err := storage.NewStorage(storage.FcServiceAddress(conf.AddrFilecoinServer))
+	storage, err := storage.NewStorage(storage.FcServiceAddress(conf.AddrFilecoinApi))
 	if err != nil {
 		return nil, err
 	}
