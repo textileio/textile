@@ -546,8 +546,8 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		AddrThreadsApiProxy:  util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
 		AddrIpfsApi:          util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 
-		AddrGateway:    util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayUrl: fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
+		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
 
 		EmailFrom:   "test@email.textile.io",
 		EmailDomain: "email.textile.io",
