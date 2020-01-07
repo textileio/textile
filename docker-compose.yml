@@ -1,7 +1,7 @@
 version: "3"
 services:
   textile:
-    image: textile:latest
+    image: textile/textile:latest
     hostname: textile_host
     volumes:
       - "./data/textile:/data/textile"
