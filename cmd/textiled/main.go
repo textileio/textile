@@ -190,7 +190,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Debug(string(settings))
+		log.Debugf("loaded config: %s", string(settings))
 
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))

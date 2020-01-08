@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/phayes/freeport"
+	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
@@ -491,7 +492,11 @@ func TestClose(t *testing.T) {
 	t.Parallel()
 	conf, shutdown := makeTextile(t)
 	defer shutdown()
-	client, err := NewClient(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +510,11 @@ func TestClose(t *testing.T) {
 
 func setup(t *testing.T) (core.Config, *Client, func()) {
 	conf, shutdown := makeTextile(t)
-	client, err := NewClient(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
