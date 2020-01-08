@@ -11,7 +11,6 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
-	s "github.com/textileio/textile/storage"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,7 +23,6 @@ var (
 // service is a gRPC service for textile.
 type service struct {
 	collections *c.Collections
-	storage     *s.Storage
 
 	gateway     *gateway.Gateway
 	emailClient *email.Client

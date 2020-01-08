@@ -15,7 +15,6 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
-	"github.com/textileio/textile/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,8 +48,6 @@ type Config struct {
 
 	Collections *c.Collections
 
-	Storage *storage.Storage
-
 	EmailClient *email.Client
 
 	FCClient *fc.Client
@@ -76,7 +73,6 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:   conf.Collections,
-			storage:       conf.Storage,
 			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
 			fcClient:      conf.FCClient,

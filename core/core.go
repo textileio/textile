@@ -20,7 +20,6 @@ import (
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/storage"
 )
 
 var (
@@ -117,11 +116,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	storage, err := storage.NewStorage(storage.FcClient(fcClient))
-	if err != nil {
-		return nil, err
-	}
-
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
@@ -133,7 +127,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		AddrGateway:    conf.AddrGateway,
 		AddrGatewayUrl: conf.AddrGatewayUrl,
 		Collections:    collections,
-		Storage:        storage,
 		EmailClient:    emailClient,
 		FCClient:       fcClient,
 		SessionSecret:  conf.SessionSecret,
