@@ -9,6 +9,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
+	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
@@ -52,6 +53,8 @@ type Config struct {
 
 	EmailClient *email.Client
 
+	FCClient *fc.Client
+
 	SessionSecret []byte
 
 	Debug bool
@@ -76,6 +79,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			storage:       conf.Storage,
 			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
+			fcClient:      conf.FCClient,
 			sessionSecret: conf.SessionSecret,
 		},
 		ctx:    ctx,

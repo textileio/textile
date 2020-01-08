@@ -12,6 +12,7 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	fc "github.com/textileio/filecoin/api/client"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	s "github.com/textileio/go-threads/store"
@@ -111,7 +112,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	storage, err := storage.NewStorage(storage.FcServiceAddress(conf.AddrFilecoinApi))
+	fcClient, err := fc.NewClient(conf.AddrFilecoinApi)
+	if err != nil {
+		return nil, err
+	}
+
+	storage, err := storage.NewStorage(storage.FcClient(fcClient))
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +135,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:    collections,
 		Storage:        storage,
 		EmailClient:    emailClient,
+		FCClient:       fcClient,
 		SessionSecret:  conf.SessionSecret,
 		Debug:          conf.Debug,
 	})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	ma "github.com/multiformats/go-multiaddr"
 	fc "github.com/textileio/filecoin/api/client"
 )
 
@@ -14,16 +13,16 @@ type Storage struct {
 }
 
 type config struct {
-	fcGrpcAddress ma.Multiaddr
+	fcClient *fc.Client
 }
 
 // Option configures Storage
 type Option func(*config) error
 
-// FcServiceAddress sets the address to connect to for the filecoin servive
-func FcServiceAddress(address ma.Multiaddr) Option {
+// FcClient sets the address to connect to for the filecoin servive
+func FcClient(client *fc.Client) Option {
 	return func(c *config) error {
-		c.fcGrpcAddress = address
+		c.fcClient = client
 		return nil
 	}
 }
@@ -54,24 +53,14 @@ func StoreToFilecoin(address string, duration int64) StoreOption {
 
 // NewStorage creates a storage manager
 func NewStorage(opts ...Option) (*Storage, error) {
-	addr, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/50006")
-	if err != nil {
-		return nil, err
-	}
-	conf := &config{
-		fcGrpcAddress: addr,
-	}
+	conf := &config{}
 
 	for _, opt := range opts {
 		opt(conf)
 	}
 
-	c, err := fc.NewClient(conf.fcGrpcAddress)
-	if err != nil {
-		return nil, err
-	}
 	s := &Storage{
-		fcClient: c,
+		fcClient: conf.fcClient,
 	}
 
 	return s, nil
