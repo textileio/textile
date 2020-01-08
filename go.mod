@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
+	github.com/cloudflare/cloudflare-go v0.11.0
 	github.com/gin-contrib/location v0.0.0-20190301062650-0462caccbb9c
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.5.0

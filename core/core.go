@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -144,6 +146,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	domain := ""
+	email := ""
+	SECRET := ""
+	zoneID := ""
+	dnsManager, err := dns.NewClient(domain, email, zoneID, SECRET, conf.Debug)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(dnsManager)
+	fmt.Printf("SUCCESS")
 
 	server, err := api.NewServer(ctx, api.Config{
 		Addr:            conf.AddrApi,
