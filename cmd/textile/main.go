@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc/credentials"
-
 	logging "github.com/ipfs/go-log"
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -16,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	api "github.com/textileio/textile/api/client"
 	"github.com/textileio/textile/cmd"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
