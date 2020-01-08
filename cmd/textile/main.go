@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"strings"
 	"time"
+
+	"google.golang.org/grpc/credentials"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/logrusorgru/aurora"
@@ -47,9 +51,9 @@ var (
 			Key:      "scope",
 			DefValue: "",
 		},
-		"addrApi": {
-			Key:      "addr.api",
-			DefValue: "/ip4/127.0.0.1/tcp/3006",
+		"apiTarget": {
+			Key:      "api_target",
+			DefValue: "api.textile.io:443",
 		},
 	}
 
@@ -103,9 +107,9 @@ func init() {
 		"Scope (User or Team ID)")
 
 	rootCmd.PersistentFlags().String(
-		"addrApi",
-		flags["addrApi"].DefValue.(string),
-		"Textile API address")
+		"apiTarget",
+		flags["apiTarget"].DefValue.(string),
+		"Textile gRPC API Target")
 
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		cmd.Fatal(err)
@@ -143,8 +147,13 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		target := configViper.GetString("api_target")
+		var creds credentials.TransportCredentials
+		if strings.Contains(target, "443") {
+			creds = credentials.NewTLS(&tls.Config{})
+		}
 		var err error
-		client, err = api.NewClient(cmd.AddrFromStr(configViper.GetString("addr.api")))
+		client, err = api.NewClient(target, creds)
 		if err != nil {
 			cmd.Fatal(err)
 		}

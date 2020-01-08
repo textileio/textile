@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-threads/util"
+	"google.golang.org/grpc/credentials"
+
 	pb "github.com/textileio/textile/api/pb"
 	"google.golang.org/grpc"
 )
@@ -22,12 +22,17 @@ type Client struct {
 }
 
 // NewClient starts the client.
-func NewClient(maddr ma.Multiaddr) (*Client, error) {
-	addr, err := util.TCPAddrFromMultiAddr(maddr)
-	if err != nil {
-		return nil, err
+func NewClient(url string, creds credentials.TransportCredentials) (*Client, error) {
+	var opts []grpc.DialOption
+	auth := tokenAuth{}
+	if creds != nil {
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+		auth.secure = true
+	} else {
+		opts = append(opts, grpc.WithInsecure())
 	}
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithPerRPCCredentials(tokenAuth{}))
+	opts = append(opts, grpc.WithPerRPCCredentials(auth))
+	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +139,9 @@ func (c *Client) RemoveProject(ctx context.Context, projID string, auth Auth) er
 	return err
 }
 
-type tokenAuth struct{}
+type tokenAuth struct {
+	secure bool
+}
 
 type authKey string
 
@@ -151,8 +158,8 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[s
 	return md, nil
 }
 
-func (tokenAuth) RequireTransportSecurity() bool {
-	return false
+func (t tokenAuth) RequireTransportSecurity() bool {
+	return t.secure
 }
 
 func authCtx(ctx context.Context, auth Auth) context.Context {
