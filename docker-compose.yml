@@ -5,6 +5,17 @@ services:
     hostname: textile_host
     volumes:
       - "./data/textile:/data/textile"
+    environment:
+      - TXTL_ADDR_API=/ip4/0.0.0.0/tcp/3006
+      - TXTL_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - TXTL_ADDR_THREADS_HOST_PROXY=/ip4/0.0.0.0/tcp/5006
+      - TXTL_ADDR_THREADS_API=/ip4/0.0.0.0/tcp/6006
+      - TXTL_ADDR_THREADS_API_PROXY=/ip4/0.0.0.0/tcp/7006
+      - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
+      - TXTL_ADDR_GATEWAY_URL=http://127.0.0.1:8006
+      - TXTL_ADDR_IPFS_API=/ip4/127.0.0.1/tcp/5001
+      - TXTL_EMAIL_API_KEY
+      - TXTL_LOG_DEBUG
     ports:
       - "3006:3006"
       - "4006:4006"

@@ -1,4 +1,4 @@
-FROM golang:1.13.5-stretch
+FROM golang:1.13.5-buster
 MAINTAINER Textile <contact@textile.io>
 
 # This is (in large part) copied (with love) from
@@ -14,7 +14,7 @@ RUN cd $SRC_DIR \
 
 COPY . $SRC_DIR
 
-# build source
+# Install the daemon
 RUN cd $SRC_DIR \
   && go install github.com/textileio/textile/cmd/textiled
 
@@ -36,44 +36,45 @@ RUN set -x \
 RUN apt-get update && apt-get install -y ca-certificates
 
 # Now comes the actual target image, which aims to be as small as possible.
-FROM busybox:1-glibc
-MAINTAINER Textile <contact@textile.io>
+FROM busybox:1.31.0-glibc
+LABEL maintainer="Textile <contact@textile.io>"
 
 # Get the textile binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /textile
 COPY --from=0 /go/bin/textiled /usr/local/bin/textiled
-COPY --from=0 $SRC_DIR/bin/container_daemon /usr/local/bin/start_textiled
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
-# COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
+COPY --from=0 /lib/x86_64-linux-gnu/libdl.so.2 /lib/libdl.so.2
 
-# Create the fs-repo directory
-ENV REPO /data/textile
-RUN mkdir -p $REPO \
-  && adduser -D -h $REPO -u 1000 -G users textile \
-  && chown -R textile:users $REPO
+# addrApi; should be exposed to the public
+EXPOSE 3006
+# addrThreadsHost; should be exposed to the public
+EXPOSE 4006
+# addrThreadsHostProxy; should be exposed to the public
+EXPOSE 5006
+# addrThreadsApi; should be exposed to the public
+EXPOSE 6006
+# addrThreadsApiProxy; should be exposed to the public
+EXPOSE 7006
+# addrGatewayHost; should be exposed to the public
+EXPOSE 8006
+
+# Create the repo directory and switch to a non-privileged user.
+ENV TEXTILE_PATH /data/textile
+RUN mkdir -p $TEXTILE_PATH \
+  && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
+  && chown -R textile:users $TEXTILE_PATH
 
 # Switch to a non-privileged user
 USER textile
 
-# Expose the fs-repo as a volume.
-# start_textiled initializes an fs-repo if none is mounted.
+# Expose the repo as a volume.
 # Important this happens after the USER directive so permission are correct.
-VOLUME $REPO
+VOLUME $TEXTILE_PATH
 
-EXPOSE 3006
-EXPOSE 4006
-EXPOSE 5006
-EXPOSE 6006
-EXPOSE 7006
-EXPOSE 8006
+ENTRYPOINT ["/sbin/tini", "--", "textiled"]
 
-# This just makes sure that:
-# 1. There's an fs-repo, and initializes one if there isn't.
-# 2. The API and Gateway are accessible from outside the container.
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_textiled"]
-
-CMD ["textiled", "--repo=/data/textile", "--addrApi=/ip4/0.0.0.0/tcp/3006", "--addrThreadsApi=/ip4/0.0.0.0/tcp/6006", "--addrThreadsApiProxy=/ip4/0.0.0.0/tcp/7006", "--addrGateway=/ip4/0.0.0.0/tcp/8006"]
+CMD ["--repo=/data/textile"]

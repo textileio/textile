@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
@@ -51,7 +52,7 @@ var (
 			Key:      "addr.threads.api_proxy",
 			DefValue: "/ip4/127.0.0.1/tcp/7006",
 		},
-		"addrGateway": {
+		"addrGatewayHost": {
 			Key:      "addr.gateway.host",
 			DefValue: "/ip4/127.0.0.1/tcp/8006",
 		},
@@ -133,13 +134,13 @@ func init() {
 
 	// Gateway settings
 	rootCmd.PersistentFlags().String(
-		"addrGateway",
-		flags["addrGateway"].DefValue.(string),
-		"Local address of gateway")
+		"addrGatewayHost",
+		flags["addrGatewayHost"].DefValue.(string),
+		"Local gateway host address")
 	rootCmd.PersistentFlags().String(
 		"addrGatewayUrl",
 		flags["addrGatewayUrl"].DefValue.(string),
-		"Public address of gateway")
+		"Public gateway address")
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
@@ -185,6 +186,12 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
+		settings, err := json.MarshalIndent(configViper.AllSettings(), "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Debug(string(settings))
+
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
 		addrThreadsHostProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.host_proxy"))
@@ -192,7 +199,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
-		addrGateway := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
+		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
 		emailFrom := configViper.GetString("email.from")
@@ -215,7 +222,7 @@ var rootCmd = &cobra.Command{
 			AddrThreadsApi:       addrThreadsApi,
 			AddrThreadsApiProxy:  addrThreadsApiProxy,
 			AddrIpfsApi:          addrIpfsApi,
-			AddrGateway:          addrGateway,
+			AddrGatewayHost:      addrGatewayHost,
 			AddrGatewayUrl:       addrGatewayUrl,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
