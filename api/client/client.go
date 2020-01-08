@@ -22,7 +22,7 @@ type Client struct {
 }
 
 // NewClient starts the client.
-func NewClient(url string, creds credentials.TransportCredentials) (*Client, error) {
+func NewClient(target string, creds credentials.TransportCredentials) (*Client, error) {
 	var opts []grpc.DialOption
 	auth := tokenAuth{}
 	if creds != nil {
@@ -32,7 +32,7 @@ func NewClient(url string, creds credentials.TransportCredentials) (*Client, err
 		opts = append(opts, grpc.WithInsecure())
 	}
 	opts = append(opts, grpc.WithPerRPCCredentials(auth))
-	conn, err := grpc.Dial(url, opts...)
+	conn, err := grpc.Dial(target, opts...)
 	if err != nil {
 		return nil, err
 	}

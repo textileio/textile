@@ -492,11 +492,11 @@ func TestClose(t *testing.T) {
 	t.Parallel()
 	conf, shutdown := makeTextile(t)
 	defer shutdown()
-	url, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(url, nil)
+	client, err := NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -510,11 +510,11 @@ func TestClose(t *testing.T) {
 
 func setup(t *testing.T) (core.Config, *Client, func()) {
 	conf, shutdown := makeTextile(t)
-	url, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(url, nil)
+	client, err := NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
