@@ -42,9 +42,9 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr           ma.Multiaddr
-	AddrGateway    ma.Multiaddr
-	AddrGatewayUrl string
+	Addr            ma.Multiaddr
+	AddrGatewayHost ma.Multiaddr
+	AddrGatewayUrl  string
 
 	Collections *c.Collections
 
@@ -73,7 +73,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:   conf.Collections,
-			gateway:       gateway.NewGateway(conf.AddrGateway, conf.AddrGatewayUrl, conf.Collections),
+			gateway:       gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:   conf.EmailClient,
 			fcClient:      conf.FCClient,
 			sessionSecret: conf.SessionSecret,

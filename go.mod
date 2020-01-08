@@ -32,7 +32,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
-	github.com/textileio/go-threads v0.1.3
+	github.com/textileio/go-threads v0.1.4
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect

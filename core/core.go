@@ -48,7 +48,7 @@ type Config struct {
 	AddrThreadsApi       ma.Multiaddr
 	AddrThreadsApiProxy  ma.Multiaddr
 	AddrIpfsApi          ma.Multiaddr
-	AddrGateway          ma.Multiaddr
+	AddrGatewayHost      ma.Multiaddr
 	AddrGatewayUrl       string
 	AddrFilecoinApi      ma.Multiaddr
 
@@ -68,11 +68,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	repoPath := path.Join(conf.RepoPath, "textile")
-	if err := os.MkdirAll(repoPath, os.ModePerm); err != nil {
+	dsPath := path.Join(conf.RepoPath, "textile")
+	if err := os.MkdirAll(dsPath, os.ModePerm); err != nil {
 		return nil, err
 	}
-	ds, err := badger.NewDatastore(path.Join(conf.RepoPath, "textile"), &badger.DefaultOptions)
+	ds, err := badger.NewDatastore(dsPath, &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -123,14 +123,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	server, err := api.NewServer(ctx, api.Config{
-		Addr:           conf.AddrApi,
-		AddrGateway:    conf.AddrGateway,
-		AddrGatewayUrl: conf.AddrGatewayUrl,
-		Collections:    collections,
-		EmailClient:    emailClient,
-		FCClient:       fcClient,
-		SessionSecret:  conf.SessionSecret,
-		Debug:          conf.Debug,
+		Addr:            conf.AddrApi,
+		AddrGatewayHost: conf.AddrGatewayHost,
+		AddrGatewayUrl:  conf.AddrGatewayUrl,
+		Collections:     collections,
+		EmailClient:     emailClient,
+		FCClient:        fcClient,
+		SessionSecret:   conf.SessionSecret,
+		Debug:           conf.Debug,
 	})
 	if err != nil {
 		return nil, err

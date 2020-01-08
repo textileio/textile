@@ -34,7 +34,11 @@ type fileSystem struct {
 
 // Exists returns whether or not the path exists in the binary assets.
 func (f *fileSystem) Exists(prefix, path string) bool {
-	_, ok := f.Files[strings.TrimPrefix(path, prefix)]
+	pth := strings.TrimPrefix(path, prefix)
+	if pth == "/" {
+		return false
+	}
+	_, ok := f.Files[pth]
 	return ok
 }
 
