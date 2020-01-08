@@ -28,6 +28,7 @@ jobs:
       - name: Get dependencies
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
-          go mod download
+          go get -v -t -d ./...
       - name: Test
-        run: go test ./... -run none
+        run: go test ./...
+        
