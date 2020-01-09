@@ -111,9 +111,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	fcClient, err := fc.NewClient(conf.AddrFilecoinApi)
-	if err != nil {
-		return nil, err
+	var fcClient *fc.Client
+	if conf.AddrFilecoinApi != nil {
+		fcClient, err = fc.NewClient(conf.AddrFilecoinApi)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	emailClient, err := email.NewClient(
@@ -156,6 +159,9 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
+	if err := t.threadsClient.Close(); err != nil {
+		return err
+	}
 	if err := t.threadservice.Close(); err != nil {
 		return err
 	}

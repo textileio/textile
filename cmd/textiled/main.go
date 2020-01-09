@@ -150,7 +150,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"addrFilecoinApi",
 		flags["addrFilecoinApi"].DefValue.(string),
-		"Filecoin gRPC API listen address")
+		"Filecoin gRPC API address")
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(

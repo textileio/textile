@@ -112,6 +112,11 @@ func (s *Server) Close() error {
 	if err := s.service.gateway.Stop(); err != nil {
 		return err
 	}
+	if s.service.fcClient != nil {
+		if err := s.service.fcClient.Close(); err != nil {
+			return err
+		}
+	}
 	s.cancel()
 	return nil
 }

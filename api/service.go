@@ -349,9 +349,13 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		log.Fatal("scope required")
 	}
 
-	addr, err := s.fcClient.Wallet.NewWallet(ctx, "bls")
-	if err != nil {
-		return nil, err
+	var addr string
+	if s.fcClient != nil {
+		var err error
+		addr, err = s.fcClient.Wallet.NewWallet(ctx, "bls")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	proj, err := s.collections.Projects.Create(ctx, req.Name, scope, addr)
@@ -378,9 +382,12 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 		return nil, err
 	}
 
-	bal, err := s.fcClient.Wallet.WalletBalance(ctx, proj.FCWalletAddress)
-	if err != nil {
-		return nil, err
+	var bal int64
+	if proj.FCWalletAddress != "" {
+		bal, err = s.fcClient.Wallet.WalletBalance(ctx, proj.FCWalletAddress)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	reply := projectToPbProject(proj)
