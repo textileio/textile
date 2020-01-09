@@ -243,8 +243,8 @@ var rootCmd = &cobra.Command{
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
 		var addrFilecoinApi ma.Multiaddr
-		if str := configViper.GetString("addr.filecoin.api"); str != "" {
-			addrFilecoinApi = cmd.AddrFromStr(str)
+		if filStr := configViper.GetString("addr.filecoin.api"); filStr != "" {
+			addrFilecoinApi = cmd.AddrFromStr(filStr)
 		}
 
 		dnsDomain := configViper.GetString("dns.domain")

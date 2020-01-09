@@ -43,16 +43,9 @@ func (p *Projects) GetStoreID() *uuid.UUID {
 }
 
 func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress string) (*Project, error) {
-	proj := &Project{
-		Name:            name,
-		Scope:           scope,
-		Domain:          "",
-		Records:         []*dns.Record{},
-		FCWalletAddress: fcWalletAddress,
-		Created:         time.Now().Unix(),
-	}
-
 	// Create subdomain for the project
+	domain := ""
+	records := []*dns.Record{}
 	if p.dnsManager.Started {
 		safesd, err := dns.CreateURLSafeSubdomain(name, 8)
 		if err != nil {
@@ -62,8 +55,17 @@ func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress stri
 		if err != nil {
 			return nil, err
 		}
-		proj.Domain = p.dnsManager.GetDomain(safesd)
-		proj.Records = records
+		domain = p.dnsManager.GetDomain(safesd)
+		records = records
+	}
+
+	proj := &Project{
+		Name:            name,
+		Scope:           scope,
+		Domain:          domain,
+		Records:         records,
+		FCWalletAddress: fcWalletAddress,
+		Created:         time.Now().Unix(),
 	}
 
 	// Create a dedicated store for the project
