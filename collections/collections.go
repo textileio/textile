@@ -41,7 +41,7 @@ type Collections struct {
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore, dnsManager *dns.Manager) (c *Collections, err error) {
+func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore, dnsManager *dns.Manager, defaultProjectHash string) (c *Collections, err error) {
 	c = &Collections{
 		threads: threads,
 		ds:      ds,
@@ -50,7 +50,7 @@ func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Da
 		Sessions: &Sessions{threads: threads},
 		Teams:    &Teams{threads: threads},
 		Invites:  &Invites{threads: threads},
-		Projects: &Projects{threads: threads, dnsManager: dnsManager},
+		Projects: &Projects{threads: threads, dnsManager: dnsManager, defaultHash: defaultProjectHash},
 	}
 
 	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)

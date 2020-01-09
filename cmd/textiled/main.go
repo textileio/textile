@@ -82,6 +82,10 @@ var (
 			Key:      "dns.token",
 			DefValue: "",
 		},
+		"defaultProjectHash": {
+			Key:      "project_hash",
+			DefValue: "QmSNWjbDkafwxWUGWTyP1ko4J1CW2WeNfeoiCuTUW2YnDY",
+		},
 		"emailFrom": {
 			Key:      "email.from",
 			DefValue: "Textile <verify@email.textile.io>",
@@ -182,6 +186,11 @@ func init() {
 		flags["dnsDomain"].DefValue.(string),
 		"Cloudflare Token for dnsDomain")
 
+	rootCmd.PersistentFlags().String(
+		"defaultProjectHash",
+		flags["defaultProjectHash"].DefValue.(string),
+		"IPFS hash of default project landing page")
+
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
 		"emailFrom",
@@ -251,6 +260,8 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := configViper.GetString("dns.zone_id")
 		dnsToken := configViper.GetString("dns.token")
 
+		defaultProjectHash := configViper.GetString("project_hash")
+
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
 		emailApiKey := configViper.GetString("email.api_key")
@@ -277,6 +288,7 @@ var rootCmd = &cobra.Command{
 			DNSDomain:            dnsDomain,
 			DNSZoneID:            dnsZoneID,
 			DNSToken:             dnsToken,
+			DefaultProjectHash:   defaultProjectHash,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailApiKey,

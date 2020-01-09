@@ -11,8 +11,6 @@ import (
 	"github.com/textileio/textile/dns"
 )
 
-var defaultHash = "QmSNWjbDkafwxWUGWTyP1ko4J1CW2WeNfeoiCuTUW2YnDY"
-
 type Project struct {
 	ID              string
 	Name            string
@@ -25,9 +23,10 @@ type Project struct {
 }
 
 type Projects struct {
-	threads    *client.Client
-	storeID    *uuid.UUID
-	dnsManager *dns.Manager
+	threads     *client.Client
+	storeID     *uuid.UUID
+	dnsManager  *dns.Manager
+	defaultHash string
 }
 
 func (p *Projects) GetName() string {
@@ -51,7 +50,7 @@ func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress stri
 		if err != nil {
 			return nil, err
 		}
-		rds, err := p.dnsManager.NewDNSLink(safesd, defaultHash)
+		rds, err := p.dnsManager.NewDNSLink(safesd, p.defaultHash)
 		if err != nil {
 			return nil, err
 		}
