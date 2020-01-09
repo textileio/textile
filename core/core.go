@@ -53,9 +53,10 @@ type Config struct {
 	AddrGatewayUrl       string
 	AddrFilecoinApi      ma.Multiaddr
 
-	DNSDomain   string
-	DNSZoneID   string
-	DNSToken    string
+	DNSDomain string
+	DNSZoneID string
+	DNSToken  string
+
 	EmailFrom   string
 	EmailDomain string
 	EmailApiKey string

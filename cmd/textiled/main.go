@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -163,7 +164,7 @@ func init() {
 		"addrFilecoinApi",
 		flags["addrFilecoinApi"].DefValue.(string),
 		"Filecoin gRPC API address")
-		
+
 	// Cloudflare settings
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
@@ -240,8 +241,11 @@ var rootCmd = &cobra.Command{
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
-		addrFilecoinApi := cmd.AddrFromStr(configViper.GetString("addr.filecoin.api"))
-		
+		var addrFilecoinApi ma.Multiaddr
+		if filStr := configViper.GetString("addr.filecoin.api"); filStr != "" {
+			addrFilecoinApi = cmd.AddrFromStr(filStr)
+		}
+
 		dnsDomain := configViper.GetString("dns.domain")
 		dnsZoneID := configViper.GetString("dns.zone_id")
 		dnsToken := configViper.GetString("dns.token")
@@ -268,13 +272,10 @@ var rootCmd = &cobra.Command{
 			AddrIpfsApi:          addrIpfsApi,
 			AddrGatewayHost:      addrGatewayHost,
 			AddrGatewayUrl:       addrGatewayUrl,
-<<<<<<< HEAD
 			AddrFilecoinApi:      addrFilecoinApi,
-=======
 			DNSDomain:            dnsDomain,
 			DNSZoneID:            dnsZoneID,
 			DNSToken:             dnsToken,
->>>>>>> projects: adds dns registration at init
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailApiKey,
