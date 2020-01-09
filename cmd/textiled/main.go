@@ -64,6 +64,10 @@ var (
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
 		},
+		"addrFilecoinApi": {
+			Key:      "addr.filecoin.api",
+			DefValue: "/ip4/127.0.0.1/tcp/5002",
+		},
 		"emailFrom": {
 			Key:      "email.from",
 			DefValue: "Textile <verify@email.textile.io>",
@@ -142,6 +146,12 @@ func init() {
 		flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
 
+	// Filecoin settings
+	rootCmd.PersistentFlags().String(
+		"addrFilecoinApi",
+		flags["addrFilecoinApi"].DefValue.(string),
+		"Filecoin gRPC API address")
+
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
 		"emailFrom",
@@ -202,6 +212,8 @@ var rootCmd = &cobra.Command{
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
+		addrFilecoinApi := cmd.AddrFromStr(configViper.GetString("addr.filecoin.api"))
+
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
 		emailApiKey := configViper.GetString("email.api_key")
@@ -224,6 +236,7 @@ var rootCmd = &cobra.Command{
 			AddrIpfsApi:          addrIpfsApi,
 			AddrGatewayHost:      addrGatewayHost,
 			AddrGatewayUrl:       addrGatewayUrl,
+			AddrFilecoinApi:      addrFilecoinApi,
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailApiKey,

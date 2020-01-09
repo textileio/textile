@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -126,8 +127,8 @@ var inspectCmd = &cobra.Command{
 		selected := selectProject("Select project", aurora.Sprintf(
 			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
 
-		cmd.RenderTable([]string{"name", "id", "store id"},
-			[][]string{{selected.Name, selected.ID, selected.StoreID}})
+		cmd.RenderTable([]string{"name", "id", "store id", "filecoin wallet address", "filecoin wallet balance"},
+			[][]string{{selected.Name, selected.ID, selected.StoreID, selected.FcWalletAddress, strconv.FormatInt(selected.FcWalletBalance, 10)}})
 	},
 }
 

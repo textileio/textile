@@ -102,6 +102,8 @@ message GetProjectReply {
     string name = 2;
     string storeID = 3;
     int64 created = 4;
+    string fcWalletAddress = 5;
+    int64 fcWalletBalance = 6;
 }
 
 message ListProjectsRequest {}

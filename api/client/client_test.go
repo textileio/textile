@@ -565,6 +565,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		SessionSecret: []byte(sessionSecret),
 
 		Debug: true,
+		// ToDo: add in AddrFilecoinApi option so filecoin is integrated into projects
 	}
 	textile, err := core.NewTextile(context.Background(), conf)
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	fc "github.com/textileio/filecoin/api/client"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	s "github.com/textileio/go-threads/store"
@@ -49,6 +50,7 @@ type Config struct {
 	AddrIpfsApi          ma.Multiaddr
 	AddrGatewayHost      ma.Multiaddr
 	AddrGatewayUrl       string
+	AddrFilecoinApi      ma.Multiaddr
 
 	EmailFrom   string
 	EmailDomain string
@@ -109,6 +111,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	var fcClient *fc.Client
+	if conf.AddrFilecoinApi != nil {
+		fcClient, err = fc.NewClient(conf.AddrFilecoinApi)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
@@ -121,6 +131,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		AddrGatewayUrl:  conf.AddrGatewayUrl,
 		Collections:     collections,
 		EmailClient:     emailClient,
+		FCClient:        fcClient,
 		SessionSecret:   conf.SessionSecret,
 		Debug:           conf.Debug,
 	})
@@ -148,6 +159,9 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
+	if err := t.threadsClient.Close(); err != nil {
+		return err
+	}
 	if err := t.threadservice.Close(); err != nil {
 		return err
 	}

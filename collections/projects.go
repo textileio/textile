@@ -11,11 +11,12 @@ import (
 )
 
 type Project struct {
-	ID      string
-	Name    string
-	Scope   string // user or team
-	StoreID string
-	Created int64
+	ID              string
+	Name            string
+	Scope           string // user or team
+	StoreID         string
+	Created         int64
+	FCWalletAddress string
 }
 
 type Projects struct {
@@ -35,11 +36,12 @@ func (p *Projects) GetStoreID() *uuid.UUID {
 	return p.storeID
 }
 
-func (p *Projects) Create(ctx context.Context, name, scope string) (*Project, error) {
+func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress string) (*Project, error) {
 	proj := &Project{
-		Name:    name,
-		Scope:   scope,
-		Created: time.Now().Unix(),
+		Name:            name,
+		Scope:           scope,
+		Created:         time.Now().Unix(),
+		FCWalletAddress: fcWalletAddress,
 	}
 	// Create a dedicated store for the project
 	var err error

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	fc "github.com/textileio/filecoin/api/client"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
@@ -25,6 +26,7 @@ type service struct {
 
 	gateway     *gateway.Gateway
 	emailClient *email.Client
+	fcClient    *fc.Client
 
 	sessionSecret []byte
 }
@@ -347,7 +349,16 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		log.Fatal("scope required")
 	}
 
-	proj, err := s.collections.Projects.Create(ctx, req.Name, scope)
+	var addr string
+	if s.fcClient != nil {
+		var err error
+		addr, err = s.fcClient.Wallet.NewWallet(ctx, "bls")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	proj, err := s.collections.Projects.Create(ctx, req.Name, scope, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +382,18 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 		return nil, err
 	}
 
-	return projectToPbProject(proj), nil
+	var bal int64
+	if proj.FCWalletAddress != "" {
+		bal, err = s.fcClient.Wallet.WalletBalance(ctx, proj.FCWalletAddress)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	reply := projectToPbProject(proj)
+	reply.FcWalletBalance = bal
+
+	return reply, nil
 }
 
 // ListProjects handles a list projects request.
@@ -397,10 +419,11 @@ func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest)
 
 func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 	return &pb.GetProjectReply{
-		ID:      proj.ID,
-		Name:    proj.Name,
-		StoreID: proj.StoreID,
-		Created: proj.Created,
+		ID:              proj.ID,
+		Name:            proj.Name,
+		StoreID:         proj.StoreID,
+		Created:         proj.Created,
+		FcWalletAddress: proj.FCWalletAddress,
 	}
 }
 
