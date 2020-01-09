@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"time"
@@ -64,6 +63,9 @@ type Config struct {
 	AddrGatewayUrl       string
 	AddrFilecoinApi      ma.Multiaddr
 
+	DNSDomain   string
+	DNSZoneID   string
+	DNSToken    string
 	EmailFrom   string
 	EmailDomain string
 	EmailApiKey string
@@ -141,28 +143,28 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 
+	dnsManager, err := dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
+	if err != nil {
+		return nil, err
+	}
+
+	collections, err := c.NewCollections(ctx, threadsClient, ds, dnsManager)
+	if err != nil {
+		return nil, err
+	}
+
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
 
-	domain := ""
-	email := ""
-	SECRET := ""
-	zoneID := ""
-	dnsManager, err := dns.NewClient(domain, email, zoneID, SECRET, conf.Debug)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(dnsManager)
-	fmt.Printf("SUCCESS")
-
 	server, err := api.NewServer(ctx, api.Config{
 		Addr:            conf.AddrApi,
 		AddrGatewayHost: conf.AddrGatewayHost,
 		AddrGatewayUrl:  conf.AddrGatewayUrl,
 		Collections:     collections,
+		DNSManager:      dnsManager,
 		EmailClient:     emailClient,
 		FCClient:        fcClient,
 		SessionSecret:   conf.SessionSecret,

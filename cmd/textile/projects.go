@@ -80,7 +80,9 @@ var initCmd = &cobra.Command{
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-
+		if proj.Domain != "" {
+			cmd.Message("New project gateway launched on %s", aurora.Green(proj.Domain).Bold())
+		}
 		cmd.Success("Initialized empty project in %s", aurora.White(pth).Bold())
 	},
 }
@@ -108,9 +110,9 @@ var lsCmd = &cobra.Command{
 		if len(projects.List) > 0 {
 			data := make([][]string, len(projects.List))
 			for i, p := range projects.List {
-				data[i] = []string{p.Name, p.ID, p.StoreID}
+				data[i] = []string{p.Name, p.ID, p.StoreID, p.Domain}
 			}
-			cmd.RenderTable([]string{"name", "id", "store id"}, data)
+			cmd.RenderTable([]string{"name", "id", "store id", "domain"}, data)
 		}
 
 		cmd.Message("Found %d projects for current scope", aurora.White(len(projects.List)).Bold())
