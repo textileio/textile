@@ -68,6 +68,18 @@ var (
 			Key:      "addr.filecoin.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5002",
 		},
+		"dnsDomain": {
+			Key:      "dns.domain",
+			DefValue: "",
+		},
+		"dnsZoneID": {
+			Key:      "dns.zone_id",
+			DefValue: "",
+		},
+		"dnsToken": {
+			Key:      "dns.token",
+			DefValue: "",
+		},
 		"emailFrom": {
 			Key:      "email.from",
 			DefValue: "Textile <verify@email.textile.io>",
@@ -151,6 +163,22 @@ func init() {
 		"addrFilecoinApi",
 		flags["addrFilecoinApi"].DefValue.(string),
 		"Filecoin gRPC API address")
+		
+	// Cloudflare settings
+	rootCmd.PersistentFlags().String(
+		"dnsDomain",
+		flags["dnsDomain"].DefValue.(string),
+		"Root domain for project subdomains")
+
+	rootCmd.PersistentFlags().String(
+		"dnsZoneID",
+		flags["dnsZoneID"].DefValue.(string),
+		"Cloudflare ZoneID for dnsDomain")
+
+	rootCmd.PersistentFlags().String(
+		"dnsToken",
+		flags["dnsDomain"].DefValue.(string),
+		"Cloudflare Token for dnsDomain")
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
@@ -213,6 +241,10 @@ var rootCmd = &cobra.Command{
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
 		addrFilecoinApi := cmd.AddrFromStr(configViper.GetString("addr.filecoin.api"))
+		
+		dnsDomain := configViper.GetString("dns.domain")
+		dnsZoneID := configViper.GetString("dns.zone_id")
+		dnsToken := configViper.GetString("dns.token")
 
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
@@ -236,7 +268,13 @@ var rootCmd = &cobra.Command{
 			AddrIpfsApi:          addrIpfsApi,
 			AddrGatewayHost:      addrGatewayHost,
 			AddrGatewayUrl:       addrGatewayUrl,
+<<<<<<< HEAD
 			AddrFilecoinApi:      addrFilecoinApi,
+=======
+			DNSDomain:            dnsDomain,
+			DNSZoneID:            dnsZoneID,
+			DNSToken:             dnsToken,
+>>>>>>> projects: adds dns registration at init
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailApiKey,

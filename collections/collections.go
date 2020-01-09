@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/api/client"
+	"github.com/textileio/textile/dns"
 )
 
 var (
@@ -40,7 +41,7 @@ type Collections struct {
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore) (c *Collections, err error) {
+func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore, dnsManager *dns.Manager) (c *Collections, err error) {
 	c = &Collections{
 		threads: threads,
 		ds:      ds,
@@ -49,7 +50,7 @@ func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Da
 		Sessions: &Sessions{threads: threads},
 		Teams:    &Teams{threads: threads},
 		Invites:  &Invites{threads: threads},
-		Projects: &Projects{threads: threads},
+		Projects: &Projects{threads: threads, dnsManager: dnsManager},
 	}
 
 	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)

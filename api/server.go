@@ -13,6 +13,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc"
@@ -47,6 +48,8 @@ type Config struct {
 	AddrGatewayUrl  string
 
 	Collections *c.Collections
+
+	DNSManager *dns.Manager
 
 	EmailClient *email.Client
 
