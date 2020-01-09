@@ -55,12 +55,11 @@ func (u *Users) Get(ctx context.Context, id string) (*User, error) {
 
 func (u *Users) GetByEmail(ctx context.Context, email string) ([]*User, error) {
 	query := s.JSONWhere("Email").Eq(email)
-	rawResults, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
+	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
 	if err != nil {
 		return nil, err
 	}
-	users := rawResults.([]*User)
-	return users, nil
+	return res.([]*User), nil
 }
 
 func (u *Users) ListByTeam(ctx context.Context, teamID string) ([]*User, error) {

@@ -118,6 +118,28 @@ message RemoveProjectRequest {
 
 message RemoveProjectReply {}
 
+message AddAppTokenRequest {
+    string projectID = 1;
+}
+
+message AddAppTokenReply {
+    string ID = 1;
+}
+
+message ListAppTokensRequest {
+    string projectID = 1;
+}
+
+message ListAppTokensReply {
+    repeated string list = 1;
+}
+
+message RemoveAppTokenRequest {
+    string ID = 1;
+}
+
+message RemoveAppTokenReply {}
+
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
@@ -135,4 +157,8 @@ service API {
     rpc GetProject (GetProjectRequest) returns (GetProjectReply) {}
     rpc ListProjects (ListProjectsRequest) returns (ListProjectsReply) {}
     rpc RemoveProject (RemoveProjectRequest) returns (RemoveProjectReply) {}
+
+    rpc AddAppToken (AddAppTokenRequest) returns (AddAppTokenReply) {}
+    rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
+    rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
 }

@@ -20,6 +20,9 @@ var (
 	dsTeamsKey    = datastore.NewKey("/teams")
 	dsInvitesKey  = datastore.NewKey("/invites")
 	dsProjectsKey = datastore.NewKey("/projects")
+
+	dsAppTokensKey = datastore.NewKey("/apptokens")
+	dsAppUsersKey  = datastore.NewKey("/appusers")
 )
 
 type Collection interface {
@@ -37,6 +40,9 @@ type Collections struct {
 	Teams    *Teams
 	Invites  *Invites
 	Projects *Projects
+
+	AppTokens *AppTokens
+	AppUsers  *AppUsers
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -50,6 +56,9 @@ func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Da
 		Teams:    &Teams{threads: threads},
 		Invites:  &Invites{threads: threads},
 		Projects: &Projects{threads: threads},
+
+		AppTokens: &AppTokens{threads: threads},
+		AppUsers:  &AppUsers{threads: threads},
 	}
 
 	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
@@ -72,12 +81,22 @@ func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Da
 	if err != nil {
 		return nil, err
 	}
+	c.AppTokens.storeID, err = c.addCollection(ctx, c.AppTokens, dsAppTokensKey)
+	if err != nil {
+		return nil, err
+	}
+	c.AppUsers.storeID, err = c.addCollection(ctx, c.AppUsers, dsAppUsersKey)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
 	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
+	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
+	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
 
 	return c, nil
 }

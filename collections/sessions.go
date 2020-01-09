@@ -14,7 +14,7 @@ var (
 
 type Session struct {
 	ID     string
-	UserID string
+	UserID string // user or app user
 	Scope  string // user or team ID
 	Expiry int
 }
