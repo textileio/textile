@@ -407,7 +407,8 @@ func TestListProjects(t *testing.T) {
 			t.Fatalf("list projects should succeed: %v", err)
 		}
 		if len(projects.List) != 0 {
-			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 0, len(projects.List))
+			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 0,
+				len(projects.List))
 		}
 	})
 
@@ -429,7 +430,8 @@ func TestListProjects(t *testing.T) {
 			t.Fatalf("list projects from wrong scope should succeed: %v", err)
 		}
 		if len(projects.List) != 0 {
-			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 0, len(projects.List))
+			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 0,
+				len(projects.List))
 		}
 	})
 
@@ -439,7 +441,8 @@ func TestListProjects(t *testing.T) {
 			t.Fatalf("list projects should succeed: %v", err)
 		}
 		if len(projects.List) != 2 {
-			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 2, len(projects.List))
+			t.Fatalf("got wrong project count from list projects, expected %d, got %d", 2,
+				len(projects.List))
 		}
 	})
 }
@@ -484,6 +487,129 @@ func TestRemoveProject(t *testing.T) {
 	t.Run("test remove project", func(t *testing.T) {
 		if err := client.RemoveProject(context.Background(), project.ID, Auth{Token: user.Token}); err != nil {
 			t.Fatalf("remove project should succeed: %v", err)
+		}
+	})
+}
+
+func TestAddAppToken(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	user := login(t, client, conf, "jon@doe.com")
+	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test add app token", func(t *testing.T) {
+		token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.Token})
+		if err != nil {
+			t.Fatalf("add app token should succeed: %v", err)
+		}
+		if token.ID == "" {
+			t.Fatal("got empty ID from add token")
+		}
+	})
+}
+
+func TestListAppTokens(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	user := login(t, client, conf, "jon@doe.com")
+	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test list empty app tokens", func(t *testing.T) {
+		tokens, err := client.ListAppTokens(context.Background(), project.ID, Auth{Token: user.Token})
+		if err != nil {
+			t.Fatalf("list app tokens should succeed: %v", err)
+		}
+		if len(tokens.List) != 0 {
+			t.Fatalf("got wrong app token count from list app tokens, expected %d, got %d", 0,
+				len(tokens.List))
+		}
+	})
+
+	if _, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.Token}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.Token}); err != nil {
+		t.Fatal(err)
+	}
+
+	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test list app tokens from wrong scope", func(t *testing.T) {
+		if _, err := client.ListAppTokens(context.Background(), project.ID,
+			Auth{Token: user.Token, Scope: team.ID}); err == nil {
+			t.Fatal("list app tokens from wrong scope should fail")
+		}
+	})
+
+	t.Run("test list app tokens", func(t *testing.T) {
+		tokens, err := client.ListAppTokens(context.Background(), project.ID, Auth{Token: user.Token})
+		if err != nil {
+			t.Fatalf("list app tokens should succeed: %v", err)
+		}
+		if len(tokens.List) != 2 {
+			t.Fatalf("got wrong app token count from list app tokens, expected %d, got %d", 2,
+				len(tokens.List))
+		}
+	})
+}
+
+func TestRemoveAppToken(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	user := login(t, client, conf, "jon@doe.com")
+	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test remove bad app token", func(t *testing.T) {
+		if err := client.RemoveAppToken(context.Background(), "bad", Auth{Token: user.Token}); err == nil {
+			t.Fatal("remove bad app token should fail")
+		}
+	})
+
+	user2 := login(t, client, conf, "jane@doe.com")
+
+	t.Run("test remove app token from wrong user", func(t *testing.T) {
+		if err := client.RemoveAppToken(context.Background(), token.ID, Auth{Token: user2.Token}); err == nil {
+			t.Fatal("remove app token from wrong user should fail")
+		}
+	})
+
+	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test remove app token from wrong scope", func(t *testing.T) {
+		if err := client.RemoveAppToken(context.Background(), token.ID,
+			Auth{Token: user.Token, Scope: team.ID}); err == nil {
+			t.Fatal("remove app token from wrong scope should fail")
+		}
+	})
+
+	t.Run("test remove app token", func(t *testing.T) {
+		if err := client.RemoveAppToken(context.Background(), token.ID, Auth{Token: user.Token}); err != nil {
+			t.Fatalf("remove app token should succeed: %v", err)
 		}
 	})
 }
