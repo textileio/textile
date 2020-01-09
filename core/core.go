@@ -57,6 +57,8 @@ type Config struct {
 	DNSZoneID string
 	DNSToken  string
 
+	DefaultProjectHash string
+
 	EmailFrom   string
 	EmailDomain string
 	EmailApiKey string
@@ -124,7 +126,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, ds, dnsManager)
+	collections, err := c.NewCollections(ctx, threadsClient, ds, dnsManager, conf.DefaultProjectHash)
 	if err != nil {
 		return nil, err
 	}
