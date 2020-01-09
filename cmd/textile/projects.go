@@ -16,8 +16,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(lsCmd, inspectCmd, rmCmd)
+	rootCmd.AddCommand(initCmd, lsCmd, inspectCmd, rmCmd)
 
 	initCmd.Flags().String(
 		"name",
@@ -172,6 +171,9 @@ func selectProject(label, successMsg string) *pb.GetProjectReply {
 		})
 	if err != nil {
 		cmd.Fatal(err)
+	}
+	if len(projects.List) == 0 {
+		cmd.End("You don't have any projects!")
 	}
 
 	prompt := promptui.Select{

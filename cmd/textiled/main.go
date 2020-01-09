@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -212,7 +213,10 @@ var rootCmd = &cobra.Command{
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
-		addrFilecoinApi := cmd.AddrFromStr(configViper.GetString("addr.filecoin.api"))
+		var addrFilecoinApi ma.Multiaddr
+		if str := configViper.GetString("addr.filecoin.api"); str != "" {
+			addrFilecoinApi = cmd.AddrFromStr(str)
+		}
 
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
