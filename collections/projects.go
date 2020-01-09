@@ -51,12 +51,12 @@ func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress stri
 		if err != nil {
 			return nil, err
 		}
-		records, err := p.dnsManager.NewDNSLink(safesd, defaultHash)
+		rds, err := p.dnsManager.NewDNSLink(safesd, defaultHash)
 		if err != nil {
 			return nil, err
 		}
 		domain = p.dnsManager.GetDomain(safesd)
-		records = records
+		records = rds
 	}
 
 	proj := &Project{
