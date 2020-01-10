@@ -38,3 +38,5 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 )
+
+replace github.com/textileio/go-threads => ../go-threads

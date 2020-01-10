@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -624,6 +625,32 @@ func TestRegisterAppUser(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
+
+	t.Run("test register app user without token", func(t *testing.T) {
+		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
+		res, err := http.Post(url, "application/json", strings.NewReader("{}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		var data map[string]string
+		if err := json.Unmarshal(body, &data); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := data["error"]; !ok {
+			t.Fatal("expected error in response body")
+		}
+		if res.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected status code 400, got %d", res.StatusCode)
+		}
+	})
+
 	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)

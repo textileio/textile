@@ -4,7 +4,13 @@ import (
 	"context"
 	"os"
 	"path"
+	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -26,8 +32,12 @@ var (
 	log = logging.Logger("core")
 )
 
+// clientReqKey provides a concrete type for client request context values.
+type clientReqKey string
+
 type Textile struct {
-	ds datastore.Datastore
+	ds          datastore.Datastore
+	collections *c.Collections
 
 	ipfs iface.CoreAPI
 
@@ -91,12 +101,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	t := &Textile{}
 	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
 		Addr:      conf.AddrThreadsApi,
 		ProxyAddr: conf.AddrThreadsApiProxy,
 		Debug:     conf.Debug,
-	})
+	}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
 	if err != nil {
 		return nil, err
 	}
@@ -141,17 +153,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	log.Info("started")
 
-	return &Textile{
-		ds: ds,
+	t.ds = ds
+	t.collections = collections
+	t.ipfs = ipfs
+	t.threadservice = threadservice
+	t.threadsServer = threadsServer
+	t.threadsClient = threadsClient
+	t.server = server
 
-		ipfs: ipfs,
-
-		threadservice: threadservice,
-		threadsServer: threadsServer,
-		threadsClient: threadsClient,
-
-		server: server,
-	}, nil
+	return t, nil
 }
 
 func (t *Textile) Bootstrap() {
@@ -174,4 +184,34 @@ func (t *Textile) Close() error {
 
 func (t *Textile) HostID() peer.ID {
 	return t.threadservice.Host().ID()
+}
+
+func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
+	token, err := auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+	session, err := t.collections.Sessions.Get(ctx, token)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
+	}
+	if session.Expiry < int(time.Now().Unix()) {
+		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
+	}
+	user, err := t.collections.AppUsers.Get(ctx, session.UserID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "User not found")
+	}
+	proj, err := t.collections.Projects.Get(ctx, user.ProjectID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "Project not found")
+	}
+
+	if err := t.collections.Sessions.Touch(ctx, session); err != nil {
+		return nil, err
+	}
+
+	newCtx := context.WithValue(ctx, clientReqKey("user"), user)
+	newCtx = context.WithValue(newCtx, clientReqKey("project"), proj)
+	return newCtx, nil
 }
