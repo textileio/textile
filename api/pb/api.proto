@@ -12,7 +12,7 @@ message LoginRequest {
 
 message LoginReply {
     string ID = 1;
-    string token = 2;
+    string sessionID = 2;
 }
 
 message SwitchRequest {}

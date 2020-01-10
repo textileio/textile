@@ -6,12 +6,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
 	s "github.com/textileio/go-threads/store"
+	"google.golang.org/grpc/status"
 )
 
 type AppUser struct {
 	ID        string
 	ProjectID string
-	DeviceID  string
 }
 
 type AppUsers struct {
@@ -31,10 +31,23 @@ func (u *AppUsers) GetStoreID() *uuid.UUID {
 	return u.storeID
 }
 
-func (u *AppUsers) Create(ctx context.Context, projectID, deviceID string) (*AppUser, error) {
-	user := &AppUser{
+func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *AppUser, err error) {
+	user, err = u.Get(ctx, deviceID)
+	if user != nil {
+		return
+	}
+	if err != nil {
+		stat, ok := status.FromError(err)
+		if !ok {
+			return
+		}
+		if stat.Message() != s.ErrNotFound.Error() {
+			return
+		}
+	}
+	user = &AppUser{
+		ID:        deviceID,
 		ProjectID: projectID,
-		DeviceID:  deviceID,
 	}
 	if err := u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
@@ -48,16 +61,6 @@ func (u *AppUsers) Get(ctx context.Context, id string) (*AppUser, error) {
 		return nil, err
 	}
 	return user, nil
-}
-
-// @todo: Should be unique
-func (u *AppUsers) GetByDevice(ctx context.Context, deviceID string) ([]*AppUser, error) {
-	query := s.JSONWhere("DeviceID").Eq(deviceID)
-	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*AppUser{})
-	if err != nil {
-		return nil, err
-	}
-	return res.([]*AppUser), nil
 }
 
 func (u *AppUsers) List(ctx context.Context, projectID string) ([]*AppUser, error) {

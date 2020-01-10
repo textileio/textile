@@ -91,6 +91,8 @@ func (g *Gateway) Start() {
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
+	router.POST("/register", g.registerAppUser)
+
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
 	})
@@ -218,6 +220,51 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	})
 }
 
+type registrationParams struct {
+	Token    string `json:"token" binding:"required"`
+	DeviceID string `json:"device_id" binding:"required"`
+}
+
+// registerAppUser adds a user to a team.
+func (g *Gateway) registerAppUser(c *gin.Context) {
+	var params registrationParams
+	err := c.BindJSON(&params)
+	if err != nil {
+		abort(c, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+
+	token, err := g.collections.AppTokens.Get(ctx, params.Token)
+	if err != nil {
+		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
+		return
+	}
+	proj, err := g.collections.Projects.Get(ctx, token.ProjectID)
+	if err != nil {
+		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
+		return
+	}
+	user, err := g.collections.AppUsers.GetOrCreate(ctx, proj.ID, params.DeviceID)
+	if err != nil {
+		abort(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	session, err := g.collections.Sessions.Create(ctx, user.ID, user.ID)
+	if err != nil {
+		abort(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":         user.ID,
+		"session_id": session.ID,
+	})
+}
+
 // render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {
 	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
@@ -228,6 +275,13 @@ func (g *Gateway) renderError(c *gin.Context, code int, err error) {
 	c.HTML(code, "/public/html/error.gohtml", gin.H{
 		"Code":  code,
 		"Error": formatError(err),
+	})
+}
+
+// abort the request with code and error.
+func abort(c *gin.Context, code int, err error) {
+	c.AbortWithStatusJSON(code, gin.H{
+		"error": err.Error(),
 	})
 }
 
@@ -250,6 +304,7 @@ func loadTemplate() (*template.Template, error) {
 	return t, nil
 }
 
+// formatError formats a go error for browser display.
 func formatError(err error) string {
 	words := strings.SplitN(err.Error(), " ", 2)
 	words[0] = strings.Title(words[0])

@@ -80,8 +80,8 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}
 
 	return &pb.LoginReply{
-		ID:    user.ID,
-		Token: session.ID,
+		ID:        user.ID,
+		SessionID: session.ID,
 	}, nil
 }
 

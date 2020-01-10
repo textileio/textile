@@ -52,7 +52,7 @@ var loginCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		authViper.Set("token", res.Token)
+		authViper.Set("token", res.SessionID)
 
 		home, err := homedir.Dir()
 		if err != nil {
