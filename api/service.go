@@ -28,7 +28,7 @@ type service struct {
 	emailClient *email.Client
 	fcClient    *fc.Client
 
-	sessionSecret []byte
+	sessionSecret string
 }
 
 // Login handles a login request.
@@ -54,8 +54,8 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}
 
 	var secret string
-	if s.sessionSecret != nil {
-		secret = string(s.sessionSecret)
+	if s.sessionSecret != "" {
+		secret = s.sessionSecret
 	} else {
 		uid, err := uuid.NewRandom()
 		if err != nil {

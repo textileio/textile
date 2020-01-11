@@ -23,6 +23,7 @@ type Invite struct {
 type Invites struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (i *Invites) GetName() string {
@@ -38,6 +39,7 @@ func (i *Invites) GetStoreID() *uuid.UUID {
 }
 
 func (i *Invites) Create(ctx context.Context, teamID, fromID, toEmail string) (*Invite, error) {
+	ctx = AuthCtx(ctx, i.token)
 	invite := &Invite{
 		TeamID:  teamID,
 		FromID:  fromID,
@@ -51,6 +53,7 @@ func (i *Invites) Create(ctx context.Context, teamID, fromID, toEmail string) (*
 }
 
 func (i *Invites) Get(ctx context.Context, id string) (*Invite, error) {
+	ctx = AuthCtx(ctx, i.token)
 	invite := &Invite{}
 	if err := i.threads.ModelFindByID(ctx, i.storeID.String(), i.GetName(), id, invite); err != nil {
 		return nil, err
@@ -59,5 +62,6 @@ func (i *Invites) Get(ctx context.Context, id string) (*Invite, error) {
 }
 
 func (i *Invites) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, i.token)
 	return i.threads.ModelDelete(ctx, i.storeID.String(), i.GetName(), id)
 }

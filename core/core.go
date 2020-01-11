@@ -6,10 +6,6 @@ import (
 	"path"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -26,6 +22,9 @@ import (
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -43,8 +42,9 @@ type Textile struct {
 
 	threadservice s.ServiceBoostrapper
 
-	threadsServer *threadsapi.Server
-	threadsClient *threadsclient.Client
+	threadsServer        *threadsapi.Server
+	threadsClient        *threadsclient.Client
+	threadsInternalToken string
 
 	server *api.Server
 }
@@ -66,7 +66,8 @@ type Config struct {
 	EmailDomain string
 	EmailApiKey string
 
-	SessionSecret []byte
+	SessionSecret        string
+	ThreadsInternalToken string
 
 	Debug bool
 }
@@ -101,7 +102,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	t := &Textile{}
+	t := &Textile{
+		threadsInternalToken: conf.ThreadsInternalToken,
+	}
 	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
 		Addr:      conf.AddrThreadsApi,
@@ -113,12 +116,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	threadsClient, err := threadsclient.NewClient(conf.AddrThreadsApi)
+	threadsTarget, err := util.TCPAddrFromMultiAddr(conf.AddrThreadsApi)
+	if err != nil {
+		return nil, err
+	}
+	threadsClient, err := threadsclient.NewClient(threadsTarget, grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(c.TokenAuth{}))
 	if err != nil {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, conf.ThreadsInternalToken, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +199,10 @@ func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	if token == t.threadsInternalToken {
+		return ctx, nil
+	}
+
 	session, err := t.collections.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")

@@ -13,9 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/textileio/textile/collections"
 
+	"google.golang.org/grpc"
+
+	"github.com/google/uuid"
 	"github.com/phayes/freeport"
+	threadsclient "github.com/textileio/go-threads/api/client"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
@@ -692,7 +696,8 @@ func TestRegisterAppUser(t *testing.T) {
 		} else {
 			t.Logf("app user id: %s", id)
 		}
-		if session, ok := data["session_id"]; !ok {
+		session, ok := data["session_id"]
+		if !ok {
 			t.Fatalf("response body missing session id")
 		} else {
 			t.Logf("app user session id: %s", session)
@@ -700,6 +705,32 @@ func TestRegisterAppUser(t *testing.T) {
 		if res.StatusCode != http.StatusOK {
 			t.Fatalf("expected status code 200, got %d", res.StatusCode)
 		}
+
+		// Setup a threads client for app user tests.
+		ttarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrThreadsApi)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tclient, err := threadsclient.NewClient(ttarget, grpc.WithInsecure(),
+			grpc.WithPerRPCCredentials(collections.TokenAuth{}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tclient.Close()
+
+		t.Run("test create new store without client token", func(t *testing.T) {
+			if _, err := tclient.NewStore(context.Background()); err == nil {
+				t.Fatal("test create new store without client token should fail")
+			}
+		})
+
+		t.Run("test create new store with client token", func(t *testing.T) {
+			storeID, err := tclient.NewStore(collections.AuthCtx(context.Background(), session))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("client created new store: %s", storeID)
+		})
 	})
 }
 
@@ -777,7 +808,8 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailApiKey: "",
 
-		SessionSecret: []byte(sessionSecret),
+		SessionSecret:        sessionSecret,
+		ThreadsInternalToken: uuid.New().String(),
 
 		Debug: true,
 		// ToDo: add in AddrFilecoinApi option so filecoin is integrated into projects

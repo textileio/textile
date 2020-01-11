@@ -22,6 +22,7 @@ type Session struct {
 type Sessions struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (s *Sessions) GetName() string {
@@ -37,6 +38,7 @@ func (s *Sessions) GetStoreID() *uuid.UUID {
 }
 
 func (s *Sessions) Create(ctx context.Context, userID, scope string) (*Session, error) {
+	ctx = AuthCtx(ctx, s.token)
 	session := &Session{
 		UserID: userID,
 		Scope:  scope,
@@ -49,6 +51,7 @@ func (s *Sessions) Create(ctx context.Context, userID, scope string) (*Session, 
 }
 
 func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
+	ctx = AuthCtx(ctx, s.token)
 	session := &Session{}
 	if err := s.threads.ModelFindByID(ctx, s.storeID.String(), s.GetName(), id, session); err != nil {
 		return nil, err
@@ -57,15 +60,18 @@ func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
 }
 
 func (s *Sessions) Touch(ctx context.Context, session *Session) error {
+	ctx = AuthCtx(ctx, s.token)
 	session.Expiry = int(time.Now().Add(sessionDur).Unix())
 	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 
 func (s *Sessions) SwitchScope(ctx context.Context, session *Session, scope string) error {
+	ctx = AuthCtx(ctx, s.token)
 	session.Scope = scope
 	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 
 func (s *Sessions) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, s.token)
 	return s.threads.ModelDelete(ctx, s.storeID.String(), s.GetName(), id)
 }

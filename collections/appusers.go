@@ -17,6 +17,7 @@ type AppUser struct {
 type AppUsers struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (u *AppUsers) GetName() string {
@@ -32,6 +33,7 @@ func (u *AppUsers) GetStoreID() *uuid.UUID {
 }
 
 func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *AppUser, err error) {
+	ctx = AuthCtx(ctx, u.token)
 	user, err = u.Get(ctx, deviceID)
 	if user != nil {
 		return
@@ -56,6 +58,7 @@ func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) 
 }
 
 func (u *AppUsers) Get(ctx context.Context, id string) (*AppUser, error) {
+	ctx = AuthCtx(ctx, u.token)
 	user := &AppUser{}
 	if err := u.threads.ModelFindByID(ctx, u.storeID.String(), u.GetName(), id, user); err != nil {
 		return nil, err
@@ -64,6 +67,7 @@ func (u *AppUsers) Get(ctx context.Context, id string) (*AppUser, error) {
 }
 
 func (u *AppUsers) List(ctx context.Context, projectID string) ([]*AppUser, error) {
+	ctx = AuthCtx(ctx, u.token)
 	query := s.JSONWhere("ProjectID").Eq(projectID)
 	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*AppUser{})
 	if err != nil {
@@ -74,5 +78,6 @@ func (u *AppUsers) List(ctx context.Context, projectID string) ([]*AppUser, erro
 
 // @todo: Delete associated sessions
 func (u *AppUsers) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, u.token)
 	return u.threads.ModelDelete(ctx, u.storeID.String(), u.GetName(), id)
 }

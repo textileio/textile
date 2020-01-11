@@ -16,6 +16,7 @@ type AppToken struct {
 type AppTokens struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (a *AppTokens) GetName() string {
@@ -31,6 +32,7 @@ func (a *AppTokens) GetStoreID() *uuid.UUID {
 }
 
 func (a *AppTokens) Create(ctx context.Context, projectID string) (*AppToken, error) {
+	ctx = AuthCtx(ctx, a.token)
 	token := &AppToken{
 		ProjectID: projectID,
 	}
@@ -41,6 +43,7 @@ func (a *AppTokens) Create(ctx context.Context, projectID string) (*AppToken, er
 }
 
 func (a *AppTokens) Get(ctx context.Context, id string) (*AppToken, error) {
+	ctx = AuthCtx(ctx, a.token)
 	token := &AppToken{}
 	if err := a.threads.ModelFindByID(ctx, a.storeID.String(), a.GetName(), id, token); err != nil {
 		return nil, err
@@ -49,6 +52,7 @@ func (a *AppTokens) Get(ctx context.Context, id string) (*AppToken, error) {
 }
 
 func (a *AppTokens) List(ctx context.Context, projectID string) ([]*AppToken, error) {
+	ctx = AuthCtx(ctx, a.token)
 	query := s.JSONWhere("ProjectID").Eq(projectID)
 	res, err := a.threads.ModelFind(ctx, a.storeID.String(), a.GetName(), query, []*AppToken{})
 	if err != nil {
@@ -58,5 +62,6 @@ func (a *AppTokens) List(ctx context.Context, projectID string) ([]*AppToken, er
 }
 
 func (a *AppTokens) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, a.token)
 	return a.threads.ModelDelete(ctx, a.storeID.String(), a.GetName(), id)
 }

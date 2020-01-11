@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
@@ -244,6 +245,7 @@ var rootCmd = &cobra.Command{
 			EmailFrom:            emailFrom,
 			EmailDomain:          emailDomain,
 			EmailApiKey:          emailApiKey,
+			ThreadsInternalToken: uuid.New().String(),
 			Debug:                configViper.GetBool("log.debug"),
 		})
 		if err != nil {

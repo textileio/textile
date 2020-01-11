@@ -52,7 +52,7 @@ type Config struct {
 
 	FCClient *fc.Client
 
-	SessionSecret []byte
+	SessionSecret string
 
 	Debug bool
 }
