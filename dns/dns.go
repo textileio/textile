@@ -13,10 +13,20 @@ import (
 )
 
 var (
-	log = logging.Logger("dns")
+	domainRegex *regexp.Regexp
+	log         = logging.Logger("dns")
 )
 
 const ipfsGateway = "www.cloudflare-ipfs.com" // future could be set to project's gateway
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+func init() {
+	var err error
+	domainRegex, err = regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 // Manager wraps a CloudflareClient client.
 type Manager struct {
@@ -60,7 +70,6 @@ func NewManager(domain string, zoneID string, token string, debug bool) (*Manage
 
 // NewCNAME enters a new dns record for a CNAME
 func (m *Manager) NewCNAME(subdomain string, target string) (*Record, error) {
-	// parse err here
 	cname, err := m.api.CreateDNSRecord(m.zoneID, cnameRecordInput(subdomain, target))
 	if err != nil {
 		return nil, err
@@ -141,24 +150,21 @@ func (m *Manager) Delete(recordID string) error {
 	return m.api.DeleteDNSRecord(m.zoneID, recordID)
 }
 
-//CreateDNSLinkName converts a subdomain into the Name format for dnslink TXT entries
+// CreateDNSLinkName converts a subdomain into the Name format for dnslink TXT entries.
 func CreateDNSLinkName(subdomain string) string {
 	return fmt.Sprintf("_dnslink.%s", subdomain)
 }
 
-//CreateDNSLinkContent converts a hash into the Content format for dnslink TXT entries
+// CreateDNSLinkContent converts a hash into the Content format for dnslink TXT entries.
 func CreateDNSLinkContent(hash string) string {
 	return fmt.Sprintf("dnslink=/ipfs/%s", hash)
 }
 
-//CreateURLSafeSubdomain returns a url safe subdomain with optional suffix
+// CreateURLSafeSubdomain returns a url safe subdomain with optional suffix.
 func CreateURLSafeSubdomain(subdomain string, suffix int) (string, error) {
-	sfx := ""
+	var sfx string
 	if suffix > 0 {
-		charset := "abcdefghijklmnopqrstuvwxyz0123456789"
-
-		var seededRand *rand.Rand = rand.New(
-			rand.NewSource(time.Now().UnixNano()))
+		var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		b := make([]byte, suffix)
 		for i := range b {
@@ -166,11 +172,7 @@ func CreateURLSafeSubdomain(subdomain string, suffix int) (string, error) {
 		}
 		sfx = fmt.Sprintf("-%s", string(b))
 	}
-	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
-	if err != nil {
-		return "", nil
-	}
-	safestr := reg.ReplaceAllString(strings.ToLower(subdomain), "")
+	safestr := domainRegex.ReplaceAllString(strings.ToLower(subdomain), "")
 	return fmt.Sprintf("%s%s", safestr, sfx), nil
 }
 
