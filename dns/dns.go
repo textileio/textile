@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	log         = logging.Logger("dns")
-	ipfsGateway = "www.cloudflare-ipfs.com" // future could be set to project's gateway
+	log = logging.Logger("dns")
 )
+
+const ipfsGateway = "www.cloudflare-ipfs.com" // future could be set to project's gateway
 
 // Manager wraps a CloudflareClient client.
 type Manager struct {
