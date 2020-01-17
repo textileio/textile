@@ -20,11 +20,10 @@ const ipfsGateway = "www.cloudflare-ipfs.com" // future could be set to project'
 
 // Manager wraps a CloudflareClient client.
 type Manager struct {
-	api     *cloudflare.API
-	domain  string
-	zoneID  string
-	debug   bool
-	Started bool
+	api    *cloudflare.API
+	domain string
+	zoneID string
+	debug  bool
 }
 
 type Record struct {
@@ -45,20 +44,17 @@ func NewManager(domain string, zoneID string, token string, debug bool) (*Manage
 		}
 	}
 
+	api, err := cloudflare.NewWithAPIToken(token)
+	if err != nil {
+		return nil, err
+	}
 	client := &Manager{
 		domain: domain,
 		debug:  debug,
+		api:    api,
+		zoneID: zoneID,
 	}
 
-	if token != "" {
-		api, err := cloudflare.NewWithAPIToken(token)
-		if err != nil {
-			return nil, err
-		}
-		client.api = api
-		client.zoneID = zoneID
-		client.Started = true
-	}
 	return client, nil
 }
 

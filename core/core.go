@@ -144,9 +144,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 
-	dnsManager, err := dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
-	if err != nil {
-		return nil, err
+	var dnsManager *dns.Manager
+	if conf.DNSToken != "" {
+		dnsManager, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	emailClient, err := email.NewClient(
