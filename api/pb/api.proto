@@ -91,7 +91,6 @@ message AddProjectRequest {
 message AddProjectReply {
     string ID = 1;
     string storeID = 2;
-    string domain = 3; 
 }
 
 message GetProjectRequest {
@@ -102,10 +101,9 @@ message GetProjectReply {
     string ID = 1;
     string name = 2;
     string storeID = 3;
-    string domain = 4; 
+    int64 created = 4;
     string fcWalletAddress = 5;
     int64 fcWalletBalance = 6;
-    int64 created = 7;
 }
 
 message ListProjectsRequest {}

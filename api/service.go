@@ -366,7 +366,6 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 	return &pb.AddProjectReply{
 		ID:      proj.ID,
 		StoreID: proj.StoreID,
-		Domain:  proj.Domain,
 	}, nil
 }
 
@@ -424,7 +423,6 @@ func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 		Name:            proj.Name,
 		StoreID:         proj.StoreID,
 		Created:         proj.Created,
-		Domain:          proj.Domain,
 		FcWalletAddress: proj.FCWalletAddress,
 	}
 }
