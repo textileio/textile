@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"path"
+	"time"
 
+	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -20,21 +22,29 @@ import (
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
 	log = logging.Logger("core")
 )
 
+// clientReqKey provides a concrete type for client request context values.
+type clientReqKey string
+
 type Textile struct {
-	ds datastore.Datastore
+	ds          datastore.Datastore
+	collections *c.Collections
 
 	ipfs iface.CoreAPI
 
 	threadservice s.ServiceBoostrapper
 
-	threadsServer *threadsapi.Server
-	threadsClient *threadsclient.Client
+	threadsServer        *threadsapi.Server
+	threadsClient        *threadsclient.Client
+	threadsInternalToken string
 
 	server *api.Server
 }
@@ -56,7 +66,8 @@ type Config struct {
 	EmailDomain string
 	EmailApiKey string
 
-	SessionSecret []byte
+	SessionSecret        string
+	ThreadsInternalToken string
 
 	Debug bool
 }
@@ -91,22 +102,31 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	t := &Textile{
+		threadsInternalToken: conf.ThreadsInternalToken,
+	}
 	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
 		Addr:      conf.AddrThreadsApi,
 		ProxyAddr: conf.AddrThreadsApiProxy,
 		Debug:     conf.Debug,
-	})
+	}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
 	if err != nil {
 		return nil, err
 	}
 
-	threadsClient, err := threadsclient.NewClient(conf.AddrThreadsApi)
+	threadsTarget, err := util.TCPAddrFromMultiAddr(conf.AddrThreadsApi)
+	if err != nil {
+		return nil, err
+	}
+	threadsClient, err := threadsclient.NewClient(threadsTarget, grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(c.TokenAuth{}))
 	if err != nil {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, conf.ThreadsInternalToken, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -141,17 +161,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	log.Info("started")
 
-	return &Textile{
-		ds: ds,
+	t.ds = ds
+	t.collections = collections
+	t.ipfs = ipfs
+	t.threadservice = threadservice
+	t.threadsServer = threadsServer
+	t.threadsClient = threadsClient
+	t.server = server
 
-		ipfs: ipfs,
-
-		threadservice: threadservice,
-		threadsServer: threadsServer,
-		threadsClient: threadsClient,
-
-		server: server,
-	}, nil
+	return t, nil
 }
 
 func (t *Textile) Bootstrap() {
@@ -174,4 +192,38 @@ func (t *Textile) Close() error {
 
 func (t *Textile) HostID() peer.ID {
 	return t.threadservice.Host().ID()
+}
+
+func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
+	token, err := auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+	if token == t.threadsInternalToken {
+		return ctx, nil
+	}
+
+	session, err := t.collections.Sessions.Get(ctx, token)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
+	}
+	if session.Expiry < int(time.Now().Unix()) {
+		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
+	}
+	user, err := t.collections.AppUsers.Get(ctx, session.UserID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "User not found")
+	}
+	proj, err := t.collections.Projects.Get(ctx, user.ProjectID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, "Project not found")
+	}
+
+	if err := t.collections.Sessions.Touch(ctx, session); err != nil {
+		return nil, err
+	}
+
+	newCtx := context.WithValue(ctx, clientReqKey("user"), user)
+	newCtx = context.WithValue(newCtx, clientReqKey("project"), proj)
+	return newCtx, nil
 }

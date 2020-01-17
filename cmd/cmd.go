@@ -77,6 +77,11 @@ func Success(format string, args ...interface{}) {
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))
 }
 
+func End(format string, args ...interface{}) {
+	Message(format, args...)
+	os.Exit(0)
+}
+
 func Fatal(err error, args ...interface{}) {
 	words := strings.SplitN(err.Error(), " ", 2)
 	words[0] = strings.Title(words[0])

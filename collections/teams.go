@@ -18,6 +18,7 @@ type Team struct {
 type Teams struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (t *Teams) GetName() string {
@@ -33,6 +34,7 @@ func (t *Teams) GetStoreID() *uuid.UUID {
 }
 
 func (t *Teams) Create(ctx context.Context, ownerID, name string) (*Team, error) {
+	ctx = AuthCtx(ctx, t.token)
 	team := &Team{
 		OwnerID: ownerID,
 		Name:    name,
@@ -45,6 +47,7 @@ func (t *Teams) Create(ctx context.Context, ownerID, name string) (*Team, error)
 }
 
 func (t *Teams) Get(ctx context.Context, id string) (*Team, error) {
+	ctx = AuthCtx(ctx, t.token)
 	team := &Team{}
 	if err := t.threads.ModelFindByID(ctx, t.storeID.String(), t.GetName(), id, team); err != nil {
 		return nil, err
@@ -53,5 +56,6 @@ func (t *Teams) Get(ctx context.Context, id string) (*Team, error) {
 }
 
 func (t *Teams) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, t.token)
 	return t.threads.ModelDelete(ctx, t.storeID.String(), t.GetName(), id)
 }

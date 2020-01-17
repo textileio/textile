@@ -139,6 +139,28 @@ func (c *Client) RemoveProject(ctx context.Context, projID string, auth Auth) er
 	return err
 }
 
+// AddAppToken add a new app token under the given project.
+func (c *Client) AddAppToken(ctx context.Context, projID string, auth Auth) (*pb.AddAppTokenReply, error) {
+	return c.c.AddAppToken(authCtx(ctx, auth), &pb.AddAppTokenRequest{
+		ProjectID: projID,
+	})
+}
+
+// ListAppTokens returns a list of all app tokens for the given project.
+func (c *Client) ListAppTokens(ctx context.Context, projID string, auth Auth) (*pb.ListAppTokensReply, error) {
+	return c.c.ListAppTokens(authCtx(ctx, auth), &pb.ListAppTokensRequest{
+		ProjectID: projID,
+	})
+}
+
+// RemoveAppToken removes an app token by ID.
+func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) error {
+	_, err := c.c.RemoveAppToken(authCtx(ctx, auth), &pb.RemoveAppTokenRequest{
+		ID: tokenID,
+	})
+	return err
+}
+
 type tokenAuth struct {
 	secure bool
 }

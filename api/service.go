@@ -28,7 +28,7 @@ type service struct {
 	emailClient *email.Client
 	fcClient    *fc.Client
 
-	sessionSecret []byte
+	sessionSecret string
 }
 
 // Login handles a login request.
@@ -54,8 +54,8 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}
 
 	var secret string
-	if s.sessionSecret != nil {
-		secret = string(s.sessionSecret)
+	if s.sessionSecret != "" {
+		secret = s.sessionSecret
 	} else {
 		uid, err := uuid.NewRandom()
 		if err != nil {
@@ -80,8 +80,8 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}
 
 	return &pb.LoginReply{
-		ID:    user.ID,
-		Token: session.ID,
+		ID:        user.ID,
+		SessionID: session.ID,
 	}, nil
 }
 
@@ -447,6 +447,73 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 	return &pb.RemoveProjectReply{}, nil
 }
 
+// AddAppToken handles an add app token request.
+func (s *service) AddAppToken(ctx context.Context, req *pb.AddAppTokenRequest) (*pb.AddAppTokenReply, error) {
+	log.Debugf("received add app token request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	if err != nil {
+		return nil, err
+	}
+	token, err := s.collections.AppTokens.Create(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.AddAppTokenReply{
+		ID: token.ID,
+	}, nil
+}
+
+// ListAppTokens handles a list app tokens request.
+func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensRequest) (*pb.ListAppTokensReply, error) {
+	log.Debugf("received list app tokens request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, err := s.collections.AppTokens.List(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]string, len(tokens))
+	for i, token := range tokens {
+		list[i] = token.ID
+	}
+
+	return &pb.ListAppTokensReply{List: list}, nil
+}
+
+// RemoveAppToken handles a remove app token request.
+func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequest) (*pb.RemoveAppTokenReply, error) {
+	log.Debugf("received remove app token request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	token, err := s.getAppTokenWithScope(ctx, req.ID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.AppTokens.Delete(ctx, token.ID); err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveAppTokenReply{}, nil
+}
+
 // getTeamForUser returns a team if the user is authorized.
 func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
 	team, err := s.collections.Teams.Get(ctx, teamID)
@@ -463,7 +530,7 @@ func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.Use
 }
 
 // getProjectForScope returns a project if the scope is authorized.
-func (s *service) getProjectForScope(ctx context.Context, projID string, scope string) (*c.Project, error) {
+func (s *service) getProjectForScope(ctx context.Context, projID, scope string) (*c.Project, error) {
 	proj, err := s.collections.Projects.Get(ctx, projID)
 	if err != nil {
 		return nil, err
@@ -475,4 +542,19 @@ func (s *service) getProjectForScope(ctx context.Context, projID string, scope s
 		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
 	}
 	return proj, nil
+}
+
+// getAppTokenWithScope returns an app token if the scope is authorized for the associated project.
+func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope string) (*c.AppToken, error) {
+	token, err := s.collections.AppTokens.Get(ctx, tokenID)
+	if err != nil {
+		return nil, err
+	}
+	if token == nil {
+		return nil, status.Error(codes.NotFound, "Token not found")
+	}
+	if _, err := s.getProjectForScope(ctx, token.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return token, nil
 }

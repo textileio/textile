@@ -52,7 +52,7 @@ type Config struct {
 
 	FCClient *fc.Client
 
-	SessionSecret []byte
+	SessionSecret string
 
 	Debug bool
 }
@@ -145,9 +145,6 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
 
-	newCtx := context.WithValue(ctx, reqKey("session"), session)
-	newCtx = context.WithValue(newCtx, reqKey("user"), user)
-
 	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
 	if scope != "" {
 		if scope != user.ID {
@@ -158,11 +155,13 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	} else {
 		scope = session.Scope
 	}
-	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 
 	if err := s.service.collections.Sessions.Touch(ctx, session); err != nil {
 		return nil, err
 	}
 
+	newCtx := context.WithValue(ctx, reqKey("session"), session)
+	newCtx = context.WithValue(newCtx, reqKey("user"), user)
+	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
 	return newCtx, nil
 }

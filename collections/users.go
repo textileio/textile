@@ -19,6 +19,7 @@ type User struct {
 type Users struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (u *Users) GetName() string {
@@ -34,6 +35,7 @@ func (u *Users) GetStoreID() *uuid.UUID {
 }
 
 func (u *Users) Create(ctx context.Context, email string) (*User, error) {
+	ctx = AuthCtx(ctx, u.token)
 	user := &User{
 		Email:   email,
 		Teams:   []string{},
@@ -46,6 +48,7 @@ func (u *Users) Create(ctx context.Context, email string) (*User, error) {
 }
 
 func (u *Users) Get(ctx context.Context, id string) (*User, error) {
+	ctx = AuthCtx(ctx, u.token)
 	user := &User{}
 	if err := u.threads.ModelFindByID(ctx, u.storeID.String(), u.GetName(), id, user); err != nil {
 		return nil, err
@@ -54,16 +57,17 @@ func (u *Users) Get(ctx context.Context, id string) (*User, error) {
 }
 
 func (u *Users) GetByEmail(ctx context.Context, email string) ([]*User, error) {
+	ctx = AuthCtx(ctx, u.token)
 	query := s.JSONWhere("Email").Eq(email)
-	rawResults, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
+	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
 	if err != nil {
 		return nil, err
 	}
-	users := rawResults.([]*User)
-	return users, nil
+	return res.([]*User), nil
 }
 
 func (u *Users) ListByTeam(ctx context.Context, teamID string) ([]*User, error) {
+	ctx = AuthCtx(ctx, u.token)
 	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), &s.JSONQuery{}, []*User{})
 	if err != nil {
 		return nil, err
@@ -93,6 +97,7 @@ func (u *Users) HasTeam(user *User, teamID string) bool {
 }
 
 func (u *Users) JoinTeam(ctx context.Context, user *User, teamID string) error {
+	ctx = AuthCtx(ctx, u.token)
 	for _, t := range user.Teams {
 		if t == teamID {
 			return nil
@@ -103,6 +108,7 @@ func (u *Users) JoinTeam(ctx context.Context, user *User, teamID string) error {
 }
 
 func (u *Users) LeaveTeam(ctx context.Context, user *User, teamID string) error {
+	ctx = AuthCtx(ctx, u.token)
 	n := 0
 	for _, x := range user.Teams {
 		if x != teamID {
@@ -116,5 +122,6 @@ func (u *Users) LeaveTeam(ctx context.Context, user *User, teamID string) error 
 
 // @todo: Add a destroy method that calls this. User must first delete projects and teams they own.
 func (u *Users) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, u.token)
 	return u.threads.ModelDelete(ctx, u.storeID.String(), u.GetName(), id)
 }

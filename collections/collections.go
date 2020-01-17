@@ -20,6 +20,9 @@ var (
 	dsTeamsKey    = datastore.NewKey("/teams")
 	dsInvitesKey  = datastore.NewKey("/invites")
 	dsProjectsKey = datastore.NewKey("/projects")
+
+	dsAppTokensKey = datastore.NewKey("/apptokens")
+	dsAppUsersKey  = datastore.NewKey("/appusers")
 )
 
 type Collection interface {
@@ -30,6 +33,7 @@ type Collection interface {
 
 type Collections struct {
 	threads *client.Client
+	token   string
 	ds      datastore.Datastore
 
 	Users    *Users
@@ -37,20 +41,28 @@ type Collections struct {
 	Teams    *Teams
 	Invites  *Invites
 	Projects *Projects
+
+	AppTokens *AppTokens
+	AppUsers  *AppUsers
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Datastore) (c *Collections, err error) {
+func NewCollections(ctx context.Context, threads *client.Client, token string, ds datastore.Datastore) (c *Collections, err error) {
 	c = &Collections{
 		threads: threads,
+		token:   token,
 		ds:      ds,
 
-		Users:    &Users{threads: threads},
-		Sessions: &Sessions{threads: threads},
-		Teams:    &Teams{threads: threads},
-		Invites:  &Invites{threads: threads},
-		Projects: &Projects{threads: threads},
+		Users:    &Users{threads: threads, token: token},
+		Sessions: &Sessions{threads: threads, token: token},
+		Teams:    &Teams{threads: threads, token: token},
+		Invites:  &Invites{threads: threads, token: token},
+		Projects: &Projects{threads: threads, token: token},
+
+		AppTokens: &AppTokens{threads: threads, token: token},
+		AppUsers:  &AppUsers{threads: threads, token: token},
 	}
+	ctx = AuthCtx(ctx, c.token)
 
 	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
 	if err != nil {
@@ -72,12 +84,22 @@ func NewCollections(ctx context.Context, threads *client.Client, ds datastore.Da
 	if err != nil {
 		return nil, err
 	}
+	c.AppTokens.storeID, err = c.addCollection(ctx, c.AppTokens, dsAppTokensKey)
+	if err != nil {
+		return nil, err
+	}
+	c.AppUsers.storeID, err = c.addCollection(ctx, c.AppUsers, dsAppUsersKey)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
 	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
+	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
+	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
 
 	return c, nil
 }
@@ -125,4 +147,25 @@ func storeIDAtKey(ds datastore.Datastore, key datastore.Key) (*uuid.UUID, error)
 		return nil, err
 	}
 	return id, nil
+}
+
+type authKey string
+
+func AuthCtx(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, authKey("token"), token)
+}
+
+type TokenAuth struct{}
+
+func (t TokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	md := map[string]string{}
+	token, ok := ctx.Value(authKey("token")).(string)
+	if ok && token != "" {
+		md["Authorization"] = "Bearer " + token
+	}
+	return md, nil
+}
+
+func (t TokenAuth) RequireTransportSecurity() bool {
+	return false
 }

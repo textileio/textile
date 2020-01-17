@@ -318,6 +318,10 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 		items = append([]*teamItem{account}, items...)
 	}
 
+	if len(items) == 0 {
+		cmd.End("You don't have any teams!")
+	}
+
 	prompt := promptui.Select{
 		Label: label,
 		Items: items,

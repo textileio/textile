@@ -22,6 +22,7 @@ type Project struct {
 type Projects struct {
 	threads *client.Client
 	storeID *uuid.UUID
+	token   string
 }
 
 func (p *Projects) GetName() string {
@@ -37,6 +38,7 @@ func (p *Projects) GetStoreID() *uuid.UUID {
 }
 
 func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress string) (*Project, error) {
+	ctx = AuthCtx(ctx, p.token)
 	proj := &Project{
 		Name:            name,
 		Scope:           scope,
@@ -56,6 +58,7 @@ func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress stri
 }
 
 func (p *Projects) Get(ctx context.Context, id string) (*Project, error) {
+	ctx = AuthCtx(ctx, p.token)
 	proj := &Project{}
 	if err := p.threads.ModelFindByID(ctx, p.storeID.String(), p.GetName(), id, proj); err != nil {
 		return nil, err
@@ -64,6 +67,7 @@ func (p *Projects) Get(ctx context.Context, id string) (*Project, error) {
 }
 
 func (p *Projects) List(ctx context.Context, scope string) ([]*Project, error) {
+	ctx = AuthCtx(ctx, p.token)
 	query := s.JSONWhere("Scope").Eq(scope)
 	res, err := p.threads.ModelFind(ctx, p.storeID.String(), p.GetName(), query, []*Project{})
 	if err != nil {
@@ -73,5 +77,6 @@ func (p *Projects) List(ctx context.Context, scope string) ([]*Project, error) {
 }
 
 func (p *Projects) Delete(ctx context.Context, id string) error {
+	ctx = AuthCtx(ctx, p.token)
 	return p.threads.ModelDelete(ctx, p.storeID.String(), p.GetName(), id)
 }

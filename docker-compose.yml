@@ -18,12 +18,12 @@ services:
       - TXTL_EMAIL_API_KEY
       - TXTL_LOG_DEBUG
     ports:
-      - "3006:3006"
+      - "127.0.0.1:3006:3006"
       - "4006:4006"
       - "5006:5006"
       - "6006:6006"
       - "7006:7006"
-      - "8006:8006"
+      - "127.0.0.1:8006:8006"
   ipfs:
     image: ipfs/go-ipfs:latest
     hostname: ipfs_host
@@ -32,5 +32,5 @@ services:
       - "${REPO_PATH}/ipfs:/data/ipfs"
     ports:
       - "4001:4001"
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
       - "8080:8080"
