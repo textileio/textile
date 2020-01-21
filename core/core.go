@@ -21,6 +21,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -61,6 +62,10 @@ type Config struct {
 	AddrGatewayHost      ma.Multiaddr
 	AddrGatewayUrl       string
 	AddrFilecoinApi      ma.Multiaddr
+
+	DNSDomain string
+	DNSZoneID string
+	DNSToken  string
 
 	EmailFrom   string
 	EmailDomain string
@@ -139,6 +144,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 
+	var dnsManager *dns.Manager
+	if conf.DNSToken != "" {
+		dnsManager, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	emailClient, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
@@ -150,6 +163,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		AddrGatewayHost: conf.AddrGatewayHost,
 		AddrGatewayUrl:  conf.AddrGatewayUrl,
 		Collections:     collections,
+		DNSManager:      dnsManager,
 		EmailClient:     emailClient,
 		FCClient:        fcClient,
 		SessionSecret:   conf.SessionSecret,
