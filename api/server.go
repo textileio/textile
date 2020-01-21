@@ -49,11 +49,9 @@ type Config struct {
 
 	Collections *c.Collections
 
-	DNSManager *dns.Manager
-
-	EmailClient *email.Client
-
-	FCClient *fc.Client
+	EmailClient    *email.Client
+	FilecoinClient *fc.Client
+	DNSManager     *dns.Manager
 
 	SessionSecret string
 
@@ -75,11 +73,11 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
 		service: &service{
-			collections:   conf.Collections,
-			gateway:       gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
-			emailClient:   conf.EmailClient,
-			fcClient:      conf.FCClient,
-			sessionSecret: conf.SessionSecret,
+			collections:    conf.Collections,
+			gateway:        gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
+			emailClient:    conf.EmailClient,
+			filecoinClient: conf.FilecoinClient,
+			sessionSecret:  conf.SessionSecret,
 		},
 		ctx:    ctx,
 		cancel: cancel,
@@ -115,8 +113,8 @@ func (s *Server) Close() error {
 	if err := s.service.gateway.Stop(); err != nil {
 		return err
 	}
-	if s.service.fcClient != nil {
-		if err := s.service.fcClient.Close(); err != nil {
+	if s.service.filecoinClient != nil {
+		if err := s.service.filecoinClient.Close(); err != nil {
 			return err
 		}
 	}

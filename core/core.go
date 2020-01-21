@@ -136,9 +136,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	var fcClient *fc.Client
+	var filecoinClient *fc.Client
 	if conf.AddrFilecoinApi != nil {
-		fcClient, err = fc.NewClient(conf.AddrFilecoinApi)
+		filecoinClient, err = fc.NewClient(conf.AddrFilecoinApi)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:     collections,
 		DNSManager:      dnsManager,
 		EmailClient:     emailClient,
-		FCClient:        fcClient,
+		FilecoinClient:  filecoinClient,
 		SessionSecret:   conf.SessionSecret,
 		Debug:           conf.Debug,
 	})

@@ -13,17 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/textileio/textile/collections"
-
-	"google.golang.org/grpc"
-
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/collections"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -812,7 +810,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		ThreadsInternalToken: uuid.New().String(),
 
 		Debug: true,
-		// ToDo: add in AddrFilecoinApi option so filecoin is integrated into projects
+		// @todo: Add in AddrFilecoinApi option so filecoin is integrated into projects
 	}
 	textile, err := core.NewTextile(context.Background(), conf)
 	if err != nil {

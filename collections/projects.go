@@ -5,18 +5,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/textileio/go-threads/api/client"
 	s "github.com/textileio/go-threads/store"
 )
 
 type Project struct {
-	ID              string
-	Name            string
-	Scope           string // user or team
-	StoreID         string
-	Created         int64
-	FCWalletAddress string
+	ID            string
+	Name          string
+	Scope         string // user or team
+	StoreID       string
+	WalletAddress string
+	Created       int64
 }
 
 type Projects struct {
@@ -40,10 +39,10 @@ func (p *Projects) GetStoreID() *uuid.UUID {
 func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress string) (*Project, error) {
 	ctx = AuthCtx(ctx, p.token)
 	proj := &Project{
-		Name:            name,
-		Scope:           scope,
-		Created:         time.Now().Unix(),
-		FCWalletAddress: fcWalletAddress,
+		Name:          name,
+		Scope:         scope,
+		WalletAddress: fcWalletAddress,
+		Created:       time.Now().Unix(),
 	}
 	// Create a dedicated store for the project
 	var err error
@@ -51,7 +50,10 @@ func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress stri
 	if err != nil {
 		return nil, err
 	}
-	if err := p.threads.ModelCreate(ctx, p.storeID.String(), p.GetName(), proj); err != nil {
+	if err = p.threads.ModelCreate(ctx, p.storeID.String(), p.GetName(), proj); err != nil {
+		return nil, err
+	}
+	if err = p.threads.Start(ctx, proj.StoreID); err != nil {
 		return nil, err
 	}
 	return proj, nil

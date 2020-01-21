@@ -24,9 +24,9 @@ var (
 type service struct {
 	collections *c.Collections
 
-	gateway     *gateway.Gateway
-	emailClient *email.Client
-	fcClient    *fc.Client
+	gateway        *gateway.Gateway
+	emailClient    *email.Client
+	filecoinClient *fc.Client
 
 	sessionSecret string
 }
@@ -86,7 +86,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 }
 
 // Switch handles a switch request.
-func (s *service) Switch(ctx context.Context, req *pb.SwitchRequest) (*pb.SwitchReply, error) {
+func (s *service) Switch(ctx context.Context, _ *pb.SwitchRequest) (*pb.SwitchReply, error) {
 	log.Debugf("received switch request")
 
 	session, ok := ctx.Value(reqKey("session")).(*c.Session)
@@ -105,7 +105,7 @@ func (s *service) Switch(ctx context.Context, req *pb.SwitchRequest) (*pb.Switch
 }
 
 // Logout handles a logout request.
-func (s *service) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutReply, error) {
+func (s *service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutReply, error) {
 	log.Debugf("received logout request")
 
 	session, ok := ctx.Value(reqKey("session")).(*c.Session)
@@ -120,7 +120,7 @@ func (s *service) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.Logout
 }
 
 // Whoami handles a whoami request.
-func (s *service) Whoami(ctx context.Context, req *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
+func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
 	log.Debugf("received whoami request")
 
 	user, ok := ctx.Value(reqKey("user")).(*c.User)
@@ -222,7 +222,7 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 }
 
 // ListTeams handles a list teams request.
-func (s *service) ListTeams(ctx context.Context, req *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
+func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
 	log.Debugf("received list teams request")
 
 	user, ok := ctx.Value(reqKey("user")).(*c.User)
@@ -350,9 +350,9 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 	}
 
 	var addr string
-	if s.fcClient != nil {
+	if s.filecoinClient != nil {
 		var err error
-		addr, err = s.fcClient.Wallet.NewWallet(ctx, "bls")
+		addr, err = s.filecoinClient.Wallet.NewWallet(ctx, "bls")
 		if err != nil {
 			return nil, err
 		}
@@ -383,21 +383,21 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	}
 
 	var bal int64
-	if proj.FCWalletAddress != "" {
-		bal, err = s.fcClient.Wallet.WalletBalance(ctx, proj.FCWalletAddress)
+	if proj.WalletAddress != "" {
+		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.WalletAddress)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	reply := projectToPbProject(proj)
-	reply.FcWalletBalance = bal
+	reply.WalletBalance = bal
 
 	return reply, nil
 }
 
 // ListProjects handles a list projects request.
-func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
+func (s *service) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
 	log.Debugf("received list projects request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
@@ -419,11 +419,11 @@ func (s *service) ListProjects(ctx context.Context, req *pb.ListProjectsRequest)
 
 func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 	return &pb.GetProjectReply{
-		ID:              proj.ID,
-		Name:            proj.Name,
-		StoreID:         proj.StoreID,
-		Created:         proj.Created,
-		FcWalletAddress: proj.FCWalletAddress,
+		ID:            proj.ID,
+		Name:          proj.Name,
+		StoreID:       proj.StoreID,
+		WalletAddress: proj.WalletAddress,
+		Created:       proj.Created,
 	}
 }
 

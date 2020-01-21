@@ -127,7 +127,7 @@ var inspectCmd = &cobra.Command{
 			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
 
 		cmd.RenderTable([]string{"name", "id", "store id", "filecoin wallet address", "filecoin wallet balance"},
-			[][]string{{selected.Name, selected.ID, selected.StoreID, selected.FcWalletAddress, strconv.FormatInt(selected.FcWalletBalance, 10)}})
+			[][]string{{selected.Name, selected.ID, selected.StoreID, selected.WalletAddress, strconv.FormatInt(selected.WalletBalance, 10)}})
 	},
 }
 

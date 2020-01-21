@@ -157,7 +157,7 @@ func AuthCtx(ctx context.Context, token string) context.Context {
 
 type TokenAuth struct{}
 
-func (t TokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func (t TokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
 	md := map[string]string{}
 	token, ok := ctx.Value(authKey("token")).(string)
 	if ok && token != "" {

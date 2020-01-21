@@ -2,6 +2,7 @@ package collections
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
@@ -12,6 +13,8 @@ import (
 type AppUser struct {
 	ID        string
 	ProjectID string
+	StoreID   string
+	Created   int64
 }
 
 type AppUsers struct {
@@ -50,8 +53,16 @@ func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) 
 	user = &AppUser{
 		ID:        deviceID,
 		ProjectID: projectID,
+		Created:   time.Now().Unix(),
 	}
-	if err := u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
+	user.StoreID, err = u.threads.NewStore(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err = u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
+		return nil, err
+	}
+	if err = u.threads.Start(ctx, user.StoreID); err != nil {
 		return nil, err
 	}
 	return user, nil
