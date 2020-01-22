@@ -17,6 +17,7 @@ import (
 	fc "github.com/textileio/filecoin/api/client"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
+	serviceapi "github.com/textileio/go-threads/service/api"
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api"
@@ -43,6 +44,7 @@ type Textile struct {
 
 	threadservice s.ServiceBoostrapper
 
+	threadsServiceServer *serviceapi.Server
 	threadsServer        *threadsapi.Server
 	threadsClient        *threadsclient.Client
 	threadsInternalToken string
@@ -53,15 +55,16 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrApi              ma.Multiaddr
-	AddrThreadsHost      ma.Multiaddr
-	AddrThreadsHostProxy ma.Multiaddr
-	AddrThreadsApi       ma.Multiaddr
-	AddrThreadsApiProxy  ma.Multiaddr
-	AddrIpfsApi          ma.Multiaddr
-	AddrGatewayHost      ma.Multiaddr
-	AddrGatewayUrl       string
-	AddrFilecoinApi      ma.Multiaddr
+	AddrApi                    ma.Multiaddr
+	AddrThreadsHost            ma.Multiaddr
+	AddrThreadsServiceApi      ma.Multiaddr
+	AddrThreadsServiceApiProxy ma.Multiaddr
+	AddrThreadsApi             ma.Multiaddr
+	AddrThreadsApiProxy        ma.Multiaddr
+	AddrIpfsApi                ma.Multiaddr
+	AddrGatewayHost            ma.Multiaddr
+	AddrGatewayUrl             string
+	AddrFilecoinApi            ma.Multiaddr
 
 	DNSDomain string
 	DNSZoneID string
@@ -98,17 +101,24 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	t := &Textile{
+		threadsInternalToken: conf.ThreadsInternalToken,
+	}
 	threadservice, err := s.DefaultService(
 		conf.RepoPath,
 		s.WithServiceHostAddr(conf.AddrThreadsHost),
-		s.WithServiceHostProxyAddr(conf.AddrThreadsHostProxy),
 		s.WithServiceDebug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}
-
-	t := &Textile{
-		threadsInternalToken: conf.ThreadsInternalToken,
+	serviceServer, err := serviceapi.NewServer(ctx, threadservice, serviceapi.Config{
+		Addr:      conf.AddrThreadsServiceApi,
+		ProxyAddr: conf.AddrThreadsServiceApiProxy,
+		Debug:     conf.Debug,
+	}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
+		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
+	if err != nil {
+		return nil, err
 	}
 	threadsServer, err := threadsapi.NewServer(ctx, threadservice, threadsapi.Config{
 		RepoPath:  conf.RepoPath,
@@ -136,9 +146,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	var fcClient *fc.Client
+	var filecoinClient *fc.Client
 	if conf.AddrFilecoinApi != nil {
-		fcClient, err = fc.NewClient(conf.AddrFilecoinApi)
+		filecoinClient, err = fc.NewClient(conf.AddrFilecoinApi)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +175,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:     collections,
 		DNSManager:      dnsManager,
 		EmailClient:     emailClient,
-		FCClient:        fcClient,
+		FilecoinClient:  filecoinClient,
 		SessionSecret:   conf.SessionSecret,
 		Debug:           conf.Debug,
 	})
@@ -179,6 +189,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.collections = collections
 	t.ipfs = ipfs
 	t.threadservice = threadservice
+
+	t.threadsServiceServer = serviceServer
 	t.threadsServer = threadsServer
 	t.threadsClient = threadsClient
 	t.server = server
