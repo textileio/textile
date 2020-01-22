@@ -42,9 +42,13 @@ var (
 			Key:      "addr.threads.host",
 			DefValue: "/ip4/0.0.0.0/tcp/4006",
 		},
-		"addrThreadsHostProxy": {
-			Key:      "addr.threads.host_proxy",
-			DefValue: "/ip4/0.0.0.0/tcp/5006",
+		"addrThreadsServiceApi": {
+			Key:      "addr.threads_service.api",
+			DefValue: "/ip4/127.0.0.1/tcp/5006",
+		},
+		"addrThreadsServiceApiProxy": {
+			Key:      "addr.threads_service.api_proxy",
+			DefValue: "/ip4/127.0.0.1/tcp/5007",
 		},
 		"addrThreadsApi": {
 			Key:      "addr.threads.api",
@@ -52,7 +56,7 @@ var (
 		},
 		"addrThreadsApiProxy": {
 			Key:      "addr.threads.api_proxy",
-			DefValue: "/ip4/127.0.0.1/tcp/7006",
+			DefValue: "/ip4/127.0.0.1/tcp/6007",
 		},
 		"addrGatewayHost": {
 			Key:      "addr.gateway.host",
@@ -133,9 +137,13 @@ func init() {
 		flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
-		"addrThreadsHostProxy",
-		flags["addrThreadsHostProxy"].DefValue.(string),
-		"Threads peer host gRPC proxy address")
+		"addrThreadsServiceApi",
+		flags["addrThreadsServiceApi"].DefValue.(string),
+		"Threads Service API listen address")
+	rootCmd.PersistentFlags().String(
+		"addrThreadsServiceApiProxy",
+		flags["addrThreadsServiceApiProxy"].DefValue.(string),
+		"Threads Service API gRPC proxy address")
 	rootCmd.PersistentFlags().String(
 		"addrThreadsApi",
 		flags["addrThreadsApi"].DefValue.(string),
@@ -234,7 +242,8 @@ var rootCmd = &cobra.Command{
 
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
-		addrThreadsHostProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.host_proxy"))
+		addrThreadsServiceApi := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api"))
+		addrThreadsServiceApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api_proxy"))
 		addrThreadsApi := cmd.AddrFromStr(configViper.GetString("addr.threads.api"))
 		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
@@ -264,24 +273,25 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:             configViper.GetString("repo"),
-			AddrApi:              addrApi,
-			AddrThreadsHost:      addrThreadsHost,
-			AddrThreadsHostProxy: addrThreadsHostProxy,
-			AddrThreadsApi:       addrThreadsApi,
-			AddrThreadsApiProxy:  addrThreadsApiProxy,
-			AddrIpfsApi:          addrIpfsApi,
-			AddrGatewayHost:      addrGatewayHost,
-			AddrGatewayUrl:       addrGatewayUrl,
-			AddrFilecoinApi:      addrFilecoinApi,
-			DNSDomain:            dnsDomain,
-			DNSZoneID:            dnsZoneID,
-			DNSToken:             dnsToken,
-			EmailFrom:            emailFrom,
-			EmailDomain:          emailDomain,
-			EmailApiKey:          emailApiKey,
-			ThreadsInternalToken: uuid.New().String(),
-			Debug:                configViper.GetBool("log.debug"),
+			RepoPath:                   configViper.GetString("repo"),
+			AddrApi:                    addrApi,
+			AddrThreadsHost:            addrThreadsHost,
+			AddrThreadsServiceApi:      addrThreadsServiceApi,
+			AddrThreadsServiceApiProxy: addrThreadsServiceApiProxy,
+			AddrThreadsApi:             addrThreadsApi,
+			AddrThreadsApiProxy:        addrThreadsApiProxy,
+			AddrIpfsApi:                addrIpfsApi,
+			AddrGatewayHost:            addrGatewayHost,
+			AddrGatewayUrl:             addrGatewayUrl,
+			AddrFilecoinApi:            addrFilecoinApi,
+			DNSDomain:                  dnsDomain,
+			DNSZoneID:                  dnsZoneID,
+			DNSToken:                   dnsToken,
+			EmailFrom:                  emailFrom,
+			EmailDomain:                emailDomain,
+			EmailApiKey:                emailApiKey,
+			ThreadsInternalToken:       uuid.New().String(),
+			Debug:                      configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)

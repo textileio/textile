@@ -9,9 +9,10 @@ services:
     environment:
       - TXTL_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - TXTL_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
-      - TXTL_ADDR_THREADS_HOST_PROXY=/ip4/0.0.0.0/tcp/5006
+      - TXTL_ADDR_THREADS_SERVICE_API=/ip4/0.0.0.0/tcp/5006
+      - TXTL_ADDR_THREADS_SERVICE_API_PROXY=/ip4/0.0.0.0/tcp/5007
       - TXTL_ADDR_THREADS_API=/ip4/0.0.0.0/tcp/6006
-      - TXTL_ADDR_THREADS_API_PROXY=/ip4/0.0.0.0/tcp/7006
+      - TXTL_ADDR_THREADS_API_PROXY=/ip4/0.0.0.0/tcp/6007
       - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - TXTL_ADDR_GATEWAY_URL
       - TXTL_ADDR_IPFS_API=/ip4/127.0.0.1/tcp/5001
@@ -21,8 +22,9 @@ services:
       - "127.0.0.1:3006:3006"
       - "4006:4006"
       - "5006:5006"
+      - "5007:5007"
       - "6006:6006"
-      - "7006:7006"
+      - "6007:6007"
       - "127.0.0.1:8006:8006"
   ipfs:
     image: ipfs/go-ipfs:latest

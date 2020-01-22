@@ -15,20 +15,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
-	threadsclient "github.com/textileio/go-threads/api/client"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/pb"
-	"github.com/textileio/textile/collections"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
-	"google.golang.org/grpc"
 )
 
 var (
 	sessionSecret = "test_runner"
 )
 
-func TestLogin(t *testing.T) {
+func TestClient_Login(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -41,7 +38,7 @@ func TestLogin(t *testing.T) {
 	})
 }
 
-func TestSwitch(t *testing.T) {
+func TestClient_Switch(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -71,7 +68,7 @@ func TestSwitch(t *testing.T) {
 	})
 }
 
-func TestLogout(t *testing.T) {
+func TestClient_Logout(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -91,7 +88,7 @@ func TestLogout(t *testing.T) {
 	})
 }
 
-func TestWhoami(t *testing.T) {
+func TestClient_Whoami(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -136,7 +133,7 @@ func TestWhoami(t *testing.T) {
 	})
 }
 
-func TestAddTeam(t *testing.T) {
+func TestClient_AddTeam(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -160,7 +157,7 @@ func TestAddTeam(t *testing.T) {
 	})
 }
 
-func TestGetTeam(t *testing.T) {
+func TestClient_GetTeam(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -188,7 +185,7 @@ func TestGetTeam(t *testing.T) {
 	})
 }
 
-func TestListTeams(t *testing.T) {
+func TestClient_ListTeams(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -223,7 +220,7 @@ func TestListTeams(t *testing.T) {
 	})
 }
 
-func TestRemoveTeam(t *testing.T) {
+func TestClient_RemoveTeam(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -255,7 +252,7 @@ func TestRemoveTeam(t *testing.T) {
 	})
 }
 
-func TestInviteToTeam(t *testing.T) {
+func TestClient_InviteToTeam(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -285,7 +282,7 @@ func TestInviteToTeam(t *testing.T) {
 	})
 }
 
-func TestLeaveTeam(t *testing.T) {
+func TestClient_LeaveTeam(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -328,7 +325,7 @@ func TestLeaveTeam(t *testing.T) {
 	})
 }
 
-func TestAddProject(t *testing.T) {
+func TestClient_AddProject(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -361,7 +358,7 @@ func TestAddProject(t *testing.T) {
 	})
 }
 
-func TestGetProject(t *testing.T) {
+func TestClient_GetProject(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -401,7 +398,7 @@ func TestGetProject(t *testing.T) {
 	})
 }
 
-func TestListProjects(t *testing.T) {
+func TestClient_ListProjects(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -454,7 +451,7 @@ func TestListProjects(t *testing.T) {
 	})
 }
 
-func TestRemoveProject(t *testing.T) {
+func TestClient_RemoveProject(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -498,7 +495,7 @@ func TestRemoveProject(t *testing.T) {
 	})
 }
 
-func TestAddAppToken(t *testing.T) {
+func TestClient_AddAppToken(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -520,7 +517,7 @@ func TestAddAppToken(t *testing.T) {
 	})
 }
 
-func TestListAppTokens(t *testing.T) {
+func TestClient_ListAppTokens(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -573,7 +570,7 @@ func TestListAppTokens(t *testing.T) {
 	})
 }
 
-func TestRemoveAppToken(t *testing.T) {
+func TestClient_RemoveAppToken(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -621,7 +618,7 @@ func TestRemoveAppToken(t *testing.T) {
 	})
 }
 
-func TestRegisterAppUser(t *testing.T) {
+func TestClient_RegisterAppUser(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -703,32 +700,6 @@ func TestRegisterAppUser(t *testing.T) {
 		if res.StatusCode != http.StatusOK {
 			t.Fatalf("expected status code 200, got %d", res.StatusCode)
 		}
-
-		// Setup a threads client for app user tests.
-		ttarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrThreadsApi)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tclient, err := threadsclient.NewClient(ttarget, grpc.WithInsecure(),
-			grpc.WithPerRPCCredentials(collections.TokenAuth{}))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer tclient.Close()
-
-		t.Run("test create new store without client token", func(t *testing.T) {
-			if _, err := tclient.NewStore(context.Background()); err == nil {
-				t.Fatal("test create new store without client token should fail")
-			}
-		})
-
-		t.Run("test create new store with client token", func(t *testing.T) {
-			storeID, err := tclient.NewStore(collections.AuthCtx(context.Background(), session))
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Logf("client created new store: %s", storeID)
-		})
 	})
 }
 
@@ -785,19 +756,28 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	threadsServiceApiPort, err := freeport.GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
 	threadsApiPort, err := freeport.GetFreePort()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	conf = core.Config{
-		RepoPath:             dir,
-		AddrApi:              util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrThreadsHost:      util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsHostProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsApi:       util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsApiPort)),
-		AddrThreadsApiProxy:  util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
-		AddrIpfsApi:          util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
+		RepoPath: dir,
+
+		AddrApi: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+
+		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsServiceApi: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d",
+			threadsServiceApiPort)),
+		AddrThreadsServiceApiProxy: util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
+		AddrThreadsApi:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsApiPort)),
+		AddrThreadsApiProxy:        util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
+
+		AddrIpfsApi: util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
@@ -810,7 +790,9 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		ThreadsInternalToken: uuid.New().String(),
 
 		Debug: true,
-		// @todo: Add in AddrFilecoinApi option so filecoin is integrated into projects
+
+		// @todo: When we have a lotus docker image,
+		// add in AddrFilecoinApi option so filecoin is integrated into projects
 	}
 	textile, err := core.NewTextile(context.Background(), conf)
 	if err != nil {

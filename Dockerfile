@@ -53,12 +53,14 @@ COPY --from=0 /lib/x86_64-linux-gnu/libdl.so.2 /lib/libdl.so.2
 EXPOSE 3006
 # addrThreadsHost; should be exposed to the public
 EXPOSE 4006
-# addrThreadsHostProxy; should be exposed to the public
+# addrThreadsServiceApi; should be exposed to the public
 EXPOSE 5006
+# addrThreadsServiceApiProxy; should be exposed to the public
+EXPOSE 5007
 # addrThreadsApi; should be exposed to the public
 EXPOSE 6006
 # addrThreadsApiProxy; should be exposed to the public
-EXPOSE 7006
+EXPOSE 6007
 # addrGatewayHost; should be exposed to the public
 EXPOSE 8006
 
