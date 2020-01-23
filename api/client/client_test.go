@@ -715,10 +715,10 @@ func TestClient_Store(t *testing.T) {
 	}
 
 	t.Run("test store", func(t *testing.T) {
-		progress := make(chan float64)
+		progress := make(chan int64)
 		go func() {
 			for p := range progress {
-				t.Logf("store progress: %f", p)
+				t.Logf("progress: %d", p)
 			}
 		}()
 		pth, err := client.Store(

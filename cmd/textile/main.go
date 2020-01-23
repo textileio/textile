@@ -60,6 +60,7 @@ var (
 
 	cmdTimeout   = time.Second * 10
 	loginTimeout = time.Minute * 3
+	storeTimeout = time.Minute
 )
 
 func init() {

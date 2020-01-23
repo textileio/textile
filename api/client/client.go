@@ -180,16 +180,12 @@ type storeResult struct {
 }
 
 // Store sends a file.
-func (c *Client) Store(ctx context.Context, projID string, filePath string, progress chan float64, auth Auth) (path.Resolved, error) {
+func (c *Client) Store(ctx context.Context, projID string, filePath string, progress chan int64, auth Auth) (path.Resolved, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
 
 	stream, err := c.c.Store(authCtx(ctx, auth))
 	if err != nil {
@@ -225,7 +221,7 @@ func (c *Client) Store(ctx context.Context, projID string, filePath string, prog
 					}
 					waitCh <- storeResult{path: path.IpfsPath(id)}
 				} else {
-					progress <- float64(payload.Event.Bytes) / float64(info.Size())
+					progress <- payload.Event.Bytes
 				}
 			case *pb.StoreReply_Error:
 				waitCh <- storeResult{err: fmt.Errorf(payload.Error)}
