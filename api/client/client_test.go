@@ -703,6 +703,35 @@ func TestClient_RegisterAppUser(t *testing.T) {
 	})
 }
 
+func TestClient_Store(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	user := login(t, client, conf, "jon@doe.com")
+	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test store", func(t *testing.T) {
+		progress := make(chan float64)
+		go func() {
+			for p := range progress {
+				t.Logf("store progress: %f", p)
+			}
+		}()
+		pth, err := client.Store(
+			context.Background(), project.ID, "testdata/file.jpg", progress, Auth{Token: user.SessionID})
+		if err != nil {
+			t.Fatalf("store should succeed: %v", err)
+		}
+		if pth == nil {
+			log.Fatal("got bad ID from store")
+		}
+	})
+}
+
 func TestClose(t *testing.T) {
 	t.Parallel()
 	conf, shutdown := makeTextile(t)

@@ -2,11 +2,24 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"os"
 
-	"google.golang.org/grpc/credentials"
+	"github.com/ipfs/go-cid"
 
+	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+)
+
+var log = logging.Logger("textileclient")
+
+const (
+	// chunkSize for store requests.
+	chunkSize = 1024
 )
 
 // Auth is used to supply the client with authorization credentials.
@@ -161,13 +174,109 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
-type tokenAuth struct {
-	secure bool
+type storeResult struct {
+	path path.Resolved
+	err  error
+}
+
+// Store sends a file.
+func (c *Client) Store(ctx context.Context, projID string, filePath string, progress chan float64, auth Auth) (path.Resolved, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := c.c.Store(authCtx(ctx, auth))
+	if err != nil {
+		return nil, err
+	}
+	if err = stream.Send(&pb.StoreRequest{
+		Payload: &pb.StoreRequest_ProjectID{
+			ProjectID: projID,
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	waitCh := make(chan storeResult)
+	go func() {
+		defer close(waitCh)
+		for {
+			rep, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				waitCh <- storeResult{err: err}
+				return
+			}
+			switch payload := rep.GetPayload().(type) {
+			case *pb.StoreReply_Event_:
+				if payload.Event.Path != "" {
+					id, err := cid.Parse(payload.Event.Path)
+					if err != nil {
+						waitCh <- storeResult{err: err}
+						return
+					}
+					waitCh <- storeResult{path: path.IpfsPath(id)}
+				} else {
+					progress <- float64(payload.Event.Bytes) / float64(info.Size())
+				}
+			case *pb.StoreReply_Error:
+				waitCh <- storeResult{err: fmt.Errorf(payload.Error)}
+				return
+			default:
+				waitCh <- storeResult{err: fmt.Errorf("invalid reply")}
+				return
+			}
+		}
+	}()
+
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		if err = stream.Send(&pb.StoreRequest{
+			Payload: &pb.StoreRequest_Chunk{
+				Chunk: buf[:n],
+			},
+		}); err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+	if err = stream.CloseSend(); err != nil {
+		return nil, err
+	}
+	res := <-waitCh
+	return res.path, res.err
 }
 
 type authKey string
 
-func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func authCtx(ctx context.Context, auth Auth) context.Context {
+	ctx = context.WithValue(ctx, authKey("token"), auth.Token)
+	if auth.Scope != "" {
+		ctx = context.WithValue(ctx, authKey("scope"), auth.Scope)
+	}
+	return ctx
+}
+
+type tokenAuth struct {
+	secure bool
+}
+
+func (t tokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
 	md := map[string]string{}
 	token, ok := ctx.Value(authKey("token")).(string)
 	if ok && token != "" {
@@ -182,12 +291,4 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[s
 
 func (t tokenAuth) RequireTransportSecurity() bool {
 	return t.secure
-}
-
-func authCtx(ctx context.Context, auth Auth) context.Context {
-	ctx = context.WithValue(ctx, authKey("token"), auth.Token)
-	if auth.Scope != "" {
-		ctx = context.WithValue(ctx, authKey("scope"), auth.Scope)
-	}
-	return ctx
 }

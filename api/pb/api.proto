@@ -140,6 +140,27 @@ message RemoveAppTokenRequest {
 
 message RemoveAppTokenReply {}
 
+message StoreRequest {
+    oneof payload {
+        string projectID = 1;
+        bytes chunk = 2;
+    }
+}
+
+message StoreReply {
+    oneof payload {
+        Event event = 1;
+        string error = 2;
+    }
+
+    message Event {
+        string name = 1;
+        string path = 2;
+        int64 bytes = 3;
+        string size = 4;
+    }
+}
+
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
@@ -161,4 +182,6 @@ service API {
     rpc AddAppToken (AddAppTokenRequest) returns (AddAppTokenReply) {}
     rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
     rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
+
+    rpc Store (stream StoreRequest) returns (stream StoreReply) {}
 }

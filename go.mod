@@ -13,8 +13,10 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger v0.2.0
+	github.com/ipfs/go-ipfs-files v0.0.4
 	github.com/ipfs/go-ipfs-http-client v0.0.5
 	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.5

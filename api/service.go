@@ -2,10 +2,15 @@ package api
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/mail"
 	"time"
 
 	"github.com/google/uuid"
+	files "github.com/ipfs/go-ipfs-files"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 	fc "github.com/textileio/filecoin/api/client"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
@@ -26,6 +31,7 @@ type service struct {
 
 	gateway        *gateway.Gateway
 	emailClient    *email.Client
+	ipfsClient     iface.CoreAPI
 	filecoinClient *fc.Client
 
 	sessionSecret string
@@ -512,6 +518,109 @@ func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequ
 	}
 
 	return &pb.RemoveAppTokenReply{}, nil
+}
+
+func (s *service) Store(server pb.API_StoreServer) error {
+	log.Debugf("received store request")
+
+	scope, ok := server.Context().Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+
+	req, err := server.Recv()
+	if err != nil {
+		return err
+	}
+	var projID string
+	switch payload := req.GetPayload().(type) {
+	case *pb.StoreRequest_ProjectID:
+		projID = payload.ProjectID
+	default:
+		return fmt.Errorf("project ID is required")
+	}
+
+	// @todo: Track pin under project.
+	_, err = s.getProjectForScope(server.Context(), projID, scope)
+	if err != nil {
+		return err
+	}
+
+	sendErr := func(err error) {
+		if err := server.Send(&pb.StoreReply{
+			Payload: &pb.StoreReply_Error{
+				Error: err.Error(),
+			},
+		}); err != nil {
+			log.Errorf("error sending error: %v", err)
+		}
+	}
+
+	reader, writer := io.Pipe()
+	waitCh := make(chan struct{})
+	go func() {
+		defer close(waitCh)
+		for {
+			req, err := server.Recv()
+			if err == io.EOF {
+				_ = writer.Close()
+				return
+			} else if err != nil {
+				_ = writer.CloseWithError(err)
+				sendErr(err)
+				return
+			}
+			switch payload := req.GetPayload().(type) {
+			case *pb.StoreRequest_Chunk:
+				if _, err := writer.Write(payload.Chunk); err != nil {
+					sendErr(err)
+					return
+				}
+			default:
+				sendErr(fmt.Errorf("invalid request"))
+				return
+			}
+		}
+	}()
+
+	eventCh := make(chan interface{})
+	defer close(eventCh)
+	go func() {
+		for e := range eventCh {
+			event, ok := e.(*iface.AddEvent)
+			if !ok {
+				log.Error("unexpected event type")
+				continue
+			}
+			pbevent := &pb.StoreReply_Event{
+				Name:  event.Name,
+				Bytes: event.Bytes,
+				Size:  event.Size,
+			}
+			if event.Path != nil {
+				pbevent.Path = event.Path.String()
+			}
+			if err := server.Send(&pb.StoreReply{
+				Payload: &pb.StoreReply_Event_{
+					Event: pbevent,
+				},
+			}); err != nil {
+				log.Errorf("error sending event: %v", err)
+			}
+		}
+	}()
+
+	pth, err := s.ipfsClient.Unixfs().Add(
+		server.Context(),
+		files.NewReaderFile(reader),
+		options.Unixfs.Pin(true),
+		options.Unixfs.Progress(true),
+		options.Unixfs.Events(eventCh))
+	if err != nil {
+		return err
+	}
+	log.Debugf("stored file with path: %s", pth.String())
+	return nil
 }
 
 // getTeamForUser returns a team if the user is authorized.
