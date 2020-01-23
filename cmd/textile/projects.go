@@ -57,7 +57,7 @@ var initCmd = &cobra.Command{
 		filename := path.Join(pth, "config.yml")
 
 		if _, err := os.Stat(filename); err == nil {
-			cmd.Fatal(fmt.Errorf("project is already initialized"))
+			cmd.Fatal(fmt.Errorf("project already exists in %s", pth))
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
