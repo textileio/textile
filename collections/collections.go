@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/store"
 )
 
 var (
@@ -23,11 +24,14 @@ var (
 
 	dsAppTokensKey = datastore.NewKey("/apptokens")
 	dsAppUsersKey  = datastore.NewKey("/appusers")
+
+	dsFilesKey = datastore.NewKey("/files")
 )
 
 type Collection interface {
 	GetName() string
 	GetInstance() interface{}
+	GetIndexes() []*store.IndexConfig
 	GetStoreID() *uuid.UUID
 }
 
@@ -44,10 +48,17 @@ type Collections struct {
 
 	AppTokens *AppTokens
 	AppUsers  *AppUsers
+
+	Files *Files
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, threads *client.Client, token string, ds datastore.Datastore) (c *Collections, err error) {
+func NewCollections(
+	ctx context.Context,
+	threads *client.Client,
+	token string,
+	ds datastore.Datastore,
+) (c *Collections, err error) {
 	c = &Collections{
 		threads: threads,
 		token:   token,
@@ -61,6 +72,8 @@ func NewCollections(ctx context.Context, threads *client.Client, token string, d
 
 		AppTokens: &AppTokens{threads: threads, token: token},
 		AppUsers:  &AppUsers{threads: threads, token: token},
+
+		Files: &Files{threads: threads, token: token},
 	}
 	ctx = AuthCtx(ctx, c.token)
 
@@ -92,6 +105,10 @@ func NewCollections(ctx context.Context, threads *client.Client, token string, d
 	if err != nil {
 		return nil, err
 	}
+	c.Files.storeID, err = c.addCollection(ctx, c.Files, dsFilesKey)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
@@ -100,6 +117,7 @@ func NewCollections(ctx context.Context, threads *client.Client, token string, d
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
 	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
 	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
+	log.Debugf("files store: %s", c.Files.GetStoreID().String())
 
 	return c, nil
 }
@@ -121,7 +139,12 @@ func (c *Collections) addCollection(ctx context.Context, col Collection, key dat
 		if err != nil {
 			panic(err)
 		}
-		if err = c.threads.RegisterSchema(ctx, storeID.String(), col.GetName(), string(schema)); err != nil {
+		if err = c.threads.RegisterSchema(
+			ctx,
+			storeID.String(),
+			col.GetName(),
+			string(schema),
+			col.GetIndexes()...); err != nil {
 			return nil, err
 		}
 		if err = c.ds.Put(key, storeID[:]); err != nil {

@@ -541,7 +541,7 @@ func (s *service) Store(server pb.API_StoreServer) error {
 	}
 
 	// @todo: Track pin under project.
-	_, err = s.getProjectForScope(server.Context(), projID, scope)
+	proj, err := s.getProjectForScope(server.Context(), projID, scope)
 	if err != nil {
 		return err
 	}
@@ -619,7 +619,13 @@ func (s *service) Store(server pb.API_StoreServer) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("stored file with path: %s", pth.String())
+
+	file, err := s.collections.Files.Create(server.Context(), pth.String(), "todo", proj.ID)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("stored file with id: %s", file.ID)
 	return nil
 }
 
