@@ -58,9 +58,9 @@ var (
 
 	client *api.Client
 
-	cmdTimeout   = time.Second * 10
-	loginTimeout = time.Minute * 3
-	storeTimeout = time.Minute
+	cmdTimeout     = time.Second * 10
+	loginTimeout   = time.Minute * 3
+	addFileTimeout = time.Minute
 )
 
 func init() {

@@ -13,23 +13,26 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(storeCmd)
-	storeCmd.AddCommand(
-		addStoreCmd,
-		lsStoreCmd,
-		rmStoreCmd)
+	rootCmd.AddCommand(filesCmd)
+	filesCmd.AddCommand(
+		addFileCmd,
+		lsFilesCmd,
+		rmFileCmd)
 }
 
-var storeCmd = &cobra.Command{
-	Use:   "store",
+var filesCmd = &cobra.Command{
+	Use: "files",
+	Aliases: []string{
+		"file",
+	},
 	Short: "Manage project files",
 	Long:  `Manage your project's stored files.`,
 }
 
-var addStoreCmd = &cobra.Command{
+var addFileCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Store a file",
-	Long:  `Store a file in the active project.`,
+	Short: "Add a file",
+	Long:  `Add a file to the active project.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		projectID := configViper.GetString("id")
@@ -53,26 +56,26 @@ var addStoreCmd = &cobra.Command{
 			}
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), storeTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
 		defer cancel()
-		pth, err := client.Store(
+		pth, err := client.AddFile(
 			ctx,
 			projectID,
 			args[0],
-			progress,
 			api.Auth{
 				Token: authViper.GetString("token"),
-			})
+			},
+			api.WithProgress(progress))
 		if err != nil {
 			cmd.Fatal(err)
 		}
 		bar.Finish()
 
-		cmd.Success("Stored file at path: %s", aurora.White(pth.String()).Bold())
+		cmd.Success("Added file at path: %s", aurora.White(pth.String()).Bold())
 	},
 }
 
-var lsStoreCmd = &cobra.Command{
+var lsFilesCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
@@ -111,13 +114,13 @@ var lsStoreCmd = &cobra.Command{
 //	cmd.Message("Found %d tokens", aurora.White(len(tokens.List)).Bold())
 //}
 
-var rmStoreCmd = &cobra.Command{
+var rmFileCmd = &cobra.Command{
 	Use: "rm",
 	Aliases: []string{
 		"remove",
 	},
-	Short: "Un-store a file",
-	Long:  `Un-store a file in the active project (interactive).`,
+	Short: "Remove a file",
+	Long:  `Remove a file in the active project (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		//project := selectProject("Select project", aurora.Sprintf(
 		//	aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))

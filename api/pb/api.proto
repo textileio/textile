@@ -140,14 +140,19 @@ message RemoveAppTokenRequest {
 
 message RemoveAppTokenReply {}
 
-message StoreRequest {
+message AddFileRequest {
     oneof payload {
-        string projectID = 1;
+        Header header = 1;
         bytes chunk = 2;
+    }
+
+    message Header {
+        string name = 1;
+        string projectID = 2;
     }
 }
 
-message StoreReply {
+message AddFileReply {
     oneof payload {
         Event event = 1;
         string error = 2;
@@ -160,6 +165,32 @@ message StoreReply {
         string size = 4;
     }
 }
+
+message GetFileRequest {
+    string path = 1;
+}
+
+message GetFileReply {
+    string ID = 1;
+    string path = 2;
+    string name = 3;
+    string projectID = 4;
+    int64 created = 5;
+}
+
+message ListFilesRequest {
+    string projectID = 1;
+}
+
+message ListFilesReply {
+    repeated GetFileReply list = 1;
+}
+
+message RemoveFileRequest {
+    string path = 1;
+}
+
+message RemoveFileReply {}
 
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
@@ -183,5 +214,8 @@ service API {
     rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
     rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
 
-    rpc Store (stream StoreRequest) returns (stream StoreReply) {}
+    rpc AddFile (stream AddFileRequest) returns (stream AddFileReply) {}
+    rpc GetFile (GetFileRequest) returns (GetFileReply) {}
+    rpc ListFiles (ListFilesRequest) returns (ListFilesReply) {}
+    rpc RemoveFile (RemoveFileRequest) returns (RemoveFileReply) {}
 }
