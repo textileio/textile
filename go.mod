@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
+	github.com/cheggaaa/pb/v3 v3.0.4
 	github.com/cloudflare/cloudflare-go v0.11.0
 	github.com/gin-contrib/location v0.0.0-20190301062650-0462caccbb9c
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
@@ -13,8 +14,10 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger v0.2.0
+	github.com/ipfs/go-ipfs-files v0.0.4
 	github.com/ipfs/go-ipfs-http-client v0.0.5
 	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.5

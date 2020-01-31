@@ -27,6 +27,10 @@ func (a *AppTokens) GetInstance() interface{} {
 	return &AppToken{}
 }
 
+func (a *AppTokens) GetIndexes() []*s.IndexConfig {
+	return []*s.IndexConfig{}
+}
+
 func (a *AppTokens) GetStoreID() *uuid.UUID {
 	return a.storeID
 }

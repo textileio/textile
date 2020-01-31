@@ -30,6 +30,10 @@ func (u *Users) GetInstance() interface{} {
 	return &User{}
 }
 
+func (u *Users) GetIndexes() []*s.IndexConfig {
+	return []*s.IndexConfig{}
+}
+
 func (u *Users) GetStoreID() *uuid.UUID {
 	return u.storeID
 }

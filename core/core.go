@@ -11,7 +11,6 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
-	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	fc "github.com/textileio/filecoin/api/client"
@@ -40,10 +39,7 @@ type Textile struct {
 	ds          datastore.Datastore
 	collections *c.Collections
 
-	ipfs iface.CoreAPI
-
-	threadservice s.ServiceBoostrapper
-
+	threadservice        s.ServiceBoostrapper
 	threadsServiceServer *serviceapi.Server
 	threadsServer        *threadsapi.Server
 	threadsClient        *threadsclient.Client
@@ -82,7 +78,8 @@ type Config struct {
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err := util.SetLogLevels(map[string]logging.LogLevel{
-		"core": logging.LevelDebug,
+		"core":        logging.LevelDebug,
+		"collections": logging.LevelDebug,
 	}); err != nil {
 		return nil, err
 	}
@@ -92,11 +89,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	ds, err := badger.NewDatastore(dsPath, &badger.DefaultOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	ipfs, err := httpapi.NewApi(conf.AddrIpfsApi)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +138,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	ipfsClient, err := httpapi.NewApi(conf.AddrIpfsApi)
+	if err != nil {
+		return nil, err
+	}
+
 	var filecoinClient *fc.Client
 	if conf.AddrFilecoinApi != nil {
 		filecoinClient, err = fc.NewClient(conf.AddrFilecoinApi)
@@ -175,6 +172,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:     collections,
 		DNSManager:      dnsManager,
 		EmailClient:     emailClient,
+		IPFSClient:      ipfsClient,
 		FilecoinClient:  filecoinClient,
 		SessionSecret:   conf.SessionSecret,
 		Debug:           conf.Debug,
@@ -187,9 +185,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	t.ds = ds
 	t.collections = collections
-	t.ipfs = ipfs
 	t.threadservice = threadservice
-
 	t.threadsServiceServer = serviceServer
 	t.threadsServer = threadsServer
 	t.threadsClient = threadsClient
@@ -209,6 +205,7 @@ func (t *Textile) Close() error {
 	if err := t.threadservice.Close(); err != nil {
 		return err
 	}
+	t.threadsServiceServer.Close()
 	t.threadsServer.Close()
 	if err := t.server.Close(); err != nil {
 		return err

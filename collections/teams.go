@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
+	s "github.com/textileio/go-threads/store"
 )
 
 type Team struct {
@@ -27,6 +28,10 @@ func (t *Teams) GetName() string {
 
 func (t *Teams) GetInstance() interface{} {
 	return &Team{}
+}
+
+func (t *Teams) GetIndexes() []*s.IndexConfig {
+	return []*s.IndexConfig{}
 }
 
 func (t *Teams) GetStoreID() *uuid.UUID {

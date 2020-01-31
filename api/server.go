@@ -8,6 +8,7 @@ import (
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
+	iface "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
 	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/util"
@@ -50,6 +51,7 @@ type Config struct {
 	Collections *c.Collections
 
 	EmailClient    *email.Client
+	IPFSClient     iface.CoreAPI
 	FilecoinClient *fc.Client
 	DNSManager     *dns.Manager
 
@@ -76,6 +78,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			collections:    conf.Collections,
 			gateway:        gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:    conf.EmailClient,
+			ipfsClient:     conf.IPFSClient,
 			filecoinClient: conf.FilecoinClient,
 			sessionSecret:  conf.SessionSecret,
 		},

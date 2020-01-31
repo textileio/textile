@@ -2,11 +2,21 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 
-	"google.golang.org/grpc/credentials"
-
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+)
+
+const (
+	// chunkSize for store requests.
+	chunkSize = 1024
 )
 
 // Auth is used to supply the client with authorization credentials.
@@ -161,13 +171,160 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
-type tokenAuth struct {
-	secure bool
+// AddFileOptions defines options for adding a file.
+type AddFileOptions struct {
+	Progress chan<- int64
+}
+
+// AddFileOption specifies an option for adding a file.
+type AddFileOption func(*AddFileOptions)
+
+// WithProgress writes progress updates to the given channel.
+func WithProgress(ch chan<- int64) AddFileOption {
+	return func(args *AddFileOptions) {
+		args.Progress = ch
+	}
+}
+
+type addFileResult struct {
+	path path.Resolved
+	err  error
+}
+
+// AddFile uploads a file to the project store.
+func (c *Client) AddFile(
+	ctx context.Context,
+	projID string,
+	filePath string,
+	auth Auth,
+	opts ...AddFileOption,
+) (path.Resolved, error) {
+	args := &AddFileOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	stream, err := c.c.AddFile(authCtx(ctx, auth))
+	if err != nil {
+		return nil, err
+	}
+	if err = stream.Send(&pb.AddFileRequest{
+		Payload: &pb.AddFileRequest_Header_{
+			Header: &pb.AddFileRequest_Header{
+				Name:      filepath.Base(file.Name()),
+				ProjectID: projID,
+			},
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	waitCh := make(chan addFileResult)
+	go func() {
+		defer close(waitCh)
+		for {
+			rep, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				waitCh <- addFileResult{err: err}
+				return
+			}
+			switch payload := rep.GetPayload().(type) {
+			case *pb.AddFileReply_Event_:
+				if payload.Event.Path != "" {
+					id, err := cid.Parse(payload.Event.Path)
+					if err != nil {
+						waitCh <- addFileResult{err: err}
+						return
+					}
+					waitCh <- addFileResult{path: path.IpfsPath(id)}
+				} else if args.Progress != nil {
+					select {
+					case args.Progress <- payload.Event.Bytes:
+					default:
+					}
+				}
+			case *pb.AddFileReply_Error:
+				waitCh <- addFileResult{err: fmt.Errorf(payload.Error)}
+				return
+			default:
+				waitCh <- addFileResult{err: fmt.Errorf("invalid reply")}
+				return
+			}
+		}
+	}()
+
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			_ = stream.CloseSend()
+			return nil, err
+		}
+		if err = stream.Send(&pb.AddFileRequest{
+			Payload: &pb.AddFileRequest_Chunk{
+				Chunk: buf[:n],
+			},
+		}); err == io.EOF {
+			break
+		} else if err != nil {
+			_ = stream.CloseSend()
+			return nil, err
+		}
+	}
+	if err = stream.CloseSend(); err != nil {
+		return nil, err
+	}
+	res := <-waitCh
+	return res.path, res.err
+}
+
+// GetFile returns a file by its path.
+func (c *Client) GetFile(ctx context.Context, pth path.Resolved, auth Auth) (*pb.GetFileReply, error) {
+	return c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
+		Path: pth.String(),
+	})
+}
+
+// ListFiles returns a list of files under the current project.
+func (c *Client) ListFiles(ctx context.Context, projID string, auth Auth) (*pb.ListFilesReply, error) {
+	return c.c.ListFiles(authCtx(ctx, auth), &pb.ListFilesRequest{
+		ProjectID: projID,
+	})
+}
+
+// RemoveFile removes a file by ID.
+func (c *Client) RemoveFile(ctx context.Context, pth path.Resolved, auth Auth) error {
+	_, err := c.c.RemoveFile(authCtx(ctx, auth), &pb.RemoveFileRequest{
+		Path: pth.String(),
+	})
+	return err
 }
 
 type authKey string
 
-func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func authCtx(ctx context.Context, auth Auth) context.Context {
+	ctx = context.WithValue(ctx, authKey("token"), auth.Token)
+	if auth.Scope != "" {
+		ctx = context.WithValue(ctx, authKey("scope"), auth.Scope)
+	}
+	return ctx
+}
+
+type tokenAuth struct {
+	secure bool
+}
+
+func (t tokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
 	md := map[string]string{}
 	token, ok := ctx.Value(authKey("token")).(string)
 	if ok && token != "" {
@@ -182,12 +339,4 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[s
 
 func (t tokenAuth) RequireTransportSecurity() bool {
 	return t.secure
-}
-
-func authCtx(ctx context.Context, auth Auth) context.Context {
-	ctx = context.WithValue(ctx, authKey("token"), auth.Token)
-	if auth.Scope != "" {
-		ctx = context.WithValue(ctx, authKey("scope"), auth.Scope)
-	}
-	return ctx
 }

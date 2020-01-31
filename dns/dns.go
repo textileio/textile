@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go"
 	logging "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/util"
 )
 
 var (
-	domainRegex *regexp.Regexp
 	log         = logging.Logger("dns")
+	domainRegex *regexp.Regexp
 )
 
 const ipfsGateway = "www.cloudflare-ipfs.com" // future could be set to project's gateway
@@ -110,7 +110,7 @@ func (m *Manager) NewDNSLink(subdomain string, hash string) ([]*Record, error) {
 	txt, err := m.NewTXT(name, content)
 	if err != nil {
 		// cleanup the orphaned cname record
-		m.Delete(cname.ID)
+		_ = m.Delete(cname.ID)
 		return nil, err
 	}
 

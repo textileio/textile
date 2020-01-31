@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
+	s "github.com/textileio/go-threads/store"
 )
 
 var (
@@ -32,6 +33,10 @@ func (i *Invites) GetName() string {
 
 func (i *Invites) GetInstance() interface{} {
 	return &Invite{}
+}
+
+func (i *Invites) GetIndexes() []*s.IndexConfig {
+	return []*s.IndexConfig{}
 }
 
 func (i *Invites) GetStoreID() *uuid.UUID {

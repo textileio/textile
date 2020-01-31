@@ -7,9 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/logrusorgru/aurora"
-
 	"github.com/caarlos0/spin"
+	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"

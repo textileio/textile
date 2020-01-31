@@ -32,6 +32,10 @@ func (p *Projects) GetInstance() interface{} {
 	return &Project{}
 }
 
+func (p *Projects) GetIndexes() []*s.IndexConfig {
+	return []*s.IndexConfig{}
+}
+
 func (p *Projects) GetStoreID() *uuid.UUID {
 	return p.storeID
 }

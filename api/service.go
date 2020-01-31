@@ -2,11 +2,20 @@ package api
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	ipfsfiles "github.com/ipfs/go-ipfs-files"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/store"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
@@ -26,6 +35,7 @@ type service struct {
 
 	gateway        *gateway.Gateway
 	emailClient    *email.Client
+	ipfsClient     iface.CoreAPI
 	filecoinClient *fc.Client
 
 	sessionSecret string
@@ -221,6 +231,16 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 	return teamToPbTeam(team, members), nil
 }
 
+func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
+	return &pb.GetTeamReply{
+		ID:      team.ID,
+		OwnerID: team.OwnerID,
+		Name:    team.Name,
+		Created: team.Created,
+		Members: members,
+	}
+}
+
 // ListTeams handles a list teams request.
 func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
 	log.Debugf("received list teams request")
@@ -240,16 +260,6 @@ func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.Li
 	}
 
 	return &pb.ListTeamsReply{List: list}, nil
-}
-
-func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
-	return &pb.GetTeamReply{
-		ID:      team.ID,
-		OwnerID: team.OwnerID,
-		Name:    team.Name,
-		Created: team.Created,
-		Members: members,
-	}
 }
 
 // RemoveTeam handles a remove team request.
@@ -396,6 +406,16 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	return reply, nil
 }
 
+func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
+	return &pb.GetProjectReply{
+		ID:            proj.ID,
+		Name:          proj.Name,
+		StoreID:       proj.StoreID,
+		WalletAddress: proj.WalletAddress,
+		Created:       proj.Created,
+	}
+}
+
 // ListProjects handles a list projects request.
 func (s *service) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
 	log.Debugf("received list projects request")
@@ -415,16 +435,6 @@ func (s *service) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (
 	}
 
 	return &pb.ListProjectsReply{List: list}, nil
-}
-
-func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
-	return &pb.GetProjectReply{
-		ID:            proj.ID,
-		Name:          proj.Name,
-		StoreID:       proj.StoreID,
-		WalletAddress: proj.WalletAddress,
-		Created:       proj.Created,
-	}
 }
 
 // RemoveProject handles a remove project request.
@@ -514,6 +524,201 @@ func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequ
 	return &pb.RemoveAppTokenReply{}, nil
 }
 
+func (s *service) AddFile(server pb.API_AddFileServer) error {
+	log.Debugf("received add file request")
+
+	scope, ok := server.Context().Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+
+	req, err := server.Recv()
+	if err != nil {
+		return err
+	}
+	var name, projID string
+	switch payload := req.GetPayload().(type) {
+	case *pb.AddFileRequest_Header_:
+		projID = payload.Header.ProjectID
+		name = payload.Header.Name
+	default:
+		return fmt.Errorf("project ID is required")
+	}
+
+	proj, err := s.getProjectForScope(server.Context(), projID, scope)
+	if err != nil {
+		return err
+	}
+
+	sendEvent := func(event *pb.AddFileReply_Event) error {
+		return server.Send(&pb.AddFileReply{
+			Payload: &pb.AddFileReply_Event_{
+				Event: event,
+			},
+		})
+	}
+
+	sendErr := func(err error) {
+		if err := server.Send(&pb.AddFileReply{
+			Payload: &pb.AddFileReply_Error{
+				Error: err.Error(),
+			},
+		}); err != nil {
+			log.Errorf("error sending error: %v", err)
+		}
+	}
+
+	reader, writer := io.Pipe()
+	waitCh := make(chan struct{})
+	go func() {
+		defer close(waitCh)
+		for {
+			req, err := server.Recv()
+			if err == io.EOF {
+				_ = writer.Close()
+				return
+			} else if err != nil {
+				_ = writer.CloseWithError(err)
+				sendErr(err)
+				return
+			}
+			switch payload := req.GetPayload().(type) {
+			case *pb.AddFileRequest_Chunk:
+				if _, err := writer.Write(payload.Chunk); err != nil {
+					sendErr(err)
+					return
+				}
+			default:
+				sendErr(fmt.Errorf("invalid request"))
+				return
+			}
+		}
+	}()
+
+	var size string
+	eventCh := make(chan interface{})
+	defer close(eventCh)
+	go func() {
+		for e := range eventCh {
+			event, ok := e.(*iface.AddEvent)
+			if !ok {
+				log.Error("unexpected event type")
+				continue
+			}
+			if event.Path == nil { // This is a progress event
+				if err := sendEvent(&pb.AddFileReply_Event{
+					Name:  event.Name,
+					Bytes: event.Bytes,
+				}); err != nil {
+					log.Errorf("error sending event: %v", err)
+				}
+			} else {
+				size = event.Size // Save size for use in the final response
+			}
+		}
+	}()
+
+	pth, err := s.ipfsClient.Unixfs().Add(
+		server.Context(),
+		ipfsfiles.NewReaderFile(reader),
+		options.Unixfs.Pin(true),
+		options.Unixfs.Progress(true),
+		options.Unixfs.Events(eventCh))
+	if err != nil {
+		return err
+	}
+
+	_, err = s.collections.Files.Create(server.Context(), pth, name, proj.ID)
+	if err != nil && !strings.Contains(err.Error(), store.ErrUniqueExists.Error()) {
+		return err
+	}
+
+	if err = sendEvent(&pb.AddFileReply_Event{
+		Path: pth.String(),
+		Size: size,
+	}); err != nil {
+		return err
+	}
+
+	log.Debugf("stored file with path: %s", pth.String())
+	return nil
+}
+
+// GetFile handles a get file request.
+func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetFileReply, error) {
+	log.Debugf("received get file request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	file, err := s.getFileWithScope(ctx, req.Path, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileToPbFile(file), nil
+}
+
+func fileToPbFile(file *c.File) *pb.GetFileReply {
+	return &pb.GetFileReply{
+		ID:        file.ID,
+		Path:      file.Path,
+		Name:      file.Name,
+		ProjectID: file.ProjectID,
+		Created:   file.Created,
+	}
+}
+
+// ListFiles handles a list files request.
+func (s *service) ListFiles(ctx context.Context, req *pb.ListFilesRequest) (*pb.ListFilesReply, error) {
+	log.Debugf("received list files request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := s.collections.Files.List(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*pb.GetFileReply, len(files))
+	for i, file := range files {
+		list[i] = fileToPbFile(file)
+	}
+
+	return &pb.ListFilesReply{List: list}, nil
+}
+
+// RemoveFile handles a remove file request.
+func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*pb.RemoveFileReply, error) {
+	log.Debugf("received remove file request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	file, err := s.getFileWithScope(ctx, req.Path, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.Files.Delete(ctx, file.ID); err != nil {
+		return nil, err
+	}
+
+	if err = s.ipfsClient.Pin().Rm(ctx, path.New(req.Path)); err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveFileReply{}, nil
+}
+
 // getTeamForUser returns a team if the user is authorized.
 func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
 	team, err := s.collections.Teams.Get(ctx, teamID)
@@ -557,4 +762,23 @@ func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope strin
 		return nil, err
 	}
 	return token, nil
+}
+
+// getFileWithScope returns a file if the scope is authorized for the associated project.
+func (s *service) getFileWithScope(ctx context.Context, pth string, scope string) (*c.File, error) {
+	pid, err := cid.Parse(pth)
+	if err != nil {
+		return nil, err
+	}
+	file, err := s.collections.Files.GetByPath(ctx, path.IpfsPath(pid))
+	if err != nil {
+		return nil, err
+	}
+	if file == nil {
+		return nil, status.Error(codes.NotFound, "File not found")
+	}
+	if _, err := s.getProjectForScope(ctx, file.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return file, nil
 }
