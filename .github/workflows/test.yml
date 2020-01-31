@@ -10,6 +10,15 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      ipfs:
+        image: ipfs/go-ipfs:latest
+        env:
+          IPFS_PROFILE: test
+        ports:
+          - 4001:4001
+          - 127.0.0.1:5001:5001
+          - 8080:8080
     steps:
       - name: Set up Go
         uses: actions/setup-go@v1
