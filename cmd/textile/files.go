@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
-	pb "github.com/cheggaaa/pb/v3"
+	pbar "github.com/cheggaaa/pb/v3"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -27,6 +32,9 @@ var filesCmd = &cobra.Command{
 	},
 	Short: "Manage project files",
 	Long:  `Manage your project's stored files.`,
+	Run: func(c *cobra.Command, args []string) {
+		lsFiles()
+	},
 }
 
 var addFileCmd = &cobra.Command{
@@ -44,10 +52,10 @@ var addFileCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		bar := pb.New(int(info.Size()))
-		bar.SetTemplate(pb.Full)
-		bar.Set(pb.Bytes, true)
-		bar.Set(pb.SIBytesPrefix, true)
+		bar := pbar.New(int(info.Size()))
+		bar.SetTemplate(pbar.Full)
+		bar.Set(pbar.Bytes, true)
+		bar.Set(pbar.SIBytesPrefix, true)
 		bar.Start()
 		progress := make(chan int64)
 		go func() {
@@ -83,36 +91,38 @@ var lsFilesCmd = &cobra.Command{
 	Short: "List stored files",
 	Long:  `List files stored in the active project.`,
 	Run: func(c *cobra.Command, args []string) {
-		//lsTokens()
+		lsFiles()
 	},
 }
 
-//func lsTokens() {
-//	project := selectProject("Select project", aurora.Sprintf(
-//		aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-//	defer cancel()
-//	tokens, err := client.ListAppTokens(
-//		ctx,
-//		project.ID,
-//		api.Auth{
-//			Token: authViper.GetString("token"),
-//		})
-//	if err != nil {
-//		cmd.Fatal(err)
-//	}
-//
-//	if len(tokens.List) > 0 {
-//		data := make([][]string, len(tokens.List))
-//		for i, t := range tokens.List {
-//			data[i] = []string{t}
-//		}
-//		cmd.RenderTable([]string{"id"}, data)
-//	}
-//
-//	cmd.Message("Found %d tokens", aurora.White(len(tokens.List)).Bold())
-//}
+func lsFiles() {
+	projectID := configViper.GetString("id")
+	if projectID == "" {
+		cmd.Fatal(errors.New("not a project directory"))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	files, err := client.ListFiles(
+		ctx,
+		configViper.GetString("id"),
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if len(files.List) > 0 {
+		data := make([][]string, len(files.List))
+		for i, f := range files.List {
+			data[i] = []string{f.Name, f.Path}
+		}
+		cmd.RenderTable([]string{"name", "path"}, data)
+	}
+
+	cmd.Message("Found %d files", aurora.White(len(files.List)).Bold())
+}
 
 var rmFileCmd = &cobra.Command{
 	Use: "rm",
@@ -122,58 +132,65 @@ var rmFileCmd = &cobra.Command{
 	Short: "Remove a file",
 	Long:  `Remove a file in the active project (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
-		//project := selectProject("Select project", aurora.Sprintf(
-		//	aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
-		//
-		//selected := selectToken("Remove app token", aurora.Sprintf(
-		//	aurora.BrightBlack("> Removing token {{ . | white | bold }}")),
-		//	project.ID)
-		//
-		//ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		//defer cancel()
-		//if err := client.RemoveAppToken(
-		//	ctx,
-		//	selected,
-		//	api.Auth{
-		//		Token: authViper.GetString("token"),
-		//	}); err != nil {
-		//	cmd.Fatal(err)
-		//}
-		//
-		//cmd.Success("Removed app token %s", aurora.White(selected).Bold())
+		projectID := configViper.GetString("id")
+		if projectID == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		selected := selectFile("Remove file", aurora.Sprintf(
+			aurora.BrightBlack("> Removing file {{ .Name | white | bold }}")),
+			projectID)
+		pid, err := cid.Parse(selected.Path)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.RemoveFile(
+			ctx,
+			path.IpfsPath(pid),
+			api.Auth{
+				Token: authViper.GetString("token"),
+			}); err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.Success("Removed file %s", aurora.White(selected.Name).Bold())
 	},
 }
 
-//func selectToken(label, successMsg, projID string) string {
-//	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-//	defer cancel()
-//	tokens, err := client.ListAppTokens(
-//		ctx,
-//		projID,
-//		api.Auth{
-//			Token: authViper.GetString("token"),
-//		})
-//	if err != nil {
-//		cmd.Fatal(err)
-//	}
-//
-//	if len(tokens.List) == 0 {
-//		cmd.End("You don't have any tokens!")
-//	}
-//
-//	prompt := promptui.Select{
-//		Label: label,
-//		Items: tokens.List,
-//		Templates: &promptui.SelectTemplates{
-//			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ . | bold }}`, promptui.IconSelect),
-//			Inactive: `{{ . | faint }}`,
-//			Selected: successMsg,
-//		},
-//	}
-//	index, _, err := prompt.Run()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	return tokens.List[index]
-//}
+func selectFile(label, successMsg, projID string) *pb.GetFileReply {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	files, err := client.ListFiles(
+		ctx,
+		projID,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if len(files.List) == 0 {
+		cmd.End("You don't have any files!")
+	}
+
+	prompt := promptui.Select{
+		Label: label,
+		Items: files.List,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Name | faint }}`,
+			Details:  `{{ "(Path:" | faint }} {{ .Path | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return files.List[index]
+}

@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/mail"
+	"strings"
 	"time"
+
+	"github.com/textileio/go-threads/store"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -626,8 +629,8 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
-	file, err := s.collections.Files.Create(server.Context(), pth, name, proj.ID)
-	if err != nil {
+	_, err = s.collections.Files.Create(server.Context(), pth, name, proj.ID)
+	if err != nil && !strings.Contains(err.Error(), store.ErrUniqueExists.Error()) {
 		return err
 	}
 
@@ -636,7 +639,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		Size: size,
 	})
 
-	log.Debugf("stored file with path: %s", file.Path)
+	log.Debugf("stored file with path: %s", pth.String())
 	return nil
 }
 
@@ -705,6 +708,10 @@ func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*p
 	}
 
 	if err = s.collections.Files.Delete(ctx, file.ID); err != nil {
+		return nil, err
+	}
+
+	if err = s.ipfsClient.Pin().Rm(ctx, path.New(req.Path)); err != nil {
 		return nil, err
 	}
 
