@@ -173,14 +173,14 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 
 // AddFileOptions defines options for adding a file.
 type AddFileOptions struct {
-	Progress chan int64
+	Progress chan<- int64
 }
 
 // AddFileOption specifies an option for adding a file.
 type AddFileOption func(*AddFileOptions)
 
 // WithProgress writes progress updates to the given channel.
-func WithProgress(ch chan int64) AddFileOption {
+func WithProgress(ch chan<- int64) AddFileOption {
 	return func(args *AddFileOptions) {
 		args.Progress = ch
 	}
@@ -267,6 +267,7 @@ func (c *Client) AddFile(
 		if err == io.EOF {
 			break
 		} else if err != nil {
+			_ = stream.CloseSend()
 			return nil, err
 		}
 		if err = stream.Send(&pb.AddFileRequest{
@@ -276,6 +277,7 @@ func (c *Client) AddFile(
 		}); err == io.EOF {
 			break
 		} else if err != nil {
+			_ = stream.CloseSend()
 			return nil, err
 		}
 	}

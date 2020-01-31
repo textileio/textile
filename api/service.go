@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/go-threads/store"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
@@ -17,6 +15,7 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/store"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
@@ -551,14 +550,12 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
-	sendEvent := func(event *pb.AddFileReply_Event) {
-		if err := server.Send(&pb.AddFileReply{
+	sendEvent := func(event *pb.AddFileReply_Event) error {
+		return server.Send(&pb.AddFileReply{
 			Payload: &pb.AddFileReply_Event_{
 				Event: event,
 			},
-		}); err != nil {
-			log.Errorf("error sending event: %v", err)
-		}
+		})
 	}
 
 	sendErr := func(err error) {
@@ -609,12 +606,14 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 				continue
 			}
 			if event.Path == nil { // This is a progress event
-				sendEvent(&pb.AddFileReply_Event{
+				if err := sendEvent(&pb.AddFileReply_Event{
 					Name:  event.Name,
 					Bytes: event.Bytes,
-				})
+				}); err != nil {
+					log.Errorf("error sending event: %v", err)
+				}
 			} else {
-				size = event.Size // Store size for use in the final response
+				size = event.Size // Save size for use in the final response
 			}
 		}
 	}()
@@ -634,10 +633,12 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
-	sendEvent(&pb.AddFileReply_Event{
+	if err = sendEvent(&pb.AddFileReply_Event{
 		Path: pth.String(),
 		Size: size,
-	})
+	}); err != nil {
+		return err
+	}
 
 	log.Debugf("stored file with path: %s", pth.String())
 	return nil
