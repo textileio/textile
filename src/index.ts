@@ -55,6 +55,10 @@ export class API {
     return this
   }
 
+  get sessionId(): string | undefined {
+    return this._threadsConfig.sessionId
+  }
+
   get threadsConfig(): ThreadsConfig {
     return this._threadsConfig
   }
