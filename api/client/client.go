@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// chunkSize for store requests.
+	// chunkSize for add file requests.
 	chunkSize = 1024
 )
 
@@ -225,8 +225,7 @@ type addFileResult struct {
 // AddFile uploads a file to the project store.
 func (c *Client) AddFile(
 	ctx context.Context,
-	folder string,
-	filePath string,
+	folder, filePath string,
 	auth Auth,
 	opts ...AddFileOption,
 ) (path.Resolved, error) {
@@ -262,12 +261,11 @@ func (c *Client) AddFile(
 			rep, err := stream.Recv()
 			if err == io.EOF {
 				return
-			}
-			if err != nil {
+			} else if err != nil {
 				waitCh <- addFileResult{err: err}
 				return
 			}
-			switch payload := rep.GetPayload().(type) {
+			switch payload := rep.Payload.(type) {
 			case *pb.AddFileReply_Event_:
 				if payload.Event.Path != "" {
 					id, err := cid.Parse(payload.Event.Path)
@@ -320,23 +318,64 @@ func (c *Client) AddFile(
 }
 
 // GetFile returns a file by its path.
-func (c *Client) GetFile(ctx context.Context, pth path.Resolved, auth Auth) (*pb.GetFileReply, error) {
-	return c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
-		Path: pth.String(),
+func (c *Client) GetFile(
+	ctx context.Context,
+	folder string,
+	pth path.Resolved,
+	writer io.Writer,
+	auth Auth,
+) error {
+	stream, err := c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
+		Path:   pth.String(),
+		Folder: folder,
 	})
+	if err != nil {
+		return err
+	}
+
+	rep, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	var size int64
+	switch payload := rep.Payload.(type) {
+	case *pb.GetFileReply_Header_:
+		size = payload.Header.Size
+	default:
+		return fmt.Errorf("get file header is required")
+	}
+	fmt.Println(size) // tmp to keep var around
+
+	for {
+		rep, err := stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		switch payload := rep.Payload.(type) {
+		case *pb.GetFileReply_Chunk:
+			if _, err := writer.Write(payload.Chunk); err != nil {
+				return err
+			}
+			//if args.Progress != nil {
+			//	select {
+			//	case args.Progress <- n:
+			//	default:
+			//	}
+			//}
+		default:
+			return fmt.Errorf("invalid reply")
+		}
+	}
+	return nil
 }
 
-// ListFiles returns a list of files under the current project.
-func (c *Client) ListFiles(ctx context.Context, projID string, auth Auth) (*pb.ListFilesReply, error) {
-	return c.c.ListFiles(authCtx(ctx, auth), &pb.ListFilesRequest{
-		ProjectID: projID,
-	})
-}
-
-// RemoveFile removes a file by ID.
-func (c *Client) RemoveFile(ctx context.Context, pth path.Resolved, auth Auth) error {
+// RemoveFile removes a file from a folder by name.
+func (c *Client) RemoveFile(ctx context.Context, folder, name string, auth Auth) error {
 	_, err := c.c.RemoveFile(authCtx(ctx, auth), &pb.RemoveFileRequest{
-		Path: pth.String(),
+		Name:   name,
+		Folder: folder,
 	})
 	return err
 }

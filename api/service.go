@@ -27,6 +27,11 @@ var (
 	emailTimeout = time.Second * 10
 )
 
+const (
+	// chunkSize for get file requests.
+	chunkSize = 1024 * 32
+)
+
 // service is a gRPC service for textile.
 type service struct {
 	collections *c.Collections
@@ -567,10 +572,23 @@ func (s *service) GetFolder(ctx context.Context, req *pb.GetFolderRequest) (*pb.
 		return nil, err
 	}
 
-	return folderToPbFolder(folder), nil
+	entries, err := s.ipfsClient.Unixfs().Ls(ctx, path.New(folder.Path))
+	if err != nil {
+		return nil, err
+	}
+
+	return folderToPbFolder(folder, entries), nil
 }
 
-func folderToPbFolder(folder *c.Folder) *pb.GetFolderReply {
+func folderToPbFolder(folder *c.Folder, entries <-chan iface.DirEntry) *pb.GetFolderReply {
+	files := make([]*pb.GetFolderReply_File, len(entries))
+	for entry := range entries {
+		files = append(files, &pb.GetFolderReply_File{
+			Name: entry.Name,
+			Path: path.IpfsPath(entry.Cid).String(),
+			Size: int64(entry.Size),
+		})
+	}
 	return &pb.GetFolderReply{
 		ID:        folder.ID,
 		Path:      folder.Path,
@@ -578,6 +596,7 @@ func folderToPbFolder(folder *c.Folder) *pb.GetFolderReply {
 		Public:    folder.Public,
 		ProjectID: folder.ProjectID,
 		Created:   folder.Created,
+		Files:     files,
 	}
 }
 
@@ -600,7 +619,11 @@ func (s *service) ListFolders(ctx context.Context, req *pb.ListFoldersRequest) (
 	}
 	list := make([]*pb.GetFolderReply, len(folders))
 	for i, folder := range folders {
-		list[i] = folderToPbFolder(folder)
+		entries, err := s.ipfsClient.Unixfs().Ls(ctx, path.New(folder.Path))
+		if err != nil {
+			return nil, err
+		}
+		list[i] = folderToPbFolder(folder, entries)
 	}
 
 	return &pb.ListFoldersReply{List: list}, nil
@@ -644,7 +667,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 	var name, folderName string
-	switch payload := req.GetPayload().(type) {
+	switch payload := req.Payload.(type) {
 	case *pb.AddFileRequest_Header_:
 		name = payload.Header.Name
 		folderName = payload.Header.Folder
@@ -688,7 +711,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 				sendErr(err)
 				return
 			}
-			switch payload := req.GetPayload().(type) {
+			switch payload := req.Payload.(type) {
 			case *pb.AddFileRequest_Chunk:
 				if _, err := writer.Write(payload.Chunk); err != nil {
 					sendErr(err)
@@ -756,54 +779,57 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 }
 
 // GetFile handles a get file request.
-func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetFileReply, error) {
+func (s *service) GetFile(req *pb.GetFileRequest, server pb.API_GetFileServer) error {
 	log.Debugf("received get file request")
 
-	scope, ok := ctx.Value(reqKey("scope")).(string)
+	_, ok := server.Context().Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	file, err := s.getFileWithScope(ctx, req.Path, scope)
+	// @todo: Ensure that file is under this folder.
+	//folder, err := s.getFolderWithScope(server.Context(), req.Folder, scope)
+	//if err != nil {
+	//	return err
+	//}
+
+	pid, err := cid.Parse(req.Path)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return fileToPbFile(file), nil
-}
-
-func fileToPbFile(file *c.File) *pb.GetFileReply {
-	return &pb.GetFileReply{
-		ID:        file.ID,
-		Path:      file.Path,
-		Name:      file.Name,
-		ProjectID: file.ProjectID,
-		Created:   file.Created,
-	}
-}
-
-// ListFiles handles a list files request.
-func (s *service) ListFiles(ctx context.Context, req *pb.ListFilesRequest) (*pb.ListFilesReply, error) {
-	log.Debugf("received list files request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	node, err := s.ipfsClient.Unixfs().Get(server.Context(), path.IpfsPath(pid))
 	if err != nil {
-		return nil, err
+		return err
 	}
+	defer node.Close()
 
-	files, err := s.collections.Files.List(ctx, proj.ID)
+	size, err := node.Size()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	list := make([]*pb.GetFileReply, len(files))
-	for i, file := range files {
-		list[i] = fileToPbFile(file)
+	if err := server.Send(&pb.GetFileReply{Payload: &pb.GetFileReply_Header_{
+		Header: &pb.GetFileReply_Header{
+			Size: size,
+		},
+	}}); err != nil {
+		return err
 	}
 
-	return &pb.ListFilesReply{List: list}, nil
+	file := ipfsfiles.ToFile(node)
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		if err := server.Send(&pb.GetFileReply{Payload: &pb.GetFileReply_Chunk{
+			Chunk: buf[:n],
+		}}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RemoveFile handles a remove file request.
@@ -814,16 +840,19 @@ func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	file, err := s.getFileWithScope(ctx, req.Path, scope)
+	folder, err := s.getFolderWithScope(ctx, req.Folder, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = s.collections.Files.Delete(ctx, file.ID); err != nil {
+	dirpth, err := s.ipfsClient.Object().RmLink(ctx, path.New(folder.Path), req.Name)
+	if err != nil {
 		return nil, err
 	}
-
-	if err = s.ipfsClient.Pin().Rm(ctx, path.New(file.Path)); err != nil {
+	if err = s.ipfsClient.Pin().Update(ctx, path.New(folder.Path), dirpth); err != nil {
+		return nil, err
+	}
+	if err = s.collections.Folders.UpdatePath(ctx, folder, dirpth); err != nil {
 		return nil, err
 	}
 
