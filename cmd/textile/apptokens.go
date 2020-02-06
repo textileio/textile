@@ -13,10 +13,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(appTokensCmd)
-	appTokensCmd.AddCommand(
-		addAppTokensCmd,
-		lsAppTokensCmd,
-		rmAppTokensCmd)
+	appTokensCmd.AddCommand(addAppTokensCmd, lsAppTokensCmd, rmAppTokensCmd)
 }
 
 var appTokensCmd = &cobra.Command{

@@ -140,6 +140,44 @@ message RemoveAppTokenRequest {
 
 message RemoveAppTokenReply {}
 
+message AddFolderRequest {
+    string name = 1;
+    bool public = 2;
+    string projectID = 3;
+}
+
+message AddFolderReply {
+    string ID = 1;
+    string path = 2;
+}
+
+message GetFolderRequest {
+    string name = 1;
+}
+
+message GetFolderReply {
+    string ID = 1;
+    string path = 2;
+    string name = 3;
+    bool public = 4;
+    string projectID = 5;
+    int64 created = 6;
+}
+
+message ListFoldersRequest {
+    string projectID = 1;
+}
+
+message ListFoldersReply {
+    repeated GetFolderReply list = 1;
+}
+
+message RemoveFolderRequest {
+    string name = 1;
+}
+
+message RemoveFolderReply {}
+
 message AddFileRequest {
     oneof payload {
         Header header = 1;
@@ -148,7 +186,7 @@ message AddFileRequest {
 
     message Header {
         string name = 1;
-        string projectID = 2;
+        string folder = 2;
     }
 }
 
@@ -174,8 +212,9 @@ message GetFileReply {
     string ID = 1;
     string path = 2;
     string name = 3;
-    string projectID = 4;
-    int64 created = 5;
+    string folderID = 4;
+    string projectID = 5;
+    int64 created = 6;
 }
 
 message ListFilesRequest {
@@ -213,6 +252,11 @@ service API {
     rpc AddAppToken (AddAppTokenRequest) returns (AddAppTokenReply) {}
     rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
     rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
+
+    rpc AddFolder (AddFolderRequest) returns (AddFolderReply) {}
+    rpc GetFolder (GetFolderRequest) returns (GetFolderReply) {}
+    rpc ListFolders (ListFoldersRequest) returns (ListFoldersReply) {}
+    rpc RemoveFolder (RemoveFolderRequest) returns (RemoveFolderReply) {}
 
     rpc AddFile (stream AddFileRequest) returns (stream AddFileReply) {}
     rpc GetFile (GetFileRequest) returns (GetFileReply) {}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/mail"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
-	"github.com/textileio/go-threads/store"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
@@ -524,6 +522,115 @@ func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequ
 	return &pb.RemoveAppTokenReply{}, nil
 }
 
+// AddFolder handles an add folder request.
+func (s *service) AddFolder(ctx context.Context, req *pb.AddFolderRequest) (*pb.AddFolderReply, error) {
+	log.Debugf("received add folder request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	pth, err := s.ipfsClient.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{}),
+		options.Unixfs.Pin(true))
+	if err != nil {
+		return nil, err
+	}
+
+	folder, err := s.collections.Folders.Create(ctx, pth, req.Name, req.Public, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.AddFolderReply{
+		ID:   folder.ID,
+		Path: folder.Path,
+	}, nil
+}
+
+// GetFolder handles a get folder request.
+func (s *service) GetFolder(ctx context.Context, req *pb.GetFolderRequest) (*pb.GetFolderReply, error) {
+	log.Debugf("received get folder request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	folder, err := s.getFolderWithScope(ctx, req.Name, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return folderToPbFolder(folder), nil
+}
+
+func folderToPbFolder(folder *c.Folder) *pb.GetFolderReply {
+	return &pb.GetFolderReply{
+		ID:        folder.ID,
+		Path:      folder.Path,
+		Name:      folder.Name,
+		Public:    folder.Public,
+		ProjectID: folder.ProjectID,
+		Created:   folder.Created,
+	}
+}
+
+// ListFolders handles a list folders request.
+func (s *service) ListFolders(ctx context.Context, req *pb.ListFoldersRequest) (*pb.ListFoldersReply, error) {
+	log.Debugf("received list folders request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	folders, err := s.collections.Folders.List(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*pb.GetFolderReply, len(folders))
+	for i, folder := range folders {
+		list[i] = folderToPbFolder(folder)
+	}
+
+	return &pb.ListFoldersReply{List: list}, nil
+}
+
+// RemoveFolder handles a remove folder request.
+func (s *service) RemoveFolder(ctx context.Context, req *pb.RemoveFolderRequest) (*pb.RemoveFolderReply, error) {
+	log.Debugf("received remove folder request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	folder, err := s.getFolderWithScope(ctx, req.Name, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.Folders.Delete(ctx, folder.ID); err != nil {
+		return nil, err
+	}
+
+	if err = s.ipfsClient.Pin().Rm(ctx, path.New(folder.Path)); err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveFolderReply{}, nil
+}
+
+// AddFile handles an add file request.
 func (s *service) AddFile(server pb.API_AddFileServer) error {
 	log.Debugf("received add file request")
 
@@ -536,16 +643,15 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 	if err != nil {
 		return err
 	}
-	var name, projID string
+	var name, folderName string
 	switch payload := req.GetPayload().(type) {
 	case *pb.AddFileRequest_Header_:
-		projID = payload.Header.ProjectID
 		name = payload.Header.Name
+		folderName = payload.Header.Folder
 	default:
-		return fmt.Errorf("project ID is required")
+		return fmt.Errorf("add file header is required")
 	}
-
-	proj, err := s.getProjectForScope(server.Context(), projID, scope)
+	folder, err := s.getFolderWithScope(server.Context(), folderName, scope)
 	if err != nil {
 		return err
 	}
@@ -621,15 +727,20 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 	pth, err := s.ipfsClient.Unixfs().Add(
 		server.Context(),
 		ipfsfiles.NewReaderFile(reader),
-		options.Unixfs.Pin(true),
+		options.Unixfs.Pin(false),
 		options.Unixfs.Progress(true),
 		options.Unixfs.Events(eventCh))
 	if err != nil {
 		return err
 	}
-
-	_, err = s.collections.Files.Create(server.Context(), pth, name, proj.ID)
-	if err != nil && !strings.Contains(err.Error(), store.ErrUniqueExists.Error()) {
+	dirpth, err := s.ipfsClient.Object().AddLink(server.Context(), path.New(folder.Path), name, pth)
+	if err != nil {
+		return err
+	}
+	if err = s.ipfsClient.Pin().Update(server.Context(), path.New(folder.Path), dirpth); err != nil {
+		return err
+	}
+	if err = s.collections.Folders.UpdatePath(server.Context(), folder, dirpth); err != nil {
 		return err
 	}
 
@@ -640,7 +751,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
-	log.Debugf("stored file with path: %s", pth.String())
+	log.Debugf("added file %s to folder with new path: %s", pth.String(), dirpth.String())
 	return nil
 }
 
@@ -712,7 +823,7 @@ func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*p
 		return nil, err
 	}
 
-	if err = s.ipfsClient.Pin().Rm(ctx, path.New(req.Path)); err != nil {
+	if err = s.ipfsClient.Pin().Rm(ctx, path.New(file.Path)); err != nil {
 		return nil, err
 	}
 
@@ -764,8 +875,23 @@ func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope strin
 	return token, nil
 }
 
+// getFolderWithScope returns a folder if the scope is authorized for the associated project.
+func (s *service) getFolderWithScope(ctx context.Context, name, scope string) (*c.Folder, error) {
+	folder, err := s.collections.Folders.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if folder == nil {
+		return nil, status.Error(codes.NotFound, "Folder not found")
+	}
+	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return folder, nil
+}
+
 // getFileWithScope returns a file if the scope is authorized for the associated project.
-func (s *service) getFileWithScope(ctx context.Context, pth string, scope string) (*c.File, error) {
+func (s *service) getFileWithScope(ctx context.Context, pth, scope string) (*c.File, error) {
 	pid, err := cid.Parse(pth)
 	if err != nil {
 		return nil, err

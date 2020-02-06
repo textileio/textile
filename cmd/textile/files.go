@@ -19,10 +19,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(filesCmd)
-	filesCmd.AddCommand(
-		addFileCmd,
-		lsFilesCmd,
-		rmFileCmd)
+	filesCmd.AddCommand(addFileCmd, lsFilesCmd, rmFileCmd)
 }
 
 var filesCmd = &cobra.Command{
