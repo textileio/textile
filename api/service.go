@@ -789,6 +789,17 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
+	for {
+		if base.IsValid() != nil {
+			return fmt.Errorf("unable to find an existing parent directory")
+		}
+		if _, err := s.ipfsClient.Unixfs().Get(server.Context(), base); err == nil {
+			break
+		}
+		fileName = filepath.Join(filepath.Base(base.String()), fileName)
+		base = path.New(filepath.Dir(base.String()))
+	}
+
 	dirpth, err := s.ipfsClient.Object().
 		AddLink(server.Context(), base, fileName, pth, options.Object.Create(true))
 	if err != nil {

@@ -855,7 +855,39 @@ func TestClient_AddFile(t *testing.T) {
 			t.Fatalf("add file should succeed: %v", err)
 		}
 		if pth == nil {
-			t.Fatal("got bad ID from add file")
+			t.Fatal("got bad path from add file")
+		}
+	})
+
+	t.Run("test add nested file", func(t *testing.T) {
+		file, err := os.Open("testdata/file2.jpg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		progress := make(chan int64)
+		go func() {
+			for p := range progress {
+				t.Logf("progress: %d", p)
+			}
+		}()
+		pth, err := client.AddFile(
+			context.Background(), "myfolder/more/stuff/file1.jpg", file, Auth{Token: user.SessionID},
+			AddWithProgress(progress))
+		if err != nil {
+			t.Fatalf("add nested file should succeed: %v", err)
+		}
+		if pth == nil {
+			t.Fatal("got bad path from add file")
+		}
+
+		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
+		if err != nil {
+			t.Fatalf("get folder should succeed: %v", err)
+		}
+		if len(folder.Entries) != 4 {
+			t.Fatalf("got wrong folder entry count from add nested file, expected %d, got %d",
+				4, len(folder.Entries))
 		}
 	})
 }
