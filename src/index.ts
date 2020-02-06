@@ -50,8 +50,8 @@ export class API {
         )
   }
 
-  async start() {
-    await this._threadsConfig.start()
+  async start(sessionId?: string) {
+    await this._threadsConfig.start(sessionId)
     return this
   }
 

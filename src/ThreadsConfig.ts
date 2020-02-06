@@ -21,7 +21,11 @@ export class ThreadsConfig extends Config {
     super()
     this.host = `${this.apiScheme}://${this.api}:${this.threadsPort}`
   }
-  async start() {
+  async start(sessionId?: string) {
+    if (sessionId !== undefined) {
+      this.session = sessionId
+      return
+    }
     await this.refreshSession()
   }
   get sessionAPI(): string {
