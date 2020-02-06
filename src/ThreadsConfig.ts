@@ -40,7 +40,7 @@ export class ThreadsConfig extends Config {
       '/register',
       JSON.stringify({
         token: this.token,
-        device_id: this.deviceId,
+        device_id: this.deviceId, // eslint-disable-line
       }),
     )
     if (resp.status !== 200) {

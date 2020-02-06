@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as uuid from 'uuid'
 import { Client, Config as ClientConfig } from '@textile/threads-client'
-import { ThreadsConfig } from './ThreadsConfig'
 import * as pack from '../package.json'
+import { ThreadsConfig } from './ThreadsConfig'
 
 export { ThreadsConfig }
 
@@ -34,6 +34,7 @@ export class API {
   private _threadsClient?: Client
 
   constructor(config: Config) {
+    // prettier-ignore
     this._threadsConfig =
       config.dev == false
         ? new ThreadsConfig(
@@ -42,15 +43,16 @@ export class API {
           config.apiScheme !== null ? config.apiScheme : 'https',
           config.api !== null ? config.api : 'cloud.textile.io',
           config.sessionPort !== null ? config.sessionPort : 8006,
-          config.threadsPort !== null ? config.threadsPort : 6007
-        ) : new ThreadsConfig(
+          config.threadsPort !== null ? config.threadsPort : 6007,
+        )
+        : new ThreadsConfig(
           config.token,
           config.deviceId,
           config.apiScheme !== null ? config.apiScheme : 'http',
           config.api !== null ? config.api : '127.0.0.1',
           config.sessionPort !== null ? config.sessionPort : 8006,
-          config.threadsPort !== null ? config.threadsPort : 6007
-        );
+          config.threadsPort !== null ? config.threadsPort : 6007,
+        )
   }
 
   async start() {
