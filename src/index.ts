@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as uuid from 'uuid'
-import { Client } from '@textile/threads-client'
 import * as pack from '../package.json'
 import { ThreadsConfig } from './ThreadsConfig'
 
