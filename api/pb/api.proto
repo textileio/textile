@@ -162,13 +162,12 @@ message GetFolderReply {
     bool public = 4;
     string projectID = 5;
     int64 created = 6;
-    repeated File files = 7;
+    repeated Entry entries = 7;
 
-    message File {
-        string name = 1;
-        string path = 2;
-        int64 size = 3;
-        repeated File files = 4;
+    message Entry {
+        string path = 1;
+        int64 size = 2;
+        bool isDir = 3;
     }
 }
 
@@ -218,14 +217,7 @@ message GetFileRequest {
 }
 
 message GetFileReply {
-    oneof payload {
-        Header header = 1;
-        bytes chunk = 2;
-    }
-
-    message Header {
-        int64 size = 1;
-    }
+    bytes chunk = 1;
 }
 
 message RemoveFileRequest {

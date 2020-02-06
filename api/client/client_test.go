@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -741,8 +742,14 @@ func TestClient_GetFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	file, err := os.Open("testdata/file1.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
 	if _, err := client.AddFile(
-		context.Background(), "myfolder", "testdata/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
+		AddWithName(filepath.Base(file.Name()))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -753,6 +760,10 @@ func TestClient_GetFolder(t *testing.T) {
 		}
 		if folder.ID != added.ID {
 			t.Fatal("got bad ID from get folder")
+		}
+		if len(folder.Entries) != 1 {
+			t.Fatalf("got wrong folder entry count from get folder, expected %d, got %d",
+				1, len(folder.Entries))
 		}
 	})
 }
@@ -828,6 +839,11 @@ func TestClient_AddFile(t *testing.T) {
 	}
 
 	t.Run("test add file", func(t *testing.T) {
+		file, err := os.Open("testdata/file1.jpg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
 		progress := make(chan int64)
 		go func() {
 			for p := range progress {
@@ -835,8 +851,9 @@ func TestClient_AddFile(t *testing.T) {
 			}
 		}()
 		pth, err := client.AddFile(
-			context.Background(), "myfolder", "testdata/file1.jpg", Auth{Token: user.SessionID},
-			WithProgress(progress))
+			context.Background(), "myfolder", file, Auth{Token: user.SessionID},
+			AddWithName(filepath.Base(file.Name())),
+			AddWithProgress(progress))
 		if err != nil {
 			t.Fatalf("add file should succeed: %v", err)
 		}
@@ -860,8 +877,14 @@ func TestClient_GetFile(t *testing.T) {
 		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
+	file, err := os.Open("testdata/file1.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
 	pth, err := client.AddFile(
-		context.Background(), "myfolder", "testdata/file1.jpg", Auth{Token: user.SessionID})
+		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
+		AddWithName(filepath.Base(file.Name())))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -873,8 +896,15 @@ func TestClient_GetFile(t *testing.T) {
 		}
 		defer file.Close()
 
+		progress := make(chan int64)
+		go func() {
+			for p := range progress {
+				t.Logf("progress: %d", p)
+			}
+		}()
 		if err := client.GetFile(
-			context.Background(), "myfolder", pth, file, Auth{Token: user.SessionID}); err != nil {
+			context.Background(), "myfolder", pth, file, Auth{Token: user.SessionID},
+			GetWithProgress(progress)); err != nil {
 			t.Fatalf("get file should succeed: %v", err)
 		}
 		info, err := file.Stat()
@@ -882,9 +912,6 @@ func TestClient_GetFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("got file with size %d", info.Size())
-		//if file.Path != pth.String() {
-		//	t.Fatal("got bad path from get file")
-		//}
 	})
 }
 
@@ -902,8 +929,14 @@ func TestClient_RemoveFile(t *testing.T) {
 		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.AddFile(
-		context.Background(), "myfolder", "testdata/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+	file, err := os.Open("testdata/file1.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if _, err := client.AddFile(
+		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
+		AddWithName(filepath.Base(file.Name()))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -912,9 +945,13 @@ func TestClient_RemoveFile(t *testing.T) {
 			context.Background(), "myfolder", "file1.jpg", Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove file should succeed: %v", err)
 		}
-		//if _, err := client.GetFile(context.Background(), pth, Auth{Token: user.SessionID}); err == nil {
-		//	t.Fatalf("got file that should be removed: %v", err)
-		//}
+		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(folder.Entries) != 0 {
+			t.Fatalf("got wrong entry count from remove file, expected %d, got %d", 0, len(folder.Entries))
+		}
 	})
 }
 

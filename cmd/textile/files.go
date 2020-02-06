@@ -70,7 +70,7 @@ var addFileCmd = &cobra.Command{
 			api.Auth{
 				Token: authViper.GetString("token"),
 			},
-			api.WithProgress(progress))
+			api.AddWithProgress(progress))
 		if err != nil {
 			cmd.Fatal(err)
 		}

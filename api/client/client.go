@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -204,14 +202,22 @@ func (c *Client) RemoveFolder(ctx context.Context, name string, auth Auth) error
 
 // AddFileOptions defines options for adding a file.
 type AddFileOptions struct {
+	Name     string
 	Progress chan<- int64
 }
 
 // AddFileOption specifies an option for adding a file.
 type AddFileOption func(*AddFileOptions)
 
-// WithProgress writes progress updates to the given channel.
-func WithProgress(ch chan<- int64) AddFileOption {
+// AddWithName adds a file with the given name.
+func AddWithName(name string) AddFileOption {
+	return func(args *AddFileOptions) {
+		args.Name = name
+	}
+}
+
+// AddWithProgress writes progress updates to the given channel.
+func AddWithProgress(ch chan<- int64) AddFileOption {
 	return func(args *AddFileOptions) {
 		args.Progress = ch
 	}
@@ -225,7 +231,8 @@ type addFileResult struct {
 // AddFile uploads a file to the project store.
 func (c *Client) AddFile(
 	ctx context.Context,
-	folder, filePath string,
+	folder string,
+	reader io.Reader,
 	auth Auth,
 	opts ...AddFileOption,
 ) (path.Resolved, error) {
@@ -233,11 +240,6 @@ func (c *Client) AddFile(
 	for _, opt := range opts {
 		opt(args)
 	}
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
 
 	stream, err := c.c.AddFile(authCtx(ctx, auth))
 	if err != nil {
@@ -246,7 +248,7 @@ func (c *Client) AddFile(
 	if err = stream.Send(&pb.AddFileRequest{
 		Payload: &pb.AddFileRequest_Header_{
 			Header: &pb.AddFileRequest_Header{
-				Name:   filepath.Base(file.Name()),
+				Name:   args.Name,
 				Folder: folder,
 			},
 		},
@@ -292,7 +294,7 @@ func (c *Client) AddFile(
 
 	buf := make([]byte, chunkSize)
 	for {
-		n, err := file.Read(buf)
+		n, err := reader.Read(buf)
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -317,14 +319,35 @@ func (c *Client) AddFile(
 	return res.path, res.err
 }
 
+// GetFileOptions defines options for getting a file.
+type GetFileOptions struct {
+	Progress chan<- int64
+}
+
+// GetFileOption specifies an option for getting a file.
+type GetFileOption func(*GetFileOptions)
+
+// GetWithProgress writes progress updates to the given channel.
+func GetWithProgress(ch chan<- int64) GetFileOption {
+	return func(args *GetFileOptions) {
+		args.Progress = ch
+	}
+}
+
 // GetFile returns a file by its path.
 func (c *Client) GetFile(
 	ctx context.Context,
 	folder string,
-	pth path.Resolved,
+	pth path.Path,
 	writer io.Writer,
 	auth Auth,
+	opts ...GetFileOption,
 ) error {
+	args := &GetFileOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
 	stream, err := c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
 		Path:   pth.String(),
 		Folder: folder,
@@ -333,19 +356,7 @@ func (c *Client) GetFile(
 		return err
 	}
 
-	rep, err := stream.Recv()
-	if err != nil {
-		return err
-	}
-	var size int64
-	switch payload := rep.Payload.(type) {
-	case *pb.GetFileReply_Header_:
-		size = payload.Header.Size
-	default:
-		return fmt.Errorf("get file header is required")
-	}
-	fmt.Println(size) // tmp to keep var around
-
+	var written int64
 	for {
 		rep, err := stream.Recv()
 		if err == io.EOF {
@@ -353,19 +364,16 @@ func (c *Client) GetFile(
 		} else if err != nil {
 			return err
 		}
-		switch payload := rep.Payload.(type) {
-		case *pb.GetFileReply_Chunk:
-			if _, err := writer.Write(payload.Chunk); err != nil {
-				return err
+		n, err := writer.Write(rep.Chunk)
+		if err != nil {
+			return err
+		}
+		written += int64(n)
+		if args.Progress != nil {
+			select {
+			case args.Progress <- written:
+			default:
 			}
-			//if args.Progress != nil {
-			//	select {
-			//	case args.Progress <- n:
-			//	default:
-			//	}
-			//}
-		default:
-			return fmt.Errorf("invalid reply")
 		}
 	}
 	return nil

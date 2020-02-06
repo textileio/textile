@@ -572,22 +572,19 @@ func (s *service) GetFolder(ctx context.Context, req *pb.GetFolderRequest) (*pb.
 		return nil, err
 	}
 
-	entries, err := s.ipfsClient.Unixfs().Ls(ctx, path.New(folder.Path))
+	node, err := s.ipfsClient.Unixfs().Get(ctx, path.New(folder.Path))
 	if err != nil {
 		return nil, err
 	}
+	defer node.Close()
 
-	return folderToPbFolder(folder, entries), nil
+	return folderToPbFolder(folder, node)
 }
 
-func folderToPbFolder(folder *c.Folder, entries <-chan iface.DirEntry) *pb.GetFolderReply {
-	files := make([]*pb.GetFolderReply_File, len(entries))
-	for entry := range entries {
-		files = append(files, &pb.GetFolderReply_File{
-			Name: entry.Name,
-			Path: path.IpfsPath(entry.Cid).String(),
-			Size: int64(entry.Size),
-		})
+func folderToPbFolder(folder *c.Folder, node ipfsfiles.Node) (*pb.GetFolderReply, error) {
+	entries, err := dirToPbSlice(node)
+	if err != nil {
+		return nil, err
 	}
 	return &pb.GetFolderReply{
 		ID:        folder.ID,
@@ -596,8 +593,32 @@ func folderToPbFolder(folder *c.Folder, entries <-chan iface.DirEntry) *pb.GetFo
 		Public:    folder.Public,
 		ProjectID: folder.ProjectID,
 		Created:   folder.Created,
-		Files:     files,
-	}
+		Entries:   entries,
+	}, nil
+}
+
+func dirToPbSlice(node ipfsfiles.Node) (entries []*pb.GetFolderReply_Entry, err error) {
+	err = ipfsfiles.Walk(node, func(path string, n ipfsfiles.Node) error {
+		defer n.Close()
+		if path == "" { // This is the root
+			return nil
+		}
+		size, err := n.Size()
+		if err != nil {
+			return err
+		}
+		entry := &pb.GetFolderReply_Entry{
+			Path: path,
+			Size: size,
+		}
+		switch n.(type) {
+		case ipfsfiles.Directory:
+			entry.IsDir = true
+		}
+		entries = append(entries, entry)
+		return nil
+	})
+	return
 }
 
 // ListFolders handles a list folders request.
@@ -619,11 +640,15 @@ func (s *service) ListFolders(ctx context.Context, req *pb.ListFoldersRequest) (
 	}
 	list := make([]*pb.GetFolderReply, len(folders))
 	for i, folder := range folders {
-		entries, err := s.ipfsClient.Unixfs().Ls(ctx, path.New(folder.Path))
+		node, err := s.ipfsClient.Unixfs().Get(ctx, path.New(folder.Path))
 		if err != nil {
 			return nil, err
 		}
-		list[i] = folderToPbFolder(folder, entries)
+		list[i], err = folderToPbFolder(folder, node)
+		if err != nil {
+			return nil, err
+		}
+		node.Close()
 	}
 
 	return &pb.ListFoldersReply{List: list}, nil
@@ -802,18 +827,6 @@ func (s *service) GetFile(req *pb.GetFileRequest, server pb.API_GetFileServer) e
 	}
 	defer node.Close()
 
-	size, err := node.Size()
-	if err != nil {
-		return err
-	}
-	if err := server.Send(&pb.GetFileReply{Payload: &pb.GetFileReply_Header_{
-		Header: &pb.GetFileReply_Header{
-			Size: size,
-		},
-	}}); err != nil {
-		return err
-	}
-
 	file := ipfsfiles.ToFile(node)
 	buf := make([]byte, chunkSize)
 	for {
@@ -823,9 +836,9 @@ func (s *service) GetFile(req *pb.GetFileRequest, server pb.API_GetFileServer) e
 		} else if err != nil {
 			return err
 		}
-		if err := server.Send(&pb.GetFileReply{Payload: &pb.GetFileReply_Chunk{
+		if err := server.Send(&pb.GetFileReply{
 			Chunk: buf[:n],
-		}}); err != nil {
+		}); err != nil {
 			return err
 		}
 	}
