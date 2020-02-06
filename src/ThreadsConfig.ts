@@ -14,6 +14,7 @@ export class ThreadsConfig extends Config {
   constructor(
     public token: string,
     public deviceId: string,
+    public dev: boolean,
     public apiScheme: string = 'https',
     public api: string = 'cloud.textile.io',
     public sessionPort: number = 8006,
@@ -30,6 +31,9 @@ export class ThreadsConfig extends Config {
     return `${this.apiScheme}://${this.api}:${this.sessionPort}`
   }
   private async refreshSession() {
+    if (this.dev) {
+      return
+    }
     const setup: AxiosRequestConfig = {
       baseURL: this.sessionAPI,
       responseType: 'json',

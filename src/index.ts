@@ -40,6 +40,7 @@ export class API {
         ? new ThreadsConfig(
           config.token,
           config.deviceId,
+          !!config.dev,
           config.apiScheme !== null ? config.apiScheme : 'https',
           config.api !== null ? config.api : 'cloud.textile.io',
           config.sessionPort !== null ? config.sessionPort : 8006,
@@ -48,6 +49,7 @@ export class API {
         : new ThreadsConfig(
           config.token,
           config.deviceId,
+          !!config.dev,
           config.apiScheme !== null ? config.apiScheme : 'http',
           config.api !== null ? config.api : '127.0.0.1',
           config.sessionPort !== null ? config.sessionPort : 8006,
