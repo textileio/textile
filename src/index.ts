@@ -51,7 +51,8 @@ export class API {
   }
 
   async start() {
-    this._threadsConfig.start()
+    await this._threadsConfig.start()
+    return this
   }
 
   get threadsConfig(): ThreadsConfig {

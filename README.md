@@ -41,7 +41,7 @@ let api = new textile.API({
     deviceId: '<user id>'
 })
 
-let client = api.threadsClient
+let client = new Client(api.threadsConfig)
 let newStore = client.newStore()
 ```
 
@@ -56,7 +56,7 @@ let api = new textile.API({
     dev: true
 })
 
-let client = api.threadsClient
+let client = new Client(api.threadsConfig)
 let newStore = client.newStore()
 ```
 
