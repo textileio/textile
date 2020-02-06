@@ -12,6 +12,7 @@ type Session = {
 }
 export class ThreadsConfig extends Config {
   public host: string
+  public session?: string
   constructor(
     public token: string,
     public deviceId: string,
@@ -23,7 +24,7 @@ export class ThreadsConfig extends Config {
     public transport: grpc.TransportFactory = grpc.WebsocketTransport(),
   ) {
     super()
-    this.host = `${apiScheme}://${api}:${threadsPort}`
+    this.host = `${this.apiScheme}://${this.api}:${this.threadsPort}`
   }
   async start() {
     await this.refreshSession()
@@ -53,10 +54,22 @@ export class ThreadsConfig extends Config {
     }
     this.session = resp.data.session_id
   }
-  public _wrapMetadata(values?: { [key: string]: any }): { [key: string]: any } | undefined {
-    return super._wrapMetadata(values)
+  _wrapMetadata(values?: { [key: string]: any }): { [key: string]: any } | undefined {
+    if (!this.session) {
+      return values
+    }
+    const response = values ?? {}
+    if ('Authorization' in response || 'authorization' in response) {
+      return response
+    }
+    response['Authorization'] = `Bearer ${this.session}`
+    return response
   }
-  public _wrapBrowserHeaders(values: grpc.Metadata): grpc.Metadata {
-    return super._wrapBrowserHeaders(values)
+  _wrapBrowserHeaders(values: grpc.Metadata): grpc.Metadata {
+    if (!this.session) {
+      return values
+    }
+    values.set('Authorization', `Bearer ${this.session}`)
+    return values
   }
 }

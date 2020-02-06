@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as uuid from 'uuid'
-import { Client, Config as ClientConfig } from '@textile/threads-client'
+import { Client } from '@textile/threads-client'
 import * as pack from '../package.json'
 import { ThreadsConfig } from './ThreadsConfig'
 
@@ -28,32 +28,27 @@ export class API {
    */
   private _threadsConfig: ThreadsConfig
 
-  /**
-   * threadsClient is the (private) threads client.
-   */
-  private _threadsClient?: Client
-
   constructor(config: APIConfig) {
     // prettier-ignore
     this._threadsConfig =
-      config.dev == false
+      config.dev === true
         ? new ThreadsConfig(
           config.token,
           config.deviceId,
-          !!config.dev,
-          config.apiScheme !== null ? config.apiScheme : 'https',
-          config.api !== null ? config.api : 'cloud.textile.io',
-          config.sessionPort !== null ? config.sessionPort : 8006,
-          config.threadsPort !== null ? config.threadsPort : 6007,
+          true,
+          config.apiScheme !== (null || undefined) ? config.apiScheme : 'http',
+          config.api !== (null || undefined) ? config.api : '127.0.0.1',
+          config.sessionPort !== (null || undefined) ? config.sessionPort : 8006,
+          config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
         : new ThreadsConfig(
           config.token,
           config.deviceId,
-          !!config.dev,
-          config.apiScheme !== null ? config.apiScheme : 'http',
-          config.api !== null ? config.api : '127.0.0.1',
-          config.sessionPort !== null ? config.sessionPort : 8006,
-          config.threadsPort !== null ? config.threadsPort : 6007,
+          false,
+          config.apiScheme !== (null || undefined) ? config.apiScheme : 'https',
+          config.api !== (null || undefined) ? config.api : 'cloud.textile.io',
+          config.sessionPort !== (null || undefined) ? config.sessionPort : 8006,
+          config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
   }
 
@@ -61,13 +56,6 @@ export class API {
     this._threadsConfig.start()
   }
 
-  get threadsClient(): Client {
-    if (!this._threadsClient) {
-      this._threadsConfig.start()
-      this._threadsClient = new Client(this._threadsConfig)
-    }
-    return this._threadsClient
-  }
   get threadsConfig(): ThreadsConfig {
     return this._threadsConfig
   }
