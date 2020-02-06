@@ -1,0 +1,104 @@
+{
+  "name": "@textile/textile",
+  "version": "0.0.0",
+  "description": "JS lib for interacting with Textile APIs.",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test:node": "mocha --exit --require ts-node/register --require source-map-support/register --recursive src/__test__/**/*.test.ts",
+    "test:node:coverage": "nyc npm run test",
+    "test:browser": "polendina --cleanup src/**/*.test.ts --webpack-config webpack.test.js",
+    "test": "npm run test:node && npm run test:browser",
+    "lint": "eslint --fix --ext .mjs,.js,.jsx,.ts,.tsx src",
+    "docs": "typedoc",
+    "precommit": "npm run lint && npm test",
+    "preversion": "npm run docs; npm run precommit",
+    "release": "npm version patch",
+    "postversion": "git push --follow-tags",
+    "browser": "webpack --mode production",
+    "serve": "webpack-dev-server --mode development --progress --color",
+    "report:history": "mkdir -p allure-report/history allure-results/history && cp -a allure-report/history allure-results/",
+    "report:clean": "rimraf allure-results",
+    "report:run": "allure generate allure-results/ --clean && allure open -p 8000",
+    "report": "npm run report:clean && npm run test:browser ; npm run report:run"
+  },
+  "nyc": {
+    "extension": [
+      ".ts",
+      ".tsx"
+    ],
+    "exclude": [
+      "**/*.d.ts"
+    ],
+    "reporter": [
+      "json"
+    ],
+    "all": true
+  },
+  "engines": {
+    "node": ">= 10.0.0",
+    "npm": ">= 3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/textileio/js-textile.git"
+  },
+  "bugs": {
+    "url": "https://github.com/textileio/js-textile/issues"
+  },
+  "keywords": [
+    "textile",
+    "threads",
+    "IPFS",
+    "p2p"
+  ],
+  "author": "Textile",
+  "license": "MIT",
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.12.0",
+    "@textile/threads-client": "^0.2.3",
+    "@types/google-protobuf": "^3.7.2",
+    "axios": "^0.19.2",
+    "b64-lite": "^1.4.0",
+    "bs58": "^4.0.1",
+    "google-protobuf": "^3.10.0",
+    "isomorphic-ws": "^4.0.1",
+    "uuid": "^3.3.3",
+    "ws": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/b64-lite": "^1.3.0",
+    "@types/bs58": "^4.0.1",
+    "@types/chai": "^4.2.5",
+    "@types/mocha": "^5.2.7",
+    "@types/uuid": "^3.4.6",
+    "@typescript-eslint/eslint-plugin": "^2.9.0",
+    "@typescript-eslint/parser": "^2.9.0",
+    "chai": "^4.2.0",
+    "eslint": "^6.7.1",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-config-strict": "^14.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.1.1",
+    "jsdoc": "^3.6.3",
+    "mocha": "^6.2.2",
+    "nodemon": "^2.0.2",
+    "nyc": "^15.0.0",
+    "polendina": "^1.0.0",
+    "prettier": "^1.19.1",
+    "prettier-eslint": "^9.0.0",
+    "source-map-support": "^0.5.16",
+    "ts-loader": "^6.2.1",
+    "ts-mocha": "^6.0.0",
+    "ts-node": "^8.2.0",
+    "tsconfig-paths": "^3.8.0",
+    "typedoc": "^0.16.2",
+    "typedoc-plugin-markdown": "^2.2.11",
+    "typescript": "^3.7.2",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.9.0"
+  }
+}

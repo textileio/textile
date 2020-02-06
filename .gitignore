@@ -1,3 +1,10 @@
+# Build files
+dist/
+
+# Test results
+allure-results/
+allure-result/
+
 # Logs
 logs
 *.log
@@ -59,3 +66,12 @@ typings/
 
 # next.js build output
 .next
+
+# Jetbrains
+.idea
+
+# VSCode settings
+.vscode
+
+# Documentation
+docs
