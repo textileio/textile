@@ -1,11 +1,6 @@
 import { grpc } from '@improbable-eng/grpc-web'
 import { Config } from '@textile/threads-client'
 import axios, { AxiosRequestConfig } from 'axios'
-
-/**
- * WriteTransaction performs a mutating bulk transaction on the underlying store.
- */
-
 type Session = {
   id: string
   session_id: string
