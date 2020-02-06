@@ -50,9 +50,13 @@ export class API {
         )
   }
 
-  async start() {
-    await this._threadsConfig.start()
+  async start(sessionId?: string) {
+    await this._threadsConfig.start(sessionId)
     return this
+  }
+
+  get sessionId(): string | undefined {
+    return this._threadsConfig.sessionId
   }
 
   get threadsConfig(): ThreadsConfig {

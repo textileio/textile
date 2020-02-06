@@ -1,13 +1,14 @@
 import { grpc } from '@improbable-eng/grpc-web'
 import { Config } from '@textile/threads-client'
 import axios, { AxiosRequestConfig } from 'axios'
+
 type Session = {
   id: string
   session_id: string
 }
 export class ThreadsConfig extends Config {
   public host: string
-  public session?: string
+  public sessionId?: string
   constructor(
     public token: string,
     public deviceId: string,
@@ -21,7 +22,11 @@ export class ThreadsConfig extends Config {
     super()
     this.host = `${this.apiScheme}://${this.api}:${this.threadsPort}`
   }
-  async start() {
+  async start(sessionId?: string) {
+    if (sessionId !== undefined) {
+      this.sessionId = sessionId
+      return
+    }
     await this.refreshSession()
   }
   get sessionAPI(): string {
@@ -47,24 +52,24 @@ export class ThreadsConfig extends Config {
     if (resp.status !== 200) {
       new Error(resp.statusText)
     }
-    this.session = resp.data.session_id
+    this.sessionId = resp.data.session_id
   }
   _wrapMetadata(values?: { [key: string]: any }): { [key: string]: any } | undefined {
-    if (!this.session) {
+    if (!this.sessionId) {
       return values
     }
     const response = values ?? {}
     if ('Authorization' in response || 'authorization' in response) {
       return response
     }
-    response['Authorization'] = `Bearer ${this.session}`
+    response['Authorization'] = `Bearer ${this.sessionId}`
     return response
   }
   _wrapBrowserHeaders(values: grpc.Metadata): grpc.Metadata {
-    if (!this.session) {
+    if (!this.sessionId) {
       return values
     }
-    values.set('Authorization', `Bearer ${this.session}`)
+    values.set('Authorization', `Bearer ${this.sessionId}`)
     return values
   }
 }
