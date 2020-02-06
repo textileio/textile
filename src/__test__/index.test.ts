@@ -4,11 +4,13 @@
 // @todo: Find a nicer way to do this...
 ;(global as any).WebSocket = require('isomorphic-ws')
 
+import { Client } from '@textile/threads-client'
 import { expect } from 'chai'
 import { API } from '../index'
 
 describe('API', function() {
   let api: API
+  let client: Client
   describe('create new instance', () => {
     it('it should create a new API instance', async () => {
       api = new API({
@@ -23,6 +25,24 @@ describe('API', function() {
     })
     it('create new store', async () => {
       const store = await api.threadsClient.newStore()
+      expect(store).to.not.be.undefined
+    })
+  })
+  describe('create new instance', () => {
+    it('it should create a new API instance', async () => {
+      api = new API({
+        token: '<app token>',
+        deviceId: '<user id>',
+        dev: true,
+        api: '127.0.0.1',
+        apiScheme: 'http',
+      })
+      api.start()
+      client = new Client(api.threadsConfig)
+      expect(api).to.not.be.undefined
+    })
+    it('create new store', async () => {
+      const store = await client.newStore()
       expect(store).to.not.be.undefined
     })
   })

@@ -6,7 +6,7 @@ import { ThreadsConfig } from './ThreadsConfig'
 
 export { ThreadsConfig }
 
-export type Config = {
+export type APIConfig = {
   token: string
   deviceId: string
   dev?: boolean
@@ -33,7 +33,7 @@ export class API {
    */
   private _threadsClient?: Client
 
-  constructor(config: Config) {
+  constructor(config: APIConfig) {
     // prettier-ignore
     this._threadsConfig =
       config.dev == false
@@ -68,7 +68,7 @@ export class API {
     }
     return this._threadsClient
   }
-  get threadsConfig(): Config {
+  get threadsConfig(): ThreadsConfig {
     return this._threadsConfig
   }
 }

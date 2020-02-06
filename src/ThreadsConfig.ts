@@ -11,6 +11,7 @@ type Session = {
   session_id: string
 }
 export class ThreadsConfig extends Config {
+  public host: string
   constructor(
     public token: string,
     public deviceId: string,
@@ -52,10 +53,10 @@ export class ThreadsConfig extends Config {
     }
     this.session = resp.data.session_id
   }
-  _wrapMetadata(values?: { [key: string]: any }): { [key: string]: any } | undefined {
+  public _wrapMetadata(values?: { [key: string]: any }): { [key: string]: any } | undefined {
     return super._wrapMetadata(values)
   }
-  _wrapBrowserHeaders(values: grpc.Metadata): grpc.Metadata {
+  public _wrapBrowserHeaders(values: grpc.Metadata): grpc.Metadata {
     return super._wrapBrowserHeaders(values)
   }
 }
