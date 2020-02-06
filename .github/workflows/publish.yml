@@ -1,0 +1,37 @@
+name: publish
+on:
+  release:
+    types: [published]
+jobs:
+
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+      - name: Get latest tag
+        id: latesttag
+        uses: "WyriHaximus/github-action-get-previous-tag@master"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Set up Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Get Dependencies
+        run: |
+          npm install
+          npm install -g json
+          npm install -g yaml-cli
+      - name: Build Library
+        run: |
+          npm run build
+          npm run browser
+      - name: Publish NPM Package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+        run: |
+          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
+          npm publish --access=public

@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["es6", "dom", "esnext"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "dist",
+    "baseUrl": "."
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "scripts",
+    "node_modules",
+    "examples",
+    "docs",
+    "dist"
+  ],
+  "compileOnSave": true,
+  "typedocOptions": {
+    "readme": "./config/DOCS_TEMPLATE.md",
+    "mode": "file",
+    "out": "docs",
+    "include": "src/",
+    "exclude": "**/__test__/**/*",
+    "gitRevision": "master",
+    "excludePrivate": true,
+    "excludeNotExported": true,
+    "excludeProtected": true,
+    "hideGenerator": true,
+    "target": "ES6",
+    "moduleResolution": "node",
+    "preserveConstEnums": true,
+    "stripInternal": true,
+    "module": "commonjs",
+    "mdHideSources": true
+  }
+}

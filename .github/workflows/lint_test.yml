@@ -1,0 +1,62 @@
+name: lint_test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip-ci')"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Setup
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12
+
+    - name: Install
+      run: npm install
+
+    - name: Lint
+      run: npm run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip-ci')"
+
+    services:
+      threads:
+        image: textile/go-threads:latest
+        env:
+          THRDS_APIPROXYADDR: /ip4/0.0.0.0/tcp/6007
+        ports:
+          - "127.0.0.1:6007:6007"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Setup
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12
+
+    - name: NPM Install
+      run: npm install
+
+    - name: Test Node
+      run: |
+           npm run test:node
+
+    - name: Test Browser
+      run: |
+           npm run test:browser
