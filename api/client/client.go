@@ -202,19 +202,11 @@ func (c *Client) RemoveFolder(ctx context.Context, name string, auth Auth) error
 
 // AddFileOptions defines options for adding a file.
 type AddFileOptions struct {
-	Name     string
 	Progress chan<- int64
 }
 
 // AddFileOption specifies an option for adding a file.
 type AddFileOption func(*AddFileOptions)
-
-// AddWithName adds a file with the given name.
-func AddWithName(name string) AddFileOption {
-	return func(args *AddFileOptions) {
-		args.Name = name
-	}
-}
 
 // AddWithProgress writes progress updates to the given channel.
 func AddWithProgress(ch chan<- int64) AddFileOption {
@@ -231,7 +223,7 @@ type addFileResult struct {
 // AddFile uploads a file to the project store.
 func (c *Client) AddFile(
 	ctx context.Context,
-	folder string,
+	filePath string,
 	reader io.Reader,
 	auth Auth,
 	opts ...AddFileOption,
@@ -248,8 +240,7 @@ func (c *Client) AddFile(
 	if err = stream.Send(&pb.AddFileRequest{
 		Payload: &pb.AddFileRequest_Header_{
 			Header: &pb.AddFileRequest_Header{
-				Name:   args.Name,
-				Folder: folder,
+				Path: filePath,
 			},
 		},
 	}); err != nil {
@@ -337,8 +328,7 @@ func GetWithProgress(ch chan<- int64) GetFileOption {
 // GetFile returns a file by its path.
 func (c *Client) GetFile(
 	ctx context.Context,
-	folder string,
-	pth path.Path,
+	filePath string,
 	writer io.Writer,
 	auth Auth,
 	opts ...GetFileOption,
@@ -349,8 +339,7 @@ func (c *Client) GetFile(
 	}
 
 	stream, err := c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
-		Path:   pth.String(),
-		Folder: folder,
+		Path: filePath,
 	})
 	if err != nil {
 		return err
@@ -380,10 +369,9 @@ func (c *Client) GetFile(
 }
 
 // RemoveFile removes a file from a folder by name.
-func (c *Client) RemoveFile(ctx context.Context, folder, name string, auth Auth) error {
+func (c *Client) RemoveFile(ctx context.Context, filePath string, auth Auth) error {
 	_, err := c.c.RemoveFile(authCtx(ctx, auth), &pb.RemoveFileRequest{
-		Name:   name,
-		Folder: folder,
+		Path: filePath,
 	})
 	return err
 }

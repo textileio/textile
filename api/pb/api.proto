@@ -192,8 +192,7 @@ message AddFileRequest {
     }
 
     message Header {
-        string name = 1;
-        string folder = 2;
+        string path = 1;
     }
 }
 
@@ -213,7 +212,6 @@ message AddFileReply {
 
 message GetFileRequest {
     string path = 1;
-    string folder = 2;
 }
 
 message GetFileReply {
@@ -221,8 +219,7 @@ message GetFileReply {
 }
 
 message RemoveFileRequest {
-    string name = 1;
-    string folder = 2;
+    string path = 1;
 }
 
 message RemoveFileReply {}

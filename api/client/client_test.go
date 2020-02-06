@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -748,8 +747,7 @@ func TestClient_GetFolder(t *testing.T) {
 	}
 	defer file.Close()
 	if _, err := client.AddFile(
-		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
-		AddWithName(filepath.Base(file.Name()))); err != nil {
+		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -851,8 +849,7 @@ func TestClient_AddFile(t *testing.T) {
 			}
 		}()
 		pth, err := client.AddFile(
-			context.Background(), "myfolder", file, Auth{Token: user.SessionID},
-			AddWithName(filepath.Base(file.Name())),
+			context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID},
 			AddWithProgress(progress))
 		if err != nil {
 			t.Fatalf("add file should succeed: %v", err)
@@ -882,10 +879,8 @@ func TestClient_GetFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	pth, err := client.AddFile(
-		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
-		AddWithName(filepath.Base(file.Name())))
-	if err != nil {
+	if _, err := client.AddFile(
+		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -903,7 +898,7 @@ func TestClient_GetFile(t *testing.T) {
 			}
 		}()
 		if err := client.GetFile(
-			context.Background(), "myfolder", pth, file, Auth{Token: user.SessionID},
+			context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID},
 			GetWithProgress(progress)); err != nil {
 			t.Fatalf("get file should succeed: %v", err)
 		}
@@ -935,14 +930,13 @@ func TestClient_RemoveFile(t *testing.T) {
 	}
 	defer file.Close()
 	if _, err := client.AddFile(
-		context.Background(), "myfolder", file, Auth{Token: user.SessionID},
-		AddWithName(filepath.Base(file.Name()))); err != nil {
+		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove file", func(t *testing.T) {
 		if err := client.RemoveFile(
-			context.Background(), "myfolder", "file1.jpg", Auth{Token: user.SessionID}); err != nil {
+			context.Background(), "myfolder/file1.jpg", Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove file should succeed: %v", err)
 		}
 		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
