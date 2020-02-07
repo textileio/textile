@@ -647,6 +647,7 @@ func (s *service) ListFolders(ctx context.Context, req *pb.ListFoldersRequest) (
 		}
 		list[i], err = folderToPbFolder(folder, node)
 		if err != nil {
+			node.Close()
 			return nil, err
 		}
 		node.Close()
@@ -809,10 +810,10 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 
 func parsePath(pth string) (folder, name string) {
 	pth = strings.TrimPrefix(pth, "/")
-	parts := strings.Split(pth, "/")
+	parts := strings.SplitN(pth, "/", 2)
 	folder = parts[0]
 	if len(parts) > 1 {
-		name = filepath.Join(parts[1:]...)
+		name = parts[1]
 	}
 	return
 }
@@ -825,17 +826,7 @@ func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetF
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, fileName := parsePath(req.Path)
-	folder, err := s.getFolderWithScope(ctx, folderName, scope)
-	if err != nil {
-		return nil, err
-	}
-	pth := path.New(filepath.Join(folder.Path, fileName))
-	if err = pth.IsValid(); err != nil {
-		return nil, err
-	}
-
-	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
+	node, pth, err := s.getNodeAtPath(ctx, scope, req.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -852,6 +843,21 @@ func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetF
 	}, nil
 }
 
+func (s *service) getNodeAtPath(ctx context.Context, scope, pth string) (ipfsfiles.Node, path.Path, error) {
+	folderName, fileName := parsePath(pth)
+	folder, err := s.getFolderWithScope(ctx, folderName, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	npth := path.New(filepath.Join(folder.Path, fileName))
+	if err = npth.IsValid(); err != nil {
+		return nil, nil, err
+	}
+
+	node, err := s.ipfsClient.Unixfs().Get(ctx, npth)
+	return node, npth, err
+}
+
 // CatFile handles a cat file request.
 func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) error {
 	log.Debugf("received cat file request")
@@ -860,23 +866,16 @@ func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) e
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, fileName := parsePath(req.Path)
-	folder, err := s.getFolderWithScope(server.Context(), folderName, scope)
-	if err != nil {
-		return err
-	}
-	pth := path.New(filepath.Join(folder.Path, fileName))
-	if err = pth.IsValid(); err != nil {
-		return err
-	}
-
-	node, err := s.ipfsClient.Unixfs().Get(server.Context(), pth)
+	node, _, err := s.getNodeAtPath(server.Context(), scope, req.Path)
 	if err != nil {
 		return err
 	}
 	defer node.Close()
 
 	file := ipfsfiles.ToFile(node)
+	if file == nil {
+		return fmt.Errorf("node is a directory")
+	}
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := file.Read(buf)

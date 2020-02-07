@@ -193,6 +193,7 @@ func (c *Client) ListFolders(ctx context.Context, projID string, auth Auth) (*pb
 }
 
 // RemoveFolder removes a folder by name.
+// Additionally, folder files will be unpinned from the current folder root.
 func (c *Client) RemoveFolder(ctx context.Context, name string, auth Auth) error {
 	_, err := c.c.RemoveFolder(authCtx(ctx, auth), &pb.RemoveFolderRequest{
 		Name: name,
@@ -221,6 +222,7 @@ type addFileResult struct {
 }
 
 // AddFile uploads a file to the project store.
+// The path under the folder will be created if it doesn't exist.
 func (c *Client) AddFile(
 	ctx context.Context,
 	filePath string,
