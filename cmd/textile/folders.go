@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
 func init() {
 	rootCmd.AddCommand(foldersCmd)
-	filesCmd.AddCommand(addFolderCmd, getFolderCmd, lsFolderEntriesCmd, lsFoldersCmd, rmFolderCmd)
+	foldersCmd.AddCommand(addFolderCmd, lsFoldersCmd, inspectFolderCmd, rmFolderCmd)
 
 	addFolderCmd.Flags().Bool(
 		"public",
@@ -29,7 +32,7 @@ var foldersCmd = &cobra.Command{
 	Short: "Manage project folders",
 	Long:  `Manage your project's stored folders.`,
 	Run: func(c *cobra.Command, args []string) {
-		//lsFolders()
+		lsFolders()
 	},
 }
 
@@ -67,60 +70,6 @@ var addFolderCmd = &cobra.Command{
 	},
 }
 
-var getFolderCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Get a folder",
-	Long:  `Get a project folder.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		folder, err := client.GetFolder(
-			ctx,
-			args[0],
-			api.Auth{
-				Token: authViper.GetString("token"),
-			})
-		if err != nil {
-			cmd.Fatal(err)
-		}
-
-		cmd.RenderTable(
-			[]string{"name", "id", "path", "public", "entries", "created"},
-			[][]string{{folder.Name, folder.ID, folder.Path, strconv.FormatBool(folder.Public),
-				strconv.Itoa(len(folder.Entries)), strconv.Itoa(int(folder.Created))}})
-	},
-}
-
-var lsFolderEntriesCmd = &cobra.Command{
-	Use:   "entries",
-	Short: "List folder entries",
-	Long:  `List entries in a project folder.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		folder, err := client.GetFolder(
-			ctx,
-			args[0],
-			api.Auth{
-				Token: authViper.GetString("token"),
-			})
-		if err != nil {
-			cmd.Fatal(err)
-		}
-
-		rows := make([][]string, len(folder.Entries))
-		for i, e := range folder.Entries {
-			rows[i] = []string{
-				e.Path, strconv.Itoa(int(e.Size)), strconv.FormatBool(e.IsDir),
-			}
-		}
-
-		cmd.RenderTable([]string{"path", "size", "dir"}, rows)
-	},
-}
-
 var lsFoldersCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
@@ -129,38 +78,77 @@ var lsFoldersCmd = &cobra.Command{
 	Short: "List folders",
 	Long:  `List project folders.`,
 	Run: func(c *cobra.Command, args []string) {
-		//lsFiles()
+		lsFolders()
 	},
 }
 
-//func lsFolders() {
-//	projectID := configViper.GetString("id")
-//	if projectID == "" {
-//		cmd.Fatal(errors.New("not a project directory"))
-//	}
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-//	defer cancel()
-//	files, err := client.ListFiles(
-//		ctx,
-//		configViper.GetString("id"),
-//		api.Auth{
-//			Token: authViper.GetString("token"),
-//		})
-//	if err != nil {
-//		cmd.Fatal(err)
-//	}
-//
-//	if len(files.List) > 0 {
-//		data := make([][]string, len(files.List))
-//		for i, f := range files.List {
-//			data[i] = []string{f.Name, f.Path}
-//		}
-//		cmd.RenderTable([]string{"name", "path"}, data)
-//	}
-//
-//	cmd.Message("Found %d files", aurora.White(len(files.List)).Bold())
-//}
+func lsFolders() {
+	projectID := configViper.GetString("id")
+	if projectID == "" {
+		cmd.Fatal(errors.New("not a project directory"))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	folders, err := client.ListFolders(
+		ctx,
+		configViper.GetString("id"),
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if len(folders.List) > 0 {
+		data := make([][]string, len(folders.List))
+		for i, f := range folders.List {
+			data[i] = []string{f.Name, f.Path}
+		}
+		cmd.RenderTable([]string{"name", "path"}, data)
+	}
+
+	cmd.Message("Found %d folders", aurora.White(len(folders.List)).Bold())
+}
+
+var inspectFolderCmd = &cobra.Command{
+	Use:   "inspect",
+	Short: "Display folder information",
+	Long:  `Display detailed information about a project folder (interactive).`,
+	Run: func(c *cobra.Command, args []string) {
+		projectID := configViper.GetString("id")
+		if projectID == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		selected := selectFolder("Select folder", aurora.Sprintf(
+			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")),
+			projectID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		folder, err := client.GetFolder(
+			ctx,
+			selected.Name,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.RenderTable(
+			[]string{"name", "id", "path", "public", "files", "created"},
+			[][]string{{
+				folder.Name,
+				folder.ID,
+				folder.Path,
+				strconv.FormatBool(folder.Public),
+				strconv.Itoa(len(folder.Entries)),
+				strconv.Itoa(int(folder.Created)),
+			}})
+	},
+}
 
 var rmFolderCmd = &cobra.Command{
 	Use: "rm",
@@ -170,65 +158,61 @@ var rmFolderCmd = &cobra.Command{
 	Short: "Remove a folder",
 	Long:  `Remove a project folder (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
-		//projectID := configViper.GetString("id")
-		//if projectID == "" {
-		//	cmd.Fatal(errors.New("not a project directory"))
-		//}
-		//
-		//selected := selectFile("Remove file", aurora.Sprintf(
-		//	aurora.BrightBlack("> Removing file {{ .Name | white | bold }}")),
-		//	projectID)
-		//pid, err := cid.Parse(selected.Path)
-		//if err != nil {
-		//	cmd.Fatal(err)
-		//}
-		//
-		//ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		//defer cancel()
-		//if err := client.RemoveFile(
-		//	ctx,
-		//	path.IpfsPath(pid),
-		//	api.Auth{
-		//		Token: authViper.GetString("token"),
-		//	}); err != nil {
-		//	cmd.Fatal(err)
-		//}
-		//
-		//cmd.Success("Removed file %s", aurora.White(selected.Name).Bold())
+		projectID := configViper.GetString("id")
+		if projectID == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		selected := selectFolder("Remove folder", aurora.Sprintf(
+			aurora.BrightBlack("> Removing folder {{ .Name | white | bold }}")),
+			projectID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.RemoveFolder(
+			ctx,
+			selected.Name,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			}); err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.Success("Removed folder %s", aurora.White(selected.Name).Bold())
 	},
 }
 
-//func selectFolder(label, successMsg, projID string) *pb.GetFileReply {
-//	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-//	defer cancel()
-//	files, err := client.ListFiles(
-//		ctx,
-//		projID,
-//		api.Auth{
-//			Token: authViper.GetString("token"),
-//		})
-//	if err != nil {
-//		cmd.Fatal(err)
-//	}
-//
-//	if len(files.List) == 0 {
-//		cmd.End("You don't have any files!")
-//	}
-//
-//	prompt := promptui.Select{
-//		Label: label,
-//		Items: files.List,
-//		Templates: &promptui.SelectTemplates{
-//			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
-//			Inactive: `{{ .Name | faint }}`,
-//			Details:  `{{ "(Path:" | faint }} {{ .Path | faint }}{{ ")" | faint }}`,
-//			Selected: successMsg,
-//		},
-//	}
-//	index, _, err := prompt.Run()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	return files.List[index]
-//}
+func selectFolder(label, successMsg, projID string) *pb.GetFolderReply {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	folders, err := client.ListFolders(
+		ctx,
+		projID,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if len(folders.List) == 0 {
+		cmd.End("You don't have any folders!")
+	}
+
+	prompt := promptui.Select{
+		Label: label,
+		Items: folders.List,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Name | faint }}`,
+			Details:  `{{ "(Path:" | faint }} {{ .Path | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return folders.List[index]
+}

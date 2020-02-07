@@ -117,7 +117,6 @@ var lsCmd = &cobra.Command{
 	},
 }
 
-// @todo: Display something more meaningful when the info is available, e.g., Filecoin and sync info.
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Display project information",
