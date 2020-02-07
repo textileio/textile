@@ -922,7 +922,7 @@ func TestClient_GetFile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("get file should succeed: %v", err)
 		}
-		if file.Name != "file1.jpg" {
+		if !strings.HasSuffix(file.Path, "file1.jpg") {
 			t.Fatal("got bad name from get file")
 		}
 	})
