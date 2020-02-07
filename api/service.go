@@ -921,19 +921,15 @@ func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, fileName := parsePath(req.Path)
+	folderName, _ := parsePath(req.Path)
 	folder, err := s.getFolderWithScope(ctx, folderName, scope)
 	if err != nil {
 		return nil, err
 	}
 	folderPath := path.New(folder.Path)
-	fileBase := strings.TrimSuffix(req.Path, "/"+fileName)
-	base, err := filePathToIPFSPath(fileBase, folderName, folderPath)
-	if err != nil {
-		return nil, err
-	}
+	fileName := strings.TrimPrefix(req.Path, folderName+"/")
 
-	dirpth, err := s.ipfsClient.Object().RmLink(ctx, base, fileName)
+	dirpth, err := s.ipfsClient.Object().RmLink(ctx, folderPath, fileName)
 	if err != nil {
 		return nil, err
 	}
