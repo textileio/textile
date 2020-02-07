@@ -705,11 +705,6 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 	folderPath := path.New(folder.Path)
-	fileBase := strings.TrimSuffix(filePath, "/"+fileName)
-	base, err := filePathToIPFSPath(fileBase, folderName, folderPath)
-	if err != nil {
-		return err
-	}
 
 	sendEvent := func(event *pb.AddFileReply_Event) error {
 		return server.Send(&pb.AddFileReply{
@@ -789,19 +784,8 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
-	for {
-		if base.IsValid() != nil {
-			return fmt.Errorf("unable to find an existing parent directory")
-		}
-		if _, err := s.ipfsClient.Unixfs().Get(server.Context(), base); err == nil {
-			break
-		}
-		fileName = filepath.Join(filepath.Base(base.String()), fileName)
-		base = path.New(filepath.Dir(base.String()))
-	}
-
 	dirpth, err := s.ipfsClient.Object().
-		AddLink(server.Context(), base, fileName, pth, options.Object.Create(true))
+		AddLink(server.Context(), folderPath, fileName, pth, options.Object.Create(true))
 	if err != nil {
 		return err
 	}
@@ -825,14 +809,12 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 
 func parsePath(pth string) (folder, name string) {
 	pth = strings.TrimPrefix(pth, "/")
-	folder = strings.Split(pth, "/")[0]
-	name = filepath.Base(pth)
+	parts := strings.Split(pth, "/")
+	folder = parts[0]
+	if len(parts) > 1 {
+		name = filepath.Join(parts[1:]...)
+	}
 	return
-}
-
-func filePathToIPFSPath(filePath, folderName string, folderPath path.Path) (path.Path, error) {
-	pth := path.New(strings.Replace(filePath, folderName, folderPath.String(), 1))
-	return pth, pth.IsValid()
 }
 
 // GetFile handles a get file request.
@@ -848,8 +830,8 @@ func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetF
 	if err != nil {
 		return nil, err
 	}
-	pth, err := filePathToIPFSPath(req.Path, folderName, path.New(folder.Path))
-	if err != nil {
+	pth := path.New(filepath.Join(folder.Path, fileName))
+	if err = pth.IsValid(); err != nil {
 		return nil, err
 	}
 
@@ -865,7 +847,6 @@ func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetF
 	}
 
 	return &pb.GetFileReply{
-		Name: fileName,
 		Path: pth.String(),
 		Size: size,
 	}, nil
@@ -879,13 +860,13 @@ func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) e
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, _ := parsePath(req.Path)
+	folderName, fileName := parsePath(req.Path)
 	folder, err := s.getFolderWithScope(server.Context(), folderName, scope)
 	if err != nil {
 		return err
 	}
-	pth, err := filePathToIPFSPath(req.Path, folderName, path.New(folder.Path))
-	if err != nil {
+	pth := path.New(filepath.Join(folder.Path, fileName))
+	if err = pth.IsValid(); err != nil {
 		return err
 	}
 
@@ -921,13 +902,12 @@ func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, _ := parsePath(req.Path)
+	folderName, fileName := parsePath(req.Path)
 	folder, err := s.getFolderWithScope(ctx, folderName, scope)
 	if err != nil {
 		return nil, err
 	}
 	folderPath := path.New(folder.Path)
-	fileName := strings.TrimPrefix(req.Path, folderName+"/")
 
 	dirpth, err := s.ipfsClient.Object().RmLink(ctx, folderPath, fileName)
 	if err != nil {

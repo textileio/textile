@@ -215,7 +215,6 @@ message GetFileRequest {
 }
 
 message GetFileReply {
-    string name = 1;
     string path = 2;
     int64 size = 3;
 }
