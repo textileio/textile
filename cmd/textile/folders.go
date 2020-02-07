@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
+	"strconv"
 
-	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
@@ -14,89 +12,128 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(filesCmd)
-	filesCmd.AddCommand(addFileCmd, lsFilesCmd, rmFileCmd)
+	rootCmd.AddCommand(foldersCmd)
+	filesCmd.AddCommand(addFolderCmd, getFolderCmd, lsFolderEntriesCmd, lsFoldersCmd, rmFolderCmd)
+
+	addFolderCmd.Flags().Bool(
+		"public",
+		false,
+		"Make folder public")
 }
 
-var filesCmd = &cobra.Command{
-	Use: "files",
+var foldersCmd = &cobra.Command{
+	Use: "folders",
 	Aliases: []string{
-		"file",
+		"folder",
 	},
-	Short: "Manage project files",
-	Long:  `Manage your project's stored files.`,
+	Short: "Manage project folders",
+	Long:  `Manage your project's stored folders.`,
 	Run: func(c *cobra.Command, args []string) {
-		//lsFiles()
+		//lsFolders()
 	},
 }
 
-var addFileCmd = &cobra.Command{
+var addFolderCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add a file",
-	Long:  `Add a file to a project folder.`,
-	Args:  cobra.ExactArgs(2),
+	Short: "Add a new folder",
+	Long:  `Add a new project folder.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		projectID := configViper.GetString("id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
-		file, err := os.Open(args[0])
+		public, err := c.Flags().GetBool("public")
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		defer file.Close()
 
-		info, err := file.Stat()
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		filePath := filepath.Join(args[1], filepath.Base(info.Name()))
-
-		bar := pbar.New(int(info.Size()))
-		bar.SetTemplate(pbar.Full)
-		bar.Set(pbar.Bytes, true)
-		bar.Set(pbar.SIBytesPrefix, true)
-		bar.Start()
-		progress := make(chan int64)
-		go func() {
-			for up := range progress {
-				bar.SetCurrent(up)
-			}
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		pth, err := client.AddFile(
+		folder, err := client.AddFolder(
 			ctx,
-			filePath,
-			file,
+			projectID,
+			args[0],
+			public,
 			api.Auth{
 				Token: authViper.GetString("token"),
-			},
-			api.AddWithProgress(progress))
+			})
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		bar.Finish()
 
-		cmd.Success("Added file at path: %s", aurora.White(pth.String()).Bold())
+		cmd.Success("Added folder at path: %s", aurora.White(folder.Path).Bold())
 	},
 }
 
-var lsFilesCmd = &cobra.Command{
+var getFolderCmd = &cobra.Command{
+	Use:   "get",
+	Short: "Get a folder",
+	Long:  `Get a project folder.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		folder, err := client.GetFolder(
+			ctx,
+			args[0],
+			api.Auth{
+				Token: authViper.GetString("token"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.RenderTable(
+			[]string{"name", "id", "path", "public", "entries", "created"},
+			[][]string{{folder.Name, folder.ID, folder.Path, strconv.FormatBool(folder.Public),
+				strconv.Itoa(len(folder.Entries)), strconv.Itoa(int(folder.Created))}})
+	},
+}
+
+var lsFolderEntriesCmd = &cobra.Command{
+	Use:   "entries",
+	Short: "List folder entries",
+	Long:  `List entries in a project folder.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		folder, err := client.GetFolder(
+			ctx,
+			args[0],
+			api.Auth{
+				Token: authViper.GetString("token"),
+			})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		rows := make([][]string, len(folder.Entries))
+		for i, e := range folder.Entries {
+			rows[i] = []string{
+				e.Path, strconv.Itoa(int(e.Size)), strconv.FormatBool(e.IsDir),
+			}
+		}
+
+		cmd.RenderTable([]string{"path", "size", "dir"}, rows)
+	},
+}
+
+var lsFoldersCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
 	},
-	Short: "List files",
-	Long:  `List files in a project folder.`,
+	Short: "List folders",
+	Long:  `List project folders.`,
 	Run: func(c *cobra.Command, args []string) {
 		//lsFiles()
 	},
 }
 
-//func lsFiles() {
+//func lsFolders() {
 //	projectID := configViper.GetString("id")
 //	if projectID == "" {
 //		cmd.Fatal(errors.New("not a project directory"))
@@ -125,13 +162,13 @@ var lsFilesCmd = &cobra.Command{
 //	cmd.Message("Found %d files", aurora.White(len(files.List)).Bold())
 //}
 
-var rmFileCmd = &cobra.Command{
+var rmFolderCmd = &cobra.Command{
 	Use: "rm",
 	Aliases: []string{
 		"remove",
 	},
-	Short: "Remove a file",
-	Long:  `Remove a file from a project folder (interactive).`,
+	Short: "Remove a folder",
+	Long:  `Remove a project folder (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		//projectID := configViper.GetString("id")
 		//if projectID == "" {
@@ -161,7 +198,7 @@ var rmFileCmd = &cobra.Command{
 	},
 }
 
-//func selectFile(label, successMsg, projID string) *pb.GetFileReply {
+//func selectFolder(label, successMsg, projID string) *pb.GetFileReply {
 //	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 //	defer cancel()
 //	files, err := client.ListFiles(

@@ -26,7 +26,6 @@ var (
 	dsAppUsersKey  = datastore.NewKey("/appusers")
 
 	dsFoldersKey = datastore.NewKey("/folders")
-	dsFilesKey   = datastore.NewKey("/files")
 )
 
 type Collection interface {
@@ -51,7 +50,6 @@ type Collections struct {
 	AppUsers  *AppUsers
 
 	Folders *Folders
-	Files   *Files
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -75,7 +73,6 @@ func NewCollections(
 		AppTokens: &AppTokens{threads: threads, token: token},
 		AppUsers:  &AppUsers{threads: threads, token: token},
 
-		Files:   &Files{threads: threads, token: token},
 		Folders: &Folders{threads: threads, token: token},
 	}
 	ctx = AuthCtx(ctx, c.token)
@@ -112,10 +109,6 @@ func NewCollections(
 	if err != nil {
 		return nil, err
 	}
-	c.Files.storeID, err = c.addCollection(ctx, c.Files, dsFilesKey)
-	if err != nil {
-		return nil, err
-	}
 
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
@@ -125,7 +118,6 @@ func NewCollections(
 	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
 	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("folders store: %s", c.Folders.GetStoreID().String())
-	log.Debugf("files store: %s", c.Files.GetStoreID().String())
 
 	return c, nil
 }
