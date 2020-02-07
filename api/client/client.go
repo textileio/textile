@@ -268,10 +268,7 @@ func (c *Client) AddFile(
 					}
 					waitCh <- addFileResult{path: path.IpfsPath(id)}
 				} else if args.Progress != nil {
-					select {
-					case args.Progress <- payload.Event.Bytes:
-					default:
-					}
+					args.Progress <- payload.Event.Bytes
 				}
 			case *pb.AddFileReply_Error:
 				waitCh <- addFileResult{err: fmt.Errorf(payload.Error)}
@@ -310,35 +307,42 @@ func (c *Client) AddFile(
 	return res.path, res.err
 }
 
-// GetFileOptions defines options for getting a file.
-type GetFileOptions struct {
+// GetFile returns a file by its path.
+func (c *Client) GetFile(ctx context.Context, filePath string, auth Auth) (*pb.GetFileReply, error) {
+	return c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
+		Path: filePath,
+	})
+}
+
+// CatFileOptions defines options for getting a file.
+type CatFileOptions struct {
 	Progress chan<- int64
 }
 
-// GetFileOption specifies an option for getting a file.
-type GetFileOption func(*GetFileOptions)
+// CatFileOption specifies an option for getting a file.
+type CatFileOption func(*CatFileOptions)
 
-// GetWithProgress writes progress updates to the given channel.
-func GetWithProgress(ch chan<- int64) GetFileOption {
-	return func(args *GetFileOptions) {
+// CatWithProgress writes progress updates to the given channel.
+func CatWithProgress(ch chan<- int64) CatFileOption {
+	return func(args *CatFileOptions) {
 		args.Progress = ch
 	}
 }
 
-// GetFile returns a file by its path.
-func (c *Client) GetFile(
+// CatFile cats a file by its path.
+func (c *Client) CatFile(
 	ctx context.Context,
 	filePath string,
 	writer io.Writer,
 	auth Auth,
-	opts ...GetFileOption,
+	opts ...CatFileOption,
 ) error {
-	args := &GetFileOptions{}
+	args := &CatFileOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
 
-	stream, err := c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
+	stream, err := c.c.CatFile(authCtx(ctx, auth), &pb.CatFileRequest{
 		Path: filePath,
 	})
 	if err != nil {
@@ -359,10 +363,7 @@ func (c *Client) GetFile(
 		}
 		written += int64(n)
 		if args.Progress != nil {
-			select {
-			case args.Progress <- written:
-			default:
-			}
+			args.Progress <- written
 		}
 	}
 	return nil

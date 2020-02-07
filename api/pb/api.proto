@@ -215,6 +215,16 @@ message GetFileRequest {
 }
 
 message GetFileReply {
+    string name = 1;
+    string path = 2;
+    int64 size = 3;
+}
+
+message CatFileRequest {
+    string path = 1;
+}
+
+message CatFileReply {
     bytes chunk = 1;
 }
 
@@ -252,6 +262,7 @@ service API {
     rpc RemoveFolder (RemoveFolderRequest) returns (RemoveFolderReply) {}
 
     rpc AddFile (stream AddFileRequest) returns (stream AddFileReply) {}
-    rpc GetFile (GetFileRequest) returns (stream GetFileReply) {}
+    rpc GetFile (GetFileRequest) returns (GetFileReply) {}
+    rpc CatFile (CatFileRequest) returns (stream CatFileReply) {}
     rpc RemoveFile (RemoveFileRequest) returns (RemoveFileReply) {}
 }

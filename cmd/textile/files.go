@@ -16,7 +16,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(filesCmd)
-	filesCmd.AddCommand(addFileCmd, lsFilesCmd, rmFileCmd)
+	filesCmd.AddCommand(addFileCmd, catFileCmd, lsFilesCmd, rmFileCmd)
 }
 
 var filesCmd = &cobra.Command{
@@ -83,6 +83,63 @@ var addFileCmd = &cobra.Command{
 		bar.Finish()
 
 		cmd.Success("Added file at path: %s", aurora.White(pth.String()).Bold())
+	},
+}
+
+var catFileCmd = &cobra.Command{
+	Use:   "cat",
+	Short: "Cat a file",
+	Long:  `Cat a file from a project folder by path.`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(c *cobra.Command, args []string) {
+		projectID := configViper.GetString("id")
+		if projectID == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		info, err := client.GetFile(ctx, args[0], api.Auth{
+			Token: authViper.GetString("token"),
+		})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		file, err := os.Create(args[1])
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		defer file.Close()
+
+		bar := pbar.New(int(info.Size))
+		bar.SetTemplate(pbar.Full)
+		bar.Set(pbar.Bytes, true)
+		bar.Set(pbar.SIBytesPrefix, true)
+		bar.Start()
+		progress := make(chan int64)
+		go func() {
+			for up := range progress {
+				bar.SetCurrent(up)
+			}
+		}()
+
+		ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
+		defer cancel2()
+		if err = client.CatFile(
+			ctx2,
+			args[0],
+			file,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			},
+			api.CatWithProgress(progress)); err != nil {
+			cmd.Fatal(err)
+		}
+		bar.SetCurrent(info.Size)
+		bar.Finish()
+
+		cmd.Success("Wrote file to: %s", aurora.White(args[1]).Bold())
 	},
 }
 

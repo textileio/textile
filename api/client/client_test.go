@@ -917,6 +917,42 @@ func TestClient_GetFile(t *testing.T) {
 	}
 
 	t.Run("test get file", func(t *testing.T) {
+		file, err := client.GetFile(
+			context.Background(), "myfolder/file1.jpg", Auth{Token: user.SessionID})
+		if err != nil {
+			t.Fatalf("get file should succeed: %v", err)
+		}
+		if file.Name != "file1.jpg" {
+			t.Fatal("got bad name from get file")
+		}
+	})
+}
+
+func TestClient_CatFile(t *testing.T) {
+	t.Parallel()
+	conf, client, done := setup(t)
+	defer done()
+
+	user := login(t, client, conf, "jon@doe.com")
+	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = client.AddFolder(
+		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open("testdata/file1.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if _, err := client.AddFile(
+		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test cat file", func(t *testing.T) {
 		file, err := ioutil.TempFile("", "")
 		if err != nil {
 			t.Fatal(err)
@@ -929,16 +965,16 @@ func TestClient_GetFile(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		if err := client.GetFile(
+		if err := client.CatFile(
 			context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID},
-			GetWithProgress(progress)); err != nil {
-			t.Fatalf("get file should succeed: %v", err)
+			CatWithProgress(progress)); err != nil {
+			t.Fatalf("cat file should succeed: %v", err)
 		}
 		info, err := file.Stat()
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("got file with size %d", info.Size())
+		t.Logf("wrote file with size %d", info.Size())
 	})
 }
 

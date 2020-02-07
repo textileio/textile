@@ -836,8 +836,44 @@ func filePathToIPFSPath(filePath, folderName string, folderPath path.Path) (path
 }
 
 // GetFile handles a get file request.
-func (s *service) GetFile(req *pb.GetFileRequest, server pb.API_GetFileServer) error {
+func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetFileReply, error) {
 	log.Debugf("received get file request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	folderName, fileName := parsePath(req.Path)
+	folder, err := s.getFolderWithScope(ctx, folderName, scope)
+	if err != nil {
+		return nil, err
+	}
+	pth, err := filePathToIPFSPath(req.Path, folderName, path.New(folder.Path))
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
+	if err != nil {
+		return nil, err
+	}
+	defer node.Close()
+
+	size, err := node.Size()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetFileReply{
+		Name: fileName,
+		Path: pth.String(),
+		Size: size,
+	}, nil
+}
+
+// CatFile handles a cat file request.
+func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) error {
+	log.Debugf("received cat file request")
 
 	scope, ok := server.Context().Value(reqKey("scope")).(string)
 	if !ok {
@@ -868,7 +904,7 @@ func (s *service) GetFile(req *pb.GetFileRequest, server pb.API_GetFileServer) e
 		} else if err != nil {
 			return err
 		}
-		if err := server.Send(&pb.GetFileReply{
+		if err := server.Send(&pb.CatFileReply{
 			Chunk: buf[:n],
 		}); err != nil {
 			return err
