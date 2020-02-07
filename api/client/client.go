@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -15,7 +13,7 @@ import (
 )
 
 const (
-	// chunkSize for store requests.
+	// chunkSize for add file requests.
 	chunkSize = 1024
 )
 
@@ -171,6 +169,38 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
+// AddFolder adds a folder by name.
+func (c *Client) AddFolder(ctx context.Context, projID, name string, public bool, auth Auth) (*pb.AddFolderReply, error) {
+	return c.c.AddFolder(authCtx(ctx, auth), &pb.AddFolderRequest{
+		Name:      name,
+		Public:    public,
+		ProjectID: projID,
+	})
+}
+
+// GetFolder returns a folder by name.
+func (c *Client) GetFolder(ctx context.Context, name string, auth Auth) (*pb.GetFolderReply, error) {
+	return c.c.GetFolder(authCtx(ctx, auth), &pb.GetFolderRequest{
+		Name: name,
+	})
+}
+
+// ListFolders returns a list of folders under the current project.
+func (c *Client) ListFolders(ctx context.Context, projID string, auth Auth) (*pb.ListFoldersReply, error) {
+	return c.c.ListFolders(authCtx(ctx, auth), &pb.ListFoldersRequest{
+		ProjectID: projID,
+	})
+}
+
+// RemoveFolder removes a folder by name.
+// Additionally, folder files will be unpinned from the current folder root.
+func (c *Client) RemoveFolder(ctx context.Context, name string, auth Auth) error {
+	_, err := c.c.RemoveFolder(authCtx(ctx, auth), &pb.RemoveFolderRequest{
+		Name: name,
+	})
+	return err
+}
+
 // AddFileOptions defines options for adding a file.
 type AddFileOptions struct {
 	Progress chan<- int64
@@ -179,8 +209,8 @@ type AddFileOptions struct {
 // AddFileOption specifies an option for adding a file.
 type AddFileOption func(*AddFileOptions)
 
-// WithProgress writes progress updates to the given channel.
-func WithProgress(ch chan<- int64) AddFileOption {
+// AddWithProgress writes progress updates to the given channel.
+func AddWithProgress(ch chan<- int64) AddFileOption {
 	return func(args *AddFileOptions) {
 		args.Progress = ch
 	}
@@ -192,10 +222,11 @@ type addFileResult struct {
 }
 
 // AddFile uploads a file to the project store.
+// The path under the folder will be created if it doesn't exist.
 func (c *Client) AddFile(
 	ctx context.Context,
-	projID string,
 	filePath string,
+	reader io.Reader,
 	auth Auth,
 	opts ...AddFileOption,
 ) (path.Resolved, error) {
@@ -203,11 +234,6 @@ func (c *Client) AddFile(
 	for _, opt := range opts {
 		opt(args)
 	}
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
 
 	stream, err := c.c.AddFile(authCtx(ctx, auth))
 	if err != nil {
@@ -216,8 +242,7 @@ func (c *Client) AddFile(
 	if err = stream.Send(&pb.AddFileRequest{
 		Payload: &pb.AddFileRequest_Header_{
 			Header: &pb.AddFileRequest_Header{
-				Name:      filepath.Base(file.Name()),
-				ProjectID: projID,
+				Path: filePath,
 			},
 		},
 	}); err != nil {
@@ -231,12 +256,11 @@ func (c *Client) AddFile(
 			rep, err := stream.Recv()
 			if err == io.EOF {
 				return
-			}
-			if err != nil {
+			} else if err != nil {
 				waitCh <- addFileResult{err: err}
 				return
 			}
-			switch payload := rep.GetPayload().(type) {
+			switch payload := rep.Payload.(type) {
 			case *pb.AddFileReply_Event_:
 				if payload.Event.Path != "" {
 					id, err := cid.Parse(payload.Event.Path)
@@ -246,10 +270,7 @@ func (c *Client) AddFile(
 					}
 					waitCh <- addFileResult{path: path.IpfsPath(id)}
 				} else if args.Progress != nil {
-					select {
-					case args.Progress <- payload.Event.Bytes:
-					default:
-					}
+					args.Progress <- payload.Event.Bytes
 				}
 			case *pb.AddFileReply_Error:
 				waitCh <- addFileResult{err: fmt.Errorf(payload.Error)}
@@ -263,7 +284,7 @@ func (c *Client) AddFile(
 
 	buf := make([]byte, chunkSize)
 	for {
-		n, err := file.Read(buf)
+		n, err := reader.Read(buf)
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -289,23 +310,71 @@ func (c *Client) AddFile(
 }
 
 // GetFile returns a file by its path.
-func (c *Client) GetFile(ctx context.Context, pth path.Resolved, auth Auth) (*pb.GetFileReply, error) {
+func (c *Client) GetFile(ctx context.Context, filePath string, auth Auth) (*pb.GetFileReply, error) {
 	return c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
-		Path: pth.String(),
+		Path: filePath,
 	})
 }
 
-// ListFiles returns a list of files under the current project.
-func (c *Client) ListFiles(ctx context.Context, projID string, auth Auth) (*pb.ListFilesReply, error) {
-	return c.c.ListFiles(authCtx(ctx, auth), &pb.ListFilesRequest{
-		ProjectID: projID,
-	})
+// CatFileOptions defines options for getting a file.
+type CatFileOptions struct {
+	Progress chan<- int64
 }
 
-// RemoveFile removes a file by ID.
-func (c *Client) RemoveFile(ctx context.Context, pth path.Resolved, auth Auth) error {
+// CatFileOption specifies an option for getting a file.
+type CatFileOption func(*CatFileOptions)
+
+// CatWithProgress writes progress updates to the given channel.
+func CatWithProgress(ch chan<- int64) CatFileOption {
+	return func(args *CatFileOptions) {
+		args.Progress = ch
+	}
+}
+
+// CatFile cats a file by its path.
+func (c *Client) CatFile(
+	ctx context.Context,
+	filePath string,
+	writer io.Writer,
+	auth Auth,
+	opts ...CatFileOption,
+) error {
+	args := &CatFileOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
+	stream, err := c.c.CatFile(authCtx(ctx, auth), &pb.CatFileRequest{
+		Path: filePath,
+	})
+	if err != nil {
+		return err
+	}
+
+	var written int64
+	for {
+		rep, err := stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		n, err := writer.Write(rep.Chunk)
+		if err != nil {
+			return err
+		}
+		written += int64(n)
+		if args.Progress != nil {
+			args.Progress <- written
+		}
+	}
+	return nil
+}
+
+// RemoveFile removes a file from a folder by name.
+func (c *Client) RemoveFile(ctx context.Context, filePath string, auth Auth) error {
 	_, err := c.c.RemoveFile(authCtx(ctx, auth), &pb.RemoveFileRequest{
-		Path: pth.String(),
+		Path: filePath,
 	})
 	return err
 }

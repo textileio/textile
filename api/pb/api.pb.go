@@ -1429,6 +1429,437 @@ func (m *RemoveAppTokenReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RemoveAppTokenReply proto.InternalMessageInfo
 
+type AddFolderRequest struct {
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Public               bool     `protobuf:"varint,2,opt,name=public,proto3" json:"public,omitempty"`
+	ProjectID            string   `protobuf:"bytes,3,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *AddFolderRequest) Reset()         { *m = AddFolderRequest{} }
+func (m *AddFolderRequest) String() string { return proto.CompactTextString(m) }
+func (*AddFolderRequest) ProtoMessage()    {}
+func (*AddFolderRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{34}
+}
+
+func (m *AddFolderRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AddFolderRequest.Unmarshal(m, b)
+}
+func (m *AddFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AddFolderRequest.Marshal(b, m, deterministic)
+}
+func (m *AddFolderRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AddFolderRequest.Merge(m, src)
+}
+func (m *AddFolderRequest) XXX_Size() int {
+	return xxx_messageInfo_AddFolderRequest.Size(m)
+}
+func (m *AddFolderRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AddFolderRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AddFolderRequest proto.InternalMessageInfo
+
+func (m *AddFolderRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *AddFolderRequest) GetPublic() bool {
+	if m != nil {
+		return m.Public
+	}
+	return false
+}
+
+func (m *AddFolderRequest) GetProjectID() string {
+	if m != nil {
+		return m.ProjectID
+	}
+	return ""
+}
+
+type AddFolderReply struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *AddFolderReply) Reset()         { *m = AddFolderReply{} }
+func (m *AddFolderReply) String() string { return proto.CompactTextString(m) }
+func (*AddFolderReply) ProtoMessage()    {}
+func (*AddFolderReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{35}
+}
+
+func (m *AddFolderReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AddFolderReply.Unmarshal(m, b)
+}
+func (m *AddFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AddFolderReply.Marshal(b, m, deterministic)
+}
+func (m *AddFolderReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AddFolderReply.Merge(m, src)
+}
+func (m *AddFolderReply) XXX_Size() int {
+	return xxx_messageInfo_AddFolderReply.Size(m)
+}
+func (m *AddFolderReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_AddFolderReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AddFolderReply proto.InternalMessageInfo
+
+func (m *AddFolderReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *AddFolderReply) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+type GetFolderRequest struct {
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetFolderRequest) Reset()         { *m = GetFolderRequest{} }
+func (m *GetFolderRequest) String() string { return proto.CompactTextString(m) }
+func (*GetFolderRequest) ProtoMessage()    {}
+func (*GetFolderRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{36}
+}
+
+func (m *GetFolderRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetFolderRequest.Unmarshal(m, b)
+}
+func (m *GetFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetFolderRequest.Marshal(b, m, deterministic)
+}
+func (m *GetFolderRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFolderRequest.Merge(m, src)
+}
+func (m *GetFolderRequest) XXX_Size() int {
+	return xxx_messageInfo_GetFolderRequest.Size(m)
+}
+func (m *GetFolderRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFolderRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetFolderRequest proto.InternalMessageInfo
+
+func (m *GetFolderRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+type GetFolderReply struct {
+	ID                   string                  `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Path                 string                  `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Name                 string                  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Public               bool                    `protobuf:"varint,4,opt,name=public,proto3" json:"public,omitempty"`
+	ProjectID            string                  `protobuf:"bytes,5,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	Created              int64                   `protobuf:"varint,6,opt,name=created,proto3" json:"created,omitempty"`
+	Entries              []*GetFolderReply_Entry `protobuf:"bytes,7,rep,name=entries,proto3" json:"entries,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
+	XXX_unrecognized     []byte                  `json:"-"`
+	XXX_sizecache        int32                   `json:"-"`
+}
+
+func (m *GetFolderReply) Reset()         { *m = GetFolderReply{} }
+func (m *GetFolderReply) String() string { return proto.CompactTextString(m) }
+func (*GetFolderReply) ProtoMessage()    {}
+func (*GetFolderReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{37}
+}
+
+func (m *GetFolderReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetFolderReply.Unmarshal(m, b)
+}
+func (m *GetFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetFolderReply.Marshal(b, m, deterministic)
+}
+func (m *GetFolderReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFolderReply.Merge(m, src)
+}
+func (m *GetFolderReply) XXX_Size() int {
+	return xxx_messageInfo_GetFolderReply.Size(m)
+}
+func (m *GetFolderReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFolderReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetFolderReply proto.InternalMessageInfo
+
+func (m *GetFolderReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *GetFolderReply) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+func (m *GetFolderReply) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetFolderReply) GetPublic() bool {
+	if m != nil {
+		return m.Public
+	}
+	return false
+}
+
+func (m *GetFolderReply) GetProjectID() string {
+	if m != nil {
+		return m.ProjectID
+	}
+	return ""
+}
+
+func (m *GetFolderReply) GetCreated() int64 {
+	if m != nil {
+		return m.Created
+	}
+	return 0
+}
+
+func (m *GetFolderReply) GetEntries() []*GetFolderReply_Entry {
+	if m != nil {
+		return m.Entries
+	}
+	return nil
+}
+
+type GetFolderReply_Entry struct {
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Size                 int64    `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	IsDir                bool     `protobuf:"varint,3,opt,name=isDir,proto3" json:"isDir,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetFolderReply_Entry) Reset()         { *m = GetFolderReply_Entry{} }
+func (m *GetFolderReply_Entry) String() string { return proto.CompactTextString(m) }
+func (*GetFolderReply_Entry) ProtoMessage()    {}
+func (*GetFolderReply_Entry) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{37, 0}
+}
+
+func (m *GetFolderReply_Entry) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetFolderReply_Entry.Unmarshal(m, b)
+}
+func (m *GetFolderReply_Entry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetFolderReply_Entry.Marshal(b, m, deterministic)
+}
+func (m *GetFolderReply_Entry) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFolderReply_Entry.Merge(m, src)
+}
+func (m *GetFolderReply_Entry) XXX_Size() int {
+	return xxx_messageInfo_GetFolderReply_Entry.Size(m)
+}
+func (m *GetFolderReply_Entry) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFolderReply_Entry.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetFolderReply_Entry proto.InternalMessageInfo
+
+func (m *GetFolderReply_Entry) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+func (m *GetFolderReply_Entry) GetSize() int64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
+}
+
+func (m *GetFolderReply_Entry) GetIsDir() bool {
+	if m != nil {
+		return m.IsDir
+	}
+	return false
+}
+
+type ListFoldersRequest struct {
+	ProjectID            string   `protobuf:"bytes,1,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListFoldersRequest) Reset()         { *m = ListFoldersRequest{} }
+func (m *ListFoldersRequest) String() string { return proto.CompactTextString(m) }
+func (*ListFoldersRequest) ProtoMessage()    {}
+func (*ListFoldersRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{38}
+}
+
+func (m *ListFoldersRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListFoldersRequest.Unmarshal(m, b)
+}
+func (m *ListFoldersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListFoldersRequest.Marshal(b, m, deterministic)
+}
+func (m *ListFoldersRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListFoldersRequest.Merge(m, src)
+}
+func (m *ListFoldersRequest) XXX_Size() int {
+	return xxx_messageInfo_ListFoldersRequest.Size(m)
+}
+func (m *ListFoldersRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListFoldersRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListFoldersRequest proto.InternalMessageInfo
+
+func (m *ListFoldersRequest) GetProjectID() string {
+	if m != nil {
+		return m.ProjectID
+	}
+	return ""
+}
+
+type ListFoldersReply struct {
+	List                 []*GetFolderReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *ListFoldersReply) Reset()         { *m = ListFoldersReply{} }
+func (m *ListFoldersReply) String() string { return proto.CompactTextString(m) }
+func (*ListFoldersReply) ProtoMessage()    {}
+func (*ListFoldersReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{39}
+}
+
+func (m *ListFoldersReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListFoldersReply.Unmarshal(m, b)
+}
+func (m *ListFoldersReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListFoldersReply.Marshal(b, m, deterministic)
+}
+func (m *ListFoldersReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListFoldersReply.Merge(m, src)
+}
+func (m *ListFoldersReply) XXX_Size() int {
+	return xxx_messageInfo_ListFoldersReply.Size(m)
+}
+func (m *ListFoldersReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListFoldersReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListFoldersReply proto.InternalMessageInfo
+
+func (m *ListFoldersReply) GetList() []*GetFolderReply {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type RemoveFolderRequest struct {
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveFolderRequest) Reset()         { *m = RemoveFolderRequest{} }
+func (m *RemoveFolderRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveFolderRequest) ProtoMessage()    {}
+func (*RemoveFolderRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{40}
+}
+
+func (m *RemoveFolderRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveFolderRequest.Unmarshal(m, b)
+}
+func (m *RemoveFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveFolderRequest.Marshal(b, m, deterministic)
+}
+func (m *RemoveFolderRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveFolderRequest.Merge(m, src)
+}
+func (m *RemoveFolderRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveFolderRequest.Size(m)
+}
+func (m *RemoveFolderRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveFolderRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveFolderRequest proto.InternalMessageInfo
+
+func (m *RemoveFolderRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+type RemoveFolderReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveFolderReply) Reset()         { *m = RemoveFolderReply{} }
+func (m *RemoveFolderReply) String() string { return proto.CompactTextString(m) }
+func (*RemoveFolderReply) ProtoMessage()    {}
+func (*RemoveFolderReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{41}
+}
+
+func (m *RemoveFolderReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveFolderReply.Unmarshal(m, b)
+}
+func (m *RemoveFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveFolderReply.Marshal(b, m, deterministic)
+}
+func (m *RemoveFolderReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveFolderReply.Merge(m, src)
+}
+func (m *RemoveFolderReply) XXX_Size() int {
+	return xxx_messageInfo_RemoveFolderReply.Size(m)
+}
+func (m *RemoveFolderReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveFolderReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveFolderReply proto.InternalMessageInfo
+
 type AddFileRequest struct {
 	// Types that are valid to be assigned to Payload:
 	//	*AddFileRequest_Header_
@@ -1443,7 +1874,7 @@ func (m *AddFileRequest) Reset()         { *m = AddFileRequest{} }
 func (m *AddFileRequest) String() string { return proto.CompactTextString(m) }
 func (*AddFileRequest) ProtoMessage()    {}
 func (*AddFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{34}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{42}
 }
 
 func (m *AddFileRequest) XXX_Unmarshal(b []byte) error {
@@ -1510,8 +1941,7 @@ func (*AddFileRequest) XXX_OneofWrappers() []interface{} {
 }
 
 type AddFileRequest_Header struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	ProjectID            string   `protobuf:"bytes,2,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1521,7 +1951,7 @@ func (m *AddFileRequest_Header) Reset()         { *m = AddFileRequest_Header{} }
 func (m *AddFileRequest_Header) String() string { return proto.CompactTextString(m) }
 func (*AddFileRequest_Header) ProtoMessage()    {}
 func (*AddFileRequest_Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{34, 0}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{42, 0}
 }
 
 func (m *AddFileRequest_Header) XXX_Unmarshal(b []byte) error {
@@ -1542,16 +1972,9 @@ func (m *AddFileRequest_Header) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AddFileRequest_Header proto.InternalMessageInfo
 
-func (m *AddFileRequest_Header) GetName() string {
+func (m *AddFileRequest_Header) GetPath() string {
 	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *AddFileRequest_Header) GetProjectID() string {
-	if m != nil {
-		return m.ProjectID
+		return m.Path
 	}
 	return ""
 }
@@ -1570,7 +1993,7 @@ func (m *AddFileReply) Reset()         { *m = AddFileReply{} }
 func (m *AddFileReply) String() string { return proto.CompactTextString(m) }
 func (*AddFileReply) ProtoMessage()    {}
 func (*AddFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{35}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{43}
 }
 
 func (m *AddFileReply) XXX_Unmarshal(b []byte) error {
@@ -1650,7 +2073,7 @@ func (m *AddFileReply_Event) Reset()         { *m = AddFileReply_Event{} }
 func (m *AddFileReply_Event) String() string { return proto.CompactTextString(m) }
 func (*AddFileReply_Event) ProtoMessage()    {}
 func (*AddFileReply_Event) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{35, 0}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{43, 0}
 }
 
 func (m *AddFileReply_Event) XXX_Unmarshal(b []byte) error {
@@ -1710,7 +2133,7 @@ func (m *GetFileRequest) Reset()         { *m = GetFileRequest{} }
 func (m *GetFileRequest) String() string { return proto.CompactTextString(m) }
 func (*GetFileRequest) ProtoMessage()    {}
 func (*GetFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{36}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{44}
 }
 
 func (m *GetFileRequest) XXX_Unmarshal(b []byte) error {
@@ -1739,11 +2162,8 @@ func (m *GetFileRequest) GetPath() string {
 }
 
 type GetFileReply struct {
-	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Name                 string   `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	ProjectID            string   `protobuf:"bytes,4,opt,name=projectID,proto3" json:"projectID,omitempty"`
-	Created              int64    `protobuf:"varint,5,opt,name=created,proto3" json:"created,omitempty"`
+	Size                 int64    `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1753,7 +2173,7 @@ func (m *GetFileReply) Reset()         { *m = GetFileReply{} }
 func (m *GetFileReply) String() string { return proto.CompactTextString(m) }
 func (*GetFileReply) ProtoMessage()    {}
 func (*GetFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{37}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{45}
 }
 
 func (m *GetFileReply) XXX_Unmarshal(b []byte) error {
@@ -1774,13 +2194,6 @@ func (m *GetFileReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetFileReply proto.InternalMessageInfo
 
-func (m *GetFileReply) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
 func (m *GetFileReply) GetPath() string {
 	if m != nil {
 		return m.Path
@@ -1788,101 +2201,87 @@ func (m *GetFileReply) GetPath() string {
 	return ""
 }
 
-func (m *GetFileReply) GetName() string {
+func (m *GetFileReply) GetSize() int64 {
 	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *GetFileReply) GetProjectID() string {
-	if m != nil {
-		return m.ProjectID
-	}
-	return ""
-}
-
-func (m *GetFileReply) GetCreated() int64 {
-	if m != nil {
-		return m.Created
+		return m.Size
 	}
 	return 0
 }
 
-type ListFilesRequest struct {
-	ProjectID            string   `protobuf:"bytes,1,opt,name=projectID,proto3" json:"projectID,omitempty"`
+type CatFileRequest struct {
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListFilesRequest) Reset()         { *m = ListFilesRequest{} }
-func (m *ListFilesRequest) String() string { return proto.CompactTextString(m) }
-func (*ListFilesRequest) ProtoMessage()    {}
-func (*ListFilesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{38}
+func (m *CatFileRequest) Reset()         { *m = CatFileRequest{} }
+func (m *CatFileRequest) String() string { return proto.CompactTextString(m) }
+func (*CatFileRequest) ProtoMessage()    {}
+func (*CatFileRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{46}
 }
 
-func (m *ListFilesRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListFilesRequest.Unmarshal(m, b)
+func (m *CatFileRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CatFileRequest.Unmarshal(m, b)
 }
-func (m *ListFilesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListFilesRequest.Marshal(b, m, deterministic)
+func (m *CatFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CatFileRequest.Marshal(b, m, deterministic)
 }
-func (m *ListFilesRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListFilesRequest.Merge(m, src)
+func (m *CatFileRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CatFileRequest.Merge(m, src)
 }
-func (m *ListFilesRequest) XXX_Size() int {
-	return xxx_messageInfo_ListFilesRequest.Size(m)
+func (m *CatFileRequest) XXX_Size() int {
+	return xxx_messageInfo_CatFileRequest.Size(m)
 }
-func (m *ListFilesRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListFilesRequest.DiscardUnknown(m)
+func (m *CatFileRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CatFileRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListFilesRequest proto.InternalMessageInfo
+var xxx_messageInfo_CatFileRequest proto.InternalMessageInfo
 
-func (m *ListFilesRequest) GetProjectID() string {
+func (m *CatFileRequest) GetPath() string {
 	if m != nil {
-		return m.ProjectID
+		return m.Path
 	}
 	return ""
 }
 
-type ListFilesReply struct {
-	List                 []*GetFileReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+type CatFileReply struct {
+	Chunk                []byte   `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListFilesReply) Reset()         { *m = ListFilesReply{} }
-func (m *ListFilesReply) String() string { return proto.CompactTextString(m) }
-func (*ListFilesReply) ProtoMessage()    {}
-func (*ListFilesReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{39}
+func (m *CatFileReply) Reset()         { *m = CatFileReply{} }
+func (m *CatFileReply) String() string { return proto.CompactTextString(m) }
+func (*CatFileReply) ProtoMessage()    {}
+func (*CatFileReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{47}
 }
 
-func (m *ListFilesReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListFilesReply.Unmarshal(m, b)
+func (m *CatFileReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CatFileReply.Unmarshal(m, b)
 }
-func (m *ListFilesReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListFilesReply.Marshal(b, m, deterministic)
+func (m *CatFileReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CatFileReply.Marshal(b, m, deterministic)
 }
-func (m *ListFilesReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListFilesReply.Merge(m, src)
+func (m *CatFileReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CatFileReply.Merge(m, src)
 }
-func (m *ListFilesReply) XXX_Size() int {
-	return xxx_messageInfo_ListFilesReply.Size(m)
+func (m *CatFileReply) XXX_Size() int {
+	return xxx_messageInfo_CatFileReply.Size(m)
 }
-func (m *ListFilesReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListFilesReply.DiscardUnknown(m)
+func (m *CatFileReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_CatFileReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListFilesReply proto.InternalMessageInfo
+var xxx_messageInfo_CatFileReply proto.InternalMessageInfo
 
-func (m *ListFilesReply) GetList() []*GetFileReply {
+func (m *CatFileReply) GetChunk() []byte {
 	if m != nil {
-		return m.List
+		return m.Chunk
 	}
 	return nil
 }
@@ -1898,7 +2297,7 @@ func (m *RemoveFileRequest) Reset()         { *m = RemoveFileRequest{} }
 func (m *RemoveFileRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveFileRequest) ProtoMessage()    {}
 func (*RemoveFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{40}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{48}
 }
 
 func (m *RemoveFileRequest) XXX_Unmarshal(b []byte) error {
@@ -1936,7 +2335,7 @@ func (m *RemoveFileReply) Reset()         { *m = RemoveFileReply{} }
 func (m *RemoveFileReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveFileReply) ProtoMessage()    {}
 func (*RemoveFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{41}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{49}
 }
 
 func (m *RemoveFileReply) XXX_Unmarshal(b []byte) error {
@@ -1993,14 +2392,23 @@ func init() {
 	proto.RegisterType((*ListAppTokensReply)(nil), "pb.ListAppTokensReply")
 	proto.RegisterType((*RemoveAppTokenRequest)(nil), "pb.RemoveAppTokenRequest")
 	proto.RegisterType((*RemoveAppTokenReply)(nil), "pb.RemoveAppTokenReply")
+	proto.RegisterType((*AddFolderRequest)(nil), "pb.AddFolderRequest")
+	proto.RegisterType((*AddFolderReply)(nil), "pb.AddFolderReply")
+	proto.RegisterType((*GetFolderRequest)(nil), "pb.GetFolderRequest")
+	proto.RegisterType((*GetFolderReply)(nil), "pb.GetFolderReply")
+	proto.RegisterType((*GetFolderReply_Entry)(nil), "pb.GetFolderReply.Entry")
+	proto.RegisterType((*ListFoldersRequest)(nil), "pb.ListFoldersRequest")
+	proto.RegisterType((*ListFoldersReply)(nil), "pb.ListFoldersReply")
+	proto.RegisterType((*RemoveFolderRequest)(nil), "pb.RemoveFolderRequest")
+	proto.RegisterType((*RemoveFolderReply)(nil), "pb.RemoveFolderReply")
 	proto.RegisterType((*AddFileRequest)(nil), "pb.AddFileRequest")
 	proto.RegisterType((*AddFileRequest_Header)(nil), "pb.AddFileRequest.Header")
 	proto.RegisterType((*AddFileReply)(nil), "pb.AddFileReply")
 	proto.RegisterType((*AddFileReply_Event)(nil), "pb.AddFileReply.Event")
 	proto.RegisterType((*GetFileRequest)(nil), "pb.GetFileRequest")
 	proto.RegisterType((*GetFileReply)(nil), "pb.GetFileReply")
-	proto.RegisterType((*ListFilesRequest)(nil), "pb.ListFilesRequest")
-	proto.RegisterType((*ListFilesReply)(nil), "pb.ListFilesReply")
+	proto.RegisterType((*CatFileRequest)(nil), "pb.CatFileRequest")
+	proto.RegisterType((*CatFileReply)(nil), "pb.CatFileReply")
 	proto.RegisterType((*RemoveFileRequest)(nil), "pb.RemoveFileRequest")
 	proto.RegisterType((*RemoveFileReply)(nil), "pb.RemoveFileReply")
 }
@@ -2008,81 +2416,93 @@ func init() {
 func init() { proto.RegisterFile("api.proto", fileDescriptor_00212fb1f9d3bf1c) }
 
 var fileDescriptor_00212fb1f9d3bf1c = []byte{
-	// 1173 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x57, 0x5b, 0x6f, 0xe3, 0x44,
-	0x14, 0x8e, 0x73, 0xeb, 0xe6, 0x24, 0xcd, 0x65, 0x92, 0x74, 0xb3, 0xd6, 0x0a, 0x55, 0x26, 0xa2,
-	0x95, 0x56, 0x0a, 0x4b, 0x97, 0x8b, 0xd4, 0x05, 0x89, 0x94, 0xee, 0x6e, 0x23, 0x05, 0x54, 0x85,
-	0x48, 0xc0, 0x13, 0x72, 0xe2, 0x51, 0x63, 0xd6, 0x89, 0x8d, 0xed, 0xb6, 0x94, 0x07, 0x7e, 0x0c,
-	0xe2, 0x2f, 0xf0, 0xc6, 0x13, 0x6f, 0xfc, 0x2b, 0x34, 0x17, 0xcf, 0xcd, 0x6e, 0x77, 0x9f, 0xea,
-	0x39, 0xf3, 0x9d, 0x99, 0xef, 0x9c, 0x9c, 0x73, 0xbe, 0x29, 0x34, 0xdc, 0xc8, 0x9f, 0x44, 0x71,
-	0x98, 0x86, 0xa8, 0x1c, 0xad, 0x9c, 0x31, 0xb4, 0xe6, 0xe1, 0x95, 0xbf, 0x5b, 0xe0, 0x5f, 0xaf,
-	0x71, 0x92, 0xa2, 0x01, 0xd4, 0xf0, 0xd6, 0xf5, 0x83, 0x91, 0x75, 0x68, 0x1d, 0x37, 0x16, 0x6c,
-	0xe1, 0x9c, 0x02, 0x70, 0x54, 0x14, 0xdc, 0xa1, 0x36, 0x94, 0x67, 0xe7, 0x1c, 0x50, 0x9e, 0x9d,
-	0xa3, 0xa7, 0xd0, 0x48, 0x70, 0x92, 0xf8, 0xe1, 0x6e, 0x76, 0x3e, 0x2a, 0x53, 0xb3, 0x34, 0x38,
-	0x1d, 0xd8, 0xff, 0xfe, 0xd6, 0x4f, 0xd7, 0x1b, 0x7e, 0x85, 0xb3, 0x0f, 0xcd, 0xcc, 0x10, 0x05,
-	0x77, 0x64, 0x7f, 0x1e, 0x5e, 0x85, 0xd7, 0xa9, 0xb2, 0x9f, 0x19, 0xf8, 0xfe, 0x0f, 0x9b, 0xd0,
-	0xdd, 0xfa, 0xd9, 0xfe, 0x15, 0x34, 0x33, 0x43, 0x11, 0x9b, 0x01, 0xd4, 0x5e, 0xd1, 0x08, 0x18,
-	0x13, 0xb6, 0x40, 0x07, 0x50, 0x4f, 0xb1, 0xbb, 0x9d, 0x9d, 0x8f, 0x2a, 0xd4, 0xcc, 0x57, 0xc8,
-	0x86, 0x47, 0xe4, 0xeb, 0x3b, 0x77, 0x8b, 0x47, 0x55, 0xba, 0x23, 0xd6, 0xce, 0x18, 0xda, 0x53,
-	0xcf, 0x5b, 0x62, 0x77, 0x9b, 0x65, 0x07, 0x41, 0x75, 0x47, 0x90, 0xec, 0x36, 0xfa, 0xed, 0x7c,
-	0x00, 0x2d, 0x81, 0x2a, 0xe0, 0xe3, 0x1c, 0x42, 0xfb, 0x0d, 0x4e, 0xd5, 0x53, 0x4c, 0xc4, 0x7f,
-	0x16, 0xb4, 0x04, 0xa4, 0x28, 0xa4, 0x11, 0xec, 0x85, 0xb7, 0x3b, 0x1c, 0x8b, 0xf4, 0x66, 0x4b,
-	0x41, 0xa8, 0x22, 0x09, 0x11, 0xf4, 0x3a, 0xc6, 0x6e, 0x8a, 0x3d, 0x1a, 0x51, 0x65, 0x91, 0x2d,
-	0xd1, 0x27, 0xb0, 0xb7, 0xc5, 0xdb, 0x15, 0x8e, 0x93, 0x51, 0xed, 0xb0, 0x72, 0xdc, 0x3c, 0x79,
-	0x3c, 0x89, 0x56, 0x13, 0xf5, 0xea, 0xc9, 0xb7, 0x74, 0x7f, 0x91, 0xe1, 0xec, 0x09, 0xd4, 0x99,
-	0xa9, 0x28, 0xcf, 0x58, 0xcd, 0x33, 0xab, 0x14, 0x04, 0xdd, 0xb9, 0x9f, 0xd0, 0x03, 0x93, 0xec,
-	0x07, 0xfb, 0x1c, 0xda, 0x8a, 0x8d, 0x04, 0x38, 0x86, 0x6a, 0xe0, 0x27, 0xe9, 0xc8, 0xa2, 0x2c,
-	0xba, 0x26, 0x8b, 0x05, 0xdd, 0x75, 0x3e, 0x84, 0xde, 0x02, 0x6f, 0xc3, 0x1b, 0xfc, 0x50, 0xf2,
-	0x7a, 0xd0, 0x51, 0x41, 0xa4, 0x62, 0x5e, 0x42, 0x7f, 0xb6, 0xbb, 0xf1, 0x53, 0xbc, 0x0c, 0x1f,
-	0xf0, 0xbc, 0x27, 0x80, 0x8f, 0xa1, 0xa7, 0x3b, 0x13, 0xbe, 0x36, 0x3c, 0xf2, 0xa9, 0x51, 0x1c,
-	0x20, 0xd6, 0x8e, 0x03, 0xdd, 0x39, 0x76, 0x1f, 0x26, 0xd9, 0x85, 0xb6, 0x82, 0x21, 0x1c, 0x8f,
-	0xa0, 0x37, 0xf5, 0xbc, 0xcb, 0x38, 0xfc, 0x05, 0xaf, 0xd3, 0x87, 0xca, 0xeb, 0x25, 0x74, 0x54,
-	0xe0, 0x3d, 0xe5, 0x91, 0xa4, 0x61, 0x8c, 0x65, 0x79, 0xf0, 0x25, 0xc9, 0xe0, 0x1b, 0x9c, 0x1a,
-	0xb7, 0x98, 0xe4, 0xfe, 0xb6, 0xa0, 0xa3, 0xa2, 0x8a, 0xae, 0xc8, 0x98, 0x95, 0xf5, 0x3a, 0xcb,
-	0xae, 0xad, 0x68, 0xd7, 0xa2, 0x31, 0xec, 0xdf, 0xba, 0x41, 0x80, 0xd3, 0xa9, 0xe7, 0xc5, 0x38,
-	0x49, 0x78, 0x67, 0xe9, 0x46, 0x89, 0x3a, 0x73, 0x03, 0x77, 0xb7, 0xc6, 0xa3, 0x1a, 0xad, 0x56,
-	0xdd, 0xa8, 0x56, 0x73, 0x5d, 0xab, 0x66, 0x67, 0x08, 0x7d, 0x52, 0x56, 0x9c, 0xb7, 0xa8, 0xb6,
-	0x2f, 0xa1, 0xa7, 0x9b, 0x49, 0x3c, 0x47, 0x5a, 0xc1, 0xf5, 0x79, 0xc1, 0xa9, 0x21, 0xf3, 0x9a,
-	0xfb, 0x08, 0x06, 0xac, 0x9c, 0xde, 0x91, 0xb4, 0x01, 0x20, 0x03, 0x47, 0x7e, 0xd5, 0x13, 0x40,
-	0x53, 0xcf, 0x9b, 0x46, 0xd1, 0x32, 0x7c, 0x8b, 0xc5, 0x4c, 0x7d, 0x0a, 0x8d, 0x88, 0xa1, 0xc4,
-	0x11, 0xd2, 0x40, 0xea, 0x47, 0xf3, 0x29, 0x9a, 0x21, 0x9f, 0xc2, 0x80, 0xc4, 0x94, 0x81, 0x92,
-	0xf7, 0x3b, 0xf9, 0x18, 0x90, 0xe1, 0x45, 0xce, 0x46, 0x4a, 0x2a, 0x1a, 0x3c, 0xea, 0x23, 0x18,
-	0xb2, 0x68, 0x4c, 0xea, 0x26, 0x91, 0x21, 0xf4, 0x4d, 0x20, 0x89, 0xfb, 0x2f, 0x8b, 0x8e, 0xca,
-	0xd7, 0x7e, 0x80, 0x33, 0xcf, 0x17, 0x50, 0xdf, 0x60, 0xd7, 0xc3, 0x31, 0xf5, 0x6e, 0x9e, 0x3c,
-	0x21, 0x39, 0xd7, 0x31, 0x93, 0x0b, 0x0a, 0xb8, 0x28, 0x2d, 0x38, 0x14, 0x1d, 0x40, 0x6d, 0xbd,
-	0xb9, 0xde, 0xbd, 0xa5, 0x75, 0xd6, 0xba, 0x28, 0x2d, 0xd8, 0xd2, 0x3e, 0x85, 0x3a, 0xc3, 0x16,
-	0xb5, 0x88, 0x9e, 0x85, 0xb2, 0x91, 0x85, 0xb3, 0x06, 0xec, 0x45, 0xee, 0x5d, 0x10, 0xba, 0x9e,
-	0xf3, 0x8f, 0x45, 0x67, 0x35, 0xa3, 0x40, 0x72, 0x31, 0x81, 0x1a, 0xbe, 0xc1, 0xbb, 0x94, 0x73,
-	0x3c, 0xd0, 0x38, 0x92, 0x71, 0xf8, 0x8a, 0xec, 0x12, 0x1e, 0x14, 0x46, 0xf8, 0xe1, 0x38, 0x0e,
-	0x63, 0x76, 0x0b, 0xb5, 0x93, 0xa5, 0xfd, 0x13, 0xd4, 0x28, 0xb2, 0x90, 0x1e, 0x82, 0x6a, 0xe4,
-	0xa6, 0x9b, 0xac, 0x77, 0xc8, 0x37, 0x99, 0x3d, 0xab, 0xbb, 0x14, 0x27, 0xb4, 0x73, 0x2a, 0x0b,
-	0xb6, 0x20, 0xc8, 0xc4, 0xff, 0x3d, 0x13, 0x22, 0xfa, 0xad, 0xd2, 0x1f, 0x53, 0x25, 0x51, 0x93,
-	0x9c, 0x1d, 0x6d, 0xc9, 0xa3, 0x9d, 0x3f, 0xa8, 0x98, 0xc8, 0x18, 0x0b, 0x5a, 0x39, 0x47, 0xa7,
-	0x48, 0x46, 0xb4, 0xac, 0x56, 0x8d, 0xac, 0xaa, 0x6d, 0x59, 0xd3, 0xdb, 0xf2, 0x39, 0x53, 0x00,
-	0x42, 0xe0, 0x3d, 0xeb, 0x94, 0xeb, 0x03, 0xf7, 0xb8, 0x5f, 0x1f, 0x44, 0x4c, 0xa2, 0x6a, 0xb9,
-	0x3e, 0xbc, 0x2b, 0x25, 0x42, 0x23, 0xc4, 0x09, 0x27, 0xff, 0x36, 0xa0, 0x32, 0xbd, 0x9c, 0xa1,
-	0x67, 0x50, 0xa3, 0x2f, 0x1b, 0x44, 0x2f, 0x51, 0x9f, 0x42, 0x76, 0x5b, 0xb1, 0x90, 0x22, 0x2f,
-	0xa1, 0x09, 0xd4, 0xd9, 0xcb, 0x04, 0xf5, 0xf8, 0x9e, 0x7c, 0xb6, 0xd8, 0x1d, 0xd5, 0x24, 0xf0,
-	0xec, 0xa5, 0xc3, 0xf0, 0xda, 0x33, 0x88, 0xe1, 0xd5, 0x87, 0x10, 0xc5, 0xb3, 0x97, 0x0d, 0xc3,
-	0x6b, 0xcf, 0x1e, 0x86, 0x57, 0x1e, 0x3e, 0x4e, 0x89, 0xe8, 0x39, 0x7f, 0x7a, 0x20, 0xc4, 0x4b,
-	0x57, 0x51, 0x21, 0xbb, 0xab, 0xd9, 0x84, 0x0b, 0x57, 0x5a, 0xe6, 0xa2, 0x3f, 0x4d, 0xec, 0x9c,
-	0x14, 0x3b, 0x25, 0xf4, 0x05, 0x34, 0x84, 0x7c, 0xa3, 0x01, 0x8d, 0xd2, 0x50, 0x78, 0x1b, 0x19,
-	0x56, 0xe6, 0x78, 0x0a, 0x20, 0xa5, 0x19, 0x0d, 0x09, 0x26, 0xa7, 0xe7, 0x76, 0xdf, 0x34, 0x33,
-	0xdf, 0xaf, 0xa1, 0xa5, 0xca, 0x30, 0xa2, 0x2f, 0x95, 0x02, 0x55, 0xb7, 0x87, 0xf9, 0x0d, 0x49,
-	0x3b, 0xd3, 0x5c, 0x4e, 0xdb, 0x90, 0x69, 0x4e, 0x5b, 0x17, 0x66, 0x4a, 0x5b, 0x2a, 0x2e, 0xa3,
-	0x9d, 0x93, 0x6a, 0x46, 0xdb, 0x10, 0x66, 0xe6, 0x2b, 0x75, 0x85, 0xf9, 0xe6, 0x04, 0xd8, 0x2e,
-	0x92, 0x1f, 0x16, 0xb2, 0x2a, 0x5c, 0x2c, 0xe4, 0x02, 0x85, 0x63, 0x21, 0xe7, 0x34, 0xce, 0x29,
-	0xa1, 0x6f, 0x60, 0x5f, 0x13, 0x25, 0x34, 0x92, 0xc9, 0x35, 0x38, 0x1c, 0x14, 0xec, 0xb0, 0x43,
-	0xbe, 0x82, 0xa6, 0xa2, 0x47, 0x28, 0x9b, 0x89, 0x86, 0x32, 0xd8, 0x83, 0x9c, 0x5d, 0x70, 0xd0,
-	0x44, 0x87, 0x71, 0x28, 0x52, 0x2f, 0xc6, 0x21, 0xaf, 0x50, 0x4e, 0x09, 0xbd, 0x86, 0xb6, 0x2e,
-	0x33, 0xe8, 0x89, 0xe4, 0x6b, 0x32, 0x79, 0x5c, 0xb4, 0xc5, 0xce, 0xf9, 0x8c, 0x36, 0x08, 0xe9,
-	0x7a, 0xd1, 0x20, 0xca, 0xac, 0x10, 0x0d, 0x22, 0xc6, 0x82, 0x53, 0x3a, 0xb6, 0x9e, 0x5b, 0xbc,
-	0x49, 0xa4, 0x9b, 0x3e, 0x75, 0xed, 0xdc, 0x3c, 0x92, 0x4d, 0x42, 0x67, 0x98, 0x6c, 0x12, 0x75,
-	0x08, 0xca, 0x26, 0x91, 0x83, 0x4e, 0x6d, 0x12, 0x7a, 0x9d, 0xd2, 0x24, 0xea, 0x8d, 0x7d, 0xd3,
-	0x4c, 0x7d, 0xcf, 0x9e, 0xc1, 0x63, 0x3f, 0x9c, 0xa4, 0xf8, 0xb7, 0xd4, 0x0f, 0x70, 0xf6, 0xf7,
-	0xe7, 0xab, 0x38, 0x5a, 0x9f, 0xed, 0x2d, 0xd9, 0xea, 0xd2, 0xfa, 0xb3, 0x5c, 0x5d, 0xfe, 0xb8,
-	0x9c, 0xaf, 0xea, 0xf4, 0x9f, 0xbe, 0x17, 0xff, 0x07, 0x00, 0x00, 0xff, 0xff, 0x5a, 0xac, 0x9e,
-	0x6d, 0x01, 0x0e, 0x00, 0x00,
+	// 1368 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x58, 0xed, 0x4e, 0xe3, 0x46,
+	0x14, 0x8d, 0x13, 0x92, 0x90, 0x9b, 0x10, 0x92, 0x49, 0x02, 0x59, 0x0b, 0x55, 0xc8, 0x8d, 0x80,
+	0x6a, 0xa5, 0x74, 0x0b, 0xdb, 0xad, 0xc4, 0xb6, 0x52, 0xc3, 0xc2, 0x42, 0x24, 0x5a, 0x21, 0x37,
+	0x52, 0x5b, 0xa9, 0x52, 0xe5, 0xc4, 0x23, 0x70, 0xd7, 0x89, 0x5d, 0xdb, 0x40, 0xe9, 0x03, 0xf4,
+	0x05, 0xfa, 0x06, 0x7d, 0x83, 0xfe, 0xe8, 0xbf, 0xbe, 0x40, 0xdf, 0xaa, 0x9a, 0x4f, 0xcf, 0x38,
+	0x0e, 0xec, 0xfe, 0x22, 0x73, 0xe7, 0xdc, 0x3b, 0xe7, 0x8e, 0x8f, 0xaf, 0x8f, 0x80, 0x9a, 0x13,
+	0x7a, 0xc3, 0x30, 0x0a, 0x92, 0x00, 0x15, 0xc3, 0xa9, 0x35, 0x80, 0xc6, 0x65, 0x70, 0xed, 0x2d,
+	0x6c, 0xfc, 0xeb, 0x2d, 0x8e, 0x13, 0xd4, 0x85, 0x32, 0x9e, 0x3b, 0x9e, 0xdf, 0x37, 0x76, 0x8d,
+	0x83, 0x9a, 0xcd, 0x16, 0xd6, 0x31, 0x00, 0x47, 0x85, 0xfe, 0x03, 0x6a, 0x42, 0x71, 0x7c, 0xca,
+	0x01, 0xc5, 0xf1, 0x29, 0xda, 0x81, 0x5a, 0x8c, 0xe3, 0xd8, 0x0b, 0x16, 0xe3, 0xd3, 0x7e, 0x91,
+	0x86, 0xd3, 0x80, 0xb5, 0x09, 0x1b, 0xdf, 0xdd, 0x7b, 0xc9, 0xec, 0x86, 0x1f, 0x61, 0x6d, 0x40,
+	0x5d, 0x04, 0x42, 0xff, 0x81, 0xec, 0x5f, 0x06, 0xd7, 0xc1, 0x6d, 0xa2, 0xec, 0x8b, 0x00, 0xdf,
+	0xff, 0xfe, 0x26, 0x70, 0xe6, 0x9e, 0xd8, 0xbf, 0x86, 0xba, 0x08, 0xe4, 0xb1, 0xe9, 0x42, 0xf9,
+	0x8c, 0x76, 0xc0, 0x98, 0xb0, 0x05, 0xda, 0x82, 0x4a, 0x82, 0x9d, 0xf9, 0xf8, 0xb4, 0x5f, 0xa2,
+	0x61, 0xbe, 0x42, 0x26, 0xac, 0x93, 0x5f, 0xdf, 0x3a, 0x73, 0xdc, 0x5f, 0xa3, 0x3b, 0x72, 0x6d,
+	0x0d, 0xa0, 0x39, 0x72, 0xdd, 0x09, 0x76, 0xe6, 0xe2, 0x76, 0x10, 0xac, 0x2d, 0x08, 0x92, 0x9d,
+	0x46, 0x7f, 0x5b, 0x1f, 0x41, 0x43, 0xa2, 0x72, 0xf8, 0x58, 0xbb, 0xd0, 0x3c, 0xc7, 0x89, 0x5a,
+	0x25, 0x8b, 0xf8, 0xcf, 0x80, 0x86, 0x84, 0xe4, 0xb5, 0xd4, 0x87, 0x6a, 0x70, 0xbf, 0xc0, 0x91,
+	0xbc, 0x5e, 0xb1, 0x94, 0x84, 0x4a, 0x29, 0x21, 0x82, 0x9e, 0x45, 0xd8, 0x49, 0xb0, 0x4b, 0x3b,
+	0x2a, 0xd9, 0x62, 0x89, 0x3e, 0x83, 0xea, 0x1c, 0xcf, 0xa7, 0x38, 0x8a, 0xfb, 0xe5, 0xdd, 0xd2,
+	0x41, 0xfd, 0x70, 0x7b, 0x18, 0x4e, 0x87, 0xea, 0xd1, 0xc3, 0x6f, 0xe8, 0xbe, 0x2d, 0x70, 0xe6,
+	0x10, 0x2a, 0x2c, 0x94, 0x77, 0xcf, 0x58, 0xbd, 0x67, 0xa6, 0x14, 0x04, 0xad, 0x4b, 0x2f, 0xa6,
+	0x05, 0x63, 0xf1, 0xc0, 0x5e, 0x41, 0x53, 0x89, 0x91, 0x06, 0x07, 0xb0, 0xe6, 0x7b, 0x71, 0xd2,
+	0x37, 0x28, 0x8b, 0x56, 0x96, 0x85, 0x4d, 0x77, 0xad, 0x8f, 0xa1, 0x6d, 0xe3, 0x79, 0x70, 0x87,
+	0x1f, 0xbb, 0xbc, 0x36, 0x6c, 0xaa, 0x20, 0xa2, 0x98, 0xd7, 0xd0, 0x19, 0x2f, 0xee, 0xbc, 0x04,
+	0x4f, 0x82, 0x47, 0x32, 0x57, 0x34, 0xf0, 0x29, 0xb4, 0xf5, 0x64, 0xc2, 0xd7, 0x84, 0x75, 0x8f,
+	0x06, 0x65, 0x01, 0xb9, 0xb6, 0x2c, 0x68, 0x5d, 0x62, 0xe7, 0x71, 0x92, 0x2d, 0x68, 0x2a, 0x18,
+	0xc2, 0x71, 0x1f, 0xda, 0x23, 0xd7, 0xbd, 0x8a, 0x82, 0x5f, 0xf0, 0x2c, 0x79, 0x4c, 0x5e, 0xaf,
+	0x61, 0x53, 0x05, 0xae, 0x90, 0x47, 0x9c, 0x04, 0x11, 0x4e, 0xe5, 0xc1, 0x97, 0xe4, 0x06, 0xcf,
+	0x71, 0x92, 0x39, 0x25, 0x4b, 0xee, 0x1f, 0x03, 0x36, 0x55, 0x54, 0xde, 0x11, 0x82, 0x59, 0x51,
+	0xd7, 0x99, 0x38, 0xb6, 0xa4, 0x1d, 0x8b, 0x06, 0xb0, 0x71, 0xef, 0xf8, 0x3e, 0x4e, 0x46, 0xae,
+	0x1b, 0xe1, 0x38, 0xe6, 0x6f, 0x96, 0x1e, 0x4c, 0x51, 0x27, 0x8e, 0xef, 0x2c, 0x66, 0xb8, 0x5f,
+	0xa6, 0x6a, 0xd5, 0x83, 0xaa, 0x9a, 0x2b, 0x9a, 0x9a, 0xad, 0x1e, 0x74, 0x88, 0xac, 0x38, 0x6f,
+	0xa9, 0xb6, 0x2f, 0xa1, 0xad, 0x87, 0x49, 0x3f, 0xfb, 0x9a, 0xe0, 0x3a, 0x5c, 0x70, 0x6a, 0xcb,
+	0x5c, 0x73, 0x7b, 0xd0, 0x65, 0x72, 0x7a, 0xe2, 0xd2, 0xba, 0x80, 0x32, 0x38, 0xf2, 0x54, 0x0f,
+	0x01, 0x8d, 0x5c, 0x77, 0x14, 0x86, 0x93, 0xe0, 0x1d, 0x96, 0x33, 0x75, 0x07, 0x6a, 0x21, 0x43,
+	0xc9, 0x12, 0x69, 0x80, 0xe8, 0x47, 0xcb, 0xc9, 0x9b, 0x21, 0x2f, 0xa1, 0x4b, 0x7a, 0x12, 0xa0,
+	0xf8, 0xfd, 0x2a, 0x1f, 0x00, 0xca, 0x64, 0x91, 0xda, 0x48, 0xb9, 0x8a, 0x1a, 0xef, 0x7a, 0x1f,
+	0x7a, 0xac, 0x9b, 0x2c, 0xf5, 0x2c, 0x91, 0x1e, 0x74, 0xb2, 0x40, 0xd2, 0xf7, 0x4f, 0xb4, 0x87,
+	0xb7, 0x81, 0xef, 0xe2, 0xe8, 0x11, 0x31, 0x93, 0x29, 0x1c, 0xde, 0x4e, 0x7d, 0x6f, 0x46, 0x85,
+	0xb4, 0x6e, 0xf3, 0x95, 0xde, 0x47, 0x29, 0xdb, 0xc7, 0x4b, 0x3a, 0x87, 0x45, 0xf5, 0x15, 0xf2,
+	0x0c, 0x9d, 0xe4, 0x46, 0xc8, 0x93, 0xfc, 0xb6, 0xf6, 0xa0, 0x75, 0x8e, 0x93, 0x27, 0x39, 0x59,
+	0x7f, 0x16, 0xe9, 0x80, 0xfe, 0xc0, 0xf2, 0xb9, 0x93, 0x37, 0x6d, 0x6f, 0x6d, 0x75, 0x7b, 0xe5,
+	0x4c, 0x7b, 0xab, 0x15, 0x8e, 0x0e, 0xa1, 0x8a, 0x17, 0x49, 0xe4, 0xe1, 0xb8, 0x5f, 0xa5, 0xc2,
+	0xed, 0x73, 0xe1, 0x2a, 0x64, 0x87, 0x67, 0x8b, 0x24, 0x7a, 0xb0, 0x05, 0xd0, 0x3c, 0x83, 0x32,
+	0x8d, 0x48, 0xd2, 0x86, 0x4e, 0x3a, 0xf6, 0x7e, 0x67, 0xaf, 0x71, 0xc9, 0xa6, 0xbf, 0xc9, 0x18,
+	0xf4, 0xe2, 0x53, 0x2f, 0xa2, 0x9d, 0xac, 0xdb, 0x6c, 0x41, 0x94, 0x4c, 0xb4, 0xc3, 0x0e, 0x7a,
+	0x4f, 0xbd, 0x1d, 0xb3, 0xd9, 0x2f, 0x73, 0xc8, 0x55, 0xee, 0x69, 0x2f, 0x1e, 0x5a, 0xe6, 0xcf,
+	0x15, 0xf8, 0x89, 0x10, 0xd6, 0xd3, 0x0f, 0xac, 0x23, 0x3e, 0x0b, 0x4a, 0x15, 0xeb, 0x0f, 0x83,
+	0x89, 0xc4, 0xf3, 0xb1, 0xc8, 0x3d, 0x82, 0xca, 0x0d, 0x76, 0x5c, 0x1c, 0xd1, 0xec, 0xfa, 0xe1,
+	0x33, 0x72, 0xb8, 0x8e, 0x19, 0x5e, 0x50, 0xc0, 0x45, 0xc1, 0xe6, 0x50, 0xb4, 0x05, 0xe5, 0xd9,
+	0xcd, 0xed, 0xe2, 0x1d, 0xbd, 0xa2, 0xc6, 0x45, 0xc1, 0x66, 0x4b, 0x73, 0x07, 0x2a, 0x0c, 0x9b,
+	0x77, 0xaf, 0x27, 0x35, 0xa8, 0x86, 0xce, 0x83, 0x1f, 0x38, 0xae, 0xf5, 0xaf, 0x41, 0xfd, 0x00,
+	0x3b, 0x84, 0xdc, 0xc0, 0x10, 0xca, 0xf8, 0x0e, 0x2f, 0x12, 0xce, 0x62, 0x4b, 0x63, 0x41, 0x1f,
+	0x20, 0xd9, 0x25, 0x27, 0x51, 0x18, 0x61, 0x80, 0xa3, 0x28, 0x88, 0x98, 0xda, 0x68, 0x9c, 0x2c,
+	0xcd, 0x1f, 0xa1, 0x4c, 0x91, 0xb9, 0x2f, 0x56, 0x9e, 0x42, 0xbb, 0x50, 0x9e, 0x3e, 0x24, 0x38,
+	0xa6, 0x0f, 0xb6, 0x64, 0xb3, 0x85, 0x94, 0x00, 0x1b, 0xc9, 0xf4, 0xb7, 0x4a, 0x7f, 0xc0, 0x5e,
+	0x06, 0xe5, 0x1a, 0x73, 0xfa, 0xb5, 0x5e, 0x51, 0xc3, 0x92, 0xf6, 0xb8, 0xe2, 0x05, 0xa1, 0x07,
+	0x95, 0x52, 0xad, 0x91, 0xea, 0x6f, 0x9c, 0x27, 0xab, 0x0f, 0xa0, 0x21, 0x51, 0xa4, 0x7a, 0x57,
+	0x3c, 0x13, 0x02, 0x6a, 0xf0, 0x27, 0x42, 0xbe, 0xa0, 0x5c, 0x06, 0x4f, 0x94, 0x93, 0x0e, 0x41,
+	0x56, 0x3c, 0xfc, 0xbb, 0x0e, 0xa5, 0xd1, 0xd5, 0x18, 0x3d, 0x87, 0x32, 0xf5, 0xb5, 0x88, 0x5a,
+	0x10, 0xd5, 0x08, 0x9b, 0x4d, 0x25, 0x42, 0x04, 0x56, 0x40, 0x43, 0xa8, 0x30, 0x5f, 0x8a, 0xda,
+	0x7c, 0x2f, 0x35, 0xad, 0xe6, 0xa6, 0x1a, 0x92, 0x78, 0xe6, 0x73, 0x19, 0x5e, 0x33, 0xc1, 0x0c,
+	0xaf, 0xda, 0x60, 0x8a, 0x67, 0xbe, 0x96, 0xe1, 0x35, 0xd3, 0xcb, 0xf0, 0x8a, 0xed, 0xb5, 0x0a,
+	0xc4, 0xcd, 0x71, 0xe3, 0x89, 0x10, 0x17, 0x95, 0xe2, 0x41, 0xcc, 0x96, 0x16, 0x93, 0x29, 0xdc,
+	0x67, 0x21, 0xa4, 0x99, 0x2e, 0x25, 0x45, 0x35, 0x62, 0x56, 0x01, 0x7d, 0x01, 0x35, 0x69, 0xde,
+	0x50, 0x97, 0x76, 0x99, 0xf1, 0x77, 0x26, 0xca, 0x44, 0x59, 0xe2, 0x31, 0x40, 0x6a, 0xcc, 0x50,
+	0x8f, 0x60, 0x96, 0xdc, 0x9c, 0xd9, 0xc9, 0x86, 0x59, 0xee, 0xd7, 0xd0, 0x50, 0x4d, 0x18, 0xa2,
+	0x3e, 0x35, 0xc7, 0xd3, 0x99, 0xbd, 0xe5, 0x8d, 0x94, 0xb6, 0x70, 0x5c, 0x9c, 0x76, 0xc6, 0xa4,
+	0x71, 0xda, 0xba, 0x2d, 0xa3, 0xb4, 0x53, 0xbf, 0xc5, 0x68, 0x2f, 0x19, 0x35, 0x46, 0x3b, 0x63,
+	0xcb, 0x58, 0x6e, 0xea, 0x2a, 0x58, 0xee, 0x92, 0xfd, 0x32, 0xf3, 0xcc, 0x07, 0x6b, 0x59, 0xb5,
+	0x2d, 0xac, 0xe5, 0x1c, 0x7f, 0xc3, 0x5a, 0x5e, 0x72, 0x38, 0x56, 0x01, 0xbd, 0x81, 0x0d, 0xcd,
+	0x92, 0xa0, 0x7e, 0x7a, 0xb9, 0x19, 0x0e, 0x5b, 0x39, 0x3b, 0xac, 0xc8, 0x57, 0x50, 0x57, 0xdc,
+	0x08, 0x12, 0xd3, 0x2a, 0xe3, 0x0b, 0xcc, 0xee, 0x52, 0x5c, 0x72, 0xd0, 0x2c, 0x07, 0xe3, 0x90,
+	0xe7, 0x5d, 0x18, 0x87, 0x65, 0x7f, 0x62, 0x15, 0xd0, 0x5b, 0x68, 0xea, 0x26, 0x03, 0x3d, 0x4b,
+	0xf9, 0x66, 0x99, 0x6c, 0xe7, 0x6d, 0x49, 0x0d, 0x48, 0xdf, 0x80, 0x04, 0x63, 0xed, 0xfb, 0x62,
+	0xa2, 0x4c, 0x54, 0x26, 0xca, 0x8f, 0x14, 0x4b, 0xcc, 0x3a, 0x09, 0x33, 0xe7, 0x4b, 0xc6, 0x6e,
+	0x4f, 0xf9, 0x02, 0x22, 0xd9, 0xa2, 0xfe, 0x19, 0x35, 0xbb, 0x4b, 0x71, 0xa9, 0x01, 0xf5, 0xcb,
+	0x86, 0x94, 0xde, 0xf4, 0xd3, 0x7b, 0xcb, 0x1b, 0xac, 0xc2, 0xe7, 0x74, 0x26, 0x90, 0x41, 0x27,
+	0x67, 0x82, 0x32, 0x1e, 0xe5, 0x4c, 0x90, 0x93, 0xd0, 0x2a, 0x1c, 0x18, 0x2f, 0x0c, 0x3e, 0x17,
+	0xd2, 0x34, 0xfd, 0x13, 0x20, 0xe7, 0x82, 0x92, 0x86, 0x8e, 0xa0, 0xca, 0x87, 0x34, 0x4b, 0xd1,
+	0xe7, 0x3a, 0x4b, 0x51, 0xa7, 0xb8, 0x55, 0x78, 0x61, 0xa4, 0x33, 0x81, 0xe6, 0xa9, 0x5d, 0x28,
+	0xa9, 0x9d, 0x6c, 0x98, 0x66, 0x9f, 0x3c, 0x87, 0x6d, 0x2f, 0x18, 0x26, 0xf8, 0xb7, 0xc4, 0xf3,
+	0xb1, 0xf8, 0xfb, 0xf3, 0x75, 0x14, 0xce, 0x4e, 0xaa, 0x13, 0xb6, 0xba, 0x32, 0xfe, 0x2a, 0xae,
+	0x4d, 0x7e, 0x98, 0x5c, 0x4e, 0x2b, 0xf4, 0x3f, 0x1c, 0x47, 0xff, 0x07, 0x00, 0x00, 0xff, 0xff,
+	0xed, 0x92, 0xe9, 0x97, 0xee, 0x10, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2114,9 +2534,13 @@ type APIClient interface {
 	AddAppToken(ctx context.Context, in *AddAppTokenRequest, opts ...grpc.CallOption) (*AddAppTokenReply, error)
 	ListAppTokens(ctx context.Context, in *ListAppTokensRequest, opts ...grpc.CallOption) (*ListAppTokensReply, error)
 	RemoveAppToken(ctx context.Context, in *RemoveAppTokenRequest, opts ...grpc.CallOption) (*RemoveAppTokenReply, error)
+	AddFolder(ctx context.Context, in *AddFolderRequest, opts ...grpc.CallOption) (*AddFolderReply, error)
+	GetFolder(ctx context.Context, in *GetFolderRequest, opts ...grpc.CallOption) (*GetFolderReply, error)
+	ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersReply, error)
+	RemoveFolder(ctx context.Context, in *RemoveFolderRequest, opts ...grpc.CallOption) (*RemoveFolderReply, error)
 	AddFile(ctx context.Context, opts ...grpc.CallOption) (API_AddFileClient, error)
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileReply, error)
-	ListFiles(ctx context.Context, in *ListFilesRequest, opts ...grpc.CallOption) (*ListFilesReply, error)
+	CatFile(ctx context.Context, in *CatFileRequest, opts ...grpc.CallOption) (API_CatFileClient, error)
 	RemoveFile(ctx context.Context, in *RemoveFileRequest, opts ...grpc.CallOption) (*RemoveFileReply, error)
 }
 
@@ -2281,6 +2705,42 @@ func (c *aPIClient) RemoveAppToken(ctx context.Context, in *RemoveAppTokenReques
 	return out, nil
 }
 
+func (c *aPIClient) AddFolder(ctx context.Context, in *AddFolderRequest, opts ...grpc.CallOption) (*AddFolderReply, error) {
+	out := new(AddFolderReply)
+	err := c.cc.Invoke(ctx, "/pb.API/AddFolder", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) GetFolder(ctx context.Context, in *GetFolderRequest, opts ...grpc.CallOption) (*GetFolderReply, error) {
+	out := new(GetFolderReply)
+	err := c.cc.Invoke(ctx, "/pb.API/GetFolder", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersReply, error) {
+	out := new(ListFoldersReply)
+	err := c.cc.Invoke(ctx, "/pb.API/ListFolders", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) RemoveFolder(ctx context.Context, in *RemoveFolderRequest, opts ...grpc.CallOption) (*RemoveFolderReply, error) {
+	out := new(RemoveFolderReply)
+	err := c.cc.Invoke(ctx, "/pb.API/RemoveFolder", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *aPIClient) AddFile(ctx context.Context, opts ...grpc.CallOption) (API_AddFileClient, error) {
 	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[0], "/pb.API/AddFile", opts...)
 	if err != nil {
@@ -2321,13 +2781,36 @@ func (c *aPIClient) GetFile(ctx context.Context, in *GetFileRequest, opts ...grp
 	return out, nil
 }
 
-func (c *aPIClient) ListFiles(ctx context.Context, in *ListFilesRequest, opts ...grpc.CallOption) (*ListFilesReply, error) {
-	out := new(ListFilesReply)
-	err := c.cc.Invoke(ctx, "/pb.API/ListFiles", in, out, opts...)
+func (c *aPIClient) CatFile(ctx context.Context, in *CatFileRequest, opts ...grpc.CallOption) (API_CatFileClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[1], "/pb.API/CatFile", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &aPICatFileClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type API_CatFileClient interface {
+	Recv() (*CatFileReply, error)
+	grpc.ClientStream
+}
+
+type aPICatFileClient struct {
+	grpc.ClientStream
+}
+
+func (x *aPICatFileClient) Recv() (*CatFileReply, error) {
+	m := new(CatFileReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *aPIClient) RemoveFile(ctx context.Context, in *RemoveFileRequest, opts ...grpc.CallOption) (*RemoveFileReply, error) {
@@ -2358,9 +2841,13 @@ type APIServer interface {
 	AddAppToken(context.Context, *AddAppTokenRequest) (*AddAppTokenReply, error)
 	ListAppTokens(context.Context, *ListAppTokensRequest) (*ListAppTokensReply, error)
 	RemoveAppToken(context.Context, *RemoveAppTokenRequest) (*RemoveAppTokenReply, error)
+	AddFolder(context.Context, *AddFolderRequest) (*AddFolderReply, error)
+	GetFolder(context.Context, *GetFolderRequest) (*GetFolderReply, error)
+	ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersReply, error)
+	RemoveFolder(context.Context, *RemoveFolderRequest) (*RemoveFolderReply, error)
 	AddFile(API_AddFileServer) error
 	GetFile(context.Context, *GetFileRequest) (*GetFileReply, error)
-	ListFiles(context.Context, *ListFilesRequest) (*ListFilesReply, error)
+	CatFile(*CatFileRequest, API_CatFileServer) error
 	RemoveFile(context.Context, *RemoveFileRequest) (*RemoveFileReply, error)
 }
 
@@ -2419,14 +2906,26 @@ func (*UnimplementedAPIServer) ListAppTokens(ctx context.Context, req *ListAppTo
 func (*UnimplementedAPIServer) RemoveAppToken(ctx context.Context, req *RemoveAppTokenRequest) (*RemoveAppTokenReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveAppToken not implemented")
 }
+func (*UnimplementedAPIServer) AddFolder(ctx context.Context, req *AddFolderRequest) (*AddFolderReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddFolder not implemented")
+}
+func (*UnimplementedAPIServer) GetFolder(ctx context.Context, req *GetFolderRequest) (*GetFolderReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFolder not implemented")
+}
+func (*UnimplementedAPIServer) ListFolders(ctx context.Context, req *ListFoldersRequest) (*ListFoldersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListFolders not implemented")
+}
+func (*UnimplementedAPIServer) RemoveFolder(ctx context.Context, req *RemoveFolderRequest) (*RemoveFolderReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveFolder not implemented")
+}
 func (*UnimplementedAPIServer) AddFile(srv API_AddFileServer) error {
 	return status.Errorf(codes.Unimplemented, "method AddFile not implemented")
 }
 func (*UnimplementedAPIServer) GetFile(ctx context.Context, req *GetFileRequest) (*GetFileReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFile not implemented")
 }
-func (*UnimplementedAPIServer) ListFiles(ctx context.Context, req *ListFilesRequest) (*ListFilesReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListFiles not implemented")
+func (*UnimplementedAPIServer) CatFile(req *CatFileRequest, srv API_CatFileServer) error {
+	return status.Errorf(codes.Unimplemented, "method CatFile not implemented")
 }
 func (*UnimplementedAPIServer) RemoveFile(ctx context.Context, req *RemoveFileRequest) (*RemoveFileReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveFile not implemented")
@@ -2742,6 +3241,78 @@ func _API_RemoveAppToken_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _API_AddFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddFolderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).AddFolder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/AddFolder",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).AddFolder(ctx, req.(*AddFolderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_GetFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFolderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).GetFolder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/GetFolder",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).GetFolder(ctx, req.(*GetFolderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListFolders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFoldersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListFolders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/ListFolders",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListFolders(ctx, req.(*ListFoldersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_RemoveFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveFolderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).RemoveFolder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.API/RemoveFolder",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).RemoveFolder(ctx, req.(*RemoveFolderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _API_AddFile_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(APIServer).AddFile(&aPIAddFileServer{stream})
 }
@@ -2786,22 +3357,25 @@ func _API_GetFile_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_ListFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFilesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _API_CatFile_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(CatFileRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(APIServer).ListFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.API/ListFiles",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).ListFiles(ctx, req.(*ListFilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(APIServer).CatFile(m, &aPICatFileServer{stream})
+}
+
+type API_CatFileServer interface {
+	Send(*CatFileReply) error
+	grpc.ServerStream
+}
+
+type aPICatFileServer struct {
+	grpc.ServerStream
+}
+
+func (x *aPICatFileServer) Send(m *CatFileReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _API_RemoveFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -2895,12 +3469,24 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_RemoveAppToken_Handler,
 		},
 		{
-			MethodName: "GetFile",
-			Handler:    _API_GetFile_Handler,
+			MethodName: "AddFolder",
+			Handler:    _API_AddFolder_Handler,
 		},
 		{
-			MethodName: "ListFiles",
-			Handler:    _API_ListFiles_Handler,
+			MethodName: "GetFolder",
+			Handler:    _API_GetFolder_Handler,
+		},
+		{
+			MethodName: "ListFolders",
+			Handler:    _API_ListFolders_Handler,
+		},
+		{
+			MethodName: "RemoveFolder",
+			Handler:    _API_RemoveFolder_Handler,
+		},
+		{
+			MethodName: "GetFile",
+			Handler:    _API_GetFile_Handler,
 		},
 		{
 			MethodName: "RemoveFile",
@@ -2913,6 +3499,11 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:       _API_AddFile_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "CatFile",
+			Handler:       _API_CatFile_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "api.proto",

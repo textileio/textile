@@ -14,11 +14,11 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
-	github.com/ipfs/go-cid v0.0.4
+	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger v0.2.0
-	github.com/ipfs/go-ipfs-files v0.0.4
-	github.com/ipfs/go-ipfs-http-client v0.0.5
+	github.com/ipfs/go-ipfs-files v0.0.6
+	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200205134739-3a5ff46efba6
 	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.5
 	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15
@@ -36,7 +36,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
-	github.com/textileio/go-threads v0.1.6
+	github.com/textileio/go-threads v0.1.7-0.20200207170517-d3f681e38295
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
