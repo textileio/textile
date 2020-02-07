@@ -2,8 +2,6 @@ module github.com/textileio/textile
 
 go 1.13
 
-replace github.com/textileio/go-threads => ../go-threads
-
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
@@ -38,7 +36,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
-	github.com/textileio/go-threads v0.1.6
+	github.com/textileio/go-threads v0.1.7-0.20200207170517-d3f681e38295
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
