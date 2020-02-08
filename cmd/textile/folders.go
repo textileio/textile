@@ -3,20 +3,24 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
-	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
 func init() {
 	rootCmd.AddCommand(foldersCmd)
-	foldersCmd.AddCommand(addFolderCmd, lsFoldersCmd, inspectFolderCmd, rmFolderCmd)
+	foldersCmd.AddCommand(
+		addFolderCmd,
+		lsFoldersCmd,
+		inspectFolderCmd,
+		rmFolderCmd,
+		pushFolderCmd,
+		pullFolderCmd)
 
 	addFolderCmd.Flags().Bool(
 		"public",
@@ -114,22 +118,19 @@ func lsFolders() {
 var inspectFolderCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Display folder information",
-	Long:  `Display detailed information about a project folder (interactive).`,
+	Long:  `Display detailed information about a project folder.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		projectID := configViper.GetString("id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
-		selected := selectFolder("Select folder", aurora.Sprintf(
-			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")),
-			projectID)
-
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		folder, err := client.GetFolder(
 			ctx,
-			selected.Name,
+			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
 			})
@@ -157,62 +158,58 @@ var rmFolderCmd = &cobra.Command{
 	},
 	Short: "Remove a folder",
 	Long:  `Remove a project folder (interactive).`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		projectID := configViper.GetString("id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
-		selected := selectFolder("Remove folder", aurora.Sprintf(
-			aurora.BrightBlack("> Removing folder {{ .Name | white | bold }}")),
-			projectID)
+		prompt := promptui.Prompt{
+			Label: "Enter the folder name to confirm",
+			Validate: func(name string) error {
+				if name != args[0] {
+					return errors.New("names do not match")
+				}
+				return nil
+			},
+		}
+		folder, err := prompt.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if err := client.RemoveFolder(
 			ctx,
-			selected.Name,
+			folder,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("Removed folder %s", aurora.White(selected.Name).Bold())
+		cmd.Success("Removed folder %s", aurora.White(folder).Bold())
 	},
 }
 
-func selectFolder(label, successMsg, projID string) *pb.GetFolderReply {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	folders, err := client.ListFolders(
-		ctx,
-		projID,
-		api.Auth{
-			Token: authViper.GetString("token"),
-		})
-	if err != nil {
-		cmd.Fatal(err)
-	}
+var pushFolderCmd = &cobra.Command{
+	Use:   "push",
+	Short: "Push a folder",
+	Long:  `Push a project folder.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
 
-	if len(folders.List) == 0 {
-		cmd.End("You don't have any folders!")
-	}
+	},
+}
 
-	prompt := promptui.Select{
-		Label: label,
-		Items: folders.List,
-		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .Name | faint }}`,
-			Details:  `{{ "(Path:" | faint }} {{ .Path | faint }}{{ ")" | faint }}`,
-			Selected: successMsg,
-		},
-	}
-	index, _, err := prompt.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+var pullFolderCmd = &cobra.Command{
+	Use:   "pull",
+	Short: "Pull a folder",
+	Long:  `Pull a project folder.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
 
-	return folders.List[index]
+	},
 }

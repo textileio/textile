@@ -6,6 +6,8 @@ import (
 	"path"
 	"strings"
 
+	"google.golang.org/grpc/status"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
@@ -83,9 +85,16 @@ func End(format string, args ...interface{}) {
 }
 
 func Fatal(err error, args ...interface{}) {
-	words := strings.SplitN(err.Error(), " ", 2)
+	var msg string
+	stat, ok := status.FromError(err)
+	if ok {
+		msg = stat.Message()
+	} else {
+		msg = err.Error()
+	}
+	words := strings.SplitN(msg, " ", 2)
 	words[0] = strings.Title(words[0])
-	msg := strings.Join(words, " ")
+	msg = strings.Join(words, " ")
 	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
 		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
 	os.Exit(1)
