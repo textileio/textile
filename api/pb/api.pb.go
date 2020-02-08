@@ -1429,235 +1429,258 @@ func (m *RemoveAppTokenReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RemoveAppTokenReply proto.InternalMessageInfo
 
-type AddFolderRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Public               bool     `protobuf:"varint,2,opt,name=public,proto3" json:"public,omitempty"`
-	ProjectID            string   `protobuf:"bytes,3,opt,name=projectID,proto3" json:"projectID,omitempty"`
+type BucketRoot struct {
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Created              int64    `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"`
+	Updated              int64    `protobuf:"varint,3,opt,name=updated,proto3" json:"updated,omitempty"`
+	Public               bool     `protobuf:"varint,4,opt,name=public,proto3" json:"public,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AddFolderRequest) Reset()         { *m = AddFolderRequest{} }
-func (m *AddFolderRequest) String() string { return proto.CompactTextString(m) }
-func (*AddFolderRequest) ProtoMessage()    {}
-func (*AddFolderRequest) Descriptor() ([]byte, []int) {
+func (m *BucketRoot) Reset()         { *m = BucketRoot{} }
+func (m *BucketRoot) String() string { return proto.CompactTextString(m) }
+func (*BucketRoot) ProtoMessage()    {}
+func (*BucketRoot) Descriptor() ([]byte, []int) {
 	return fileDescriptor_00212fb1f9d3bf1c, []int{34}
 }
 
-func (m *AddFolderRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFolderRequest.Unmarshal(m, b)
+func (m *BucketRoot) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BucketRoot.Unmarshal(m, b)
 }
-func (m *AddFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFolderRequest.Marshal(b, m, deterministic)
+func (m *BucketRoot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BucketRoot.Marshal(b, m, deterministic)
 }
-func (m *AddFolderRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFolderRequest.Merge(m, src)
+func (m *BucketRoot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BucketRoot.Merge(m, src)
 }
-func (m *AddFolderRequest) XXX_Size() int {
-	return xxx_messageInfo_AddFolderRequest.Size(m)
+func (m *BucketRoot) XXX_Size() int {
+	return xxx_messageInfo_BucketRoot.Size(m)
 }
-func (m *AddFolderRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFolderRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AddFolderRequest proto.InternalMessageInfo
-
-func (m *AddFolderRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
+func (m *BucketRoot) XXX_DiscardUnknown() {
+	xxx_messageInfo_BucketRoot.DiscardUnknown(m)
 }
 
-func (m *AddFolderRequest) GetPublic() bool {
-	if m != nil {
-		return m.Public
-	}
-	return false
-}
+var xxx_messageInfo_BucketRoot proto.InternalMessageInfo
 
-func (m *AddFolderRequest) GetProjectID() string {
-	if m != nil {
-		return m.ProjectID
-	}
-	return ""
-}
-
-type AddFolderReply struct {
-	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *AddFolderReply) Reset()         { *m = AddFolderReply{} }
-func (m *AddFolderReply) String() string { return proto.CompactTextString(m) }
-func (*AddFolderReply) ProtoMessage()    {}
-func (*AddFolderReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{35}
-}
-
-func (m *AddFolderReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFolderReply.Unmarshal(m, b)
-}
-func (m *AddFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFolderReply.Marshal(b, m, deterministic)
-}
-func (m *AddFolderReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFolderReply.Merge(m, src)
-}
-func (m *AddFolderReply) XXX_Size() int {
-	return xxx_messageInfo_AddFolderReply.Size(m)
-}
-func (m *AddFolderReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFolderReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AddFolderReply proto.InternalMessageInfo
-
-func (m *AddFolderReply) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
-func (m *AddFolderReply) GetPath() string {
+func (m *BucketRoot) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-type GetFolderRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *GetFolderRequest) Reset()         { *m = GetFolderRequest{} }
-func (m *GetFolderRequest) String() string { return proto.CompactTextString(m) }
-func (*GetFolderRequest) ProtoMessage()    {}
-func (*GetFolderRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{36}
-}
-
-func (m *GetFolderRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetFolderRequest.Unmarshal(m, b)
-}
-func (m *GetFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetFolderRequest.Marshal(b, m, deterministic)
-}
-func (m *GetFolderRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetFolderRequest.Merge(m, src)
-}
-func (m *GetFolderRequest) XXX_Size() int {
-	return xxx_messageInfo_GetFolderRequest.Size(m)
-}
-func (m *GetFolderRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetFolderRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetFolderRequest proto.InternalMessageInfo
-
-func (m *GetFolderRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-type GetFolderReply struct {
-	ID                   string                  `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	Path                 string                  `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Name                 string                  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Public               bool                    `protobuf:"varint,4,opt,name=public,proto3" json:"public,omitempty"`
-	ProjectID            string                  `protobuf:"bytes,5,opt,name=projectID,proto3" json:"projectID,omitempty"`
-	Created              int64                   `protobuf:"varint,6,opt,name=created,proto3" json:"created,omitempty"`
-	Entries              []*GetFolderReply_Entry `protobuf:"bytes,7,rep,name=entries,proto3" json:"entries,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
-	XXX_unrecognized     []byte                  `json:"-"`
-	XXX_sizecache        int32                   `json:"-"`
-}
-
-func (m *GetFolderReply) Reset()         { *m = GetFolderReply{} }
-func (m *GetFolderReply) String() string { return proto.CompactTextString(m) }
-func (*GetFolderReply) ProtoMessage()    {}
-func (*GetFolderReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{37}
-}
-
-func (m *GetFolderReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetFolderReply.Unmarshal(m, b)
-}
-func (m *GetFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetFolderReply.Marshal(b, m, deterministic)
-}
-func (m *GetFolderReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetFolderReply.Merge(m, src)
-}
-func (m *GetFolderReply) XXX_Size() int {
-	return xxx_messageInfo_GetFolderReply.Size(m)
-}
-func (m *GetFolderReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetFolderReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetFolderReply proto.InternalMessageInfo
-
-func (m *GetFolderReply) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
-func (m *GetFolderReply) GetPath() string {
-	if m != nil {
-		return m.Path
-	}
-	return ""
-}
-
-func (m *GetFolderReply) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *GetFolderReply) GetPublic() bool {
-	if m != nil {
-		return m.Public
-	}
-	return false
-}
-
-func (m *GetFolderReply) GetProjectID() string {
-	if m != nil {
-		return m.ProjectID
-	}
-	return ""
-}
-
-func (m *GetFolderReply) GetCreated() int64 {
+func (m *BucketRoot) GetCreated() int64 {
 	if m != nil {
 		return m.Created
 	}
 	return 0
 }
 
-func (m *GetFolderReply) GetEntries() []*GetFolderReply_Entry {
+func (m *BucketRoot) GetUpdated() int64 {
+	if m != nil {
+		return m.Updated
+	}
+	return 0
+}
+
+func (m *BucketRoot) GetPublic() bool {
+	if m != nil {
+		return m.Public
+	}
+	return false
+}
+
+type ListBucketsRequest struct {
+	ProjectID            string   `protobuf:"bytes,1,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListBucketsRequest) Reset()         { *m = ListBucketsRequest{} }
+func (m *ListBucketsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListBucketsRequest) ProtoMessage()    {}
+func (*ListBucketsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{35}
+}
+
+func (m *ListBucketsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListBucketsRequest.Unmarshal(m, b)
+}
+func (m *ListBucketsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListBucketsRequest.Marshal(b, m, deterministic)
+}
+func (m *ListBucketsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListBucketsRequest.Merge(m, src)
+}
+func (m *ListBucketsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListBucketsRequest.Size(m)
+}
+func (m *ListBucketsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListBucketsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListBucketsRequest proto.InternalMessageInfo
+
+func (m *ListBucketsRequest) GetProjectID() string {
+	if m != nil {
+		return m.ProjectID
+	}
+	return ""
+}
+
+type ListBucketsReply struct {
+	List                 []*GetBucketPathReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
+}
+
+func (m *ListBucketsReply) Reset()         { *m = ListBucketsReply{} }
+func (m *ListBucketsReply) String() string { return proto.CompactTextString(m) }
+func (*ListBucketsReply) ProtoMessage()    {}
+func (*ListBucketsReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{36}
+}
+
+func (m *ListBucketsReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListBucketsReply.Unmarshal(m, b)
+}
+func (m *ListBucketsReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListBucketsReply.Marshal(b, m, deterministic)
+}
+func (m *ListBucketsReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListBucketsReply.Merge(m, src)
+}
+func (m *ListBucketsReply) XXX_Size() int {
+	return xxx_messageInfo_ListBucketsReply.Size(m)
+}
+func (m *ListBucketsReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListBucketsReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListBucketsReply proto.InternalMessageInfo
+
+func (m *ListBucketsReply) GetList() []*GetBucketPathReply {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type GetBucketPathRequest struct {
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetBucketPathRequest) Reset()         { *m = GetBucketPathRequest{} }
+func (m *GetBucketPathRequest) String() string { return proto.CompactTextString(m) }
+func (*GetBucketPathRequest) ProtoMessage()    {}
+func (*GetBucketPathRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{37}
+}
+
+func (m *GetBucketPathRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetBucketPathRequest.Unmarshal(m, b)
+}
+func (m *GetBucketPathRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetBucketPathRequest.Marshal(b, m, deterministic)
+}
+func (m *GetBucketPathRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetBucketPathRequest.Merge(m, src)
+}
+func (m *GetBucketPathRequest) XXX_Size() int {
+	return xxx_messageInfo_GetBucketPathRequest.Size(m)
+}
+func (m *GetBucketPathRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetBucketPathRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetBucketPathRequest proto.InternalMessageInfo
+
+func (m *GetBucketPathRequest) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+type GetBucketPathReply struct {
+	Path                 string                      `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Size                 int64                       `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	IsDir                bool                        `protobuf:"varint,3,opt,name=isDir,proto3" json:"isDir,omitempty"`
+	Root                 *BucketRoot                 `protobuf:"bytes,4,opt,name=root,proto3" json:"root,omitempty"`
+	Entries              []*GetBucketPathReply_Entry `protobuf:"bytes,5,rep,name=entries,proto3" json:"entries,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
+	XXX_unrecognized     []byte                      `json:"-"`
+	XXX_sizecache        int32                       `json:"-"`
+}
+
+func (m *GetBucketPathReply) Reset()         { *m = GetBucketPathReply{} }
+func (m *GetBucketPathReply) String() string { return proto.CompactTextString(m) }
+func (*GetBucketPathReply) ProtoMessage()    {}
+func (*GetBucketPathReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{38}
+}
+
+func (m *GetBucketPathReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetBucketPathReply.Unmarshal(m, b)
+}
+func (m *GetBucketPathReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetBucketPathReply.Marshal(b, m, deterministic)
+}
+func (m *GetBucketPathReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetBucketPathReply.Merge(m, src)
+}
+func (m *GetBucketPathReply) XXX_Size() int {
+	return xxx_messageInfo_GetBucketPathReply.Size(m)
+}
+func (m *GetBucketPathReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetBucketPathReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetBucketPathReply proto.InternalMessageInfo
+
+func (m *GetBucketPathReply) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+func (m *GetBucketPathReply) GetSize() int64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
+}
+
+func (m *GetBucketPathReply) GetIsDir() bool {
+	if m != nil {
+		return m.IsDir
+	}
+	return false
+}
+
+func (m *GetBucketPathReply) GetRoot() *BucketRoot {
+	if m != nil {
+		return m.Root
+	}
+	return nil
+}
+
+func (m *GetBucketPathReply) GetEntries() []*GetBucketPathReply_Entry {
 	if m != nil {
 		return m.Entries
 	}
 	return nil
 }
 
-type GetFolderReply_Entry struct {
+type GetBucketPathReply_Entry struct {
 	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	Size                 int64    `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
 	IsDir                bool     `protobuf:"varint,3,opt,name=isDir,proto3" json:"isDir,omitempty"`
@@ -1666,695 +1689,477 @@ type GetFolderReply_Entry struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetFolderReply_Entry) Reset()         { *m = GetFolderReply_Entry{} }
-func (m *GetFolderReply_Entry) String() string { return proto.CompactTextString(m) }
-func (*GetFolderReply_Entry) ProtoMessage()    {}
-func (*GetFolderReply_Entry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{37, 0}
+func (m *GetBucketPathReply_Entry) Reset()         { *m = GetBucketPathReply_Entry{} }
+func (m *GetBucketPathReply_Entry) String() string { return proto.CompactTextString(m) }
+func (*GetBucketPathReply_Entry) ProtoMessage()    {}
+func (*GetBucketPathReply_Entry) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{38, 0}
 }
 
-func (m *GetFolderReply_Entry) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetFolderReply_Entry.Unmarshal(m, b)
+func (m *GetBucketPathReply_Entry) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetBucketPathReply_Entry.Unmarshal(m, b)
 }
-func (m *GetFolderReply_Entry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetFolderReply_Entry.Marshal(b, m, deterministic)
+func (m *GetBucketPathReply_Entry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetBucketPathReply_Entry.Marshal(b, m, deterministic)
 }
-func (m *GetFolderReply_Entry) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetFolderReply_Entry.Merge(m, src)
+func (m *GetBucketPathReply_Entry) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetBucketPathReply_Entry.Merge(m, src)
 }
-func (m *GetFolderReply_Entry) XXX_Size() int {
-	return xxx_messageInfo_GetFolderReply_Entry.Size(m)
+func (m *GetBucketPathReply_Entry) XXX_Size() int {
+	return xxx_messageInfo_GetBucketPathReply_Entry.Size(m)
 }
-func (m *GetFolderReply_Entry) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetFolderReply_Entry.DiscardUnknown(m)
+func (m *GetBucketPathReply_Entry) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetBucketPathReply_Entry.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetFolderReply_Entry proto.InternalMessageInfo
+var xxx_messageInfo_GetBucketPathReply_Entry proto.InternalMessageInfo
 
-func (m *GetFolderReply_Entry) GetPath() string {
+func (m *GetBucketPathReply_Entry) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-func (m *GetFolderReply_Entry) GetSize() int64 {
+func (m *GetBucketPathReply_Entry) GetSize() int64 {
 	if m != nil {
 		return m.Size
 	}
 	return 0
 }
 
-func (m *GetFolderReply_Entry) GetIsDir() bool {
+func (m *GetBucketPathReply_Entry) GetIsDir() bool {
 	if m != nil {
 		return m.IsDir
 	}
 	return false
 }
 
-type ListFoldersRequest struct {
-	ProjectID            string   `protobuf:"bytes,1,opt,name=projectID,proto3" json:"projectID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+type PushBucketPathRequest struct {
+	// Types that are valid to be assigned to Payload:
+	//	*PushBucketPathRequest_Header_
+	//	*PushBucketPathRequest_Chunk
+	Payload              isPushBucketPathRequest_Payload `protobuf_oneof:"payload"`
+	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
+	XXX_unrecognized     []byte                          `json:"-"`
+	XXX_sizecache        int32                           `json:"-"`
 }
 
-func (m *ListFoldersRequest) Reset()         { *m = ListFoldersRequest{} }
-func (m *ListFoldersRequest) String() string { return proto.CompactTextString(m) }
-func (*ListFoldersRequest) ProtoMessage()    {}
-func (*ListFoldersRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{38}
-}
-
-func (m *ListFoldersRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListFoldersRequest.Unmarshal(m, b)
-}
-func (m *ListFoldersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListFoldersRequest.Marshal(b, m, deterministic)
-}
-func (m *ListFoldersRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListFoldersRequest.Merge(m, src)
-}
-func (m *ListFoldersRequest) XXX_Size() int {
-	return xxx_messageInfo_ListFoldersRequest.Size(m)
-}
-func (m *ListFoldersRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListFoldersRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ListFoldersRequest proto.InternalMessageInfo
-
-func (m *ListFoldersRequest) GetProjectID() string {
-	if m != nil {
-		return m.ProjectID
-	}
-	return ""
-}
-
-type ListFoldersReply struct {
-	List                 []*GetFolderReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
-	XXX_unrecognized     []byte            `json:"-"`
-	XXX_sizecache        int32             `json:"-"`
-}
-
-func (m *ListFoldersReply) Reset()         { *m = ListFoldersReply{} }
-func (m *ListFoldersReply) String() string { return proto.CompactTextString(m) }
-func (*ListFoldersReply) ProtoMessage()    {}
-func (*ListFoldersReply) Descriptor() ([]byte, []int) {
+func (m *PushBucketPathRequest) Reset()         { *m = PushBucketPathRequest{} }
+func (m *PushBucketPathRequest) String() string { return proto.CompactTextString(m) }
+func (*PushBucketPathRequest) ProtoMessage()    {}
+func (*PushBucketPathRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_00212fb1f9d3bf1c, []int{39}
 }
 
-func (m *ListFoldersReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListFoldersReply.Unmarshal(m, b)
+func (m *PushBucketPathRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PushBucketPathRequest.Unmarshal(m, b)
 }
-func (m *ListFoldersReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListFoldersReply.Marshal(b, m, deterministic)
+func (m *PushBucketPathRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PushBucketPathRequest.Marshal(b, m, deterministic)
 }
-func (m *ListFoldersReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListFoldersReply.Merge(m, src)
+func (m *PushBucketPathRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PushBucketPathRequest.Merge(m, src)
 }
-func (m *ListFoldersReply) XXX_Size() int {
-	return xxx_messageInfo_ListFoldersReply.Size(m)
+func (m *PushBucketPathRequest) XXX_Size() int {
+	return xxx_messageInfo_PushBucketPathRequest.Size(m)
 }
-func (m *ListFoldersReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListFoldersReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ListFoldersReply proto.InternalMessageInfo
-
-func (m *ListFoldersReply) GetList() []*GetFolderReply {
-	if m != nil {
-		return m.List
-	}
-	return nil
+func (m *PushBucketPathRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_PushBucketPathRequest.DiscardUnknown(m)
 }
 
-type RemoveFolderRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+var xxx_messageInfo_PushBucketPathRequest proto.InternalMessageInfo
+
+type isPushBucketPathRequest_Payload interface {
+	isPushBucketPathRequest_Payload()
 }
 
-func (m *RemoveFolderRequest) Reset()         { *m = RemoveFolderRequest{} }
-func (m *RemoveFolderRequest) String() string { return proto.CompactTextString(m) }
-func (*RemoveFolderRequest) ProtoMessage()    {}
-func (*RemoveFolderRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{40}
+type PushBucketPathRequest_Header_ struct {
+	Header *PushBucketPathRequest_Header `protobuf:"bytes,1,opt,name=header,proto3,oneof"`
 }
 
-func (m *RemoveFolderRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveFolderRequest.Unmarshal(m, b)
-}
-func (m *RemoveFolderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveFolderRequest.Marshal(b, m, deterministic)
-}
-func (m *RemoveFolderRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveFolderRequest.Merge(m, src)
-}
-func (m *RemoveFolderRequest) XXX_Size() int {
-	return xxx_messageInfo_RemoveFolderRequest.Size(m)
-}
-func (m *RemoveFolderRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveFolderRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveFolderRequest proto.InternalMessageInfo
-
-func (m *RemoveFolderRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-type RemoveFolderReply struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RemoveFolderReply) Reset()         { *m = RemoveFolderReply{} }
-func (m *RemoveFolderReply) String() string { return proto.CompactTextString(m) }
-func (*RemoveFolderReply) ProtoMessage()    {}
-func (*RemoveFolderReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{41}
-}
-
-func (m *RemoveFolderReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveFolderReply.Unmarshal(m, b)
-}
-func (m *RemoveFolderReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveFolderReply.Marshal(b, m, deterministic)
-}
-func (m *RemoveFolderReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveFolderReply.Merge(m, src)
-}
-func (m *RemoveFolderReply) XXX_Size() int {
-	return xxx_messageInfo_RemoveFolderReply.Size(m)
-}
-func (m *RemoveFolderReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveFolderReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveFolderReply proto.InternalMessageInfo
-
-type AddFileRequest struct {
-	// Types that are valid to be assigned to Payload:
-	//	*AddFileRequest_Header_
-	//	*AddFileRequest_Chunk
-	Payload              isAddFileRequest_Payload `protobuf_oneof:"payload"`
-	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
-	XXX_unrecognized     []byte                   `json:"-"`
-	XXX_sizecache        int32                    `json:"-"`
-}
-
-func (m *AddFileRequest) Reset()         { *m = AddFileRequest{} }
-func (m *AddFileRequest) String() string { return proto.CompactTextString(m) }
-func (*AddFileRequest) ProtoMessage()    {}
-func (*AddFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{42}
-}
-
-func (m *AddFileRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFileRequest.Unmarshal(m, b)
-}
-func (m *AddFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFileRequest.Marshal(b, m, deterministic)
-}
-func (m *AddFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFileRequest.Merge(m, src)
-}
-func (m *AddFileRequest) XXX_Size() int {
-	return xxx_messageInfo_AddFileRequest.Size(m)
-}
-func (m *AddFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFileRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AddFileRequest proto.InternalMessageInfo
-
-type isAddFileRequest_Payload interface {
-	isAddFileRequest_Payload()
-}
-
-type AddFileRequest_Header_ struct {
-	Header *AddFileRequest_Header `protobuf:"bytes,1,opt,name=header,proto3,oneof"`
-}
-
-type AddFileRequest_Chunk struct {
+type PushBucketPathRequest_Chunk struct {
 	Chunk []byte `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
 }
 
-func (*AddFileRequest_Header_) isAddFileRequest_Payload() {}
+func (*PushBucketPathRequest_Header_) isPushBucketPathRequest_Payload() {}
 
-func (*AddFileRequest_Chunk) isAddFileRequest_Payload() {}
+func (*PushBucketPathRequest_Chunk) isPushBucketPathRequest_Payload() {}
 
-func (m *AddFileRequest) GetPayload() isAddFileRequest_Payload {
+func (m *PushBucketPathRequest) GetPayload() isPushBucketPathRequest_Payload {
 	if m != nil {
 		return m.Payload
 	}
 	return nil
 }
 
-func (m *AddFileRequest) GetHeader() *AddFileRequest_Header {
-	if x, ok := m.GetPayload().(*AddFileRequest_Header_); ok {
+func (m *PushBucketPathRequest) GetHeader() *PushBucketPathRequest_Header {
+	if x, ok := m.GetPayload().(*PushBucketPathRequest_Header_); ok {
 		return x.Header
 	}
 	return nil
 }
 
-func (m *AddFileRequest) GetChunk() []byte {
-	if x, ok := m.GetPayload().(*AddFileRequest_Chunk); ok {
+func (m *PushBucketPathRequest) GetChunk() []byte {
+	if x, ok := m.GetPayload().(*PushBucketPathRequest_Chunk); ok {
 		return x.Chunk
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*AddFileRequest) XXX_OneofWrappers() []interface{} {
+func (*PushBucketPathRequest) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*AddFileRequest_Header_)(nil),
-		(*AddFileRequest_Chunk)(nil),
+		(*PushBucketPathRequest_Header_)(nil),
+		(*PushBucketPathRequest_Chunk)(nil),
 	}
 }
 
-type AddFileRequest_Header struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+type PushBucketPathRequest_Header struct {
+	ProjectID            string   `protobuf:"bytes,1,opt,name=projectID,proto3" json:"projectID,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AddFileRequest_Header) Reset()         { *m = AddFileRequest_Header{} }
-func (m *AddFileRequest_Header) String() string { return proto.CompactTextString(m) }
-func (*AddFileRequest_Header) ProtoMessage()    {}
-func (*AddFileRequest_Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{42, 0}
+func (m *PushBucketPathRequest_Header) Reset()         { *m = PushBucketPathRequest_Header{} }
+func (m *PushBucketPathRequest_Header) String() string { return proto.CompactTextString(m) }
+func (*PushBucketPathRequest_Header) ProtoMessage()    {}
+func (*PushBucketPathRequest_Header) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{39, 0}
 }
 
-func (m *AddFileRequest_Header) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFileRequest_Header.Unmarshal(m, b)
+func (m *PushBucketPathRequest_Header) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PushBucketPathRequest_Header.Unmarshal(m, b)
 }
-func (m *AddFileRequest_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFileRequest_Header.Marshal(b, m, deterministic)
+func (m *PushBucketPathRequest_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PushBucketPathRequest_Header.Marshal(b, m, deterministic)
 }
-func (m *AddFileRequest_Header) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFileRequest_Header.Merge(m, src)
+func (m *PushBucketPathRequest_Header) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PushBucketPathRequest_Header.Merge(m, src)
 }
-func (m *AddFileRequest_Header) XXX_Size() int {
-	return xxx_messageInfo_AddFileRequest_Header.Size(m)
+func (m *PushBucketPathRequest_Header) XXX_Size() int {
+	return xxx_messageInfo_PushBucketPathRequest_Header.Size(m)
 }
-func (m *AddFileRequest_Header) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFileRequest_Header.DiscardUnknown(m)
+func (m *PushBucketPathRequest_Header) XXX_DiscardUnknown() {
+	xxx_messageInfo_PushBucketPathRequest_Header.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AddFileRequest_Header proto.InternalMessageInfo
+var xxx_messageInfo_PushBucketPathRequest_Header proto.InternalMessageInfo
 
-func (m *AddFileRequest_Header) GetPath() string {
+func (m *PushBucketPathRequest_Header) GetProjectID() string {
+	if m != nil {
+		return m.ProjectID
+	}
+	return ""
+}
+
+func (m *PushBucketPathRequest_Header) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-type AddFileReply struct {
+type PushBucketPathReply struct {
 	// Types that are valid to be assigned to Payload:
-	//	*AddFileReply_Event_
-	//	*AddFileReply_Error
-	Payload              isAddFileReply_Payload `protobuf_oneof:"payload"`
-	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
-	XXX_unrecognized     []byte                 `json:"-"`
-	XXX_sizecache        int32                  `json:"-"`
+	//	*PushBucketPathReply_Event_
+	//	*PushBucketPathReply_Error
+	Payload              isPushBucketPathReply_Payload `protobuf_oneof:"payload"`
+	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
+	XXX_unrecognized     []byte                        `json:"-"`
+	XXX_sizecache        int32                         `json:"-"`
 }
 
-func (m *AddFileReply) Reset()         { *m = AddFileReply{} }
-func (m *AddFileReply) String() string { return proto.CompactTextString(m) }
-func (*AddFileReply) ProtoMessage()    {}
-func (*AddFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{43}
+func (m *PushBucketPathReply) Reset()         { *m = PushBucketPathReply{} }
+func (m *PushBucketPathReply) String() string { return proto.CompactTextString(m) }
+func (*PushBucketPathReply) ProtoMessage()    {}
+func (*PushBucketPathReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{40}
 }
 
-func (m *AddFileReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFileReply.Unmarshal(m, b)
+func (m *PushBucketPathReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PushBucketPathReply.Unmarshal(m, b)
 }
-func (m *AddFileReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFileReply.Marshal(b, m, deterministic)
+func (m *PushBucketPathReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PushBucketPathReply.Marshal(b, m, deterministic)
 }
-func (m *AddFileReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFileReply.Merge(m, src)
+func (m *PushBucketPathReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PushBucketPathReply.Merge(m, src)
 }
-func (m *AddFileReply) XXX_Size() int {
-	return xxx_messageInfo_AddFileReply.Size(m)
+func (m *PushBucketPathReply) XXX_Size() int {
+	return xxx_messageInfo_PushBucketPathReply.Size(m)
 }
-func (m *AddFileReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFileReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AddFileReply proto.InternalMessageInfo
-
-type isAddFileReply_Payload interface {
-	isAddFileReply_Payload()
+func (m *PushBucketPathReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_PushBucketPathReply.DiscardUnknown(m)
 }
 
-type AddFileReply_Event_ struct {
-	Event *AddFileReply_Event `protobuf:"bytes,1,opt,name=event,proto3,oneof"`
+var xxx_messageInfo_PushBucketPathReply proto.InternalMessageInfo
+
+type isPushBucketPathReply_Payload interface {
+	isPushBucketPathReply_Payload()
 }
 
-type AddFileReply_Error struct {
+type PushBucketPathReply_Event_ struct {
+	Event *PushBucketPathReply_Event `protobuf:"bytes,1,opt,name=event,proto3,oneof"`
+}
+
+type PushBucketPathReply_Error struct {
 	Error string `protobuf:"bytes,2,opt,name=error,proto3,oneof"`
 }
 
-func (*AddFileReply_Event_) isAddFileReply_Payload() {}
+func (*PushBucketPathReply_Event_) isPushBucketPathReply_Payload() {}
 
-func (*AddFileReply_Error) isAddFileReply_Payload() {}
+func (*PushBucketPathReply_Error) isPushBucketPathReply_Payload() {}
 
-func (m *AddFileReply) GetPayload() isAddFileReply_Payload {
+func (m *PushBucketPathReply) GetPayload() isPushBucketPathReply_Payload {
 	if m != nil {
 		return m.Payload
 	}
 	return nil
 }
 
-func (m *AddFileReply) GetEvent() *AddFileReply_Event {
-	if x, ok := m.GetPayload().(*AddFileReply_Event_); ok {
+func (m *PushBucketPathReply) GetEvent() *PushBucketPathReply_Event {
+	if x, ok := m.GetPayload().(*PushBucketPathReply_Event_); ok {
 		return x.Event
 	}
 	return nil
 }
 
-func (m *AddFileReply) GetError() string {
-	if x, ok := m.GetPayload().(*AddFileReply_Error); ok {
+func (m *PushBucketPathReply) GetError() string {
+	if x, ok := m.GetPayload().(*PushBucketPathReply_Error); ok {
 		return x.Error
 	}
 	return ""
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*AddFileReply) XXX_OneofWrappers() []interface{} {
+func (*PushBucketPathReply) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*AddFileReply_Event_)(nil),
-		(*AddFileReply_Error)(nil),
+		(*PushBucketPathReply_Event_)(nil),
+		(*PushBucketPathReply_Error)(nil),
 	}
 }
 
-type AddFileReply_Event struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Bytes                int64    `protobuf:"varint,3,opt,name=bytes,proto3" json:"bytes,omitempty"`
-	Size                 string   `protobuf:"bytes,4,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+type PushBucketPathReply_Event struct {
+	Name                 string      `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Path                 string      `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Bytes                int64       `protobuf:"varint,3,opt,name=bytes,proto3" json:"bytes,omitempty"`
+	Size                 string      `protobuf:"bytes,4,opt,name=size,proto3" json:"size,omitempty"`
+	Root                 *BucketRoot `protobuf:"bytes,5,opt,name=root,proto3" json:"root,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *AddFileReply_Event) Reset()         { *m = AddFileReply_Event{} }
-func (m *AddFileReply_Event) String() string { return proto.CompactTextString(m) }
-func (*AddFileReply_Event) ProtoMessage()    {}
-func (*AddFileReply_Event) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{43, 0}
+func (m *PushBucketPathReply_Event) Reset()         { *m = PushBucketPathReply_Event{} }
+func (m *PushBucketPathReply_Event) String() string { return proto.CompactTextString(m) }
+func (*PushBucketPathReply_Event) ProtoMessage()    {}
+func (*PushBucketPathReply_Event) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{40, 0}
 }
 
-func (m *AddFileReply_Event) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddFileReply_Event.Unmarshal(m, b)
+func (m *PushBucketPathReply_Event) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PushBucketPathReply_Event.Unmarshal(m, b)
 }
-func (m *AddFileReply_Event) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddFileReply_Event.Marshal(b, m, deterministic)
+func (m *PushBucketPathReply_Event) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PushBucketPathReply_Event.Marshal(b, m, deterministic)
 }
-func (m *AddFileReply_Event) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddFileReply_Event.Merge(m, src)
+func (m *PushBucketPathReply_Event) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PushBucketPathReply_Event.Merge(m, src)
 }
-func (m *AddFileReply_Event) XXX_Size() int {
-	return xxx_messageInfo_AddFileReply_Event.Size(m)
+func (m *PushBucketPathReply_Event) XXX_Size() int {
+	return xxx_messageInfo_PushBucketPathReply_Event.Size(m)
 }
-func (m *AddFileReply_Event) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddFileReply_Event.DiscardUnknown(m)
+func (m *PushBucketPathReply_Event) XXX_DiscardUnknown() {
+	xxx_messageInfo_PushBucketPathReply_Event.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AddFileReply_Event proto.InternalMessageInfo
+var xxx_messageInfo_PushBucketPathReply_Event proto.InternalMessageInfo
 
-func (m *AddFileReply_Event) GetName() string {
+func (m *PushBucketPathReply_Event) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *AddFileReply_Event) GetPath() string {
+func (m *PushBucketPathReply_Event) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-func (m *AddFileReply_Event) GetBytes() int64 {
+func (m *PushBucketPathReply_Event) GetBytes() int64 {
 	if m != nil {
 		return m.Bytes
 	}
 	return 0
 }
 
-func (m *AddFileReply_Event) GetSize() string {
+func (m *PushBucketPathReply_Event) GetSize() string {
 	if m != nil {
 		return m.Size
 	}
 	return ""
 }
 
-type GetFileRequest struct {
+func (m *PushBucketPathReply_Event) GetRoot() *BucketRoot {
+	if m != nil {
+		return m.Root
+	}
+	return nil
+}
+
+type PullBucketPathRequest struct {
 	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetFileRequest) Reset()         { *m = GetFileRequest{} }
-func (m *GetFileRequest) String() string { return proto.CompactTextString(m) }
-func (*GetFileRequest) ProtoMessage()    {}
-func (*GetFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{44}
+func (m *PullBucketPathRequest) Reset()         { *m = PullBucketPathRequest{} }
+func (m *PullBucketPathRequest) String() string { return proto.CompactTextString(m) }
+func (*PullBucketPathRequest) ProtoMessage()    {}
+func (*PullBucketPathRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{41}
 }
 
-func (m *GetFileRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetFileRequest.Unmarshal(m, b)
+func (m *PullBucketPathRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PullBucketPathRequest.Unmarshal(m, b)
 }
-func (m *GetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetFileRequest.Marshal(b, m, deterministic)
+func (m *PullBucketPathRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PullBucketPathRequest.Marshal(b, m, deterministic)
 }
-func (m *GetFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetFileRequest.Merge(m, src)
+func (m *PullBucketPathRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PullBucketPathRequest.Merge(m, src)
 }
-func (m *GetFileRequest) XXX_Size() int {
-	return xxx_messageInfo_GetFileRequest.Size(m)
+func (m *PullBucketPathRequest) XXX_Size() int {
+	return xxx_messageInfo_PullBucketPathRequest.Size(m)
 }
-func (m *GetFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetFileRequest.DiscardUnknown(m)
+func (m *PullBucketPathRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_PullBucketPathRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetFileRequest proto.InternalMessageInfo
+var xxx_messageInfo_PullBucketPathRequest proto.InternalMessageInfo
 
-func (m *GetFileRequest) GetPath() string {
+func (m *PullBucketPathRequest) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-type GetFileReply struct {
-	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Size                 int64    `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *GetFileReply) Reset()         { *m = GetFileReply{} }
-func (m *GetFileReply) String() string { return proto.CompactTextString(m) }
-func (*GetFileReply) ProtoMessage()    {}
-func (*GetFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{45}
-}
-
-func (m *GetFileReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetFileReply.Unmarshal(m, b)
-}
-func (m *GetFileReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetFileReply.Marshal(b, m, deterministic)
-}
-func (m *GetFileReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetFileReply.Merge(m, src)
-}
-func (m *GetFileReply) XXX_Size() int {
-	return xxx_messageInfo_GetFileReply.Size(m)
-}
-func (m *GetFileReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetFileReply.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetFileReply proto.InternalMessageInfo
-
-func (m *GetFileReply) GetPath() string {
-	if m != nil {
-		return m.Path
-	}
-	return ""
-}
-
-func (m *GetFileReply) GetSize() int64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-type CatFileRequest struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CatFileRequest) Reset()         { *m = CatFileRequest{} }
-func (m *CatFileRequest) String() string { return proto.CompactTextString(m) }
-func (*CatFileRequest) ProtoMessage()    {}
-func (*CatFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{46}
-}
-
-func (m *CatFileRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CatFileRequest.Unmarshal(m, b)
-}
-func (m *CatFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CatFileRequest.Marshal(b, m, deterministic)
-}
-func (m *CatFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CatFileRequest.Merge(m, src)
-}
-func (m *CatFileRequest) XXX_Size() int {
-	return xxx_messageInfo_CatFileRequest.Size(m)
-}
-func (m *CatFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CatFileRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CatFileRequest proto.InternalMessageInfo
-
-func (m *CatFileRequest) GetPath() string {
-	if m != nil {
-		return m.Path
-	}
-	return ""
-}
-
-type CatFileReply struct {
+type PullBucketPathReply struct {
 	Chunk                []byte   `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CatFileReply) Reset()         { *m = CatFileReply{} }
-func (m *CatFileReply) String() string { return proto.CompactTextString(m) }
-func (*CatFileReply) ProtoMessage()    {}
-func (*CatFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{47}
+func (m *PullBucketPathReply) Reset()         { *m = PullBucketPathReply{} }
+func (m *PullBucketPathReply) String() string { return proto.CompactTextString(m) }
+func (*PullBucketPathReply) ProtoMessage()    {}
+func (*PullBucketPathReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{42}
 }
 
-func (m *CatFileReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CatFileReply.Unmarshal(m, b)
+func (m *PullBucketPathReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PullBucketPathReply.Unmarshal(m, b)
 }
-func (m *CatFileReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CatFileReply.Marshal(b, m, deterministic)
+func (m *PullBucketPathReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PullBucketPathReply.Marshal(b, m, deterministic)
 }
-func (m *CatFileReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CatFileReply.Merge(m, src)
+func (m *PullBucketPathReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PullBucketPathReply.Merge(m, src)
 }
-func (m *CatFileReply) XXX_Size() int {
-	return xxx_messageInfo_CatFileReply.Size(m)
+func (m *PullBucketPathReply) XXX_Size() int {
+	return xxx_messageInfo_PullBucketPathReply.Size(m)
 }
-func (m *CatFileReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_CatFileReply.DiscardUnknown(m)
+func (m *PullBucketPathReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_PullBucketPathReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_CatFileReply proto.InternalMessageInfo
+var xxx_messageInfo_PullBucketPathReply proto.InternalMessageInfo
 
-func (m *CatFileReply) GetChunk() []byte {
+func (m *PullBucketPathReply) GetChunk() []byte {
 	if m != nil {
 		return m.Chunk
 	}
 	return nil
 }
 
-type RemoveFileRequest struct {
+type RemoveBucketPathRequest struct {
 	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveFileRequest) Reset()         { *m = RemoveFileRequest{} }
-func (m *RemoveFileRequest) String() string { return proto.CompactTextString(m) }
-func (*RemoveFileRequest) ProtoMessage()    {}
-func (*RemoveFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{48}
+func (m *RemoveBucketPathRequest) Reset()         { *m = RemoveBucketPathRequest{} }
+func (m *RemoveBucketPathRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveBucketPathRequest) ProtoMessage()    {}
+func (*RemoveBucketPathRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{43}
 }
 
-func (m *RemoveFileRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveFileRequest.Unmarshal(m, b)
+func (m *RemoveBucketPathRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveBucketPathRequest.Unmarshal(m, b)
 }
-func (m *RemoveFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveFileRequest.Marshal(b, m, deterministic)
+func (m *RemoveBucketPathRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveBucketPathRequest.Marshal(b, m, deterministic)
 }
-func (m *RemoveFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveFileRequest.Merge(m, src)
+func (m *RemoveBucketPathRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveBucketPathRequest.Merge(m, src)
 }
-func (m *RemoveFileRequest) XXX_Size() int {
-	return xxx_messageInfo_RemoveFileRequest.Size(m)
+func (m *RemoveBucketPathRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveBucketPathRequest.Size(m)
 }
-func (m *RemoveFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveFileRequest.DiscardUnknown(m)
+func (m *RemoveBucketPathRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveBucketPathRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RemoveFileRequest proto.InternalMessageInfo
+var xxx_messageInfo_RemoveBucketPathRequest proto.InternalMessageInfo
 
-func (m *RemoveFileRequest) GetPath() string {
+func (m *RemoveBucketPathRequest) GetPath() string {
 	if m != nil {
 		return m.Path
 	}
 	return ""
 }
 
-type RemoveFileReply struct {
+type RemoveBucketPathReply struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveFileReply) Reset()         { *m = RemoveFileReply{} }
-func (m *RemoveFileReply) String() string { return proto.CompactTextString(m) }
-func (*RemoveFileReply) ProtoMessage()    {}
-func (*RemoveFileReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{49}
+func (m *RemoveBucketPathReply) Reset()         { *m = RemoveBucketPathReply{} }
+func (m *RemoveBucketPathReply) String() string { return proto.CompactTextString(m) }
+func (*RemoveBucketPathReply) ProtoMessage()    {}
+func (*RemoveBucketPathReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{44}
 }
 
-func (m *RemoveFileReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveFileReply.Unmarshal(m, b)
+func (m *RemoveBucketPathReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveBucketPathReply.Unmarshal(m, b)
 }
-func (m *RemoveFileReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveFileReply.Marshal(b, m, deterministic)
+func (m *RemoveBucketPathReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveBucketPathReply.Marshal(b, m, deterministic)
 }
-func (m *RemoveFileReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveFileReply.Merge(m, src)
+func (m *RemoveBucketPathReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveBucketPathReply.Merge(m, src)
 }
-func (m *RemoveFileReply) XXX_Size() int {
-	return xxx_messageInfo_RemoveFileReply.Size(m)
+func (m *RemoveBucketPathReply) XXX_Size() int {
+	return xxx_messageInfo_RemoveBucketPathReply.Size(m)
 }
-func (m *RemoveFileReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveFileReply.DiscardUnknown(m)
+func (m *RemoveBucketPathReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveBucketPathReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RemoveFileReply proto.InternalMessageInfo
+var xxx_messageInfo_RemoveBucketPathReply proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*LoginRequest)(nil), "pb.LoginRequest")
@@ -2392,117 +2197,109 @@ func init() {
 	proto.RegisterType((*ListAppTokensReply)(nil), "pb.ListAppTokensReply")
 	proto.RegisterType((*RemoveAppTokenRequest)(nil), "pb.RemoveAppTokenRequest")
 	proto.RegisterType((*RemoveAppTokenReply)(nil), "pb.RemoveAppTokenReply")
-	proto.RegisterType((*AddFolderRequest)(nil), "pb.AddFolderRequest")
-	proto.RegisterType((*AddFolderReply)(nil), "pb.AddFolderReply")
-	proto.RegisterType((*GetFolderRequest)(nil), "pb.GetFolderRequest")
-	proto.RegisterType((*GetFolderReply)(nil), "pb.GetFolderReply")
-	proto.RegisterType((*GetFolderReply_Entry)(nil), "pb.GetFolderReply.Entry")
-	proto.RegisterType((*ListFoldersRequest)(nil), "pb.ListFoldersRequest")
-	proto.RegisterType((*ListFoldersReply)(nil), "pb.ListFoldersReply")
-	proto.RegisterType((*RemoveFolderRequest)(nil), "pb.RemoveFolderRequest")
-	proto.RegisterType((*RemoveFolderReply)(nil), "pb.RemoveFolderReply")
-	proto.RegisterType((*AddFileRequest)(nil), "pb.AddFileRequest")
-	proto.RegisterType((*AddFileRequest_Header)(nil), "pb.AddFileRequest.Header")
-	proto.RegisterType((*AddFileReply)(nil), "pb.AddFileReply")
-	proto.RegisterType((*AddFileReply_Event)(nil), "pb.AddFileReply.Event")
-	proto.RegisterType((*GetFileRequest)(nil), "pb.GetFileRequest")
-	proto.RegisterType((*GetFileReply)(nil), "pb.GetFileReply")
-	proto.RegisterType((*CatFileRequest)(nil), "pb.CatFileRequest")
-	proto.RegisterType((*CatFileReply)(nil), "pb.CatFileReply")
-	proto.RegisterType((*RemoveFileRequest)(nil), "pb.RemoveFileRequest")
-	proto.RegisterType((*RemoveFileReply)(nil), "pb.RemoveFileReply")
+	proto.RegisterType((*BucketRoot)(nil), "pb.BucketRoot")
+	proto.RegisterType((*ListBucketsRequest)(nil), "pb.ListBucketsRequest")
+	proto.RegisterType((*ListBucketsReply)(nil), "pb.ListBucketsReply")
+	proto.RegisterType((*GetBucketPathRequest)(nil), "pb.GetBucketPathRequest")
+	proto.RegisterType((*GetBucketPathReply)(nil), "pb.GetBucketPathReply")
+	proto.RegisterType((*GetBucketPathReply_Entry)(nil), "pb.GetBucketPathReply.Entry")
+	proto.RegisterType((*PushBucketPathRequest)(nil), "pb.PushBucketPathRequest")
+	proto.RegisterType((*PushBucketPathRequest_Header)(nil), "pb.PushBucketPathRequest.Header")
+	proto.RegisterType((*PushBucketPathReply)(nil), "pb.PushBucketPathReply")
+	proto.RegisterType((*PushBucketPathReply_Event)(nil), "pb.PushBucketPathReply.Event")
+	proto.RegisterType((*PullBucketPathRequest)(nil), "pb.PullBucketPathRequest")
+	proto.RegisterType((*PullBucketPathReply)(nil), "pb.PullBucketPathReply")
+	proto.RegisterType((*RemoveBucketPathRequest)(nil), "pb.RemoveBucketPathRequest")
+	proto.RegisterType((*RemoveBucketPathReply)(nil), "pb.RemoveBucketPathReply")
 }
 
 func init() { proto.RegisterFile("api.proto", fileDescriptor_00212fb1f9d3bf1c) }
 
 var fileDescriptor_00212fb1f9d3bf1c = []byte{
-	// 1368 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x58, 0xed, 0x4e, 0xe3, 0x46,
-	0x14, 0x8d, 0x13, 0x92, 0x90, 0x9b, 0x10, 0x92, 0x49, 0x02, 0x59, 0x0b, 0x55, 0xc8, 0x8d, 0x80,
-	0x6a, 0xa5, 0x74, 0x0b, 0xdb, 0xad, 0xc4, 0xb6, 0x52, 0xc3, 0xc2, 0x42, 0x24, 0x5a, 0x21, 0x37,
-	0x52, 0x5b, 0xa9, 0x52, 0xe5, 0xc4, 0x23, 0x70, 0xd7, 0x89, 0x5d, 0xdb, 0x40, 0xe9, 0x03, 0xf4,
-	0x05, 0xfa, 0x06, 0x7d, 0x83, 0xfe, 0xe8, 0xbf, 0xbe, 0x40, 0xdf, 0xaa, 0x9a, 0x4f, 0xcf, 0x38,
-	0x0e, 0xec, 0xfe, 0x22, 0x73, 0xe7, 0xdc, 0x3b, 0xe7, 0x8e, 0x8f, 0xaf, 0x8f, 0x80, 0x9a, 0x13,
-	0x7a, 0xc3, 0x30, 0x0a, 0x92, 0x00, 0x15, 0xc3, 0xa9, 0x35, 0x80, 0xc6, 0x65, 0x70, 0xed, 0x2d,
-	0x6c, 0xfc, 0xeb, 0x2d, 0x8e, 0x13, 0xd4, 0x85, 0x32, 0x9e, 0x3b, 0x9e, 0xdf, 0x37, 0x76, 0x8d,
-	0x83, 0x9a, 0xcd, 0x16, 0xd6, 0x31, 0x00, 0x47, 0x85, 0xfe, 0x03, 0x6a, 0x42, 0x71, 0x7c, 0xca,
-	0x01, 0xc5, 0xf1, 0x29, 0xda, 0x81, 0x5a, 0x8c, 0xe3, 0xd8, 0x0b, 0x16, 0xe3, 0xd3, 0x7e, 0x91,
-	0x86, 0xd3, 0x80, 0xb5, 0x09, 0x1b, 0xdf, 0xdd, 0x7b, 0xc9, 0xec, 0x86, 0x1f, 0x61, 0x6d, 0x40,
-	0x5d, 0x04, 0x42, 0xff, 0x81, 0xec, 0x5f, 0x06, 0xd7, 0xc1, 0x6d, 0xa2, 0xec, 0x8b, 0x00, 0xdf,
-	0xff, 0xfe, 0x26, 0x70, 0xe6, 0x9e, 0xd8, 0xbf, 0x86, 0xba, 0x08, 0xe4, 0xb1, 0xe9, 0x42, 0xf9,
-	0x8c, 0x76, 0xc0, 0x98, 0xb0, 0x05, 0xda, 0x82, 0x4a, 0x82, 0x9d, 0xf9, 0xf8, 0xb4, 0x5f, 0xa2,
-	0x61, 0xbe, 0x42, 0x26, 0xac, 0x93, 0x5f, 0xdf, 0x3a, 0x73, 0xdc, 0x5f, 0xa3, 0x3b, 0x72, 0x6d,
-	0x0d, 0xa0, 0x39, 0x72, 0xdd, 0x09, 0x76, 0xe6, 0xe2, 0x76, 0x10, 0xac, 0x2d, 0x08, 0x92, 0x9d,
-	0x46, 0x7f, 0x5b, 0x1f, 0x41, 0x43, 0xa2, 0x72, 0xf8, 0x58, 0xbb, 0xd0, 0x3c, 0xc7, 0x89, 0x5a,
-	0x25, 0x8b, 0xf8, 0xcf, 0x80, 0x86, 0x84, 0xe4, 0xb5, 0xd4, 0x87, 0x6a, 0x70, 0xbf, 0xc0, 0x91,
-	0xbc, 0x5e, 0xb1, 0x94, 0x84, 0x4a, 0x29, 0x21, 0x82, 0x9e, 0x45, 0xd8, 0x49, 0xb0, 0x4b, 0x3b,
-	0x2a, 0xd9, 0x62, 0x89, 0x3e, 0x83, 0xea, 0x1c, 0xcf, 0xa7, 0x38, 0x8a, 0xfb, 0xe5, 0xdd, 0xd2,
-	0x41, 0xfd, 0x70, 0x7b, 0x18, 0x4e, 0x87, 0xea, 0xd1, 0xc3, 0x6f, 0xe8, 0xbe, 0x2d, 0x70, 0xe6,
-	0x10, 0x2a, 0x2c, 0x94, 0x77, 0xcf, 0x58, 0xbd, 0x67, 0xa6, 0x14, 0x04, 0xad, 0x4b, 0x2f, 0xa6,
-	0x05, 0x63, 0xf1, 0xc0, 0x5e, 0x41, 0x53, 0x89, 0x91, 0x06, 0x07, 0xb0, 0xe6, 0x7b, 0x71, 0xd2,
-	0x37, 0x28, 0x8b, 0x56, 0x96, 0x85, 0x4d, 0x77, 0xad, 0x8f, 0xa1, 0x6d, 0xe3, 0x79, 0x70, 0x87,
-	0x1f, 0xbb, 0xbc, 0x36, 0x6c, 0xaa, 0x20, 0xa2, 0x98, 0xd7, 0xd0, 0x19, 0x2f, 0xee, 0xbc, 0x04,
-	0x4f, 0x82, 0x47, 0x32, 0x57, 0x34, 0xf0, 0x29, 0xb4, 0xf5, 0x64, 0xc2, 0xd7, 0x84, 0x75, 0x8f,
-	0x06, 0x65, 0x01, 0xb9, 0xb6, 0x2c, 0x68, 0x5d, 0x62, 0xe7, 0x71, 0x92, 0x2d, 0x68, 0x2a, 0x18,
-	0xc2, 0x71, 0x1f, 0xda, 0x23, 0xd7, 0xbd, 0x8a, 0x82, 0x5f, 0xf0, 0x2c, 0x79, 0x4c, 0x5e, 0xaf,
-	0x61, 0x53, 0x05, 0xae, 0x90, 0x47, 0x9c, 0x04, 0x11, 0x4e, 0xe5, 0xc1, 0x97, 0xe4, 0x06, 0xcf,
-	0x71, 0x92, 0x39, 0x25, 0x4b, 0xee, 0x1f, 0x03, 0x36, 0x55, 0x54, 0xde, 0x11, 0x82, 0x59, 0x51,
-	0xd7, 0x99, 0x38, 0xb6, 0xa4, 0x1d, 0x8b, 0x06, 0xb0, 0x71, 0xef, 0xf8, 0x3e, 0x4e, 0x46, 0xae,
-	0x1b, 0xe1, 0x38, 0xe6, 0x6f, 0x96, 0x1e, 0x4c, 0x51, 0x27, 0x8e, 0xef, 0x2c, 0x66, 0xb8, 0x5f,
-	0xa6, 0x6a, 0xd5, 0x83, 0xaa, 0x9a, 0x2b, 0x9a, 0x9a, 0xad, 0x1e, 0x74, 0x88, 0xac, 0x38, 0x6f,
-	0xa9, 0xb6, 0x2f, 0xa1, 0xad, 0x87, 0x49, 0x3f, 0xfb, 0x9a, 0xe0, 0x3a, 0x5c, 0x70, 0x6a, 0xcb,
-	0x5c, 0x73, 0x7b, 0xd0, 0x65, 0x72, 0x7a, 0xe2, 0xd2, 0xba, 0x80, 0x32, 0x38, 0xf2, 0x54, 0x0f,
-	0x01, 0x8d, 0x5c, 0x77, 0x14, 0x86, 0x93, 0xe0, 0x1d, 0x96, 0x33, 0x75, 0x07, 0x6a, 0x21, 0x43,
-	0xc9, 0x12, 0x69, 0x80, 0xe8, 0x47, 0xcb, 0xc9, 0x9b, 0x21, 0x2f, 0xa1, 0x4b, 0x7a, 0x12, 0xa0,
-	0xf8, 0xfd, 0x2a, 0x1f, 0x00, 0xca, 0x64, 0x91, 0xda, 0x48, 0xb9, 0x8a, 0x1a, 0xef, 0x7a, 0x1f,
-	0x7a, 0xac, 0x9b, 0x2c, 0xf5, 0x2c, 0x91, 0x1e, 0x74, 0xb2, 0x40, 0xd2, 0xf7, 0x4f, 0xb4, 0x87,
-	0xb7, 0x81, 0xef, 0xe2, 0xe8, 0x11, 0x31, 0x93, 0x29, 0x1c, 0xde, 0x4e, 0x7d, 0x6f, 0x46, 0x85,
-	0xb4, 0x6e, 0xf3, 0x95, 0xde, 0x47, 0x29, 0xdb, 0xc7, 0x4b, 0x3a, 0x87, 0x45, 0xf5, 0x15, 0xf2,
-	0x0c, 0x9d, 0xe4, 0x46, 0xc8, 0x93, 0xfc, 0xb6, 0xf6, 0xa0, 0x75, 0x8e, 0x93, 0x27, 0x39, 0x59,
-	0x7f, 0x16, 0xe9, 0x80, 0xfe, 0xc0, 0xf2, 0xb9, 0x93, 0x37, 0x6d, 0x6f, 0x6d, 0x75, 0x7b, 0xe5,
-	0x4c, 0x7b, 0xab, 0x15, 0x8e, 0x0e, 0xa1, 0x8a, 0x17, 0x49, 0xe4, 0xe1, 0xb8, 0x5f, 0xa5, 0xc2,
-	0xed, 0x73, 0xe1, 0x2a, 0x64, 0x87, 0x67, 0x8b, 0x24, 0x7a, 0xb0, 0x05, 0xd0, 0x3c, 0x83, 0x32,
-	0x8d, 0x48, 0xd2, 0x86, 0x4e, 0x3a, 0xf6, 0x7e, 0x67, 0xaf, 0x71, 0xc9, 0xa6, 0xbf, 0xc9, 0x18,
-	0xf4, 0xe2, 0x53, 0x2f, 0xa2, 0x9d, 0xac, 0xdb, 0x6c, 0x41, 0x94, 0x4c, 0xb4, 0xc3, 0x0e, 0x7a,
-	0x4f, 0xbd, 0x1d, 0xb3, 0xd9, 0x2f, 0x73, 0xc8, 0x55, 0xee, 0x69, 0x2f, 0x1e, 0x5a, 0xe6, 0xcf,
-	0x15, 0xf8, 0x89, 0x10, 0xd6, 0xd3, 0x0f, 0xac, 0x23, 0x3e, 0x0b, 0x4a, 0x15, 0xeb, 0x0f, 0x83,
-	0x89, 0xc4, 0xf3, 0xb1, 0xc8, 0x3d, 0x82, 0xca, 0x0d, 0x76, 0x5c, 0x1c, 0xd1, 0xec, 0xfa, 0xe1,
-	0x33, 0x72, 0xb8, 0x8e, 0x19, 0x5e, 0x50, 0xc0, 0x45, 0xc1, 0xe6, 0x50, 0xb4, 0x05, 0xe5, 0xd9,
-	0xcd, 0xed, 0xe2, 0x1d, 0xbd, 0xa2, 0xc6, 0x45, 0xc1, 0x66, 0x4b, 0x73, 0x07, 0x2a, 0x0c, 0x9b,
-	0x77, 0xaf, 0x27, 0x35, 0xa8, 0x86, 0xce, 0x83, 0x1f, 0x38, 0xae, 0xf5, 0xaf, 0x41, 0xfd, 0x00,
-	0x3b, 0x84, 0xdc, 0xc0, 0x10, 0xca, 0xf8, 0x0e, 0x2f, 0x12, 0xce, 0x62, 0x4b, 0x63, 0x41, 0x1f,
-	0x20, 0xd9, 0x25, 0x27, 0x51, 0x18, 0x61, 0x80, 0xa3, 0x28, 0x88, 0x98, 0xda, 0x68, 0x9c, 0x2c,
-	0xcd, 0x1f, 0xa1, 0x4c, 0x91, 0xb9, 0x2f, 0x56, 0x9e, 0x42, 0xbb, 0x50, 0x9e, 0x3e, 0x24, 0x38,
-	0xa6, 0x0f, 0xb6, 0x64, 0xb3, 0x85, 0x94, 0x00, 0x1b, 0xc9, 0xf4, 0xb7, 0x4a, 0x7f, 0xc0, 0x5e,
-	0x06, 0xe5, 0x1a, 0x73, 0xfa, 0xb5, 0x5e, 0x51, 0xc3, 0x92, 0xf6, 0xb8, 0xe2, 0x05, 0xa1, 0x07,
-	0x95, 0x52, 0xad, 0x91, 0xea, 0x6f, 0x9c, 0x27, 0xab, 0x0f, 0xa0, 0x21, 0x51, 0xa4, 0x7a, 0x57,
-	0x3c, 0x13, 0x02, 0x6a, 0xf0, 0x27, 0x42, 0xbe, 0xa0, 0x5c, 0x06, 0x4f, 0x94, 0x93, 0x0e, 0x41,
-	0x56, 0x3c, 0xfc, 0xbb, 0x0e, 0xa5, 0xd1, 0xd5, 0x18, 0x3d, 0x87, 0x32, 0xf5, 0xb5, 0x88, 0x5a,
-	0x10, 0xd5, 0x08, 0x9b, 0x4d, 0x25, 0x42, 0x04, 0x56, 0x40, 0x43, 0xa8, 0x30, 0x5f, 0x8a, 0xda,
-	0x7c, 0x2f, 0x35, 0xad, 0xe6, 0xa6, 0x1a, 0x92, 0x78, 0xe6, 0x73, 0x19, 0x5e, 0x33, 0xc1, 0x0c,
-	0xaf, 0xda, 0x60, 0x8a, 0x67, 0xbe, 0x96, 0xe1, 0x35, 0xd3, 0xcb, 0xf0, 0x8a, 0xed, 0xb5, 0x0a,
-	0xc4, 0xcd, 0x71, 0xe3, 0x89, 0x10, 0x17, 0x95, 0xe2, 0x41, 0xcc, 0x96, 0x16, 0x93, 0x29, 0xdc,
-	0x67, 0x21, 0xa4, 0x99, 0x2e, 0x25, 0x45, 0x35, 0x62, 0x56, 0x01, 0x7d, 0x01, 0x35, 0x69, 0xde,
-	0x50, 0x97, 0x76, 0x99, 0xf1, 0x77, 0x26, 0xca, 0x44, 0x59, 0xe2, 0x31, 0x40, 0x6a, 0xcc, 0x50,
-	0x8f, 0x60, 0x96, 0xdc, 0x9c, 0xd9, 0xc9, 0x86, 0x59, 0xee, 0xd7, 0xd0, 0x50, 0x4d, 0x18, 0xa2,
-	0x3e, 0x35, 0xc7, 0xd3, 0x99, 0xbd, 0xe5, 0x8d, 0x94, 0xb6, 0x70, 0x5c, 0x9c, 0x76, 0xc6, 0xa4,
-	0x71, 0xda, 0xba, 0x2d, 0xa3, 0xb4, 0x53, 0xbf, 0xc5, 0x68, 0x2f, 0x19, 0x35, 0x46, 0x3b, 0x63,
-	0xcb, 0x58, 0x6e, 0xea, 0x2a, 0x58, 0xee, 0x92, 0xfd, 0x32, 0xf3, 0xcc, 0x07, 0x6b, 0x59, 0xb5,
-	0x2d, 0xac, 0xe5, 0x1c, 0x7f, 0xc3, 0x5a, 0x5e, 0x72, 0x38, 0x56, 0x01, 0xbd, 0x81, 0x0d, 0xcd,
-	0x92, 0xa0, 0x7e, 0x7a, 0xb9, 0x19, 0x0e, 0x5b, 0x39, 0x3b, 0xac, 0xc8, 0x57, 0x50, 0x57, 0xdc,
-	0x08, 0x12, 0xd3, 0x2a, 0xe3, 0x0b, 0xcc, 0xee, 0x52, 0x5c, 0x72, 0xd0, 0x2c, 0x07, 0xe3, 0x90,
-	0xe7, 0x5d, 0x18, 0x87, 0x65, 0x7f, 0x62, 0x15, 0xd0, 0x5b, 0x68, 0xea, 0x26, 0x03, 0x3d, 0x4b,
-	0xf9, 0x66, 0x99, 0x6c, 0xe7, 0x6d, 0x49, 0x0d, 0x48, 0xdf, 0x80, 0x04, 0x63, 0xed, 0xfb, 0x62,
-	0xa2, 0x4c, 0x54, 0x26, 0xca, 0x8f, 0x14, 0x4b, 0xcc, 0x3a, 0x09, 0x33, 0xe7, 0x4b, 0xc6, 0x6e,
-	0x4f, 0xf9, 0x02, 0x22, 0xd9, 0xa2, 0xfe, 0x19, 0x35, 0xbb, 0x4b, 0x71, 0xa9, 0x01, 0xf5, 0xcb,
-	0x86, 0x94, 0xde, 0xf4, 0xd3, 0x7b, 0xcb, 0x1b, 0xac, 0xc2, 0xe7, 0x74, 0x26, 0x90, 0x41, 0x27,
-	0x67, 0x82, 0x32, 0x1e, 0xe5, 0x4c, 0x90, 0x93, 0xd0, 0x2a, 0x1c, 0x18, 0x2f, 0x0c, 0x3e, 0x17,
-	0xd2, 0x34, 0xfd, 0x13, 0x20, 0xe7, 0x82, 0x92, 0x86, 0x8e, 0xa0, 0xca, 0x87, 0x34, 0x4b, 0xd1,
-	0xe7, 0x3a, 0x4b, 0x51, 0xa7, 0xb8, 0x55, 0x78, 0x61, 0xa4, 0x33, 0x81, 0xe6, 0xa9, 0x5d, 0x28,
-	0xa9, 0x9d, 0x6c, 0x98, 0x66, 0x9f, 0x3c, 0x87, 0x6d, 0x2f, 0x18, 0x26, 0xf8, 0xb7, 0xc4, 0xf3,
-	0xb1, 0xf8, 0xfb, 0xf3, 0x75, 0x14, 0xce, 0x4e, 0xaa, 0x13, 0xb6, 0xba, 0x32, 0xfe, 0x2a, 0xae,
-	0x4d, 0x7e, 0x98, 0x5c, 0x4e, 0x2b, 0xf4, 0x3f, 0x1c, 0x47, 0xff, 0x07, 0x00, 0x00, 0xff, 0xff,
-	0xed, 0x92, 0xe9, 0x97, 0xee, 0x10, 0x00, 0x00,
+	// 1328 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x58, 0x6d, 0x6f, 0xe3, 0x44,
+	0x10, 0x8e, 0xf3, 0xda, 0x4c, 0xd2, 0x34, 0xd9, 0x24, 0x6d, 0xce, 0x1c, 0xa8, 0x32, 0x15, 0x57,
+	0x5d, 0x45, 0x38, 0x0a, 0x1c, 0x52, 0x0f, 0x10, 0x29, 0x3d, 0xae, 0x41, 0x01, 0x55, 0x26, 0x12,
+	0x7c, 0x43, 0x4e, 0xbc, 0x6a, 0xcc, 0x39, 0xb1, 0xb1, 0x37, 0x77, 0x14, 0x89, 0x3f, 0xc3, 0x4f,
+	0x40, 0xe2, 0x47, 0x20, 0xfe, 0x0b, 0xdf, 0xf8, 0x8e, 0xf6, 0xc5, 0xf6, 0xae, 0xbd, 0x2d, 0x95,
+	0xf8, 0x54, 0xef, 0xcc, 0xb3, 0xb3, 0xcf, 0xcc, 0x4e, 0x66, 0x1f, 0x15, 0x9a, 0x4e, 0xe8, 0x8d,
+	0xc3, 0x28, 0x20, 0x01, 0x2a, 0x87, 0x0b, 0xeb, 0x08, 0xda, 0xb3, 0xe0, 0xda, 0xdb, 0xd8, 0xf8,
+	0xa7, 0x2d, 0x8e, 0x09, 0x1a, 0x40, 0x0d, 0xaf, 0x1d, 0xcf, 0x1f, 0x19, 0x87, 0xc6, 0x71, 0xd3,
+	0xe6, 0x0b, 0xeb, 0x0c, 0x40, 0xa0, 0x42, 0xff, 0x06, 0x75, 0xa0, 0x3c, 0xbd, 0x10, 0x80, 0xf2,
+	0xf4, 0x02, 0x3d, 0x84, 0x66, 0x8c, 0xe3, 0xd8, 0x0b, 0x36, 0xd3, 0x8b, 0x51, 0x99, 0x99, 0x33,
+	0x83, 0xb5, 0x07, 0xbb, 0xdf, 0xbe, 0xf6, 0xc8, 0x72, 0x25, 0x8e, 0xb0, 0x76, 0xa1, 0x95, 0x18,
+	0x42, 0xff, 0x86, 0xfa, 0x67, 0xc1, 0x75, 0xb0, 0x25, 0x92, 0x3f, 0x31, 0x08, 0xff, 0x77, 0xab,
+	0xc0, 0x59, 0x7b, 0x89, 0xff, 0x1a, 0x5a, 0x89, 0x41, 0xc7, 0x66, 0x00, 0xb5, 0xe7, 0x2c, 0x03,
+	0xce, 0x84, 0x2f, 0xd0, 0x3e, 0xd4, 0x09, 0x76, 0xd6, 0xd3, 0x8b, 0x51, 0x85, 0x99, 0xc5, 0x0a,
+	0x99, 0xb0, 0x43, 0xbf, 0xbe, 0x71, 0xd6, 0x78, 0x54, 0x65, 0x9e, 0x74, 0x6d, 0x1d, 0x41, 0x67,
+	0xe2, 0xba, 0x73, 0xec, 0xac, 0x93, 0xea, 0x20, 0xa8, 0x6e, 0x28, 0x92, 0x9f, 0xc6, 0xbe, 0xad,
+	0xb7, 0xa0, 0x9d, 0xa2, 0x34, 0x7c, 0xac, 0x43, 0xe8, 0xbc, 0xc0, 0x44, 0x8e, 0x92, 0x47, 0xfc,
+	0x69, 0x40, 0x3b, 0x85, 0xe8, 0x52, 0x1a, 0x41, 0x23, 0x78, 0xbd, 0xc1, 0x51, 0x5a, 0xde, 0x64,
+	0x99, 0x12, 0xaa, 0x64, 0x84, 0x28, 0x7a, 0x19, 0x61, 0x87, 0x60, 0x97, 0x65, 0x54, 0xb1, 0x93,
+	0x25, 0x7a, 0x1f, 0x1a, 0x6b, 0xbc, 0x5e, 0xe0, 0x28, 0x1e, 0xd5, 0x0e, 0x2b, 0xc7, 0xad, 0xd3,
+	0x83, 0x71, 0xb8, 0x18, 0xcb, 0x47, 0x8f, 0xbf, 0x66, 0x7e, 0x3b, 0xc1, 0x99, 0x63, 0xa8, 0x73,
+	0x93, 0xae, 0xce, 0x58, 0xae, 0x33, 0xef, 0x14, 0x04, 0xdd, 0x99, 0x17, 0xb3, 0x80, 0x71, 0x72,
+	0x61, 0x4f, 0xa1, 0x23, 0xd9, 0x68, 0x82, 0x47, 0x50, 0xf5, 0xbd, 0x98, 0x8c, 0x0c, 0xc6, 0xa2,
+	0x9b, 0x67, 0x61, 0x33, 0xaf, 0xf5, 0x36, 0xf4, 0x6c, 0xbc, 0x0e, 0x5e, 0xe1, 0xbb, 0x8a, 0xd7,
+	0x83, 0x3d, 0x19, 0x44, 0x3b, 0xe6, 0x19, 0xf4, 0xa7, 0x9b, 0x57, 0x1e, 0xc1, 0xf3, 0xe0, 0x8e,
+	0x9d, 0xb7, 0x24, 0xf0, 0x1e, 0xf4, 0xd4, 0xcd, 0x94, 0xaf, 0x09, 0x3b, 0x1e, 0x33, 0xa6, 0x01,
+	0xd2, 0xb5, 0x65, 0x41, 0x77, 0x86, 0x9d, 0xbb, 0x49, 0x76, 0xa1, 0x23, 0x61, 0x28, 0xc7, 0x47,
+	0xd0, 0x9b, 0xb8, 0xee, 0x55, 0x14, 0xfc, 0x88, 0x97, 0xe4, 0xae, 0xf6, 0x7a, 0x06, 0x7b, 0x32,
+	0xf0, 0x96, 0xf6, 0x88, 0x49, 0x10, 0xe1, 0xac, 0x3d, 0xc4, 0x92, 0x56, 0xf0, 0x05, 0x26, 0xb9,
+	0x53, 0xf2, 0xe4, 0xfe, 0x30, 0x60, 0x4f, 0x46, 0xe9, 0x8e, 0x48, 0x98, 0x95, 0xd5, 0x3e, 0x4b,
+	0x8e, 0xad, 0x28, 0xc7, 0xa2, 0x23, 0xd8, 0x7d, 0xed, 0xf8, 0x3e, 0x26, 0x13, 0xd7, 0x8d, 0x70,
+	0x1c, 0x8b, 0x5f, 0x96, 0x6a, 0xcc, 0x50, 0xe7, 0x8e, 0xef, 0x6c, 0x96, 0x78, 0x54, 0x63, 0xdd,
+	0xaa, 0x1a, 0xe5, 0x6e, 0xae, 0x2b, 0xdd, 0x6c, 0x0d, 0xa1, 0x4f, 0xdb, 0x4a, 0xf0, 0x4e, 0xbb,
+	0xed, 0x13, 0xe8, 0xa9, 0x66, 0x9a, 0xcf, 0x23, 0xa5, 0xe1, 0xfa, 0xa2, 0xe1, 0xe4, 0x94, 0x45,
+	0xcf, 0xbd, 0x03, 0x03, 0xde, 0x4e, 0xff, 0x51, 0xb4, 0x01, 0xa0, 0x1c, 0x8e, 0xde, 0xea, 0x29,
+	0xa0, 0x89, 0xeb, 0x4e, 0xc2, 0x70, 0x1e, 0xbc, 0xc4, 0xe9, 0x4c, 0x7d, 0x08, 0xcd, 0x90, 0xa3,
+	0xd2, 0x10, 0x99, 0x81, 0xf6, 0x8f, 0xb2, 0x47, 0x37, 0x43, 0x3e, 0x84, 0x01, 0xcd, 0x29, 0x01,
+	0xc5, 0xf7, 0x8b, 0x7c, 0x0c, 0x28, 0xb7, 0x8b, 0xc6, 0x46, 0x52, 0x29, 0x9a, 0x22, 0xeb, 0x47,
+	0x30, 0xe4, 0xd9, 0xe4, 0xa9, 0xe7, 0x89, 0x0c, 0xa1, 0x9f, 0x07, 0xd2, 0xbc, 0x7d, 0x80, 0xf3,
+	0xed, 0xf2, 0x25, 0x26, 0x76, 0x10, 0xb0, 0x36, 0x0e, 0x1d, 0xb2, 0x4a, 0xda, 0x98, 0x7e, 0xcb,
+	0xd7, 0x58, 0x56, 0x87, 0xd2, 0x08, 0x1a, 0xdb, 0xd0, 0x65, 0x9e, 0x0a, 0xf7, 0x88, 0x25, 0x9d,
+	0xd9, 0xe1, 0x76, 0xe1, 0x7b, 0x4b, 0xd6, 0x3f, 0x3b, 0xb6, 0x58, 0xd1, 0x2a, 0xd3, 0xbc, 0xf8,
+	0x89, 0xf7, 0xac, 0xc5, 0x67, 0x7c, 0x2e, 0xa5, 0x7b, 0x68, 0x25, 0x1e, 0x2b, 0x4d, 0xb1, 0x2f,
+	0x9a, 0x82, 0x43, 0xae, 0x1c, 0xb2, 0x92, 0xfb, 0xe2, 0x31, 0x0c, 0x72, 0xbe, 0xf4, 0x27, 0x9b,
+	0xcf, 0xd5, 0xfa, 0xc7, 0x00, 0x54, 0x0c, 0xa4, 0x2d, 0x0b, 0x82, 0x6a, 0xec, 0xfd, 0x82, 0x45,
+	0x4d, 0xd8, 0x37, 0x9d, 0x4b, 0x5e, 0x7c, 0xe1, 0x45, 0xac, 0x1c, 0x3b, 0x36, 0x5f, 0x20, 0x0b,
+	0xaa, 0x51, 0x10, 0x10, 0x56, 0x8a, 0xd6, 0x69, 0x87, 0x92, 0xcd, 0x4a, 0x6e, 0x33, 0x1f, 0x7a,
+	0x0a, 0x0d, 0xbc, 0x21, 0x91, 0x87, 0x93, 0xf9, 0xfe, 0x50, 0x9f, 0xd3, 0xf8, 0xf9, 0x86, 0x44,
+	0x37, 0x76, 0x02, 0x36, 0x9f, 0x43, 0x8d, 0x59, 0xfe, 0x1f, 0x45, 0xeb, 0x77, 0x03, 0x86, 0x57,
+	0xdb, 0x78, 0x55, 0xac, 0xd2, 0x19, 0xd4, 0x57, 0xd8, 0x71, 0x71, 0xc4, 0x22, 0xb7, 0x4e, 0x0f,
+	0x29, 0x2f, 0x2d, 0x74, 0x7c, 0xc9, 0x70, 0x97, 0x25, 0x5b, 0xec, 0x40, 0xfb, 0x50, 0x5b, 0xae,
+	0xb6, 0x9b, 0x97, 0x8c, 0x40, 0xfb, 0xb2, 0x64, 0xf3, 0xa5, 0x79, 0x06, 0x75, 0x8e, 0xbd, 0xfb,
+	0xe6, 0xd3, 0x9c, 0xca, 0x59, 0x4e, 0xe7, 0x4d, 0x68, 0x84, 0xce, 0x8d, 0x1f, 0x38, 0xae, 0xf5,
+	0xb7, 0x01, 0xfd, 0x3c, 0x13, 0x7a, 0x5b, 0x1f, 0x41, 0x0d, 0xbf, 0xc2, 0x1b, 0x22, 0x18, 0xbf,
+	0xa9, 0x63, 0xcc, 0x4a, 0x49, 0x41, 0x94, 0x15, 0x43, 0x53, 0xb6, 0x38, 0x8a, 0x82, 0x88, 0x1f,
+	0xc7, 0xec, 0x74, 0x69, 0xfe, 0x0a, 0x35, 0x86, 0xd4, 0xcd, 0x78, 0x1d, 0x45, 0x5a, 0xe2, 0xc5,
+	0x0d, 0xc1, 0xb1, 0xf8, 0x51, 0xf0, 0x45, 0x7a, 0x19, 0x7c, 0xa0, 0xf2, 0xcb, 0x48, 0x3a, 0xa3,
+	0x76, 0x7b, 0x67, 0xc8, 0x09, 0x9f, 0xd0, 0x4b, 0xf2, 0xfd, 0xfb, 0xb5, 0xf2, 0x09, 0x2d, 0x8e,
+	0x0a, 0xa6, 0xc5, 0x19, 0x24, 0x77, 0x42, 0xb1, 0x6d, 0x71, 0x23, 0xd6, 0xbb, 0x70, 0xc0, 0x87,
+	0xc3, 0xfd, 0x62, 0x1f, 0x24, 0x43, 0x27, 0x17, 0xfd, 0xf4, 0x2f, 0x80, 0xca, 0xe4, 0x6a, 0x8a,
+	0x4e, 0xa0, 0xc6, 0x54, 0x27, 0x62, 0x02, 0x41, 0x96, 0xa9, 0x66, 0x47, 0xb2, 0xd0, 0x01, 0x54,
+	0x42, 0x63, 0xa8, 0x73, 0xd5, 0x88, 0x7a, 0xc2, 0x97, 0x49, 0x4a, 0x73, 0x4f, 0x36, 0xa5, 0x78,
+	0xae, 0x42, 0x39, 0x5e, 0x91, 0xa8, 0x1c, 0x2f, 0x8b, 0x54, 0x86, 0xe7, 0xaa, 0x93, 0xe3, 0x15,
+	0x49, 0xca, 0xf1, 0x92, 0x28, 0xb5, 0x4a, 0x54, 0x6b, 0x09, 0x59, 0x88, 0x10, 0xf5, 0xaa, 0x4a,
+	0xd2, 0xec, 0x2a, 0xb6, 0x74, 0x8b, 0x50, 0x41, 0x7c, 0x8b, 0x2a, 0x1b, 0xcd, 0x82, 0x4c, 0xb2,
+	0x4a, 0xe8, 0x63, 0x68, 0xa6, 0xd2, 0x0a, 0x0d, 0x58, 0x96, 0x39, 0xf5, 0x65, 0xa2, 0x9c, 0x95,
+	0x6f, 0x3c, 0x03, 0xc8, 0x64, 0x13, 0x1a, 0x52, 0x4c, 0x41, 0x6b, 0x99, 0xfd, 0xbc, 0x99, 0xef,
+	0xfd, 0x1c, 0xda, 0xb2, 0x44, 0x42, 0x4c, 0x45, 0x6a, 0x14, 0x97, 0x39, 0x2c, 0x3a, 0x32, 0xda,
+	0x89, 0x1e, 0x12, 0xb4, 0x73, 0x12, 0x4a, 0xd0, 0x56, 0x45, 0x13, 0xa3, 0x9d, 0xa9, 0x21, 0x4e,
+	0xbb, 0x20, 0xa3, 0x38, 0xed, 0x9c, 0x68, 0xe2, 0x7b, 0xb3, 0x37, 0x9f, 0xef, 0x2d, 0x88, 0x23,
+	0x53, 0x27, 0x0d, 0x78, 0xca, 0xb2, 0xa8, 0xe0, 0x29, 0x6b, 0xd4, 0x07, 0x4f, 0xb9, 0xa0, 0x3f,
+	0xac, 0x12, 0xfa, 0x02, 0x76, 0x15, 0xc1, 0x80, 0x46, 0x59, 0x71, 0x73, 0x1c, 0xf6, 0x35, 0x1e,
+	0x1e, 0xe4, 0x53, 0x68, 0x49, 0x5a, 0x01, 0xed, 0x8b, 0x44, 0x73, 0xaf, 0xb6, 0x39, 0x28, 0xd8,
+	0x53, 0x0e, 0x8a, 0x20, 0xe0, 0x1c, 0x74, 0xca, 0x82, 0x73, 0x28, 0xaa, 0x07, 0xab, 0x84, 0xbe,
+	0x84, 0x8e, 0x2a, 0x01, 0xd0, 0x83, 0x8c, 0x6f, 0x9e, 0xc9, 0x81, 0xce, 0x95, 0xe6, 0x22, 0xbd,
+	0xc8, 0x28, 0x3d, 0x50, 0x7d, 0xd6, 0xcd, 0x41, 0xc1, 0x9e, 0xe6, 0xa2, 0x3c, 0x6c, 0x3c, 0x17,
+	0xdd, 0x1b, 0x6d, 0xde, 0xf2, 0xb2, 0x5b, 0x25, 0xf4, 0x15, 0x74, 0xd4, 0x99, 0xce, 0x73, 0xd1,
+	0xbe, 0x4c, 0x3c, 0x17, 0xcd, 0x13, 0x60, 0x95, 0x8e, 0x8d, 0x27, 0x06, 0xba, 0xa4, 0xb1, 0xe4,
+	0x51, 0x99, 0xc4, 0xd2, 0xcc, 0xda, 0x24, 0x56, 0x61, 0xb2, 0x5a, 0xa5, 0x27, 0x06, 0x9a, 0x41,
+	0x37, 0x3f, 0x18, 0xd1, 0x1b, 0x59, 0x21, 0x8b, 0xd1, 0x1e, 0xe8, 0x9d, 0x2c, 0xde, 0xf9, 0x09,
+	0x1c, 0x78, 0xc1, 0x98, 0xe0, 0x9f, 0x89, 0xe7, 0xe3, 0xe4, 0xef, 0x0f, 0xd7, 0x51, 0xb8, 0x3c,
+	0x6f, 0xcc, 0xf9, 0xea, 0xca, 0xf8, 0xad, 0x5c, 0x9d, 0x7f, 0x3f, 0x9f, 0x2d, 0xea, 0xec, 0x3f,
+	0x03, 0x1f, 0xfc, 0x1b, 0x00, 0x00, 0xff, 0xff, 0x3a, 0xdd, 0x1d, 0x1b, 0x26, 0x10, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2534,14 +2331,11 @@ type APIClient interface {
 	AddAppToken(ctx context.Context, in *AddAppTokenRequest, opts ...grpc.CallOption) (*AddAppTokenReply, error)
 	ListAppTokens(ctx context.Context, in *ListAppTokensRequest, opts ...grpc.CallOption) (*ListAppTokensReply, error)
 	RemoveAppToken(ctx context.Context, in *RemoveAppTokenRequest, opts ...grpc.CallOption) (*RemoveAppTokenReply, error)
-	AddFolder(ctx context.Context, in *AddFolderRequest, opts ...grpc.CallOption) (*AddFolderReply, error)
-	GetFolder(ctx context.Context, in *GetFolderRequest, opts ...grpc.CallOption) (*GetFolderReply, error)
-	ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersReply, error)
-	RemoveFolder(ctx context.Context, in *RemoveFolderRequest, opts ...grpc.CallOption) (*RemoveFolderReply, error)
-	AddFile(ctx context.Context, opts ...grpc.CallOption) (API_AddFileClient, error)
-	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileReply, error)
-	CatFile(ctx context.Context, in *CatFileRequest, opts ...grpc.CallOption) (API_CatFileClient, error)
-	RemoveFile(ctx context.Context, in *RemoveFileRequest, opts ...grpc.CallOption) (*RemoveFileReply, error)
+	ListBuckets(ctx context.Context, in *ListBucketsRequest, opts ...grpc.CallOption) (*ListBucketsReply, error)
+	GetBucketPath(ctx context.Context, in *GetBucketPathRequest, opts ...grpc.CallOption) (*GetBucketPathReply, error)
+	PushBucketPath(ctx context.Context, opts ...grpc.CallOption) (API_PushBucketPathClient, error)
+	PullBucketPath(ctx context.Context, in *PullBucketPathRequest, opts ...grpc.CallOption) (API_PullBucketPathClient, error)
+	RemoveBucketPath(ctx context.Context, in *RemoveBucketPathRequest, opts ...grpc.CallOption) (*RemoveBucketPathReply, error)
 }
 
 type aPIClient struct {
@@ -2705,88 +2499,61 @@ func (c *aPIClient) RemoveAppToken(ctx context.Context, in *RemoveAppTokenReques
 	return out, nil
 }
 
-func (c *aPIClient) AddFolder(ctx context.Context, in *AddFolderRequest, opts ...grpc.CallOption) (*AddFolderReply, error) {
-	out := new(AddFolderReply)
-	err := c.cc.Invoke(ctx, "/pb.API/AddFolder", in, out, opts...)
+func (c *aPIClient) ListBuckets(ctx context.Context, in *ListBucketsRequest, opts ...grpc.CallOption) (*ListBucketsReply, error) {
+	out := new(ListBucketsReply)
+	err := c.cc.Invoke(ctx, "/pb.API/ListBuckets", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *aPIClient) GetFolder(ctx context.Context, in *GetFolderRequest, opts ...grpc.CallOption) (*GetFolderReply, error) {
-	out := new(GetFolderReply)
-	err := c.cc.Invoke(ctx, "/pb.API/GetFolder", in, out, opts...)
+func (c *aPIClient) GetBucketPath(ctx context.Context, in *GetBucketPathRequest, opts ...grpc.CallOption) (*GetBucketPathReply, error) {
+	out := new(GetBucketPathReply)
+	err := c.cc.Invoke(ctx, "/pb.API/GetBucketPath", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *aPIClient) ListFolders(ctx context.Context, in *ListFoldersRequest, opts ...grpc.CallOption) (*ListFoldersReply, error) {
-	out := new(ListFoldersReply)
-	err := c.cc.Invoke(ctx, "/pb.API/ListFolders", in, out, opts...)
+func (c *aPIClient) PushBucketPath(ctx context.Context, opts ...grpc.CallOption) (API_PushBucketPathClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[0], "/pb.API/PushBucketPath", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *aPIClient) RemoveFolder(ctx context.Context, in *RemoveFolderRequest, opts ...grpc.CallOption) (*RemoveFolderReply, error) {
-	out := new(RemoveFolderReply)
-	err := c.cc.Invoke(ctx, "/pb.API/RemoveFolder", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIClient) AddFile(ctx context.Context, opts ...grpc.CallOption) (API_AddFileClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[0], "/pb.API/AddFile", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &aPIAddFileClient{stream}
+	x := &aPIPushBucketPathClient{stream}
 	return x, nil
 }
 
-type API_AddFileClient interface {
-	Send(*AddFileRequest) error
-	Recv() (*AddFileReply, error)
+type API_PushBucketPathClient interface {
+	Send(*PushBucketPathRequest) error
+	Recv() (*PushBucketPathReply, error)
 	grpc.ClientStream
 }
 
-type aPIAddFileClient struct {
+type aPIPushBucketPathClient struct {
 	grpc.ClientStream
 }
 
-func (x *aPIAddFileClient) Send(m *AddFileRequest) error {
+func (x *aPIPushBucketPathClient) Send(m *PushBucketPathRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *aPIAddFileClient) Recv() (*AddFileReply, error) {
-	m := new(AddFileReply)
+func (x *aPIPushBucketPathClient) Recv() (*PushBucketPathReply, error) {
+	m := new(PushBucketPathReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *aPIClient) GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileReply, error) {
-	out := new(GetFileReply)
-	err := c.cc.Invoke(ctx, "/pb.API/GetFile", in, out, opts...)
+func (c *aPIClient) PullBucketPath(ctx context.Context, in *PullBucketPathRequest, opts ...grpc.CallOption) (API_PullBucketPathClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[1], "/pb.API/PullBucketPath", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *aPIClient) CatFile(ctx context.Context, in *CatFileRequest, opts ...grpc.CallOption) (API_CatFileClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[1], "/pb.API/CatFile", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &aPICatFileClient{stream}
+	x := &aPIPullBucketPathClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -2796,26 +2563,26 @@ func (c *aPIClient) CatFile(ctx context.Context, in *CatFileRequest, opts ...grp
 	return x, nil
 }
 
-type API_CatFileClient interface {
-	Recv() (*CatFileReply, error)
+type API_PullBucketPathClient interface {
+	Recv() (*PullBucketPathReply, error)
 	grpc.ClientStream
 }
 
-type aPICatFileClient struct {
+type aPIPullBucketPathClient struct {
 	grpc.ClientStream
 }
 
-func (x *aPICatFileClient) Recv() (*CatFileReply, error) {
-	m := new(CatFileReply)
+func (x *aPIPullBucketPathClient) Recv() (*PullBucketPathReply, error) {
+	m := new(PullBucketPathReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *aPIClient) RemoveFile(ctx context.Context, in *RemoveFileRequest, opts ...grpc.CallOption) (*RemoveFileReply, error) {
-	out := new(RemoveFileReply)
-	err := c.cc.Invoke(ctx, "/pb.API/RemoveFile", in, out, opts...)
+func (c *aPIClient) RemoveBucketPath(ctx context.Context, in *RemoveBucketPathRequest, opts ...grpc.CallOption) (*RemoveBucketPathReply, error) {
+	out := new(RemoveBucketPathReply)
+	err := c.cc.Invoke(ctx, "/pb.API/RemoveBucketPath", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2841,14 +2608,11 @@ type APIServer interface {
 	AddAppToken(context.Context, *AddAppTokenRequest) (*AddAppTokenReply, error)
 	ListAppTokens(context.Context, *ListAppTokensRequest) (*ListAppTokensReply, error)
 	RemoveAppToken(context.Context, *RemoveAppTokenRequest) (*RemoveAppTokenReply, error)
-	AddFolder(context.Context, *AddFolderRequest) (*AddFolderReply, error)
-	GetFolder(context.Context, *GetFolderRequest) (*GetFolderReply, error)
-	ListFolders(context.Context, *ListFoldersRequest) (*ListFoldersReply, error)
-	RemoveFolder(context.Context, *RemoveFolderRequest) (*RemoveFolderReply, error)
-	AddFile(API_AddFileServer) error
-	GetFile(context.Context, *GetFileRequest) (*GetFileReply, error)
-	CatFile(*CatFileRequest, API_CatFileServer) error
-	RemoveFile(context.Context, *RemoveFileRequest) (*RemoveFileReply, error)
+	ListBuckets(context.Context, *ListBucketsRequest) (*ListBucketsReply, error)
+	GetBucketPath(context.Context, *GetBucketPathRequest) (*GetBucketPathReply, error)
+	PushBucketPath(API_PushBucketPathServer) error
+	PullBucketPath(*PullBucketPathRequest, API_PullBucketPathServer) error
+	RemoveBucketPath(context.Context, *RemoveBucketPathRequest) (*RemoveBucketPathReply, error)
 }
 
 // UnimplementedAPIServer can be embedded to have forward compatible implementations.
@@ -2906,29 +2670,20 @@ func (*UnimplementedAPIServer) ListAppTokens(ctx context.Context, req *ListAppTo
 func (*UnimplementedAPIServer) RemoveAppToken(ctx context.Context, req *RemoveAppTokenRequest) (*RemoveAppTokenReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveAppToken not implemented")
 }
-func (*UnimplementedAPIServer) AddFolder(ctx context.Context, req *AddFolderRequest) (*AddFolderReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddFolder not implemented")
+func (*UnimplementedAPIServer) ListBuckets(ctx context.Context, req *ListBucketsRequest) (*ListBucketsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListBuckets not implemented")
 }
-func (*UnimplementedAPIServer) GetFolder(ctx context.Context, req *GetFolderRequest) (*GetFolderReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetFolder not implemented")
+func (*UnimplementedAPIServer) GetBucketPath(ctx context.Context, req *GetBucketPathRequest) (*GetBucketPathReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBucketPath not implemented")
 }
-func (*UnimplementedAPIServer) ListFolders(ctx context.Context, req *ListFoldersRequest) (*ListFoldersReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListFolders not implemented")
+func (*UnimplementedAPIServer) PushBucketPath(srv API_PushBucketPathServer) error {
+	return status.Errorf(codes.Unimplemented, "method PushBucketPath not implemented")
 }
-func (*UnimplementedAPIServer) RemoveFolder(ctx context.Context, req *RemoveFolderRequest) (*RemoveFolderReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveFolder not implemented")
+func (*UnimplementedAPIServer) PullBucketPath(req *PullBucketPathRequest, srv API_PullBucketPathServer) error {
+	return status.Errorf(codes.Unimplemented, "method PullBucketPath not implemented")
 }
-func (*UnimplementedAPIServer) AddFile(srv API_AddFileServer) error {
-	return status.Errorf(codes.Unimplemented, "method AddFile not implemented")
-}
-func (*UnimplementedAPIServer) GetFile(ctx context.Context, req *GetFileRequest) (*GetFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetFile not implemented")
-}
-func (*UnimplementedAPIServer) CatFile(req *CatFileRequest, srv API_CatFileServer) error {
-	return status.Errorf(codes.Unimplemented, "method CatFile not implemented")
-}
-func (*UnimplementedAPIServer) RemoveFile(ctx context.Context, req *RemoveFileRequest) (*RemoveFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveFile not implemented")
+func (*UnimplementedAPIServer) RemoveBucketPath(ctx context.Context, req *RemoveBucketPathRequest) (*RemoveBucketPathReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveBucketPath not implemented")
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
@@ -3241,157 +2996,103 @@ func _API_RemoveAppToken_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_AddFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddFolderRequest)
+func _API_ListBuckets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBucketsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).AddFolder(ctx, in)
+		return srv.(APIServer).ListBuckets(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.API/AddFolder",
+		FullMethod: "/pb.API/ListBuckets",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).AddFolder(ctx, req.(*AddFolderRequest))
+		return srv.(APIServer).ListBuckets(ctx, req.(*ListBucketsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_GetFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetFolderRequest)
+func _API_GetBucketPath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBucketPathRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).GetFolder(ctx, in)
+		return srv.(APIServer).GetBucketPath(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.API/GetFolder",
+		FullMethod: "/pb.API/GetBucketPath",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).GetFolder(ctx, req.(*GetFolderRequest))
+		return srv.(APIServer).GetBucketPath(ctx, req.(*GetBucketPathRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_ListFolders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFoldersRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServer).ListFolders(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.API/ListFolders",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).ListFolders(ctx, req.(*ListFoldersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func _API_PushBucketPath_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(APIServer).PushBucketPath(&aPIPushBucketPathServer{stream})
 }
 
-func _API_RemoveFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveFolderRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServer).RemoveFolder(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.API/RemoveFolder",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).RemoveFolder(ctx, req.(*RemoveFolderRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _API_AddFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(APIServer).AddFile(&aPIAddFileServer{stream})
-}
-
-type API_AddFileServer interface {
-	Send(*AddFileReply) error
-	Recv() (*AddFileRequest, error)
+type API_PushBucketPathServer interface {
+	Send(*PushBucketPathReply) error
+	Recv() (*PushBucketPathRequest, error)
 	grpc.ServerStream
 }
 
-type aPIAddFileServer struct {
+type aPIPushBucketPathServer struct {
 	grpc.ServerStream
 }
 
-func (x *aPIAddFileServer) Send(m *AddFileReply) error {
+func (x *aPIPushBucketPathServer) Send(m *PushBucketPathReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *aPIAddFileServer) Recv() (*AddFileRequest, error) {
-	m := new(AddFileRequest)
+func (x *aPIPushBucketPathServer) Recv() (*PushBucketPathRequest, error) {
+	m := new(PushBucketPathRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func _API_GetFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetFileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServer).GetFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.API/GetFile",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).GetFile(ctx, req.(*GetFileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _API_CatFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(CatFileRequest)
+func _API_PullBucketPath_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(PullBucketPathRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(APIServer).CatFile(m, &aPICatFileServer{stream})
+	return srv.(APIServer).PullBucketPath(m, &aPIPullBucketPathServer{stream})
 }
 
-type API_CatFileServer interface {
-	Send(*CatFileReply) error
+type API_PullBucketPathServer interface {
+	Send(*PullBucketPathReply) error
 	grpc.ServerStream
 }
 
-type aPICatFileServer struct {
+type aPIPullBucketPathServer struct {
 	grpc.ServerStream
 }
 
-func (x *aPICatFileServer) Send(m *CatFileReply) error {
+func (x *aPIPullBucketPathServer) Send(m *PullBucketPathReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _API_RemoveFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveFileRequest)
+func _API_RemoveBucketPath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveBucketPathRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).RemoveFile(ctx, in)
+		return srv.(APIServer).RemoveBucketPath(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.API/RemoveFile",
+		FullMethod: "/pb.API/RemoveBucketPath",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).RemoveFile(ctx, req.(*RemoveFileRequest))
+		return srv.(APIServer).RemoveBucketPath(ctx, req.(*RemoveBucketPathRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3469,40 +3170,28 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_RemoveAppToken_Handler,
 		},
 		{
-			MethodName: "AddFolder",
-			Handler:    _API_AddFolder_Handler,
+			MethodName: "ListBuckets",
+			Handler:    _API_ListBuckets_Handler,
 		},
 		{
-			MethodName: "GetFolder",
-			Handler:    _API_GetFolder_Handler,
+			MethodName: "GetBucketPath",
+			Handler:    _API_GetBucketPath_Handler,
 		},
 		{
-			MethodName: "ListFolders",
-			Handler:    _API_ListFolders_Handler,
-		},
-		{
-			MethodName: "RemoveFolder",
-			Handler:    _API_RemoveFolder_Handler,
-		},
-		{
-			MethodName: "GetFile",
-			Handler:    _API_GetFile_Handler,
-		},
-		{
-			MethodName: "RemoveFile",
-			Handler:    _API_RemoveFile_Handler,
+			MethodName: "RemoveBucketPath",
+			Handler:    _API_RemoveBucketPath_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "AddFile",
-			Handler:       _API_AddFile_Handler,
+			StreamName:    "PushBucketPath",
+			Handler:       _API_PushBucketPath_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "CatFile",
-			Handler:       _API_CatFile_Handler,
+			StreamName:    "PullBucketPath",
+			Handler:       _API_PullBucketPath_Handler,
 			ServerStreams: true,
 		},
 	},

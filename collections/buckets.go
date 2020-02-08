@@ -10,30 +10,31 @@ import (
 	s "github.com/textileio/go-threads/store"
 )
 
-type Folder struct {
+type Bucket struct {
 	ID        string
 	Path      string
 	Name      string
 	Public    bool
 	ProjectID string
 	Created   int64
+	Updated   int64
 }
 
-type Folders struct {
+type Buckets struct {
 	threads *client.Client
 	storeID *uuid.UUID
 	token   string
 }
 
-func (f *Folders) GetName() string {
-	return "Folder"
+func (f *Buckets) GetName() string {
+	return "Bucket"
 }
 
-func (f *Folders) GetInstance() interface{} {
-	return &Folder{}
+func (f *Buckets) GetInstance() interface{} {
+	return &Bucket{}
 }
 
-func (f *Folders) GetIndexes() []*s.IndexConfig {
+func (f *Buckets) GetIndexes() []*s.IndexConfig {
 	return []*s.IndexConfig{{
 		Path: "Path",
 	}, {
@@ -44,62 +45,62 @@ func (f *Folders) GetIndexes() []*s.IndexConfig {
 	}}
 }
 
-func (f *Folders) GetStoreID() *uuid.UUID {
+func (f *Buckets) GetStoreID() *uuid.UUID {
 	return f.storeID
 }
 
-func (f *Folders) Create(
+func (f *Buckets) Create(
 	ctx context.Context,
 	pth path.Resolved,
 	name string,
 	public bool,
 	projectID string,
-) (*Folder, error) {
+) (*Bucket, error) {
 	ctx = AuthCtx(ctx, f.token)
-	folder := &Folder{
+	bucket := &Bucket{
 		Path:      pth.String(),
 		Name:      name,
 		Public:    public,
 		ProjectID: projectID,
 		Created:   time.Now().Unix(),
+		Updated:   time.Now().Unix(),
 	}
-	if err := f.threads.ModelCreate(ctx, f.storeID.String(), f.GetName(), folder); err != nil {
+	if err := f.threads.ModelCreate(ctx, f.storeID.String(), f.GetName(), bucket); err != nil {
 		return nil, err
 	}
-	return folder, nil
+	return bucket, nil
 }
 
-func (f *Folders) GetByName(ctx context.Context, name string) (*Folder, error) {
+func (f *Buckets) GetByName(ctx context.Context, name string) (*Bucket, error) {
 	ctx = AuthCtx(ctx, f.token)
 	query := s.JSONWhere("Name").Eq(name)
-	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Folder{})
+	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Bucket{})
 	if err != nil {
 		return nil, err
 	}
-	folders := res.([]*Folder)
-	if len(folders) == 0 {
+	buckets := res.([]*Bucket)
+	if len(buckets) == 0 {
 		return nil, nil
 	}
-	return folders[0], nil
+	return buckets[0], nil
 }
 
-func (f *Folders) List(ctx context.Context, projectID string) ([]*Folder, error) {
+func (f *Buckets) List(ctx context.Context, projectID string) ([]*Bucket, error) {
 	ctx = AuthCtx(ctx, f.token)
 	query := s.JSONWhere("ProjectID").Eq(projectID)
-	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Folder{})
+	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Bucket{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*Folder), nil
+	return res.([]*Bucket), nil
 }
 
-func (f *Folders) UpdatePath(ctx context.Context, folder *Folder, pth path.Resolved) error {
+func (f *Buckets) Save(ctx context.Context, bucket *Bucket) error {
 	ctx = AuthCtx(ctx, f.token)
-	folder.Path = pth.String()
-	return f.threads.ModelSave(ctx, f.storeID.String(), f.GetName(), folder)
+	return f.threads.ModelSave(ctx, f.storeID.String(), f.GetName(), bucket)
 }
 
-func (f *Folders) Delete(ctx context.Context, id string) error {
+func (f *Buckets) Delete(ctx context.Context, id string) error {
 	ctx = AuthCtx(ctx, f.token)
 	return f.threads.ModelDelete(ctx, f.storeID.String(), f.GetName(), id)
 }

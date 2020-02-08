@@ -128,9 +128,9 @@ func (c *Client) AddProject(ctx context.Context, name string, auth Auth) (*pb.Ad
 }
 
 // GetProject returns a project by ID.
-func (c *Client) GetProject(ctx context.Context, projID string, auth Auth) (*pb.GetProjectReply, error) {
+func (c *Client) GetProject(ctx context.Context, projectID string, auth Auth) (*pb.GetProjectReply, error) {
 	return c.c.GetProject(authCtx(ctx, auth), &pb.GetProjectRequest{
-		ID: projID,
+		ID: projectID,
 	})
 }
 
@@ -140,24 +140,24 @@ func (c *Client) ListProjects(ctx context.Context, auth Auth) (*pb.ListProjectsR
 }
 
 // RemoveProject removes a project by ID.
-func (c *Client) RemoveProject(ctx context.Context, projID string, auth Auth) error {
+func (c *Client) RemoveProject(ctx context.Context, projectID string, auth Auth) error {
 	_, err := c.c.RemoveProject(authCtx(ctx, auth), &pb.RemoveProjectRequest{
-		ID: projID,
+		ID: projectID,
 	})
 	return err
 }
 
 // AddAppToken add a new app token under the given project.
-func (c *Client) AddAppToken(ctx context.Context, projID string, auth Auth) (*pb.AddAppTokenReply, error) {
+func (c *Client) AddAppToken(ctx context.Context, projectID string, auth Auth) (*pb.AddAppTokenReply, error) {
 	return c.c.AddAppToken(authCtx(ctx, auth), &pb.AddAppTokenRequest{
-		ProjectID: projID,
+		ProjectID: projectID,
 	})
 }
 
 // ListAppTokens returns a list of all app tokens for the given project.
-func (c *Client) ListAppTokens(ctx context.Context, projID string, auth Auth) (*pb.ListAppTokensReply, error) {
+func (c *Client) ListAppTokens(ctx context.Context, projectID string, auth Auth) (*pb.ListAppTokensReply, error) {
 	return c.c.ListAppTokens(authCtx(ctx, auth), &pb.ListAppTokensRequest{
-		ProjectID: projID,
+		ProjectID: projectID,
 	})
 }
 
@@ -169,87 +169,72 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
-// AddFolder adds a folder by name.
-func (c *Client) AddFolder(ctx context.Context, projID, name string, public bool, auth Auth) (*pb.AddFolderReply, error) {
-	return c.c.AddFolder(authCtx(ctx, auth), &pb.AddFolderRequest{
-		Name:      name,
-		Public:    public,
-		ProjectID: projID,
+// ListBuckets returns a list of buckets under the current project.
+func (c *Client) ListBuckets(ctx context.Context, projectID string, auth Auth) (*pb.ListBucketsReply, error) {
+	return c.c.ListBuckets(authCtx(ctx, auth), &pb.ListBucketsRequest{
+		ProjectID: projectID,
 	})
 }
 
-// GetFolder returns a folder by name.
-func (c *Client) GetFolder(ctx context.Context, name string, auth Auth) (*pb.GetFolderReply, error) {
-	return c.c.GetFolder(authCtx(ctx, auth), &pb.GetFolderRequest{
-		Name: name,
+// GetBucketPath returns information about a bucket path.
+func (c *Client) GetBucketPath(ctx context.Context, pth string, auth Auth) (*pb.GetBucketPathReply, error) {
+	return c.c.GetBucketPath(authCtx(ctx, auth), &pb.GetBucketPathRequest{
+		Path: pth,
 	})
 }
 
-// ListFolders returns a list of folders under the current project.
-func (c *Client) ListFolders(ctx context.Context, projID string, auth Auth) (*pb.ListFoldersReply, error) {
-	return c.c.ListFolders(authCtx(ctx, auth), &pb.ListFoldersRequest{
-		ProjectID: projID,
-	})
-}
-
-// RemoveFolder removes a folder by name.
-// Additionally, folder files will be unpinned from the current folder root.
-func (c *Client) RemoveFolder(ctx context.Context, name string, auth Auth) error {
-	_, err := c.c.RemoveFolder(authCtx(ctx, auth), &pb.RemoveFolderRequest{
-		Name: name,
-	})
-	return err
-}
-
-// AddFileOptions defines options for adding a file.
-type AddFileOptions struct {
+// PushBucketPathOptions defines options for pushing a bucket path.
+type PushBucketPathOptions struct {
 	Progress chan<- int64
 }
 
-// AddFileOption specifies an option for adding a file.
-type AddFileOption func(*AddFileOptions)
+// PushBucketPathOption specifies an option for pushing a bucket path.
+type PushBucketPathOption func(*PushBucketPathOptions)
 
-// AddWithProgress writes progress updates to the given channel.
-func AddWithProgress(ch chan<- int64) AddFileOption {
-	return func(args *AddFileOptions) {
+// WithPushProgress writes progress updates to the given channel.
+func WithPushProgress(ch chan<- int64) PushBucketPathOption {
+	return func(args *PushBucketPathOptions) {
 		args.Progress = ch
 	}
 }
 
-type addFileResult struct {
+type pushBucketPathResult struct {
 	path path.Resolved
+	root path.Path
 	err  error
 }
 
-// AddFile uploads a file to the project store.
-// The path under the folder will be created if it doesn't exist.
-func (c *Client) AddFile(
+// PushBucketPath pushes a file to a bucket path.
+// The bucket and any directory paths will be created if they don't exist.
+// This will return the resolved path and the bucket's new root path.
+func (c *Client) PushBucketPath(
 	ctx context.Context,
-	filePath string,
+	projectID, bucketPath string,
 	reader io.Reader,
 	auth Auth,
-	opts ...AddFileOption,
-) (path.Resolved, error) {
-	args := &AddFileOptions{}
+	opts ...PushBucketPathOption,
+) (result path.Resolved, root path.Path, err error) {
+	args := &PushBucketPathOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
 
-	stream, err := c.c.AddFile(authCtx(ctx, auth))
+	stream, err := c.c.PushBucketPath(authCtx(ctx, auth))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if err = stream.Send(&pb.AddFileRequest{
-		Payload: &pb.AddFileRequest_Header_{
-			Header: &pb.AddFileRequest_Header{
-				Path: filePath,
+	if err = stream.Send(&pb.PushBucketPathRequest{
+		Payload: &pb.PushBucketPathRequest_Header_{
+			Header: &pb.PushBucketPathRequest_Header{
+				ProjectID: projectID,
+				Path:      bucketPath,
 			},
 		},
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	waitCh := make(chan addFileResult)
+	waitCh := make(chan pushBucketPathResult)
 	go func() {
 		defer close(waitCh)
 		for {
@@ -257,26 +242,29 @@ func (c *Client) AddFile(
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				waitCh <- addFileResult{err: err}
+				waitCh <- pushBucketPathResult{err: err}
 				return
 			}
 			switch payload := rep.Payload.(type) {
-			case *pb.AddFileReply_Event_:
+			case *pb.PushBucketPathReply_Event_:
 				if payload.Event.Path != "" {
 					id, err := cid.Parse(payload.Event.Path)
 					if err != nil {
-						waitCh <- addFileResult{err: err}
+						waitCh <- pushBucketPathResult{err: err}
 						return
 					}
-					waitCh <- addFileResult{path: path.IpfsPath(id)}
+					waitCh <- pushBucketPathResult{
+						path: path.IpfsPath(id),
+						root: path.New(payload.Event.Root.Path),
+					}
 				} else if args.Progress != nil {
 					args.Progress <- payload.Event.Bytes
 				}
-			case *pb.AddFileReply_Error:
-				waitCh <- addFileResult{err: fmt.Errorf(payload.Error)}
+			case *pb.PushBucketPathReply_Error:
+				waitCh <- pushBucketPathResult{err: fmt.Errorf(payload.Error)}
 				return
 			default:
-				waitCh <- addFileResult{err: fmt.Errorf("invalid reply")}
+				waitCh <- pushBucketPathResult{err: fmt.Errorf("invalid reply")}
 				return
 			}
 		}
@@ -289,63 +277,56 @@ func (c *Client) AddFile(
 			break
 		} else if err != nil {
 			_ = stream.CloseSend()
-			return nil, err
+			return nil, nil, err
 		}
-		if err = stream.Send(&pb.AddFileRequest{
-			Payload: &pb.AddFileRequest_Chunk{
+		if err = stream.Send(&pb.PushBucketPathRequest{
+			Payload: &pb.PushBucketPathRequest_Chunk{
 				Chunk: buf[:n],
 			},
 		}); err == io.EOF {
 			break
 		} else if err != nil {
 			_ = stream.CloseSend()
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	if err = stream.CloseSend(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	res := <-waitCh
-	return res.path, res.err
+	return res.path, res.root, res.err
 }
 
-// GetFile returns a file by its path.
-func (c *Client) GetFile(ctx context.Context, filePath string, auth Auth) (*pb.GetFileReply, error) {
-	return c.c.GetFile(authCtx(ctx, auth), &pb.GetFileRequest{
-		Path: filePath,
-	})
-}
-
-// CatFileOptions defines options for getting a file.
-type CatFileOptions struct {
+// PullBucketPathOptions defines options for pulling a bucket path.
+type PullBucketPathOptions struct {
 	Progress chan<- int64
 }
 
-// CatFileOption specifies an option for getting a file.
-type CatFileOption func(*CatFileOptions)
+// PullBucketPathOption specifies an option for pulling a bucket path.
+type PullBucketPathOption func(*PullBucketPathOptions)
 
-// CatWithProgress writes progress updates to the given channel.
-func CatWithProgress(ch chan<- int64) CatFileOption {
-	return func(args *CatFileOptions) {
+// WithPullProgress writes progress updates to the given channel.
+func WithPullProgress(ch chan<- int64) PullBucketPathOption {
+	return func(args *PullBucketPathOptions) {
 		args.Progress = ch
 	}
 }
 
-// CatFile cats a file by its path.
-func (c *Client) CatFile(
+// PullBucketPath pulls the bucket path, writing it to writer if it's a file.
+func (c *Client) PullBucketPath(
 	ctx context.Context,
-	filePath string,
+	bucketPath string,
 	writer io.Writer,
 	auth Auth,
-	opts ...CatFileOption,
+	opts ...PullBucketPathOption,
 ) error {
-	args := &CatFileOptions{}
+	args := &PullBucketPathOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
 
-	stream, err := c.c.CatFile(authCtx(ctx, auth), &pb.CatFileRequest{
-		Path: filePath,
+	stream, err := c.c.PullBucketPath(authCtx(ctx, auth), &pb.PullBucketPathRequest{
+		Path: bucketPath,
 	})
 	if err != nil {
 		return err
@@ -371,10 +352,12 @@ func (c *Client) CatFile(
 	return nil
 }
 
-// RemoveFile removes a file from a folder by name.
-func (c *Client) RemoveFile(ctx context.Context, filePath string, auth Auth) error {
-	_, err := c.c.RemoveFile(authCtx(ctx, auth), &pb.RemoveFileRequest{
-		Path: filePath,
+// RemoveBucketPath removes the file or directory at path.
+// Bucket files and directories will be unpinned.
+// If the resulting bucket is empty, it will also be removed.
+func (c *Client) RemoveBucketPath(ctx context.Context, pth string, auth Auth) error {
+	_, err := c.c.RemoveBucketPath(authCtx(ctx, auth), &pb.RemoveBucketPathRequest{
+		Path: pth,
 	})
 	return err
 }
