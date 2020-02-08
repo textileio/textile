@@ -33,7 +33,7 @@ var loginCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			cmd.End("")
 		}
 
 		// @todo: Add a security code that can be visually verified in the email.

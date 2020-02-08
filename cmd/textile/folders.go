@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/logrusorgru/aurora"
@@ -87,8 +90,7 @@ var lsFoldersCmd = &cobra.Command{
 }
 
 func lsFolders() {
-	projectID := configViper.GetString("id")
-	if projectID == "" {
+	if configViper.GetString("id") == "" {
 		cmd.Fatal(errors.New("not a project directory"))
 	}
 
@@ -121,8 +123,7 @@ var inspectFolderCmd = &cobra.Command{
 	Long:  `Display detailed information about a project folder.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
-		if projectID == "" {
+		if configViper.GetString("id") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
@@ -160,8 +161,7 @@ var rmFolderCmd = &cobra.Command{
 	Long:  `Remove a project folder (interactive).`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
-		if projectID == "" {
+		if configViper.GetString("id") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
@@ -176,7 +176,7 @@ var rmFolderCmd = &cobra.Command{
 		}
 		folder, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			cmd.End("")
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -200,7 +200,42 @@ var pushFolderCmd = &cobra.Command{
 	Long:  `Push a project folder.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
+		if configViper.GetString("id") == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
 
+		var paths []string
+		err := filepath.Walk(args[0], func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if !info.IsDir() {
+				paths = append(paths, path)
+			}
+			return nil
+		})
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		if len(paths) == 0 {
+			cmd.End("%s is empty", aurora.White(args[0]).Bold())
+		}
+
+		prompt := promptui.Prompt{
+			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(paths)),
+			Validate: func(in string) error {
+				return nil
+			},
+		}
+		_, err = prompt.Run()
+		if err != nil {
+			cmd.End("")
+		}
+
+		for _, p := range paths {
+			addFile(p, filepath.Dir(p))
+		}
 	},
 }
 

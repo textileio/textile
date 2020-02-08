@@ -38,52 +38,54 @@ var addFileCmd = &cobra.Command{
 	Long:  `Add a file to a project folder by path.`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
-		if projectID == "" {
+		if configViper.GetString("id") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
-
-		file, err := os.Open(args[0])
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		filePath := filepath.Join(args[1], filepath.Base(info.Name()))
-
-		bar := pbar.New(int(info.Size()))
-		bar.SetTemplate(pbar.Full)
-		bar.Set(pbar.Bytes, true)
-		bar.Set(pbar.SIBytesPrefix, true)
-		bar.Start()
-		progress := make(chan int64)
-		go func() {
-			for up := range progress {
-				bar.SetCurrent(up)
-			}
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
-		defer cancel()
-		pth, err := client.AddFile(
-			ctx,
-			filePath,
-			file,
-			api.Auth{
-				Token: authViper.GetString("token"),
-			},
-			api.AddWithProgress(progress))
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		bar.Finish()
-
-		cmd.Success("Added file at path: %s", aurora.White(pth.String()).Bold())
+		addFile(args[0], args[1])
 	},
+}
+
+func addFile(name, folder string) {
+	file, err := os.Open(name)
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	filePath := filepath.Join(folder, filepath.Base(info.Name()))
+
+	bar := pbar.New(int(info.Size()))
+	bar.SetTemplate(pbar.Full)
+	bar.Set(pbar.Bytes, true)
+	bar.Set(pbar.SIBytesPrefix, true)
+	bar.Start()
+	progress := make(chan int64)
+	go func() {
+		for up := range progress {
+			bar.SetCurrent(up)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
+	defer cancel()
+	pth, err := client.AddFile(
+		ctx,
+		filePath,
+		file,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		},
+		api.AddWithProgress(progress))
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	bar.Finish()
+
+	cmd.Success("Added file at path: %s", aurora.White(pth.String()).Bold())
 }
 
 var catFileCmd = &cobra.Command{
@@ -92,8 +94,7 @@ var catFileCmd = &cobra.Command{
 	Long:  `Cat a file from a project folder by path.`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
-		if projectID == "" {
+		if configViper.GetString("id") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 

@@ -71,6 +71,9 @@ func AddrFromStr(str string) ma.Multiaddr {
 }
 
 func Message(format string, args ...interface{}) {
+	if format == "" {
+		return
+	}
 	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
 }
 

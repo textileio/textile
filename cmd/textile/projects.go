@@ -189,7 +189,7 @@ func selectProject(label, successMsg string) *pb.GetProjectReply {
 	}
 	index, _, err := prompt.Run()
 	if err != nil {
-		log.Fatal(err)
+		cmd.End("")
 	}
 
 	return projects.List[index]
