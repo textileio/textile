@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/textileio/textile/api/pb"
 
@@ -116,52 +117,92 @@ func lsBucketPath(args []string) {
 var pushBucketPathCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push to a bucket path",
-	Long:  `Push files and directories to a bucket path.`,
-	Args:  cobra.ExactArgs(2),
+	Long: `Push files and directories to a bucket path. All paths will be created if they don't exist.
+
+File structure is mirrored in the bucket. For example, given the directory:
+    foo/one.txt
+    foo/bar/two.txt
+    foo/bar/baz/three.txt
+
+These 'push' commands result in the following bucket structures.
+
+'textile buckets push foo mybuck':
+    mybuck/foo/one.txt
+    mybuck/foo/bar/two.txt
+    mybuck/foo/bar/baz/three.txt
+
+'textile buckets push foo/bar mybuck':
+    mybuck/bar/two.txt
+    mybuck/bar/baz/three.txt
+
+'textile buckets push foo/bar/baz mybuck':
+    mybuck/baz/three.txt
+
+'textile buckets push foo/bar/baz/three.txt mybuck':
+    mybuck/three.txt
+
+'textile buckets push foo/* mybuck':
+    mybuck/one.txt
+    mybuck/bar/two.txt
+    mybuck/bar/baz/three.txt
+`,
+	Args: cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
 		projectID := configViper.GetString("id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
+		var names []string
 		var paths []string
-		err := filepath.Walk(args[0], func(path string, info os.FileInfo, err error) error {
+		bucketPath, args := args[len(args)-1], args[:len(args)-1]
+		for _, a := range args {
+			dir, _ := filepath.Split(a)
+			err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				if !info.IsDir() {
+					names = append(names, n)
+					var p string
+					if n == a { // This is a file given as an arg
+						// In this case, the bucket path should not include the directory
+						p = filepath.Join(bucketPath, info.Name())
+					} else { // This is a directory given as an arg, or one of its sub directories
+						// The bucket path should maintain directory structure
+						p = filepath.Join(bucketPath, strings.TrimPrefix(n, dir))
+					}
+					paths = append(paths, p)
+				}
+				return nil
+			})
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			if !info.IsDir() {
-				paths = append(paths, path)
-			}
-			return nil
-		})
-		if err != nil {
-			cmd.Fatal(err)
 		}
-
-		if len(paths) == 0 {
-			cmd.End("%s is empty", aurora.White(args[0]).Bold())
+		if len(names) == 0 {
+			cmd.End("No files found")
 		}
 
 		prompt := promptui.Prompt{
-			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(paths)),
+			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(names)),
 			Validate: func(in string) error {
 				return nil
 			},
 		}
-		_, err = prompt.Run()
-		if err != nil {
+		if _, err := prompt.Run(); err != nil {
 			cmd.End("")
 		}
 
-		for _, p := range paths {
-			addFile(projectID, p, args[1])
+		for i := range names {
+			addFile(projectID, names[i], paths[i])
 		}
 
-		cmd.Success("Pushed %d files to: %s", len(paths), aurora.White(args[1]).Bold())
+		cmd.Success("Pushed %d files to %s", len(names), aurora.White(bucketPath).Bold())
 	},
 }
 
-func addFile(projectID, name, bucketPath string) (path.Resolved, path.Path) {
+func addFile(projectID, name, filePath string) (path.Resolved, path.Path) {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -172,7 +213,6 @@ func addFile(projectID, name, bucketPath string) (path.Resolved, path.Path) {
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	filePath := filepath.Join(bucketPath, file.Name())
 
 	bar := pbar.New(int(info.Size()))
 	bar.SetTemplate(pbar.Full)
@@ -201,6 +241,8 @@ func addFile(projectID, name, bucketPath string) (path.Resolved, path.Path) {
 		cmd.Fatal(err)
 	}
 	bar.Finish()
+
+	cmd.Message("Pushed %s to %s", aurora.White(name).Bold(), aurora.White(filePath).Bold())
 
 	return pth, root
 }
@@ -295,6 +337,6 @@ var rmBucketPathCmd = &cobra.Command{
 //		bar.SetCurrent(info.Size)
 //		bar.Finish()
 //
-//		cmd.Success("Wrote file to: %s", aurora.White(args[1]).Bold())
+//		cmd.Success("Wrote file to %s", aurora.White(args[1]).Bold())
 //	},
 //}
