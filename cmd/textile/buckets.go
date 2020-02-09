@@ -94,11 +94,17 @@ func lsBucketPath(args []string) {
 		if len(items) > 0 {
 			data = make([][]string, len(items))
 			for i, item := range items {
+				var links string
+				if item.IsDir {
+					links = strconv.Itoa(len(item.Items))
+				} else {
+					links = "n/a"
+				}
 				data[i] = []string{
 					filepath.Base(item.Path),
 					strconv.Itoa(int(item.Size)),
 					strconv.FormatBool(item.IsDir),
-					strconv.Itoa(len(item.Items)),
+					links,
 					item.Path,
 				}
 			}
