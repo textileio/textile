@@ -6,14 +6,13 @@ import (
 	"path"
 	"strings"
 
-	"google.golang.org/grpc/status"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc/status"
 )
 
 type Flag struct {

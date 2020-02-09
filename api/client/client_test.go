@@ -842,9 +842,9 @@ func TestClient_PushBucketPath(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rep.Item.Items) != 4 {
+		if len(rep.Item.Items) != 2 {
 			t.Fatalf("got wrong bucket entry count from push nested bucket path, expected %d, got %d",
-				4, len(rep.Item.Items))
+				2, len(rep.Item.Items))
 		}
 	})
 }
