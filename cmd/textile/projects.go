@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 
 	"github.com/logrusorgru/aurora"
@@ -45,16 +45,16 @@ var initCmd = &cobra.Command{
 			pth = c.Flag("path").Value.String()
 		}
 		if !c.Flag("name").Changed {
-			name = path.Base(pth)
+			name = filepath.Base(pth)
 		} else {
 			name = c.Flag("name").Value.String()
 		}
 
-		pth = path.Join(pth, ".textile")
+		pth = filepath.Join(pth, ".textile")
 		if err := os.MkdirAll(pth, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
-		filename := path.Join(pth, "config.yml")
+		filename := filepath.Join(pth, "config.yml")
 
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("project already exists in %s", pth))

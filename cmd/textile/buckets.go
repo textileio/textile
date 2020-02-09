@@ -9,14 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/textileio/textile/api/pb"
-
 	pbar "github.com/cheggaaa/pb/v3"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -141,10 +139,10 @@ These 'push' commands result in the following bucket structures.
 'textile buckets push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
 
-'textile buckets push foo/* mybuck':
-    mybuck/one.txt
-    mybuck/bar/two.txt
-    mybuck/bar/baz/three.txt
+'textile buckets push foo/* foo':
+    foo/one.txt
+    foo/bar/two.txt
+    foo/bar/baz/three.txt
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
@@ -157,7 +155,7 @@ These 'push' commands result in the following bucket structures.
 		var paths []string
 		bucketPath, args := args[len(args)-1], args[:len(args)-1]
 		for _, a := range args {
-			dir, _ := filepath.Split(a)
+			dir := filepath.Dir(a)
 			err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
 				if err != nil {
 					cmd.Fatal(err)
@@ -198,11 +196,12 @@ These 'push' commands result in the following bucket structures.
 			addFile(projectID, names[i], paths[i])
 		}
 
-		cmd.Success("Pushed %d files to %s", len(names), aurora.White(bucketPath).Bold())
+		cmd.Success("Pushed %d files to %s", aurora.White(len(names)).Bold(), aurora.White(bucketPath).Bold())
 	},
 }
 
-func addFile(projectID, name, filePath string) (path.Resolved, path.Path) {
+// @todo: Support Stdin
+func addFile(projectID, name, filePath string) {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -213,6 +212,8 @@ func addFile(projectID, name, filePath string) (path.Resolved, path.Path) {
 	if err != nil {
 		cmd.Fatal(err)
 	}
+
+	cmd.Message("Pushing %s to %s", aurora.White(name).Bold(), aurora.White(filePath).Bold())
 
 	bar := pbar.New(int(info.Size()))
 	bar.SetTemplate(pbar.Full)
@@ -228,7 +229,7 @@ func addFile(projectID, name, filePath string) (path.Resolved, path.Path) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
 	defer cancel()
-	pth, root, err := client.PushBucketPath(
+	if _, _, err = client.PushBucketPath(
 		ctx,
 		projectID,
 		filePath,
@@ -236,25 +237,117 @@ func addFile(projectID, name, filePath string) (path.Resolved, path.Path) {
 		api.Auth{
 			Token: authViper.GetString("token"),
 		},
-		api.WithPushProgress(progress))
-	if err != nil {
+		api.WithPushProgress(progress)); err != nil {
 		cmd.Fatal(err)
 	}
 	bar.Finish()
-
-	cmd.Message("Pushed %s to %s", aurora.White(name).Bold(), aurora.White(filePath).Bold())
-
-	return pth, root
 }
 
 var pullBucketPathCmd = &cobra.Command{
 	Use:   "pull",
 	Short: "Pull a bucket path",
-	Long:  `Pull files and directories from a bucket path.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
+	Long: `Pull files and directories from a bucket path. All paths will be created if they don't exist.
 
+Bucket structure is mirrored locally. For example, given the bucket:
+    foo/one.txt
+    foo/bar/two.txt
+    foo/bar/baz/three.txt
+
+These 'pull' commands result in the following local structures.
+
+'textile buckets pull foo mydir':
+    mydir/foo/one.txt
+    mydir/foo/bar/two.txt
+    mydir/foo/bar/baz/three.txt
+
+'textile buckets pull foo/bar mydir':
+    mydir/bar/two.txt
+    mydir/bar/baz/three.txt
+
+'textile buckets pull foo/bar/baz mydir':
+    mydir/baz/three.txt
+
+'textile buckets pull foo/bar/baz/three.txt mydir':
+    mydir/three.txt
+
+'textile buckets pull foo .':
+    foo/one.txt
+    foo/bar/two.txt
+    foo/bar/baz/three.txt
+`,
+	Args: cobra.ExactArgs(2),
+	Run: func(c *cobra.Command, args []string) {
+		if configViper.GetString("id") == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		count := getPath(args[0], filepath.Dir(args[0]), args[1])
+
+		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
 	},
+}
+
+func getPath(pth, dir, dest string) (count int) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	rep, err := client.GetBucketPath(ctx, pth, api.Auth{
+		Token: authViper.GetString("token"),
+	})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if rep.Item.IsDir {
+		for _, i := range rep.Item.Items {
+			count += getPath(filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+		}
+	} else {
+		name := filepath.Join(dest, strings.TrimPrefix(pth, dir))
+		getFile(pth, name, rep.Item.Size)
+		count++
+	}
+	return count
+}
+
+// @todo: Support Stdout?
+func getFile(filePath, name string, size int64) {
+	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
+		cmd.Fatal(err)
+	}
+	file, err := os.Create(name)
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	defer file.Close()
+
+	cmd.Message("Pulling %s to %s", aurora.White(filePath).Bold(), aurora.White(name).Bold())
+
+	bar := pbar.New(int(size))
+	bar.SetTemplate(pbar.Full)
+	bar.Set(pbar.Bytes, true)
+	bar.Set(pbar.SIBytesPrefix, true)
+	bar.Start()
+	progress := make(chan int64)
+	go func() {
+		for up := range progress {
+			bar.SetCurrent(up)
+		}
+	}()
+
+	ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
+	defer cancel2()
+	if err = client.PullBucketPath(
+		ctx2,
+		filePath,
+		file,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		},
+		api.WithPullProgress(progress)); err != nil {
+		cmd.Fatal(err)
+	}
+	bar.SetCurrent(size)
+	bar.Finish()
 }
 
 var rmBucketPathCmd = &cobra.Command{
@@ -284,59 +377,3 @@ var rmBucketPathCmd = &cobra.Command{
 		cmd.Success("Removed %s", aurora.White(args[0]).Bold())
 	},
 }
-
-//var catFileCmd = &cobra.Command{
-//	Use:   "cat",
-//	Short: "Cat a file",
-//	Long:  `Cat a file from a project folder by path.`,
-//	Args:  cobra.ExactArgs(2),
-//	Run: func(c *cobra.Command, args []string) {
-//		if configViper.GetString("id") == "" {
-//			cmd.Fatal(errors.New("not a project directory"))
-//		}
-//
-//		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-//		defer cancel()
-//		info, err := client.GetFile(ctx, args[0], api.Auth{
-//			Token: authViper.GetString("token"),
-//		})
-//		if err != nil {
-//			cmd.Fatal(err)
-//		}
-//
-//		file, err := os.Create(args[1])
-//		if err != nil {
-//			cmd.Fatal(err)
-//		}
-//		defer file.Close()
-//
-//		bar := pbar.New(int(info.Size))
-//		bar.SetTemplate(pbar.Full)
-//		bar.Set(pbar.Bytes, true)
-//		bar.Set(pbar.SIBytesPrefix, true)
-//		bar.Start()
-//		progress := make(chan int64)
-//		go func() {
-//			for up := range progress {
-//				bar.SetCurrent(up)
-//			}
-//		}()
-//
-//		ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
-//		defer cancel2()
-//		if err = client.CatFile(
-//			ctx2,
-//			args[0],
-//			file,
-//			api.Auth{
-//				Token: authViper.GetString("token"),
-//			},
-//			api.CatWithProgress(progress)); err != nil {
-//			cmd.Fatal(err)
-//		}
-//		bar.SetCurrent(info.Size)
-//		bar.Finish()
-//
-//		cmd.Success("Wrote file to %s", aurora.White(args[1]).Bold())
-//	},
-//}
