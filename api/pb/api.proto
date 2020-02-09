@@ -141,10 +141,11 @@ message RemoveAppTokenRequest {
 message RemoveAppTokenReply {}
 
 message BucketRoot {
-    string path = 1;
-    int64 created = 2;
-    int64 updated = 3;
-    bool public = 4;
+    string name = 1;
+    string path = 2;
+    int64 created = 3;
+    int64 updated = 4;
+    bool public = 5;
 }
 
 message ListBucketsRequest {
@@ -160,16 +161,14 @@ message GetBucketPathRequest {
 }
 
 message GetBucketPathReply {
-    string path = 1;
-    int64 size = 2;
-    bool isDir = 3;
-    BucketRoot root = 4;
-    repeated Entry entries = 5;
+    Item item = 1;
+    BucketRoot root = 2;
 
-    message Entry {
+    message Item {
         string path = 1;
         int64 size = 2;
         bool isDir = 3;
+        repeated Item items = 4;
     }
 }
 

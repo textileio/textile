@@ -604,7 +604,7 @@ func (s *service) bucketPathToPb(
 	ctx context.Context,
 	buck *c.Bucket,
 	pth path.Path,
-	listEntries bool,
+	followLinks bool,
 ) (*pb.GetBucketPathReply, error) {
 	if strings.HasSuffix(pth.String(), ".seed") {
 		return nil, fmt.Errorf("merkledag: not found")
@@ -615,65 +615,59 @@ func (s *service) bucketPathToPb(
 	}
 	defer node.Close()
 
-	entry, err := nodeToBucketEntry(pth.String(), node)
+	item, err := nodeToBucketItem(pth.String(), node, followLinks)
 	if err != nil {
 		return nil, err
 	}
 
 	rep := &pb.GetBucketPathReply{
-		Path:  entry.Path,
-		Size:  entry.Size,
-		IsDir: entry.IsDir,
+		Item: item,
 		Root: &pb.BucketRoot{
+			Name:    buck.Name,
 			Path:    buck.Path,
 			Created: buck.Created,
 			Updated: buck.Updated,
 			Public:  buck.Public,
 		},
 	}
-	if listEntries {
-		rep.Entries, err = walkBucketNode(node)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	return rep, nil
 }
 
-func nodeToBucketEntry(pth string, node ipfsfiles.Node) (*pb.GetBucketPathReply_Entry, error) {
+func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.GetBucketPathReply_Item, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
-	entry := &pb.GetBucketPathReply_Entry{
+	item := &pb.GetBucketPathReply_Item{
 		Path: pth,
 		Size: size,
 	}
-	switch node.(type) {
+	switch node := node.(type) {
 	case ipfsfiles.Directory:
-		entry.IsDir = true
+		item.IsDir = true
+		entries := node.Entries()
+		for entries.Next() {
+			if entries.Name() == ".seed" { // This is the bucket seed
+				continue
+			}
+			i := &pb.GetBucketPathReply_Item{}
+			if followLinks {
+				n := entries.Node()
+				i, err = nodeToBucketItem(filepath.Join(pth, entries.Name()), n, false)
+				if err != nil {
+					n.Close()
+					return nil, err
+				}
+				n.Close()
+			}
+			item.Items = append(item.Items, i)
+		}
+		if err := entries.Err(); err != nil {
+			return nil, err
+		}
 	}
-	return entry, nil
-}
-
-func walkBucketNode(node ipfsfiles.Node) (entries []*pb.GetBucketPathReply_Entry, err error) {
-	err = ipfsfiles.Walk(node, func(p string, n ipfsfiles.Node) error {
-		defer n.Close()
-		if p == "" { // This is the root
-			return nil
-		}
-		if strings.HasSuffix(p, ".seed") { // This is the bucket seed
-			return nil
-		}
-		entry, err := nodeToBucketEntry(p, n)
-		if err != nil {
-			return err
-		}
-		entries = append(entries, entry)
-		return nil
-	})
-	return
+	return item, nil
 }
 
 // GetBucketPath handles a get bucket path request.
@@ -860,6 +854,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 		Path: pth.String(),
 		Size: size,
 		Root: &pb.BucketRoot{
+			Name:    buck.Name,
 			Path:    buck.Path,
 			Created: buck.Created,
 			Updated: buck.Updated,

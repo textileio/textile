@@ -764,10 +764,10 @@ func TestClient_GetBucketPath(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.HasSuffix(rep.Path, "file1.jpg") {
+		if !strings.HasSuffix(rep.Item.Path, "file1.jpg") {
 			t.Fatal("got bad name from get bucket path")
 		}
-		if rep.IsDir {
+		if rep.Item.IsDir {
 			t.Fatal("path is not a dir")
 		}
 		if rep.Root.Path != root.String() {
@@ -838,13 +838,13 @@ func TestClient_PushBucketPath(t *testing.T) {
 			t.Fatal("got bad root from push nested bucket path")
 		}
 
-		buck, err := client.GetBucketPath(context.Background(), "mybuck", Auth{Token: user.SessionID})
+		rep, err := client.GetBucketPath(context.Background(), "mybuck", Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(buck.Entries) != 4 {
+		if len(rep.Item.Items) != 4 {
 			t.Fatalf("got wrong bucket entry count from push nested bucket path, expected %d, got %d",
-				4, len(buck.Entries))
+				4, len(rep.Item.Items))
 		}
 	})
 }
