@@ -169,17 +169,11 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
-// ListBuckets returns a list of buckets under the current project.
-func (c *Client) ListBuckets(ctx context.Context, projectID string, auth Auth) (*pb.ListBucketsReply, error) {
-	return c.c.ListBuckets(authCtx(ctx, auth), &pb.ListBucketsRequest{
+// ListBucketPath returns information about a bucket path.
+func (c *Client) ListBucketPath(ctx context.Context, projectID, pth string, auth Auth) (*pb.ListBucketPathReply, error) {
+	return c.c.ListBucketPath(authCtx(ctx, auth), &pb.ListBucketPathRequest{
 		ProjectID: projectID,
-	})
-}
-
-// GetBucketPath returns information about a bucket path.
-func (c *Client) GetBucketPath(ctx context.Context, pth string, auth Auth) (*pb.GetBucketPathReply, error) {
-	return c.c.GetBucketPath(authCtx(ctx, auth), &pb.GetBucketPathRequest{
-		Path: pth,
+		Path:      pth,
 	})
 }
 

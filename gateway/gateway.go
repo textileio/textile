@@ -93,6 +93,9 @@ func (g *Gateway) Start() {
 
 	router.POST("/register", g.registerAppUser)
 
+	router.GET("/p/:project/", g.bucketHandler)
+	//router.GET("/p/:project/*path", g.bucketHandler)
+
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
 	})
@@ -263,6 +266,10 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 		"id":         user.ID,
 		"session_id": session.ID,
 	})
+}
+
+func (g *Gateway) bucketHandler(c *gin.Context) {
+
 }
 
 // render404 renders the 404 template.

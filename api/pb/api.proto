@@ -148,27 +148,21 @@ message BucketRoot {
     bool public = 5;
 }
 
-message ListBucketsRequest {
+message ListBucketPathRequest {
     string projectID = 1;
+    string path = 2;
 }
 
-message ListBucketsReply {
-    repeated GetBucketPathReply list = 1;
-}
-
-message GetBucketPathRequest {
-    string path = 1;
-}
-
-message GetBucketPathReply {
+message ListBucketPathReply {
     Item item = 1;
     BucketRoot root = 2;
 
     message Item {
-        string path = 1;
-        int64 size = 2;
-        bool isDir = 3;
-        repeated Item items = 4;
+        string name = 1;
+        string path = 2;
+        int64 size = 3;
+        bool isDir = 4;
+        repeated Item items = 5;
     }
 }
 
@@ -235,8 +229,7 @@ service API {
     rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
     rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
 
-    rpc ListBuckets (ListBucketsRequest) returns (ListBucketsReply) {}
-    rpc GetBucketPath (GetBucketPathRequest) returns (GetBucketPathReply) {}
+    rpc ListBucketPath (ListBucketPathRequest) returns (ListBucketPathReply) {}
     rpc PushBucketPath (stream PushBucketPathRequest) returns (stream PushBucketPathReply) {}
     rpc PullBucketPath (PullBucketPathRequest) returns (stream PullBucketPathReply) {}
     rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}

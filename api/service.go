@@ -574,32 +574,47 @@ func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope strin
 	return token, nil
 }
 
-// ListBuckets handles a list buckets request.
-func (s *service) ListBuckets(ctx context.Context, req *pb.ListBucketsRequest) (*pb.ListBucketsReply, error) {
-	log.Debugf("received list buckets request")
+// ListBucketPath handles a list bucket path request.
+func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequest) (*pb.ListBucketPathReply, error) {
+	log.Debugf("received list bucket path request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
-	if err != nil {
-		return nil, err
-	}
 
-	bucks, err := s.collections.Buckets.List(ctx, proj.ID)
-	if err != nil {
-		return nil, err
-	}
-	list := make([]*pb.GetBucketPathReply, len(bucks))
-	for i, buck := range bucks {
-		list[i], err = s.bucketPathToPb(ctx, buck, path.New(buck.Path), false)
+	if req.Path == "" { // List top-level buckets for this project
+		proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
 		if err != nil {
 			return nil, err
 		}
+		bucks, err := s.collections.Buckets.List(ctx, proj.ID)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]*pb.ListBucketPathReply_Item, len(bucks))
+		for i, buck := range bucks {
+			items[i], err = s.pathToBucketItem(ctx, path.New(buck.Path), false)
+			if err != nil {
+				return nil, err
+			}
+			items[i].Name = buck.Name
+		}
+
+		return &pb.ListBucketPathReply{
+			Item: &pb.ListBucketPathReply_Item{
+				IsDir: true,
+				Items: items,
+			},
+		}, nil
 	}
 
-	return &pb.ListBucketsReply{List: list}, nil
+	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.bucketPathToPb(ctx, buck, pth, true)
 }
 
 func (s *service) bucketPathToPb(
@@ -607,19 +622,13 @@ func (s *service) bucketPathToPb(
 	buck *c.Bucket,
 	pth path.Path,
 	followLinks bool,
-) (*pb.GetBucketPathReply, error) {
-	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
-	if err != nil {
-		return nil, err
-	}
-	defer node.Close()
-
-	item, err := nodeToBucketItem(pth.String(), node, followLinks)
+) (*pb.ListBucketPathReply, error) {
+	item, err := s.pathToBucketItem(ctx, pth, followLinks)
 	if err != nil {
 		return nil, err
 	}
 
-	rep := &pb.GetBucketPathReply{
+	rep := &pb.ListBucketPathReply{
 		Item: item,
 		Root: &pb.BucketRoot{
 			Name:    buck.Name,
@@ -633,12 +642,23 @@ func (s *service) bucketPathToPb(
 	return rep, nil
 }
 
-func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.GetBucketPathReply_Item, error) {
+func (s *service) pathToBucketItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListBucketPathReply_Item, error) {
+	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
+	if err != nil {
+		return nil, err
+	}
+	defer node.Close()
+
+	return nodeToBucketItem(pth.String(), node, followLinks)
+}
+
+func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListBucketPathReply_Item, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
-	item := &pb.GetBucketPathReply_Item{
+	item := &pb.ListBucketPathReply_Item{
+		Name: filepath.Base(pth),
 		Path: pth,
 		Size: size,
 	}
@@ -650,7 +670,7 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Ge
 			if entries.Name() == bucketSeedName {
 				continue
 			}
-			i := &pb.GetBucketPathReply_Item{}
+			i := &pb.ListBucketPathReply_Item{}
 			if followLinks {
 				n := entries.Node()
 				i, err = nodeToBucketItem(filepath.Join(pth, entries.Name()), n, false)
@@ -667,22 +687,6 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Ge
 		}
 	}
 	return item, nil
-}
-
-// GetBucketPath handles a get bucket path request.
-func (s *service) GetBucketPath(ctx context.Context, req *pb.GetBucketPathRequest) (*pb.GetBucketPathReply, error) {
-	log.Debugf("received get bucket path request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.bucketPathToPb(ctx, buck, pth, true)
 }
 
 func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope string) (*c.Bucket, path.Path, error) {

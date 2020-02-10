@@ -703,7 +703,7 @@ func TestClient_RegisterAppUser(t *testing.T) {
 	})
 }
 
-func TestClient_ListBuckets(t *testing.T) {
+func TestClient_ListBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -718,49 +718,31 @@ func TestClient_ListBuckets(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	_, file1Root, err := client.PushBucketPath(
+		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck2/file1.jpg", file,
+		Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list buckets", func(t *testing.T) {
-		bucks, err := client.ListBuckets(context.Background(), project.ID, Auth{Token: user.SessionID})
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "", Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list buckets should succeed: %v", err)
 		}
-		if len(bucks.List) != 2 {
-			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2, len(bucks.List))
+		if len(rep.Item.Items) != 2 {
+			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2,
+				len(rep.Item.Items))
 		}
 	})
-}
 
-func TestClient_GetBucketPath(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer file.Close()
-	_, root, err := client.PushBucketPath(
-		context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test get bucket path", func(t *testing.T) {
-		rep, err := client.GetBucketPath(context.Background(), "mybuck/file1.jpg", Auth{Token: user.SessionID})
+	t.Run("test list bucket path", func(t *testing.T) {
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1/file1.jpg",
+			Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -770,7 +752,7 @@ func TestClient_GetBucketPath(t *testing.T) {
 		if rep.Item.IsDir {
 			t.Fatal("path is not a dir")
 		}
-		if rep.Root.Path != root.String() {
+		if rep.Root.Path != file1Root.String() {
 			t.Fatal("path root should match bucket root")
 		}
 	})
@@ -838,7 +820,7 @@ func TestClient_PushBucketPath(t *testing.T) {
 			t.Fatal("got bad root from push nested bucket path")
 		}
 
-		rep, err := client.GetBucketPath(context.Background(), "mybuck", Auth{Token: user.SessionID})
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "mybuck", Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -911,36 +893,44 @@ func TestClient_RemoveBucketPath(t *testing.T) {
 	}
 	defer file.Close()
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck1/file1.jpg", file,
+		Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/again/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck1/again/file1.jpg", file,
+		Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bucket path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg",
+			Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1/file1.jpg",
+			Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("got bucket path that should have been removed")
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck1", Auth{Token: user.SessionID}); err != nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1",
+			Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("bucket should still exist, but get failed: %v", err)
 		}
 	})
 
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck2/file1.jpg", file,
+		Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove entire bucket by path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg",
+			Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck2", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck2",
+			Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("got bucket that should have been removed")
 		}
 	})
