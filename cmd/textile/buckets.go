@@ -121,7 +121,7 @@ func lsBucketPath(args []string) {
 var pushBucketPathCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push to a bucket path",
-	Long: `Push files and directories to a bucket path. All paths will be created if they don't exist.
+	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
 File structure is mirrored in the bucket. For example, given the directory:
     foo/one.txt
@@ -252,7 +252,7 @@ func addFile(projectID, name, filePath string) {
 var pullBucketPathCmd = &cobra.Command{
 	Use:   "pull",
 	Short: "Pull a bucket path",
-	Long: `Pull files and directories from a bucket path. All paths will be created if they don't exist.
+	Long: `Pull files and directories from a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
 Bucket structure is mirrored locally. For example, given the bucket:
     foo/one.txt

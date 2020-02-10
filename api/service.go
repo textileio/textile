@@ -30,6 +30,8 @@ var (
 )
 
 const (
+	// bucketSeedName is the name of the seed file used to ensure buckets are unique
+	bucketSeedName = ".textilebucketseed"
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32
 )
@@ -606,9 +608,6 @@ func (s *service) bucketPathToPb(
 	pth path.Path,
 	followLinks bool,
 ) (*pb.GetBucketPathReply, error) {
-	if strings.HasSuffix(pth.String(), ".seed") {
-		return nil, fmt.Errorf("merkledag: not found")
-	}
 	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
 	if err != nil {
 		return nil, err
@@ -648,7 +647,7 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Ge
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			if entries.Name() == ".seed" { // This is the bucket seed
+			if entries.Name() == bucketSeedName {
 				continue
 			}
 			i := &pb.GetBucketPathReply_Item{}
@@ -687,7 +686,10 @@ func (s *service) GetBucketPath(ctx context.Context, req *pb.GetBucketPathReques
 }
 
 func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope string) (*c.Bucket, path.Path, error) {
-	buckName, fileName := parsePath(pth)
+	buckName, fileName, err := parsePath(pth)
+	if err != nil {
+		return nil, nil, err
+	}
 	buck, err := s.getBucketWithScope(ctx, buckName, scope)
 	if err != nil {
 		return nil, nil, err
@@ -699,7 +701,11 @@ func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope stri
 	return buck, npth, err
 }
 
-func parsePath(pth string) (folder, name string) {
+func parsePath(pth string) (folder, name string, err error) {
+	if strings.Contains(pth, bucketSeedName) {
+		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
+		return
+	}
 	pth = strings.TrimPrefix(pth, "/")
 	parts := strings.SplitN(pth, "/", 2)
 	folder = parts[0]
@@ -742,9 +748,12 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 		projectID = payload.Header.ProjectID
 		filePath = payload.Header.Path
 	default:
-		return fmt.Errorf("add file header is required")
+		return fmt.Errorf("push bucket path header is required")
 	}
-	buckName, fileName := parsePath(filePath)
+	buckName, fileName, err := parsePath(filePath)
+	if err != nil {
+		return err
+	}
 	buck, err := s.getBucketWithScope(server.Context(), buckName, scope)
 	if err != nil {
 		if status.Convert(err).Code() != codes.NotFound {
@@ -878,7 +887,7 @@ func (s *service) createBucket(ctx context.Context, name string, public bool, pr
 	pth, err := s.ipfsClient.Unixfs().Add(
 		ctx,
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			".seed": ipfsfiles.NewBytesFile(seed), // Ensure the directory is unique w/ reasonable certainty
+			bucketSeedName: ipfsfiles.NewBytesFile(seed),
 		}),
 		options.Unixfs.Pin(true))
 	if err != nil {
@@ -899,9 +908,6 @@ func (s *service) PullBucketPath(req *pb.PullBucketPathRequest, server pb.API_Pu
 	_, pth, err := s.getBucketAndPathWithScope(server.Context(), req.Path, scope)
 	if err != nil {
 		return err
-	}
-	if strings.HasSuffix(pth.String(), ".seed") {
-		return fmt.Errorf("merkledag: not found")
 	}
 	node, err := s.ipfsClient.Unixfs().Get(server.Context(), pth)
 	if err != nil {
@@ -941,7 +947,10 @@ func (s *service) RemoveBucketPath(
 	if !ok {
 		log.Fatal("scope required")
 	}
-	buckName, fileName := parsePath(req.Path)
+	buckName, fileName, err := parsePath(req.Path)
+	if err != nil {
+		return nil, err
+	}
 	buck, err := s.getBucketWithScope(ctx, buckName, scope)
 	if err != nil {
 		return nil, err
@@ -959,8 +968,7 @@ func (s *service) RemoveBucketPath(
 	}
 
 	var cnt int
-	for l := range links {
-		fmt.Println(l)
+	for range links {
 		cnt++
 	}
 	if cnt > 1 { // Account for the seed file
