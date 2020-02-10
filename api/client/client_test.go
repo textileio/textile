@@ -703,41 +703,13 @@ func TestClient_RegisterAppUser(t *testing.T) {
 	})
 }
 
-func TestClient_AddFolder(t *testing.T) {
+func TestClient_ListBuckets(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
 	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test add folder", func(t *testing.T) {
-		folder, err := client.AddFolder(
-			context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatalf("add folder should succeed: %v", err)
-		}
-		if folder.ID == "" {
-			t.Fatal("got bad ID from add folder")
-		}
-	})
-}
-
-func TestClient_GetFolder(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	added, err := client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -746,27 +718,27 @@ func TestClient_GetFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, err := client.AddFile(
-		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	if _, _, err = client.PushBucketPath(
+		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = client.PushBucketPath(
+		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("test get folder", func(t *testing.T) {
-		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
+	t.Run("test list buckets", func(t *testing.T) {
+		bucks, err := client.ListBuckets(context.Background(), project.ID, Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("get folder should succeed: %v", err)
+			t.Fatalf("list buckets should succeed: %v", err)
 		}
-		if folder.ID != added.ID {
-			t.Fatal("got bad ID from get folder")
-		}
-		if len(folder.Entries) != 1 {
-			t.Fatalf("got wrong folder entry count from get folder, expected %d, got %d",
-				1, len(folder.Entries))
+		if len(bucks.List) != 2 {
+			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2, len(bucks.List))
 		}
 	})
 }
 
-func TestClient_ListFolders(t *testing.T) {
+func TestClient_GetBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -776,27 +748,35 @@ func TestClient_ListFolders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder1", false, Auth{Token: user.SessionID}); err != nil {
+	file, err := os.Open("testdata/file1.jpg")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder2", false, Auth{Token: user.SessionID}); err != nil {
+	defer file.Close()
+	_, root, err := client.PushBucketPath(
+		context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID})
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("test list folders", func(t *testing.T) {
-		folders, err := client.ListFolders(context.Background(), project.ID, Auth{Token: user.SessionID})
+	t.Run("test get bucket path", func(t *testing.T) {
+		rep, err := client.GetBucketPath(context.Background(), "mybuck/file1.jpg", Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("list folders should succeed: %v", err)
+			t.Fatal(err)
 		}
-		if len(folders.List) != 2 {
-			t.Fatalf("got wrong folder count from list folders, expected %d, got %d", 2, len(folders.List))
+		if !strings.HasSuffix(rep.Item.Path, "file1.jpg") {
+			t.Fatal("got bad name from get bucket path")
+		}
+		if rep.Item.IsDir {
+			t.Fatal("path is not a dir")
+		}
+		if rep.Root.Path != root.String() {
+			t.Fatal("path root should match bucket root")
 		}
 	})
 }
 
-func TestClient_RemoveFolder(t *testing.T) {
+func TestClient_PushBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -806,37 +786,8 @@ func TestClient_RemoveFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
 
-	t.Run("test remove folder", func(t *testing.T) {
-		if err := client.RemoveFolder(context.Background(), "myfolder", Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("remove folder should succeed: %v", err)
-		}
-		if _, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID}); err == nil {
-			t.Fatalf("got folder that should be removed: %v", err)
-		}
-	})
-}
-
-func TestClient_AddFile(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test add file", func(t *testing.T) {
+	t.Run("test push bucket path", func(t *testing.T) {
 		file, err := os.Open("testdata/file1.jpg")
 		if err != nil {
 			t.Fatal(err)
@@ -848,18 +799,21 @@ func TestClient_AddFile(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		pth, err := client.AddFile(
-			context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID},
-			AddWithProgress(progress))
+		pth, root, err := client.PushBucketPath(
+			context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID},
+			WithPushProgress(progress))
 		if err != nil {
-			t.Fatalf("add file should succeed: %v", err)
+			t.Fatalf("push bucket path should succeed: %v", err)
 		}
 		if pth == nil {
-			t.Fatal("got bad path from add file")
+			t.Fatal("got bad path from push bucket path")
+		}
+		if root == nil {
+			t.Fatal("got bad root from push bucket path")
 		}
 	})
 
-	t.Run("test add nested file", func(t *testing.T) {
+	t.Run("test push nested bucket path", func(t *testing.T) {
 		file, err := os.Open("testdata/file2.jpg")
 		if err != nil {
 			t.Fatal(err)
@@ -871,28 +825,31 @@ func TestClient_AddFile(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		pth, err := client.AddFile(
-			context.Background(), "myfolder/more/stuff/file1.jpg", file, Auth{Token: user.SessionID},
-			AddWithProgress(progress))
+		pth, root, err := client.PushBucketPath(
+			context.Background(), project.ID, "mybuck/path/to/file2.jpg", file, Auth{Token: user.SessionID},
+			WithPushProgress(progress))
 		if err != nil {
-			t.Fatalf("add nested file should succeed: %v", err)
+			t.Fatalf("push nested bucket path should succeed: %v", err)
 		}
 		if pth == nil {
-			t.Fatal("got bad path from add file")
+			t.Fatal("got bad path from push nested bucket path")
+		}
+		if root == nil {
+			t.Fatal("got bad root from push nested bucket path")
 		}
 
-		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
+		rep, err := client.GetBucketPath(context.Background(), "mybuck", Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("get folder should succeed: %v", err)
+			t.Fatal(err)
 		}
-		if len(folder.Entries) != 4 {
-			t.Fatalf("got wrong folder entry count from add nested file, expected %d, got %d",
-				4, len(folder.Entries))
+		if len(rep.Item.Items) != 2 {
+			t.Fatalf("got wrong bucket entry count from push nested bucket path, expected %d, got %d",
+				2, len(rep.Item.Items))
 		}
 	})
 }
 
-func TestClient_GetFile(t *testing.T) {
+func TestClient_PullBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -902,57 +859,17 @@ func TestClient_GetFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
 	file, err := os.Open("testdata/file1.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, err := client.AddFile(
-		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	if _, _, err := client.PushBucketPath(
+		context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("test get file", func(t *testing.T) {
-		file, err := client.GetFile(
-			context.Background(), "myfolder/file1.jpg", Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatalf("get file should succeed: %v", err)
-		}
-		if !strings.HasSuffix(file.Path, "file1.jpg") {
-			t.Fatal("got bad name from get file")
-		}
-	})
-}
-
-func TestClient_CatFile(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer file.Close()
-	if _, err := client.AddFile(
-		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test cat file", func(t *testing.T) {
+	t.Run("test pull bucket path", func(t *testing.T) {
 		file, err := ioutil.TempFile("", "")
 		if err != nil {
 			t.Fatal(err)
@@ -965,10 +882,10 @@ func TestClient_CatFile(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		if err := client.CatFile(
-			context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID},
-			CatWithProgress(progress)); err != nil {
-			t.Fatalf("cat file should succeed: %v", err)
+		if err := client.PullBucketPath(
+			context.Background(), "mybuck/file1.jpg", file, Auth{Token: user.SessionID},
+			WithPullProgress(progress)); err != nil {
+			t.Fatalf("pull bucket path should succeed: %v", err)
 		}
 		info, err := file.Stat()
 		if err != nil {
@@ -978,7 +895,7 @@ func TestClient_CatFile(t *testing.T) {
 	})
 }
 
-func TestClient_RemoveFile(t *testing.T) {
+func TestClient_RemoveBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -988,31 +905,43 @@ func TestClient_RemoveFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = client.AddFolder(
-		context.Background(), project.ID, "myfolder", false, Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
 	file, err := os.Open("testdata/file1.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, err := client.AddFile(
-		context.Background(), "myfolder/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	if _, _, err = client.PushBucketPath(
+		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = client.PushBucketPath(
+		context.Background(), project.ID, "mybuck1/again/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("test remove file", func(t *testing.T) {
-		if err := client.RemoveFile(
-			context.Background(), "myfolder/file1.jpg", Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("remove file should succeed: %v", err)
+	t.Run("test remove bucket path", func(t *testing.T) {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		folder, err := client.GetFolder(context.Background(), "myfolder", Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatal(err)
+		if _, err := client.GetBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err == nil {
+			t.Fatal("got bucket path that should have been removed")
 		}
-		if len(folder.Entries) != 0 {
-			t.Fatalf("got wrong entry count from remove file, expected %d, got %d", 0, len(folder.Entries))
+		if _, err := client.GetBucketPath(context.Background(), "mybuck1", Auth{Token: user.SessionID}); err != nil {
+			t.Fatalf("bucket should still exist, but get failed: %v", err)
+		}
+	})
+
+	if _, _, err = client.PushBucketPath(
+		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("test remove entire bucket by path", func(t *testing.T) {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+			t.Fatalf("remove bucket path should succeed: %v", err)
+		}
+		if _, err := client.GetBucketPath(context.Background(), "mybuck2", Auth{Token: user.SessionID}); err == nil {
+			t.Fatal("got bucket that should have been removed")
 		}
 	})
 }

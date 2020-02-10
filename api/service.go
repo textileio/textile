@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/mail"
@@ -29,6 +30,8 @@ var (
 )
 
 const (
+	// bucketSeedName is the name of the seed file used to ensure buckets are unique
+	bucketSeedName = ".textilebucketseed"
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32
 )
@@ -111,7 +114,8 @@ func (s *service) Switch(ctx context.Context, _ *pb.SwitchRequest) (*pb.SwitchRe
 	if !ok {
 		log.Fatal("scope required")
 	}
-	if err := s.collections.Sessions.SwitchScope(ctx, session, scope); err != nil {
+	session.Scope = scope
+	if err := s.collections.Sessions.Save(ctx, session); err != nil {
 		return nil, err
 	}
 
@@ -233,6 +237,20 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 	}
 
 	return teamToPbTeam(team, members), nil
+}
+
+func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
+	team, err := s.collections.Teams.Get(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if team == nil {
+		return nil, status.Error(codes.NotFound, "Team not found")
+	}
+	if !s.collections.Users.HasTeam(user, team.ID) {
+		return nil, status.Error(codes.PermissionDenied, "User is not a team member")
+	}
+	return team, nil
 }
 
 func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
@@ -410,6 +428,20 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	return reply, nil
 }
 
+func (s *service) getProjectForScope(ctx context.Context, projID, scope string) (*c.Project, error) {
+	proj, err := s.collections.Projects.Get(ctx, projID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, status.Error(codes.NotFound, "Project not found")
+	}
+	if proj.Scope != scope {
+		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
+	}
+	return proj, nil
+}
+
 func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 	return &pb.GetProjectReply{
 		ID:            proj.ID,
@@ -528,9 +560,23 @@ func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequ
 	return &pb.RemoveAppTokenReply{}, nil
 }
 
-// AddFolder handles an add folder request.
-func (s *service) AddFolder(ctx context.Context, req *pb.AddFolderRequest) (*pb.AddFolderReply, error) {
-	log.Debugf("received add folder request")
+func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope string) (*c.AppToken, error) {
+	token, err := s.collections.AppTokens.Get(ctx, tokenID)
+	if err != nil {
+		return nil, err
+	}
+	if token == nil {
+		return nil, status.Error(codes.NotFound, "Token not found")
+	}
+	if _, err := s.getProjectForScope(ctx, token.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+// ListBuckets handles a list buckets request.
+func (s *service) ListBuckets(ctx context.Context, req *pb.ListBucketsRequest) (*pb.ListBucketsReply, error) {
+	log.Debugf("received list buckets request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
@@ -541,148 +587,151 @@ func (s *service) AddFolder(ctx context.Context, req *pb.AddFolderRequest) (*pb.
 		return nil, err
 	}
 
-	pth, err := s.ipfsClient.Unixfs().Add(
-		ctx,
-		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{}),
-		options.Unixfs.Pin(true))
+	bucks, err := s.collections.Buckets.List(ctx, proj.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	folder, err := s.collections.Folders.Create(ctx, pth, req.Name, req.Public, proj.ID)
-	if err != nil {
-		return nil, err
+	list := make([]*pb.GetBucketPathReply, len(bucks))
+	for i, buck := range bucks {
+		list[i], err = s.bucketPathToPb(ctx, buck, path.New(buck.Path), false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &pb.AddFolderReply{
-		ID:   folder.ID,
-		Path: folder.Path,
-	}, nil
+	return &pb.ListBucketsReply{List: list}, nil
 }
 
-// GetFolder handles a get folder request.
-func (s *service) GetFolder(ctx context.Context, req *pb.GetFolderRequest) (*pb.GetFolderReply, error) {
-	log.Debugf("received get folder request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	folder, err := s.getFolderWithScope(ctx, req.Name, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	node, err := s.ipfsClient.Unixfs().Get(ctx, path.New(folder.Path))
+func (s *service) bucketPathToPb(
+	ctx context.Context,
+	buck *c.Bucket,
+	pth path.Path,
+	followLinks bool,
+) (*pb.GetBucketPathReply, error) {
+	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
 	if err != nil {
 		return nil, err
 	}
 	defer node.Close()
 
-	return folderToPbFolder(folder, node)
-}
-
-func folderToPbFolder(folder *c.Folder, node ipfsfiles.Node) (*pb.GetFolderReply, error) {
-	entries, err := dirToPbSlice(node)
+	item, err := nodeToBucketItem(pth.String(), node, followLinks)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetFolderReply{
-		ID:        folder.ID,
-		Path:      folder.Path,
-		Name:      folder.Name,
-		Public:    folder.Public,
-		ProjectID: folder.ProjectID,
-		Created:   folder.Created,
-		Entries:   entries,
-	}, nil
+
+	rep := &pb.GetBucketPathReply{
+		Item: item,
+		Root: &pb.BucketRoot{
+			Name:    buck.Name,
+			Path:    buck.Path,
+			Created: buck.Created,
+			Updated: buck.Updated,
+			Public:  buck.Public,
+		},
+	}
+
+	return rep, nil
 }
 
-func dirToPbSlice(node ipfsfiles.Node) (entries []*pb.GetFolderReply_Entry, err error) {
-	err = ipfsfiles.Walk(node, func(path string, n ipfsfiles.Node) error {
-		defer n.Close()
-		if path == "" { // This is the root
-			return nil
+func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.GetBucketPathReply_Item, error) {
+	size, err := node.Size()
+	if err != nil {
+		return nil, err
+	}
+	item := &pb.GetBucketPathReply_Item{
+		Path: pth,
+		Size: size,
+	}
+	switch node := node.(type) {
+	case ipfsfiles.Directory:
+		item.IsDir = true
+		entries := node.Entries()
+		for entries.Next() {
+			if entries.Name() == bucketSeedName {
+				continue
+			}
+			i := &pb.GetBucketPathReply_Item{}
+			if followLinks {
+				n := entries.Node()
+				i, err = nodeToBucketItem(filepath.Join(pth, entries.Name()), n, false)
+				if err != nil {
+					n.Close()
+					return nil, err
+				}
+				n.Close()
+			}
+			item.Items = append(item.Items, i)
 		}
-		size, err := n.Size()
-		if err != nil {
-			return err
+		if err := entries.Err(); err != nil {
+			return nil, err
 		}
-		entry := &pb.GetFolderReply_Entry{
-			Path: path,
-			Size: size,
-		}
-		switch n.(type) {
-		case ipfsfiles.Directory:
-			entry.IsDir = true
-		}
-		entries = append(entries, entry)
-		return nil
-	})
+	}
+	return item, nil
+}
+
+// GetBucketPath handles a get bucket path request.
+func (s *service) GetBucketPath(ctx context.Context, req *pb.GetBucketPathRequest) (*pb.GetBucketPathReply, error) {
+	log.Debugf("received get bucket path request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.bucketPathToPb(ctx, buck, pth, true)
+}
+
+func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope string) (*c.Bucket, path.Path, error) {
+	buckName, fileName, err := parsePath(pth)
+	if err != nil {
+		return nil, nil, err
+	}
+	buck, err := s.getBucketWithScope(ctx, buckName, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	npth := path.New(filepath.Join(buck.Path, fileName))
+	if err = npth.IsValid(); err != nil {
+		return nil, nil, err
+	}
+	return buck, npth, err
+}
+
+func parsePath(pth string) (folder, name string, err error) {
+	if strings.Contains(pth, bucketSeedName) {
+		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
+		return
+	}
+	pth = strings.TrimPrefix(pth, "/")
+	parts := strings.SplitN(pth, "/", 2)
+	folder = parts[0]
+	if len(parts) > 1 {
+		name = parts[1]
+	}
 	return
 }
 
-// ListFolders handles a list folders request.
-func (s *service) ListFolders(ctx context.Context, req *pb.ListFoldersRequest) (*pb.ListFoldersReply, error) {
-	log.Debugf("received list folders request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
+	folder, err := s.collections.Buckets.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-
-	folders, err := s.collections.Folders.List(ctx, proj.ID)
-	if err != nil {
+	if folder == nil {
+		return nil, status.Error(codes.NotFound, "Bucket not found")
+	}
+	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
 		return nil, err
 	}
-	list := make([]*pb.GetFolderReply, len(folders))
-	for i, folder := range folders {
-		node, err := s.ipfsClient.Unixfs().Get(ctx, path.New(folder.Path))
-		if err != nil {
-			return nil, err
-		}
-		list[i], err = folderToPbFolder(folder, node)
-		if err != nil {
-			node.Close()
-			return nil, err
-		}
-		node.Close()
-	}
-
-	return &pb.ListFoldersReply{List: list}, nil
+	return folder, nil
 }
 
-// RemoveFolder handles a remove folder request.
-func (s *service) RemoveFolder(ctx context.Context, req *pb.RemoveFolderRequest) (*pb.RemoveFolderReply, error) {
-	log.Debugf("received remove folder request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	folder, err := s.getFolderWithScope(ctx, req.Name, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = s.collections.Folders.Delete(ctx, folder.ID); err != nil {
-		return nil, err
-	}
-
-	if err = s.ipfsClient.Pin().Rm(ctx, path.New(folder.Path)); err != nil {
-		return nil, err
-	}
-
-	return &pb.RemoveFolderReply{}, nil
-}
-
-// AddFile handles an add file request.
-func (s *service) AddFile(server pb.API_AddFileServer) error {
-	log.Debugf("received add file request")
+// PushBucketPath handles a push bucket path request.
+func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
+	log.Debugf("received push bucket path request")
 
 	scope, ok := server.Context().Value(reqKey("scope")).(string)
 	if !ok {
@@ -693,31 +742,40 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 	if err != nil {
 		return err
 	}
-	var filePath string
+	var projectID, filePath string
 	switch payload := req.Payload.(type) {
-	case *pb.AddFileRequest_Header_:
+	case *pb.PushBucketPathRequest_Header_:
+		projectID = payload.Header.ProjectID
 		filePath = payload.Header.Path
 	default:
-		return fmt.Errorf("add file header is required")
+		return fmt.Errorf("push bucket path header is required")
 	}
-	folderName, fileName := parsePath(filePath)
-	folder, err := s.getFolderWithScope(server.Context(), folderName, scope)
+	buckName, fileName, err := parsePath(filePath)
 	if err != nil {
 		return err
 	}
-	folderPath := path.New(folder.Path)
+	buck, err := s.getBucketWithScope(server.Context(), buckName, scope)
+	if err != nil {
+		if status.Convert(err).Code() != codes.NotFound {
+			return err
+		}
+		buck, err = s.createBucket(server.Context(), buckName, false, projectID)
+		if err != nil {
+			return err
+		}
+	}
 
-	sendEvent := func(event *pb.AddFileReply_Event) error {
-		return server.Send(&pb.AddFileReply{
-			Payload: &pb.AddFileReply_Event_{
+	sendEvent := func(event *pb.PushBucketPathReply_Event) error {
+		return server.Send(&pb.PushBucketPathReply{
+			Payload: &pb.PushBucketPathReply_Event_{
 				Event: event,
 			},
 		})
 	}
 
 	sendErr := func(err error) {
-		if err := server.Send(&pb.AddFileReply{
-			Payload: &pb.AddFileReply_Error{
+		if err := server.Send(&pb.PushBucketPathReply{
+			Payload: &pb.PushBucketPathReply_Error{
 				Error: err.Error(),
 			},
 		}); err != nil {
@@ -740,7 +798,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 				return
 			}
 			switch payload := req.Payload.(type) {
-			case *pb.AddFileRequest_Chunk:
+			case *pb.PushBucketPathRequest_Chunk:
 				if _, err := writer.Write(payload.Chunk); err != nil {
 					sendErr(err)
 					return
@@ -763,7 +821,7 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 				continue
 			}
 			if event.Path == nil { // This is a progress event
-				if err := sendEvent(&pb.AddFileReply_Event{
+				if err := sendEvent(&pb.PushBucketPathReply_Event{
 					Name:  event.Name,
 					Bytes: event.Bytes,
 				}); err != nil {
@@ -785,88 +843,73 @@ func (s *service) AddFile(server pb.API_AddFileServer) error {
 		return err
 	}
 
+	buckPath := path.New(buck.Path)
 	dirpth, err := s.ipfsClient.Object().
-		AddLink(server.Context(), folderPath, fileName, pth, options.Object.Create(true))
+		AddLink(server.Context(), buckPath, fileName, pth, options.Object.Create(true))
 	if err != nil {
 		return err
 	}
-	if err = s.ipfsClient.Pin().Update(server.Context(), folderPath, dirpth); err != nil {
-		return err
-	}
-	if err = s.collections.Folders.UpdatePath(server.Context(), folder, dirpth); err != nil {
+	if err = s.ipfsClient.Pin().Update(server.Context(), buckPath, dirpth); err != nil {
 		return err
 	}
 
-	if err = sendEvent(&pb.AddFileReply_Event{
+	buck.Path = dirpth.String()
+	buck.Updated = time.Now().Unix()
+	if err = s.collections.Buckets.Save(server.Context(), buck); err != nil {
+		return err
+	}
+
+	if err = sendEvent(&pb.PushBucketPathReply_Event{
 		Path: pth.String(),
 		Size: size,
+		Root: &pb.BucketRoot{
+			Name:    buck.Name,
+			Path:    buck.Path,
+			Created: buck.Created,
+			Updated: buck.Updated,
+			Public:  false,
+		},
 	}); err != nil {
 		return err
 	}
 
-	log.Debugf("added file %s to folder with new path: %s", pth.String(), dirpth.String())
+	log.Debugf("pushed %s to bucket: %s", fileName, buck.Name)
 	return nil
 }
 
-func parsePath(pth string) (folder, name string) {
-	pth = strings.TrimPrefix(pth, "/")
-	parts := strings.SplitN(pth, "/", 2)
-	folder = parts[0]
-	if len(parts) > 1 {
-		name = parts[1]
-	}
-	return
-}
-
-// GetFile handles a get file request.
-func (s *service) GetFile(ctx context.Context, req *pb.GetFileRequest) (*pb.GetFileReply, error) {
-	log.Debugf("received get file request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	node, pth, err := s.getNodeAtPath(ctx, scope, req.Path)
-	if err != nil {
-		return nil, err
-	}
-	defer node.Close()
-
-	size, err := node.Size()
+func (s *service) createBucket(ctx context.Context, name string, public bool, projectID string) (*c.Bucket, error) {
+	seed := make([]byte, 32)
+	_, err := rand.Read(seed)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.GetFileReply{
-		Path: pth.String(),
-		Size: size,
-	}, nil
-}
-
-func (s *service) getNodeAtPath(ctx context.Context, scope, pth string) (ipfsfiles.Node, path.Path, error) {
-	folderName, fileName := parsePath(pth)
-	folder, err := s.getFolderWithScope(ctx, folderName, scope)
+	pth, err := s.ipfsClient.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			bucketSeedName: ipfsfiles.NewBytesFile(seed),
+		}),
+		options.Unixfs.Pin(true))
 	if err != nil {
-		return nil, nil, err
-	}
-	npth := path.New(filepath.Join(folder.Path, fileName))
-	if err = npth.IsValid(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	node, err := s.ipfsClient.Unixfs().Get(ctx, npth)
-	return node, npth, err
+	return s.collections.Buckets.Create(ctx, pth, name, public, projectID)
 }
 
-// CatFile handles a cat file request.
-func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) error {
-	log.Debugf("received cat file request")
+// PullBucketPath handles a pull bucket path request.
+func (s *service) PullBucketPath(req *pb.PullBucketPathRequest, server pb.API_PullBucketPathServer) error {
+	log.Debugf("received pull bucket path request")
 
 	scope, ok := server.Context().Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	node, _, err := s.getNodeAtPath(server.Context(), scope, req.Path)
+	_, pth, err := s.getBucketAndPathWithScope(server.Context(), req.Path, scope)
+	if err != nil {
+		return err
+	}
+	node, err := s.ipfsClient.Unixfs().Get(server.Context(), pth)
 	if err != nil {
 		return err
 	}
@@ -884,7 +927,7 @@ func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) e
 		} else if err != nil {
 			return err
 		}
-		if err := server.Send(&pb.CatFileReply{
+		if err := server.Send(&pb.PullBucketPathReply{
 			Chunk: buf[:n],
 		}); err != nil {
 			return err
@@ -893,91 +936,62 @@ func (s *service) CatFile(req *pb.CatFileRequest, server pb.API_CatFileServer) e
 	return nil
 }
 
-// RemoveFile handles a remove file request.
-func (s *service) RemoveFile(ctx context.Context, req *pb.RemoveFileRequest) (*pb.RemoveFileReply, error) {
-	log.Debugf("received remove file request")
+// RemoveBucketPath handles a remove bucket path request.
+func (s *service) RemoveBucketPath(
+	ctx context.Context,
+	req *pb.RemoveBucketPathRequest,
+) (*pb.RemoveBucketPathReply, error) {
+	log.Debugf("received remove bucket path request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	folderName, fileName := parsePath(req.Path)
-	folder, err := s.getFolderWithScope(ctx, folderName, scope)
+	buckName, fileName, err := parsePath(req.Path)
 	if err != nil {
 		return nil, err
 	}
-	folderPath := path.New(folder.Path)
-
-	dirpth, err := s.ipfsClient.Object().RmLink(ctx, folderPath, fileName)
+	buck, err := s.getBucketWithScope(ctx, buckName, scope)
 	if err != nil {
 		return nil, err
 	}
-	if err = s.ipfsClient.Pin().Update(ctx, folderPath, dirpth); err != nil {
-		return nil, err
-	}
-	if err = s.collections.Folders.UpdatePath(ctx, folder, dirpth); err != nil {
-		return nil, err
-	}
 
-	return &pb.RemoveFileReply{}, nil
-}
-
-// getTeamForUser returns a team if the user is authorized.
-func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
-	team, err := s.collections.Teams.Get(ctx, teamID)
+	buckPath := path.New(buck.Path)
+	dirpth, err := s.ipfsClient.Object().RmLink(ctx, buckPath, fileName)
 	if err != nil {
 		return nil, err
 	}
-	if team == nil {
-		return nil, status.Error(codes.NotFound, "Team not found")
-	}
-	if !s.collections.Users.HasTeam(user, team.ID) {
-		return nil, status.Error(codes.PermissionDenied, "User is not a team member")
-	}
-	return team, nil
-}
 
-// getProjectForScope returns a project if the scope is authorized.
-func (s *service) getProjectForScope(ctx context.Context, projID, scope string) (*c.Project, error) {
-	proj, err := s.collections.Projects.Get(ctx, projID)
+	links, err := s.ipfsClient.Unixfs().Ls(ctx, dirpth)
 	if err != nil {
 		return nil, err
 	}
-	if proj == nil {
-		return nil, status.Error(codes.NotFound, "Project not found")
-	}
-	if proj.Scope != scope {
-		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
-	}
-	return proj, nil
-}
 
-// getAppTokenWithScope returns an app token if the scope is authorized for the associated project.
-func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope string) (*c.AppToken, error) {
-	token, err := s.collections.AppTokens.Get(ctx, tokenID)
-	if err != nil {
-		return nil, err
+	var cnt int
+	for range links {
+		cnt++
 	}
-	if token == nil {
-		return nil, status.Error(codes.NotFound, "Token not found")
-	}
-	if _, err := s.getProjectForScope(ctx, token.ProjectID, scope); err != nil {
-		return nil, err
-	}
-	return token, nil
-}
+	if cnt > 1 { // Account for the seed file
+		if err = s.ipfsClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
+			return nil, err
+		}
 
-// getFolderWithScope returns a folder if the scope is authorized for the associated project.
-func (s *service) getFolderWithScope(ctx context.Context, name, scope string) (*c.Folder, error) {
-	folder, err := s.collections.Folders.GetByName(ctx, name)
-	if err != nil {
-		return nil, err
+		buck.Path = dirpth.String()
+		buck.Updated = time.Now().Unix()
+		if err = s.collections.Buckets.Save(ctx, buck); err != nil {
+			return nil, err
+		}
+		log.Debugf("removed %s from bucket: %s", fileName, buck.Name)
+	} else {
+		if err = s.ipfsClient.Pin().Rm(ctx, buckPath); err != nil {
+			return nil, err
+		}
+
+		if err = s.collections.Buckets.Delete(ctx, buck.ID); err != nil {
+			return nil, err
+		}
+		log.Debugf("removed bucket: %s", buck.Name)
 	}
-	if folder == nil {
-		return nil, status.Error(codes.NotFound, "Folder not found")
-	}
-	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
-		return nil, err
-	}
-	return folder, nil
+
+	return &pb.RemoveBucketPathReply{}, nil
 }

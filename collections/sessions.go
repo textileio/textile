@@ -64,15 +64,14 @@ func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
 	return session, nil
 }
 
-func (s *Sessions) Touch(ctx context.Context, session *Session) error {
+func (s *Sessions) Save(ctx context.Context, session *Session) error {
 	ctx = AuthCtx(ctx, s.token)
-	session.Expiry = int(time.Now().Add(sessionDur).Unix())
 	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 
-func (s *Sessions) SwitchScope(ctx context.Context, session *Session, scope string) error {
+func (s *Sessions) Touch(ctx context.Context, session *Session) error {
 	ctx = AuthCtx(ctx, s.token)
-	session.Scope = scope
+	session.Expiry = int(time.Now().Add(sessionDur).Unix())
 	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
 }
 

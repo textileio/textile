@@ -53,7 +53,7 @@ var addTeamsCmd = &cobra.Command{
 		}
 		name, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			cmd.End("")
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -198,7 +198,7 @@ var inviteTeamsCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			cmd.End("")
 		}
 
 		ctx2, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -335,7 +335,7 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 	}
 	index, _, err := prompt.Run()
 	if err != nil {
-		log.Fatal(err)
+		cmd.End("")
 	}
 
 	return items[index]

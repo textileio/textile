@@ -149,7 +149,7 @@ func selectToken(label, successMsg, projID string) string {
 	}
 	index, _, err := prompt.Run()
 	if err != nil {
-		log.Fatal(err)
+		cmd.End("")
 	}
 
 	return tokens.List[index]

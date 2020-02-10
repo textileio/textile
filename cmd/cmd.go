@@ -12,6 +12,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc/status"
 )
 
 type Flag struct {
@@ -69,6 +70,9 @@ func AddrFromStr(str string) ma.Multiaddr {
 }
 
 func Message(format string, args ...interface{}) {
+	if format == "" {
+		return
+	}
 	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
 }
 
@@ -83,9 +87,16 @@ func End(format string, args ...interface{}) {
 }
 
 func Fatal(err error, args ...interface{}) {
-	words := strings.SplitN(err.Error(), " ", 2)
+	var msg string
+	stat, ok := status.FromError(err)
+	if ok {
+		msg = stat.Message()
+	} else {
+		msg = err.Error()
+	}
+	words := strings.SplitN(msg, " ", 2)
 	words[0] = strings.Title(words[0])
-	msg := strings.Join(words, " ")
+	msg = strings.Join(words, " ")
 	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
 		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
 	os.Exit(1)

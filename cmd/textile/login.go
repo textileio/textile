@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/mail"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
@@ -33,7 +33,7 @@ var loginCmd = &cobra.Command{
 		}
 		email, err := prompt.Run()
 		if err != nil {
-			log.Fatal(err)
+			cmd.End("")
 		}
 
 		// @todo: Add a security code that can be visually verified in the email.
@@ -57,12 +57,12 @@ var loginCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		dir := path.Join(home, ".textile")
+		dir := filepath.Join(home, ".textile")
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
 
-		filename := path.Join(dir, "auth.yml")
+		filename := filepath.Join(dir, "auth.yml")
 
 		if err := authViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)

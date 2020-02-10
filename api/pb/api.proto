@@ -140,63 +140,51 @@ message RemoveAppTokenRequest {
 
 message RemoveAppTokenReply {}
 
-message AddFolderRequest {
+message BucketRoot {
     string name = 1;
-    bool public = 2;
-    string projectID = 3;
-}
-
-message AddFolderReply {
-    string ID = 1;
     string path = 2;
+    int64 created = 3;
+    int64 updated = 4;
+    bool public = 5;
 }
 
-message GetFolderRequest {
-    string name = 1;
-}
-
-message GetFolderReply {
-    string ID = 1;
-    string path = 2;
-    string name = 3;
-    bool public = 4;
-    string projectID = 5;
-    int64 created = 6;
-    repeated Entry entries = 7;
-
-    message Entry {
-        string path = 1;
-        int64 size = 2;
-        bool isDir = 3;
-    }
-}
-
-message ListFoldersRequest {
+message ListBucketsRequest {
     string projectID = 1;
 }
 
-message ListFoldersReply {
-    repeated GetFolderReply list = 1;
+message ListBucketsReply {
+    repeated GetBucketPathReply list = 1;
 }
 
-message RemoveFolderRequest {
-    string name = 1;
+message GetBucketPathRequest {
+    string path = 1;
 }
 
-message RemoveFolderReply {}
+message GetBucketPathReply {
+    Item item = 1;
+    BucketRoot root = 2;
 
-message AddFileRequest {
+    message Item {
+        string path = 1;
+        int64 size = 2;
+        bool isDir = 3;
+        repeated Item items = 4;
+    }
+}
+
+message PushBucketPathRequest {
     oneof payload {
         Header header = 1;
         bytes chunk = 2;
     }
 
     message Header {
-        string path = 1;
+        string projectID = 1;
+        string path = 2;
     }
 }
 
-message AddFileReply {
+message PushBucketPathReply {
     oneof payload {
         Event event = 1;
         string error = 2;
@@ -207,31 +195,23 @@ message AddFileReply {
         string path = 2;
         int64 bytes = 3;
         string size = 4;
+        BucketRoot root = 5;
     }
 }
 
-message GetFileRequest {
+message PullBucketPathRequest {
     string path = 1;
 }
 
-message GetFileReply {
-    string path = 2;
-    int64 size = 3;
-}
-
-message CatFileRequest {
-    string path = 1;
-}
-
-message CatFileReply {
+message PullBucketPathReply {
     bytes chunk = 1;
 }
 
-message RemoveFileRequest {
+message RemoveBucketPathRequest {
     string path = 1;
 }
 
-message RemoveFileReply {}
+message RemoveBucketPathReply {}
 
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
@@ -255,13 +235,9 @@ service API {
     rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
     rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
 
-    rpc AddFolder (AddFolderRequest) returns (AddFolderReply) {}
-    rpc GetFolder (GetFolderRequest) returns (GetFolderReply) {}
-    rpc ListFolders (ListFoldersRequest) returns (ListFoldersReply) {}
-    rpc RemoveFolder (RemoveFolderRequest) returns (RemoveFolderReply) {}
-
-    rpc AddFile (stream AddFileRequest) returns (stream AddFileReply) {}
-    rpc GetFile (GetFileRequest) returns (GetFileReply) {}
-    rpc CatFile (CatFileRequest) returns (stream CatFileReply) {}
-    rpc RemoveFile (RemoveFileRequest) returns (RemoveFileReply) {}
+    rpc ListBuckets (ListBucketsRequest) returns (ListBucketsReply) {}
+    rpc GetBucketPath (GetBucketPathRequest) returns (GetBucketPathReply) {}
+    rpc PushBucketPath (stream PushBucketPathRequest) returns (stream PushBucketPathReply) {}
+    rpc PullBucketPath (PullBucketPathRequest) returns (stream PullBucketPathReply) {}
+    rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}
 }
