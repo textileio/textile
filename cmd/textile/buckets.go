@@ -216,24 +216,25 @@ func addFile(projectID, name, filePath string) {
 	bar.Set(pbar.SIBytesPrefix, true)
 	bar.Start()
 	progress := make(chan int64)
+
 	go func() {
-		for up := range progress {
-			bar.SetCurrent(up)
+		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
+		defer cancel()
+		if _, _, err = client.PushBucketPath(
+			ctx,
+			projectID,
+			filePath,
+			file,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			},
+			api.WithPushProgress(progress)); err != nil {
+			cmd.Fatal(err)
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
-	defer cancel()
-	if _, _, err = client.PushBucketPath(
-		ctx,
-		projectID,
-		filePath,
-		file,
-		api.Auth{
-			Token: authViper.GetString("token"),
-		},
-		api.WithPushProgress(progress)); err != nil {
-		cmd.Fatal(err)
+	for up := range progress {
+		bar.SetCurrent(up)
 	}
 	bar.Finish()
 }
@@ -324,25 +325,25 @@ func getFile(filePath, name string, size int64) {
 	bar.Set(pbar.SIBytesPrefix, true)
 	bar.Start()
 	progress := make(chan int64)
+
 	go func() {
-		for up := range progress {
-			bar.SetCurrent(up)
+		ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
+		defer cancel2()
+		if err = client.PullBucketPath(
+			ctx2,
+			filePath,
+			file,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			},
+			api.WithPullProgress(progress)); err != nil {
+			cmd.Fatal(err)
 		}
 	}()
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
-	defer cancel2()
-	if err = client.PullBucketPath(
-		ctx2,
-		filePath,
-		file,
-		api.Auth{
-			Token: authViper.GetString("token"),
-		},
-		api.WithPullProgress(progress)); err != nil {
-		cmd.Fatal(err)
+	for up := range progress {
+		bar.SetCurrent(up)
 	}
-	bar.SetCurrent(size)
 	bar.Finish()
 }
 

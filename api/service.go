@@ -929,14 +929,16 @@ func (s *service) PullBucketPath(req *pb.PullBucketPathRequest, server pb.API_Pu
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := file.Read(buf)
+		if n > 0 {
+			if err := server.Send(&pb.PullBucketPathReply{
+				Chunk: buf[:n],
+			}); err != nil {
+				return err
+			}
+		}
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return err
-		}
-		if err := server.Send(&pb.PullBucketPathReply{
-			Chunk: buf[:n],
-		}); err != nil {
 			return err
 		}
 	}

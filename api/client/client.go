@@ -212,6 +212,9 @@ func (c *Client) PushBucketPath(
 	for _, opt := range opts {
 		opt(args)
 	}
+	if args.Progress != nil {
+		defer close(args.Progress)
+	}
 
 	stream, err := c.c.PushBucketPath(authCtx(ctx, auth))
 	if err != nil {
@@ -267,17 +270,17 @@ func (c *Client) PushBucketPath(
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := reader.Read(buf)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			_ = stream.CloseSend()
-			return nil, nil, err
+		if n > 0 {
+			if err := stream.Send(&pb.PushBucketPathRequest{
+				Payload: &pb.PushBucketPathRequest_Chunk{
+					Chunk: buf[:n],
+				},
+			}); err != nil {
+				_ = stream.CloseSend()
+				return nil, nil, err
+			}
 		}
-		if err = stream.Send(&pb.PushBucketPathRequest{
-			Payload: &pb.PushBucketPathRequest_Chunk{
-				Chunk: buf[:n],
-			},
-		}); err == io.EOF {
+		if err == io.EOF {
 			break
 		} else if err != nil {
 			_ = stream.CloseSend()
@@ -317,6 +320,9 @@ func (c *Client) PullBucketPath(
 	args := &PullBucketPathOptions{}
 	for _, opt := range opts {
 		opt(args)
+	}
+	if args.Progress != nil {
+		defer close(args.Progress)
 	}
 
 	stream, err := c.c.PullBucketPath(authCtx(ctx, auth), &pb.PullBucketPathRequest{
