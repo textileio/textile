@@ -1,9 +1,9 @@
 {{template "header" "Bucket"}}
-<div class="title">Index of {{.root.String}}</div>
+<div class="title">Index of /{{.Root}}</div>
 <ul>
-    <li><a href="{{.back}}">..</a></li>
-    {{range .links}}
-        <li><a href="{{.Path.String}}">/{{.Link.Name}}<span class="right">{{.Size}}</span></a></li>
+    <li><a href="/{{.Back}}">..</a></li>
+    {{range .Links}}
+        <li><a href="/{{.Path}}">/{{.Name}}<span class="right">{{.Size}}</span></a></li>
     {{end}}
 </ul>
 {{template "footer"}}

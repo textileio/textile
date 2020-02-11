@@ -436,7 +436,7 @@ func (s *service) getProjectForScope(ctx context.Context, projID, scope string) 
 	if proj == nil {
 		return nil, status.Error(codes.NotFound, "Project not found")
 	}
-	if proj.Scope != scope {
+	if scope != proj.Scope && scope != "*" {
 		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
 	}
 	return proj, nil
@@ -583,6 +583,7 @@ func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequ
 		log.Fatal("scope required")
 	}
 
+	req.Path = strings.TrimSuffix(req.Path, "/")
 	if req.Path == "" { // List top-level buckets for this project
 		proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
 		if err != nil {
@@ -615,31 +616,6 @@ func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequ
 	}
 
 	return s.bucketPathToPb(ctx, buck, pth, true)
-}
-
-func (s *service) bucketPathToPb(
-	ctx context.Context,
-	buck *c.Bucket,
-	pth path.Path,
-	followLinks bool,
-) (*pb.ListBucketPathReply, error) {
-	item, err := s.pathToBucketItem(ctx, pth, followLinks)
-	if err != nil {
-		return nil, err
-	}
-
-	rep := &pb.ListBucketPathReply{
-		Item: item,
-		Root: &pb.BucketRoot{
-			Name:    buck.Name,
-			Path:    buck.Path,
-			Created: buck.Created,
-			Updated: buck.Updated,
-			Public:  buck.Public,
-		},
-	}
-
-	return rep, nil
 }
 
 func (s *service) pathToBucketItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListBucketPathReply_Item, error) {
@@ -705,6 +681,20 @@ func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope stri
 	return buck, npth, err
 }
 
+func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
+	folder, err := s.collections.Buckets.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if folder == nil {
+		return nil, status.Error(codes.NotFound, "Bucket not found")
+	}
+	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return folder, nil
+}
+
 func parsePath(pth string) (folder, name string, err error) {
 	if strings.Contains(pth, bucketSeedName) {
 		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
@@ -719,18 +709,29 @@ func parsePath(pth string) (folder, name string, err error) {
 	return
 }
 
-func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
-	folder, err := s.collections.Buckets.GetByName(ctx, name)
+func (s *service) bucketPathToPb(
+	ctx context.Context,
+	buck *c.Bucket,
+	pth path.Path,
+	followLinks bool,
+) (*pb.ListBucketPathReply, error) {
+	item, err := s.pathToBucketItem(ctx, pth, followLinks)
 	if err != nil {
 		return nil, err
 	}
-	if folder == nil {
-		return nil, status.Error(codes.NotFound, "Bucket not found")
+
+	rep := &pb.ListBucketPathReply{
+		Item: item,
+		Root: &pb.BucketRoot{
+			Name:    buck.Name,
+			Path:    buck.Path,
+			Created: buck.Created,
+			Updated: buck.Updated,
+			Public:  buck.Public,
+		},
 	}
-	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
-		return nil, err
-	}
-	return folder, nil
+
+	return rep, nil
 }
 
 // PushBucketPath handles a push bucket path request.

@@ -1019,8 +1019,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailApiKey: "",
 
-		SessionSecret:        sessionSecret,
-		ThreadsInternalToken: uuid.New().String(),
+		SessionSecret: sessionSecret,
 
 		Debug: true,
 

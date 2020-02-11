@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
@@ -37,6 +38,8 @@ type reqKey string
 type Server struct {
 	rpc     *grpc.Server
 	service *service
+
+	internalToken string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -72,28 +75,41 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}
 
+	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
+	if err != nil {
+		return nil, err
+	}
+
+	internalToken := uuid.New().String()
+	gw, err := gateway.NewGateway(
+		conf.AddrGatewayHost,
+		conf.AddrGatewayUrl,
+		addr,
+		internalToken,
+		conf.Collections)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
 		service: &service{
 			collections:    conf.Collections,
-			gateway:        gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
+			gateway:        gw,
 			emailClient:    conf.EmailClient,
 			ipfsClient:     conf.IPFSClient,
 			filecoinClient: conf.FilecoinClient,
 			sessionSecret:  conf.SessionSecret,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		internalToken: internalToken,
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 	s.rpc = grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
 		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
 	)
 
-	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
-	if err != nil {
-		return nil, err
-	}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -137,6 +153,10 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	if token == s.internalToken {
+		return context.WithValue(ctx, reqKey("scope"), "*"), nil
+	}
+
 	session, err := s.service.collections.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")

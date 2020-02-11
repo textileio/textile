@@ -6,12 +6,14 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	logger "github.com/ipfs/go-log"
 	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
@@ -19,10 +21,11 @@ import (
 	gincors "github.com/rs/cors/wrapper/gin"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api/client"
 	"github.com/textileio/textile/collections"
 )
 
-const handlerTimeout = 5 * time.Second
+const handlerTimeout = time.Second * 10
 
 var log = logger.Logger("gateway")
 
@@ -48,17 +51,29 @@ type Gateway struct {
 	url         string
 	server      *http.Server
 	collections *collections.Collections
+	service     *client.Client
+	serviceAuth client.Auth
 	sessionBus  *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr ma.Multiaddr, url string, collections *collections.Collections) *Gateway {
+func NewGateway(
+	addr ma.Multiaddr, url,
+	serviceTarget, serviceToken string,
+	collections *collections.Collections,
+) (*Gateway, error) {
+	service, err := client.NewClient(serviceTarget, nil)
+	if err != nil {
+		return nil, err
+	}
 	return &Gateway{
 		addr:        addr,
 		url:         url,
 		collections: collections,
+		service:     service,
+		serviceAuth: client.Auth{Token: serviceToken},
 		sessionBus:  broadcast.NewBroadcaster(0),
-	}
+	}, nil
 }
 
 // Start the gateway.
@@ -91,10 +106,10 @@ func (g *Gateway) Start() {
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	router.POST("/register", g.registerAppUser)
+	router.GET("/p/:project", g.bucketHandler)
+	router.GET("/p/:project/*path", g.bucketHandler)
 
-	router.GET("/p/:project/", g.bucketHandler)
-	//router.GET("/p/:project/*path", g.bucketHandler)
+	router.POST("/register", g.registerAppUser)
 
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
@@ -154,17 +169,13 @@ func (g *Gateway) Stop() error {
 		return err
 	}
 	g.sessionBus.Discard()
+	g.service.Close()
 	return nil
 }
 
 // confirmEmail verifies an emailed secret.
 func (g *Gateway) confirmEmail(c *gin.Context) {
-	secret := c.Param("secret")
-	if secret == "" {
-		g.render404(c)
-		return
-	}
-	if err := g.sessionBus.Send(secret); err != nil {
+	if err := g.sessionBus.Send(g.parseUUID(c, c.Param("secret"))); err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -177,12 +188,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
-	inviteID := c.Param("invite")
-	if inviteID == "" {
-		g.render404(c)
-		return
-	}
-	invite, err := g.collections.Invites.Get(ctx, inviteID)
+	invite, err := g.collections.Invites.Get(ctx, g.parseUUID(c, c.Param("invite")))
 	if err != nil {
 		g.render404(c)
 		return
@@ -221,6 +227,65 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
 		"Team": team.Name,
 	})
+}
+
+type link struct {
+	Name string
+	Path string
+	Size string
+}
+
+// bucketHandler renders bucket files and directories.
+func (g *Gateway) bucketHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+
+	projectID := c.Param("project")
+	rep, err := g.service.ListBucketPath(ctx, g.parseUUID(c, projectID), c.Param("path"), g.serviceAuth)
+	if err != nil {
+		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
+		return
+	}
+
+	if !rep.Item.IsDir {
+		if err := g.service.PullBucketPath(ctx, c.Param("path"), c.Writer, g.serviceAuth); err != nil {
+			abort(c, http.StatusInternalServerError, err)
+		}
+	} else {
+		projectPath := path.Join("p", projectID)
+
+		links := make([]link, len(rep.Item.Items))
+		for i, item := range rep.Item.Items {
+			var pth string
+			if rep.Root != nil {
+				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+			} else {
+				pth = item.Name
+			}
+			links[i] = link{
+				Name: item.Name,
+				Path: path.Join(projectPath, pth),
+				Size: byteCountDecimal(item.Size),
+			}
+		}
+
+		var root, back string
+		if rep.Root != nil {
+			root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
+		} else {
+			root = ""
+		}
+		if root == "" {
+			back = projectPath
+		} else {
+			back = path.Dir(path.Join(projectPath, root))
+		}
+		c.HTML(http.StatusOK, "/public/html/bucket.gohtml", gin.H{
+			"Root":  root,
+			"Back":  back,
+			"Links": links,
+		})
+	}
 }
 
 type registrationParams struct {
@@ -268,10 +333,6 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 	})
 }
 
-func (g *Gateway) bucketHandler(c *gin.Context) {
-
-}
-
 // render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {
 	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
@@ -316,4 +377,28 @@ func formatError(err error) string {
 	words := strings.SplitN(err.Error(), " ", 2)
 	words[0] = strings.Title(words[0])
 	return strings.Join(words, " ") + "."
+}
+
+// byteCountDecimal formats bytes
+func byteCountDecimal(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+// parseUUID parses a string as a UUID, adding back hyphens.
+func (g *Gateway) parseUUID(c *gin.Context, param string) (parsed string) {
+	id, err := uuid.Parse(param)
+	if err != nil {
+		g.render404(c)
+		return
+	}
+	return id.String()
 }

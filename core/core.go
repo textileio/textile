@@ -6,6 +6,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/google/uuid"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -70,8 +71,7 @@ type Config struct {
 	EmailDomain string
 	EmailApiKey string
 
-	SessionSecret        string
-	ThreadsInternalToken string
+	SessionSecret string
 
 	Debug bool
 }
@@ -94,7 +94,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	t := &Textile{
-		threadsInternalToken: conf.ThreadsInternalToken,
+		threadsInternalToken: uuid.New().String(),
 	}
 	threadservice, err := s.DefaultService(
 		conf.RepoPath,
@@ -133,7 +133,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, conf.ThreadsInternalToken, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, t.threadsInternalToken, ds)
 	if err != nil {
 		return nil, err
 	}
