@@ -17,6 +17,7 @@ import (
 	fc "github.com/textileio/filecoin/api/client"
 	threadsapi "github.com/textileio/go-threads/api"
 	threadsclient "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/broadcast"
 	serviceapi "github.com/textileio/go-threads/service/api"
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
@@ -24,6 +25,7 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
+	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,9 +46,12 @@ type Textile struct {
 	threadsServiceServer *serviceapi.Server
 	threadsServer        *threadsapi.Server
 	threadsClient        *threadsclient.Client
-	threadsInternalToken string
+	threadsToken         string
 
-	server *api.Server
+	server  *api.Server
+	gateway *gateway.Gateway
+
+	sessionBus *broadcast.Broadcaster
 }
 
 type Config struct {
@@ -94,7 +99,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	t := &Textile{
-		threadsInternalToken: uuid.New().String(),
+		threadsToken: uuid.New().String(),
+		sessionBus:   broadcast.NewBroadcaster(0),
 	}
 	threadservice, err := s.DefaultService(
 		conf.RepoPath,
@@ -133,7 +139,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, t.threadsInternalToken, ds)
+	collections, err := c.NewCollections(ctx, threadsClient, t.threadsToken, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -165,23 +171,24 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	gatewayToken := uuid.New().String()
+
 	server, err := api.NewServer(ctx, api.Config{
-		Addr:            conf.AddrApi,
-		AddrGatewayHost: conf.AddrGatewayHost,
-		AddrGatewayUrl:  conf.AddrGatewayUrl,
-		Collections:     collections,
-		DNSManager:      dnsManager,
-		EmailClient:     emailClient,
-		IPFSClient:      ipfsClient,
-		FilecoinClient:  filecoinClient,
-		SessionSecret:   conf.SessionSecret,
-		Debug:           conf.Debug,
+		Addr:           conf.AddrApi,
+		Collections:    collections,
+		DNSManager:     dnsManager,
+		EmailClient:    emailClient,
+		IPFSClient:     ipfsClient,
+		FilecoinClient: filecoinClient,
+		GatewayUrl:     conf.AddrGatewayUrl,
+		GatewayToken:   gatewayToken,
+		SessionBus:     t.sessionBus,
+		SessionSecret:  conf.SessionSecret,
+		Debug:          conf.Debug,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	log.Info("started")
 
 	t.ds = ds
 	t.collections = collections
@@ -191,6 +198,20 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.threadsClient = threadsClient
 	t.server = server
 
+	t.gateway, err = gateway.NewGateway(
+		conf.AddrGatewayHost,
+		conf.AddrGatewayUrl,
+		conf.AddrApi,
+		gatewayToken,
+		collections,
+		t.sessionBus)
+	if err != nil {
+		return nil, err
+	}
+	t.gateway.Start()
+
+	log.Info("started")
+
 	return t, nil
 }
 
@@ -199,6 +220,10 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
+	t.sessionBus.Discard()
+	if err := t.gateway.Stop(); err != nil {
+		return err
+	}
 	if err := t.threadsClient.Close(); err != nil {
 		return err
 	}
@@ -222,7 +247,7 @@ func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	if token == t.threadsInternalToken {
+	if token == t.threadsToken {
 		return ctx, nil
 	}
 

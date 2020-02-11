@@ -16,10 +16,10 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/broadcast"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,11 +40,13 @@ const (
 type service struct {
 	collections *c.Collections
 
-	gateway        *gateway.Gateway
 	emailClient    *email.Client
 	ipfsClient     iface.CoreAPI
 	filecoinClient *fc.Client
 
+	gatewayUrl string
+
+	sessionBus    *broadcast.Broadcaster
 	sessionSecret string
 }
 
@@ -83,7 +85,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gateway.Url(), secret); err != nil {
+	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gatewayUrl, secret); err != nil {
 		return nil, err
 	}
 
@@ -168,7 +170,7 @@ func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 
 // awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
-	listen := s.gateway.SessionListener()
+	listen := s.sessionBus.Listen()
 	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {
@@ -342,7 +344,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.emailClient.InviteAddress(
-		ectx, team.Name, user.Email, req.Email, s.gateway.Url(), invite.ID); err != nil {
+		ectx, team.Name, user.Email, req.Email, s.gatewayUrl, invite.ID); err != nil {
 		return nil, err
 	}
 

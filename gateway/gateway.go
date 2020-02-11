@@ -51,18 +51,20 @@ type Gateway struct {
 	url         string
 	server      *http.Server
 	collections *collections.Collections
-	service     *client.Client
-	serviceAuth client.Auth
+	client      *client.Client
+	clientAuth  client.Auth
 	sessionBus  *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(
-	addr ma.Multiaddr, url,
-	serviceTarget, serviceToken string,
-	collections *collections.Collections,
-) (*Gateway, error) {
-	service, err := client.NewClient(serviceTarget, nil)
+func NewGateway(addr ma.Multiaddr, url string, apiAddr ma.Multiaddr, apiToken string,
+	collections *collections.Collections, sessionBus *broadcast.Broadcaster) (*Gateway, error) {
+	apiTarget, err := util.TCPAddrFromMultiAddr(apiAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := client.NewClient(apiTarget, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +72,9 @@ func NewGateway(
 		addr:        addr,
 		url:         url,
 		collections: collections,
-		service:     service,
-		serviceAuth: client.Auth{Token: serviceToken},
-		sessionBus:  broadcast.NewBroadcaster(0),
+		client:      c,
+		clientAuth:  client.Auth{Token: apiToken},
+		sessionBus:  sessionBus,
 	}, nil
 }
 
@@ -150,14 +152,9 @@ func (g *Gateway) Addr() string {
 	return g.server.Addr
 }
 
-// Url returns the gateway's public facing URL.
-func (g *Gateway) Url() string {
-	return g.url
-}
-
-// SessionListener returns a listener used for session verification.
-func (g *Gateway) SessionListener() *broadcast.Listener {
-	return g.sessionBus.Listen()
+// APIToken returns the gateway's internal API token.
+func (g *Gateway) APIToken() string {
+	return g.clientAuth.Token
 }
 
 // Stop the gateway.
@@ -168,8 +165,7 @@ func (g *Gateway) Stop() error {
 		log.Errorf("error shutting down gateway: %s", err)
 		return err
 	}
-	g.sessionBus.Discard()
-	g.service.Close()
+	g.client.Close()
 	return nil
 }
 
@@ -241,14 +237,14 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 	defer cancel()
 
 	projectID := c.Param("project")
-	rep, err := g.service.ListBucketPath(ctx, g.parseUUID(c, projectID), c.Param("path"), g.serviceAuth)
+	rep, err := g.client.ListBucketPath(ctx, g.parseUUID(c, projectID), c.Param("path"), g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.service.PullBucketPath(ctx, c.Param("path"), c.Writer, g.serviceAuth); err != nil {
+		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {

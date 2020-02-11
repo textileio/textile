@@ -5,19 +5,18 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/uuid"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,7 +38,7 @@ type Server struct {
 	rpc     *grpc.Server
 	service *service
 
-	internalToken string
+	gatewayToken string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -47,9 +46,7 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr            ma.Multiaddr
-	AddrGatewayHost ma.Multiaddr
-	AddrGatewayUrl  string
+	Addr ma.Multiaddr
 
 	Collections *c.Collections
 
@@ -58,6 +55,10 @@ type Config struct {
 	FilecoinClient *fc.Client
 	DNSManager     *dns.Manager
 
+	GatewayUrl   string
+	GatewayToken string
+
+	SessionBus    *broadcast.Broadcaster
 	SessionSecret string
 
 	Debug bool
@@ -75,41 +76,30 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}
 
-	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
-	if err != nil {
-		return nil, err
-	}
-
-	internalToken := uuid.New().String()
-	gw, err := gateway.NewGateway(
-		conf.AddrGatewayHost,
-		conf.AddrGatewayUrl,
-		addr,
-		internalToken,
-		conf.Collections)
-	if err != nil {
-		return nil, err
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Server{
 		service: &service{
 			collections:    conf.Collections,
-			gateway:        gw,
 			emailClient:    conf.EmailClient,
 			ipfsClient:     conf.IPFSClient,
 			filecoinClient: conf.FilecoinClient,
+			gatewayUrl:     conf.GatewayUrl,
+			sessionBus:     conf.SessionBus,
 			sessionSecret:  conf.SessionSecret,
 		},
-		internalToken: internalToken,
-		ctx:           ctx,
-		cancel:        cancel,
+		gatewayToken: conf.GatewayToken,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 	s.rpc = grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
 		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
 	)
 
+	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
+	if err != nil {
+		return nil, err
+	}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -121,17 +111,12 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
-	s.service.gateway.Start()
-
 	return s, nil
 }
 
 // Close the server.
 func (s *Server) Close() error {
 	s.rpc.GracefulStop()
-	if err := s.service.gateway.Stop(); err != nil {
-		return err
-	}
 	if s.service.filecoinClient != nil {
 		if err := s.service.filecoinClient.Close(); err != nil {
 			return err
@@ -153,7 +138,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	if token == s.internalToken {
+	if token == s.gatewayToken {
 		return context.WithValue(ctx, reqKey("scope"), "*"), nil
 	}
 
