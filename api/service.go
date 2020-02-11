@@ -962,23 +962,26 @@ func (s *service) RemoveBucketPath(
 	if err != nil {
 		return nil, err
 	}
-
 	buckPath := path.New(buck.Path)
-	dirpth, err := s.ipfsClient.Object().RmLink(ctx, buckPath, fileName)
-	if err != nil {
-		return nil, err
+
+	var dirpth path.Resolved
+	var linkCnt int
+	if fileName != "" {
+		dirpth, err = s.ipfsClient.Object().RmLink(ctx, buckPath, fileName)
+		if err != nil {
+			return nil, err
+		}
+
+		links, err := s.ipfsClient.Unixfs().Ls(ctx, dirpth)
+		if err != nil {
+			return nil, err
+		}
+		for range links {
+			linkCnt++
+		}
 	}
 
-	links, err := s.ipfsClient.Unixfs().Ls(ctx, dirpth)
-	if err != nil {
-		return nil, err
-	}
-
-	var cnt int
-	for range links {
-		cnt++
-	}
-	if cnt > 1 { // Account for the seed file
+	if linkCnt > 1 { // Account for the seed file
 		if err = s.ipfsClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
 			return nil, err
 		}
