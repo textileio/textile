@@ -1,4 +1,4 @@
-package client
+package client_test
 
 import (
 	"bytes"
@@ -17,6 +17,7 @@ import (
 	"github.com/textileio/go-threads/crypto/symmetric"
 	serviceclient "github.com/textileio/go-threads/service/api/client"
 	tutil "github.com/textileio/go-threads/util"
+	c "github.com/textileio/textile/api/client"
 	"github.com/textileio/textile/collections"
 	"google.golang.org/grpc"
 )
@@ -27,11 +28,11 @@ func TestThreadsServiceClient_CreateThread(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID})
+	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
