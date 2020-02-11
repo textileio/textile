@@ -11,12 +11,12 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,15 +38,15 @@ type Server struct {
 	rpc     *grpc.Server
 	service *service
 
+	gatewayToken string
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // Config specifies server settings.
 type Config struct {
-	Addr            ma.Multiaddr
-	AddrGatewayHost ma.Multiaddr
-	AddrGatewayUrl  string
+	Addr ma.Multiaddr
 
 	Collections *c.Collections
 
@@ -55,6 +55,10 @@ type Config struct {
 	FilecoinClient *fc.Client
 	DNSManager     *dns.Manager
 
+	GatewayUrl   string
+	GatewayToken string
+
+	SessionBus    *broadcast.Broadcaster
 	SessionSecret string
 
 	Debug bool
@@ -76,14 +80,16 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	s := &Server{
 		service: &service{
 			collections:    conf.Collections,
-			gateway:        gateway.NewGateway(conf.AddrGatewayHost, conf.AddrGatewayUrl, conf.Collections),
 			emailClient:    conf.EmailClient,
 			ipfsClient:     conf.IPFSClient,
 			filecoinClient: conf.FilecoinClient,
+			gatewayUrl:     conf.GatewayUrl,
+			sessionBus:     conf.SessionBus,
 			sessionSecret:  conf.SessionSecret,
 		},
-		ctx:    ctx,
-		cancel: cancel,
+		gatewayToken: conf.GatewayToken,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 	s.rpc = grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
@@ -105,17 +111,12 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
-	s.service.gateway.Start()
-
 	return s, nil
 }
 
 // Close the server.
 func (s *Server) Close() error {
 	s.rpc.GracefulStop()
-	if err := s.service.gateway.Stop(); err != nil {
-		return err
-	}
 	if s.service.filecoinClient != nil {
 		if err := s.service.filecoinClient.Close(); err != nil {
 			return err
@@ -137,6 +138,10 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	if token == s.gatewayToken {
+		return context.WithValue(ctx, reqKey("scope"), "*"), nil
+	}
+
 	session, err := s.service.collections.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")

@@ -1,4 +1,4 @@
-package client
+package client_test
 
 import (
 	"bytes"
@@ -16,13 +16,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	tutil "github.com/textileio/go-threads/util"
+	c "github.com/textileio/textile/api/client"
 	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 )
 
 var (
-	sessionSecret = "test_runner"
+	sessionSecret = uuid.New().String()
 )
 
 func TestClient_Login(t *testing.T) {
@@ -44,25 +45,25 @@ func TestClient_Switch(t *testing.T) {
 	defer done()
 
 	t.Run("test switch without token", func(t *testing.T) {
-		if err := client.Switch(context.Background(), Auth{}); err == nil {
+		if err := client.Switch(context.Background(), c.Auth{}); err == nil {
 			t.Fatal("switch without token should fail")
 		}
 	})
 
 	user := login(t, client, conf, "jon@doe.com")
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test switch to team scope", func(t *testing.T) {
-		if err := client.Switch(context.Background(), Auth{Token: user.SessionID, Scope: team.ID}); err != nil {
+		if err := client.Switch(context.Background(), c.Auth{Token: user.SessionID, Scope: team.ID}); err != nil {
 			t.Fatalf("switch to team scope should succeed: %v", err)
 		}
 	})
 
 	t.Run("test switch to user scope", func(t *testing.T) {
-		if err := client.Switch(context.Background(), Auth{Token: user.SessionID, Scope: user.ID}); err != nil {
+		if err := client.Switch(context.Background(), c.Auth{Token: user.SessionID, Scope: user.ID}); err != nil {
 			t.Fatalf("switch to user scope should succeed: %v", err)
 		}
 	})
@@ -74,7 +75,7 @@ func TestClient_Logout(t *testing.T) {
 	defer done()
 
 	t.Run("test logout without token", func(t *testing.T) {
-		if err := client.Logout(context.Background(), Auth{}); err == nil {
+		if err := client.Logout(context.Background(), c.Auth{}); err == nil {
 			t.Fatal("logout without token should fail")
 		}
 	})
@@ -82,7 +83,7 @@ func TestClient_Logout(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test logout", func(t *testing.T) {
-		if err := client.Logout(context.Background(), Auth{Token: user.SessionID}); err != nil {
+		if err := client.Logout(context.Background(), c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("logout should succeed: %v", err)
 		}
 	})
@@ -94,7 +95,7 @@ func TestClient_Whoami(t *testing.T) {
 	defer done()
 
 	t.Run("test whoami without token", func(t *testing.T) {
-		if _, err := client.Whoami(context.Background(), Auth{}); err == nil {
+		if _, err := client.Whoami(context.Background(), c.Auth{}); err == nil {
 			t.Fatal("whoami without token should fail")
 		}
 	})
@@ -102,7 +103,7 @@ func TestClient_Whoami(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test whoami", func(t *testing.T) {
-		who, err := client.Whoami(context.Background(), Auth{Token: user.SessionID})
+		who, err := client.Whoami(context.Background(), c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("whoami should succeed: %v", err)
 		}
@@ -114,13 +115,13 @@ func TestClient_Whoami(t *testing.T) {
 		}
 	})
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test whoami as team", func(t *testing.T) {
-		who, err := client.Whoami(context.Background(), Auth{Token: user.SessionID, Scope: team.ID})
+		who, err := client.Whoami(context.Background(), c.Auth{Token: user.SessionID, Scope: team.ID})
 		if err != nil {
 			t.Fatalf("whoami as team should succeed: %v", err)
 		}
@@ -139,7 +140,7 @@ func TestClient_AddTeam(t *testing.T) {
 	defer done()
 
 	t.Run("test add team without token", func(t *testing.T) {
-		if _, err := client.AddTeam(context.Background(), "foo", Auth{}); err == nil {
+		if _, err := client.AddTeam(context.Background(), "foo", c.Auth{}); err == nil {
 			t.Fatal("add team without token should fail")
 		}
 	})
@@ -147,7 +148,7 @@ func TestClient_AddTeam(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test add team", func(t *testing.T) {
-		team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+		team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("add team should succeed: %v", err)
 		}
@@ -163,19 +164,19 @@ func TestClient_GetTeam(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test get bad team", func(t *testing.T) {
-		if _, err := client.GetTeam(context.Background(), "bad", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.GetTeam(context.Background(), "bad", c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("get bad team should fail")
 		}
 	})
 
 	t.Run("test get team", func(t *testing.T) {
-		team, err := client.GetTeam(context.Background(), team.ID, Auth{Token: user.SessionID})
+		team, err := client.GetTeam(context.Background(), team.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("get team should succeed: %v", err)
 		}
@@ -193,7 +194,7 @@ func TestClient_ListTeams(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test list empty teams", func(t *testing.T) {
-		teams, err := client.ListTeams(context.Background(), Auth{Token: user.SessionID})
+		teams, err := client.ListTeams(context.Background(), c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list teams should succeed: %v", err)
 		}
@@ -202,15 +203,15 @@ func TestClient_ListTeams(t *testing.T) {
 		}
 	})
 
-	if _, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.AddTeam(context.Background(), "bar", Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddTeam(context.Background(), "bar", c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list teams", func(t *testing.T) {
-		teams, err := client.ListTeams(context.Background(), Auth{Token: user.SessionID})
+		teams, err := client.ListTeams(context.Background(), c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list teams should succeed: %v", err)
 		}
@@ -226,13 +227,13 @@ func TestClient_RemoveTeam(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bad team", func(t *testing.T) {
-		if err := client.RemoveTeam(context.Background(), "bad", Auth{Token: user.SessionID}); err == nil {
+		if err := client.RemoveTeam(context.Background(), "bad", c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("remove bad team should fail")
 		}
 	})
@@ -240,13 +241,13 @@ func TestClient_RemoveTeam(t *testing.T) {
 	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("test remove team from wrong user", func(t *testing.T) {
-		if err := client.RemoveTeam(context.Background(), team.ID, Auth{Token: user2.SessionID}); err == nil {
+		if err := client.RemoveTeam(context.Background(), team.ID, c.Auth{Token: user2.SessionID}); err == nil {
 			t.Fatal("remove team from wrong user should fail")
 		}
 	})
 
 	t.Run("test remove team", func(t *testing.T) {
-		if err := client.RemoveTeam(context.Background(), team.ID, Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveTeam(context.Background(), team.ID, c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove team should succeed: %v", err)
 		}
 	})
@@ -258,21 +259,21 @@ func TestClient_InviteToTeam(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test invite bad email to team", func(t *testing.T) {
 		if _, err := client.InviteToTeam(context.Background(), team.ID, "jane",
-			Auth{Token: user.SessionID}); err == nil {
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("invite bad email to team should fail")
 		}
 	})
 
 	t.Run("test invite to team", func(t *testing.T) {
 		res, err := client.InviteToTeam(context.Background(), team.ID, "jane@doe.com",
-			Auth{Token: user.SessionID})
+			c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("invite to team should succeed: %v", err)
 		}
@@ -288,13 +289,13 @@ func TestClient_LeaveTeam(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test leave team as owner", func(t *testing.T) {
-		if err := client.LeaveTeam(context.Background(), team.ID, Auth{Token: user.SessionID}); err == nil {
+		if err := client.LeaveTeam(context.Background(), team.ID, c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("leave team as owner should fail")
 		}
 	})
@@ -302,13 +303,13 @@ func TestClient_LeaveTeam(t *testing.T) {
 	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("test leave team as non-member", func(t *testing.T) {
-		if err := client.LeaveTeam(context.Background(), team.ID, Auth{Token: user2.SessionID}); err == nil {
+		if err := client.LeaveTeam(context.Background(), team.ID, c.Auth{Token: user2.SessionID}); err == nil {
 			t.Fatal("leave team as non-member should fail")
 		}
 	})
 
 	invite, err := client.InviteToTeam(context.Background(), team.ID, "jane@doe.com",
-		Auth{Token: user.SessionID})
+		c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +319,7 @@ func TestClient_LeaveTeam(t *testing.T) {
 	}
 
 	t.Run("test leave team", func(t *testing.T) {
-		err := client.LeaveTeam(context.Background(), team.ID, Auth{Token: user2.SessionID})
+		err := client.LeaveTeam(context.Background(), team.ID, c.Auth{Token: user2.SessionID})
 		if err != nil {
 			t.Fatalf("leave team should succeed: %v", err)
 		}
@@ -333,7 +334,7 @@ func TestClient_AddProject(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test add project without scope", func(t *testing.T) {
-		proj, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+		proj, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("add project without scope should succeed: %v", err)
 		}
@@ -345,14 +346,14 @@ func TestClient_AddProject(t *testing.T) {
 		}
 	})
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test add project with team scope", func(t *testing.T) {
 		if _, err := client.AddProject(context.Background(), "foo",
-			Auth{Token: user.SessionID, Scope: team.ID}); err != nil {
+			c.Auth{Token: user.SessionID, Scope: team.ID}); err != nil {
 			t.Fatalf("add project with team scope should succeed: %v", err)
 		}
 	})
@@ -364,31 +365,32 @@ func TestClient_GetProject(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test get bad project", func(t *testing.T) {
-		if _, err := client.GetProject(context.Background(), "bad", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.GetProject(context.Background(), "bad",
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("get bad project should fail")
 		}
 	})
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test get project from wrong scope", func(t *testing.T) {
 		if _, err := client.GetProject(context.Background(), project.ID,
-			Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
+			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
 			t.Fatal("get project from wrong scope should fail")
 		}
 	})
 
 	t.Run("test get project", func(t *testing.T) {
-		project, err := client.GetProject(context.Background(), project.ID, Auth{Token: user.SessionID})
+		project, err := client.GetProject(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("get project should succeed: %v", err)
 		}
@@ -406,7 +408,7 @@ func TestClient_ListProjects(t *testing.T) {
 	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("test list empty projects", func(t *testing.T) {
-		projects, err := client.ListProjects(context.Background(), Auth{Token: user.SessionID})
+		projects, err := client.ListProjects(context.Background(), c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list projects should succeed: %v", err)
 		}
@@ -416,20 +418,20 @@ func TestClient_ListProjects(t *testing.T) {
 		}
 	})
 
-	if _, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.AddProject(context.Background(), "bar", Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddProject(context.Background(), "bar", c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list projects from wrong scope", func(t *testing.T) {
-		projects, err := client.ListProjects(context.Background(), Auth{Token: user.SessionID, Scope: team.ID})
+		projects, err := client.ListProjects(context.Background(), c.Auth{Token: user.SessionID, Scope: team.ID})
 		if err != nil {
 			t.Fatalf("list projects from wrong scope should succeed: %v", err)
 		}
@@ -440,7 +442,7 @@ func TestClient_ListProjects(t *testing.T) {
 	})
 
 	t.Run("test list projects", func(t *testing.T) {
-		projects, err := client.ListProjects(context.Background(), Auth{Token: user.SessionID})
+		projects, err := client.ListProjects(context.Background(), c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list projects should succeed: %v", err)
 		}
@@ -457,13 +459,14 @@ func TestClient_RemoveProject(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bad project", func(t *testing.T) {
-		if err := client.RemoveProject(context.Background(), "bad", Auth{Token: user.SessionID}); err == nil {
+		if err := client.RemoveProject(context.Background(), "bad",
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("remove bad project should fail")
 		}
 	})
@@ -471,25 +474,25 @@ func TestClient_RemoveProject(t *testing.T) {
 	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("test remove project from wrong user", func(t *testing.T) {
-		if err := client.RemoveProject(context.Background(), project.ID, Auth{Token: user2.SessionID}); err == nil {
+		if err := client.RemoveProject(context.Background(), project.ID, c.Auth{Token: user2.SessionID}); err == nil {
 			t.Fatal("remove project from wrong user should fail")
 		}
 	})
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove project from wrong scope", func(t *testing.T) {
 		if err := client.RemoveProject(context.Background(), project.ID,
-			Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
+			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
 			t.Fatal("remove project from wrong scope should fail")
 		}
 	})
 
 	t.Run("test remove project", func(t *testing.T) {
-		if err := client.RemoveProject(context.Background(), project.ID, Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveProject(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove project should succeed: %v", err)
 		}
 	})
@@ -501,13 +504,13 @@ func TestClient_AddAppToken(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test add app token", func(t *testing.T) {
-		token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID})
+		token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("add app token should succeed: %v", err)
 		}
@@ -523,13 +526,13 @@ func TestClient_ListAppTokens(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list empty app tokens", func(t *testing.T) {
-		tokens, err := client.ListAppTokens(context.Background(), project.ID, Auth{Token: user.SessionID})
+		tokens, err := client.ListAppTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list app tokens should succeed: %v", err)
 		}
@@ -539,27 +542,27 @@ func TestClient_ListAppTokens(t *testing.T) {
 		}
 	})
 
-	if _, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list app tokens from wrong scope", func(t *testing.T) {
 		if _, err := client.ListAppTokens(context.Background(), project.ID,
-			Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
+			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
 			t.Fatal("list app tokens from wrong scope should fail")
 		}
 	})
 
 	t.Run("test list app tokens", func(t *testing.T) {
-		tokens, err := client.ListAppTokens(context.Background(), project.ID, Auth{Token: user.SessionID})
+		tokens, err := client.ListAppTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list app tokens should succeed: %v", err)
 		}
@@ -576,17 +579,18 @@ func TestClient_RemoveAppToken(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID})
+	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bad app token", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), "bad", Auth{Token: user.SessionID}); err == nil {
+		if err := client.RemoveAppToken(context.Background(), "bad",
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("remove bad app token should fail")
 		}
 	})
@@ -594,25 +598,25 @@ func TestClient_RemoveAppToken(t *testing.T) {
 	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("test remove app token from wrong user", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), token.ID, Auth{Token: user2.SessionID}); err == nil {
+		if err := client.RemoveAppToken(context.Background(), token.ID, c.Auth{Token: user2.SessionID}); err == nil {
 			t.Fatal("remove app token from wrong user should fail")
 		}
 	})
 
-	team, err := client.AddTeam(context.Background(), "foo", Auth{Token: user.SessionID})
+	team, err := client.AddTeam(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove app token from wrong scope", func(t *testing.T) {
 		if err := client.RemoveAppToken(context.Background(), token.ID,
-			Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
+			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
 			t.Fatal("remove app token from wrong scope should fail")
 		}
 	})
 
 	t.Run("test remove app token", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), token.ID, Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveAppToken(context.Background(), token.ID, c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove app token should succeed: %v", err)
 		}
 	})
@@ -650,11 +654,11 @@ func TestClient_RegisterAppUser(t *testing.T) {
 		}
 	})
 
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, Auth{Token: user.SessionID})
+	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,13 +707,13 @@ func TestClient_RegisterAppUser(t *testing.T) {
 	})
 }
 
-func TestClient_ListBuckets(t *testing.T) {
+func TestClient_ListBucketPath(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -718,49 +722,31 @@ func TestClient_ListBuckets(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	_, file1Root, err := client.PushBucketPath(
+		context.Background(), project.ID, "mybuck1/file1.jpg", file, c.Auth{Token: user.SessionID})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck2/file1.jpg", file,
+		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test list buckets", func(t *testing.T) {
-		bucks, err := client.ListBuckets(context.Background(), project.ID, Auth{Token: user.SessionID})
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "", c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatalf("list buckets should succeed: %v", err)
 		}
-		if len(bucks.List) != 2 {
-			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2, len(bucks.List))
+		if len(rep.Item.Items) != 2 {
+			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2,
+				len(rep.Item.Items))
 		}
 	})
-}
 
-func TestClient_GetBucketPath(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer file.Close()
-	_, root, err := client.PushBucketPath(
-		context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test get bucket path", func(t *testing.T) {
-		rep, err := client.GetBucketPath(context.Background(), "mybuck/file1.jpg", Auth{Token: user.SessionID})
+	t.Run("test list bucket path", func(t *testing.T) {
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1/file1.jpg",
+			c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -770,7 +756,7 @@ func TestClient_GetBucketPath(t *testing.T) {
 		if rep.Item.IsDir {
 			t.Fatal("path is not a dir")
 		}
-		if rep.Root.Path != root.String() {
+		if rep.Root.Path != file1Root.String() {
 			t.Fatal("path root should match bucket root")
 		}
 	})
@@ -782,7 +768,7 @@ func TestClient_PushBucketPath(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -800,8 +786,8 @@ func TestClient_PushBucketPath(t *testing.T) {
 			}
 		}()
 		pth, root, err := client.PushBucketPath(
-			context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID},
-			WithPushProgress(progress))
+			context.Background(), project.ID, "mybuck/file1.jpg", file, c.Auth{Token: user.SessionID},
+			c.WithPushProgress(progress))
 		if err != nil {
 			t.Fatalf("push bucket path should succeed: %v", err)
 		}
@@ -826,8 +812,8 @@ func TestClient_PushBucketPath(t *testing.T) {
 			}
 		}()
 		pth, root, err := client.PushBucketPath(
-			context.Background(), project.ID, "mybuck/path/to/file2.jpg", file, Auth{Token: user.SessionID},
-			WithPushProgress(progress))
+			context.Background(), project.ID, "mybuck/path/to/file2.jpg", file, c.Auth{Token: user.SessionID},
+			c.WithPushProgress(progress))
 		if err != nil {
 			t.Fatalf("push nested bucket path should succeed: %v", err)
 		}
@@ -838,7 +824,8 @@ func TestClient_PushBucketPath(t *testing.T) {
 			t.Fatal("got bad root from push nested bucket path")
 		}
 
-		rep, err := client.GetBucketPath(context.Background(), "mybuck", Auth{Token: user.SessionID})
+		rep, err := client.ListBucketPath(context.Background(), project.ID, "mybuck",
+			c.Auth{Token: user.SessionID})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -855,7 +842,7 @@ func TestClient_PullBucketPath(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -864,8 +851,8 @@ func TestClient_PullBucketPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, _, err := client.PushBucketPath(
-		context.Background(), project.ID, "mybuck/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+	if _, _, err := client.PushBucketPath(context.Background(), project.ID, "mybuck/file1.jpg", file,
+		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -883,8 +870,8 @@ func TestClient_PullBucketPath(t *testing.T) {
 			}
 		}()
 		if err := client.PullBucketPath(
-			context.Background(), "mybuck/file1.jpg", file, Auth{Token: user.SessionID},
-			WithPullProgress(progress)); err != nil {
+			context.Background(), "mybuck/file1.jpg", file, c.Auth{Token: user.SessionID},
+			c.WithPullProgress(progress)); err != nil {
 			t.Fatalf("pull bucket path should succeed: %v", err)
 		}
 		info, err := file.Stat()
@@ -901,7 +888,7 @@ func TestClient_RemoveBucketPath(t *testing.T) {
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", Auth{Token: user.SessionID})
+	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -911,36 +898,44 @@ func TestClient_RemoveBucketPath(t *testing.T) {
 	}
 	defer file.Close()
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck1/file1.jpg", file,
+		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck1/again/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck1/again/file1.jpg", file,
+		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bucket path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg",
+			c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck1/file1.jpg", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1/file1.jpg",
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("got bucket path that should have been removed")
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck1", Auth{Token: user.SessionID}); err != nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck1",
+			c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("bucket should still exist, but get failed: %v", err)
 		}
 	})
 
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.ID, "mybuck2/file1.jpg", file, Auth{Token: user.SessionID}); err != nil {
+		context.Background(), project.ID, "mybuck2/file1.jpg", file,
+		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove entire bucket by path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg", Auth{Token: user.SessionID}); err != nil {
+		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg",
+			c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		if _, err := client.GetBucketPath(context.Background(), "mybuck2", Auth{Token: user.SessionID}); err == nil {
+		if _, err := client.ListBucketPath(context.Background(), project.ID, "mybuck2",
+			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("got bucket that should have been removed")
 		}
 	})
@@ -954,7 +949,7 @@ func TestClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(target, nil)
+	client, err := c.NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -966,13 +961,13 @@ func TestClose(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T) (core.Config, *Client, func()) {
+func setup(t *testing.T) (core.Config, *c.Client, func()) {
 	conf, shutdown := makeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(target, nil)
+	client, err := c.NewClient(target, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1029,8 +1024,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailApiKey: "",
 
-		SessionSecret:        sessionSecret,
-		ThreadsInternalToken: uuid.New().String(),
+		SessionSecret: sessionSecret,
 
 		Debug: true,
 
@@ -1050,7 +1044,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	}
 }
 
-func login(t *testing.T, client *Client, conf core.Config, email string) *pb.LoginReply {
+func login(t *testing.T, client *c.Client, conf core.Config, email string) *pb.LoginReply {
 	var err error
 	var res *pb.LoginReply
 	go func() {

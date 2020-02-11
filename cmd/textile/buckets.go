@@ -52,70 +52,59 @@ var lsBucketPathCmd = &cobra.Command{
 }
 
 func lsBucketPath(args []string) {
-	if configViper.GetString("id") == "" {
+	projectID := configViper.GetString("id")
+	if projectID == "" {
 		cmd.Fatal(errors.New("not a project directory"))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 
-	token := authViper.GetString("token")
+	var pth string
+	if len(args) > 0 {
+		pth = args[0]
+	}
+	if pth == "." || pth == "/" || pth == "./" {
+		pth = ""
+	}
+	rep, err := client.ListBucketPath(ctx, projectID, pth, api.Auth{
+		Token: authViper.GetString("token"),
+	})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	var items []*pb.ListBucketPathReply_Item
+	if len(rep.Item.Items) > 0 {
+		items = rep.Item.Items
+	} else if !rep.Item.IsDir {
+		items = append(items, rep.Item)
+	}
+
 	var data [][]string
-	var count int
-	if len(args) == 0 {
-		buckets, err := client.ListBuckets(ctx, configViper.GetString("id"), api.Auth{Token: token})
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if len(buckets.List) > 0 {
-			data = make([][]string, len(buckets.List))
-			for i, r := range buckets.List {
-				data[i] = []string{
-					r.Root.Name,
-					strconv.Itoa(int(r.Item.Size)),
-					strconv.FormatBool(r.Item.IsDir),
-					strconv.Itoa(len(r.Item.Items)),
-					r.Item.Path,
-				}
+	if len(items) > 0 {
+		data = make([][]string, len(items))
+		for i, item := range items {
+			var links string
+			if item.IsDir {
+				links = strconv.Itoa(len(item.Items))
+			} else {
+				links = "n/a"
 			}
-			count = len(buckets.List)
-		}
-	} else {
-		rep, err := client.GetBucketPath(ctx, args[0], api.Auth{Token: token})
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		var items []*pb.GetBucketPathReply_Item
-		if len(rep.Item.Items) > 0 {
-			items = rep.Item.Items
-		} else if !rep.Item.IsDir {
-			items = append(items, rep.Item)
-		}
-		if len(items) > 0 {
-			data = make([][]string, len(items))
-			for i, item := range items {
-				var links string
-				if item.IsDir {
-					links = strconv.Itoa(len(item.Items))
-				} else {
-					links = "n/a"
-				}
-				data[i] = []string{
-					filepath.Base(item.Path),
-					strconv.Itoa(int(item.Size)),
-					strconv.FormatBool(item.IsDir),
-					links,
-					item.Path,
-				}
+			data[i] = []string{
+				item.Name,
+				strconv.Itoa(int(item.Size)),
+				strconv.FormatBool(item.IsDir),
+				links,
+				item.Path,
 			}
-			count = len(items)
 		}
 	}
+
 	if len(data) > 0 {
 		cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
 	}
 
-	cmd.Message("Found %d items", aurora.White(count).Bold())
+	cmd.Message("Found %d items", aurora.White(len(items)).Bold())
 }
 
 var pushBucketPathCmd = &cobra.Command{
@@ -227,24 +216,25 @@ func addFile(projectID, name, filePath string) {
 	bar.Set(pbar.SIBytesPrefix, true)
 	bar.Start()
 	progress := make(chan int64)
+
 	go func() {
-		for up := range progress {
-			bar.SetCurrent(up)
+		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
+		defer cancel()
+		if _, _, err = client.PushBucketPath(
+			ctx,
+			projectID,
+			filePath,
+			file,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			},
+			api.WithPushProgress(progress)); err != nil {
+			cmd.Fatal(err)
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
-	defer cancel()
-	if _, _, err = client.PushBucketPath(
-		ctx,
-		projectID,
-		filePath,
-		file,
-		api.Auth{
-			Token: authViper.GetString("token"),
-		},
-		api.WithPushProgress(progress)); err != nil {
-		cmd.Fatal(err)
+	for up := range progress {
+		bar.SetCurrent(up)
 	}
 	bar.Finish()
 }
@@ -283,20 +273,21 @@ These 'pull' commands result in the following local structures.
 `,
 	Args: cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		if configViper.GetString("id") == "" {
+		projectID := configViper.GetString("id")
+		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
-		count := getPath(args[0], filepath.Dir(args[0]), args[1])
+		count := getPath(projectID, args[0], filepath.Dir(args[0]), args[1])
 
 		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
 	},
 }
 
-func getPath(pth, dir, dest string) (count int) {
+func getPath(projectID, pth, dir, dest string) (count int) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	rep, err := client.GetBucketPath(ctx, pth, api.Auth{
+	rep, err := client.ListBucketPath(ctx, projectID, pth, api.Auth{
 		Token: authViper.GetString("token"),
 	})
 	if err != nil {
@@ -305,7 +296,7 @@ func getPath(pth, dir, dest string) (count int) {
 
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+			count += getPath(projectID, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
 		}
 	} else {
 		name := filepath.Join(dest, strings.TrimPrefix(pth, dir))
@@ -334,25 +325,25 @@ func getFile(filePath, name string, size int64) {
 	bar.Set(pbar.SIBytesPrefix, true)
 	bar.Start()
 	progress := make(chan int64)
+
 	go func() {
-		for up := range progress {
-			bar.SetCurrent(up)
+		ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
+		defer cancel2()
+		if err = client.PullBucketPath(
+			ctx2,
+			filePath,
+			file,
+			api.Auth{
+				Token: authViper.GetString("token"),
+			},
+			api.WithPullProgress(progress)); err != nil {
+			cmd.Fatal(err)
 		}
 	}()
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
-	defer cancel2()
-	if err = client.PullBucketPath(
-		ctx2,
-		filePath,
-		file,
-		api.Auth{
-			Token: authViper.GetString("token"),
-		},
-		api.WithPullProgress(progress)); err != nil {
-		cmd.Fatal(err)
+	for up := range progress {
+		bar.SetCurrent(up)
 	}
-	bar.SetCurrent(size)
 	bar.Finish()
 }
 

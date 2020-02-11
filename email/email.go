@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/mail"
+	"strings"
 	"text/template"
 
 	logging "github.com/ipfs/go-log"
@@ -69,7 +70,7 @@ type confirmData struct {
 func (e *Client) ConfirmAddress(ctx context.Context, to, url, secret string) error {
 	var tpl bytes.Buffer
 	if err := e.verificationTmp.Execute(&tpl, &confirmData{
-		Link: fmt.Sprintf("%s/confirm/%s", url, secret),
+		Link: fmt.Sprintf("%s/confirm/%s", url, cleanUUID(secret)),
 	}); err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func (e *Client) InviteAddress(ctx context.Context, team, from, to, url, inviteI
 	if err := e.inviteTmp.Execute(&tpl, &inviteData{
 		From: from,
 		Team: team,
-		Link: fmt.Sprintf("%s/consent/%s", url, inviteID),
+		Link: fmt.Sprintf("%s/consent/%s", url, cleanUUID(inviteID)),
 	}); err != nil {
 		return err
 	}
@@ -104,4 +105,8 @@ func (e *Client) send(ctx context.Context, recipient, subject, body string) erro
 	}
 	_, _, err := e.gun.Send(ctx, e.gun.NewMessage(e.from, subject, body, recipient))
 	return err
+}
+
+func cleanUUID(id string) string {
+	return strings.ReplaceAll(id, "-", "")
 }

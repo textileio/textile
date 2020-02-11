@@ -169,17 +169,11 @@ func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) 
 	return err
 }
 
-// ListBuckets returns a list of buckets under the current project.
-func (c *Client) ListBuckets(ctx context.Context, projectID string, auth Auth) (*pb.ListBucketsReply, error) {
-	return c.c.ListBuckets(authCtx(ctx, auth), &pb.ListBucketsRequest{
+// ListBucketPath returns information about a bucket path.
+func (c *Client) ListBucketPath(ctx context.Context, projectID, pth string, auth Auth) (*pb.ListBucketPathReply, error) {
+	return c.c.ListBucketPath(authCtx(ctx, auth), &pb.ListBucketPathRequest{
 		ProjectID: projectID,
-	})
-}
-
-// GetBucketPath returns information about a bucket path.
-func (c *Client) GetBucketPath(ctx context.Context, pth string, auth Auth) (*pb.GetBucketPathReply, error) {
-	return c.c.GetBucketPath(authCtx(ctx, auth), &pb.GetBucketPathRequest{
-		Path: pth,
+		Path:      pth,
 	})
 }
 
@@ -217,6 +211,9 @@ func (c *Client) PushBucketPath(
 	args := &PushBucketPathOptions{}
 	for _, opt := range opts {
 		opt(args)
+	}
+	if args.Progress != nil {
+		defer close(args.Progress)
 	}
 
 	stream, err := c.c.PushBucketPath(authCtx(ctx, auth))
@@ -273,17 +270,17 @@ func (c *Client) PushBucketPath(
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := reader.Read(buf)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			_ = stream.CloseSend()
-			return nil, nil, err
+		if n > 0 {
+			if err := stream.Send(&pb.PushBucketPathRequest{
+				Payload: &pb.PushBucketPathRequest_Chunk{
+					Chunk: buf[:n],
+				},
+			}); err != nil {
+				_ = stream.CloseSend()
+				return nil, nil, err
+			}
 		}
-		if err = stream.Send(&pb.PushBucketPathRequest{
-			Payload: &pb.PushBucketPathRequest_Chunk{
-				Chunk: buf[:n],
-			},
-		}); err == io.EOF {
+		if err == io.EOF {
 			break
 		} else if err != nil {
 			_ = stream.CloseSend()
@@ -323,6 +320,9 @@ func (c *Client) PullBucketPath(
 	args := &PullBucketPathOptions{}
 	for _, opt := range opts {
 		opt(args)
+	}
+	if args.Progress != nil {
+		defer close(args.Progress)
 	}
 
 	stream, err := c.c.PullBucketPath(authCtx(ctx, auth), &pb.PullBucketPathRequest{

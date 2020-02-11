@@ -16,10 +16,10 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
+	"github.com/textileio/go-threads/broadcast"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,11 +40,13 @@ const (
 type service struct {
 	collections *c.Collections
 
-	gateway        *gateway.Gateway
 	emailClient    *email.Client
 	ipfsClient     iface.CoreAPI
 	filecoinClient *fc.Client
 
+	gatewayUrl string
+
+	sessionBus    *broadcast.Broadcaster
 	sessionSecret string
 }
 
@@ -83,7 +85,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gateway.Url(), secret); err != nil {
+	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gatewayUrl, secret); err != nil {
 		return nil, err
 	}
 
@@ -168,7 +170,7 @@ func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 
 // awaitVerification waits for a user to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
-	listen := s.gateway.SessionListener()
+	listen := s.sessionBus.Listen()
 	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {
@@ -342,7 +344,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.emailClient.InviteAddress(
-		ectx, team.Name, user.Email, req.Email, s.gateway.Url(), invite.ID); err != nil {
+		ectx, team.Name, user.Email, req.Email, s.gatewayUrl, invite.ID); err != nil {
 		return nil, err
 	}
 
@@ -436,7 +438,7 @@ func (s *service) getProjectForScope(ctx context.Context, projID, scope string) 
 	if proj == nil {
 		return nil, status.Error(codes.NotFound, "Project not found")
 	}
-	if proj.Scope != scope {
+	if scope != proj.Scope && scope != "*" {
 		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
 	}
 	return proj, nil
@@ -574,71 +576,67 @@ func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope strin
 	return token, nil
 }
 
-// ListBuckets handles a list buckets request.
-func (s *service) ListBuckets(ctx context.Context, req *pb.ListBucketsRequest) (*pb.ListBucketsReply, error) {
-	log.Debugf("received list buckets request")
+// ListBucketPath handles a list bucket path request.
+func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequest) (*pb.ListBucketPathReply, error) {
+	log.Debugf("received list bucket path request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
-	if err != nil {
-		return nil, err
-	}
 
-	bucks, err := s.collections.Buckets.List(ctx, proj.ID)
-	if err != nil {
-		return nil, err
-	}
-	list := make([]*pb.GetBucketPathReply, len(bucks))
-	for i, buck := range bucks {
-		list[i], err = s.bucketPathToPb(ctx, buck, path.New(buck.Path), false)
+	req.Path = strings.TrimSuffix(req.Path, "/")
+	if req.Path == "" { // List top-level buckets for this project
+		proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
 		if err != nil {
 			return nil, err
 		}
+		bucks, err := s.collections.Buckets.List(ctx, proj.ID)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]*pb.ListBucketPathReply_Item, len(bucks))
+		for i, buck := range bucks {
+			items[i], err = s.pathToBucketItem(ctx, path.New(buck.Path), false)
+			if err != nil {
+				return nil, err
+			}
+			items[i].Name = buck.Name
+		}
+
+		return &pb.ListBucketPathReply{
+			Item: &pb.ListBucketPathReply_Item{
+				IsDir: true,
+				Items: items,
+			},
+		}, nil
 	}
 
-	return &pb.ListBucketsReply{List: list}, nil
+	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.bucketPathToPb(ctx, buck, pth, true)
 }
 
-func (s *service) bucketPathToPb(
-	ctx context.Context,
-	buck *c.Bucket,
-	pth path.Path,
-	followLinks bool,
-) (*pb.GetBucketPathReply, error) {
+func (s *service) pathToBucketItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListBucketPathReply_Item, error) {
 	node, err := s.ipfsClient.Unixfs().Get(ctx, pth)
 	if err != nil {
 		return nil, err
 	}
 	defer node.Close()
 
-	item, err := nodeToBucketItem(pth.String(), node, followLinks)
-	if err != nil {
-		return nil, err
-	}
-
-	rep := &pb.GetBucketPathReply{
-		Item: item,
-		Root: &pb.BucketRoot{
-			Name:    buck.Name,
-			Path:    buck.Path,
-			Created: buck.Created,
-			Updated: buck.Updated,
-			Public:  buck.Public,
-		},
-	}
-
-	return rep, nil
+	return nodeToBucketItem(pth.String(), node, followLinks)
 }
 
-func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.GetBucketPathReply_Item, error) {
+func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListBucketPathReply_Item, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
-	item := &pb.GetBucketPathReply_Item{
+	item := &pb.ListBucketPathReply_Item{
+		Name: filepath.Base(pth),
 		Path: pth,
 		Size: size,
 	}
@@ -650,7 +648,7 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Ge
 			if entries.Name() == bucketSeedName {
 				continue
 			}
-			i := &pb.GetBucketPathReply_Item{}
+			i := &pb.ListBucketPathReply_Item{}
 			if followLinks {
 				n := entries.Node()
 				i, err = nodeToBucketItem(filepath.Join(pth, entries.Name()), n, false)
@@ -669,22 +667,6 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Ge
 	return item, nil
 }
 
-// GetBucketPath handles a get bucket path request.
-func (s *service) GetBucketPath(ctx context.Context, req *pb.GetBucketPathRequest) (*pb.GetBucketPathReply, error) {
-	log.Debugf("received get bucket path request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.bucketPathToPb(ctx, buck, pth, true)
-}
-
 func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope string) (*c.Bucket, path.Path, error) {
 	buckName, fileName, err := parsePath(pth)
 	if err != nil {
@@ -701,6 +683,20 @@ func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope stri
 	return buck, npth, err
 }
 
+func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
+	folder, err := s.collections.Buckets.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if folder == nil {
+		return nil, status.Error(codes.NotFound, "Bucket not found")
+	}
+	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return folder, nil
+}
+
 func parsePath(pth string) (folder, name string, err error) {
 	if strings.Contains(pth, bucketSeedName) {
 		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
@@ -715,18 +711,29 @@ func parsePath(pth string) (folder, name string, err error) {
 	return
 }
 
-func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
-	folder, err := s.collections.Buckets.GetByName(ctx, name)
+func (s *service) bucketPathToPb(
+	ctx context.Context,
+	buck *c.Bucket,
+	pth path.Path,
+	followLinks bool,
+) (*pb.ListBucketPathReply, error) {
+	item, err := s.pathToBucketItem(ctx, pth, followLinks)
 	if err != nil {
 		return nil, err
 	}
-	if folder == nil {
-		return nil, status.Error(codes.NotFound, "Bucket not found")
+
+	rep := &pb.ListBucketPathReply{
+		Item: item,
+		Root: &pb.BucketRoot{
+			Name:    buck.Name,
+			Path:    buck.Path,
+			Created: buck.Created,
+			Updated: buck.Updated,
+			Public:  buck.Public,
+		},
 	}
-	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
-		return nil, err
-	}
-	return folder, nil
+
+	return rep, nil
 }
 
 // PushBucketPath handles a push bucket path request.
@@ -922,14 +929,16 @@ func (s *service) PullBucketPath(req *pb.PullBucketPathRequest, server pb.API_Pu
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := file.Read(buf)
+		if n > 0 {
+			if err := server.Send(&pb.PullBucketPathReply{
+				Chunk: buf[:n],
+			}); err != nil {
+				return err
+			}
+		}
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return err
-		}
-		if err := server.Send(&pb.PullBucketPathReply{
-			Chunk: buf[:n],
-		}); err != nil {
 			return err
 		}
 	}
@@ -955,23 +964,26 @@ func (s *service) RemoveBucketPath(
 	if err != nil {
 		return nil, err
 	}
-
 	buckPath := path.New(buck.Path)
-	dirpth, err := s.ipfsClient.Object().RmLink(ctx, buckPath, fileName)
-	if err != nil {
-		return nil, err
+
+	var dirpth path.Resolved
+	var linkCnt int
+	if fileName != "" {
+		dirpth, err = s.ipfsClient.Object().RmLink(ctx, buckPath, fileName)
+		if err != nil {
+			return nil, err
+		}
+
+		links, err := s.ipfsClient.Unixfs().Ls(ctx, dirpth)
+		if err != nil {
+			return nil, err
+		}
+		for range links {
+			linkCnt++
+		}
 	}
 
-	links, err := s.ipfsClient.Unixfs().Ls(ctx, dirpth)
-	if err != nil {
-		return nil, err
-	}
-
-	var cnt int
-	for range links {
-		cnt++
-	}
-	if cnt > 1 { // Account for the seed file
+	if linkCnt > 1 { // Account for the seed file
 		if err = s.ipfsClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
 			return nil, err
 		}
