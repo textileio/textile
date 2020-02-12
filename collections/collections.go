@@ -16,11 +16,11 @@ import (
 var (
 	log = logging.Logger("collections")
 
-	dsUsersKey    = datastore.NewKey("/users")
-	dsSessionsKey = datastore.NewKey("/sessions")
-	dsTeamsKey    = datastore.NewKey("/teams")
-	dsInvitesKey  = datastore.NewKey("/invites")
-	dsProjectsKey = datastore.NewKey("/projects")
+	dsDevelopersKey = datastore.NewKey("/developers")
+	dsSessionsKey   = datastore.NewKey("/sessions")
+	dsTeamsKey      = datastore.NewKey("/teams")
+	dsInvitesKey    = datastore.NewKey("/invites")
+	dsProjectsKey   = datastore.NewKey("/projects")
 
 	dsTokensKey   = datastore.NewKey("/tokens")
 	dsAppUsersKey = datastore.NewKey("/appusers")
@@ -40,11 +40,11 @@ type Collections struct {
 	token   string
 	ds      datastore.Datastore
 
-	Users    *Users
-	Sessions *Sessions
-	Teams    *Teams
-	Invites  *Invites
-	Projects *Projects
+	Developers *Developers
+	Sessions   *Sessions
+	Teams      *Teams
+	Invites    *Invites
+	Projects   *Projects
 
 	Tokens   *Tokens
 	AppUsers *AppUsers
@@ -64,11 +64,11 @@ func NewCollections(
 		token:   token,
 		ds:      ds,
 
-		Users:    &Users{threads: threads, token: token},
-		Sessions: &Sessions{threads: threads, token: token},
-		Teams:    &Teams{threads: threads, token: token},
-		Invites:  &Invites{threads: threads, token: token},
-		Projects: &Projects{threads: threads, token: token},
+		Developers: &Developers{threads: threads, token: token},
+		Sessions:   &Sessions{threads: threads, token: token},
+		Teams:      &Teams{threads: threads, token: token},
+		Invites:    &Invites{threads: threads, token: token},
+		Projects:   &Projects{threads: threads, token: token},
 
 		Tokens:   &Tokens{threads: threads, token: token},
 		AppUsers: &AppUsers{threads: threads, token: token},
@@ -77,7 +77,7 @@ func NewCollections(
 	}
 	ctx = AuthCtx(ctx, c.token)
 
-	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
+	c.Developers.storeID, err = c.addCollection(ctx, c.Developers, dsDevelopersKey)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func NewCollections(
 		return nil, err
 	}
 
-	log.Debugf("users store: %s", c.Users.GetStoreID().String())
+	log.Debugf("developers store: %s", c.Developers.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
 	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())

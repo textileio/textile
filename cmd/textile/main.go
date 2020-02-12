@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	log = logging.Logger("textile")
+	_ = logging.Logger("textile")
 
 	authFile  string
 	authViper = viper.New()
