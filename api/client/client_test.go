@@ -622,14 +622,14 @@ func TestClient_RemoveToken(t *testing.T) {
 	})
 }
 
-func TestClient_RegisterAppUser(t *testing.T) {
+func TestClient_RegisterUser(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
 
 	user := login(t, client, conf, "jon@doe.com")
 
-	t.Run("test register app user without token", func(t *testing.T) {
+	t.Run("test register user without token", func(t *testing.T) {
 		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
 		res, err := http.Post(url, "application/json", strings.NewReader("{}"))
 		if err != nil {
@@ -663,7 +663,7 @@ func TestClient_RegisterAppUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test register app user", func(t *testing.T) {
+	t.Run("test register user", func(t *testing.T) {
 		req, err := json.Marshal(&map[string]string{
 			"token":     token.ID,
 			"device_id": uuid.New().String(),
@@ -693,13 +693,13 @@ func TestClient_RegisterAppUser(t *testing.T) {
 		if id, ok := data["id"]; !ok {
 			t.Fatalf("response body missing id")
 		} else {
-			t.Logf("app user id: %s", id)
+			t.Logf("user id: %s", id)
 		}
 		session, ok := data["session_id"]
 		if !ok {
 			t.Fatalf("response body missing session id")
 		} else {
-			t.Logf("app user session id: %s", session)
+			t.Logf("user session id: %s", session)
 		}
 		if res.StatusCode != http.StatusOK {
 			t.Fatalf("expected status code 200, got %d", res.StatusCode)

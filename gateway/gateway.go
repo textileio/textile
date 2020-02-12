@@ -112,7 +112,7 @@ func (g *Gateway) Start() {
 	router.GET("/p/:project", g.bucketHandler)
 	router.GET("/p/:project/*path", g.bucketHandler)
 
-	router.POST("/register", g.registerAppUser)
+	router.POST("/register", g.registerUser)
 
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
@@ -301,8 +301,8 @@ type registrationParams struct {
 	DeviceID string `json:"device_id" binding:"required"`
 }
 
-// registerAppUser adds a user to a team.
-func (g *Gateway) registerAppUser(c *gin.Context) {
+// registerUser adds a user to a team.
+func (g *Gateway) registerUser(c *gin.Context) {
 	var params registrationParams
 	err := c.BindJSON(&params)
 	if err != nil {
@@ -323,7 +323,7 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
-	user, err := g.collections.AppUsers.GetOrCreate(ctx, proj.ID, params.DeviceID)
+	user, err := g.collections.Users.GetOrCreate(ctx, proj.ID, params.DeviceID)
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return

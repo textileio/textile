@@ -260,7 +260,7 @@ func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
 	if session.Expiry < int(time.Now().Unix()) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
-	user, err := t.collections.AppUsers.Get(ctx, session.UserID)
+	user, err := t.collections.Users.Get(ctx, session.UserID)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}

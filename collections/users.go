@@ -10,36 +10,36 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type AppUser struct {
+type User struct {
 	ID        string
 	ProjectID string
 	StoreID   string
 	Created   int64
 }
 
-type AppUsers struct {
+type Users struct {
 	threads *client.Client
 	storeID *uuid.UUID
 	token   string
 }
 
-func (u *AppUsers) GetName() string {
-	return "AppUser"
+func (u *Users) GetName() string {
+	return "User"
 }
 
-func (u *AppUsers) GetInstance() interface{} {
-	return &AppUser{}
+func (u *Users) GetInstance() interface{} {
+	return &User{}
 }
 
-func (u *AppUsers) GetIndexes() []*s.IndexConfig {
+func (u *Users) GetIndexes() []*s.IndexConfig {
 	return []*s.IndexConfig{}
 }
 
-func (u *AppUsers) GetStoreID() *uuid.UUID {
+func (u *Users) GetStoreID() *uuid.UUID {
 	return u.storeID
 }
 
-func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *AppUser, err error) {
+func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *User, err error) {
 	ctx = AuthCtx(ctx, u.token)
 	user, err = u.Get(ctx, deviceID)
 	if user != nil {
@@ -54,7 +54,7 @@ func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) 
 			return
 		}
 	}
-	user = &AppUser{
+	user = &User{
 		ID:        deviceID,
 		ProjectID: projectID,
 		Created:   time.Now().Unix(),
@@ -72,27 +72,27 @@ func (u *AppUsers) GetOrCreate(ctx context.Context, projectID, deviceID string) 
 	return user, nil
 }
 
-func (u *AppUsers) Get(ctx context.Context, id string) (*AppUser, error) {
+func (u *Users) Get(ctx context.Context, id string) (*User, error) {
 	ctx = AuthCtx(ctx, u.token)
-	user := &AppUser{}
+	user := &User{}
 	if err := u.threads.ModelFindByID(ctx, u.storeID.String(), u.GetName(), id, user); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (u *AppUsers) List(ctx context.Context, projectID string) ([]*AppUser, error) {
+func (u *Users) List(ctx context.Context, projectID string) ([]*User, error) {
 	ctx = AuthCtx(ctx, u.token)
 	query := s.JSONWhere("ProjectID").Eq(projectID)
-	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*AppUser{})
+	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*AppUser), nil
+	return res.([]*User), nil
 }
 
 // @todo: Delete associated sessions
-func (u *AppUsers) Delete(ctx context.Context, id string) error {
+func (u *Users) Delete(ctx context.Context, id string) error {
 	ctx = AuthCtx(ctx, u.token)
 	return u.threads.ModelDelete(ctx, u.storeID.String(), u.GetName(), id)
 }

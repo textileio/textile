@@ -124,7 +124,8 @@ func (d *Developers) LeaveTeam(ctx context.Context, dev *Developer, teamID strin
 	return d.threads.ModelSave(ctx, d.storeID.String(), d.GetName(), dev)
 }
 
-// @todo: Add a destroy method that calls this. Developer must first delete projects and teams they own.
+// @todo: Developer must first delete projects and teams they own
+// @todo: Delete associated sessions
 func (d *Developers) Delete(ctx context.Context, id string) error {
 	ctx = AuthCtx(ctx, d.token)
 	return d.threads.ModelDelete(ctx, d.storeID.String(), d.GetName(), id)
