@@ -195,20 +195,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	matches, err := g.collections.Developers.GetByEmail(ctx, invite.ToEmail)
+	dev, err := g.collections.Developers.GetOrCreateByEmail(ctx, invite.ToEmail)
 	if err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
-	}
-	var dev *collections.Developer
-	if len(matches) == 0 {
-		dev, err = g.collections.Developers.Create(ctx, invite.ToEmail)
-		if err != nil {
-			g.renderError(c, http.StatusInternalServerError, err)
-			return
-		}
-	} else {
-		dev = matches[0]
 	}
 
 	team, err := g.collections.Teams.Get(ctx, invite.TeamID)

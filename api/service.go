@@ -58,17 +58,9 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	var dev *c.Developer
-	var err error
-	dev, err = s.collections.Developers.GetByEmail(ctx, req.Email)
+	dev, err := s.collections.Developers.GetOrCreateByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
-	}
-	if dev == nil {
-		dev, err = s.collections.Developers.Create(ctx, req.Email)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	var secret string

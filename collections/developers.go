@@ -54,6 +54,20 @@ func (d *Developers) Create(ctx context.Context, email string) (*Developer, erro
 	return dev, nil
 }
 
+func (d *Developers) GetOrCreateByEmail(ctx context.Context, email string) (*Developer, error) {
+	dev, err := d.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if dev == nil {
+		dev, err = d.Create(ctx, email)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dev, nil
+}
+
 func (d *Developers) Get(ctx context.Context, id string) (*Developer, error) {
 	ctx = AuthCtx(ctx, d.token)
 	dev := &Developer{}
