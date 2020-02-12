@@ -82,11 +82,13 @@ type Config struct {
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
-	if err := util.SetLogLevels(map[string]logging.LogLevel{
-		"core":        logging.LevelDebug,
-		"collections": logging.LevelDebug,
-	}); err != nil {
-		return nil, err
+	if conf.Debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"core":        logging.LevelDebug,
+			"collections": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	dsPath := path.Join(conf.RepoPath, "textile")

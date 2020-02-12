@@ -177,7 +177,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
 		flags["dnsDomain"].DefValue.(string),
-		"Root domain for project subdomains")
+		"Root domain for bucket subdomains")
 
 	rootCmd.PersistentFlags().String(
 		"dnsZoneID",
@@ -187,7 +187,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"dnsToken",
 		flags["dnsDomain"].DefValue.(string),
-		"Cloudflare Token for dnsDomain")
+		"Cloudflare API Token for dnsDomain")
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(

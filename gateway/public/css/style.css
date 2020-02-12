@@ -29,6 +29,10 @@ body {
     margin-bottom: 1em;
 }
 
+.title span.yellow {
+    color: #FFCE00;
+}
+
 a {
     color: #FFB6D5;
     text-decoration: none;

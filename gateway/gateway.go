@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,9 +227,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 }
 
 type link struct {
-	Name string
-	Path string
-	Size string
+	Name  string
+	Path  string
+	Size  string
+	Links string
 }
 
 // bucketHandler renders bucket files and directories.
@@ -258,10 +260,19 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			} else {
 				pth = item.Name
 			}
+
+			if rep.Root != nil && item.Name == "index.html" {
+				if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+					abort(c, http.StatusInternalServerError, err)
+				}
+				return
+			}
+
 			links[i] = link{
-				Name: item.Name,
-				Path: path.Join(projectPath, pth),
-				Size: byteCountDecimal(item.Size),
+				Name:  item.Name,
+				Path:  path.Join(projectPath, pth),
+				Size:  byteCountDecimal(item.Size),
+				Links: strconv.Itoa(len(item.Items)),
 			}
 		}
 
@@ -277,6 +288,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			back = path.Dir(path.Join(projectPath, root))
 		}
 		c.HTML(http.StatusOK, "/public/html/bucket.gohtml", gin.H{
+			"Path":  rep.Item.Path,
 			"Root":  root,
 			"Back":  back,
 			"Links": links,
