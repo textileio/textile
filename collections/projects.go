@@ -10,12 +10,12 @@ import (
 )
 
 type Project struct {
-	ID            string
-	Name          string
-	Scope         string // user or team
-	StoreID       string
-	WalletAddress string
-	Created       int64
+	ID      string
+	Name    string
+	Scope   string // user or team
+	StoreID string
+	Address string
+	Created int64
 }
 
 type Projects struct {
@@ -43,16 +43,19 @@ func (p *Projects) GetStoreID() *uuid.UUID {
 	return p.storeID
 }
 
-func (p *Projects) Create(ctx context.Context, name, scope, fcWalletAddress string) (*Project, error) {
+func (p *Projects) Create(ctx context.Context, name, scope, addr string) (*Project, error) {
+	validName, err := toValidName(name)
+	if err != nil {
+		return nil, err
+	}
 	ctx = AuthCtx(ctx, p.token)
 	proj := &Project{
-		Name:          name,
-		Scope:         scope,
-		WalletAddress: fcWalletAddress,
-		Created:       time.Now().Unix(),
+		Name:    validName,
+		Scope:   scope,
+		Address: addr,
+		Created: time.Now().Unix(),
 	}
 	// Create a dedicated store for the project
-	var err error
 	proj.StoreID, err = p.threads.NewStore(ctx)
 	if err != nil {
 		return nil, err

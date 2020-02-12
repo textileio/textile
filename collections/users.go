@@ -48,9 +48,6 @@ func (u *Users) GetStoreID() *uuid.UUID {
 func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *User, err error) {
 	ctx = AuthCtx(ctx, u.token)
 	user, err = u.GetByDeviceID(ctx, deviceID)
-	if user != nil {
-		return
-	}
 	if err != nil {
 		stat, ok := status.FromError(err)
 		if !ok {
@@ -59,6 +56,9 @@ func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (us
 		if stat.Message() != s.ErrNotFound.Error() {
 			return
 		}
+	}
+	if user != nil {
+		return
 	}
 	user = &User{
 		DeviceID:  deviceID,

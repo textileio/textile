@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+
+	"github.com/gosimple/slug"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/google/uuid"
@@ -27,6 +30,10 @@ var (
 
 	dsBucketsKey = datastore.NewKey("/buckets")
 )
+
+func init() {
+	slug.MaxLength = 64
+}
 
 type Collection interface {
 	GetName() string
@@ -191,4 +198,13 @@ func (t TokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[str
 
 func (t TokenAuth) RequireTransportSecurity() bool {
 	return false
+}
+
+func toValidName(str string) (name string, err error) {
+	name = slug.Make(str)
+	if len(name) < 3 {
+		err = fmt.Errorf("name must contain at least three URL-safe characters")
+		return
+	}
+	return name, nil
 }

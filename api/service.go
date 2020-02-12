@@ -58,18 +58,17 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	matches, err := s.collections.Developers.GetByEmail(ctx, req.Email)
+	var dev *c.Developer
+	var err error
+	dev, err = s.collections.Developers.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
 	}
-	var dev *c.Developer
-	if len(matches) == 0 {
+	if dev == nil {
 		dev, err = s.collections.Developers.Create(ctx, req.Email)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		dev = matches[0]
 	}
 
 	var secret string
@@ -414,8 +413,8 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	}
 
 	var bal int64
-	if proj.WalletAddress != "" {
-		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.WalletAddress)
+	if proj.Address != "" {
+		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -446,7 +445,7 @@ func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 		ID:            proj.ID,
 		Name:          proj.Name,
 		StoreID:       proj.StoreID,
-		WalletAddress: proj.WalletAddress,
+		WalletAddress: proj.Address,
 		Created:       proj.Created,
 	}
 }

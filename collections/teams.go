@@ -33,6 +33,9 @@ func (t *Teams) GetInstance() interface{} {
 func (t *Teams) GetIndexes() []*s.IndexConfig {
 	return []*s.IndexConfig{{
 		Path: "OwnerID",
+	}, {
+		Path:   "Name",
+		Unique: true,
 	}}
 }
 
@@ -41,10 +44,14 @@ func (t *Teams) GetStoreID() *uuid.UUID {
 }
 
 func (t *Teams) Create(ctx context.Context, ownerID, name string) (*Team, error) {
+	validName, err := toValidName(name)
+	if err != nil {
+		return nil, err
+	}
 	ctx = AuthCtx(ctx, t.token)
 	team := &Team{
 		OwnerID: ownerID,
-		Name:    name,
+		Name:    validName,
 		Created: time.Now().Unix(),
 	}
 	if err := t.threads.ModelCreate(ctx, t.storeID.String(), t.GetName(), team); err != nil {

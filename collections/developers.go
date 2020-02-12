@@ -63,14 +63,18 @@ func (d *Developers) Get(ctx context.Context, id string) (*Developer, error) {
 	return dev, nil
 }
 
-func (d *Developers) GetByEmail(ctx context.Context, email string) ([]*Developer, error) {
+func (d *Developers) GetByEmail(ctx context.Context, email string) (*Developer, error) {
 	ctx = AuthCtx(ctx, d.token)
 	query := s.JSONWhere("Email").Eq(email)
 	res, err := d.threads.ModelFind(ctx, d.storeID.String(), d.GetName(), query, []*Developer{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*Developer), nil
+	devs := res.([]*Developer)
+	if len(devs) == 0 {
+		return nil, nil
+	}
+	return devs[0], nil
 }
 
 func (d *Developers) ListByTeam(ctx context.Context, teamID string) ([]*Developer, error) {
