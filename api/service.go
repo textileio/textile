@@ -399,7 +399,7 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ID, scope)
+	proj, err := s.getProjectForScopeByName(ctx, req.Name, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -423,6 +423,18 @@ func (s *service) getProjectForScope(ctx context.Context, projID, scope string) 
 	if err != nil {
 		return nil, err
 	}
+	return ensureProjectAndScope(proj, scope)
+}
+
+func (s *service) getProjectForScopeByName(ctx context.Context, name, scope string) (*c.Project, error) {
+	proj, err := s.collections.Projects.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return ensureProjectAndScope(proj, scope)
+}
+
+func ensureProjectAndScope(proj *c.Project, scope string) (*c.Project, error) {
 	if proj == nil {
 		return nil, status.Error(codes.NotFound, "Project not found")
 	}
@@ -471,7 +483,7 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ID, scope)
+	proj, err := s.getProjectForScopeByName(ctx, req.Name, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +503,7 @@ func (s *service) AddToken(ctx context.Context, req *pb.AddTokenRequest) (*pb.Ad
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +525,7 @@ func (s *service) ListTokens(ctx context.Context, req *pb.ListTokensRequest) (*p
 	if !ok {
 		log.Fatal("scope required")
 	}
-	proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +587,7 @@ func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequ
 
 	req.Path = strings.TrimSuffix(req.Path, "/")
 	if req.Path == "" { // List top-level buckets for this project
-		proj, err := s.getProjectForScope(ctx, req.ProjectID, scope)
+		proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -672,27 +684,27 @@ func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope stri
 }
 
 func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
-	folder, err := s.collections.Buckets.GetByName(ctx, name)
+	buck, err := s.collections.Buckets.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	if folder == nil {
+	if buck == nil {
 		return nil, status.Error(codes.NotFound, "Bucket not found")
 	}
-	if _, err := s.getProjectForScope(ctx, folder.ProjectID, scope); err != nil {
+	if _, err := s.getProjectForScope(ctx, buck.ProjectID, scope); err != nil {
 		return nil, err
 	}
-	return folder, nil
+	return buck, nil
 }
 
-func parsePath(pth string) (folder, name string, err error) {
+func parsePath(pth string) (buck, name string, err error) {
 	if strings.Contains(pth, bucketSeedName) {
 		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
 		return
 	}
 	pth = strings.TrimPrefix(pth, "/")
 	parts := strings.SplitN(pth, "/", 2)
-	folder = parts[0]
+	buck = parts[0]
 	if len(parts) > 1 {
 		name = parts[1]
 	}
@@ -710,7 +722,7 @@ func (s *service) bucketPathToPb(
 		return nil, err
 	}
 
-	rep := &pb.ListBucketPathReply{
+	return &pb.ListBucketPathReply{
 		Item: item,
 		Root: &pb.BucketRoot{
 			Name:    buck.Name,
@@ -719,9 +731,7 @@ func (s *service) bucketPathToPb(
 			Updated: buck.Updated,
 			Public:  buck.Public,
 		},
-	}
-
-	return rep, nil
+	}, nil
 }
 
 // PushBucketPath handles a push bucket path request.
@@ -737,10 +747,10 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	if err != nil {
 		return err
 	}
-	var projectID, filePath string
+	var project, filePath string
 	switch payload := req.Payload.(type) {
 	case *pb.PushBucketPathRequest_Header_:
-		projectID = payload.Header.ProjectID
+		project = payload.Header.Project
 		filePath = payload.Header.Path
 	default:
 		return fmt.Errorf("push bucket path header is required")
@@ -754,7 +764,11 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 		if status.Convert(err).Code() != codes.NotFound {
 			return err
 		}
-		buck, err = s.createBucket(server.Context(), buckName, false, projectID)
+		proj, err := s.getProjectForScopeByName(server.Context(), project, scope)
+		if err != nil {
+			return err
+		}
+		buck, err = s.createBucket(server.Context(), buckName, false, proj.ID)
 		if err != nil {
 			return err
 		}

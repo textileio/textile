@@ -127,10 +127,10 @@ func (c *Client) AddProject(ctx context.Context, name string, auth Auth) (*pb.Ge
 	})
 }
 
-// GetProject returns a project by ID.
-func (c *Client) GetProject(ctx context.Context, projectID string, auth Auth) (*pb.GetProjectReply, error) {
+// GetProject returns a project by name.
+func (c *Client) GetProject(ctx context.Context, name string, auth Auth) (*pb.GetProjectReply, error) {
 	return c.c.GetProject(authCtx(ctx, auth), &pb.GetProjectRequest{
-		ID: projectID,
+		Name: name,
 	})
 }
 
@@ -140,24 +140,24 @@ func (c *Client) ListProjects(ctx context.Context, auth Auth) (*pb.ListProjectsR
 }
 
 // RemoveProject removes a project by ID.
-func (c *Client) RemoveProject(ctx context.Context, projectID string, auth Auth) error {
+func (c *Client) RemoveProject(ctx context.Context, name string, auth Auth) error {
 	_, err := c.c.RemoveProject(authCtx(ctx, auth), &pb.RemoveProjectRequest{
-		ID: projectID,
+		Name: name,
 	})
 	return err
 }
 
 // AddToken add a new app token under the given project.
-func (c *Client) AddToken(ctx context.Context, projectID string, auth Auth) (*pb.AddTokenReply, error) {
+func (c *Client) AddToken(ctx context.Context, project string, auth Auth) (*pb.AddTokenReply, error) {
 	return c.c.AddToken(authCtx(ctx, auth), &pb.AddTokenRequest{
-		ProjectID: projectID,
+		Project: project,
 	})
 }
 
 // ListTokens returns a list of all app tokens for the given project.
-func (c *Client) ListTokens(ctx context.Context, projectID string, auth Auth) (*pb.ListTokensReply, error) {
+func (c *Client) ListTokens(ctx context.Context, project string, auth Auth) (*pb.ListTokensReply, error) {
 	return c.c.ListTokens(authCtx(ctx, auth), &pb.ListTokensRequest{
-		ProjectID: projectID,
+		Project: project,
 	})
 }
 
@@ -170,10 +170,10 @@ func (c *Client) RemoveToken(ctx context.Context, tokenID string, auth Auth) err
 }
 
 // ListBucketPath returns information about a bucket path.
-func (c *Client) ListBucketPath(ctx context.Context, projectID, pth string, auth Auth) (*pb.ListBucketPathReply, error) {
+func (c *Client) ListBucketPath(ctx context.Context, project, pth string, auth Auth) (*pb.ListBucketPathReply, error) {
 	return c.c.ListBucketPath(authCtx(ctx, auth), &pb.ListBucketPathRequest{
-		ProjectID: projectID,
-		Path:      pth,
+		Project: project,
+		Path:    pth,
 	})
 }
 
@@ -203,7 +203,7 @@ type pushBucketPathResult struct {
 // This will return the resolved path and the bucket's new root path.
 func (c *Client) PushBucketPath(
 	ctx context.Context,
-	projectID, bucketPath string,
+	project, bucketPath string,
 	reader io.Reader,
 	auth Auth,
 	opts ...PushBucketPathOption,
@@ -223,8 +223,8 @@ func (c *Client) PushBucketPath(
 	if err = stream.Send(&pb.PushBucketPathRequest{
 		Payload: &pb.PushBucketPathRequest_Header_{
 			Header: &pb.PushBucketPathRequest_Header{
-				ProjectID: projectID,
-				Path:      bucketPath,
+				Project: project,
+				Path:    bucketPath,
 			},
 		},
 	}); err != nil {
