@@ -33,7 +33,10 @@ func (p *Projects) GetInstance() interface{} {
 }
 
 func (p *Projects) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path:   "Name",
+		Unique: true,
+	}}
 }
 
 func (p *Projects) GetStoreID() *uuid.UUID {
@@ -70,6 +73,20 @@ func (p *Projects) Get(ctx context.Context, id string) (*Project, error) {
 		return nil, err
 	}
 	return proj, nil
+}
+
+func (p *Projects) GetByName(ctx context.Context, name string) (*Project, error) {
+	ctx = AuthCtx(ctx, p.token)
+	query := s.JSONWhere("Name").Eq(name)
+	res, err := p.threads.ModelFind(ctx, p.storeID.String(), p.GetName(), query, []*Project{})
+	if err != nil {
+		return nil, err
+	}
+	projs := res.([]*Project)
+	if len(projs) == 0 {
+		return nil, nil
+	}
+	return projs[0], nil
 }
 
 func (p *Projects) List(ctx context.Context, scope string) ([]*Project, error) {
