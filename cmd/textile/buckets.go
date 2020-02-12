@@ -52,7 +52,7 @@ var lsBucketPathCmd = &cobra.Command{
 }
 
 func lsBucketPath(args []string) {
-	projectID := configViper.GetString("id")
+	projectID := configViper.GetString("project_id")
 	if projectID == "" {
 		cmd.Fatal(errors.New("not a project directory"))
 	}
@@ -141,7 +141,7 @@ These 'push' commands result in the following bucket structures.
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
+		projectID := configViper.GetString("project_id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
@@ -273,7 +273,7 @@ These 'pull' commands result in the following local structures.
 `,
 	Args: cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("id")
+		projectID := configViper.GetString("project_id")
 		if projectID == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
@@ -356,7 +356,7 @@ var rmBucketPathCmd = &cobra.Command{
 	Long:  `Remove files and directories under a bucket path.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		if configViper.GetString("id") == "" {
+		if configViper.GetString("project_id") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 

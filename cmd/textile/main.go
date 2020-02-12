@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	log = logging.Logger("textile")
+	_ = logging.Logger("textile")
 
 	authFile  string
 	authViper = viper.New()
@@ -38,16 +38,8 @@ var (
 			Key:      "log.debug",
 			DefValue: false,
 		},
-		"id": {
-			Key:      "id",
-			DefValue: "",
-		},
-		"store": {
-			Key:      "store",
-			DefValue: "",
-		},
-		"scope": {
-			Key:      "scope",
+		"projectID": {
+			Key:      "project_id",
 			DefValue: "",
 		},
 		"apiTarget": {
@@ -93,19 +85,9 @@ func init() {
 		"Enable debug logging")
 
 	rootCmd.PersistentFlags().String(
-		"id",
-		flags["id"].DefValue.(string),
+		"projectID",
+		flags["projectID"].DefValue.(string),
 		"Project ID")
-
-	rootCmd.PersistentFlags().String(
-		"store",
-		flags["store"].DefValue.(string),
-		"Project Store ID")
-
-	rootCmd.PersistentFlags().String(
-		"scope",
-		flags["scope"].DefValue.(string),
-		"Scope (User or Team ID)")
 
 	rootCmd.PersistentFlags().String(
 		"apiTarget",
@@ -179,7 +161,6 @@ var whoamiCmd = &cobra.Command{
 			ctx,
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)

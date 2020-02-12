@@ -58,18 +58,9 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	matches, err := s.collections.Users.GetByEmail(ctx, req.Email)
+	dev, err := s.collections.Developers.GetOrCreateByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
-	}
-	var user *c.User
-	if len(matches) == 0 {
-		user, err = s.collections.Users.Create(ctx, req.Email)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		user = matches[0]
 	}
 
 	var secret string
@@ -85,7 +76,7 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.emailClient.ConfirmAddress(ectx, user.Email, s.gatewayUrl, secret); err != nil {
+	if err = s.emailClient.ConfirmAddress(ectx, dev.Email, s.gatewayUrl, secret); err != nil {
 		return nil, err
 	}
 
@@ -93,13 +84,13 @@ func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.collections.Sessions.Create(ctx, user.ID, user.ID)
+	session, err := s.collections.Sessions.Create(ctx, dev.ID, dev.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.LoginReply{
-		ID:        user.ID,
+		ID:        dev.ID,
 		SessionID: session.ID,
 	}, nil
 }
@@ -143,7 +134,7 @@ func (s *service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutRe
 func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
 	log.Debugf("received whoami request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
@@ -153,10 +144,10 @@ func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 	}
 
 	reply := &pb.WhoamiReply{
-		ID:    user.ID,
-		Email: user.Email,
+		ID:    dev.ID,
+		Email: dev.Email,
 	}
-	if scope != user.ID {
+	if scope != dev.ID {
 		team, err := s.collections.Teams.Get(ctx, scope)
 		if err != nil {
 			return nil, err
@@ -168,7 +159,7 @@ func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 	return reply, nil
 }
 
-// awaitVerification waits for a user to verify their email via a sent email.
+// awaitVerification waits for a dev to verify their email via a sent email.
 func (s *service) awaitVerification(secret string) bool {
 	listen := s.sessionBus.Listen()
 	ch := make(chan struct{})
@@ -195,16 +186,16 @@ func (s *service) awaitVerification(secret string) bool {
 func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
 	log.Debugf("received add team request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
 
-	team, err := s.collections.Teams.Create(ctx, user.ID, req.Name)
+	team, err := s.collections.Teams.Create(ctx, dev.ID, req.Name)
 	if err != nil {
 		return nil, err
 	}
-	if err = s.collections.Users.JoinTeam(ctx, user, team.ID); err != nil {
+	if err = s.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
 		return nil, err
 	}
 
@@ -217,21 +208,21 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetTeamReply, error) {
 	log.Debugf("received get team request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, dev)
 	if err != nil {
 		return nil, err
 	}
 
-	users, err := s.collections.Users.ListByTeam(ctx, team.ID)
+	devs, err := s.collections.Developers.ListByTeam(ctx, team.ID)
 	if err != nil {
 		return nil, err
 	}
-	members := make([]*pb.GetTeamReply_Member, len(users))
-	for i, u := range users {
+	members := make([]*pb.GetTeamReply_Member, len(devs))
+	for i, u := range devs {
 		members[i] = &pb.GetTeamReply_Member{
 			ID:    u.ID,
 			Email: u.Email,
@@ -241,7 +232,7 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 	return teamToPbTeam(team, members), nil
 }
 
-func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.User) (*c.Team, error) {
+func (s *service) getTeamForUser(ctx context.Context, teamID string, dev *c.Developer) (*c.Team, error) {
 	team, err := s.collections.Teams.Get(ctx, teamID)
 	if err != nil {
 		return nil, err
@@ -249,7 +240,7 @@ func (s *service) getTeamForUser(ctx context.Context, teamID string, user *c.Use
 	if team == nil {
 		return nil, status.Error(codes.NotFound, "Team not found")
 	}
-	if !s.collections.Users.HasTeam(user, team.ID) {
+	if !s.collections.Developers.HasTeam(dev, team.ID) {
 		return nil, status.Error(codes.PermissionDenied, "User is not a team member")
 	}
 	return team, nil
@@ -269,13 +260,13 @@ func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamRe
 func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
 	log.Debugf("received list teams request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
 
-	list := make([]*pb.GetTeamReply, len(user.Teams))
-	for i, id := range user.Teams {
+	list := make([]*pb.GetTeamReply, len(dev.Teams))
+	for i, id := range dev.Teams {
 		team, err := s.collections.Teams.Get(ctx, id)
 		if err != nil {
 			return nil, err
@@ -291,27 +282,27 @@ func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.Li
 func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*pb.RemoveTeamReply, error) {
 	log.Debugf("received remove team request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, dev)
 	if err != nil {
 		return nil, err
 	}
-	if team.OwnerID != user.ID {
+	if team.OwnerID != dev.ID {
 		return nil, status.Error(codes.PermissionDenied, "User is not the team owner")
 	}
 
 	if err = s.collections.Teams.Delete(ctx, team.ID); err != nil {
 		return nil, err
 	}
-	users, err := s.collections.Users.ListByTeam(ctx, team.ID)
+	devs, err := s.collections.Developers.ListByTeam(ctx, team.ID)
 	if err != nil {
 		return nil, err
 	}
-	for _, u := range users {
-		if err = s.collections.Users.LeaveTeam(ctx, u, team.ID); err != nil {
+	for _, u := range devs {
+		if err = s.collections.Developers.LeaveTeam(ctx, u, team.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -323,11 +314,11 @@ func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*p
 func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest) (*pb.InviteToTeamReply, error) {
 	log.Debugf("received invite to team request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, dev)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +327,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	invite, err := s.collections.Invites.Create(ctx, team.ID, user.ID, req.Email)
+	invite, err := s.collections.Invites.Create(ctx, team.ID, dev.ID, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +335,7 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.emailClient.InviteAddress(
-		ectx, team.Name, user.Email, req.Email, s.gatewayUrl, invite.ID); err != nil {
+		ectx, team.Name, dev.Email, req.Email, s.gatewayUrl, invite.ID); err != nil {
 		return nil, err
 	}
 
@@ -355,19 +346,19 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
 	log.Debugf("received leave team request")
 
-	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
 	if !ok {
 		log.Fatal("user required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, user)
+	team, err := s.getTeamForUser(ctx, req.ID, dev)
 	if err != nil {
 		return nil, err
 	}
-	if team.OwnerID == user.ID {
+	if team.OwnerID == dev.ID {
 		return nil, status.Error(codes.PermissionDenied, "Team owner cannot leave")
 	}
 
-	if err = s.collections.Users.LeaveTeam(ctx, user, team.ID); err != nil {
+	if err = s.collections.Developers.LeaveTeam(ctx, dev, team.ID); err != nil {
 		return nil, err
 	}
 
@@ -375,7 +366,7 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 }
 
 // AddProject handles an add project request.
-func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
+func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.GetProjectReply, error) {
 	log.Debugf("received add project request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
@@ -397,10 +388,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		return nil, err
 	}
 
-	return &pb.AddProjectReply{
-		ID:      proj.ID,
-		StoreID: proj.StoreID,
-	}, nil
+	return projectToPbProject(proj), nil
 }
 
 // GetProject handles a get project request.
@@ -417,8 +405,8 @@ func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*p
 	}
 
 	var bal int64
-	if proj.WalletAddress != "" {
-		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.WalletAddress)
+	if proj.Address != "" {
+		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -449,7 +437,7 @@ func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
 		ID:            proj.ID,
 		Name:          proj.Name,
 		StoreID:       proj.StoreID,
-		WalletAddress: proj.WalletAddress,
+		WalletAddress: proj.Address,
 		Created:       proj.Created,
 	}
 }
@@ -495,9 +483,9 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 	return &pb.RemoveProjectReply{}, nil
 }
 
-// AddAppToken handles an add app token request.
-func (s *service) AddAppToken(ctx context.Context, req *pb.AddAppTokenRequest) (*pb.AddAppTokenReply, error) {
-	log.Debugf("received add app token request")
+// AddToken handles an add token request.
+func (s *service) AddToken(ctx context.Context, req *pb.AddTokenRequest) (*pb.AddTokenReply, error) {
+	log.Debugf("received add token request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
@@ -507,19 +495,19 @@ func (s *service) AddAppToken(ctx context.Context, req *pb.AddAppTokenRequest) (
 	if err != nil {
 		return nil, err
 	}
-	token, err := s.collections.AppTokens.Create(ctx, proj.ID)
+	token, err := s.collections.Tokens.Create(ctx, proj.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.AddAppTokenReply{
+	return &pb.AddTokenReply{
 		ID: token.ID,
 	}, nil
 }
 
-// ListAppTokens handles a list app tokens request.
-func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensRequest) (*pb.ListAppTokensReply, error) {
-	log.Debugf("received list app tokens request")
+// ListTokens handles a list tokens request.
+func (s *service) ListTokens(ctx context.Context, req *pb.ListTokensRequest) (*pb.ListTokensReply, error) {
+	log.Debugf("received list tokens request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
@@ -530,7 +518,7 @@ func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensReques
 		return nil, err
 	}
 
-	tokens, err := s.collections.AppTokens.List(ctx, proj.ID)
+	tokens, err := s.collections.Tokens.List(ctx, proj.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -539,31 +527,31 @@ func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensReques
 		list[i] = token.ID
 	}
 
-	return &pb.ListAppTokensReply{List: list}, nil
+	return &pb.ListTokensReply{List: list}, nil
 }
 
-// RemoveAppToken handles a remove app token request.
-func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequest) (*pb.RemoveAppTokenReply, error) {
-	log.Debugf("received remove app token request")
+// RemoveToken handles a remove token request.
+func (s *service) RemoveToken(ctx context.Context, req *pb.RemoveTokenRequest) (*pb.RemoveTokenReply, error) {
+	log.Debugf("received remove token request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	token, err := s.getAppTokenWithScope(ctx, req.ID, scope)
+	token, err := s.getTokenWithScope(ctx, req.ID, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = s.collections.AppTokens.Delete(ctx, token.ID); err != nil {
+	if err = s.collections.Tokens.Delete(ctx, token.ID); err != nil {
 		return nil, err
 	}
 
-	return &pb.RemoveAppTokenReply{}, nil
+	return &pb.RemoveTokenReply{}, nil
 }
 
-func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope string) (*c.AppToken, error) {
-	token, err := s.collections.AppTokens.Get(ctx, tokenID)
+func (s *service) getTokenWithScope(ctx context.Context, tokenID, scope string) (*c.Token, error) {
+	token, err := s.collections.Tokens.Get(ctx, tokenID)
 	if err != nil {
 		return nil, err
 	}

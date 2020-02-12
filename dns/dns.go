@@ -191,6 +191,6 @@ func cnameRecordInput(name string, content string) cloudflare.DNSRecord {
 		Type:    "CNAME",
 		Name:    name,
 		Content: content,
-		Proxied: true,
+		Proxied: false,
 	}
 }

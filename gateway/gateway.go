@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -111,7 +112,7 @@ func (g *Gateway) Start() {
 	router.GET("/p/:project", g.bucketHandler)
 	router.GET("/p/:project/*path", g.bucketHandler)
 
-	router.POST("/register", g.registerAppUser)
+	router.POST("/register", g.registerUser)
 
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
@@ -194,20 +195,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	matches, err := g.collections.Users.GetByEmail(ctx, invite.ToEmail)
+	dev, err := g.collections.Developers.GetOrCreateByEmail(ctx, invite.ToEmail)
 	if err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
-	}
-	var user *collections.User
-	if len(matches) == 0 {
-		user, err = g.collections.Users.Create(ctx, invite.ToEmail)
-		if err != nil {
-			g.renderError(c, http.StatusInternalServerError, err)
-			return
-		}
-	} else {
-		user = matches[0]
 	}
 
 	team, err := g.collections.Teams.Get(ctx, invite.TeamID)
@@ -215,7 +206,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		g.render404(c)
 		return
 	}
-	if err = g.collections.Users.JoinTeam(ctx, user, team.ID); err != nil {
+	if err = g.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -226,9 +217,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 }
 
 type link struct {
-	Name string
-	Path string
-	Size string
+	Name  string
+	Path  string
+	Size  string
+	Links string
 }
 
 // bucketHandler renders bucket files and directories.
@@ -258,10 +250,19 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			} else {
 				pth = item.Name
 			}
+
+			if rep.Root != nil && item.Name == "index.html" {
+				if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+					abort(c, http.StatusInternalServerError, err)
+				}
+				return
+			}
+
 			links[i] = link{
-				Name: item.Name,
-				Path: path.Join(projectPath, pth),
-				Size: byteCountDecimal(item.Size),
+				Name:  item.Name,
+				Path:  path.Join(projectPath, pth),
+				Size:  byteCountDecimal(item.Size),
+				Links: strconv.Itoa(len(item.Items)),
 			}
 		}
 
@@ -277,6 +278,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			back = path.Dir(path.Join(projectPath, root))
 		}
 		c.HTML(http.StatusOK, "/public/html/bucket.gohtml", gin.H{
+			"Path":  rep.Item.Path,
 			"Root":  root,
 			"Back":  back,
 			"Links": links,
@@ -289,8 +291,8 @@ type registrationParams struct {
 	DeviceID string `json:"device_id" binding:"required"`
 }
 
-// registerAppUser adds a user to a team.
-func (g *Gateway) registerAppUser(c *gin.Context) {
+// registerUser adds a user to a team.
+func (g *Gateway) registerUser(c *gin.Context) {
 	var params registrationParams
 	err := c.BindJSON(&params)
 	if err != nil {
@@ -301,7 +303,7 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
-	token, err := g.collections.AppTokens.Get(ctx, params.Token)
+	token, err := g.collections.Tokens.Get(ctx, params.Token)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
 		return
@@ -311,7 +313,7 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
-	user, err := g.collections.AppUsers.GetOrCreate(ctx, proj.ID, params.DeviceID)
+	user, err := g.collections.Users.GetOrCreate(ctx, proj.ID, params.DeviceID)
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return

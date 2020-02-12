@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+
+	"github.com/gosimple/slug"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/google/uuid"
@@ -16,17 +19,21 @@ import (
 var (
 	log = logging.Logger("collections")
 
-	dsUsersKey    = datastore.NewKey("/users")
-	dsSessionsKey = datastore.NewKey("/sessions")
-	dsTeamsKey    = datastore.NewKey("/teams")
-	dsInvitesKey  = datastore.NewKey("/invites")
-	dsProjectsKey = datastore.NewKey("/projects")
+	dsDevelopersKey = datastore.NewKey("/developers")
+	dsSessionsKey   = datastore.NewKey("/sessions")
+	dsTeamsKey      = datastore.NewKey("/teams")
+	dsInvitesKey    = datastore.NewKey("/invites")
+	dsProjectsKey   = datastore.NewKey("/projects")
 
-	dsAppTokensKey = datastore.NewKey("/apptokens")
-	dsAppUsersKey  = datastore.NewKey("/appusers")
+	dsTokensKey = datastore.NewKey("/tokens")
+	dsUsersKey  = datastore.NewKey("/users")
 
 	dsBucketsKey = datastore.NewKey("/buckets")
 )
+
+func init() {
+	slug.MaxLength = 64
+}
 
 type Collection interface {
 	GetName() string
@@ -40,14 +47,14 @@ type Collections struct {
 	token   string
 	ds      datastore.Datastore
 
-	Users    *Users
-	Sessions *Sessions
-	Teams    *Teams
-	Invites  *Invites
-	Projects *Projects
+	Developers *Developers
+	Sessions   *Sessions
+	Teams      *Teams
+	Invites    *Invites
+	Projects   *Projects
 
-	AppTokens *AppTokens
-	AppUsers  *AppUsers
+	Tokens *Tokens
+	Users  *Users
 
 	Buckets *Buckets
 }
@@ -64,20 +71,20 @@ func NewCollections(
 		token:   token,
 		ds:      ds,
 
-		Users:    &Users{threads: threads, token: token},
-		Sessions: &Sessions{threads: threads, token: token},
-		Teams:    &Teams{threads: threads, token: token},
-		Invites:  &Invites{threads: threads, token: token},
-		Projects: &Projects{threads: threads, token: token},
+		Developers: &Developers{threads: threads, token: token},
+		Sessions:   &Sessions{threads: threads, token: token},
+		Teams:      &Teams{threads: threads, token: token},
+		Invites:    &Invites{threads: threads, token: token},
+		Projects:   &Projects{threads: threads, token: token},
 
-		AppTokens: &AppTokens{threads: threads, token: token},
-		AppUsers:  &AppUsers{threads: threads, token: token},
+		Tokens: &Tokens{threads: threads, token: token},
+		Users:  &Users{threads: threads, token: token},
 
 		Buckets: &Buckets{threads: threads, token: token},
 	}
 	ctx = AuthCtx(ctx, c.token)
 
-	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
+	c.Developers.storeID, err = c.addCollection(ctx, c.Developers, dsDevelopersKey)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +104,11 @@ func NewCollections(
 	if err != nil {
 		return nil, err
 	}
-	c.AppTokens.storeID, err = c.addCollection(ctx, c.AppTokens, dsAppTokensKey)
+	c.Tokens.storeID, err = c.addCollection(ctx, c.Tokens, dsTokensKey)
 	if err != nil {
 		return nil, err
 	}
-	c.AppUsers.storeID, err = c.addCollection(ctx, c.AppUsers, dsAppUsersKey)
+	c.Users.storeID, err = c.addCollection(ctx, c.Users, dsUsersKey)
 	if err != nil {
 		return nil, err
 	}
@@ -110,13 +117,13 @@ func NewCollections(
 		return nil, err
 	}
 
-	log.Debugf("users store: %s", c.Users.GetStoreID().String())
+	log.Debugf("developers store: %s", c.Developers.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
 	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
-	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
-	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
+	log.Debugf("tokens store: %s", c.Tokens.GetStoreID().String())
+	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("buckets store: %s", c.Buckets.GetStoreID().String())
 
 	return c, nil
@@ -191,4 +198,13 @@ func (t TokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[str
 
 func (t TokenAuth) RequireTransportSecurity() bool {
 	return false
+}
+
+func toValidName(str string) (name string, err error) {
+	name = slug.Make(str)
+	if len(name) < 3 {
+		err = fmt.Errorf("name must contain at least three URL-safe characters")
+		return
+	}
+	return name, nil
 }
