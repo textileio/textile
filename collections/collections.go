@@ -22,8 +22,8 @@ var (
 	dsInvitesKey  = datastore.NewKey("/invites")
 	dsProjectsKey = datastore.NewKey("/projects")
 
-	dsAppTokensKey = datastore.NewKey("/apptokens")
-	dsAppUsersKey  = datastore.NewKey("/appusers")
+	dsTokensKey   = datastore.NewKey("/tokens")
+	dsAppUsersKey = datastore.NewKey("/appusers")
 
 	dsBucketsKey = datastore.NewKey("/buckets")
 )
@@ -46,8 +46,8 @@ type Collections struct {
 	Invites  *Invites
 	Projects *Projects
 
-	AppTokens *AppTokens
-	AppUsers  *AppUsers
+	Tokens   *Tokens
+	AppUsers *AppUsers
 
 	Buckets *Buckets
 }
@@ -70,8 +70,8 @@ func NewCollections(
 		Invites:  &Invites{threads: threads, token: token},
 		Projects: &Projects{threads: threads, token: token},
 
-		AppTokens: &AppTokens{threads: threads, token: token},
-		AppUsers:  &AppUsers{threads: threads, token: token},
+		Tokens:   &Tokens{threads: threads, token: token},
+		AppUsers: &AppUsers{threads: threads, token: token},
 
 		Buckets: &Buckets{threads: threads, token: token},
 	}
@@ -97,7 +97,7 @@ func NewCollections(
 	if err != nil {
 		return nil, err
 	}
-	c.AppTokens.storeID, err = c.addCollection(ctx, c.AppTokens, dsAppTokensKey)
+	c.Tokens.storeID, err = c.addCollection(ctx, c.Tokens, dsTokensKey)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func NewCollections(
 	log.Debugf("teams store: %s", c.Teams.GetStoreID().String())
 	log.Debugf("invites store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("projects store: %s", c.Projects.GetStoreID().String())
-	log.Debugf("app tokens store: %s", c.Projects.GetStoreID().String())
+	log.Debugf("tokens store: %s", c.Projects.GetStoreID().String())
 	log.Debugf("app users store: %s", c.Invites.GetStoreID().String())
 	log.Debugf("buckets store: %s", c.Buckets.GetStoreID().String())
 

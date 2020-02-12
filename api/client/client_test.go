@@ -498,7 +498,7 @@ func TestClient_RemoveProject(t *testing.T) {
 	})
 }
 
-func TestClient_AddAppToken(t *testing.T) {
+func TestClient_AddToken(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -509,10 +509,10 @@ func TestClient_AddAppToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test add app token", func(t *testing.T) {
-		token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	t.Run("test add token", func(t *testing.T) {
+		token, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("add app token should succeed: %v", err)
+			t.Fatalf("add token should succeed: %v", err)
 		}
 		if token.ID == "" {
 			t.Fatal("got empty ID from add token")
@@ -520,7 +520,7 @@ func TestClient_AddAppToken(t *testing.T) {
 	})
 }
 
-func TestClient_ListAppTokens(t *testing.T) {
+func TestClient_ListTokens(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -531,21 +531,21 @@ func TestClient_ListAppTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test list empty app tokens", func(t *testing.T) {
-		tokens, err := client.ListAppTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	t.Run("test list empty tokens", func(t *testing.T) {
+		tokens, err := client.ListTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("list app tokens should succeed: %v", err)
+			t.Fatalf("list tokens should succeed: %v", err)
 		}
 		if len(tokens.List) != 0 {
-			t.Fatalf("got wrong app token count from list app tokens, expected %d, got %d", 0,
+			t.Fatalf("got wrong token count from list tokens, expected %d, got %d", 0,
 				len(tokens.List))
 		}
 	})
 
-	if _, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
+	if _, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -554,26 +554,26 @@ func TestClient_ListAppTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test list app tokens from wrong scope", func(t *testing.T) {
-		if _, err := client.ListAppTokens(context.Background(), project.ID,
+	t.Run("test list tokens from wrong scope", func(t *testing.T) {
+		if _, err := client.ListTokens(context.Background(), project.ID,
 			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
-			t.Fatal("list app tokens from wrong scope should fail")
+			t.Fatal("list tokens from wrong scope should fail")
 		}
 	})
 
-	t.Run("test list app tokens", func(t *testing.T) {
-		tokens, err := client.ListAppTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	t.Run("test list tokens", func(t *testing.T) {
+		tokens, err := client.ListTokens(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 		if err != nil {
-			t.Fatalf("list app tokens should succeed: %v", err)
+			t.Fatalf("list tokens should succeed: %v", err)
 		}
 		if len(tokens.List) != 2 {
-			t.Fatalf("got wrong app token count from list app tokens, expected %d, got %d", 2,
+			t.Fatalf("got wrong token count from list tokens, expected %d, got %d", 2,
 				len(tokens.List))
 		}
 	})
 }
 
-func TestClient_RemoveAppToken(t *testing.T) {
+func TestClient_RemoveToken(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
@@ -583,23 +583,23 @@ func TestClient_RemoveAppToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	token, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("test remove bad app token", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), "bad",
+	t.Run("test remove bad token", func(t *testing.T) {
+		if err := client.RemoveToken(context.Background(), "bad",
 			c.Auth{Token: user.SessionID}); err == nil {
-			t.Fatal("remove bad app token should fail")
+			t.Fatal("remove bad token should fail")
 		}
 	})
 
 	user2 := login(t, client, conf, "jane@doe.com")
 
-	t.Run("test remove app token from wrong user", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), token.ID, c.Auth{Token: user2.SessionID}); err == nil {
-			t.Fatal("remove app token from wrong user should fail")
+	t.Run("test remove token from wrong user", func(t *testing.T) {
+		if err := client.RemoveToken(context.Background(), token.ID, c.Auth{Token: user2.SessionID}); err == nil {
+			t.Fatal("remove token from wrong user should fail")
 		}
 	})
 
@@ -608,16 +608,16 @@ func TestClient_RemoveAppToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("test remove app token from wrong scope", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), token.ID,
+	t.Run("test remove token from wrong scope", func(t *testing.T) {
+		if err := client.RemoveToken(context.Background(), token.ID,
 			c.Auth{Token: user.SessionID, Scope: team.ID}); err == nil {
-			t.Fatal("remove app token from wrong scope should fail")
+			t.Fatal("remove token from wrong scope should fail")
 		}
 	})
 
-	t.Run("test remove app token", func(t *testing.T) {
-		if err := client.RemoveAppToken(context.Background(), token.ID, c.Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("remove app token should succeed: %v", err)
+	t.Run("test remove token", func(t *testing.T) {
+		if err := client.RemoveToken(context.Background(), token.ID, c.Auth{Token: user.SessionID}); err != nil {
+			t.Fatalf("remove token should succeed: %v", err)
 		}
 	})
 }
@@ -658,7 +658,7 @@ func TestClient_RegisterAppUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	token, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}

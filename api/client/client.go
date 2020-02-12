@@ -147,23 +147,23 @@ func (c *Client) RemoveProject(ctx context.Context, projectID string, auth Auth)
 	return err
 }
 
-// AddAppToken add a new app token under the given project.
-func (c *Client) AddAppToken(ctx context.Context, projectID string, auth Auth) (*pb.AddAppTokenReply, error) {
-	return c.c.AddAppToken(authCtx(ctx, auth), &pb.AddAppTokenRequest{
+// AddToken add a new app token under the given project.
+func (c *Client) AddToken(ctx context.Context, projectID string, auth Auth) (*pb.AddTokenReply, error) {
+	return c.c.AddToken(authCtx(ctx, auth), &pb.AddTokenRequest{
 		ProjectID: projectID,
 	})
 }
 
-// ListAppTokens returns a list of all app tokens for the given project.
-func (c *Client) ListAppTokens(ctx context.Context, projectID string, auth Auth) (*pb.ListAppTokensReply, error) {
-	return c.c.ListAppTokens(authCtx(ctx, auth), &pb.ListAppTokensRequest{
+// ListTokens returns a list of all app tokens for the given project.
+func (c *Client) ListTokens(ctx context.Context, projectID string, auth Auth) (*pb.ListTokensReply, error) {
+	return c.c.ListTokens(authCtx(ctx, auth), &pb.ListTokensRequest{
 		ProjectID: projectID,
 	})
 }
 
-// RemoveAppToken removes an app token by ID.
-func (c *Client) RemoveAppToken(ctx context.Context, tokenID string, auth Auth) error {
-	_, err := c.c.RemoveAppToken(authCtx(ctx, auth), &pb.RemoveAppTokenRequest{
+// RemoveToken removes an app token by ID.
+func (c *Client) RemoveToken(ctx context.Context, tokenID string, auth Auth) error {
+	_, err := c.c.RemoveToken(authCtx(ctx, auth), &pb.RemoveTokenRequest{
 		ID: tokenID,
 	})
 	return err

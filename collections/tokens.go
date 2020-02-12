@@ -8,36 +8,36 @@ import (
 	s "github.com/textileio/go-threads/store"
 )
 
-type AppToken struct {
+type Token struct {
 	ID        string
 	ProjectID string
 }
 
-type AppTokens struct {
+type Tokens struct {
 	threads *client.Client
 	storeID *uuid.UUID
 	token   string
 }
 
-func (a *AppTokens) GetName() string {
-	return "AppToken"
+func (a *Tokens) GetName() string {
+	return "Token"
 }
 
-func (a *AppTokens) GetInstance() interface{} {
-	return &AppToken{}
+func (a *Tokens) GetInstance() interface{} {
+	return &Token{}
 }
 
-func (a *AppTokens) GetIndexes() []*s.IndexConfig {
+func (a *Tokens) GetIndexes() []*s.IndexConfig {
 	return []*s.IndexConfig{}
 }
 
-func (a *AppTokens) GetStoreID() *uuid.UUID {
+func (a *Tokens) GetStoreID() *uuid.UUID {
 	return a.storeID
 }
 
-func (a *AppTokens) Create(ctx context.Context, projectID string) (*AppToken, error) {
+func (a *Tokens) Create(ctx context.Context, projectID string) (*Token, error) {
 	ctx = AuthCtx(ctx, a.token)
-	token := &AppToken{
+	token := &Token{
 		ProjectID: projectID,
 	}
 	if err := a.threads.ModelCreate(ctx, a.storeID.String(), a.GetName(), token); err != nil {
@@ -46,26 +46,26 @@ func (a *AppTokens) Create(ctx context.Context, projectID string) (*AppToken, er
 	return token, nil
 }
 
-func (a *AppTokens) Get(ctx context.Context, id string) (*AppToken, error) {
+func (a *Tokens) Get(ctx context.Context, id string) (*Token, error) {
 	ctx = AuthCtx(ctx, a.token)
-	token := &AppToken{}
+	token := &Token{}
 	if err := a.threads.ModelFindByID(ctx, a.storeID.String(), a.GetName(), id, token); err != nil {
 		return nil, err
 	}
 	return token, nil
 }
 
-func (a *AppTokens) List(ctx context.Context, projectID string) ([]*AppToken, error) {
+func (a *Tokens) List(ctx context.Context, projectID string) ([]*Token, error) {
 	ctx = AuthCtx(ctx, a.token)
 	query := s.JSONWhere("ProjectID").Eq(projectID)
-	res, err := a.threads.ModelFind(ctx, a.storeID.String(), a.GetName(), query, []*AppToken{})
+	res, err := a.threads.ModelFind(ctx, a.storeID.String(), a.GetName(), query, []*Token{})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*AppToken), nil
+	return res.([]*Token), nil
 }
 
-func (a *AppTokens) Delete(ctx context.Context, id string) error {
+func (a *Tokens) Delete(ctx context.Context, id string) error {
 	ctx = AuthCtx(ctx, a.token)
 	return a.threads.ModelDelete(ctx, a.storeID.String(), a.GetName(), id)
 }

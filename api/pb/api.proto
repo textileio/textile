@@ -113,27 +113,27 @@ message RemoveProjectRequest {
 
 message RemoveProjectReply {}
 
-message AddAppTokenRequest {
+message AddTokenRequest {
     string projectID = 1;
 }
 
-message AddAppTokenReply {
+message AddTokenReply {
     string ID = 1;
 }
 
-message ListAppTokensRequest {
+message ListTokensRequest {
     string projectID = 1;
 }
 
-message ListAppTokensReply {
+message ListTokensReply {
     repeated string list = 1;
 }
 
-message RemoveAppTokenRequest {
+message RemoveTokenRequest {
     string ID = 1;
 }
 
-message RemoveAppTokenReply {}
+message RemoveTokenReply {}
 
 message BucketRoot {
     string name = 1;
@@ -220,9 +220,9 @@ service API {
     rpc ListProjects (ListProjectsRequest) returns (ListProjectsReply) {}
     rpc RemoveProject (RemoveProjectRequest) returns (RemoveProjectReply) {}
 
-    rpc AddAppToken (AddAppTokenRequest) returns (AddAppTokenReply) {}
-    rpc ListAppTokens (ListAppTokensRequest) returns (ListAppTokensReply) {}
-    rpc RemoveAppToken (RemoveAppTokenRequest) returns (RemoveAppTokenReply) {}
+    rpc AddToken (AddTokenRequest) returns (AddTokenReply) {}
+    rpc ListTokens (ListTokensRequest) returns (ListTokensReply) {}
+    rpc RemoveToken (RemoveTokenRequest) returns (RemoveTokenReply) {}
 
     rpc ListBucketPath (ListBucketPathRequest) returns (ListBucketPathReply) {}
     rpc PushBucketPath (stream PushBucketPathRequest) returns (stream PushBucketPathReply) {}

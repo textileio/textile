@@ -313,7 +313,7 @@ func (g *Gateway) registerAppUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
-	token, err := g.collections.AppTokens.Get(ctx, params.Token)
+	token, err := g.collections.Tokens.Get(ctx, params.Token)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
 		return

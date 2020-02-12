@@ -32,7 +32,7 @@ func TestThreadsServiceClient_CreateThread(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddAppToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	token, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}

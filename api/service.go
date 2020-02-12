@@ -492,8 +492,8 @@ func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectReques
 	return &pb.RemoveProjectReply{}, nil
 }
 
-// AddAppToken handles an add app token request.
-func (s *service) AddAppToken(ctx context.Context, req *pb.AddAppTokenRequest) (*pb.AddAppTokenReply, error) {
+// AddToken handles an add app token request.
+func (s *service) AddToken(ctx context.Context, req *pb.AddTokenRequest) (*pb.AddTokenReply, error) {
 	log.Debugf("received add app token request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
@@ -504,18 +504,18 @@ func (s *service) AddAppToken(ctx context.Context, req *pb.AddAppTokenRequest) (
 	if err != nil {
 		return nil, err
 	}
-	token, err := s.collections.AppTokens.Create(ctx, proj.ID)
+	token, err := s.collections.Tokens.Create(ctx, proj.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.AddAppTokenReply{
+	return &pb.AddTokenReply{
 		ID: token.ID,
 	}, nil
 }
 
-// ListAppTokens handles a list app tokens request.
-func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensRequest) (*pb.ListAppTokensReply, error) {
+// ListTokens handles a list app tokens request.
+func (s *service) ListTokens(ctx context.Context, req *pb.ListTokensRequest) (*pb.ListTokensReply, error) {
 	log.Debugf("received list app tokens request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
@@ -527,7 +527,7 @@ func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensReques
 		return nil, err
 	}
 
-	tokens, err := s.collections.AppTokens.List(ctx, proj.ID)
+	tokens, err := s.collections.Tokens.List(ctx, proj.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -536,31 +536,31 @@ func (s *service) ListAppTokens(ctx context.Context, req *pb.ListAppTokensReques
 		list[i] = token.ID
 	}
 
-	return &pb.ListAppTokensReply{List: list}, nil
+	return &pb.ListTokensReply{List: list}, nil
 }
 
-// RemoveAppToken handles a remove app token request.
-func (s *service) RemoveAppToken(ctx context.Context, req *pb.RemoveAppTokenRequest) (*pb.RemoveAppTokenReply, error) {
+// RemoveToken handles a remove app token request.
+func (s *service) RemoveToken(ctx context.Context, req *pb.RemoveTokenRequest) (*pb.RemoveTokenReply, error) {
 	log.Debugf("received remove app token request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	token, err := s.getAppTokenWithScope(ctx, req.ID, scope)
+	token, err := s.getTokenWithScope(ctx, req.ID, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = s.collections.AppTokens.Delete(ctx, token.ID); err != nil {
+	if err = s.collections.Tokens.Delete(ctx, token.ID); err != nil {
 		return nil, err
 	}
 
-	return &pb.RemoveAppTokenReply{}, nil
+	return &pb.RemoveTokenReply{}, nil
 }
 
-func (s *service) getAppTokenWithScope(ctx context.Context, tokenID, scope string) (*c.AppToken, error) {
-	token, err := s.collections.AppTokens.Get(ctx, tokenID)
+func (s *service) getTokenWithScope(ctx context.Context, tokenID, scope string) (*c.Token, error) {
+	token, err := s.collections.Tokens.Get(ctx, tokenID)
 	if err != nil {
 		return nil, err
 	}
