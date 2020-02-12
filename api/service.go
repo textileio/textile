@@ -375,7 +375,7 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 }
 
 // AddProject handles an add project request.
-func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.AddProjectReply, error) {
+func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.GetProjectReply, error) {
 	log.Debugf("received add project request")
 
 	scope, ok := ctx.Value(reqKey("scope")).(string)
@@ -397,10 +397,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 		return nil, err
 	}
 
-	return &pb.AddProjectReply{
-		ID:      proj.ID,
-		StoreID: proj.StoreID,
-	}, nil
+	return projectToPbProject(proj), nil
 }
 
 // GetProject handles a get project request.

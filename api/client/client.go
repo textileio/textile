@@ -121,7 +121,7 @@ func (c *Client) LeaveTeam(ctx context.Context, teamID string, auth Auth) error 
 }
 
 // AddProject add a new project under the given scope.
-func (c *Client) AddProject(ctx context.Context, name string, auth Auth) (*pb.AddProjectReply, error) {
+func (c *Client) AddProject(ctx context.Context, name string, auth Auth) (*pb.GetProjectReply, error) {
 	return c.c.AddProject(authCtx(ctx, auth), &pb.AddProjectRequest{
 		Name: name,
 	})

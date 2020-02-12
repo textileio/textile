@@ -16,38 +16,42 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(initCmd, lsCmd, inspectCmd, rmCmd)
+	rootCmd.AddCommand(projectsCmd)
+	projectsCmd.AddCommand(initProjectCmd, lsProjectsCmd, inspectProjectCmd, rmProjectCmd)
 
-	initCmd.Flags().String(
-		"name",
-		"",
-		"Project name")
-
-	initCmd.Flags().String(
+	initProjectCmd.Flags().String(
 		"path",
 		".",
 		"Project path")
 }
 
-var initCmd = &cobra.Command{
+var projectsCmd = &cobra.Command{
+	Use: "projects",
+	Aliases: []string{
+		"project",
+	},
+	Short: "Manage projects",
+	Long:  `Manage your projects.`,
+	Run: func(c *cobra.Command, args []string) {
+		lsProjects()
+	},
+}
+
+var initProjectCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Init a new project",
 	Long:  `Initialize a new project.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		var pth, name string
-		var err error
+		var pth string
 		if !c.Flag("path").Changed {
+			var err error
 			pth, err = os.Getwd()
 			if err != nil {
 				cmd.Fatal(err)
 			}
 		} else {
 			pth = c.Flag("path").Value.String()
-		}
-		if !c.Flag("name").Changed {
-			name = filepath.Base(pth)
-		} else {
-			name = c.Flag("name").Value.String()
 		}
 
 		pth = filepath.Join(pth, ".textile")
@@ -64,18 +68,14 @@ var initCmd = &cobra.Command{
 		defer cancel()
 		proj, err := client.AddProject(
 			ctx,
-			name,
+			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		configViper.Set("id", proj.ID)
-		if proj.StoreID != "" {
-			configViper.Set("store", proj.StoreID)
-		}
+		configViper.Set("project_id", proj.ID)
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
@@ -85,7 +85,7 @@ var initCmd = &cobra.Command{
 	},
 }
 
-var lsCmd = &cobra.Command{
+var lsProjectsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
@@ -93,31 +93,34 @@ var lsCmd = &cobra.Command{
 	Short: "List projects",
 	Long:  `List existing projects under the current scope.`,
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		projects, err := client.ListProjects(
-			ctx,
-			api.Auth{
-				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
-			})
-		if err != nil {
-			cmd.Fatal(err)
-		}
-
-		if len(projects.List) > 0 {
-			data := make([][]string, len(projects.List))
-			for i, p := range projects.List {
-				data[i] = []string{p.Name, p.ID, p.StoreID}
-			}
-			cmd.RenderTable([]string{"name", "id", "store id"}, data)
-		}
-
-		cmd.Message("Found %d projects for current scope", aurora.White(len(projects.List)).Bold())
+		lsProjects()
 	},
 }
 
-var inspectCmd = &cobra.Command{
+func lsProjects() {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	projects, err := client.ListProjects(
+		ctx,
+		api.Auth{
+			Token: authViper.GetString("token"),
+		})
+	if err != nil {
+		cmd.Fatal(err)
+	}
+
+	if len(projects.List) > 0 {
+		data := make([][]string, len(projects.List))
+		for i, p := range projects.List {
+			data[i] = []string{p.Name, p.ID, p.StoreID}
+		}
+		cmd.RenderTable([]string{"name", "id", "store"}, data)
+	}
+
+	cmd.Message("Found %d projects for current scope", aurora.White(len(projects.List)).Bold())
+}
+
+var inspectProjectCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Display project information",
 	Long:  `Display detailed information about a project (interactive).`,
@@ -126,13 +129,13 @@ var inspectCmd = &cobra.Command{
 			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
 
 		cmd.RenderTable(
-			[]string{"name", "id", "store id", "filecoin wallet address", "filecoin wallet balance"},
+			[]string{"name", "id", "store", "address", "balance"},
 			[][]string{{selected.Name, selected.ID, selected.StoreID, selected.WalletAddress,
 				strconv.FormatInt(selected.WalletBalance, 10)}})
 	},
 }
 
-var rmCmd = &cobra.Command{
+var rmProjectCmd = &cobra.Command{
 	Use: "rm",
 	Aliases: []string{
 		"remove",
@@ -150,7 +153,6 @@ var rmCmd = &cobra.Command{
 			selected.ID,
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			}); err != nil {
 			cmd.Fatal(err)
 		}
@@ -168,7 +170,6 @@ func selectProject(label, successMsg string) *pb.GetProjectReply {
 		ctx,
 		api.Auth{
 			Token: authViper.GetString("token"),
-			Scope: configViper.GetString("scope"),
 		})
 	if err != nil {
 		cmd.Fatal(err)

@@ -88,11 +88,6 @@ message AddProjectRequest {
     string name = 1;
 }
 
-message AddProjectReply {
-    string ID = 1;
-    string storeID = 2;
-}
-
 message GetProjectRequest {
     string ID = 1;
 }
@@ -220,7 +215,7 @@ service API {
     rpc InviteToTeam (InviteToTeamRequest) returns (InviteToTeamReply) {}
     rpc LeaveTeam (LeaveTeamRequest) returns (LeaveTeamReply) {}
 
-    rpc AddProject (AddProjectRequest) returns (AddProjectReply) {}
+    rpc AddProject (AddProjectRequest) returns (GetProjectReply) {}
     rpc GetProject (GetProjectRequest) returns (GetProjectReply) {}
     rpc ListProjects (ListProjectsRequest) returns (ListProjectsReply) {}
     rpc RemoveProject (RemoveProjectRequest) returns (RemoveProjectReply) {}

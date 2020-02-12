@@ -12,26 +12,26 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(appTokensCmd)
-	appTokensCmd.AddCommand(addAppTokensCmd, lsAppTokensCmd, rmAppTokensCmd)
+	projectsCmd.AddCommand(tokensCmd)
+	tokensCmd.AddCommand(addTokenCmd, lsTokensCmd, rmTokensCmd)
 }
 
-var appTokensCmd = &cobra.Command{
+var tokensCmd = &cobra.Command{
 	Use: "tokens",
 	Aliases: []string{
 		"token",
 	},
-	Short: "Application token management",
-	Long:  `Manage your project's application tokens.`,
+	Short: "Project token management",
+	Long:  `Manage your project's tokens.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsTokens()
 	},
 }
 
-var addAppTokensCmd = &cobra.Command{
+var addTokenCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add app token",
-	Long:  `Add a new application token (interactive).`,
+	Short: "Add project token",
+	Long:  `Add a new project token (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		project := selectProject("Select project", aurora.Sprintf(
 			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
@@ -48,17 +48,17 @@ var addAppTokensCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("Added new app token %s", aurora.White(token.ID).Bold())
+		cmd.Success("Added new token %s", aurora.White(token.ID).Bold())
 	},
 }
 
-var lsAppTokensCmd = &cobra.Command{
+var lsTokensCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
 	},
-	Short: "List app tokens",
-	Long:  `List application tokens for a project.`,
+	Short: "List project tokens",
+	Long:  `List project tokens.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsTokens()
 	},
@@ -91,18 +91,18 @@ func lsTokens() {
 	cmd.Message("Found %d tokens", aurora.White(len(tokens.List)).Bold())
 }
 
-var rmAppTokensCmd = &cobra.Command{
+var rmTokensCmd = &cobra.Command{
 	Use: "rm",
 	Aliases: []string{
 		"remove",
 	},
-	Short: "Remove an app token",
-	Long:  `Remove an app token (interactive).`,
+	Short: "Remove a token",
+	Long:  `Remove a project token (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		project := selectProject("Select project", aurora.Sprintf(
 			aurora.BrightBlack("> Selected {{ .Name | white | bold }}")))
 
-		selected := selectToken("Remove app token", aurora.Sprintf(
+		selected := selectToken("Remove token", aurora.Sprintf(
 			aurora.BrightBlack("> Removing token {{ . | white | bold }}")),
 			project.ID)
 
@@ -117,7 +117,7 @@ var rmAppTokensCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("Removed app token %s", aurora.White(selected).Bold())
+		cmd.Success("Removed token %s", aurora.White(selected).Bold())
 	},
 }
 

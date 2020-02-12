@@ -177,7 +177,6 @@ var inviteTeamsCmd = &cobra.Command{
 			ctx,
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
@@ -296,7 +295,6 @@ func selectTeam(label, successMsg string, includeAccount bool) *teamItem {
 			ctx2,
 			api.Auth{
 				Token: authViper.GetString("token"),
-				Scope: configViper.GetString("scope"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
