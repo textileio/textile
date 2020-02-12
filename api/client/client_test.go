@@ -352,7 +352,7 @@ func TestClient_AddProject(t *testing.T) {
 	}
 
 	t.Run("test add project with team scope", func(t *testing.T) {
-		if _, err := client.AddProject(context.Background(), "foo",
+		if _, err := client.AddProject(context.Background(), "bar",
 			c.Auth{Token: user.SessionID, Scope: team.ID}); err != nil {
 			t.Fatalf("add project with team scope should succeed: %v", err)
 		}

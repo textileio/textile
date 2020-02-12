@@ -31,7 +31,10 @@ func (d *Developers) GetInstance() interface{} {
 }
 
 func (d *Developers) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path:   "Email",
+		Unique: true,
+	}}
 }
 
 func (d *Developers) GetStoreID() *uuid.UUID {

@@ -38,7 +38,7 @@ var addTokenCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		token, err := client.AddAppToken(
+		token, err := client.AddToken(
 			ctx,
 			project.ID,
 			api.Auth{
@@ -70,7 +70,7 @@ func lsTokens() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	tokens, err := client.ListAppTokens(
+	tokens, err := client.ListTokens(
 		ctx,
 		project.ID,
 		api.Auth{
@@ -108,7 +108,7 @@ var rmTokensCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		if err := client.RemoveAppToken(
+		if err := client.RemoveToken(
 			ctx,
 			selected,
 			api.Auth{
@@ -124,7 +124,7 @@ var rmTokensCmd = &cobra.Command{
 func selectToken(label, successMsg, projID string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	tokens, err := client.ListAppTokens(
+	tokens, err := client.ListTokens(
 		ctx,
 		projID,
 		api.Auth{

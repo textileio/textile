@@ -15,8 +15,8 @@ var (
 
 type Session struct {
 	ID     string
-	UserID string // user or app user
-	Scope  string // user or team ID
+	UserID string // dev or user
+	Scope  string // dev or team ID
 	Expiry int
 }
 
@@ -35,7 +35,9 @@ func (s *Sessions) GetInstance() interface{} {
 }
 
 func (s *Sessions) GetIndexes() []*store.IndexConfig {
-	return []*store.IndexConfig{}
+	return []*store.IndexConfig{{
+		Path: "UserID",
+	}}
 }
 
 func (s *Sessions) GetStoreID() *uuid.UUID {

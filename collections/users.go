@@ -12,6 +12,7 @@ import (
 
 type User struct {
 	ID        string
+	DeviceID  string
 	ProjectID string
 	StoreID   string
 	Created   int64
@@ -32,7 +33,12 @@ func (u *Users) GetInstance() interface{} {
 }
 
 func (u *Users) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path:   "DeviceID",
+		Unique: true,
+	}, {
+		Path: "ProjectID",
+	}}
 }
 
 func (u *Users) GetStoreID() *uuid.UUID {
@@ -41,7 +47,7 @@ func (u *Users) GetStoreID() *uuid.UUID {
 
 func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *User, err error) {
 	ctx = AuthCtx(ctx, u.token)
-	user, err = u.Get(ctx, deviceID)
+	user, err = u.GetByDeviceID(ctx, deviceID)
 	if user != nil {
 		return
 	}
@@ -55,7 +61,7 @@ func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (us
 		}
 	}
 	user = &User{
-		ID:        deviceID,
+		DeviceID:  deviceID,
 		ProjectID: projectID,
 		Created:   time.Now().Unix(),
 	}
@@ -79,6 +85,20 @@ func (u *Users) Get(ctx context.Context, id string) (*User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (u *Users) GetByDeviceID(ctx context.Context, deviceID string) (*User, error) {
+	ctx = AuthCtx(ctx, u.token)
+	query := s.JSONWhere("DeviceID").Eq(deviceID)
+	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
+	if err != nil {
+		return nil, err
+	}
+	users := res.([]*User)
+	if len(users) == 0 {
+		return nil, nil
+	}
+	return users[0], nil
 }
 
 func (u *Users) List(ctx context.Context, projectID string) ([]*User, error) {

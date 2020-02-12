@@ -36,7 +36,11 @@ func (i *Invites) GetInstance() interface{} {
 }
 
 func (i *Invites) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path: "TeamID",
+	}, {
+		Path: "FromID",
+	}}
 }
 
 func (i *Invites) GetStoreID() *uuid.UUID {

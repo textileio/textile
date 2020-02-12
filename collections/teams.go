@@ -31,7 +31,9 @@ func (t *Teams) GetInstance() interface{} {
 }
 
 func (t *Teams) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path: "OwnerID",
+	}}
 }
 
 func (t *Teams) GetStoreID() *uuid.UUID {

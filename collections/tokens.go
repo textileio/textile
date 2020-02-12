@@ -28,7 +28,9 @@ func (a *Tokens) GetInstance() interface{} {
 }
 
 func (a *Tokens) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{}
+	return []*s.IndexConfig{{
+		Path: "ProjectID",
+	}}
 }
 
 func (a *Tokens) GetStoreID() *uuid.UUID {
