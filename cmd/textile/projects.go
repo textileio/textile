@@ -39,7 +39,7 @@ var projectsCmd = &cobra.Command{
 }
 
 var initProjectCmd = &cobra.Command{
-	Use:   "init",
+	Use:   "init [name]",
 	Short: "Init a new project",
 	Long:  `Initialize a new project.`,
 	Args:  cobra.ExactArgs(1),

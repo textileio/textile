@@ -38,36 +38,23 @@ var teamsCmd = &cobra.Command{
 }
 
 var addTeamsCmd = &cobra.Command{
-	Use:   "add",
+	Use:   "add [name]",
 	Short: "Add team",
 	Long:  `Add a new team (interactive).`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		prompt := promptui.Prompt{
-			Label: "Enter a team name",
-			Validate: func(name string) error {
-				if len(name) < 3 {
-					return errors.New("name too short")
-				}
-				return nil
-			},
-		}
-		name, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
 		if _, err := client.AddTeam(
 			ctx,
-			name,
+			args[0],
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
 			cmd.Fatal(err)
 		}
 
-		cmd.Success("Added new team %s", aurora.White(name).Bold())
+		cmd.Success("Added new team %s", aurora.White(args[0]).Bold())
 	},
 }
 
