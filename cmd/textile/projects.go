@@ -18,9 +18,14 @@ import (
 func init() {
 	rootCmd.AddCommand(projectsCmd)
 	rootCmd.AddCommand(initProjectCmd) // alias to root
-	projectsCmd.AddCommand(initProjectCmd, lsProjectsCmd, inspectProjectCmd, rmProjectCmd)
+	projectsCmd.AddCommand(initProjectCmd, pullProjectCmd, lsProjectsCmd, inspectProjectCmd, rmProjectCmd)
 
 	initProjectCmd.Flags().String(
+		"path",
+		".",
+		"Project path")
+
+	pullProjectCmd.Flags().String(
 		"path",
 		".",
 		"Project path")
@@ -83,6 +88,43 @@ var initProjectCmd = &cobra.Command{
 		}
 
 		cmd.Success("Initialized empty project in %s", aurora.White(pth).Bold())
+	},
+}
+
+var pullProjectCmd = &cobra.Command{
+	Use:   "pull [name]",
+	Short: "Pull a team project and buckets.",
+	Long:  `Pull a team project and buckets to current or provided directory.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		var pth string
+		if !c.Flag("path").Changed {
+			var err error
+			pth, err = os.Getwd()
+			if err != nil {
+				cmd.Fatal(err)
+			}
+		} else {
+			pth = c.Flag("path").Value.String()
+		}
+
+		pth = filepath.Join(pth, ".textile")
+		if err := os.MkdirAll(pth, os.ModePerm); err != nil {
+			cmd.Fatal(err)
+		}
+		filename := filepath.Join(pth, "config.yml")
+
+		if _, err := os.Stat(filename); err == nil {
+			cmd.Fatal(fmt.Errorf("project already exists in %s", pth))
+		}
+
+		configViper.Set("project", args[0])
+
+		if err := configViper.WriteConfigAs(filename); err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.Message("Pulled %s project to %s", args[0], aurora.White(pth).Bold())
 	},
 }
 
