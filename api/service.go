@@ -697,9 +697,9 @@ func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*
 	if buck == nil {
 		return nil, status.Error(codes.NotFound, "Bucket not found")
 	}
-	if _, err := s.getProjectForScope(ctx, buck.ProjectID, scope); err != nil {
-		return nil, err
-	}
+	//if _, err := s.getProjectForScope(ctx, buck.ProjectID, scope); err != nil {
+	//	return nil, err
+	//}
 	return buck, nil
 }
 
@@ -743,10 +743,11 @@ func (s *service) bucketPathToPb(
 func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	log.Debugf("received push bucket path request")
 
-	scope, ok := server.Context().Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
+	var scope string
+	//scope, ok := server.Context().Value(reqKey("scope")).(string)
+	//if !ok {
+	//	log.Fatal("scope required")
+	//}
 
 	req, err := server.Recv()
 	if err != nil {

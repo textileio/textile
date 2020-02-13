@@ -94,7 +94,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 	}
 	s.rpc = grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
-		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
+		//grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
 	)
 
 	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)

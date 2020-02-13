@@ -106,11 +106,13 @@ func (g *Gateway) Start() {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("/confirm/:secret", g.confirmEmail)
-	router.GET("/consent/:invite", g.consentInvite)
+	router.GET("", g.bucketHandler)
 
 	router.GET("/dashboard/:project", g.dashHandler)
 	router.GET("/dashboard/:project/*path", g.dashHandler)
+
+	router.GET("/confirm/:secret", g.confirmEmail)
+	router.GET("/consent/:invite", g.consentInvite)
 
 	router.POST("/register", g.registerUser)
 
@@ -170,50 +172,16 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// confirmEmail verifies an emailed secret.
-func (g *Gateway) confirmEmail(c *gin.Context) {
-	if err := g.sessionBus.Send(g.parseUUID(c, c.Param("secret"))); err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
-		return
+func (g *Gateway) bucketHandler(c *gin.Context) {
+	log.Debugf("host: %s", c.Request.Host)
+
+	for k, vs := range c.Request.Header {
+		for _, v := range vs {
+			log.Debugf("header %s: %s", k, v)
+		}
 	}
 
-	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
-}
-
-// consentInvite adds a user to a team.
-func (g *Gateway) consentInvite(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
-	defer cancel()
-
-	invite, err := g.collections.Invites.Get(ctx, g.parseUUID(c, c.Param("invite")))
-	if err != nil {
-		g.render404(c)
-		return
-	}
-	if invite.Expiry < int(time.Now().Unix()) {
-		g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
-		return
-	}
-
-	dev, err := g.collections.Developers.GetOrCreateByEmail(ctx, invite.ToEmail)
-	if err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	team, err := g.collections.Teams.Get(ctx, invite.TeamID)
-	if err != nil {
-		g.render404(c)
-		return
-	}
-	if err = g.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
-		"Team": team.Name,
-	})
+	g.render404(c)
 }
 
 type link struct {
@@ -287,6 +255,52 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 			"Links": links,
 		})
 	}
+}
+
+// confirmEmail verifies an emailed secret.
+func (g *Gateway) confirmEmail(c *gin.Context) {
+	if err := g.sessionBus.Send(g.parseUUID(c, c.Param("secret"))); err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
+}
+
+// consentInvite adds a user to a team.
+func (g *Gateway) consentInvite(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+
+	invite, err := g.collections.Invites.Get(ctx, g.parseUUID(c, c.Param("invite")))
+	if err != nil {
+		g.render404(c)
+		return
+	}
+	if invite.Expiry < int(time.Now().Unix()) {
+		g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
+		return
+	}
+
+	dev, err := g.collections.Developers.GetOrCreateByEmail(ctx, invite.ToEmail)
+	if err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	team, err := g.collections.Teams.Get(ctx, invite.TeamID)
+	if err != nil {
+		g.render404(c)
+		return
+	}
+	if err = g.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
+		g.renderError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
+		"Team": team.Name,
+	})
 }
 
 type registrationParams struct {
