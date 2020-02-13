@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	logger "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log"
 	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
@@ -48,18 +49,33 @@ func (f *fileSystem) Exists(prefix, path string) bool {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
-	addr        ma.Multiaddr
-	url         string
-	server      *http.Server
-	collections *collections.Collections
-	client      *client.Client
-	clientAuth  client.Auth
-	sessionBus  *broadcast.Broadcaster
+	addr         ma.Multiaddr
+	bucketDomain string
+	server       *http.Server
+	collections  *collections.Collections // @todo: Remove in favor of the client
+	client       *client.Client
+	clientAuth   client.Auth
+	sessionBus   *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr ma.Multiaddr, url string, apiAddr ma.Multiaddr, apiToken string,
-	collections *collections.Collections, sessionBus *broadcast.Broadcaster) (*Gateway, error) {
+func NewGateway(
+	addr ma.Multiaddr,
+	apiAddr ma.Multiaddr,
+	apiToken string,
+	bucketDomain string,
+	collections *collections.Collections,
+	sessionBus *broadcast.Broadcaster,
+	debug bool,
+) (*Gateway, error) {
+	if debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"gateway": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	apiTarget, err := util.TCPAddrFromMultiAddr(apiAddr)
 	if err != nil {
 		return nil, err
@@ -70,12 +86,12 @@ func NewGateway(addr ma.Multiaddr, url string, apiAddr ma.Multiaddr, apiToken st
 		return nil, err
 	}
 	return &Gateway{
-		addr:        addr,
-		url:         url,
-		collections: collections,
-		client:      c,
-		clientAuth:  client.Auth{Token: apiToken},
-		sessionBus:  sessionBus,
+		addr:         addr,
+		bucketDomain: bucketDomain,
+		collections:  collections,
+		client:       c,
+		clientAuth:   client.Auth{Token: apiToken},
+		sessionBus:   sessionBus,
 	}, nil
 }
 
@@ -102,15 +118,24 @@ func (g *Gateway) Start() {
 
 	router.Use(static.Serve("", &fileSystem{Assets}))
 
+	router.Use(serveBucket(&bucketFileSystem{
+		client:  g.client,
+		auth:    g.clientAuth,
+		timeout: handlerTimeout,
+		host:    g.bucketDomain,
+	}))
+
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("/confirm/:secret", g.confirmEmail)
-	router.GET("/consent/:invite", g.consentInvite)
+	router.GET("", g.bucketHandler)
 
 	router.GET("/dashboard/:project", g.dashHandler)
 	router.GET("/dashboard/:project/*path", g.dashHandler)
+
+	router.GET("/confirm/:secret", g.confirmEmail)
+	router.GET("/consent/:invite", g.consentInvite)
 
 	router.POST("/register", g.registerUser)
 
@@ -170,6 +195,102 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
+// bucketHandler renders a bucket as a website.
+func (g *Gateway) bucketHandler(c *gin.Context) {
+	log.Debugf("host: %s", c.Request.Host)
+
+	buckName, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	if err != nil {
+		abort(c, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+	rep, err := g.client.ListBucketPath(ctx, "", buckName, g.clientAuth)
+	if err != nil {
+		abort(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, item := range rep.Item.Items {
+		if item.Name == "index.html" {
+			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+			if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+				abort(c, http.StatusInternalServerError, err)
+			}
+			return
+		}
+	}
+
+	// No index was found, use the default (404 for now)
+	g.render404(c)
+}
+
+type link struct {
+	Name  string
+	Path  string
+	Size  string
+	Links string
+}
+
+// dashHandler renders a project dashboard.
+// Currently, this just shows bucket files and directories.
+func (g *Gateway) dashHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+
+	project := c.Param("project")
+	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
+	if err != nil {
+		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
+		return
+	}
+
+	if !rep.Item.IsDir {
+		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
+			abort(c, http.StatusInternalServerError, err)
+		}
+	} else {
+		projectPath := path.Join("dashboard", project)
+
+		links := make([]link, len(rep.Item.Items))
+		for i, item := range rep.Item.Items {
+			var pth string
+			if rep.Root != nil {
+				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+			} else {
+				pth = item.Name
+			}
+
+			links[i] = link{
+				Name:  item.Name,
+				Path:  path.Join(projectPath, pth),
+				Size:  byteCountDecimal(item.Size),
+				Links: strconv.Itoa(len(item.Items)),
+			}
+		}
+
+		var root, back string
+		if rep.Root != nil {
+			root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
+		} else {
+			root = ""
+		}
+		if root == "" {
+			back = projectPath
+		} else {
+			back = path.Dir(path.Join(projectPath, root))
+		}
+		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
+			"Path":  rep.Item.Path,
+			"Root":  root,
+			"Back":  back,
+			"Links": links,
+		})
+	}
+}
+
 // confirmEmail verifies an emailed secret.
 func (g *Gateway) confirmEmail(c *gin.Context) {
 	if err := g.sessionBus.Send(g.parseUUID(c, c.Param("secret"))); err != nil {
@@ -214,79 +335,6 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
 		"Team": team.Name,
 	})
-}
-
-type link struct {
-	Name  string
-	Path  string
-	Size  string
-	Links string
-}
-
-// dashHandler renders a project dashboard.
-// Currently, this just shows bucket files and directories.
-func (g *Gateway) dashHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
-	defer cancel()
-
-	project := c.Param("project")
-	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
-	if err != nil {
-		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
-		return
-	}
-
-	if !rep.Item.IsDir {
-		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
-			abort(c, http.StatusInternalServerError, err)
-		}
-	} else {
-		projectPath := path.Join("dashboard", project)
-		isBucket := rep.Root != nil && rep.Item.Path == rep.Root.Path
-
-		links := make([]link, len(rep.Item.Items))
-		for i, item := range rep.Item.Items {
-			var pth string
-			if rep.Root != nil {
-				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			} else {
-				pth = item.Name
-			}
-
-			// Render indexes if this is a top-level bucket
-			if isBucket && item.Name == "index.html" {
-				if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
-					abort(c, http.StatusInternalServerError, err)
-				}
-				return
-			}
-
-			links[i] = link{
-				Name:  item.Name,
-				Path:  path.Join(projectPath, pth),
-				Size:  byteCountDecimal(item.Size),
-				Links: strconv.Itoa(len(item.Items)),
-			}
-		}
-
-		var root, back string
-		if rep.Root != nil {
-			root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
-		} else {
-			root = ""
-		}
-		if root == "" {
-			back = projectPath
-		} else {
-			back = path.Dir(path.Join(projectPath, root))
-		}
-		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-			"Path":  rep.Item.Path,
-			"Root":  root,
-			"Back":  back,
-			"Links": links,
-		})
-	}
 }
 
 type registrationParams struct {

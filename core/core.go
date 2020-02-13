@@ -66,6 +66,7 @@ type Config struct {
 	AddrIpfsApi                ma.Multiaddr
 	AddrGatewayHost            ma.Multiaddr
 	AddrGatewayUrl             string
+	AddrGatewayBucketDomain    string
 	AddrFilecoinApi            ma.Multiaddr
 
 	DNSDomain string
@@ -202,11 +203,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	t.gateway, err = gateway.NewGateway(
 		conf.AddrGatewayHost,
-		conf.AddrGatewayUrl,
 		conf.AddrApi,
 		gatewayToken,
+		conf.AddrGatewayBucketDomain,
 		collections,
-		t.sessionBus)
+		t.sessionBus,
+		conf.Debug)
 	if err != nil {
 		return nil, err
 	}

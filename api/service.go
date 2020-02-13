@@ -371,10 +371,12 @@ func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.
 // AddProject handles an add project request.
 func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.GetProjectReply, error) {
 	log.Debugf("received add project request")
+
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
+
 	var addr string
 	if s.filecoinClient != nil {
 		var err error
@@ -383,6 +385,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 			return nil, err
 		}
 	}
+
 	proj, err := s.collections.Projects.Create(ctx, req.Name, scope, addr)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "unique constraint violation") {
@@ -394,6 +397,7 @@ func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*p
 			return nil, err
 		}
 	}
+
 	return projectToPbProject(proj), nil
 }
 
@@ -697,8 +701,10 @@ func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*
 	if buck == nil {
 		return nil, status.Error(codes.NotFound, "Bucket not found")
 	}
-	if _, err := s.getProjectForScope(ctx, buck.ProjectID, scope); err != nil {
-		return nil, err
+	if scope != "*" {
+		if _, err := s.getProjectForScope(ctx, buck.ProjectID, scope); err != nil {
+			return nil, err
+		}
 	}
 	return buck, nil
 }
@@ -788,12 +794,12 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	}
 
 	sendErr := func(err error) {
-		if err := server.Send(&pb.PushBucketPathReply{
+		if err2 := server.Send(&pb.PushBucketPathReply{
 			Payload: &pb.PushBucketPathReply_Error{
 				Error: err.Error(),
 			},
-		}); err != nil {
-			log.Errorf("error sending error: %v", err)
+		}); err2 != nil {
+			log.Errorf("error sending error: %v (%v)", err, err2)
 		}
 	}
 
@@ -807,14 +813,14 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 				_ = writer.Close()
 				return
 			} else if err != nil {
+				sendErr(fmt.Errorf("error on receive: %v", err))
 				_ = writer.CloseWithError(err)
-				sendErr(err)
 				return
 			}
 			switch payload := req.Payload.(type) {
 			case *pb.PushBucketPathRequest_Chunk:
 				if _, err := writer.Write(payload.Chunk); err != nil {
-					sendErr(err)
+					sendErr(fmt.Errorf("error writing chunk: %v", err))
 					return
 				}
 			default:
@@ -906,6 +912,15 @@ func (s *service) createBucket(ctx context.Context, proj *c.Project, name string
 		options.Unixfs.Pin(true))
 	if err != nil {
 		return nil, err
+	}
+
+	if s.dnsManager != nil {
+		parts := strings.SplitN(s.gatewayUrl, "//", 2)
+		if len(parts) > 1 {
+			if _, err := s.dnsManager.NewCNAME(name, parts[1]); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return s.collections.Buckets.Create(ctx, pth, name, proj.ID)
