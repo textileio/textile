@@ -16,7 +16,7 @@ binpaths="/usr/local/bin /usr/bin"
 is_write_perm_missing=""
 
 for binpath in $binpaths; do
-	if mv "$textile" "$binpath/$bin" 2>/dev/null; then
+	if mv "$textile" "$binpath/$textile" 2>/dev/null; then
 		echo "Moved $textile to $binpath"
 		exit 0
 	else
@@ -26,7 +26,7 @@ for binpath in $binpaths; do
 	fi
 done
 
-echo "We cannot install $bin in one of the directories $binpaths"
+echo "We cannot install $textile in one of the directories $binpaths"
 
 if test -n "$is_write_perm_missing"; then
 	echo "It seems that we do not have the necessary write permissions."
