@@ -170,6 +170,10 @@ func init() {
 		"addrGatewayUrl",
 		flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
+	rootCmd.PersistentFlags().String(
+		"addrGatewayBucketDomain",
+		flags["addrGatewayBucketDomain"].DefValue.(string),
+		"Public gateway bucket domain")
 
 	// Filecoin settings
 	rootCmd.PersistentFlags().String(

@@ -914,6 +914,15 @@ func (s *service) createBucket(ctx context.Context, proj *c.Project, name string
 		return nil, err
 	}
 
+	if s.dnsManager != nil {
+		parts := strings.SplitN(s.gatewayUrl, "//", 2)
+		if len(parts) > 1 {
+			if _, err := s.dnsManager.NewCNAME(name, parts[1]); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return s.collections.Buckets.Create(ctx, pth, name, proj.ID)
 }
 
