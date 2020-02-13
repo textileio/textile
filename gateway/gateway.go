@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	logger "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log"
 	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
@@ -58,8 +59,23 @@ type Gateway struct {
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr ma.Multiaddr, url string, apiAddr ma.Multiaddr, apiToken string,
-	collections *collections.Collections, sessionBus *broadcast.Broadcaster) (*Gateway, error) {
+func NewGateway(
+	addr ma.Multiaddr,
+	url string,
+	apiAddr ma.Multiaddr,
+	apiToken string,
+	collections *collections.Collections,
+	sessionBus *broadcast.Broadcaster,
+	debug bool,
+) (*Gateway, error) {
+	if debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"gateway": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	apiTarget, err := util.TCPAddrFromMultiAddr(apiAddr)
 	if err != nil {
 		return nil, err

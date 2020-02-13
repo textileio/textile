@@ -206,7 +206,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		conf.AddrApi,
 		gatewayToken,
 		collections,
-		t.sessionBus)
+		t.sessionBus,
+		conf.Debug)
 	if err != nil {
 		return nil, err
 	}

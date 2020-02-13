@@ -2,7 +2,6 @@ version: "3"
 services:
   textile:
     image: textile/textile:latest
-    hostname: textile_host
     restart: on-failure
     volumes:
       - "${REPO_PATH}/textile:/data/textile"
@@ -15,7 +14,7 @@ services:
       - TXTL_ADDR_THREADS_API_PROXY=/ip4/0.0.0.0/tcp/6007
       - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - TXTL_ADDR_GATEWAY_URL
-      - TXTL_ADDR_IPFS_API=/ip4/127.0.0.1/tcp/5001
+      - TXTL_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
       - TXTL_EMAIL_API_KEY
       - TXTL_LOG_DEBUG
     ports:
@@ -28,7 +27,6 @@ services:
       - "127.0.0.1:8006:8006"
   ipfs:
     image: ipfs/go-ipfs:latest
-    hostname: ipfs_host
     restart: on-failure
     volumes:
       - "${REPO_PATH}/ipfs:/data/ipfs"
