@@ -807,14 +807,14 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 				_ = writer.Close()
 				return
 			} else if err != nil {
+				sendErr(fmt.Errorf("error on receive: %v", err))
 				_ = writer.CloseWithError(err)
-				sendErr(err)
 				return
 			}
 			switch payload := req.Payload.(type) {
 			case *pb.PushBucketPathRequest_Chunk:
 				if _, err := writer.Write(payload.Chunk); err != nil {
-					sendErr(err)
+					sendErr(fmt.Errorf("error writing chunk: %v", err))
 					return
 				}
 			default:
