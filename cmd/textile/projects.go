@@ -17,6 +17,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(projectsCmd)
+	rootCmd.AddCommand(initProjectCmd) // alias to root
 	projectsCmd.AddCommand(initProjectCmd, lsProjectsCmd, inspectProjectCmd, rmProjectCmd)
 
 	initProjectCmd.Flags().String(

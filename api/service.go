@@ -19,6 +19,7 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	pb "github.com/textileio/textile/api/pb"
 	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,6 +44,8 @@ type service struct {
 	emailClient    *email.Client
 	ipfsClient     iface.CoreAPI
 	filecoinClient *fc.Client
+
+	dnsManager *dns.Manager
 
 	gatewayUrl string
 
@@ -729,7 +732,6 @@ func (s *service) bucketPathToPb(
 			Path:    buck.Path,
 			Created: buck.Created,
 			Updated: buck.Updated,
-			Public:  buck.Public,
 		},
 	}, nil
 }
@@ -768,7 +770,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 		if err != nil {
 			return err
 		}
-		buck, err = s.createBucket(server.Context(), buckName, false, proj.ID)
+		buck, err = s.createBucket(server.Context(), proj, buckName)
 		if err != nil {
 			return err
 		}
@@ -886,7 +888,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	return nil
 }
 
-func (s *service) createBucket(ctx context.Context, name string, public bool, projectID string) (*c.Bucket, error) {
+func (s *service) createBucket(ctx context.Context, proj *c.Project, name string) (*c.Bucket, error) {
 	seed := make([]byte, 32)
 	_, err := rand.Read(seed)
 	if err != nil {
@@ -903,7 +905,7 @@ func (s *service) createBucket(ctx context.Context, name string, public bool, pr
 		return nil, err
 	}
 
-	return s.collections.Buckets.Create(ctx, pth, name, public, projectID)
+	return s.collections.Buckets.Create(ctx, pth, name, proj.ID)
 }
 
 // PullBucketPath handles a pull bucket path request.

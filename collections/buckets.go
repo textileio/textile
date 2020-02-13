@@ -14,7 +14,6 @@ type Bucket struct {
 	ID        string
 	Path      string
 	Name      string
-	Public    bool
 	ProjectID string
 	Created   int64
 	Updated   int64
@@ -53,14 +52,12 @@ func (f *Buckets) Create(
 	ctx context.Context,
 	pth path.Resolved,
 	name string,
-	public bool,
 	projectID string,
 ) (*Bucket, error) {
 	ctx = AuthCtx(ctx, f.token)
 	bucket := &Bucket{
 		Path:      pth.String(),
 		Name:      name,
-		Public:    public,
 		ProjectID: projectID,
 		Created:   time.Now().Unix(),
 		Updated:   time.Now().Unix(),
