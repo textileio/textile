@@ -48,16 +48,15 @@ func (f *Buckets) GetStoreID() *uuid.UUID {
 	return f.storeID
 }
 
-func (f *Buckets) Create(
-	ctx context.Context,
-	pth path.Resolved,
-	name string,
-	projectID string,
-) (*Bucket, error) {
+func (f *Buckets) Create(ctx context.Context, pth path.Resolved, name, projectID string) (*Bucket, error) {
+	validName, err := toValidName(name)
+	if err != nil {
+		return nil, err
+	}
 	ctx = AuthCtx(ctx, f.token)
 	bucket := &Bucket{
 		Path:      pth.String(),
-		Name:      name,
+		Name:      validName,
 		ProjectID: projectID,
 		Created:   time.Now().Unix(),
 		Updated:   time.Now().Unix(),
