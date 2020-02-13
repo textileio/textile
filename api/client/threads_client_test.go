@@ -27,7 +27,7 @@ func TestThreadsClient_NewStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := client.AddToken(context.Background(), project.ID, c.Auth{Token: user.SessionID})
+	token, err := client.AddToken(context.Background(), project.Name, c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)
 	}

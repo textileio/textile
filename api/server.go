@@ -83,6 +83,7 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			emailClient:    conf.EmailClient,
 			ipfsClient:     conf.IPFSClient,
 			filecoinClient: conf.FilecoinClient,
+			dnsManager:     conf.DNSManager,
 			gatewayUrl:     conf.GatewayUrl,
 			sessionBus:     conf.SessionBus,
 			sessionSecret:  conf.SessionSecret,

@@ -27,7 +27,7 @@ message WhoamiRequest {}
 
 message WhoamiReply {
     string ID = 1;
-    string Email = 2;
+    string email = 2;
     string teamID = 3;
     string teamName = 4;
 }
@@ -89,7 +89,7 @@ message AddProjectRequest {
 }
 
 message GetProjectRequest {
-    string ID = 1;
+    string name = 1;
 }
 
 message GetProjectReply {
@@ -108,13 +108,13 @@ message ListProjectsReply {
 }
 
 message RemoveProjectRequest {
-    string ID = 1;
+    string name = 1;
 }
 
 message RemoveProjectReply {}
 
 message AddTokenRequest {
-    string projectID = 1;
+    string project = 1;
 }
 
 message AddTokenReply {
@@ -122,7 +122,7 @@ message AddTokenReply {
 }
 
 message ListTokensRequest {
-    string projectID = 1;
+    string project = 1;
 }
 
 message ListTokensReply {
@@ -144,7 +144,7 @@ message BucketRoot {
 }
 
 message ListBucketPathRequest {
-    string projectID = 1;
+    string project = 1;
     string path = 2;
 }
 
@@ -168,7 +168,7 @@ message PushBucketPathRequest {
     }
 
     message Header {
-        string projectID = 1;
+        string project = 1;
         string path = 2;
     }
 }

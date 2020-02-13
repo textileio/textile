@@ -52,8 +52,8 @@ var lsBucketPathCmd = &cobra.Command{
 }
 
 func lsBucketPath(args []string) {
-	projectID := configViper.GetString("project_id")
-	if projectID == "" {
+	project := configViper.GetString("project")
+	if project == "" {
 		cmd.Fatal(errors.New("not a project directory"))
 	}
 
@@ -67,7 +67,7 @@ func lsBucketPath(args []string) {
 	if pth == "." || pth == "/" || pth == "./" {
 		pth = ""
 	}
-	rep, err := client.ListBucketPath(ctx, projectID, pth, api.Auth{
+	rep, err := client.ListBucketPath(ctx, project, pth, api.Auth{
 		Token: authViper.GetString("token"),
 	})
 	if err != nil {
@@ -141,8 +141,8 @@ These 'push' commands result in the following bucket structures.
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("project_id")
-		if projectID == "" {
+		project := configViper.GetString("project")
+		if project == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
@@ -188,7 +188,7 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		for i := range names {
-			addFile(projectID, names[i], paths[i])
+			addFile(project, names[i], paths[i])
 		}
 
 		cmd.Success("Pushed %d files to %s", aurora.White(len(names)).Bold(), aurora.White(bucketPath).Bold())
@@ -196,7 +196,7 @@ These 'push' commands result in the following bucket structures.
 }
 
 // @todo: Support Stdin
-func addFile(projectID, name, filePath string) {
+func addFile(project, name, filePath string) {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -222,7 +222,7 @@ func addFile(projectID, name, filePath string) {
 		defer cancel()
 		if _, _, err = client.PushBucketPath(
 			ctx,
-			projectID,
+			project,
 			filePath,
 			file,
 			api.Auth{
@@ -273,21 +273,21 @@ These 'pull' commands result in the following local structures.
 `,
 	Args: cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		projectID := configViper.GetString("project_id")
-		if projectID == "" {
+		project := configViper.GetString("project")
+		if project == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 
-		count := getPath(projectID, args[0], filepath.Dir(args[0]), args[1])
+		count := getPath(project, args[0], filepath.Dir(args[0]), args[1])
 
 		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
 	},
 }
 
-func getPath(projectID, pth, dir, dest string) (count int) {
+func getPath(project, pth, dir, dest string) (count int) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	rep, err := client.ListBucketPath(ctx, projectID, pth, api.Auth{
+	rep, err := client.ListBucketPath(ctx, project, pth, api.Auth{
 		Token: authViper.GetString("token"),
 	})
 	if err != nil {
@@ -296,7 +296,7 @@ func getPath(projectID, pth, dir, dest string) (count int) {
 
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(projectID, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+			count += getPath(project, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
 		}
 	} else {
 		name := filepath.Join(dest, strings.TrimPrefix(pth, dir))
@@ -356,7 +356,7 @@ var rmBucketPathCmd = &cobra.Command{
 	Long:  `Remove files and directories under a bucket path.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		if configViper.GetString("project_id") == "" {
+		if configViper.GetString("project") == "" {
 			cmd.Fatal(errors.New("not a project directory"))
 		}
 

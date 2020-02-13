@@ -70,6 +70,6 @@ var loginCmd = &cobra.Command{
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("You are now logged in. Initialize a new project directory with `%s`.",
-			aurora.Cyan("textile projects init <project_name>"))
+			aurora.Cyan("textile init <project_name>"))
 	},
 }

@@ -109,8 +109,8 @@ func (g *Gateway) Start() {
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	router.GET("/p/:project", g.bucketHandler)
-	router.GET("/p/:project/*path", g.bucketHandler)
+	router.GET("/dashboard/:project", g.dashHandler)
+	router.GET("/dashboard/:project/*path", g.dashHandler)
 
 	router.POST("/register", g.registerUser)
 
@@ -223,13 +223,14 @@ type link struct {
 	Links string
 }
 
-// bucketHandler renders bucket files and directories.
-func (g *Gateway) bucketHandler(c *gin.Context) {
+// dashHandler renders a project dashboard.
+// Currently, this just shows bucket files and directories.
+func (g *Gateway) dashHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
-	projectID := c.Param("project")
-	rep, err := g.client.ListBucketPath(ctx, g.parseUUID(c, projectID), c.Param("path"), g.clientAuth)
+	project := c.Param("project")
+	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
@@ -240,7 +241,8 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {
-		projectPath := path.Join("p", projectID)
+		projectPath := path.Join("dashboard", project)
+		isBucket := rep.Root != nil && rep.Item.Path == rep.Root.Path
 
 		links := make([]link, len(rep.Item.Items))
 		for i, item := range rep.Item.Items {
@@ -251,7 +253,8 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 				pth = item.Name
 			}
 
-			if rep.Root != nil && item.Name == "index.html" {
+			// Render indexes if this is a top-level bucket
+			if isBucket && item.Name == "index.html" {
 				if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
 					abort(c, http.StatusInternalServerError, err)
 				}
@@ -277,7 +280,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 		} else {
 			back = path.Dir(path.Join(projectPath, root))
 		}
-		c.HTML(http.StatusOK, "/public/html/bucket.gohtml", gin.H{
+		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
 			"Path":  rep.Item.Path,
 			"Root":  root,
 			"Back":  back,

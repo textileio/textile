@@ -40,7 +40,7 @@ var addTokenCmd = &cobra.Command{
 		defer cancel()
 		token, err := client.AddToken(
 			ctx,
-			project.ID,
+			project.Name,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			})
@@ -72,7 +72,7 @@ func lsTokens() {
 	defer cancel()
 	tokens, err := client.ListTokens(
 		ctx,
-		project.ID,
+		project.Name,
 		api.Auth{
 			Token: authViper.GetString("token"),
 		})
@@ -104,7 +104,7 @@ var rmTokensCmd = &cobra.Command{
 
 		selected := selectToken("Remove token", aurora.Sprintf(
 			aurora.BrightBlack("> Removing token {{ . | white | bold }}")),
-			project.ID)
+			project.Name)
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -121,12 +121,12 @@ var rmTokensCmd = &cobra.Command{
 	},
 }
 
-func selectToken(label, successMsg, projID string) string {
+func selectToken(label, successMsg, project string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	tokens, err := client.ListTokens(
 		ctx,
-		projID,
+		project,
 		api.Auth{
 			Token: authViper.GetString("token"),
 		})

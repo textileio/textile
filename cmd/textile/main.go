@@ -38,8 +38,8 @@ var (
 			Key:      "log.debug",
 			DefValue: false,
 		},
-		"projectID": {
-			Key:      "project_id",
+		"project": {
+			Key:      "project",
 			DefValue: "",
 		},
 		"apiTarget": {
@@ -85,9 +85,9 @@ func init() {
 		"Enable debug logging")
 
 	rootCmd.PersistentFlags().String(
-		"projectID",
-		flags["projectID"].DefValue.(string),
-		"Project ID")
+		"project",
+		flags["project"].DefValue.(string),
+		"Project Name")
 
 	rootCmd.PersistentFlags().String(
 		"apiTarget",

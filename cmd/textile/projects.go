@@ -17,6 +17,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(projectsCmd)
+	rootCmd.AddCommand(initProjectCmd) // alias to root
 	projectsCmd.AddCommand(initProjectCmd, lsProjectsCmd, inspectProjectCmd, rmProjectCmd)
 
 	initProjectCmd.Flags().String(
@@ -75,7 +76,7 @@ var initProjectCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		configViper.Set("project_id", proj.ID)
+		configViper.Set("project", proj.Name)
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
@@ -150,7 +151,7 @@ var rmProjectCmd = &cobra.Command{
 		defer cancel()
 		if err := client.RemoveProject(
 			ctx,
-			selected.ID,
+			selected.Name,
 			api.Auth{
 				Token: authViper.GetString("token"),
 			}); err != nil {
