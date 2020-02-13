@@ -71,7 +71,7 @@ var (
 		},
 		"addrFilecoinApi": {
 			Key:      "addr.filecoin.api",
-			DefValue: "/ip4/127.0.0.1/tcp/5002",
+			DefValue: "",
 		},
 		"dnsDomain": {
 			Key:      "dns.domain",
