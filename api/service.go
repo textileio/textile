@@ -788,12 +788,12 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	}
 
 	sendErr := func(err error) {
-		if err := server.Send(&pb.PushBucketPathReply{
+		if err2 := server.Send(&pb.PushBucketPathReply{
 			Payload: &pb.PushBucketPathReply_Error{
 				Error: err.Error(),
 			},
-		}); err != nil {
-			log.Errorf("error sending error: %v", err)
+		}); err2 != nil {
+			log.Errorf("error sending error: %v (%v)", err, err2)
 		}
 	}
 

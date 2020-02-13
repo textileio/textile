@@ -139,7 +139,7 @@ func (c *Client) ListProjects(ctx context.Context, auth Auth) (*pb.ListProjectsR
 	return c.c.ListProjects(authCtx(ctx, auth), &pb.ListProjectsRequest{})
 }
 
-// RemoveProject removes a project by ID.
+// RemoveProject removes a project by name.
 func (c *Client) RemoveProject(ctx context.Context, name string, auth Auth) error {
 	_, err := c.c.RemoveProject(authCtx(ctx, auth), &pb.RemoveProjectRequest{
 		Name: name,
@@ -275,7 +275,9 @@ func (c *Client) PushBucketPath(
 				Payload: &pb.PushBucketPathRequest_Chunk{
 					Chunk: buf[:n],
 				},
-			}); err != nil {
+			}); err == io.EOF {
+				break
+			} else if err != nil {
 				_ = stream.CloseSend()
 				return nil, nil, err
 			}
