@@ -65,6 +65,10 @@ var (
 			Key:      "addr.gateway.url",
 			DefValue: "http://127.0.0.1:8006",
 		},
+		"addrGatewayBucketDomain": {
+			Key:      "addr.gateway.bucket_domain",
+			DefValue: "textile.cafe",
+		},
 		"addrIpfsApi": {
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
@@ -249,6 +253,7 @@ var rootCmd = &cobra.Command{
 
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
+		addrGatewayBucketDomain := configViper.GetString("addr.gateway.bucket_domain")
 
 		var addrFilecoinApi ma.Multiaddr
 		if str := configViper.GetString("addr.filecoin.api"); str != "" {
@@ -282,6 +287,7 @@ var rootCmd = &cobra.Command{
 			AddrIpfsApi:                addrIpfsApi,
 			AddrGatewayHost:            addrGatewayHost,
 			AddrGatewayUrl:             addrGatewayUrl,
+			AddrGatewayBucketDomain:    addrGatewayBucketDomain,
 			AddrFilecoinApi:            addrFilecoinApi,
 			DNSDomain:                  dnsDomain,
 			DNSZoneID:                  dnsZoneID,

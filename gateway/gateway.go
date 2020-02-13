@@ -49,21 +49,21 @@ func (f *fileSystem) Exists(prefix, path string) bool {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
-	addr        ma.Multiaddr
-	url         string
-	server      *http.Server
-	collections *collections.Collections
-	client      *client.Client
-	clientAuth  client.Auth
-	sessionBus  *broadcast.Broadcaster
+	addr         ma.Multiaddr
+	bucketDomain string
+	server       *http.Server
+	collections  *collections.Collections // @todo: Remove in favor of the client
+	client       *client.Client
+	clientAuth   client.Auth
+	sessionBus   *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
 func NewGateway(
 	addr ma.Multiaddr,
-	url string,
 	apiAddr ma.Multiaddr,
 	apiToken string,
+	bucketDomain string,
 	collections *collections.Collections,
 	sessionBus *broadcast.Broadcaster,
 	debug bool,
@@ -86,12 +86,12 @@ func NewGateway(
 		return nil, err
 	}
 	return &Gateway{
-		addr:        addr,
-		url:         url,
-		collections: collections,
-		client:      c,
-		clientAuth:  client.Auth{Token: apiToken},
-		sessionBus:  sessionBus,
+		addr:         addr,
+		bucketDomain: bucketDomain,
+		collections:  collections,
+		client:       c,
+		clientAuth:   client.Auth{Token: apiToken},
+		sessionBus:   sessionBus,
 	}, nil
 }
 
@@ -117,6 +117,13 @@ func (g *Gateway) Start() {
 	router.SetHTMLTemplate(temp)
 
 	router.Use(static.Serve("", &fileSystem{Assets}))
+
+	router.Use(serveBucket(&bucketFileSystem{
+		client:  g.client,
+		auth:    g.clientAuth,
+		timeout: handlerTimeout,
+		host:    g.bucketDomain,
+	}))
 
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusNoContent)
@@ -188,15 +195,35 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
+// bucketHandler renders a bucket as a website.
 func (g *Gateway) bucketHandler(c *gin.Context) {
 	log.Debugf("host: %s", c.Request.Host)
 
-	for k, vs := range c.Request.Header {
-		for _, v := range vs {
-			log.Debugf("header %s: %s", k, v)
+	buckName, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	if err != nil {
+		abort(c, http.StatusBadRequest, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+	rep, err := g.client.ListBucketPath(ctx, "", buckName, g.clientAuth)
+	if err != nil {
+		abort(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	for _, item := range rep.Item.Items {
+		if item.Name == "index.html" {
+			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+			if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+				abort(c, http.StatusInternalServerError, err)
+			}
+			return
 		}
 	}
 
+	// No index was found, use the default (404 for now)
 	g.render404(c)
 }
 
@@ -226,7 +253,6 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 		}
 	} else {
 		projectPath := path.Join("dashboard", project)
-		isBucket := rep.Root != nil && rep.Item.Path == rep.Root.Path
 
 		links := make([]link, len(rep.Item.Items))
 		for i, item := range rep.Item.Items {
@@ -235,14 +261,6 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
 			} else {
 				pth = item.Name
-			}
-
-			// Render indexes if this is a top-level bucket
-			if isBucket && item.Name == "index.html" {
-				if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
-					abort(c, http.StatusInternalServerError, err)
-				}
-				return
 			}
 
 			links[i] = link{
