@@ -16,25 +16,26 @@ export class ThreadsConfig extends Config {
     public scheme: string = 'https',
     public authApi: string = 'cloud.textile.io',
     public authPort: number = 443,
+    public threadApiScheme: string = 'http',
     public threadsApi: string = 'api.textile.io',
     public threadsPort: number = 6007,
     public transport: grpc.TransportFactory = grpc.WebsocketTransport(),
   ) {
     super()
-    this.host = `${this.scheme}://${this.threadsApi}:${this.threadsPort}`
+    this.host = `${this.threadApiScheme}://${this.threadsApi}:${this.threadsPort}`
   }
   async start(sessionId?: string) {
     if (sessionId !== undefined) {
       this.sessionId = sessionId
       return
     }
-    await this.refreshSession()
+    return await this.refreshSession()
   }
   get sessionAPI(): string {
     return `${this.scheme}://${this.authApi}:${this.authPort}`
   }
   private async refreshSession() {
-    if (this.dev) {
+    if (this.dev === true) {
       return
     }
     const setup: AxiosRequestConfig = {
@@ -42,7 +43,6 @@ export class ThreadsConfig extends Config {
       responseType: 'json',
     }
     const apiClient = axios.create(setup)
-
     const resp = await apiClient.post<Session>(
       '/register',
       JSON.stringify({
