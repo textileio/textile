@@ -13,14 +13,15 @@ export class ThreadsConfig extends Config {
     public token: string,
     public deviceId: string,
     public dev: boolean,
-    public apiScheme: string = 'https',
-    public api: string = 'cloud.textile.io',
-    public sessionPort: number = 8006,
+    public scheme: string = 'https',
+    public authApi: string = 'cloud.textile.io',
+    public authPort: number = 8006,
+    public threadsApi: string = 'api.textile.io',
     public threadsPort: number = 6007,
     public transport: grpc.TransportFactory = grpc.WebsocketTransport(),
   ) {
     super()
-    this.host = `${this.apiScheme}://${this.api}:${this.threadsPort}`
+    this.host = `${this.scheme}://${this.threadsApi}:${this.threadsPort}`
   }
   async start(sessionId?: string) {
     if (sessionId !== undefined) {
@@ -30,7 +31,7 @@ export class ThreadsConfig extends Config {
     await this.refreshSession()
   }
   get sessionAPI(): string {
-    return `${this.apiScheme}://${this.api}:${this.sessionPort}`
+    return `${this.scheme}://${this.threadsApi}:${this.authPort}`
   }
   private async refreshSession() {
     if (this.dev) {

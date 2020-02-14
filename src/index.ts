@@ -8,9 +8,10 @@ export type APIConfig = {
   token: string
   deviceId: string
   dev?: boolean
-  apiScheme?: string
-  api?: string
-  sessionPort?: number
+  scheme?: string
+  authApi?: string
+  authPort?: number
+  threadsApi?: string
   threadsPort?: number
 }
 export class API {
@@ -34,18 +35,20 @@ export class API {
           config.token,
           config.deviceId,
           true,
-          config.apiScheme !== (null || undefined) ? config.apiScheme : 'http',
-          config.api !== (null || undefined) ? config.api : '127.0.0.1',
-          config.sessionPort !== (null || undefined) ? config.sessionPort : 8006,
+          config.scheme !== (null || undefined) ? config.scheme : 'http',
+          config.authApi !== (null || undefined) ? config.authApi : '127.0.0.1',
+          config.authPort !== (null || undefined) ? config.authPort : 8006,
+          config.threadsApi !== (null || undefined) ? config.threadsApi : '127.0.0.1',
           config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
         : new ThreadsConfig(
           config.token,
           config.deviceId,
           false,
-          config.apiScheme !== (null || undefined) ? config.apiScheme : 'https',
-          config.api !== (null || undefined) ? config.api : 'cloud.textile.io',
-          config.sessionPort !== (null || undefined) ? config.sessionPort : 8006,
+          config.scheme !== (null || undefined) ? config.scheme : 'https',
+          config.authApi !== (null || undefined) ? config.authApi : 'cloud.textile.io',
+          config.authPort !== (null || undefined) ? config.authPort : 8006,
+          config.threadsApi !== (null || undefined) ? config.threadsApi : 'api.textile.io',
           config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
   }
