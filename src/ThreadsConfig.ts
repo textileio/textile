@@ -31,7 +31,7 @@ export class ThreadsConfig extends Config {
     await this.refreshSession()
   }
   get sessionAPI(): string {
-    return `${this.scheme}://${this.threadsApi}:${this.authPort}`
+    return `${this.scheme}://${this.authApi}:${this.authPort}`
   }
   private async refreshSession() {
     if (this.dev) {
