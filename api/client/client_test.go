@@ -892,28 +892,33 @@ func TestClient_RemoveBucketPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	file, err := os.Open("testdata/file1.jpg")
+	file1, err := os.Open("testdata/file1.jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file2.Close()
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck1/file1.jpg", file,
+		context.Background(), project.Name, "mybuck1/file1.jpg", file1,
 		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck1/again/file1.jpg", file,
+		context.Background(), project.Name, "mybuck1/again/file2.jpg", file1,
 		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("test remove bucket path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck1/file1.jpg",
+		if err := client.RemoveBucketPath(context.Background(), "mybuck1/again/file2.jpg",
 			c.Auth{Token: user.SessionID}); err != nil {
 			t.Fatalf("remove bucket path should succeed: %v", err)
 		}
-		if _, err := client.ListBucketPath(context.Background(), project.Name, "mybuck1/file1.jpg",
+		if _, err := client.ListBucketPath(context.Background(), project.Name, "mybuck1/again/file2.jpg",
 			c.Auth{Token: user.SessionID}); err == nil {
 			t.Fatal("got bucket path that should have been removed")
 		}
@@ -924,7 +929,7 @@ func TestClient_RemoveBucketPath(t *testing.T) {
 	})
 
 	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck2/file1.jpg", file,
+		context.Background(), project.Name, "mybuck2/file1.jpg", file1,
 		c.Auth{Token: user.SessionID}); err != nil {
 		t.Fatal(err)
 	}

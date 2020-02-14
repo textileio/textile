@@ -215,6 +215,8 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 
 	for _, item := range rep.Item.Items {
 		if item.Name == "index.html" {
+			c.Writer.WriteHeader(http.StatusOK)
+			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
 			if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
 				abort(c, http.StatusInternalServerError, err)
