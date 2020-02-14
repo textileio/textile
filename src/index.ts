@@ -37,7 +37,7 @@ export class API {
           true,
           config.scheme !== (null || undefined) ? config.scheme : 'http',
           config.authApi !== (null || undefined) ? config.authApi : '127.0.0.1',
-          config.authPort !== (null || undefined) ? config.authPort : 443,
+          config.authPort !== (null || undefined) ? config.authPort : 8006,
           config.threadsApi !== (null || undefined) ? config.threadsApi : '127.0.0.1',
           config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
