@@ -37,7 +37,7 @@ export class API {
           true,
           config.scheme !== (null || undefined) ? config.scheme : 'http',
           config.authApi !== (null || undefined) ? config.authApi : '127.0.0.1',
-          config.authPort !== (null || undefined) ? config.authPort : 8006,
+          config.authPort !== (null || undefined) ? config.authPort : 443,
           config.threadsApi !== (null || undefined) ? config.threadsApi : '127.0.0.1',
           config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
@@ -47,7 +47,7 @@ export class API {
           false,
           config.scheme !== (null || undefined) ? config.scheme : 'https',
           config.authApi !== (null || undefined) ? config.authApi : 'cloud.textile.io',
-          config.authPort !== (null || undefined) ? config.authPort : 8006,
+          config.authPort !== (null || undefined) ? config.authPort : 443,
           config.threadsApi !== (null || undefined) ? config.threadsApi : 'api.textile.io',
           config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
         )
