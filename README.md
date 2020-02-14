@@ -26,18 +26,18 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
 
 ## Usage
 
-`js-textile` provides access to Textile APIs in apps based on an App Token. For details on getting an app token, see [textileio/textile](https://github.com/textileio/textile) or join the [Textile Slack](https://slack.textile.io).
+`js-textile` provides access to Textile APIs in apps based on a Project Token. For details on getting an app token, see [textileio/textile](https://github.com/textileio/textile) or join the [Textile Slack](https://slack.textile.io).
 
 ### Threads APIs
 
 Textile provides remote threads APIs your app can use.
 
-- token: an app token from your textile project
+- token: a project token from your textile project
 - deviceId: a unique ID (uuid) for this user in your app
 
 ```js
 let api = new textile.API({
-    token: '<app token>',
+    token: '<project token>',
     deviceId: '<user id>'
 })
 
@@ -51,7 +51,7 @@ Requires you run the Threads daemon (`threadsd`) on localhost. See [instructions
 
 ```js
 let api = new textile.API({
-    token: '<app token>',
+    token: '<project token>',
     deviceId: '<user id>',
     dev: true
 })
