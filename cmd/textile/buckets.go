@@ -229,6 +229,13 @@ func addFile(project, name, filePath string) {
 				Token: authViper.GetString("token"),
 			},
 			api.WithPushProgress(progress)); err != nil {
+			if strings.HasSuffix(err.Error(), "Scope does not own project") {
+				bucket := strings.SplitN(filePath, "/", 2)[0]
+				msg := aurora.Sprintf(aurora.BrightBlack(
+					"a bucket with name %s is already in use, try again (names are global)"),
+					aurora.Cyan(bucket))
+				cmd.Fatal(fmt.Errorf(msg))
+			}
 			cmd.Fatal(err)
 		}
 	}()

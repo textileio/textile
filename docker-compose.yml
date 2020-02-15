@@ -17,6 +17,7 @@ services:
       - TXTL_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
       - TXTL_EMAIL_API_KEY
       - TXTL_LOG_DEBUG
+      - TXTL_LOG_FILE
     ports:
       - "127.0.0.1:3006:3006"
       - "4006:4006"
