@@ -24,6 +24,7 @@ func init() {
 		lsBucketPathCmd,
 		pushBucketPathCmd,
 		pullBucketPathCmd,
+		catBucketPathCmd,
 		rmBucketPathCmd)
 }
 
@@ -40,7 +41,7 @@ var bucketsCmd = &cobra.Command{
 }
 
 var lsBucketPathCmd = &cobra.Command{
-	Use: "ls",
+	Use: "ls [path]",
 	Aliases: []string{
 		"list",
 	},
@@ -108,7 +109,7 @@ func lsBucketPath(args []string) {
 }
 
 var pushBucketPathCmd = &cobra.Command{
-	Use:   "push",
+	Use:   "push [target] [path]",
 	Short: "Push to a bucket path",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
@@ -247,7 +248,7 @@ func addFile(project, name, filePath string) {
 }
 
 var pullBucketPathCmd = &cobra.Command{
-	Use:   "pull",
+	Use:   "pull [path] [destination]",
 	Short: "Pull a bucket path",
 	Long: `Pull files and directories from a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
@@ -313,7 +314,6 @@ func getPath(project, pth, dir, dest string) (count int) {
 	return count
 }
 
-// @todo: Support Stdout?
 func getFile(filePath, name string, size int64) {
 	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
 		cmd.Fatal(err)
@@ -354,8 +354,29 @@ func getFile(filePath, name string, size int64) {
 	bar.Finish()
 }
 
+var catBucketPathCmd = &cobra.Command{
+	Use:   "cat [path]",
+	Short: "Cat a bucket path file",
+	Long:  `Cat a file at a bucket path.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		project := configViper.GetString("project")
+		if project == "" {
+			cmd.Fatal(errors.New("not a project directory"))
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err := client.PullBucketPath(ctx, args[0], os.Stdout, api.Auth{
+			Token: authViper.GetString("token"),
+		}); err != nil {
+			cmd.Fatal(err)
+		}
+	},
+}
+
 var rmBucketPathCmd = &cobra.Command{
-	Use: "rm",
+	Use: "rm [path]",
 	Aliases: []string{
 		"remove",
 	},
