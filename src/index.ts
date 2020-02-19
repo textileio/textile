@@ -50,9 +50,9 @@ export class API {
           config.scheme !== (null || undefined) ? config.scheme : 'https',
           config.authApi !== (null || undefined) ? config.authApi : 'cloud.textile.io',
           config.authPort !== (null || undefined) ? config.authPort : 443,
-          config.threadApiScheme !== (null || undefined) ? config.threadApiScheme : 'http',
+          config.threadApiScheme !== (null || undefined) ? config.threadApiScheme : 'https',
           config.threadsApi !== (null || undefined) ? config.threadsApi : 'api.textile.io',
-          config.threadsPort !== (null || undefined) ? config.threadsPort : 6007,
+          config.threadsPort !== (null || undefined) ? config.threadsPort : 6447,
         )
   }
 
