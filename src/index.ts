@@ -52,7 +52,7 @@ export class API {
           config.authPort !== (null || undefined) ? config.authPort : 443,
           config.threadApiScheme !== (null || undefined) ? config.threadApiScheme : 'https',
           config.threadsApi !== (null || undefined) ? config.threadsApi : 'api.textile.io',
-          config.threadsPort !== (null || undefined) ? config.threadsPort : 6647,
+          config.threadsPort !== (null || undefined) ? config.threadsPort : 6447,
         )
   }
 

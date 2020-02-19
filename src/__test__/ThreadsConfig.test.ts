@@ -24,7 +24,7 @@ describe('ThreadsConfig', function() {
         client = new Client(api.threadsConfig);
         expect(client.config.host).contains('http');
       });
-      it('threadPort should be 6007', async () => {
+    it('threadPort should be 6007', async () => {
         api = new API({
           token: 'API_TOKEN',
           deviceId: 'DEVICE_ID',
@@ -37,30 +37,30 @@ describe('ThreadsConfig', function() {
         expect(client.config.host).contains('6007');
     });
   });
-  describe('Not in dev-mode, API should be on HTTPS on port 6647', () => {
+  describe('Not in dev-mode, API should be on HTTPS on port 6447', () => {
     it('threadApiScheme should be HTTPS', async () => {
         api = new API({
-            token: 'API_TOKEN',
-            deviceId: 'DEVICE_ID',
+            token: '54e24fc3-fda5-478a-b1f7-040ea5aaab33',
+            deviceId: 'c8e5b368-6d08-4215-81b3-eb2522e2df32',
             dev: false,
         })
         await api.start();
         var config = api.threadsConfig;
+        client = new Client(config);
         expect(config.threadApiScheme).equals('https');
-        client = new Client(api.threadsConfig);
         expect(client.config.host).contains('https');
       });
-      it('threadPort should be 6647', async () => {
+    it('threadPort should be 6447', async () => {
         api = new API({
-          token: 'API_TOKEN',
-          deviceId: 'DEVICE_ID',
+          token: '54e24fc3-fda5-478a-b1f7-040ea5aaab33',
+          deviceId: 'c8e5b368-6d08-4215-81b3-eb2522e2df32',
           dev: false,
         });
         await api.start();
         var config = api.threadsConfig;
-        expect(config.threadsPort).equals(6647);
-        client = new Client(api.threadsConfig);
-        expect(client.config.host).contains('6647');
+        client = new Client(config);
+        expect(config.threadsPort).equals(6447);
+        expect(client.config.host).contains('6447');
     });
   });
 });

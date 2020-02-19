@@ -18,7 +18,7 @@ export class ThreadsConfig extends Config {
     public authPort: number = 443,
     public threadApiScheme: string = 'https',
     public threadsApi: string = 'api.textile.io',
-    public threadsPort: number = 6647,
+    public threadsPort: number = 6447,
     public transport: grpc.TransportFactory = grpc.WebsocketTransport(),
   ) {
     super()
