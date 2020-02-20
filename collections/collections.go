@@ -29,6 +29,8 @@ var (
 	dsUsersKey  = datastore.NewKey("/users")
 
 	dsBucketsKey = datastore.NewKey("/buckets")
+
+	dsProjectConfigKey = datastore.NewKey("/project-config")
 )
 
 func init() {
@@ -57,6 +59,8 @@ type Collections struct {
 	Users  *Users
 
 	Buckets *Buckets
+
+	ProjectConfig *ProjectConfig
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -81,6 +85,8 @@ func NewCollections(
 		Users:  &Users{threads: threads, token: token},
 
 		Buckets: &Buckets{threads: threads, token: token},
+
+		ProjectConfig: &ProjectConfig{threads: threads, token: token},
 	}
 	ctx = AuthCtx(ctx, c.token)
 
@@ -116,6 +122,10 @@ func NewCollections(
 	if err != nil {
 		return nil, err
 	}
+	c.ProjectConfig.storeID, err = c.addCollection(ctx, c.ProjectConfig, dsProjectConfigKey)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debugf("developers store: %s", c.Developers.GetStoreID().String())
 	log.Debugf("sessions store: %s", c.Sessions.GetStoreID().String())
@@ -125,6 +135,7 @@ func NewCollections(
 	log.Debugf("tokens store: %s", c.Tokens.GetStoreID().String())
 	log.Debugf("users store: %s", c.Users.GetStoreID().String())
 	log.Debugf("buckets store: %s", c.Buckets.GetStoreID().String())
+	log.Debugf("project config store: %s", c.ProjectConfig.GetStoreID().String())
 
 	return c, nil
 }
