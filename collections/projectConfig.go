@@ -10,24 +10,12 @@ import (
 	s "github.com/textileio/go-threads/store"
 )
 
-// Scope specifies the scope of the Config
-type Scope int
-
-const (
-	// Dev is the scope for development values
-	Dev Scope = iota
-	// Beta is the scope for beta values
-	Beta Scope = iota
-	// Prod is the scope for production values
-	Prod
-)
-
 // ConfigItem represents a single config value
 type ConfigItem struct {
 	ID         string
 	UniqueName string
 	Name       string
-	Values     map[Scope]string
+	Values     map[string]string
 	ProjectID  string
 	Created    int64
 	Updated    int64
@@ -38,19 +26,6 @@ type ProjectConfig struct {
 	threads *client.Client
 	storeID *uuid.UUID
 	token   string
-}
-
-func (s Scope) String() string {
-	return [...]string{"Dev", "Beta", "Prod"}[s]
-}
-
-// All lists all scopes
-func (s Scope) All() []Scope {
-	return []Scope{
-		Dev,
-		Beta,
-		Prod,
-	}
 }
 
 // GetName returns the entity name
@@ -79,7 +54,7 @@ func (p *ProjectConfig) GetStoreID() *uuid.UUID {
 }
 
 // Create creates a new config
-func (p *ProjectConfig) Create(ctx context.Context, name string, values map[Scope]string, projectID string) (*ConfigItem, error) {
+func (p *ProjectConfig) Create(ctx context.Context, name string, values map[string]string, projectID string) (*ConfigItem, error) {
 	validName, err := toValidName(name)
 	if err != nil {
 		return nil, err
@@ -112,6 +87,16 @@ func (p *ProjectConfig) Get(ctx context.Context, projectID string, name string) 
 		return nil, nil
 	}
 	return configItems[0], nil
+}
+
+// GetByID fetches a single config
+func (p *ProjectConfig) GetByID(ctx context.Context, ID string) (*ConfigItem, error) {
+	ctx = AuthCtx(ctx, p.token)
+	configItem := &ConfigItem{}
+	if err := p.threads.ModelFindByID(ctx, p.storeID.String(), p.GetName(), ID, configItem); err != nil {
+		return nil, err
+	}
+	return configItem, nil
 }
 
 // List lists all ConfigItems for a project

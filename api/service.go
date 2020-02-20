@@ -1029,3 +1029,94 @@ func (s *service) RemoveBucketPath(
 
 	return &pb.RemoveBucketPathReply{}, nil
 }
+
+func (s *service) ListConfigItems(ctx context.Context, req *pb.ListConfigItemsRequest) (*pb.ListConfigItemsReply, error) {
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
+	if err != nil {
+		return nil, err
+	}
+	configItems, err := s.collections.ProjectConfig.List(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	pbConfigItmes := make([]*pb.ConfigItem, len(configItems))
+	for i, configItem := range configItems {
+		pbConfigItmes[i] = &pb.ConfigItem{
+			ID:      configItem.ID,
+			Name:    configItem.Name,
+			Values:  configItem.Values,
+			Created: configItem.Created,
+			Updated: configItem.Updated,
+		}
+	}
+	return &pb.ListConfigItemsReply{ConfigItems: pbConfigItmes}, nil
+}
+
+func (s *service) CreateConfigItem(ctx context.Context, req *pb.CreateConfigItemRequest) (*pb.CreateConfigItemReply, error) {
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
+	if err != nil {
+		return nil, err
+	}
+	configItem, err := s.collections.ProjectConfig.Create(ctx, req.Name, req.Values, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.CreateConfigItemReply{ConfigItem: &pb.ConfigItem{
+		ID:      configItem.ID,
+		Name:    configItem.Name,
+		Values:  configItem.Values,
+		Created: configItem.Created,
+		Updated: configItem.Updated,
+	}}, nil
+}
+
+func (s *service) GetConfigItem(ctx context.Context, req *pb.GetConfigItemRequest) (*pb.GetConfigItemReply, error) {
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
+	if err != nil {
+		return nil, err
+	}
+	configItem, err := s.collections.ProjectConfig.Get(ctx, proj.ID, req.Name)
+	if err != nil {
+		return nil, err
+	}
+	if configItem == nil {
+		return nil, nil
+	}
+	return &pb.GetConfigItemReply{ConfigItem: &pb.ConfigItem{
+		ID:      configItem.ID,
+		Name:    configItem.Name,
+		Values:  configItem.Values,
+		Created: configItem.Created,
+		Updated: configItem.Updated,
+	}}, nil
+}
+
+func (s *service) DeleteConfigItem(ctx context.Context, req *pb.DeleteConfigItemRequest) (*pb.DeleteConfigItemReply, error) {
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	configItem, err := s.collections.ProjectConfig.GetByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.getProjectForScope(ctx, configItem.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	if err := s.collections.ProjectConfig.Delete(ctx, req.ID); err != nil {
+		return nil, err
+	}
+	return &pb.DeleteConfigItemReply{}, nil
+}

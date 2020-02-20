@@ -202,21 +202,16 @@ message RemoveBucketPathRequest {
 
 message RemoveBucketPathReply {}
 
-enum Scope {
-    DEV = 0;
-    BETA = 1;
-    PROD = 2;
-}
-
 message ConfigItem {
     string ID = 1;
     string name = 2;
-    map<int, string> values = 3;
+    map<string, string> values = 3;
     int64 created = 4;
     int64 updated = 5;
 }
 
 message ListConfigItemsRequest {
+    string project = 1;
 }
 
 message ListConfigItemsReply {
@@ -224,24 +219,26 @@ message ListConfigItemsReply {
 }
 
 message CreateConfigItemRequest {
-    string name = 1;
-    map<int, string> values = 2;
+    string project = 1;
+    string name = 2;
+    map<string, string> values = 3;
 }
 
 message CreateConfigItemReply {
-    ConfigItem config = 1;
+    ConfigItem configItem = 1;
 }
 
 message GetConfigItemRequest {
-    string name = 1;
+    string project = 1;
+    string name = 2;
 }
 
 message GetConfigItemReply {
-    ConfigItem config = 1;
+    ConfigItem configItem = 1;
 }
 
 message DeleteConfigItemRequest {
-    string id = 1;
+    string ID = 1;
 }
 
 message DeleteConfigItemReply {
@@ -274,8 +271,8 @@ service API {
     rpc PullBucketPath (PullBucketPathRequest) returns (stream PullBucketPathReply) {}
     rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}
 
-    rpc ListConfigs (ListConfigItemsRequest) returns (ListConfigItemsReply) {}
-    rpc CreateConfig (CreateConfigItemRequest) returns (CreateConfigItemReply) {}
-    rpc GetConfig (GetConfigItemRequest) returns (GetConfigItemReply) {}
-    rpc DeleteConfig (DeleteConfigItemRequest) returns (DeleteConfigItemReply) {}
+    rpc ListConfigItems (ListConfigItemsRequest) returns (ListConfigItemsReply) {}
+    rpc CreateConfigItem (CreateConfigItemRequest) returns (CreateConfigItemReply) {}
+    rpc GetConfigItem (GetConfigItemRequest) returns (GetConfigItemReply) {}
+    rpc DeleteConfigItem (DeleteConfigItemRequest) returns (DeleteConfigItemReply) {}
 }
