@@ -66,6 +66,8 @@ var listConfigsCmd = &cobra.Command{
 			}
 		}
 
+		cmd.Message("Config items for scope %v:", scope)
+		c.Println()
 		cmd.RenderTable([]string{"name", "value"}, data)
 	},
 }
