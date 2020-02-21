@@ -58,6 +58,7 @@ type Config struct {
 	RepoPath string
 
 	AddrApi                    ma.Multiaddr
+	AddrApiProxy               ma.Multiaddr
 	AddrThreadsHost            ma.Multiaddr
 	AddrThreadsServiceApi      ma.Multiaddr
 	AddrThreadsServiceApiProxy ma.Multiaddr
@@ -178,6 +179,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	server, err := api.NewServer(ctx, api.Config{
 		Addr:           conf.AddrApi,
+		AddrProxy:      conf.AddrApiProxy,
 		Collections:    collections,
 		DNSManager:     dnsManager,
 		EmailClient:    emailClient,

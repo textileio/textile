@@ -11,7 +11,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
-	"github.com/textileio/textile/api/pb"
+	api_pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -164,7 +164,7 @@ var rmProjectCmd = &cobra.Command{
 	},
 }
 
-func selectProject(label, successMsg string) *pb.GetProjectReply {
+func selectProject(label, successMsg string) *api_pb.GetProjectReply {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	projects, err := client.ListProjects(

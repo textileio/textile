@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"net"
+	"net/http"
 	"time"
 
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
@@ -25,8 +27,10 @@ import (
 var (
 	log = logging.Logger("textileapi")
 
+	// @TODO recompile pb without the 'api.' prefix, fix this
 	ignoreMethods = []string{
-		"/pb.API/Login",
+		"/api.pb.API/Login",
+		"/api.API/Login",
 	}
 )
 
@@ -35,8 +39,9 @@ type reqKey string
 
 // Server provides a gRPC API to the textile daemon.
 type Server struct {
-	rpc     *grpc.Server
-	service *service
+	rpc         *grpc.Server
+	rpcWebProxy *http.Server
+	service     *service
 
 	gatewayToken string
 
@@ -46,7 +51,8 @@ type Server struct {
 
 // Config specifies server settings.
 type Config struct {
-	Addr ma.Multiaddr
+	Addr      ma.Multiaddr
+	AddrProxy ma.Multiaddr
 
 	Collections *c.Collections
 
@@ -96,6 +102,32 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(s.authFunc)),
 		grpc.StreamInterceptor(auth.StreamServerInterceptor(s.authFunc)),
 	)
+	wrappedServer := grpcweb.WrapServer(
+		s.rpc,
+		grpcweb.WithOriginFunc(func(origin string) bool {
+			return true
+		}),
+		grpcweb.WithWebsockets(true),
+		grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
+			return true
+		}),
+	)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if wrappedServer.IsGrpcWebRequest(r) ||
+			wrappedServer.IsAcceptableGrpcCorsRequest(r) ||
+			wrappedServer.IsGrpcWebSocketRequest(r) {
+			wrappedServer.ServeHTTP(w, r)
+		}
+	})
+
+	proxyAddr, err := util.TCPAddrFromMultiAddr(conf.AddrProxy)
+	if err != nil {
+		return nil, err
+	}
+	s.rpcWebProxy = &http.Server{
+		Addr:    proxyAddr,
+		Handler: handler,
+	}
 
 	addr, err := util.TCPAddrFromMultiAddr(conf.Addr)
 	if err != nil {
@@ -112,11 +144,21 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
+	go func() {
+		s.rpcWebProxy.ListenAndServe()
+	}()
+
 	return s, nil
 }
 
 // Close the server.
 func (s *Server) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := s.rpcWebProxy.Shutdown(ctx); err != nil {
+		log.Errorf("error shutting down proxy: %s", err)
+	}
+
 	s.rpc.GracefulStop()
 	if s.service.filecoinClient != nil {
 		if err := s.service.filecoinClient.Close(); err != nil {

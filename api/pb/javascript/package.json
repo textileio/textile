@@ -1,0 +1,23 @@
+{
+  "name": "@textile/textile-account-grpc",
+  "version": "0.0.1",
+  "description": "A gRPC client for interacting Textile account APIs.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/textileio/textile.git"
+  },
+  "author": "Textile",
+  "license": "MIT",
+  "files": [
+    "api_pb.js",
+    "api_pb.d.ts"
+  ],
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.12.0",
+    "@types/google-protobuf": "^3.7.2",
+    "google-protobuf": "^3.11.2"
+  },
+  "devDependencies": {
+    "ts-protoc-gen": "^0.12.0"
+  }
+}
