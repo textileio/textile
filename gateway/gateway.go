@@ -378,9 +378,13 @@ func (g *Gateway) registerUser(c *gin.Context) {
 		return
 	}
 
+	configStoreID := g.collections.ProjectConfig.GetStoreID()
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":         user.ID,
-		"session_id": session.ID,
+		"id":              user.ID,
+		"session_id":      session.ID,
+		"config_store_id": configStoreID.String(),
+		"project_id":      proj.ID,
 	})
 }
 

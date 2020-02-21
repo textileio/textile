@@ -66,6 +66,11 @@ var listConfigsCmd = &cobra.Command{
 			}
 		}
 
+		if len(data) == 0 {
+			cmd.Message("No config items found")
+			return
+		}
+
 		cmd.Message("Config items for scope %v:", scope)
 		c.Println()
 		cmd.RenderTable([]string{"name", "value"}, data)
