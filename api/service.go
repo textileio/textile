@@ -1056,7 +1056,7 @@ func (s *service) ListConfigItems(ctx context.Context, req *pb.ListConfigItemsRe
 	return &pb.ListConfigItemsReply{ConfigItems: pbConfigItmes}, nil
 }
 
-func (s *service) CreateConfigItem(ctx context.Context, req *pb.CreateConfigItemRequest) (*pb.CreateConfigItemReply, error) {
+func (s *service) SaveConfigItems(ctx context.Context, req *pb.SaveConfigItemsRequest) (*pb.SaveConfigItemsReply, error) {
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
@@ -1065,17 +1065,38 @@ func (s *service) CreateConfigItem(ctx context.Context, req *pb.CreateConfigItem
 	if err != nil {
 		return nil, err
 	}
-	configItem, err := s.collections.ProjectConfig.Create(ctx, req.Name, req.Values, proj.ID)
-	if err != nil {
-		return nil, err
+
+	configItems := make([]*pb.ConfigItem, len(req.GetPayloads()))
+	for i, payload := range req.GetPayloads() {
+		configItem, err := s.collections.ProjectConfig.Get(ctx, proj.ID, payload.GetName())
+		if err != nil {
+			return nil, err
+		}
+		if configItem != nil {
+			// The config item for this name already exists, update it
+			for scope, value := range payload.GetValues() {
+				configItem.Values[scope] = value
+			}
+			if err := s.collections.ProjectConfig.Save(ctx, configItem); err != nil {
+				return nil, err
+			}
+
+		} else {
+			configItem, err = s.collections.ProjectConfig.Create(ctx, payload.GetName(), payload.GetValues(), proj.ID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		configItems[i] = &pb.ConfigItem{
+			ID:      configItem.ID,
+			Name:    configItem.Name,
+			Values:  configItem.Values,
+			Created: configItem.Created,
+			Updated: configItem.Updated,
+		}
 	}
-	return &pb.CreateConfigItemReply{ConfigItem: &pb.ConfigItem{
-		ID:      configItem.ID,
-		Name:    configItem.Name,
-		Values:  configItem.Values,
-		Created: configItem.Created,
-		Updated: configItem.Updated,
-	}}, nil
+
+	return &pb.SaveConfigItemsReply{ConfigItems: configItems}, nil
 }
 
 func (s *service) GetConfigItem(ctx context.Context, req *pb.GetConfigItemRequest) (*pb.GetConfigItemReply, error) {
@@ -1092,7 +1113,7 @@ func (s *service) GetConfigItem(ctx context.Context, req *pb.GetConfigItemReques
 		return nil, err
 	}
 	if configItem == nil {
-		return nil, nil
+		return nil, fmt.Errorf("no config item found for name %v", req.Name)
 	}
 	return &pb.GetConfigItemReply{ConfigItem: &pb.ConfigItem{
 		ID:      configItem.ID,
@@ -1108,14 +1129,18 @@ func (s *service) DeleteConfigItem(ctx context.Context, req *pb.DeleteConfigItem
 	if !ok {
 		log.Fatal("scope required")
 	}
-	configItem, err := s.collections.ProjectConfig.GetByID(ctx, req.ID)
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.getProjectForScope(ctx, configItem.ProjectID, scope); err != nil {
+	configItem, err := s.collections.ProjectConfig.Get(ctx, proj.ID, req.Name)
+	if err != nil {
 		return nil, err
 	}
-	if err := s.collections.ProjectConfig.Delete(ctx, req.ID); err != nil {
+	if configItem == nil {
+		return &pb.DeleteConfigItemReply{}, nil
+	}
+	if err := s.collections.ProjectConfig.Delete(ctx, configItem.ID); err != nil {
 		return nil, err
 	}
 	return &pb.DeleteConfigItemReply{}, nil

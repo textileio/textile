@@ -33,9 +33,9 @@ func (p *ProjectConfig) GetName() string {
 	return "Config"
 }
 
-// GetInstance returns the ProjectConfig instance
+// GetInstance returns a ConfigItem instance
 func (p *ProjectConfig) GetInstance() interface{} {
-	return &ProjectConfig{}
+	return &ConfigItem{}
 }
 
 // GetIndexes returns the indexes

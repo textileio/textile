@@ -218,14 +218,17 @@ message ListConfigItemsReply {
     repeated ConfigItem configItems = 1;
 }
 
-message CreateConfigItemRequest {
+message SaveConfigItemsRequest {
+    message Payload {
+        string name = 1;
+        map<string, string> values = 2;
+    }
     string project = 1;
-    string name = 2;
-    map<string, string> values = 3;
+    repeated Payload payloads = 2;
 }
 
-message CreateConfigItemReply {
-    ConfigItem configItem = 1;
+message SaveConfigItemsReply {
+    repeated ConfigItem configItems = 1;
 }
 
 message GetConfigItemRequest {
@@ -238,7 +241,8 @@ message GetConfigItemReply {
 }
 
 message DeleteConfigItemRequest {
-    string ID = 1;
+    string project = 1;
+    string name = 2;
 }
 
 message DeleteConfigItemReply {
@@ -272,7 +276,7 @@ service API {
     rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}
 
     rpc ListConfigItems (ListConfigItemsRequest) returns (ListConfigItemsReply) {}
-    rpc CreateConfigItem (CreateConfigItemRequest) returns (CreateConfigItemReply) {}
+    rpc SaveConfigItems (SaveConfigItemsRequest) returns (SaveConfigItemsReply) {}
     rpc GetConfigItem (GetConfigItemRequest) returns (GetConfigItemReply) {}
     rpc DeleteConfigItem (DeleteConfigItemRequest) returns (DeleteConfigItemReply) {}
 }

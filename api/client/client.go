@@ -364,6 +364,39 @@ func (c *Client) RemoveBucketPath(ctx context.Context, pth string, auth Auth) er
 	return err
 }
 
+// ListConfigItems returns a list of config items for the given project
+func (c *Client) ListConfigItems(ctx context.Context, project string, auth Auth) ([]*pb.ConfigItem, error) {
+	reply, err := c.c.ListConfigItems(authCtx(ctx, auth), &pb.ListConfigItemsRequest{Project: project})
+	if err != nil {
+		return nil, err
+	}
+	return reply.ConfigItems, nil
+}
+
+// SaveConfigItems creates or updates a list of config items
+func (c *Client) SaveConfigItems(ctx context.Context, project string, payloads []*pb.SaveConfigItemsRequest_Payload, auth Auth) ([]*pb.ConfigItem, error) {
+	reply, err := c.c.SaveConfigItems(authCtx(ctx, auth), &pb.SaveConfigItemsRequest{Project: project, Payloads: payloads})
+	if err != nil {
+		return nil, err
+	}
+	return reply.GetConfigItems(), nil
+}
+
+// GetConfigItem gets a single config item by name
+func (c *Client) GetConfigItem(ctx context.Context, project, name string, auth Auth) (*pb.ConfigItem, error) {
+	reply, err := c.c.GetConfigItem(authCtx(ctx, auth), &pb.GetConfigItemRequest{Project: project, Name: name})
+	if err != nil {
+		return nil, err
+	}
+	return reply.GetConfigItem(), nil
+}
+
+// DeleteConfigItem deletes a config item by name
+func (c *Client) DeleteConfigItem(ctx context.Context, project, name string, auth Auth) error {
+	_, err := c.c.DeleteConfigItem(authCtx(ctx, auth), &pb.DeleteConfigItemRequest{Project: project, Name: name})
+	return err
+}
+
 type authKey string
 
 func authCtx(ctx context.Context, auth Auth) context.Context {
