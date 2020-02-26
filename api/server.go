@@ -196,8 +196,8 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
-
-	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
+	// @TODO check if this messes up other request types
+	scope := metautils.ExtractIncoming(ctx).Get("x-scope")
 	if scope != "" {
 		if scope != user.ID {
 			if _, err := s.service.getTeamForUser(ctx, scope, user); err != nil {
