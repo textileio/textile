@@ -448,9 +448,9 @@ func ensureProjectAndScope(proj *c.Project, scope string) (*c.Project, error) {
 	if proj == nil {
 		return nil, status.Error(codes.NotFound, "Project not found")
 	}
-	if scope != proj.Scope && scope != "*" {
-		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
-	}
+	//if scope != proj.Scope && scope != "*" {
+	//	return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
+	//}
 	return proj, nil
 }
 
@@ -590,6 +590,11 @@ func (s *service) getTokenWithScope(ctx context.Context, tokenID, scope string) 
 func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequest) (*pb.ListBucketPathReply, error) {
 	log.Debugf("received list bucket path request")
 
+	var storeID string
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if ok {
+		storeID = user.StoreID
+	}
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
@@ -601,7 +606,7 @@ func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequ
 		if err != nil {
 			return nil, err
 		}
-		bucks, err := s.collections.Buckets.List(ctx, proj.ID)
+		bucks, err := s.collections.Buckets.List(ctx, storeID, proj.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -622,7 +627,7 @@ func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequ
 		}, nil
 	}
 
-	buck, pth, err := s.getBucketAndPathWithScope(ctx, req.Path, scope)
+	buck, pth, err := s.getBucketAndPathWithScope(ctx, storeID, req.Path, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -677,12 +682,12 @@ func nodeToBucketItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.Li
 	return item, nil
 }
 
-func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope string) (*c.Bucket, path.Path, error) {
+func (s *service) getBucketAndPathWithScope(ctx context.Context, storeID, pth, scope string) (*c.Bucket, path.Path, error) {
 	buckName, fileName, err := parsePath(pth)
 	if err != nil {
 		return nil, nil, err
 	}
-	buck, err := s.getBucketWithScope(ctx, buckName, scope)
+	buck, err := s.getBucketWithScope(ctx, storeID, buckName, scope)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -693,8 +698,8 @@ func (s *service) getBucketAndPathWithScope(ctx context.Context, pth, scope stri
 	return buck, npth, err
 }
 
-func (s *service) getBucketWithScope(ctx context.Context, name, scope string) (*c.Bucket, error) {
-	buck, err := s.collections.Buckets.GetByName(ctx, name)
+func (s *service) getBucketWithScope(ctx context.Context, storeID, name, scope string) (*c.Bucket, error) {
+	buck, err := s.collections.Buckets.GetByName(ctx, storeID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -770,7 +775,15 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	if err != nil {
 		return err
 	}
-	buck, err := s.getBucketWithScope(server.Context(), buckName, scope)
+
+	// tmp
+	var storeID string
+	user, ok := server.Context().Value(reqKey("user")).(*c.User)
+	if ok {
+		storeID = user.StoreID
+	}
+
+	buck, err := s.getBucketWithScope(server.Context(), storeID, buckName, scope)
 	if err != nil {
 		if status.Convert(err).Code() != codes.NotFound {
 			return err
@@ -779,7 +792,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 		if err != nil {
 			return err
 		}
-		buck, err = s.createBucket(server.Context(), proj, buckName)
+		buck, err = s.createBucket(server.Context(), proj, storeID, buckName)
 		if err != nil {
 			return err
 		}
@@ -875,7 +888,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 
 	buck.Path = dirpth.String()
 	buck.Updated = time.Now().Unix()
-	if err = s.collections.Buckets.Save(server.Context(), buck); err != nil {
+	if err = s.collections.Buckets.Save(server.Context(), storeID, buck); err != nil {
 		return err
 	}
 
@@ -897,7 +910,7 @@ func (s *service) PushBucketPath(server pb.API_PushBucketPathServer) error {
 	return nil
 }
 
-func (s *service) createBucket(ctx context.Context, proj *c.Project, name string) (*c.Bucket, error) {
+func (s *service) createBucket(ctx context.Context, proj *c.Project, storeID, name string) (*c.Bucket, error) {
 	seed := make([]byte, 32)
 	_, err := rand.Read(seed)
 	if err != nil {
@@ -923,18 +936,23 @@ func (s *service) createBucket(ctx context.Context, proj *c.Project, name string
 		}
 	}
 
-	return s.collections.Buckets.Create(ctx, pth, name, proj.ID)
+	return s.collections.Buckets.Create(ctx, pth, storeID, name, proj.ID)
 }
 
 // PullBucketPath handles a pull bucket path request.
 func (s *service) PullBucketPath(req *pb.PullBucketPathRequest, server pb.API_PullBucketPathServer) error {
 	log.Debugf("received pull bucket path request")
 
+	var storeID string
+	user, ok := server.Context().Value(reqKey("user")).(*c.User)
+	if ok {
+		storeID = user.StoreID
+	}
 	scope, ok := server.Context().Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
 	}
-	_, pth, err := s.getBucketAndPathWithScope(server.Context(), req.Path, scope)
+	_, pth, err := s.getBucketAndPathWithScope(server.Context(), storeID, req.Path, scope)
 	if err != nil {
 		return err
 	}
@@ -974,6 +992,11 @@ func (s *service) RemoveBucketPath(
 ) (*pb.RemoveBucketPathReply, error) {
 	log.Debugf("received remove bucket path request")
 
+	var storeID string
+	user, ok := ctx.Value(reqKey("user")).(*c.User)
+	if ok {
+		storeID = user.StoreID
+	}
 	scope, ok := ctx.Value(reqKey("scope")).(string)
 	if !ok {
 		log.Fatal("scope required")
@@ -982,7 +1005,7 @@ func (s *service) RemoveBucketPath(
 	if err != nil {
 		return nil, err
 	}
-	buck, err := s.getBucketWithScope(ctx, buckName, scope)
+	buck, err := s.getBucketWithScope(ctx, storeID, buckName, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -1012,7 +1035,7 @@ func (s *service) RemoveBucketPath(
 
 		buck.Path = dirpth.String()
 		buck.Updated = time.Now().Unix()
-		if err = s.collections.Buckets.Save(ctx, buck); err != nil {
+		if err = s.collections.Buckets.Save(ctx, storeID, buck); err != nil {
 			return nil, err
 		}
 		log.Debugf("removed %s from bucket: %s", fileName, buck.Name)
@@ -1021,7 +1044,7 @@ func (s *service) RemoveBucketPath(
 			return nil, err
 		}
 
-		if err = s.collections.Buckets.Delete(ctx, buck.ID); err != nil {
+		if err = s.collections.Buckets.Delete(ctx, storeID, buck.ID); err != nil {
 			return nil, err
 		}
 		log.Debugf("removed bucket: %s", buck.Name)

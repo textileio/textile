@@ -38,6 +38,10 @@ var (
 			Key:      "log.debug",
 			DefValue: false,
 		},
+		"noConfirm": {
+			Key:      "no_confirm",
+			DefValue: false,
+		},
 		"project": {
 			Key:      "project",
 			DefValue: "",
@@ -83,6 +87,11 @@ func init() {
 		"d",
 		flags["debug"].DefValue.(bool),
 		"Enable debug logging")
+
+	rootCmd.PersistentFlags().Bool(
+		"noConfirm",
+		flags["noConfirm"].DefValue.(bool),
+		"Skip confirmation promts")
 
 	rootCmd.PersistentFlags().String(
 		"project",

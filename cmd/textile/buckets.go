@@ -178,14 +178,16 @@ These 'push' commands result in the following bucket structures.
 			cmd.End("No files found")
 		}
 
-		prompt := promptui.Prompt{
-			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(names)),
-			Validate: func(in string) error {
-				return nil
-			},
-		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
+		if !configViper.GetBool("no_confirm") {
+			prompt := promptui.Prompt{
+				Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(names)),
+				Validate: func(in string) error {
+					return nil
+				},
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
 		}
 
 		for i := range names {

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -25,12 +24,12 @@ func InitConfig(v *viper.Viper, file string, defDir string, name string) func() 
 		if file != "" {
 			v.SetConfigFile(file)
 		} else {
-			home, err := homedir.Dir()
-			if err != nil {
-				panic(err)
-			}
+			//home, err := homedir.Dir()
+			//if err != nil {
+			//	panic(err)
+			//}
 			v.AddConfigPath(path.Join("./", defDir)) // local config takes priority
-			v.AddConfigPath(path.Join(home, defDir))
+			//v.AddConfigPath(path.Join(home, defDir))
 			v.SetConfigName(name)
 		}
 

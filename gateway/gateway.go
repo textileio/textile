@@ -129,10 +129,10 @@ func (g *Gateway) Start() {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("", g.bucketHandler)
+	router.GET("", g.spacesHandler)
 
-	router.GET("/dashboard/:project", g.dashHandler)
-	router.GET("/dashboard/:project/*path", g.dashHandler)
+	router.GET("/buckets/:project", g.bucketsHandler)
+	router.GET("/buckets/:project/*path", g.bucketsHandler)
 
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
@@ -195,8 +195,8 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// bucketHandler renders a bucket as a website.
-func (g *Gateway) bucketHandler(c *gin.Context) {
+// spacesHandler renders a bucket as a website.
+func (g *Gateway) spacesHandler(c *gin.Context) {
 	log.Debugf("host: %s", c.Request.Host)
 
 	buckName, err := bucketFromHost(c.Request.Host, g.bucketDomain)
@@ -236,38 +236,50 @@ type link struct {
 	Links string
 }
 
-// dashHandler renders a project dashboard.
-// Currently, this just shows bucket files and directories.
-func (g *Gateway) dashHandler(c *gin.Context) {
+// bucketsHandler renders project buckets.
+func (g *Gateway) bucketsHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
+	auth := client.Auth{
+		Token: g.clientAuth.Token,
+		Scope: g.clientAuth.Scope,
+	}
+	token, ok := c.GetQuery("token")
+	if ok {
+		auth.Token = g.parseUUID(c, token)
+	}
+
 	project := c.Param("project")
-	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
+	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), auth)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
+		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, auth); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {
-		projectPath := path.Join("dashboard", project)
+		projectPath := path.Join("buckets", project)
 
 		links := make([]link, len(rep.Item.Items))
 		for i, item := range rep.Item.Items {
-			var pth string
+			var p string
 			if rep.Root != nil {
-				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+				p = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
 			} else {
-				pth = item.Name
+				p = item.Name
 			}
 
+			pth := path.Join(projectPath, p)
+			if token != "" {
+				pth += "?token=" + token
+			}
 			links[i] = link{
 				Name:  item.Name,
-				Path:  path.Join(projectPath, pth),
+				Path:  pth,
 				Size:  byteCountDecimal(item.Size),
 				Links: strconv.Itoa(len(item.Items)),
 			}
@@ -283,6 +295,9 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 			back = projectPath
 		} else {
 			back = path.Dir(path.Join(projectPath, root))
+		}
+		if token != "" {
+			back += "?token=" + token
 		}
 		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
 			"Path":  rep.Item.Path,

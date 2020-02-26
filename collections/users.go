@@ -2,8 +2,10 @@ package collections
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/alecthomas/jsonschema"
 	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
 	s "github.com/textileio/go-threads/store"
@@ -72,6 +74,23 @@ func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (us
 	if err = u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
 		return nil, err
 	}
+
+	// tmp
+	bucks := &Buckets{}
+	schema, err := json.Marshal(jsonschema.Reflect(bucks.GetInstance()))
+	if err != nil {
+		return nil, err
+	}
+	if err = u.threads.RegisterSchema(
+		ctx,
+		user.StoreID,
+		bucks.GetName(),
+		string(schema),
+		bucks.GetIndexes()...); err != nil {
+		return nil, err
+	}
+	// tmp
+
 	if err = u.threads.Start(ctx, user.StoreID); err != nil {
 		return nil, err
 	}

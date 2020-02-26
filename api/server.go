@@ -150,28 +150,31 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if session.Expiry < int(time.Now().Unix()) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
-	user, err := s.service.collections.Developers.Get(ctx, session.UserID)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "User not found")
-	}
-
-	scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
-	if scope != "" {
-		if scope != user.ID {
-			if _, err := s.service.getTeamForUser(ctx, scope, user); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		scope = session.Scope
-	}
-
 	if err := s.service.collections.Sessions.Touch(ctx, session); err != nil {
 		return nil, err
 	}
-
 	newCtx := context.WithValue(ctx, reqKey("session"), session)
-	newCtx = context.WithValue(newCtx, reqKey("user"), user)
-	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
+	newCtx = context.WithValue(newCtx, reqKey("scope"), session.Scope)
+
+	dev, err := s.service.collections.Developers.Get(ctx, session.UserID)
+	if err != nil {
+		user, err := s.service.collections.Users.Get(ctx, session.UserID)
+		if err != nil {
+			return nil, status.Error(codes.PermissionDenied, "User not found")
+		}
+		newCtx = context.WithValue(newCtx, reqKey("user"), user)
+	} else {
+		scope := metautils.ExtractIncoming(ctx).Get("X-Scope")
+		if scope != "" {
+			if scope != dev.ID {
+				if _, err := s.service.getTeamForUser(ctx, scope, dev); err != nil {
+					return nil, err
+				}
+			}
+			newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
+		}
+		newCtx = context.WithValue(newCtx, reqKey("user"), dev)
+	}
+
 	return newCtx, nil
 }
