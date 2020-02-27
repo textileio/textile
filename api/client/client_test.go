@@ -17,7 +17,7 @@ import (
 	"github.com/phayes/freeport"
 	tutil "github.com/textileio/go-threads/util"
 	c "github.com/textileio/textile/api/client"
-	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 )

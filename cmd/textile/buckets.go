@@ -14,7 +14,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
-	pb "github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
