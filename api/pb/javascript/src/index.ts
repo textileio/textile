@@ -118,9 +118,9 @@ export class Account {
     return new Promise((resolve, reject) => {
       const meta = new grpc.Metadata()
       if (this.token) {
-        meta.append('Authorization', `Bearer ${this.token}`)
+        meta.append('authorization', `bearer ${this.token}`)
         if (scope) {
-          meta.append('X-Scope', `${scope}`)
+          meta.append('x-scope', `${scope}`)
         }
       }
       console.log(meta.headersMap)
