@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { grpc } from '@improbable-eng/grpc-web'
-import { API } from './account_pb_service'
+import { API } from './api_pb_service'
 import {
   GetProjectReply,
   GetProjectRequest,
@@ -24,7 +24,7 @@ import {
   WhoamiReply,
   WhoamiRequest,
   RemoveTeamRequest
-} from './account_pb'
+} from './api_pb'
 
 export type TextileConfig = {
   host?: string;
