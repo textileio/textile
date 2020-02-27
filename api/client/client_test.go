@@ -1012,7 +1012,7 @@ func makeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		RepoPath: dir,
 
 		AddrApi: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-
+		AddrApiProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 		AddrThreadsServiceApi: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d",
 			threadsServiceApiPort)),
