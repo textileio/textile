@@ -382,11 +382,11 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[str
 	md := map[string]string{}
 	token, ok := ctx.Value(authKey("token")).(string)
 	if ok && token != "" {
-		md["Authorization"] = "Bearer " + token
+		md["authorization"] = "Bearer " + token
 	}
 	scope, ok := ctx.Value(authKey("scope")).(string)
 	if ok && scope != "" {
-		md["X-Scope"] = scope
+		md["x-scope"] = scope
 	}
 	return md, nil
 }
