@@ -195,6 +195,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, "User not found")
 	}
+	// @warn this .Get method is not case-insensitive, but header keys should be. it may cause future issues.
 	scope := metautils.ExtractIncoming(ctx).Get("x-scope")
 	if scope != "" {
 		if scope != user.ID {
