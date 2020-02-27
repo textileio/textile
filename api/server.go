@@ -29,8 +29,7 @@ var (
 
 	// @TODO recompile pb without the 'api.' prefix, fix this
 	ignoreMethods = []string{
-		"/api.pb.API/Login",
-		"/api.API/Login",
+		"/pb.API/Login",
 	}
 )
 

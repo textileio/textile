@@ -14,7 +14,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	api "github.com/textileio/textile/api/client"
-	api_pb "github.com/textileio/textile/api/pb"
+	pb "github.com/textileio/textile/api/pb"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -74,7 +74,7 @@ func lsBucketPath(args []string) {
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	var items []*api_pb.ListBucketPathReply_Item
+	var items []*pb.ListBucketPathReply_Item
 	if len(rep.Item.Items) > 0 {
 		items = rep.Item.Items
 	} else if !rep.Item.IsDir {
