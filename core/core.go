@@ -143,7 +143,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
-	collections, err := c.NewCollections(ctx, threadsClient, t.threadsToken, ds)
+	collections, err := c.NewCollections(ctx, "mongodb://127.0.0.1:27017")
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +239,9 @@ func (t *Textile) Close() error {
 	t.threadsServiceServer.Close()
 	t.threadsServer.Close()
 	if err := t.server.Close(); err != nil {
+		return err
+	}
+	if err := t.collections.Close(); err != nil {
 		return err
 	}
 	return t.ds.Close()

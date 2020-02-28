@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/textileio/go-threads/api/client"
-	"github.com/textileio/go-threads/store"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -14,70 +14,69 @@ var (
 )
 
 type Session struct {
-	ID     string
-	UserID string // dev or user
-	Scope  string // dev or team ID
-	Expiry int
+	ID          primitive.ObjectID `bson:"_id"`
+	DeveloperID primitive.ObjectID `bson:"developer_id"`
+	ExpiresAt   time.Time          `bson:"expires_at"`
 }
 
 type Sessions struct {
-	threads *client.Client
-	storeID *uuid.UUID
-	token   string
+	col *mongo.Collection
 }
 
-func (s *Sessions) GetName() string {
-	return "Session"
+func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
+	s := &Sessions{col: db.Collection("sessions")}
+	_, err := s.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{"developer_id", 1}},
+		},
+	})
+	return s, err
 }
 
-func (s *Sessions) GetInstance() interface{} {
-	return &Session{}
-}
-
-func (s *Sessions) GetIndexes() []*store.IndexConfig {
-	return []*store.IndexConfig{{
-		Path: "UserID",
-	}}
-}
-
-func (s *Sessions) GetStoreID() *uuid.UUID {
-	return s.storeID
-}
-
-func (s *Sessions) Create(ctx context.Context, userID, scope string) (*Session, error) {
-	ctx = AuthCtx(ctx, s.token)
-	session := &Session{
-		UserID: userID,
-		Scope:  scope,
-		Expiry: int(time.Now().Add(sessionDur).Unix()),
+func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (*Session, error) {
+	doc := &Session{
+		DeveloperID: developerID,
+		ExpiresAt:   time.Now().Add(sessionDur),
 	}
-	if err := s.threads.ModelCreate(ctx, s.storeID.String(), s.GetName(), session); err != nil {
+	res, err := s.col.InsertOne(ctx, doc)
+	if err != nil {
 		return nil, err
 	}
-	return session, nil
+	doc.ID = res.InsertedID.(primitive.ObjectID)
+	return doc, nil
 }
 
-func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
-	ctx = AuthCtx(ctx, s.token)
-	session := &Session{}
-	if err := s.threads.ModelFindByID(ctx, s.storeID.String(), s.GetName(), id, session); err != nil {
+func (s *Sessions) Get(ctx context.Context, id primitive.ObjectID) (*Session, error) {
+	var doc *Session
+	res := s.col.FindOne(ctx, bson.M{"_id": id})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
 		return nil, err
 	}
-	return session, nil
+	return doc, nil
 }
 
-func (s *Sessions) Save(ctx context.Context, session *Session) error {
-	ctx = AuthCtx(ctx, s.token)
-	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
+func (s *Sessions) Touch(ctx context.Context, id primitive.ObjectID) error {
+	expiry := time.Now().Add(sessionDur)
+	res, err := s.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"expires_at": expiry}})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }
 
-func (s *Sessions) Touch(ctx context.Context, session *Session) error {
-	ctx = AuthCtx(ctx, s.token)
-	session.Expiry = int(time.Now().Add(sessionDur).Unix())
-	return s.threads.ModelSave(ctx, s.storeID.String(), s.GetName(), session)
-}
-
-func (s *Sessions) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, s.token)
-	return s.threads.ModelDelete(ctx, s.storeID.String(), s.GetName(), id)
+func (s *Sessions) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := s.col.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }

@@ -4,105 +4,111 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/textileio/go-threads/api/client"
-	s "github.com/textileio/go-threads/store"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Project struct {
-	ID      string
-	Name    string
-	Scope   string // user or team
-	StoreID string
-	Address string
-	Created int64
+	ID        primitive.ObjectID   `bson:"_id"`
+	OwnerID   primitive.ObjectID   `bson:"owner_id"`
+	Name      string               `bson:"name"`
+	StoreID   string               `bson:"store_id"`
+	Address   string               `bson:"address"`
+	Members   []primitive.ObjectID `bson:"members"`
+	Teams     []primitive.ObjectID `bson:"teams"`
+	CreatedAt time.Time            `bson:"created_at"`
 }
 
 type Projects struct {
+	col     *mongo.Collection
 	threads *client.Client
-	storeID *uuid.UUID
 	token   string
 }
 
-func (p *Projects) GetName() string {
-	return "Project"
+func NewProjects(ctx context.Context, db *mongo.Database) (*Projects, error) {
+	p := &Projects{col: db.Collection("projects")}
+	_, err := p.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{"owner_id", 1}, {"name", 1}},
+		},
+		{
+			Keys:    bson.D{{"members", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{"teams", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	})
+	return p, err
 }
 
-func (p *Projects) GetInstance() interface{} {
-	return &Project{}
-}
-
-func (p *Projects) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{{
-		Path:   "Name",
-		Unique: true,
-	}}
-}
-
-func (p *Projects) GetStoreID() *uuid.UUID {
-	return p.storeID
-}
-
-func (p *Projects) Create(ctx context.Context, name, scope, addr string) (*Project, error) {
+func (p *Projects) Create(
+	ctx context.Context, ownerID primitive.ObjectID, name, storeID, addr string) (*Project, error) {
 	validName, err := toValidName(name)
 	if err != nil {
 		return nil, err
 	}
-	ctx = AuthCtx(ctx, p.token)
-	proj := &Project{
-		Name:    validName,
-		Scope:   scope,
-		Address: addr,
-		Created: time.Now().Unix(),
+	doc := &Project{
+		OwnerID:   ownerID,
+		Name:      validName,
+		StoreID:   storeID,
+		Address:   addr,
+		CreatedAt: time.Now(),
 	}
-	// Create a dedicated store for the project
-	proj.StoreID, err = p.threads.NewStore(ctx)
+	res, err := p.col.InsertOne(ctx, doc)
 	if err != nil {
 		return nil, err
 	}
-	if err = p.threads.ModelCreate(ctx, p.storeID.String(), p.GetName(), proj); err != nil {
-		return nil, err
-	}
-	if err = p.threads.Start(ctx, proj.StoreID); err != nil {
-		return nil, err
-	}
-	return proj, nil
+	doc.ID = res.InsertedID.(primitive.ObjectID)
+	return doc, nil
 }
 
-func (p *Projects) Get(ctx context.Context, id string) (*Project, error) {
-	ctx = AuthCtx(ctx, p.token)
-	proj := &Project{}
-	if err := p.threads.ModelFindByID(ctx, p.storeID.String(), p.GetName(), id, proj); err != nil {
+func (p *Projects) Get(ctx context.Context, id primitive.ObjectID) (*Project, error) {
+	var doc *Project
+	res := p.col.FindOne(ctx, bson.M{"_id": id})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
 		return nil, err
 	}
-	return proj, nil
+	return doc, nil
 }
 
-func (p *Projects) GetByName(ctx context.Context, name string) (*Project, error) {
-	ctx = AuthCtx(ctx, p.token)
-	query := s.JSONWhere("Name").Eq(name)
-	res, err := p.threads.ModelFind(ctx, p.storeID.String(), p.GetName(), query, []*Project{})
+func (p *Projects) List(ctx context.Context, developerID primitive.ObjectID) ([]Project, error) {
+	filter := bson.M{"$or": bson.A{
+		bson.M{"members": bson.M{"$elemMatch": bson.M{"$eq": developerID}}},
+	}}
+	cursor, err := p.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	projs := res.([]*Project)
-	if len(projs) == 0 {
-		return nil, nil
+	var docs []Project
+	for cursor.Next(ctx) {
+		var doc Project
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
 	}
-	return projs[0], nil
-}
-
-func (p *Projects) List(ctx context.Context, scope string) ([]*Project, error) {
-	ctx = AuthCtx(ctx, p.token)
-	query := s.JSONWhere("Scope").Eq(scope)
-	res, err := p.threads.ModelFind(ctx, p.storeID.String(), p.GetName(), query, []*Project{})
-	if err != nil {
+	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
-	return res.([]*Project), nil
+	return docs, nil
 }
 
-func (p *Projects) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, p.token)
-	return p.threads.ModelDelete(ctx, p.storeID.String(), p.GetName(), id)
+// @todo: Remove associated thread store
+func (p *Projects) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := p.col.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }

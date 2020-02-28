@@ -4,150 +4,69 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/textileio/go-threads/api/client"
-	s "github.com/textileio/go-threads/store"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Developer struct {
-	ID      string
-	Email   string
-	Teams   []string
-	Created int64
+	ID        primitive.ObjectID `bson:"_id"`
+	Email     string             `bson:"email"`
+	CreatedAt time.Time          `bson:"created_at"`
 }
 
 type Developers struct {
-	threads *client.Client
-	storeID *uuid.UUID
-	token   string
+	col *mongo.Collection
 }
 
-func (d *Developers) GetName() string {
-	return "Developer"
+func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error) {
+	d := &Developers{col: db.Collection("developers")}
+	_, err := d.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{"email", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	})
+	return d, err
 }
 
-func (d *Developers) GetInstance() interface{} {
-	return &Developer{}
-}
-
-func (d *Developers) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{{
-		Path:   "Email",
-		Unique: true,
-	}}
-}
-
-func (d *Developers) GetStoreID() *uuid.UUID {
-	return d.storeID
-}
-
-func (d *Developers) Create(ctx context.Context, email string) (*Developer, error) {
-	ctx = AuthCtx(ctx, d.token)
-	dev := &Developer{
-		Email:   email,
-		Teams:   []string{},
-		Created: time.Now().Unix(),
+func (d *Developers) GetOrCreate(ctx context.Context, email string) (*Developer, error) {
+	doc := &Developer{
+		ID:        primitive.NewObjectID(),
+		Email:     email,
+		CreatedAt: time.Now(),
 	}
-	if err := d.threads.ModelCreate(ctx, d.storeID.String(), d.GetName(), dev); err != nil {
+	if _, err := d.col.InsertOne(ctx, doc); err != nil {
+		if _, ok := err.(mongo.WriteException); ok {
+			return d.Get(ctx, email)
+		}
 		return nil, err
 	}
-	return dev, nil
+	return doc, nil
 }
 
-func (d *Developers) GetOrCreateByEmail(ctx context.Context, email string) (*Developer, error) {
-	dev, err := d.GetByEmail(ctx, email)
-	if err != nil {
+func (d *Developers) Get(ctx context.Context, email string) (*Developer, error) {
+	var doc *Developer
+	res := d.col.FindOne(ctx, bson.M{"email": email})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
 		return nil, err
 	}
-	if dev == nil {
-		dev, err = d.Create(ctx, email)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return dev, nil
-}
-
-func (d *Developers) Get(ctx context.Context, id string) (*Developer, error) {
-	ctx = AuthCtx(ctx, d.token)
-	dev := &Developer{}
-	if err := d.threads.ModelFindByID(ctx, d.storeID.String(), d.GetName(), id, dev); err != nil {
-		return nil, err
-	}
-	return dev, nil
-}
-
-func (d *Developers) GetByEmail(ctx context.Context, email string) (*Developer, error) {
-	ctx = AuthCtx(ctx, d.token)
-	query := s.JSONWhere("Email").Eq(email)
-	res, err := d.threads.ModelFind(ctx, d.storeID.String(), d.GetName(), query, []*Developer{})
-	if err != nil {
-		return nil, err
-	}
-	devs := res.([]*Developer)
-	if len(devs) == 0 {
-		return nil, nil
-	}
-	return devs[0], nil
-}
-
-func (d *Developers) ListByTeam(ctx context.Context, teamID string) ([]*Developer, error) {
-	ctx = AuthCtx(ctx, d.token)
-	res, err := d.threads.ModelFind(ctx, d.storeID.String(), d.GetName(), &s.JSONQuery{}, []*Developer{})
-	if err != nil {
-		return nil, err
-	}
-
-	// @todo: Enable a 'contains' query condition.
-	var devs []*Developer
-loop:
-	for _, dev := range res.([]*Developer) {
-		for _, t := range dev.Teams {
-			if t == teamID {
-				devs = append(devs, dev)
-				continue loop
-			}
-		}
-	}
-	return devs, nil
-}
-
-func (d *Developers) HasTeam(dev *Developer, teamID string) bool {
-	for _, t := range dev.Teams {
-		if teamID == t {
-			return true
-		}
-	}
-	return false
-}
-
-func (d *Developers) JoinTeam(ctx context.Context, dev *Developer, teamID string) error {
-	ctx = AuthCtx(ctx, d.token)
-	for _, t := range dev.Teams {
-		if t == teamID {
-			return nil
-		}
-	}
-	dev.Teams = append(dev.Teams, teamID)
-	return d.threads.ModelSave(ctx, d.storeID.String(), d.GetName(), dev)
-}
-
-func (d *Developers) LeaveTeam(ctx context.Context, dev *Developer, teamID string) error {
-	ctx = AuthCtx(ctx, d.token)
-	n := 0
-	for _, x := range dev.Teams {
-		if x != teamID {
-			dev.Teams[n] = x
-			n++
-		}
-	}
-	dev.Teams = dev.Teams[:n]
-	return d.threads.ModelSave(ctx, d.storeID.String(), d.GetName(), dev)
+	return doc, nil
 }
 
 // @todo: Developer must first delete projects and teams they own
-// @todo: Delete associated sessions
-func (d *Developers) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, d.token)
-	return d.threads.ModelDelete(ctx, d.storeID.String(), d.GetName(), id)
+// @todo: Delete associated sessions, projects, remove from teams
+func (d *Developers) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := d.col.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/textileio/go-threads/api/client"
-	s "github.com/textileio/go-threads/store"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -14,63 +14,64 @@ var (
 )
 
 type Invite struct {
-	ID      string
-	TeamID  string
-	FromID  string
-	ToEmail string
-	Expiry  int
+	ID        primitive.ObjectID `bson:"_id"`
+	TeamID    primitive.ObjectID `bson:"team_id"`
+	FromID    primitive.ObjectID `bson:"from_id"`
+	EmailTo   string             `bson:"email_to"`
+	ExpiresAt time.Time          `bson:"expires_at"`
 }
 
 type Invites struct {
-	threads *client.Client
-	storeID *uuid.UUID
-	token   string
+	col *mongo.Collection
 }
 
-func (i *Invites) GetName() string {
-	return "Invite"
+func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
+	i := &Invites{col: db.Collection("invites")}
+	_, err := i.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{"team_id", 1}},
+		},
+		{
+			Keys: bson.D{{"from_id", 1}},
+		},
+	})
+	return i, err
 }
 
-func (i *Invites) GetInstance() interface{} {
-	return &Invite{}
-}
-
-func (i *Invites) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{{
-		Path: "TeamID",
-	}, {
-		Path: "FromID",
-	}}
-}
-
-func (i *Invites) GetStoreID() *uuid.UUID {
-	return i.storeID
-}
-
-func (i *Invites) Create(ctx context.Context, teamID, fromID, toEmail string) (*Invite, error) {
-	ctx = AuthCtx(ctx, i.token)
-	invite := &Invite{
-		TeamID:  teamID,
-		FromID:  fromID,
-		ToEmail: toEmail,
-		Expiry:  int(time.Now().Add(inviteDur).Unix()),
+func (i *Invites) Create(ctx context.Context, teamID, fromID primitive.ObjectID, emailTo string) (*Invite, error) {
+	doc := &Invite{
+		TeamID:    teamID,
+		FromID:    fromID,
+		EmailTo:   emailTo,
+		ExpiresAt: time.Now().Add(inviteDur),
 	}
-	if err := i.threads.ModelCreate(ctx, i.storeID.String(), i.GetName(), invite); err != nil {
+	res, err := i.col.InsertOne(ctx, doc)
+	if err != nil {
 		return nil, err
 	}
-	return invite, nil
+	doc.ID = res.InsertedID.(primitive.ObjectID)
+	return doc, nil
 }
 
-func (i *Invites) Get(ctx context.Context, id string) (*Invite, error) {
-	ctx = AuthCtx(ctx, i.token)
-	invite := &Invite{}
-	if err := i.threads.ModelFindByID(ctx, i.storeID.String(), i.GetName(), id, invite); err != nil {
+func (i *Invites) Get(ctx context.Context, id primitive.ObjectID) (*Invite, error) {
+	var doc *Invite
+	res := i.col.FindOne(ctx, bson.M{"_id": id})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
 		return nil, err
 	}
-	return invite, nil
+	return doc, nil
 }
 
-func (i *Invites) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, i.token)
-	return i.threads.ModelDelete(ctx, i.storeID.String(), i.GetName(), id)
+func (i *Invites) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := i.col.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }
