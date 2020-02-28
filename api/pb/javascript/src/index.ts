@@ -35,7 +35,7 @@ export type TextileConfig = {
  * This client library can be used to interact with a local or remote Textile gRPC-service
  *  It is a wrapper around Textile's 'Store' API, which is defined here: https://github.com/textileio/go-threads/blob/master/api/pb/api.proto.
  */
-export class Account {
+export class Cloud {
   host: string;
   token?: string;
   
@@ -146,4 +146,4 @@ export class Account {
 }
 
 // eslint-disable-next-line import/no-default-export
-export default Account
+export default Cloud

@@ -5,7 +5,7 @@ PROTOC_GEN_TS_PATH = "./javascript/node_modules/.bin/protoc-gen-ts"
 all: $(GO)
 
 %.pb.go: %.proto
-	protoc -I=. \
+	protoc -I=. -I=$(GOPATH)/src \
 	--plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" --ts_out="service=grpc-web:javascript/src/." \
 	--go_out=\
 	plugins=grpc:\

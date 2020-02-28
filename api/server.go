@@ -143,8 +143,10 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
+	errc := make(chan error)
 	go func() {
-		s.rpcWebProxy.ListenAndServe()
+		errc <- s.rpcWebProxy.ListenAndServe()
+		close(errc)
 	}()
 
 	return s, nil

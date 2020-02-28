@@ -1,7 +1,7 @@
 {
-  "name": "@textile/account",
-  "version": "0.0.1",
-  "description": "A client for interacting Textile account APIs.",
+  "name": "@textile/cloud",
+  "version": "0.0.0",
+  "description": "A client for interacting with Textile Cloud gRPC APIs.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {
