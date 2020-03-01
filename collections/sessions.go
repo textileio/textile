@@ -10,12 +10,14 @@ import (
 )
 
 var (
-	sessionDur = time.Hour * 24 * 7 * 30
+	sessionTokenLen = 44
+	sessionDur      = time.Hour * 24 * 7 * 30
 )
 
 type Session struct {
 	ID          primitive.ObjectID `bson:"_id"`
 	DeveloperID primitive.ObjectID `bson:"developer_id"`
+	Token       string             `bson:"token"`
 	ExpiresAt   time.Time          `bson:"expires_at"`
 }
 
@@ -29,13 +31,22 @@ func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
 		{
 			Keys: bson.D{{"developer_id", 1}},
 		},
+		{
+			Keys: bson.D{{"token", 1}},
+		},
 	})
 	return s, err
 }
 
 func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (*Session, error) {
+	token, err := makeStringToken(sessionTokenLen)
+	if err != nil {
+		return nil, err
+	}
 	doc := &Session{
+		ID:          primitive.NewObjectID(),
 		DeveloperID: developerID,
+		Token:       token,
 		ExpiresAt:   time.Now().Add(sessionDur),
 	}
 	res, err := s.col.InsertOne(ctx, doc)
@@ -46,9 +57,9 @@ func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (
 	return doc, nil
 }
 
-func (s *Sessions) Get(ctx context.Context, id primitive.ObjectID) (*Session, error) {
+func (s *Sessions) Get(ctx context.Context, token string) (*Session, error) {
 	var doc *Session
-	res := s.col.FindOne(ctx, bson.M{"_id": id})
+	res := s.col.FindOne(ctx, bson.M{"token": token})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -58,9 +69,9 @@ func (s *Sessions) Get(ctx context.Context, id primitive.ObjectID) (*Session, er
 	return doc, nil
 }
 
-func (s *Sessions) Touch(ctx context.Context, id primitive.ObjectID) error {
+func (s *Sessions) Touch(ctx context.Context, token string) error {
 	expiry := time.Now().Add(sessionDur)
-	res, err := s.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"expires_at": expiry}})
+	res, err := s.col.UpdateOne(ctx, bson.M{"token": token}, bson.M{"$set": bson.M{"expires_at": expiry}})
 	if err != nil {
 		return err
 	}

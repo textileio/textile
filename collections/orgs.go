@@ -11,41 +11,44 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Team struct {
+type Org struct {
 	ID        primitive.ObjectID   `bson:"_id"`
 	OwnerID   primitive.ObjectID   `bson:"owner_id"`
 	Name      string               `bson:"name"`
-	Members   []primitive.ObjectID `bson:"members"`
+	StoreID   string               `bson:"store_id"`
+	MemberIDs []primitive.ObjectID `bson:"member_ids"`
 	CreatedAt time.Time            `bson:"created_at"`
 }
 
-type Teams struct {
+type Orgs struct {
 	col *mongo.Collection
 }
 
-func NewTeams(ctx context.Context, db *mongo.Database) (*Teams, error) {
-	t := &Teams{col: db.Collection("teams")}
+func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
+	t := &Orgs{col: db.Collection("orgs")}
 	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"owner_id", 1}, {"name", 1}},
+			Keys:    bson.D{{"owner_id", 1}, {"name", 1}},
+			Options: options.Index().SetUnique(true),
 		},
 		{
-			Keys:    bson.D{{"members", 1}},
-			Options: options.Index().SetUnique(true),
+			Keys: bson.D{{"member_ids", 1}},
 		},
 	})
 	return t, err
 }
 
-func (t *Teams) Create(ctx context.Context, ownerID primitive.ObjectID, name string) (*Team, error) {
+func (t *Orgs) Create(ctx context.Context, ownerID primitive.ObjectID, name, storeID string) (*Org, error) {
 	validName, err := toValidName(name)
 	if err != nil {
 		return nil, err
 	}
-	doc := &Team{
+	doc := &Org{
+		ID:        primitive.NewObjectID(),
 		OwnerID:   ownerID,
 		Name:      validName,
-		Members:   []primitive.ObjectID{},
+		StoreID:   storeID,
+		MemberIDs: []primitive.ObjectID{},
 		CreatedAt: time.Now(),
 	}
 	res, err := t.col.InsertOne(ctx, doc)
@@ -56,8 +59,8 @@ func (t *Teams) Create(ctx context.Context, ownerID primitive.ObjectID, name str
 	return doc, nil
 }
 
-func (t *Teams) Get(ctx context.Context, id primitive.ObjectID) (*Team, error) {
-	var doc *Team
+func (t *Orgs) Get(ctx context.Context, id primitive.ObjectID) (*Org, error) {
+	var doc *Org
 	res := t.col.FindOne(ctx, bson.M{"_id": id})
 	if res.Err() != nil {
 		return nil, res.Err()
@@ -68,15 +71,15 @@ func (t *Teams) Get(ctx context.Context, id primitive.ObjectID) (*Team, error) {
 	return doc, nil
 }
 
-func (t *Teams) List(ctx context.Context, memberID primitive.ObjectID) ([]Team, error) {
-	filter := bson.M{"members": bson.M{"$elemMatch": bson.M{"$eq": memberID}}}
+func (t *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, error) {
+	filter := bson.M{"member_ids": bson.M{"$elemMatch": bson.M{"$eq": memberID}}}
 	cursor, err := t.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	var docs []Team
+	var docs []Org
 	for cursor.Next(ctx) {
-		var doc Team
+		var doc Org
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
@@ -88,8 +91,8 @@ func (t *Teams) List(ctx context.Context, memberID primitive.ObjectID) ([]Team, 
 	return docs, nil
 }
 
-func (t *Teams) HasMember(ctx context.Context, id, memberID primitive.ObjectID) (bool, error) {
-	filter := bson.M{"_id": id, "members": bson.M{"$elemMatch": bson.M{"$eq": memberID}}}
+func (t *Orgs) HasMember(ctx context.Context, id, memberID primitive.ObjectID) (bool, error) {
+	filter := bson.M{"_id": id, "member_ids": bson.M{"$elemMatch": bson.M{"$eq": memberID}}}
 	res := t.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -101,8 +104,8 @@ func (t *Teams) HasMember(ctx context.Context, id, memberID primitive.ObjectID) 
 	return true, nil
 }
 
-func (t *Teams) AddMember(ctx context.Context, id, memberID primitive.ObjectID) error {
-	res, err := t.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$push": bson.M{"members": memberID}})
+func (t *Orgs) AddMember(ctx context.Context, id, memberID primitive.ObjectID) error {
+	res, err := t.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$addToSet": bson.M{"member_ids": memberID}})
 	if err != nil {
 		return err
 	}
@@ -112,8 +115,8 @@ func (t *Teams) AddMember(ctx context.Context, id, memberID primitive.ObjectID) 
 	return nil
 }
 
-func (t *Teams) RemoveMember(ctx context.Context, id, memberID primitive.ObjectID) error {
-	res, err := t.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$pull": bson.M{"members": memberID}})
+func (t *Orgs) RemoveMember(ctx context.Context, id, memberID primitive.ObjectID) error {
+	res, err := t.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$pull": bson.M{"member_ids": memberID}})
 	if err != nil {
 		return err
 	}
@@ -123,7 +126,7 @@ func (t *Teams) RemoveMember(ctx context.Context, id, memberID primitive.ObjectI
 	return nil
 }
 
-func (t *Teams) Delete(ctx context.Context, id primitive.ObjectID) error {
+func (t *Orgs) Delete(ctx context.Context, id primitive.ObjectID) error {
 	res, err := t.col.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return err

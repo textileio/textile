@@ -4,99 +4,99 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/go-threads/api/client"
-	s "github.com/textileio/go-threads/store"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Bucket struct {
-	ID        string
-	Path      string
-	Name      string
-	ProjectID string
-	Created   int64
-	Updated   int64
+	ID        primitive.ObjectID `bson:"_id"`
+	OwnerID   primitive.ObjectID `bson:"owner_id"`
+	Name      string             `bson:"name"`
+	EntityID  string             `bson:"entity_id"`
+	Address   string             `bson:"address"`
+	CreatedAt time.Time          `bson:"created_at"`
 }
 
 type Buckets struct {
-	threads *client.Client
-	storeID *uuid.UUID
-	token   string
+	col *mongo.Collection
 }
 
-func (f *Buckets) GetName() string {
-	return "Bucket"
+func NewBuckets(ctx context.Context, db *mongo.Database) (*Buckets, error) {
+	t := &Buckets{col: db.Collection("buckets")}
+	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{"owner_id", 1}, {"name", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{"entity_id", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	})
+	return t, err
 }
 
-func (f *Buckets) GetInstance() interface{} {
-	return &Bucket{}
-}
-
-func (f *Buckets) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{{
-		Path: "Path",
-	}, {
-		Path:   "Name",
-		Unique: true,
-	}, {
-		Path: "ProjectID",
-	}}
-}
-
-func (f *Buckets) GetStoreID() *uuid.UUID {
-	return f.storeID
-}
-
-func (f *Buckets) Create(ctx context.Context, pth path.Resolved, name, projectID string) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, ownerID primitive.ObjectID, name, entityID, addr string) (*Bucket, error) {
 	validName, err := toValidName(name)
 	if err != nil {
 		return nil, err
 	}
-	ctx = AuthCtx(ctx, f.token)
-	bucket := &Bucket{
-		Path:      pth.String(),
+	doc := &Bucket{
+		ID:        primitive.NewObjectID(),
+		OwnerID:   ownerID,
 		Name:      validName,
-		ProjectID: projectID,
-		Created:   time.Now().Unix(),
-		Updated:   time.Now().Unix(),
+		EntityID:  entityID,
+		Address:   addr,
+		CreatedAt: time.Now(),
 	}
-	if err := f.threads.ModelCreate(ctx, f.storeID.String(), f.GetName(), bucket); err != nil {
-		return nil, err
-	}
-	return bucket, nil
-}
-
-func (f *Buckets) GetByName(ctx context.Context, name string) (*Bucket, error) {
-	ctx = AuthCtx(ctx, f.token)
-	query := s.JSONWhere("Name").Eq(name)
-	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Bucket{})
+	res, err := b.col.InsertOne(ctx, doc)
 	if err != nil {
 		return nil, err
 	}
-	buckets := res.([]*Bucket)
-	if len(buckets) == 0 {
-		return nil, nil
-	}
-	return buckets[0], nil
+	doc.ID = res.InsertedID.(primitive.ObjectID)
+	return doc, nil
 }
 
-func (f *Buckets) List(ctx context.Context, projectID string) ([]*Bucket, error) {
-	ctx = AuthCtx(ctx, f.token)
-	query := s.JSONWhere("ProjectID").Eq(projectID)
-	res, err := f.threads.ModelFind(ctx, f.storeID.String(), f.GetName(), query, []*Bucket{})
+func (b *Buckets) Get(ctx context.Context, ownerID primitive.ObjectID, name string) (*Bucket, error) {
+	var doc *Bucket
+	res := b.col.FindOne(ctx, bson.M{"owner_id": ownerID, "name": name})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
+func (b *Buckets) List(ctx context.Context, ownerID primitive.ObjectID) ([]Bucket, error) {
+	cursor, err := b.col.Find(ctx, bson.M{"owner_id": ownerID})
 	if err != nil {
 		return nil, err
 	}
-	return res.([]*Bucket), nil
+	var docs []Bucket
+	for cursor.Next(ctx) {
+		var doc Bucket
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
 }
 
-func (f *Buckets) Save(ctx context.Context, bucket *Bucket) error {
-	ctx = AuthCtx(ctx, f.token)
-	return f.threads.ModelSave(ctx, f.storeID.String(), f.GetName(), bucket)
-}
-
-func (f *Buckets) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, f.token)
-	return f.threads.ModelDelete(ctx, f.storeID.String(), f.GetName(), id)
+func (b *Buckets) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := b.col.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }

@@ -9,14 +9,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	inviteDur = time.Hour * 24 * 7 * 30
+const (
+	inviteTokenLen = 44
+	inviteDur      = time.Hour * 24 * 7 * 30
 )
 
 type Invite struct {
 	ID        primitive.ObjectID `bson:"_id"`
 	TeamID    primitive.ObjectID `bson:"team_id"`
 	FromID    primitive.ObjectID `bson:"from_id"`
+	Token     string             `bson:"token"`
 	EmailTo   string             `bson:"email_to"`
 	ExpiresAt time.Time          `bson:"expires_at"`
 }
@@ -34,14 +36,23 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 		{
 			Keys: bson.D{{"from_id", 1}},
 		},
+		{
+			Keys: bson.D{{"token", 1}},
+		},
 	})
 	return i, err
 }
 
 func (i *Invites) Create(ctx context.Context, teamID, fromID primitive.ObjectID, emailTo string) (*Invite, error) {
+	token, err := makeURLSafeToken(inviteTokenLen)
+	if err != nil {
+		return nil, err
+	}
 	doc := &Invite{
+		ID:        primitive.NewObjectID(),
 		TeamID:    teamID,
 		FromID:    fromID,
+		Token:     token,
 		EmailTo:   emailTo,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}
@@ -53,9 +64,9 @@ func (i *Invites) Create(ctx context.Context, teamID, fromID primitive.ObjectID,
 	return doc, nil
 }
 
-func (i *Invites) Get(ctx context.Context, id primitive.ObjectID) (*Invite, error) {
+func (i *Invites) Get(ctx context.Context, token string) (*Invite, error) {
 	var doc *Invite
-	res := i.col.FindOne(ctx, bson.M{"_id": id})
+	res := i.col.FindOne(ctx, bson.M{"token": token})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}

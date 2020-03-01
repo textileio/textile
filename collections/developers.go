@@ -13,6 +13,7 @@ import (
 type Developer struct {
 	ID        primitive.ObjectID `bson:"_id"`
 	Email     string             `bson:"email"`
+	StoreID   string             `bson:"store_id"`
 	CreatedAt time.Time          `bson:"created_at"`
 }
 
@@ -31,9 +32,10 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 	return d, err
 }
 
-func (d *Developers) GetOrCreate(ctx context.Context, email string) (*Developer, error) {
+func (d *Developers) GetOrCreate(ctx context.Context, email, storeID string) (*Developer, error) {
 	doc := &Developer{
 		ID:        primitive.NewObjectID(),
+		StoreID:   storeID,
 		Email:     email,
 		CreatedAt: time.Now(),
 	}
@@ -58,8 +60,8 @@ func (d *Developers) Get(ctx context.Context, email string) (*Developer, error) 
 	return doc, nil
 }
 
-// @todo: Developer must first delete projects and teams they own
-// @todo: Delete associated sessions, projects, remove from teams
+// @todo: Developer must first delete bucket and orgs they own
+// @todo: Delete associated sessions, store, remove from orgs
 func (d *Developers) Delete(ctx context.Context, id primitive.ObjectID) error {
 	res, err := d.col.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {

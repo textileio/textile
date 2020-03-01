@@ -151,7 +151,7 @@ func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 		Email: dev.Email,
 	}
 	if scope != dev.ID {
-		team, err := s.collections.Teams.Get(ctx, scope)
+		team, err := s.collections.Orgs.Get(ctx, scope)
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +194,7 @@ func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddT
 		log.Fatal("user required")
 	}
 
-	team, err := s.collections.Teams.Create(ctx, dev.ID, req.Name)
+	team, err := s.collections.Orgs.Create(ctx, dev.ID, req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -235,8 +235,8 @@ func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetT
 	return teamToPbTeam(team, members), nil
 }
 
-func (s *service) getTeamForUser(ctx context.Context, teamID string, dev *c.Developer) (*c.Team, error) {
-	team, err := s.collections.Teams.Get(ctx, teamID)
+func (s *service) getTeamForUser(ctx context.Context, teamID string, dev *c.Developer) (*c.Org, error) {
+	team, err := s.collections.Orgs.Get(ctx, teamID)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (s *service) getTeamForUser(ctx context.Context, teamID string, dev *c.Deve
 	return team, nil
 }
 
-func teamToPbTeam(team *c.Team, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
+func teamToPbTeam(team *c.Org, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
 	return &pb.GetTeamReply{
 		ID:      team.ID,
 		OwnerID: team.OwnerID,
@@ -270,7 +270,7 @@ func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.Li
 
 	list := make([]*pb.GetTeamReply, len(dev.Teams))
 	for i, id := range dev.Teams {
-		team, err := s.collections.Teams.Get(ctx, id)
+		team, err := s.collections.Orgs.Get(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -297,7 +297,7 @@ func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*p
 		return nil, status.Error(codes.PermissionDenied, "User is not the team owner")
 	}
 
-	if err = s.collections.Teams.Delete(ctx, team.ID); err != nil {
+	if err = s.collections.Orgs.Delete(ctx, team.ID); err != nil {
 		return nil, err
 	}
 	devs, err := s.collections.Developers.ListByTeam(ctx, team.ID)

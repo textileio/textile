@@ -2,6 +2,8 @@ package collections
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -11,7 +13,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const dbName = "textile"
+const (
+	dbName = "textile"
+)
 
 var (
 	_ = logging.Logger("collections")
@@ -26,14 +30,13 @@ type Collections struct {
 
 	Sessions   *Sessions
 	Developers *Developers
-	Teams      *Teams
+	Orgs       *Orgs
 	Invites    *Invites
-	Projects   *Projects
 
 	//Tokens *Tokens
 	//Users  *Users
 
-	//Buckets *Buckets
+	Buckets *Buckets
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -52,7 +55,7 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 	if err != nil {
 		return nil, err
 	}
-	teams, err := NewTeams(ctx, db)
+	teams, err := NewOrgs(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +63,7 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 	if err != nil {
 		return nil, err
 	}
-	projects, err := NewProjects(ctx, db)
+	buckets, err := NewBuckets(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -70,14 +73,13 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 
 		Sessions:   sessions,
 		Developers: developers,
-		Teams:      teams,
+		Orgs:       teams,
 		Invites:    invites,
-		Projects:   projects,
 
 		//Tokens: &Tokens{threads: threads, token: token},
 		//Users:  &Users{threads: threads, token: token},
 
-		//Buckets: &Buckets{threads: threads, token: token},
+		Buckets: buckets,
 	}, nil
 }
 
@@ -165,4 +167,35 @@ func toValidName(str string) (name string, err error) {
 		return
 	}
 	return name, nil
+}
+
+func makeStringToken(n int) (token string, err error) {
+	b := make([]byte, n)
+	if _, err = rand.Read(b); err != nil {
+		return
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func generateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	return b, err
+}
+
+func makeToken(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := generateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
+}
+
+func makeURLSafeToken(n int) (string, error) {
+	b, err := generateRandomBytes(n)
+	return base64.URLEncoding.EncodeToString(b), err
 }

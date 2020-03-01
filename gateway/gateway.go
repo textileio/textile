@@ -324,7 +324,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	team, err := g.collections.Teams.Get(ctx, invite.TeamID)
+	team, err := g.collections.Orgs.Get(ctx, invite.TeamID)
 	if err != nil {
 		g.render404(c)
 		return

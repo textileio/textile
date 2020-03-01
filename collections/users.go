@@ -4,115 +4,67 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/textileio/go-threads/api/client"
-	s "github.com/textileio/go-threads/store"
-	"google.golang.org/grpc/status"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type User struct {
-	ID        string
-	DeviceID  string
-	ProjectID string
-	StoreID   string
-	Created   int64
+	ID        primitive.ObjectID `bson:"_id"`
+	DeviceID  string             `bson:"device_id"`
+	CreatedAt time.Time          `bson:"created_at"`
 }
 
 type Users struct {
-	threads *client.Client
-	storeID *uuid.UUID
-	token   string
+	col *mongo.Collection
 }
 
-func (u *Users) GetName() string {
-	return "User"
+func NewUsers(ctx context.Context, db *mongo.Database) (*Users, error) {
+	u := &Users{col: db.Collection("users")}
+	_, err := u.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{"device_id", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	})
+	return u, err
 }
 
-func (u *Users) GetInstance() interface{} {
-	return &User{}
-}
-
-func (u *Users) GetIndexes() []*s.IndexConfig {
-	return []*s.IndexConfig{{
-		Path:   "DeviceID",
-		Unique: true,
-	}, {
-		Path: "ProjectID",
-	}}
-}
-
-func (u *Users) GetStoreID() *uuid.UUID {
-	return u.storeID
-}
-
-func (u *Users) GetOrCreate(ctx context.Context, projectID, deviceID string) (user *User, err error) {
-	ctx = AuthCtx(ctx, u.token)
-	user, err = u.GetByDeviceID(ctx, deviceID)
-	if err != nil {
-		stat, ok := status.FromError(err)
-		if !ok {
-			return
-		}
-		if stat.Message() != s.ErrNotFound.Error() {
-			return
-		}
-	}
-	if user != nil {
-		return
-	}
-	user = &User{
+func (u *Users) GetOrCreate(ctx context.Context, deviceID string) (user *User, err error) {
+	doc := &User{
+		ID:        primitive.NewObjectID(),
 		DeviceID:  deviceID,
-		ProjectID: projectID,
-		Created:   time.Now().Unix(),
+		CreatedAt: time.Now(),
 	}
-	user.StoreID, err = u.threads.NewStore(ctx)
+	if _, err := u.col.InsertOne(ctx, doc); err != nil {
+		if _, ok := err.(mongo.WriteException); ok {
+			return u.Get(ctx, deviceID)
+		}
+		return nil, err
+	}
+	return doc, nil
+}
+
+func (u *Users) Get(ctx context.Context, deviceID string) (*User, error) {
+	var doc *User
+	res := u.col.FindOne(ctx, bson.M{"device_id": deviceID})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	if err := res.Decode(&doc); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
+func (u *Users) Delete(ctx context.Context, id primitive.ObjectID) error {
+	res, err := u.col.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err = u.threads.ModelCreate(ctx, u.storeID.String(), u.GetName(), user); err != nil {
-		return nil, err
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
 	}
-	if err = u.threads.Start(ctx, user.StoreID); err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
-func (u *Users) Get(ctx context.Context, id string) (*User, error) {
-	ctx = AuthCtx(ctx, u.token)
-	user := &User{}
-	if err := u.threads.ModelFindByID(ctx, u.storeID.String(), u.GetName(), id, user); err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
-func (u *Users) GetByDeviceID(ctx context.Context, deviceID string) (*User, error) {
-	ctx = AuthCtx(ctx, u.token)
-	query := s.JSONWhere("DeviceID").Eq(deviceID)
-	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
-	if err != nil {
-		return nil, err
-	}
-	users := res.([]*User)
-	if len(users) == 0 {
-		return nil, nil
-	}
-	return users[0], nil
-}
-
-func (u *Users) List(ctx context.Context, projectID string) ([]*User, error) {
-	ctx = AuthCtx(ctx, u.token)
-	query := s.JSONWhere("ProjectID").Eq(projectID)
-	res, err := u.threads.ModelFind(ctx, u.storeID.String(), u.GetName(), query, []*User{})
-	if err != nil {
-		return nil, err
-	}
-	return res.([]*User), nil
-}
-
-// @todo: Delete associated sessions
-func (u *Users) Delete(ctx context.Context, id string) error {
-	ctx = AuthCtx(ctx, u.token)
-	return u.threads.ModelDelete(ctx, u.storeID.String(), u.GetName(), id)
+	return nil
 }
