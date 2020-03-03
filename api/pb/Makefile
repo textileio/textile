@@ -13,7 +13,6 @@ all: $(GO)
 
 clean:
 	rm -f *.pb.go
-	rm -f ./javascript/src/api_pb*
 	rm -fr ./javascript/dist
 
 .PHONY: clean

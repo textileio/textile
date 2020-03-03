@@ -27,7 +27,6 @@ import (
 var (
 	log = logging.Logger("textileapi")
 
-	// @TODO recompile pb without the 'api.' prefix, fix this
 	ignoreMethods = []string{
 		"/pb.API/Login",
 	}
@@ -143,10 +142,10 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 		}
 	}()
 
-	errc := make(chan error)
 	go func() {
-		errc <- s.rpcWebProxy.ListenAndServe()
-		close(errc)
+		if err := s.rpcWebProxy.ListenAndServe(); err != nil {
+			log.Errorf("error starting proxy: %v", err)
+		}
 	}()
 
 	return s, nil
