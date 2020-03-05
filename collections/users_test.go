@@ -35,7 +35,7 @@ func TestUsers_Get(t *testing.T) {
 	created, err := col.GetOrCreate(context.Background(), deviceID)
 	require.Nil(t, err)
 
-	got, err := col.Get(context.Background(), deviceID)
+	got, err := col.Get(context.Background(), created.ID)
 	require.Nil(t, err)
 	assert.Equal(t, created.ID, got.ID)
 }
@@ -52,6 +52,6 @@ func TestUsers_Delete(t *testing.T) {
 
 	err = col.Delete(context.Background(), created.ID)
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), deviceID)
+	_, err = col.Get(context.Background(), created.ID)
 	require.NotNil(t, err)
 }

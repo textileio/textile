@@ -1,4 +1,4 @@
-package api
+package cloud
 
 import (
 	"context"
@@ -10,14 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/textileio/go-threads/api/client"
+
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/broadcast"
-	pb "github.com/textileio/textile/api/pb"
+	pb "github.com/textileio/textile/cloud/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -43,6 +44,7 @@ type service struct {
 
 	emailClient    *email.Client
 	ipfsClient     iface.CoreAPI
+	threadsClient  *client.Client
 	filecoinClient *fc.Client
 
 	dnsManager *dns.Manager
@@ -53,113 +55,64 @@ type service struct {
 	sessionSecret string
 }
 
-// Login handles a login request.
 func (s *service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
 	log.Debugf("received login request")
 
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-
-	dev, err := s.collections.Developers.GetOrCreateByEmail(ctx, req.Email)
+	dev, err := s.collections.Developers.GetOrCreate(ctx, req.Username, req.Email, "@todo")
 	if err != nil {
 		return nil, err
 	}
 
-	var secret string
-	if s.sessionSecret != "" {
-		secret = s.sessionSecret
-	} else {
-		uid, err := uuid.NewRandom()
-		if err != nil {
-			return nil, err
-		}
-		secret = uid.String()
-	}
-
+	secret := getSessionSecret(s.sessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.emailClient.ConfirmAddress(ectx, dev.Email, s.gatewayUrl, secret); err != nil {
 		return nil, err
 	}
-
 	if !s.awaitVerification(secret) {
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.collections.Sessions.Create(ctx, dev.ID, dev.ID)
+	session, err := s.collections.Sessions.Create(ctx, dev.ID)
 	if err != nil {
 		return nil, err
 	}
-
 	return &pb.LoginReply{
-		ID:        dev.ID,
-		SessionID: session.ID,
+		ID:       dev.ID.Hex(),
+		Username: dev.Username,
+		Token:    session.Token,
 	}, nil
 }
 
-// Switch handles a switch request.
-func (s *service) Switch(ctx context.Context, _ *pb.SwitchRequest) (*pb.SwitchReply, error) {
-	log.Debugf("received switch request")
-
-	session, ok := ctx.Value(reqKey("session")).(*c.Session)
-	if !ok {
-		log.Fatal("session required")
+func getSessionSecret(secret string) string {
+	if secret != "" {
+		return secret
 	}
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	session.Scope = scope
-	if err := s.collections.Sessions.Save(ctx, session); err != nil {
-		return nil, err
-	}
-
-	return &pb.SwitchReply{}, nil
+	return c.MakeURLSafeToken(32)
 }
 
-// Logout handles a logout request.
 func (s *service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutReply, error) {
 	log.Debugf("received logout request")
 
-	session, ok := ctx.Value(reqKey("session")).(*c.Session)
-	if !ok {
-		log.Fatal("session required")
-	}
+	session, _ := c.SessionFromContext(ctx)
 	if err := s.collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
-
 	return &pb.LogoutReply{}, nil
 }
 
-// Whoami handles a whoami request.
 func (s *service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
 	log.Debugf("received whoami request")
 
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
-	if !ok {
-		log.Fatal("user required")
-	}
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-
-	reply := &pb.WhoamiReply{
-		ID:    dev.ID,
-		Email: dev.Email,
-	}
-	if scope != dev.ID {
-		team, err := s.collections.Orgs.Get(ctx, scope)
-		if err != nil {
-			return nil, err
-		}
-		reply.TeamID = team.ID
-		reply.TeamName = team.Name
-	}
-
-	return reply, nil
+	dev, _ := c.DevFromContext(ctx)
+	return &pb.WhoamiReply{
+		ID:       dev.ID.Hex(),
+		Username: dev.Username,
+		Email:    dev.Email,
+	}, nil
 }
 
 // awaitVerification waits for a dev to verify their email via a sent email.
@@ -185,152 +138,101 @@ func (s *service) awaitVerification(secret string) bool {
 	}
 }
 
-// AddTeam handles an add team request.
-func (s *service) AddTeam(ctx context.Context, req *pb.AddTeamRequest) (*pb.AddTeamReply, error) {
-	log.Debugf("received add team request")
+func (s *service) AddOrg(ctx context.Context, req *pb.AddOrgRequest) (*pb.GetOrgReply, error) {
+	log.Debugf("received add org request")
 
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
-	if !ok {
-		log.Fatal("user required")
+	dev, _ := c.DevFromContext(ctx)
+	org := &c.Org{
+		Name: req.Name,
+		Members: []c.Member{{
+			ID:       dev.ID,
+			Username: dev.Username,
+			Role:     c.OrgOwner,
+		}},
 	}
-
-	team, err := s.collections.Orgs.Create(ctx, dev.ID, req.Name)
-	if err != nil {
+	if err := s.collections.Orgs.Create(ctx, org); err != nil {
 		return nil, err
 	}
-	if err = s.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
-		return nil, err
-	}
-
-	return &pb.AddTeamReply{
-		ID: team.ID,
-	}, nil
+	return orgToPbOrg(org), nil
 }
 
-// GetTeam handles a get team request.
-func (s *service) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*pb.GetTeamReply, error) {
-	log.Debugf("received get team request")
+func (s *service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgReply, error) {
+	log.Debugf("received get org request")
 
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
+	org, ok := c.OrgFromContext(ctx)
 	if !ok {
-		log.Fatal("user required")
+		return nil, fmt.Errorf("org required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, dev)
-	if err != nil {
-		return nil, err
-	}
+	return orgToPbOrg(org), nil
+}
 
-	devs, err := s.collections.Developers.ListByTeam(ctx, team.ID)
-	if err != nil {
-		return nil, err
-	}
-	members := make([]*pb.GetTeamReply_Member, len(devs))
-	for i, u := range devs {
-		members[i] = &pb.GetTeamReply_Member{
-			ID:    u.ID,
-			Email: u.Email,
+func orgToPbOrg(org *c.Org) *pb.GetOrgReply {
+	members := make([]*pb.GetOrgReply_Member, len(org.Members))
+	for i, m := range org.Members {
+		members[i] = &pb.GetOrgReply_Member{
+			ID:       m.ID.Hex(),
+			Username: m.Username,
+			Role:     m.Role.String(),
 		}
 	}
-
-	return teamToPbTeam(team, members), nil
+	return &pb.GetOrgReply{
+		ID:        org.ID.Hex(),
+		Name:      org.Name,
+		Members:   members,
+		CreatedAt: org.CreatedAt.Unix(),
+	}
 }
 
-func (s *service) getTeamForUser(ctx context.Context, teamID string, dev *c.Developer) (*c.Org, error) {
-	team, err := s.collections.Orgs.Get(ctx, teamID)
+func (s *service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsReply, error) {
+	log.Debugf("received list orgs request")
+
+	dev, _ := c.DevFromContext(ctx)
+	orgs, err := s.collections.Orgs.List(ctx, dev.ID)
 	if err != nil {
 		return nil, err
 	}
-	if team == nil {
-		return nil, status.Error(codes.NotFound, "Team not found")
+	list := make([]*pb.GetOrgReply, len(orgs))
+	for i, org := range orgs {
+		list[i] = orgToPbOrg(&org)
 	}
-	if !s.collections.Developers.HasTeam(dev, team.ID) {
-		return nil, status.Error(codes.PermissionDenied, "User is not a team member")
-	}
-	return team, nil
+	return &pb.ListOrgsReply{List: list}, nil
 }
 
-func teamToPbTeam(team *c.Org, members []*pb.GetTeamReply_Member) *pb.GetTeamReply {
-	return &pb.GetTeamReply{
-		ID:      team.ID,
-		OwnerID: team.OwnerID,
-		Name:    team.Name,
-		Created: team.Created,
-		Members: members,
-	}
-}
+// @todo: Delete org objects.
+func (s *service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgReply, error) {
+	log.Debugf("received remove org request")
 
-// ListTeams handles a list teams request.
-func (s *service) ListTeams(ctx context.Context, _ *pb.ListTeamsRequest) (*pb.ListTeamsReply, error) {
-	log.Debugf("received list teams request")
-
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
+	dev, _ := c.DevFromContext(ctx)
+	org, ok := c.OrgFromContext(ctx)
 	if !ok {
-		log.Fatal("user required")
+		return nil, fmt.Errorf("org required")
+	}
+	isOwner, err := s.collections.Orgs.IsOwner(ctx, org.Name, dev.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !isOwner {
+		return nil, status.Error(codes.PermissionDenied, "User must be an org owner")
 	}
 
-	list := make([]*pb.GetTeamReply, len(dev.Teams))
-	for i, id := range dev.Teams {
-		team, err := s.collections.Orgs.Get(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		list[i] = teamToPbTeam(team, nil) // don't inflate members
+	if err = s.collections.Orgs.Delete(ctx, org.ID); err != nil {
+		return nil, err
 	}
-
-	return &pb.ListTeamsReply{List: list}, nil
+	return &pb.RemoveOrgReply{}, nil
 }
 
-// RemoveTeam handles a remove team request.
-// @todo: Delete team projects.
-func (s *service) RemoveTeam(ctx context.Context, req *pb.RemoveTeamRequest) (*pb.RemoveTeamReply, error) {
-	log.Debugf("received remove team request")
+func (s *service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (*pb.InviteToOrgReply, error) {
+	log.Debugf("received invite to org request")
 
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
+	dev, _ := c.DevFromContext(ctx)
+	org, ok := c.OrgFromContext(ctx)
 	if !ok {
-		log.Fatal("user required")
+		return nil, fmt.Errorf("org required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, dev)
-	if err != nil {
-		return nil, err
-	}
-	if team.OwnerID != dev.ID {
-		return nil, status.Error(codes.PermissionDenied, "User is not the team owner")
-	}
-
-	if err = s.collections.Orgs.Delete(ctx, team.ID); err != nil {
-		return nil, err
-	}
-	devs, err := s.collections.Developers.ListByTeam(ctx, team.ID)
-	if err != nil {
-		return nil, err
-	}
-	for _, u := range devs {
-		if err = s.collections.Developers.LeaveTeam(ctx, u, team.ID); err != nil {
-			return nil, err
-		}
-	}
-
-	return &pb.RemoveTeamReply{}, nil
-}
-
-// InviteToTeam handles a team invite request.
-func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest) (*pb.InviteToTeamReply, error) {
-	log.Debugf("received invite to team request")
-
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
-	if !ok {
-		log.Fatal("user required")
-	}
-	team, err := s.getTeamForUser(ctx, req.ID, dev)
-	if err != nil {
-		return nil, err
-	}
-
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-
-	invite, err := s.collections.Invites.Create(ctx, team.ID, dev.ID, req.Email)
+	invite, err := s.collections.Invites.Create(ctx, org.ID, dev.ID, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -338,276 +240,55 @@ func (s *service) InviteToTeam(ctx context.Context, req *pb.InviteToTeamRequest)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.emailClient.InviteAddress(
-		ectx, team.Name, dev.Email, req.Email, s.gatewayUrl, invite.ID); err != nil {
+		ectx, org.Name, dev.Email, req.Email, s.gatewayUrl, invite.Token); err != nil {
 		return nil, err
 	}
-
-	return &pb.InviteToTeamReply{InviteID: invite.ID}, nil
+	return &pb.InviteToOrgReply{InviteID: invite.ID.Hex()}, nil
 }
 
-// LeaveTeam handles a leave team request.
-func (s *service) LeaveTeam(ctx context.Context, req *pb.LeaveTeamRequest) (*pb.LeaveTeamReply, error) {
-	log.Debugf("received leave team request")
+// LeaveOrg handles a leave org request.
+func (s *service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgReply, error) {
+	log.Debugf("received leave org request")
 
-	dev, ok := ctx.Value(reqKey("user")).(*c.Developer)
+	dev, _ := c.DevFromContext(ctx)
+	org, ok := c.OrgFromContext(ctx)
 	if !ok {
-		log.Fatal("user required")
+		return nil, fmt.Errorf("org required")
 	}
-	team, err := s.getTeamForUser(ctx, req.ID, dev)
-	if err != nil {
+	if err := s.collections.Orgs.RemoveMember(ctx, org.Name, dev.ID); err != nil {
 		return nil, err
 	}
-	if team.OwnerID == dev.ID {
-		return nil, status.Error(codes.PermissionDenied, "Team owner cannot leave")
-	}
-
-	if err = s.collections.Developers.LeaveTeam(ctx, dev, team.ID); err != nil {
-		return nil, err
-	}
-
-	return &pb.LeaveTeamReply{}, nil
-}
-
-// AddProject handles an add project request.
-func (s *service) AddProject(ctx context.Context, req *pb.AddProjectRequest) (*pb.GetProjectReply, error) {
-	log.Debugf("received add project request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-
-	var addr string
-	if s.filecoinClient != nil {
-		var err error
-		addr, err = s.filecoinClient.Wallet.NewWallet(ctx, "bls")
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	proj, err := s.collections.Projects.Create(ctx, req.Name, scope, addr)
-	if err != nil {
-		if strings.HasSuffix(err.Error(), "unique constraint violation") {
-			proj, err = s.getProjectForScopeByName(ctx, req.Name, scope)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	return projectToPbProject(proj), nil
-}
-
-// GetProject handles a get project request.
-func (s *service) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectReply, error) {
-	log.Debugf("received get project request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScopeByName(ctx, req.Name, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	var bal int64
-	if proj.Address != "" {
-		bal, err = s.filecoinClient.Wallet.WalletBalance(ctx, proj.Address)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	reply := projectToPbProject(proj)
-	reply.WalletBalance = bal
-
-	return reply, nil
-}
-
-func (s *service) getProjectForScope(ctx context.Context, projID, scope string) (*c.Project, error) {
-	proj, err := s.collections.Projects.Get(ctx, projID)
-	if err != nil {
-		return nil, err
-	}
-	return ensureProjectAndScope(proj, scope)
-}
-
-func (s *service) getProjectForScopeByName(ctx context.Context, name, scope string) (*c.Project, error) {
-	proj, err := s.collections.Projects.GetByName(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	return ensureProjectAndScope(proj, scope)
-}
-
-func ensureProjectAndScope(proj *c.Project, scope string) (*c.Project, error) {
-	if proj == nil {
-		return nil, status.Error(codes.NotFound, "Project not found")
-	}
-	if scope != proj.Scope && scope != "*" {
-		return nil, status.Error(codes.PermissionDenied, "Scope does not own project")
-	}
-	return proj, nil
-}
-
-func projectToPbProject(proj *c.Project) *pb.GetProjectReply {
-	return &pb.GetProjectReply{
-		ID:            proj.ID,
-		Name:          proj.Name,
-		StoreID:       proj.StoreID,
-		WalletAddress: proj.Address,
-		Created:       proj.Created,
-	}
-}
-
-// ListProjects handles a list projects request.
-func (s *service) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsReply, error) {
-	log.Debugf("received list projects request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-
-	projs, err := s.collections.Projects.List(ctx, scope)
-	if err != nil {
-		return nil, err
-	}
-	list := make([]*pb.GetProjectReply, len(projs))
-	for i, proj := range projs {
-		list[i] = projectToPbProject(proj)
-	}
-
-	return &pb.ListProjectsReply{List: list}, nil
-}
-
-// RemoveProject handles a remove project request.
-func (s *service) RemoveProject(ctx context.Context, req *pb.RemoveProjectRequest) (*pb.RemoveProjectReply, error) {
-	log.Debugf("received remove project request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScopeByName(ctx, req.Name, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = s.collections.Projects.Delete(ctx, proj.ID); err != nil {
-		return nil, err
-	}
-
-	return &pb.RemoveProjectReply{}, nil
-}
-
-// AddToken handles an add token request.
-func (s *service) AddToken(ctx context.Context, req *pb.AddTokenRequest) (*pb.AddTokenReply, error) {
-	log.Debugf("received add token request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
-	if err != nil {
-		return nil, err
-	}
-	token, err := s.collections.Tokens.Create(ctx, proj.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.AddTokenReply{
-		ID: token.ID,
-	}, nil
-}
-
-// ListTokens handles a list tokens request.
-func (s *service) ListTokens(ctx context.Context, req *pb.ListTokensRequest) (*pb.ListTokensReply, error) {
-	log.Debugf("received list tokens request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	tokens, err := s.collections.Tokens.List(ctx, proj.ID)
-	if err != nil {
-		return nil, err
-	}
-	list := make([]string, len(tokens))
-	for i, token := range tokens {
-		list[i] = token.ID
-	}
-
-	return &pb.ListTokensReply{List: list}, nil
-}
-
-// RemoveToken handles a remove token request.
-func (s *service) RemoveToken(ctx context.Context, req *pb.RemoveTokenRequest) (*pb.RemoveTokenReply, error) {
-	log.Debugf("received remove token request")
-
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
-	}
-	token, err := s.getTokenWithScope(ctx, req.ID, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = s.collections.Tokens.Delete(ctx, token.ID); err != nil {
-		return nil, err
-	}
-
-	return &pb.RemoveTokenReply{}, nil
-}
-
-func (s *service) getTokenWithScope(ctx context.Context, tokenID, scope string) (*c.Token, error) {
-	token, err := s.collections.Tokens.Get(ctx, tokenID)
-	if err != nil {
-		return nil, err
-	}
-	if token == nil {
-		return nil, status.Error(codes.NotFound, "Token not found")
-	}
-	if _, err := s.getProjectForScope(ctx, token.ProjectID, scope); err != nil {
-		return nil, err
-	}
-	return token, nil
+	return &pb.LeaveOrgReply{}, nil
 }
 
 // ListBucketPath handles a list bucket path request.
 func (s *service) ListBucketPath(ctx context.Context, req *pb.ListBucketPathRequest) (*pb.ListBucketPathReply, error) {
 	log.Debugf("received list bucket path request")
 
-	scope, ok := ctx.Value(reqKey("scope")).(string)
-	if !ok {
-		log.Fatal("scope required")
+	dev, _ := c.DevFromContext(ctx)
+	org, _ := c.OrgFromContext(ctx)
+	var owner string
+	if org != nil {
+		owner = org.Name
+	} else {
+		owner = dev.Username
+	}
+
+	buck, _ := c.BucketFromContext(ctx)
+	if buck == nil && req.Path == "" {
+		return nil, fmt.Errorf("bucket required")
 	}
 
 	req.Path = strings.TrimSuffix(req.Path, "/")
-	if req.Path == "" { // List top-level buckets for this project
-		proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
-		if err != nil {
-			return nil, err
-		}
-		bucks, err := s.collections.Buckets.List(ctx, proj.ID)
+	if req.Path == "" { // List top-level buckets
+		bucks, err := s.collections.Buckets.List(ctx, owner)
 		if err != nil {
 			return nil, err
 		}
 		items := make([]*pb.ListBucketPathReply_Item, len(bucks))
 		for i, buck := range bucks {
-			items[i], err = s.pathToBucketItem(ctx, path.New(buck.Path), false)
+			buck.
+				items[i], err = s.pathToBucketItem(ctx, path.New(buck.Path), false)
 			if err != nil {
 				return nil, err
 			}
@@ -1028,4 +709,85 @@ func (s *service) RemoveBucketPath(
 	}
 
 	return &pb.RemoveBucketPathReply{}, nil
+}
+
+// AddBucketToken handles an add token request.
+func (s *service) AddBucketToken(ctx context.Context, req *pb.AddBucketTokenRequest) (*pb.AddBucketTokenReply, error) {
+	log.Debugf("received add bucket token request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
+	if err != nil {
+		return nil, err
+	}
+	token, err := s.collections.BucketTokens.Create(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.AddBucketTokenReply{
+		ID: token.ID,
+	}, nil
+}
+
+// ListBucketTokens handles a list tokens request.
+func (s *service) ListBucketTokens(ctx context.Context, req *pb.ListBucketTokensRequest) (*pb.ListBucketTokensReply, error) {
+	log.Debugf("received list bucket tokens request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	proj, err := s.getProjectForScopeByName(ctx, req.Project, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, err := s.collections.BucketTokens.List(ctx, proj.ID)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]string, len(tokens))
+	for i, token := range tokens {
+		list[i] = token.ID
+	}
+
+	return &pb.ListBucketTokensReply{List: list}, nil
+}
+
+// RemoveBucketToken handles a remove token request.
+func (s *service) RemoveBucketToken(ctx context.Context, req *pb.RemoveBucketTokenRequest) (*pb.RemoveBucketTokenReply, error) {
+	log.Debugf("received remove bucket token request")
+
+	scope, ok := ctx.Value(reqKey("scope")).(string)
+	if !ok {
+		log.Fatal("scope required")
+	}
+	token, err := s.getBucketTokenWithScope(ctx, req.ID, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.collections.BucketTokens.Delete(ctx, token.ID); err != nil {
+		return nil, err
+	}
+
+	return &pb.RemoveBucketTokenReply{}, nil
+}
+
+func (s *service) getBucketTokenWithScope(ctx context.Context, tokenID, scope string) (*c.BucketToken, error) {
+	token, err := s.collections.BucketTokens.Get(ctx, tokenID)
+	if err != nil {
+		return nil, err
+	}
+	if token == nil {
+		return nil, status.Error(codes.NotFound, "Bucket token not found")
+	}
+	if _, err := s.getProjectForScope(ctx, token.ProjectID, scope); err != nil {
+		return nil, err
+	}
+	return token, nil
 }

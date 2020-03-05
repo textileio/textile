@@ -1,4 +1,4 @@
-package api
+package cloud
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/util"
-	pb "github.com/textileio/textile/api/pb"
+	pb "github.com/textileio/textile/cloud/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -181,39 +181,64 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	if token == s.gatewayToken {
-		return context.WithValue(ctx, reqKey("scope"), "*"), nil
-	}
+	//if token == s.gatewayToken {
+	//	return context.WithValue(ctx, reqKey("org"), "*"), nil
+	//}
 
+	// Check for an active session
 	session, err := s.service.collections.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
-	if session.Expiry < int(time.Now().Unix()) {
+	if session.ExpiresAt.After(time.Now()) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
-	user, err := s.service.collections.Developers.Get(ctx, session.UserID)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "User not found")
-	}
-	// @warn this .Get method is not case-insensitive, but header keys should be. it may cause future issues.
-	scope := metautils.ExtractIncoming(ctx).Get("x-scope")
-	if scope != "" {
-		if scope != user.ID {
-			if _, err := s.service.getTeamForUser(ctx, scope, user); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		scope = session.Scope
-	}
-
-	if err := s.service.collections.Sessions.Touch(ctx, session); err != nil {
+	if err := s.service.collections.Sessions.Touch(ctx, session.Token); err != nil {
 		return nil, err
 	}
+	newCtx := c.NewSessionContext(ctx, session)
 
-	newCtx := context.WithValue(ctx, reqKey("session"), session)
-	newCtx = context.WithValue(newCtx, reqKey("user"), user)
-	newCtx = context.WithValue(newCtx, reqKey("scope"), scope)
+	// Load the developer
+	dev, err := s.service.collections.Developers.Get(ctx, session.DeveloperID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+	newCtx = c.NewDevContext(newCtx, dev)
+
+	// Load org if available
+	orgName := metautils.ExtractIncoming(ctx).Get("x-org")
+	if orgName != "" {
+		isMember, err := s.service.collections.Orgs.IsMember(ctx, orgName, dev.ID)
+		if err != nil {
+			return nil, err
+		}
+		if !isMember {
+			return nil, status.Error(codes.PermissionDenied, "User is not an org member")
+		} else {
+			org, err := s.service.collections.Orgs.Get(ctx, orgName)
+			if err != nil {
+				return nil, err
+			}
+			newCtx = c.NewOrgContext(newCtx, org)
+		}
+	}
+
+	// Load bucket if available
+	buckName := metautils.ExtractIncoming(ctx).Get("x-bucket")
+	if buckName != "" {
+		var owner string
+		org, ok := c.OrgFromContext(newCtx)
+		if ok {
+			owner = org.Name
+		} else {
+			owner = dev.Username
+		}
+		buck, err := s.service.collections.Buckets.Get(ctx, owner, buckName)
+		if err != nil {
+			return nil, err
+		}
+		newCtx = c.NewBucketContext(newCtx, buck)
+	}
+
 	return newCtx, nil
 }

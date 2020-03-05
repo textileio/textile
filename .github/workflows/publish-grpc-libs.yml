@@ -1,10 +1,11 @@
-name: Release Cloud JS
+name: Publish gRPC Libs
 on:
   release:
-    types: [created]
+    types: [published]
 jobs:
-  release-cloud-js:
-    name: Release Cloud JS
+
+  publish_grpc_libs:
+    name: Publish gRPC Libs
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -42,16 +43,15 @@ jobs:
         run: |
           npm install
           npm install -g json
-          npm install -g yaml-cli
-        working-directory: ./api/pb/javascript
-      - name: Protoc generate API
+        working-directory: ./cloud/pb/javascript
+      - name: Protoc generate Cloud
         run: |
           make clean && make
-        working-directory: ./api/pb
-      - name: Publish JS API
+        working-directory: ./cloud/pb
+      - name: Publish JS Cloud
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
         run: |
           json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
           npm publish --access=public
-        working-directory: ./api/pb/javascript
+        working-directory: ./cloud/pb/javascript

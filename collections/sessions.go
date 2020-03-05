@@ -21,6 +21,17 @@ type Session struct {
 	ExpiresAt   time.Time          `bson:"expires_at"`
 }
 
+var sessionKey key
+
+func NewSessionContext(ctx context.Context, session *Session) context.Context {
+	return context.WithValue(ctx, sessionKey, session)
+}
+
+func SessionFromContext(ctx context.Context) (*Session, bool) {
+	session, ok := ctx.Value(sessionKey).(*Session)
+	return session, ok
+}
+
 type Sessions struct {
 	col *mongo.Collection
 }
@@ -39,14 +50,10 @@ func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
 }
 
 func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (*Session, error) {
-	token, err := makeStringToken(sessionTokenLen)
-	if err != nil {
-		return nil, err
-	}
 	doc := &Session{
 		ID:          primitive.NewObjectID(),
 		DeveloperID: developerID,
-		Token:       token,
+		Token:       MakeToken(sessionTokenLen),
 		ExpiresAt:   time.Now().Add(sessionDur),
 	}
 	res, err := s.col.InsertOne(ctx, doc)

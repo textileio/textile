@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	. "github.com/textileio/textile/collections"
@@ -19,10 +18,20 @@ func TestOrgs_Create(t *testing.T) {
 	require.Nil(t, err)
 
 	ownerID := primitive.NewObjectID()
-	created, err := col.Create(context.Background(), ownerID, "test", uuid.New().String())
+	created := &Org{
+		Name: "test",
+		Members: []Member{{
+			ID:       ownerID,
+			Username: "test",
+			Role:     OrgOwner,
+		}},
+	}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 	assert.Equal(t, created.Name, "test")
-	_, err = col.Create(context.Background(), ownerID, "test", uuid.New().String())
+	assert.NotNil(t, created.ID)
+	assert.True(t, created.CreatedAt.Unix() > 0)
+	err = col.Create(context.Background(), &Org{Name: "test"})
 	require.NotNil(t, err)
 }
 
@@ -32,10 +41,11 @@ func TestOrgs_Get(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
+	created := &Org{Name: "test"}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 
-	got, err := col.Get(context.Background(), created.ID)
+	got, err := col.Get(context.Background(), created.Name)
 	require.Nil(t, err)
 	assert.Equal(t, created.ID, got.ID)
 }
@@ -46,38 +56,89 @@ func TestOrgs_List(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
-	require.Nil(t, err)
-	memberID := primitive.NewObjectID()
-	err = col.AddMember(context.Background(), created.ID, memberID)
+	ownerID := primitive.NewObjectID()
+	created := &Org{
+		Name: "test",
+		Members: []Member{{
+			ID:       ownerID,
+			Username: "test",
+			Role:     OrgOwner,
+		}},
+	}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 
-	list, err := col.List(context.Background(), memberID)
+	list, err := col.List(context.Background(), ownerID)
 	require.Nil(t, err)
 	require.Equal(t, len(list), 1)
 	assert.Equal(t, list[0].Name, created.Name)
 }
 
-func TestOrgs_HasMember(t *testing.T) {
+func TestOrgs_IsOwner(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
+	ownerID := primitive.NewObjectID()
+	created := &Org{
+		Name: "test",
+		Members: []Member{{
+			ID:       ownerID,
+			Username: "test",
+			Role:     OrgOwner,
+		}},
+	}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 	memberID := primitive.NewObjectID()
-	err = col.AddMember(context.Background(), created.ID, memberID)
+	err = col.AddMember(context.Background(), created.Name, Member{
+		ID:       memberID,
+		Username: "member",
+		Role:     OrgMember,
+	})
 	require.Nil(t, err)
 
-	has, err := col.HasMember(context.Background(), created.ID, memberID)
+	is, err := col.IsOwner(context.Background(), created.Name, ownerID)
 	require.Nil(t, err)
-	assert.True(t, has)
-	err = col.RemoveMember(context.Background(), created.ID, memberID)
+	assert.True(t, is)
+	is, err = col.IsOwner(context.Background(), created.Name, memberID)
 	require.Nil(t, err)
-	has, err = col.HasMember(context.Background(), created.ID, memberID)
+	assert.False(t, is)
+}
+
+func TestOrgs_IsMember(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	assert.False(t, has)
+	created := &Org{
+		Name: "test",
+		Members: []Member{{
+			ID:       primitive.NewObjectID(),
+			Username: "test",
+			Role:     OrgOwner,
+		}},
+	}
+	err = col.Create(context.Background(), created)
+	require.Nil(t, err)
+	memberID := primitive.NewObjectID()
+	err = col.AddMember(context.Background(), created.Name, Member{
+		ID:       memberID,
+		Username: "member",
+		Role:     OrgMember,
+	})
+	require.Nil(t, err)
+
+	is, err := col.IsMember(context.Background(), created.Name, memberID)
+	require.Nil(t, err)
+	assert.True(t, is)
+	err = col.RemoveMember(context.Background(), created.Name, memberID)
+	require.Nil(t, err)
+	is, err = col.IsMember(context.Background(), created.Name, memberID)
+	require.Nil(t, err)
+	assert.False(t, is)
 }
 
 func TestOrgs_AddMember(t *testing.T) {
@@ -86,17 +147,26 @@ func TestOrgs_AddMember(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
+	created := &Org{Name: "test"}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 
 	memberID := primitive.NewObjectID()
-	err = col.AddMember(context.Background(), created.ID, memberID)
+	err = col.AddMember(context.Background(), created.Name, Member{
+		ID:       memberID,
+		Username: "member",
+		Role:     OrgMember,
+	})
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.ID, memberID) // Add again should not duplicate entry
+	err = col.AddMember(context.Background(), created.Name, Member{ // Add again should not duplicate entry
+		ID:       memberID,
+		Username: "member",
+		Role:     OrgMember,
+	})
 	require.Nil(t, err)
-	got, err := col.Get(context.Background(), created.ID)
+	got, err := col.Get(context.Background(), created.Name)
 	require.Nil(t, err)
-	assert.Equal(t, len(got.MemberIDs), 1)
+	assert.Equal(t, len(got.Members), 1)
 }
 
 func TestOrgs_RemoveMember(t *testing.T) {
@@ -105,13 +175,18 @@ func TestOrgs_RemoveMember(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
+	created := &Org{Name: "test"}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 	memberID := primitive.NewObjectID()
-	err = col.AddMember(context.Background(), created.ID, memberID)
+	err = col.AddMember(context.Background(), created.Name, Member{
+		ID:       memberID,
+		Username: "member",
+		Role:     OrgMember,
+	})
 	require.Nil(t, err)
 
-	err = col.RemoveMember(context.Background(), created.ID, memberID)
+	err = col.RemoveMember(context.Background(), created.Name, memberID)
 	require.Nil(t, err)
 	list, err := col.List(context.Background(), memberID)
 	require.Nil(t, err)
@@ -124,11 +199,12 @@ func TestOrgs_Delete(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), "test", uuid.New().String())
+	created := &Org{Name: "test"}
+	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 
 	err = col.Delete(context.Background(), created.ID)
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), created.ID)
+	_, err = col.Get(context.Background(), created.Name)
 	require.NotNil(t, err)
 }

@@ -14,12 +14,11 @@
 # Dependency directories (remove the comment below to include it)
 vendor/
 
-# JS PB files
-api/pb/javascript/src/api_*.ts
-api/pb/javascript/src/api_*.js
-api/pb/javascript/dist
-api/pb/javascript/node_modules
-api/pb/javascript/package-lock.json
+# JS
+node_modules/
+**/javascript/src/
+!**/javascript/src/index.ts
+**/javascript/dist/
 
 # IDEs
 .idea/

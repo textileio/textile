@@ -38,14 +38,10 @@ func NewBucketTokens(ctx context.Context, db *mongo.Database) (*BucketTokens, er
 }
 
 func (b *BucketTokens) Create(ctx context.Context, bucketID primitive.ObjectID) (*BucketToken, error) {
-	token, err := makeStringToken(bucketTokenLen)
-	if err != nil {
-		return nil, err
-	}
 	doc := &BucketToken{
 		ID:        primitive.NewObjectID(),
 		BucketID:  bucketID,
-		Token:     token,
+		Token:     MakeToken(bucketTokenLen),
 		CreatedAt: time.Now(),
 	}
 	res, err := b.col.InsertOne(ctx, doc)

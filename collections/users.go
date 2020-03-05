@@ -31,7 +31,7 @@ func NewUsers(ctx context.Context, db *mongo.Database) (*Users, error) {
 	return u, err
 }
 
-func (u *Users) GetOrCreate(ctx context.Context, deviceID string) (user *User, err error) {
+func (u *Users) GetOrCreate(ctx context.Context, deviceID string) (*User, error) {
 	doc := &User{
 		ID:        primitive.NewObjectID(),
 		DeviceID:  deviceID,
@@ -39,16 +39,24 @@ func (u *Users) GetOrCreate(ctx context.Context, deviceID string) (user *User, e
 	}
 	if _, err := u.col.InsertOne(ctx, doc); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
-			return u.Get(ctx, deviceID)
+			var doc *User
+			res := u.col.FindOne(ctx, bson.M{"device_id": deviceID})
+			if res.Err() != nil {
+				return nil, res.Err()
+			}
+			if err := res.Decode(&doc); err != nil {
+				return nil, err
+			}
+			return doc, nil
 		}
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (u *Users) Get(ctx context.Context, deviceID string) (*User, error) {
+func (u *Users) Get(ctx context.Context, id primitive.ObjectID) (*User, error) {
 	var doc *User
-	res := u.col.FindOne(ctx, bson.M{"device_id": deviceID})
+	res := u.col.FindOne(ctx, bson.M{"_id": id})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}

@@ -2,6 +2,8 @@ module github.com/textileio/textile
 
 go 1.13
 
+replace github.com/textileio/go-threads => ../go-threads
+
 require (
 	github.com/caarlos0/spin v1.1.0
 	github.com/cheggaaa/pb/v3 v3.0.4

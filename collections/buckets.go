@@ -12,11 +12,22 @@ import (
 
 type Bucket struct {
 	ID        primitive.ObjectID `bson:"_id"`
-	OwnerID   primitive.ObjectID `bson:"owner_id"`
+	Owner     string             `bson:"owner"`
 	Name      string             `bson:"name"`
 	EntityID  string             `bson:"entity_id"`
 	Address   string             `bson:"address"`
 	CreatedAt time.Time          `bson:"created_at"`
+}
+
+var bucketKey key
+
+func NewBucketContext(ctx context.Context, buck *Bucket) context.Context {
+	return context.WithValue(ctx, bucketKey, buck)
+}
+
+func BucketFromContext(ctx context.Context) (*Bucket, bool) {
+	buck, ok := ctx.Value(devKey).(*Bucket)
+	return buck, ok
 }
 
 type Buckets struct {
@@ -27,7 +38,7 @@ func NewBuckets(ctx context.Context, db *mongo.Database) (*Buckets, error) {
 	t := &Buckets{col: db.Collection("buckets")}
 	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"owner_id", 1}, {"name", 1}},
+			Keys:    bson.D{{"owner", 1}, {"name", 1}},
 			Options: options.Index().SetUnique(true),
 		},
 		{
@@ -38,14 +49,14 @@ func NewBuckets(ctx context.Context, db *mongo.Database) (*Buckets, error) {
 	return t, err
 }
 
-func (b *Buckets) Create(ctx context.Context, ownerID primitive.ObjectID, name, entityID, addr string) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, owner, name, entityID, addr string) (*Bucket, error) {
 	validName, err := toValidName(name)
 	if err != nil {
 		return nil, err
 	}
 	doc := &Bucket{
 		ID:        primitive.NewObjectID(),
-		OwnerID:   ownerID,
+		Owner:     owner,
 		Name:      validName,
 		EntityID:  entityID,
 		Address:   addr,
@@ -59,9 +70,9 @@ func (b *Buckets) Create(ctx context.Context, ownerID primitive.ObjectID, name, 
 	return doc, nil
 }
 
-func (b *Buckets) Get(ctx context.Context, ownerID primitive.ObjectID, name string) (*Bucket, error) {
+func (b *Buckets) Get(ctx context.Context, owner string, name string) (*Bucket, error) {
 	var doc *Bucket
-	res := b.col.FindOne(ctx, bson.M{"owner_id": ownerID, "name": name})
+	res := b.col.FindOne(ctx, bson.M{"owner": owner, "name": name})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -71,8 +82,8 @@ func (b *Buckets) Get(ctx context.Context, ownerID primitive.ObjectID, name stri
 	return doc, nil
 }
 
-func (b *Buckets) List(ctx context.Context, ownerID primitive.ObjectID) ([]Bucket, error) {
-	cursor, err := b.col.Find(ctx, bson.M{"owner_id": ownerID})
+func (b *Buckets) List(ctx context.Context, owner string) ([]Bucket, error) {
+	cursor, err := b.col.Find(ctx, bson.M{"owner": owner})
 	if err != nil {
 		return nil, err
 	}

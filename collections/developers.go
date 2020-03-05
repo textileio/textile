@@ -12,9 +12,21 @@ import (
 
 type Developer struct {
 	ID        primitive.ObjectID `bson:"_id"`
+	Username  string             `bson:"username"`
 	Email     string             `bson:"email"`
 	StoreID   string             `bson:"store_id"`
 	CreatedAt time.Time          `bson:"created_at"`
+}
+
+var devKey key
+
+func NewDevContext(ctx context.Context, dev *Developer) context.Context {
+	return context.WithValue(ctx, devKey, dev)
+}
+
+func DevFromContext(ctx context.Context) (*Developer, bool) {
+	dev, ok := ctx.Value(devKey).(*Developer)
+	return dev, ok
 }
 
 type Developers struct {
@@ -28,29 +40,46 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 			Keys:    bson.D{{"email", 1}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys:    bson.D{{"username", 1}},
+			Options: options.Index().SetUnique(true),
+		},
 	})
 	return d, err
 }
 
-func (d *Developers) GetOrCreate(ctx context.Context, email, storeID string) (*Developer, error) {
+func (d *Developers) GetOrCreate(ctx context.Context, username, email, storeID string) (*Developer, error) {
+	validUsername, err := toValidName(username)
+	if err != nil {
+		return nil, err
+	}
 	doc := &Developer{
 		ID:        primitive.NewObjectID(),
-		StoreID:   storeID,
+		Username:  validUsername,
 		Email:     email,
+		StoreID:   storeID,
 		CreatedAt: time.Now(),
 	}
 	if _, err := d.col.InsertOne(ctx, doc); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
-			return d.Get(ctx, email)
+			var doc *Developer
+			res := d.col.FindOne(ctx, bson.M{"email": email})
+			if res.Err() != nil {
+				return nil, res.Err()
+			}
+			if err := res.Decode(&doc); err != nil {
+				return nil, err
+			}
+			return doc, nil
 		}
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (d *Developers) Get(ctx context.Context, email string) (*Developer, error) {
+func (d *Developers) Get(ctx context.Context, id primitive.ObjectID) (*Developer, error) {
 	var doc *Developer
-	res := d.col.FindOne(ctx, bson.M{"email": email})
+	res := d.col.FindOne(ctx, bson.M{"_id": id})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -58,6 +87,29 @@ func (d *Developers) Get(ctx context.Context, email string) (*Developer, error) 
 		return nil, err
 	}
 	return doc, nil
+}
+
+func (d *Developers) ListMembers(ctx context.Context, members []Member) ([]Developer, error) {
+	ids := make([]primitive.ObjectID, len(members))
+	for i, m := range members {
+		ids[i] = m.ID
+	}
+	cursor, err := d.col.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		return nil, err
+	}
+	var docs []Developer
+	for cursor.Next(ctx) {
+		var doc Developer
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
 }
 
 // @todo: Developer must first delete bucket and orgs they own

@@ -4,10 +4,8 @@ import (
 	"context"
 	"os"
 	"path"
-	"time"
 
 	"github.com/google/uuid"
-	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -21,14 +19,11 @@ import (
 	serviceapi "github.com/textileio/go-threads/service/api"
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -36,7 +31,7 @@ var (
 )
 
 // clientReqKey provides a concrete type for client request context values.
-type clientReqKey string
+//type clientReqKey string
 
 type Textile struct {
 	ds          datastore.Datastore
@@ -48,7 +43,7 @@ type Textile struct {
 	threadsClient        *threadsclient.Client
 	threadsToken         string
 
-	server  *api.Server
+	server  *cloud.Server
 	gateway *gateway.Gateway
 
 	sessionBus *broadcast.Broadcaster
@@ -117,8 +112,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Addr:      conf.AddrThreadsServiceApi,
 		ProxyAddr: conf.AddrThreadsServiceApiProxy,
 		Debug:     conf.Debug,
-	}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
-		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
+	})
+	//}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
+	//	grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +123,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Addr:      conf.AddrThreadsApi,
 		ProxyAddr: conf.AddrThreadsApiProxy,
 		Debug:     conf.Debug,
-	}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
-		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
+	})
+	//}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.clientAuthFunc)),
+	//	grpc.StreamInterceptor(auth.StreamServerInterceptor(t.clientAuthFunc)))
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +174,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	gatewayToken := uuid.New().String()
 
-	server, err := api.NewServer(ctx, api.Config{
+	server, err := cloud.NewServer(ctx, cloud.Config{
 		Addr:           conf.AddrApi,
 		AddrProxy:      conf.AddrApiProxy,
 		Collections:    collections,
@@ -251,36 +248,36 @@ func (t *Textile) HostID() peer.ID {
 	return t.threadservice.Host().ID()
 }
 
-func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
-	token, err := auth.AuthFromMD(ctx, "bearer")
-	if err != nil {
-		return nil, err
-	}
-	if token == t.threadsToken {
-		return ctx, nil
-	}
-
-	session, err := t.collections.Sessions.Get(ctx, token)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
-	}
-	if session.Expiry < int(time.Now().Unix()) {
-		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
-	}
-	user, err := t.collections.Users.Get(ctx, session.UserID)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "User not found")
-	}
-	proj, err := t.collections.Projects.Get(ctx, user.ProjectID)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "Project not found")
-	}
-
-	if err := t.collections.Sessions.Touch(ctx, session); err != nil {
-		return nil, err
-	}
-
-	newCtx := context.WithValue(ctx, clientReqKey("user"), user)
-	newCtx = context.WithValue(newCtx, clientReqKey("project"), proj)
-	return newCtx, nil
-}
+//func (t *Textile) clientAuthFunc(ctx context.Context) (context.Context, error) {
+//	token, err := auth.AuthFromMD(ctx, "bearer")
+//	if err != nil {
+//		return nil, err
+//	}
+//	if token == t.threadsToken {
+//		return ctx, nil
+//	}
+//
+//	session, err := t.collections.Sessions.Get(ctx, token)
+//	if err != nil {
+//		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
+//	}
+//	if session.Expiry < int(time.Now().Unix()) {
+//		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
+//	}
+//	user, err := t.collections.Users.Get(ctx, session.UserID)
+//	if err != nil {
+//		return nil, status.Error(codes.PermissionDenied, "User not found")
+//	}
+//	proj, err := t.collections.Projects.Get(ctx, user.ProjectID)
+//	if err != nil {
+//		return nil, status.Error(codes.PermissionDenied, "Project not found")
+//	}
+//
+//	if err := t.collections.Sessions.Touch(ctx, session); err != nil {
+//		return nil, err
+//	}
+//
+//	newCtx := context.WithValue(ctx, clientReqKey("user"), user)
+//	newCtx = context.WithValue(newCtx, clientReqKey("project"), proj)
+//	return newCtx, nil
+//}

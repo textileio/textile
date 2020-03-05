@@ -44,15 +44,11 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 }
 
 func (i *Invites) Create(ctx context.Context, teamID, fromID primitive.ObjectID, emailTo string) (*Invite, error) {
-	token, err := makeURLSafeToken(inviteTokenLen)
-	if err != nil {
-		return nil, err
-	}
 	doc := &Invite{
 		ID:        primitive.NewObjectID(),
 		TeamID:    teamID,
 		FromID:    fromID,
-		Token:     token,
+		Token:     MakeURLSafeToken(inviteTokenLen),
 		EmailTo:   emailTo,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}
