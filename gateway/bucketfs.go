@@ -16,7 +16,7 @@ import (
 )
 
 type serveBucketFileSystem interface {
-	Exists(bucket, pth string) bool
+	Exists(bucket, pth string) (bool, string)
 	Write(bucket, pth string, writer io.Writer) error
 	ValidHost() string
 }
@@ -35,7 +35,9 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 		if err != nil {
 			return
 		}
-		if fs.Exists(bucket, c.Request.URL.Path) {
+
+		exists, target := fs.Exists(bucket, c.Request.URL.Path)
+		if exists {
 			c.Writer.WriteHeader(http.StatusOK)
 			ctype := mime.TypeByExtension(filepath.Ext(c.Request.URL.Path))
 			if ctype == "" {
@@ -47,22 +49,40 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			} else {
 				c.Abort()
 			}
+		} else if target != "" {
+			content := path.Join(c.Request.URL.Path, target)
+			ctype := mime.TypeByExtension(filepath.Ext(content))
+			c.Writer.WriteHeader(http.StatusOK)
+			c.Writer.Header().Set("Content-Type", ctype)
+			if err := fs.Write(bucket, content, c.Writer); err != nil {
+				abort(c, http.StatusInternalServerError, err)
+			} else {
+				c.Abort()
+			}
 		}
+
 	}
 }
 
-func (f *bucketFileSystem) Exists(bucket, pth string) bool {
+func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 	if bucket == "" || pth == "/" {
-		return false
+		return false, ""
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
 	rep, err := f.client.ListBucketPath(ctx, "", path.Join(bucket, pth), f.auth)
 	if err == nil && !rep.Item.IsDir {
-		return true
+		return true, ""
 	}
-	return false
+	if rep.Item.IsDir {
+		for _, item := range rep.Item.Items {
+			if item.Name == "index.html" {
+				return false, item.Name
+			}
+		}
+	}
+	return false, ""
 }
 
 func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
