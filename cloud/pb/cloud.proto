@@ -71,93 +71,6 @@ message LeaveOrgRequest {}
 
 message LeaveOrgReply {}
 
-message BucketRoot {
-    string name = 1;
-    string path = 2;
-    int64 createdAt = 3;
-    int64 updatedAt = 4;
-    bool public = 5;
-}
-
-message ListBucketPathRequest {
-    string path = 1;
-}
-
-message ListBucketPathReply {
-    Item item = 1;
-    BucketRoot root = 2;
-
-    message Item {
-        string name = 1;
-        string path = 2;
-        int64 size = 3;
-        bool isDir = 4;
-        repeated Item items = 5;
-    }
-}
-
-message PushBucketPathRequest {
-    oneof payload {
-        Header header = 1;
-        bytes chunk = 2;
-    }
-
-    message Header {
-        string path = 1;
-    }
-}
-
-message PushBucketPathReply {
-    oneof payload {
-        Event event = 1;
-        string error = 2;
-    }
-
-    message Event {
-        string name = 1;
-        string path = 2;
-        int64 bytes = 3;
-        string size = 4;
-        BucketRoot root = 5;
-    }
-}
-
-message PullBucketPathRequest {
-    string path = 1;
-}
-
-message PullBucketPathReply {
-    bytes chunk = 1;
-}
-
-message RemoveBucketPathRequest {
-    string path = 1;
-}
-
-message RemoveBucketPathReply {}
-
-message AddBucketTokenRequest {
-    string path = 1;
-}
-
-message AddBucketTokenReply {
-    string token = 1;
-}
-
-message ListBucketTokensRequest {
-    string path = 1;
-}
-
-message ListBucketTokensReply {
-    repeated string list = 1;
-}
-
-message RemoveBucketTokenRequest {
-    string token = 1;
-}
-
-message RemoveBucketTokenReply {}
-
 service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
@@ -169,13 +82,4 @@ service API {
     rpc RemoveOrg (RemoveOrgRequest) returns (RemoveOrgReply) {}
     rpc InviteToOrg (InviteToOrgRequest) returns (InviteToOrgReply) {}
     rpc LeaveOrg (LeaveOrgRequest) returns (LeaveOrgReply) {}
-
-    rpc ListBucketPath (ListBucketPathRequest) returns (ListBucketPathReply) {}
-    rpc PushBucketPath (stream PushBucketPathRequest) returns (stream PushBucketPathReply) {}
-    rpc PullBucketPath (PullBucketPathRequest) returns (stream PullBucketPathReply) {}
-    rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}
-
-    rpc AddBucketToken (AddBucketTokenRequest) returns (AddBucketTokenReply) {}
-    rpc ListBucketTokens (ListBucketTokensRequest) returns (ListBucketTokensReply) {}
-    rpc RemoveBucketToken (RemoveBucketTokenRequest) returns (RemoveBucketTokenReply) {}
 }

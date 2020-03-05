@@ -16,7 +16,7 @@ vendor/
 
 # JS
 node_modules/
-**/javascript/src/
+**/javascript/src/*
 !**/javascript/src/index.ts
 **/javascript/dist/
 

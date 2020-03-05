@@ -1,7 +1,7 @@
 {
-  "name": "@textile/cloud",
+  "name": "@textile/buckets",
   "version": "0.0.0",
-  "description": "A client for interacting with the Textile Cloud gRPC API.",
+  "description": "A client for interacting with the Textile Buckets gRPC API.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {
