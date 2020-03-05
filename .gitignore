@@ -15,14 +15,16 @@
 vendor/
 
 # JS PB files
-*.js
-*.d.ts
+api/pb/javascript/src/api_*.ts
+api/pb/javascript/src/api_*.js
+api/pb/javascript/dist
+api/pb/javascript/node_modules
+api/pb/javascript/package-lock.json
 
 # IDEs
 .idea/
 .vscode/
 
-**/node_modules
 
 # Textile
 .textile/

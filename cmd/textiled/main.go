@@ -37,6 +37,10 @@ var (
 			Key:      "addr.api",
 			DefValue: "/ip4/127.0.0.1/tcp/3006",
 		},
+		"addrApiProxy": {
+			Key:      "addr.api_proxy",
+			DefValue: "/ip4/127.0.0.1/tcp/3007",
+		},
 		"addrThreadsHost": {
 			Key:      "addr.threads.host",
 			DefValue: "/ip4/0.0.0.0/tcp/4006",
@@ -134,6 +138,11 @@ func init() {
 		"addrApi",
 		flags["addrApi"].DefValue.(string),
 		"Textile API listen address")
+
+	rootCmd.PersistentFlags().String(
+		"addrApiProxy",
+		flags["addrApiProxy"].DefValue.(string),
+		"Textile API proxy listen address")
 
 	rootCmd.PersistentFlags().String(
 		"addrThreadsHost",
@@ -248,6 +257,7 @@ var rootCmd = &cobra.Command{
 		log.Debugf("loaded config: %s", string(settings))
 
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
+		addrApiProxy := cmd.AddrFromStr(configViper.GetString("addr.api_proxy"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
 		addrThreadsServiceApi := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api"))
 		addrThreadsServiceApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api_proxy"))
@@ -283,6 +293,7 @@ var rootCmd = &cobra.Command{
 		textile, err := core.NewTextile(ctx, core.Config{
 			RepoPath:                   configViper.GetString("repo"),
 			AddrApi:                    addrApi,
+			AddrApiProxy:               addrApiProxy,
 			AddrThreadsHost:            addrThreadsHost,
 			AddrThreadsServiceApi:      addrThreadsServiceApi,
 			AddrThreadsServiceApiProxy: addrThreadsServiceApiProxy,

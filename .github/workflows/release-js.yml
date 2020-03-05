@@ -1,0 +1,57 @@
+name: Release Cloud JS
+on:
+  release:
+    types: [created]
+jobs:
+  release-cloud-js:
+    name: Release Cloud JS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+      - name: Get latest tag
+        id: latesttag
+        uses: "WyriHaximus/github-action-get-previous-tag@master"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Install build tools
+        run: |
+          apt-get update && apt-get install -y build-essential
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+      - name: Setup env
+        run: |
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+          echo "::add-path::$(go env GOPATH)/bin"
+      - name: Set up Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install protoc
+        uses: Arduino/actions/setup-protoc@master
+        with:
+          version: '3.11.2'
+      - name: Install Go protoc plugins
+        run: |
+          export GO111MODULE=off
+          go get github.com/golang/protobuf/protoc-gen-go
+      - name: Get JS dependencies
+        run: |
+          npm install
+          npm install -g json
+          npm install -g yaml-cli
+        working-directory: ./api/pb/javascript
+      - name: Protoc generate API
+        run: |
+          make clean && make
+        working-directory: ./api/pb
+      - name: Publish JS API
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+        run: |
+          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
+          npm publish --access=public
+        working-directory: ./api/pb/javascript
