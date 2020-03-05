@@ -50,9 +50,11 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 				c.Abort()
 			}
 		} else if target != "" {
+			content := path.Join(c.Request.URL.Path, target)
+			ctype := mime.TypeByExtension(filepath.Ext(content))
 			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Header().Set("Content-Type", "text/html")
-			if err := fs.Write(bucket, fmt.Sprintf("%s/%s", c.Request.URL.Path, target), c.Writer); err != nil {
+			c.Writer.Header().Set("Content-Type", ctype)
+			if err := fs.Write(bucket, content, c.Writer); err != nil {
 				abort(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
