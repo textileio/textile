@@ -7,15 +7,13 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/go-threads/api/client"
+	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/textile/util"
 )
 
-const (
-	cname = "buckets"
-)
+const cname = "buckets"
 
 var (
 	schema  []byte
@@ -44,7 +42,11 @@ func init() {
 }
 
 type Buckets struct {
-	threads *client.Client
+	threads *tc.Client
+}
+
+func NewBuckets(tc *tc.Client) *Buckets {
+	return &Buckets{threads: tc}
 }
 
 func (b *Buckets) Create(ctx context.Context, storeID thread.ID, pth path.Path, name string) (*Bucket, error) {

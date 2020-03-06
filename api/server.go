@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -15,6 +16,7 @@ import (
 	fc "github.com/textileio/filecoin/api/client"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
 	bucketspb "github.com/textileio/textile/api/buckets/pb"
@@ -102,9 +104,10 @@ func NewServer(ctx context.Context, conf Config) (*Server, error) {
 			SessionSecret: conf.SessionSecret,
 		},
 		buckets: &buckets.Service{
+			Buckets:        buckets.NewBuckets(conf.ThreadsClient),
 			IPFSClient:     conf.IPFSClient,
-			ThreadsClient:  conf.ThreadsClient,
 			FilecoinClient: conf.FilecoinClient,
+			GatewayUrl:     conf.GatewayUrl,
 			DNSManager:     conf.DNSManager,
 		},
 		gatewayToken: conf.GatewayToken,
@@ -232,5 +235,58 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
+	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn/collection/buckets?id=UUID
+	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn/collection/buckets?name=foo
+	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn?collection=buckets&name=foo
+
+	// Validate store header if available
+	threadAddr := metautils.ExtractIncoming(ctx).Get("x-thread-addr")
+	if threadAddr != "" {
+		u, err := url.Parse(threadAddr)
+		if err != nil {
+			return nil, err
+		}
+		addr, err := ma.NewMultiaddr(u.Path)
+		if err != nil {
+			return nil, err
+		}
+		idstr, err := addr.ValueForProtocol(thread.Code)
+		if err != nil {
+			return nil, err
+		}
+		id, err := thread.Decode(idstr)
+		if err != nil {
+			return nil, err
+		}
+		// @todo: Make sure the caller owns this store.
+		newCtx = newStoreContext(newCtx, id)
+
+		//query, err := url.ParseQuery(u.RawQuery)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//name := query.Get("name")
+		//if name != "" {
+		//	buck, err := s.buckets.Buckets.Get(ctx, id, name)
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//	newCtx = newBucketContext(newCtx, buck)
+		//}
+	}
+
 	return newCtx, nil
+}
+
+type key int
+
+var storeKey key
+
+func newStoreContext(ctx context.Context, id thread.ID) context.Context {
+	return context.WithValue(ctx, storeKey, id)
+}
+
+func StoreFromContext(ctx context.Context) (thread.ID, bool) {
+	id, ok := ctx.Value(storeKey).(thread.ID)
+	return id, ok
 }

@@ -6,21 +6,20 @@ option java_package = "io.textile.buckets_grpc";
 option java_outer_classname = "TextileBuckets";
 option objc_class_prefix = "TXTL_BUCKETS";
 
-message BucketRoot {
+message Root {
     string name = 1;
     string path = 2;
     int64 createdAt = 3;
     int64 updatedAt = 4;
-    bool public = 5;
 }
 
-message ListBucketPathRequest {
+message ListPathRequest {
     string path = 1;
 }
 
-message ListBucketPathReply {
+message ListPathReply {
     Item item = 1;
-    BucketRoot root = 2;
+    Root root = 2;
 
     message Item {
         string name = 1;
@@ -31,7 +30,7 @@ message ListBucketPathReply {
     }
 }
 
-message PushBucketPathRequest {
+message PushPathRequest {
     oneof payload {
         Header header = 1;
         bytes chunk = 2;
@@ -42,7 +41,7 @@ message PushBucketPathRequest {
     }
 }
 
-message PushBucketPathReply {
+message PushPathReply {
     oneof payload {
         Event event = 1;
         string error = 2;
@@ -53,27 +52,27 @@ message PushBucketPathReply {
         string path = 2;
         int64 bytes = 3;
         string size = 4;
-        BucketRoot root = 5;
+        Root root = 5;
     }
 }
 
-message PullBucketPathRequest {
+message PullPathRequest {
     string path = 1;
 }
 
-message PullBucketPathReply {
+message PullPathReply {
     bytes chunk = 1;
 }
 
-message RemoveBucketPathRequest {
+message RemovePathRequest {
     string path = 1;
 }
 
-message RemoveBucketPathReply {}
+message RemovePathReply {}
 
 service API {
-    rpc ListBucketPath (ListBucketPathRequest) returns (ListBucketPathReply) {}
-    rpc PushBucketPath (stream PushBucketPathRequest) returns (stream PushBucketPathReply) {}
-    rpc PullBucketPath (PullBucketPathRequest) returns (stream PullBucketPathReply) {}
-    rpc RemoveBucketPath (RemoveBucketPathRequest) returns (RemoveBucketPathReply) {}
+    rpc ListPath (ListPathRequest) returns (ListPathReply) {}
+    rpc PushPath (stream PushPathRequest) returns (stream PushPathReply) {}
+    rpc PullPath (PullPathRequest) returns (stream PullPathReply) {}
+    rpc RemovePath (RemovePathRequest) returns (RemovePathReply) {}
 }

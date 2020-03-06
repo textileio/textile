@@ -25,9 +25,7 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-var (
-	sessionSecret = uuid.New().String()
-)
+var sessionSecret = uuid.New().String()
 
 func TestClient_Login(t *testing.T) {
 	t.Parallel()
