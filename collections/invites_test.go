@@ -18,9 +18,8 @@ func TestInvites_Create(t *testing.T) {
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
 
-	teamID := primitive.NewObjectID()
 	fromID := primitive.NewObjectID()
-	created, err := col.Create(context.Background(), teamID, fromID, "jane@doe.com")
+	created, err := col.Create(context.Background(), fromID, "myorg", "jane@doe.com")
 	require.Nil(t, err)
 	assert.True(t, created.ExpiresAt.After(time.Now()))
 }
@@ -31,9 +30,8 @@ func TestInvites_Get(t *testing.T) {
 
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
-	teamID := primitive.NewObjectID()
 	fromID := primitive.NewObjectID()
-	created, err := col.Create(context.Background(), teamID, fromID, "jane@doe.com")
+	created, err := col.Create(context.Background(), fromID, "myorg", "jane@doe.com")
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), created.Token)
@@ -47,9 +45,8 @@ func TestInvites_Delete(t *testing.T) {
 
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
-	teamID := primitive.NewObjectID()
 	fromID := primitive.NewObjectID()
-	created, err := col.Create(context.Background(), teamID, fromID, "jane@doe.com")
+	created, err := col.Create(context.Background(), fromID, "myorg", "jane@doe.com")
 	require.Nil(t, err)
 
 	err = col.Delete(context.Background(), created.ID)

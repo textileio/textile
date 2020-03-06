@@ -19,6 +19,7 @@ import (
 	serviceapi "github.com/textileio/go-threads/service/api"
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -26,12 +27,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	log = logging.Logger("core")
-)
-
-// clientReqKey provides a concrete type for client request context values.
-//type clientReqKey string
+var log = logging.Logger("core")
 
 type Textile struct {
 	ds          datastore.Datastore
@@ -43,7 +39,9 @@ type Textile struct {
 	threadsClient        *threadsclient.Client
 	threadsToken         string
 
-	server  *cloud.Server
+	filecoinClient *fc.Client
+
+	server  *api.Server
 	gateway *gateway.Gateway
 
 	sessionBus *broadcast.Broadcaster
@@ -174,19 +172,27 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	gatewayToken := uuid.New().String()
 
-	server, err := cloud.NewServer(ctx, cloud.Config{
-		Addr:           conf.AddrApi,
-		AddrProxy:      conf.AddrApiProxy,
-		Collections:    collections,
-		DNSManager:     dnsManager,
-		EmailClient:    emailClient,
+	server, err := api.NewServer(ctx, api.Config{
+		Addr:      conf.AddrApi,
+		AddrProxy: conf.AddrApiProxy,
+
+		Collections: collections,
+
 		IPFSClient:     ipfsClient,
+		ThreadsClient:  threadsClient,
 		FilecoinClient: filecoinClient,
-		GatewayUrl:     conf.AddrGatewayUrl,
-		GatewayToken:   gatewayToken,
-		SessionBus:     t.sessionBus,
-		SessionSecret:  conf.SessionSecret,
-		Debug:          conf.Debug,
+
+		DNSManager: dnsManager,
+
+		EmailClient: emailClient,
+
+		GatewayUrl:   conf.AddrGatewayUrl,
+		GatewayToken: gatewayToken,
+
+		SessionBus:    t.sessionBus,
+		SessionSecret: conf.SessionSecret,
+
+		Debug: conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -198,6 +204,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.threadsServiceServer = serviceServer
 	t.threadsServer = threadsServer
 	t.threadsClient = threadsClient
+	t.filecoinClient = filecoinClient
 	t.server = server
 
 	t.gateway, err = gateway.NewGateway(
@@ -227,6 +234,9 @@ func (t *Textile) Close() error {
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
+	if err := t.server.Close(); err != nil {
+		return err
+	}
 	if err := t.threadsClient.Close(); err != nil {
 		return err
 	}
@@ -235,8 +245,10 @@ func (t *Textile) Close() error {
 	}
 	t.threadsServiceServer.Close()
 	t.threadsServer.Close()
-	if err := t.server.Close(); err != nil {
-		return err
+	if t.filecoinClient != nil {
+		if err := t.filecoinClient.Close(); err != nil {
+			return err
+		}
 	}
 	if err := t.collections.Close(); err != nil {
 		return err

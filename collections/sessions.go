@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -53,7 +54,7 @@ func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (
 	doc := &Session{
 		ID:          primitive.NewObjectID(),
 		DeveloperID: developerID,
-		Token:       MakeToken(sessionTokenLen),
+		Token:       util.MakeToken(sessionTokenLen),
 		ExpiresAt:   time.Now().Add(sessionDur),
 	}
 	res, err := s.col.InsertOne(ctx, doc)

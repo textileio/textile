@@ -3,8 +3,10 @@ package collections
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -74,7 +76,7 @@ func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
 func (t *Orgs) Create(ctx context.Context, doc *Org) error {
 	doc.ID = primitive.NewObjectID()
 	doc.CreatedAt = time.Now()
-	name, err := toValidName(doc.Name)
+	name, err := util.ToValidName(doc.Name)
 	if err != nil {
 		return err
 	}
@@ -156,6 +158,33 @@ func (t *Orgs) AddMember(ctx context.Context, name string, member Member) error 
 }
 
 func (t *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive.ObjectID) error {
+	isOwner, err := t.IsOwner(ctx, name, memberID)
+	if err != nil {
+		return err
+	}
+	if isOwner { // Ensure there will still be at least one owner left
+		cursor, err := t.col.Aggregate(ctx, mongo.Pipeline{bson.D{
+			{"$match", bson.M{"name": name}},
+			{"$project", bson.M{
+				"_id":       "$_id",
+				"numOwners": bson.M{"$size": "$members"},
+			}},
+		}}, options.Aggregate().SetHint(bson.D{{"name", 1}}))
+		if err != nil {
+			return err
+		}
+		for cursor.Next(ctx) {
+			fmt.Println(cursor.Current)
+			//var doc Org
+			//if err := cursor.Decode(&doc); err != nil {
+			//	return err
+			//}
+		}
+		if err := cursor.Err(); err != nil {
+			return err
+		}
+
+	}
 	res, err := t.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": memberID}}})
 	if err != nil {
 		return err

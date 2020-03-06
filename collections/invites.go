@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -16,7 +17,7 @@ const (
 
 type Invite struct {
 	ID        primitive.ObjectID `bson:"_id"`
-	TeamID    primitive.ObjectID `bson:"team_id"`
+	Org       string             `bson:"org"`
 	FromID    primitive.ObjectID `bson:"from_id"`
 	Token     string             `bson:"token"`
 	EmailTo   string             `bson:"email_to"`
@@ -31,7 +32,7 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 	i := &Invites{col: db.Collection("invites")}
 	_, err := i.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"team_id", 1}},
+			Keys: bson.D{{"org", 1}},
 		},
 		{
 			Keys: bson.D{{"from_id", 1}},
@@ -43,12 +44,12 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 	return i, err
 }
 
-func (i *Invites) Create(ctx context.Context, teamID, fromID primitive.ObjectID, emailTo string) (*Invite, error) {
+func (i *Invites) Create(ctx context.Context, fromID primitive.ObjectID, org, emailTo string) (*Invite, error) {
 	doc := &Invite{
 		ID:        primitive.NewObjectID(),
-		TeamID:    teamID,
+		Org:       org,
 		FromID:    fromID,
-		Token:     MakeURLSafeToken(inviteTokenLen),
+		Token:     util.MakeURLSafeToken(inviteTokenLen),
 		EmailTo:   emailTo,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}

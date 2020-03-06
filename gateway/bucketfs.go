@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/api/buckets/client"
 )
 
 type serveBucketFileSystem interface {
@@ -23,7 +24,7 @@ type serveBucketFileSystem interface {
 
 type bucketFileSystem struct {
 	client  *client.Client
-	auth    client.Auth
+	auth    api.Auth
 	timeout time.Duration
 	host    string
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -41,7 +42,7 @@ func (b *BucketTokens) Create(ctx context.Context, bucketID primitive.ObjectID) 
 	doc := &BucketToken{
 		ID:        primitive.NewObjectID(),
 		BucketID:  bucketID,
-		Token:     MakeToken(bucketTokenLen),
+		Token:     util.MakeToken(bucketTokenLen),
 		CreatedAt: time.Now(),
 	}
 	res, err := b.col.InsertOne(ctx, doc)

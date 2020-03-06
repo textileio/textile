@@ -5,6 +5,7 @@ go 1.13
 replace github.com/textileio/go-threads => ../go-threads
 
 require (
+	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
 	github.com/cheggaaa/pb/v3 v3.0.4
 	github.com/cloudflare/cloudflare-go v0.11.0

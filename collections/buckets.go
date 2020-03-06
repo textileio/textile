@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -50,7 +51,7 @@ func NewBuckets(ctx context.Context, db *mongo.Database) (*Buckets, error) {
 }
 
 func (b *Buckets) Create(ctx context.Context, owner, name, entityID, addr string) (*Bucket, error) {
-	validName, err := toValidName(name)
+	validName, err := util.ToValidName(name)
 	if err != nil {
 		return nil, err
 	}

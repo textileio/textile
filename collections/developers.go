@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -48,8 +49,8 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 	return d, err
 }
 
-func (d *Developers) GetOrCreate(ctx context.Context, username, email, storeID string) (*Developer, error) {
-	validUsername, err := toValidName(username)
+func (d *Developers) GetOrCreate(ctx context.Context, username, email string) (*Developer, error) {
+	validUsername, err := util.ToValidName(username)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,6 @@ func (d *Developers) GetOrCreate(ctx context.Context, username, email, storeID s
 		ID:        primitive.NewObjectID(),
 		Username:  validUsername,
 		Email:     email,
-		StoreID:   storeID,
 		CreatedAt: time.Now(),
 	}
 	if _, err := d.col.InsertOne(ctx, doc); err != nil {

@@ -22,9 +22,13 @@ import (
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
 	"github.com/textileio/go-threads/broadcast"
-	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/client"
+	tutil "github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api"
+	buckets "github.com/textileio/textile/api/buckets/client"
+	cloud "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/collections"
+	"github.com/textileio/textile/util"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const handlerTimeout = time.Second * 10
@@ -53,8 +57,9 @@ type Gateway struct {
 	bucketDomain string
 	server       *http.Server
 	collections  *collections.Collections // @todo: Remove in favor of the client
-	client       *client.Client
-	clientAuth   client.Auth
+	cloud        *cloud.Client
+	buckets      *buckets.Client
+	clientAuth   api.Auth
 	sessionBus   *broadcast.Broadcaster
 }
 
@@ -69,19 +74,23 @@ func NewGateway(
 	debug bool,
 ) (*Gateway, error) {
 	if debug {
-		if err := util.SetLogLevels(map[string]logging.LogLevel{
+		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"gateway": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	apiTarget, err := util.TCPAddrFromMultiAddr(apiAddr)
+	apiTarget, err := tutil.TCPAddrFromMultiAddr(apiAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := client.NewClient(apiTarget, nil)
+	cc, err := cloud.NewClient(apiTarget, nil)
+	if err != nil {
+		return nil, err
+	}
+	bc, err := buckets.NewClient(apiTarget, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,15 +98,16 @@ func NewGateway(
 		addr:         addr,
 		bucketDomain: bucketDomain,
 		collections:  collections,
-		client:       c,
-		clientAuth:   client.Auth{Token: apiToken},
+		cloud:        cc,
+		buckets:      bc,
+		clientAuth:   api.Auth{Token: apiToken},
 		sessionBus:   sessionBus,
 	}, nil
 }
 
 // Start the gateway.
 func (g *Gateway) Start() {
-	addr, err := util.TCPAddrFromMultiAddr(g.addr)
+	addr, err := tutil.TCPAddrFromMultiAddr(g.addr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,7 +129,7 @@ func (g *Gateway) Start() {
 	router.Use(static.Serve("", &fileSystem{Assets}))
 
 	router.Use(serveBucket(&bucketFileSystem{
-		client:  g.client,
+		client:  g.buckets,
 		auth:    g.clientAuth,
 		timeout: handlerTimeout,
 		host:    g.bucketDomain,
@@ -137,7 +147,7 @@ func (g *Gateway) Start() {
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	router.POST("/register", g.registerUser)
+	//router.POST("/register", g.registerUser)
 
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
@@ -188,10 +198,14 @@ func (g *Gateway) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := g.server.Shutdown(ctx); err != nil {
-		log.Errorf("error shutting down gateway: %s", err)
 		return err
 	}
-	g.client.Close()
+	if err := g.cloud.Close(); err != nil {
+		return err
+	}
+	if err := g.buckets.Close(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -207,7 +221,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
-	rep, err := g.client.ListBucketPath(ctx, "", buckName, g.clientAuth)
+	rep, err := g.buckets.ListBucketPath(ctx, "", buckName, g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return
@@ -218,7 +232,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			if err := g.client.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+			if err := g.buckets.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
 				abort(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -243,14 +257,14 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 	defer cancel()
 
 	project := c.Param("project")
-	rep, err := g.client.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
+	rep, err := g.buckets.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.client.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
+		if err := g.buckets.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {
@@ -304,6 +318,7 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 }
 
 // consentInvite adds a user to a team.
+// @todo: New devs should be signed up before accepting an invite.
 func (g *Gateway) consentInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
@@ -313,29 +328,34 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		g.render404(c)
 		return
 	}
-	if invite.Expiry < int(time.Now().Unix()) {
+	if time.Now().After(invite.ExpiresAt) {
 		g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
 		return
 	}
 
-	dev, err := g.collections.Developers.GetOrCreateByEmail(ctx, invite.ToEmail)
+	dev, err := g.collections.Developers.GetOrCreate(ctx, util.MakeToken(12), invite.EmailTo)
 	if err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	team, err := g.collections.Orgs.Get(ctx, invite.TeamID)
-	if err != nil {
-		g.render404(c)
-		return
-	}
-	if err = g.collections.Developers.JoinTeam(ctx, dev, team.ID); err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
+	if err = g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
+		ID:       dev.ID,
+		Username: dev.Username,
+		Role:     collections.OrgMember,
+	}); err != nil {
+		var code int
+		if err == mongo.ErrNoDocuments {
+			code = http.StatusNotFound
+		} else {
+			code = http.StatusInternalServerError
+		}
+		g.renderError(c, code, err)
 		return
 	}
 
 	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
-		"Team": team.Name,
+		"Org": invite.Org,
 	})
 }
 
@@ -345,44 +365,44 @@ type registrationParams struct {
 }
 
 // registerUser adds a user to a team.
-func (g *Gateway) registerUser(c *gin.Context) {
-	var params registrationParams
-	err := c.BindJSON(&params)
-	if err != nil {
-		abort(c, http.StatusBadRequest, err)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
-	defer cancel()
-
-	token, err := g.collections.Tokens.Get(ctx, params.Token)
-	if err != nil {
-		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
-		return
-	}
-	proj, err := g.collections.Projects.Get(ctx, token.ProjectID)
-	if err != nil {
-		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
-		return
-	}
-	user, err := g.collections.Users.GetOrCreate(ctx, proj.ID, params.DeviceID)
-	if err != nil {
-		abort(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	session, err := g.collections.Sessions.Create(ctx, user.ID, user.ID)
-	if err != nil {
-		abort(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"id":         user.ID,
-		"session_id": session.ID,
-	})
-}
+//func (g *Gateway) registerUser(c *gin.Context) {
+//	var params registrationParams
+//	err := c.BindJSON(&params)
+//	if err != nil {
+//		abort(c, http.StatusBadRequest, err)
+//		return
+//	}
+//
+//	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+//	defer cancel()
+//
+//	token, err := g.collections.Tokens.Get(ctx, params.Token)
+//	if err != nil {
+//		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
+//		return
+//	}
+//	proj, err := g.collections.Projects.Get(ctx, token.ProjectID)
+//	if err != nil {
+//		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
+//		return
+//	}
+//	user, err := g.collections.Users.GetOrCreate(ctx, proj.ID, params.DeviceID)
+//	if err != nil {
+//		abort(c, http.StatusInternalServerError, err)
+//		return
+//	}
+//
+//	session, err := g.collections.Sessions.Create(ctx, user.ID, user.ID)
+//	if err != nil {
+//		abort(c, http.StatusInternalServerError, err)
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, gin.H{
+//		"id":         user.ID,
+//		"session_id": session.ID,
+//	})
+//}
 
 // render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {
