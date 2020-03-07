@@ -221,7 +221,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
-	rep, err := g.buckets.ListBucketPath(ctx, "", buckName, g.clientAuth)
+	rep, err := g.buckets.ListPath(ctx, buckName, g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return
@@ -232,7 +232,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			if err := g.buckets.PullBucketPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+			if err := g.buckets.PullPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
 				abort(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -257,14 +257,14 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 	defer cancel()
 
 	project := c.Param("project")
-	rep, err := g.buckets.ListBucketPath(ctx, project, c.Param("path"), g.clientAuth)
+	rep, err := g.buckets.ListPath(ctx, c.Param("path"), g.clientAuth)
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.buckets.PullBucketPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
+		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {

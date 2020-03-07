@@ -23,7 +23,7 @@ func TestThreadsClient_NewStore(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
 	if err != nil {
 		t.Fatal(err)

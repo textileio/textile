@@ -50,46 +50,42 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// ListBucketPath returns information about a bucket path.
-func (c *Client) ListBucketPath(ctx context.Context, project, pth string, auth api.Auth) (*pb.ListBucketPathReply, error) {
-	return c.c.ListBucketPath(authCtx(ctx, auth), &pb.ListBucketPathRequest{
-		//Project: project,
+// ListPath returns information about a bucket path.
+func (c *Client) ListPath(ctx context.Context, pth string, auth api.Auth) (*pb.ListPathReply, error) {
+	return c.c.ListPath(authCtx(ctx, auth), &pb.ListPathRequest{
 		Path: pth,
 	})
 }
 
-// PushBucketPathOptions defines options for pushing a bucket path.
-type PushBucketPathOptions struct {
+// PushPathOptions defines options for pushing a bucket path.
+type PushPathOptions struct {
 	Progress chan<- int64
 }
 
-// PushBucketPathOption specifies an option for pushing a bucket path.
-type PushBucketPathOption func(*PushBucketPathOptions)
+// PushPathOption specifies an option for pushing a bucket path.
+type PushPathOption func(*PushPathOptions)
 
 // WithPushProgress writes progress updates to the given channel.
-func WithPushProgress(ch chan<- int64) PushBucketPathOption {
-	return func(args *PushBucketPathOptions) {
+func WithPushProgress(ch chan<- int64) PushPathOption {
+	return func(args *PushPathOptions) {
 		args.Progress = ch
 	}
 }
 
-type pushBucketPathResult struct {
+type pushPathResult struct {
 	path path.Resolved
 	root path.Path
 	err  error
 }
 
-// PushBucketPath pushes a file to a bucket path.
+// PushPath pushes a file to a bucket path.
 // The bucket and any directory paths will be created if they don't exist.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushBucketPath(
-	ctx context.Context,
-	project, bucketPath string,
-	reader io.Reader,
-	auth api.Auth,
-	opts ...PushBucketPathOption,
-) (result path.Resolved, root path.Path, err error) {
-	args := &PushBucketPathOptions{}
+func (c *Client) PushPath(
+	ctx context.Context, bucketPath string, reader io.Reader, auth api.Auth,
+	opts ...PushPathOption) (result path.Resolved, root path.Path, err error) {
+
+	args := &PushPathOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -97,14 +93,13 @@ func (c *Client) PushBucketPath(
 		defer close(args.Progress)
 	}
 
-	stream, err := c.c.PushBucketPath(authCtx(ctx, auth))
+	stream, err := c.c.PushPath(authCtx(ctx, auth))
 	if err != nil {
 		return nil, nil, err
 	}
-	if err = stream.Send(&pb.PushBucketPathRequest{
-		Payload: &pb.PushBucketPathRequest_Header_{
-			Header: &pb.PushBucketPathRequest_Header{
-				//Project: project,
+	if err = stream.Send(&pb.PushPathRequest{
+		Payload: &pb.PushPathRequest_Header_{
+			Header: &pb.PushPathRequest_Header{
 				Path: bucketPath,
 			},
 		},
@@ -112,7 +107,7 @@ func (c *Client) PushBucketPath(
 		return nil, nil, err
 	}
 
-	waitCh := make(chan pushBucketPathResult)
+	waitCh := make(chan pushPathResult)
 	go func() {
 		defer close(waitCh)
 		for {
@@ -120,29 +115,29 @@ func (c *Client) PushBucketPath(
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				waitCh <- pushBucketPathResult{err: err}
+				waitCh <- pushPathResult{err: err}
 				return
 			}
 			switch payload := rep.Payload.(type) {
-			case *pb.PushBucketPathReply_Event_:
+			case *pb.PushPathReply_Event_:
 				if payload.Event.Path != "" {
 					id, err := cid.Parse(payload.Event.Path)
 					if err != nil {
-						waitCh <- pushBucketPathResult{err: err}
+						waitCh <- pushPathResult{err: err}
 						return
 					}
-					waitCh <- pushBucketPathResult{
+					waitCh <- pushPathResult{
 						path: path.IpfsPath(id),
 						root: path.New(payload.Event.Root.Path),
 					}
 				} else if args.Progress != nil {
 					args.Progress <- payload.Event.Bytes
 				}
-			case *pb.PushBucketPathReply_Error:
-				waitCh <- pushBucketPathResult{err: fmt.Errorf(payload.Error)}
+			case *pb.PushPathReply_Error:
+				waitCh <- pushPathResult{err: fmt.Errorf(payload.Error)}
 				return
 			default:
-				waitCh <- pushBucketPathResult{err: fmt.Errorf("invalid reply")}
+				waitCh <- pushPathResult{err: fmt.Errorf("invalid reply")}
 				return
 			}
 		}
@@ -152,12 +147,13 @@ func (c *Client) PushBucketPath(
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
-			if err := stream.Send(&pb.PushBucketPathRequest{
-				Payload: &pb.PushBucketPathRequest_Chunk{
+			if err := stream.Send(&pb.PushPathRequest{
+				Payload: &pb.PushPathRequest_Chunk{
 					Chunk: buf[:n],
 				},
 			}); err == io.EOF {
-				break
+				var noOp interface{}
+				return nil, nil, stream.RecvMsg(noOp)
 			} else if err != nil {
 				_ = stream.CloseSend()
 				return nil, nil, err
@@ -177,30 +173,26 @@ func (c *Client) PushBucketPath(
 	return res.path, res.root, res.err
 }
 
-// PullBucketPathOptions defines options for pulling a bucket path.
-type PullBucketPathOptions struct {
+// PullPathOptions defines options for pulling a bucket path.
+type PullPathOptions struct {
 	Progress chan<- int64
 }
 
-// PullBucketPathOption specifies an option for pulling a bucket path.
-type PullBucketPathOption func(*PullBucketPathOptions)
+// PullPathOption specifies an option for pulling a bucket path.
+type PullPathOption func(*PullPathOptions)
 
 // WithPullProgress writes progress updates to the given channel.
-func WithPullProgress(ch chan<- int64) PullBucketPathOption {
-	return func(args *PullBucketPathOptions) {
+func WithPullProgress(ch chan<- int64) PullPathOption {
+	return func(args *PullPathOptions) {
 		args.Progress = ch
 	}
 }
 
-// PullBucketPath pulls the bucket path, writing it to writer if it's a file.
-func (c *Client) PullBucketPath(
-	ctx context.Context,
-	bucketPath string,
-	writer io.Writer,
-	auth api.Auth,
-	opts ...PullBucketPathOption,
-) error {
-	args := &PullBucketPathOptions{}
+// PullPath pulls the bucket path, writing it to writer if it's a file.
+func (c *Client) PullPath(
+	ctx context.Context, bucketPath string, writer io.Writer, auth api.Auth, opts ...PullPathOption) error {
+
+	args := &PullPathOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -208,7 +200,7 @@ func (c *Client) PullBucketPath(
 		defer close(args.Progress)
 	}
 
-	stream, err := c.c.PullBucketPath(authCtx(ctx, auth), &pb.PullBucketPathRequest{
+	stream, err := c.c.PullPath(authCtx(ctx, auth), &pb.PullPathRequest{
 		Path: bucketPath,
 	})
 	if err != nil {
@@ -235,11 +227,11 @@ func (c *Client) PullBucketPath(
 	return nil
 }
 
-// RemoveBucketPath removes the file or directory at path.
-// Bucket files and directories will be unpinned.
+// RemovePath removes the file or directory at path.
+//  files and directories will be unpinned.
 // If the resulting bucket is empty, it will also be removed.
-func (c *Client) RemoveBucketPath(ctx context.Context, pth string, auth api.Auth) error {
-	_, err := c.c.RemoveBucketPath(authCtx(ctx, auth), &pb.RemoveBucketPathRequest{
+func (c *Client) RemovePath(ctx context.Context, pth string, auth api.Auth) error {
+	_, err := c.c.RemovePath(authCtx(ctx, auth), &pb.RemovePathRequest{
 		Path: pth,
 	})
 	return err

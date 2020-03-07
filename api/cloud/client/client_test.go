@@ -6,15 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
@@ -25,14 +22,12 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-var sessionSecret = uuid.New().String()
-
 func TestClient_Login(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	assert.NotEmpty(t, user.Token)
 }
 
@@ -46,7 +41,7 @@ func TestClient_Logout(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("with token", func(t *testing.T) {
 		err := client.Logout(context.Background(), api.Auth{Token: user.Token})
@@ -64,7 +59,7 @@ func TestClient_Whoami(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("with token", func(t *testing.T) {
 		who, err := client.Whoami(context.Background(), api.Auth{Token: user.Token})
@@ -85,7 +80,7 @@ func TestClient_AddOrg(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("with token", func(t *testing.T) {
 		org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
@@ -100,7 +95,7 @@ func TestClient_GetOrg(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
 	require.Nil(t, err)
 
@@ -121,7 +116,7 @@ func TestClient_ListOrgs(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 
 	t.Run("empty", func(t *testing.T) {
 		orgs, err := client.ListOrgs(context.Background(), api.Auth{Token: user.Token})
@@ -146,7 +141,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
 	require.Nil(t, err)
 
@@ -155,7 +150,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user2 := Login(t, client, conf, "jane@doe.com")
+	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("bad session", func(t *testing.T) {
 		err := client.RemoveOrg(context.Background(), api.Auth{Token: user2.Token, Org: org.Name})
@@ -175,7 +170,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
 	require.Nil(t, err)
 
@@ -197,7 +192,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
+	user := login(t, client, conf, "jon@doe.com")
 	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
 	require.Nil(t, err)
 
@@ -206,7 +201,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user2 := Login(t, client, conf, "jane@doe.com")
+	user2 := login(t, client, conf, "jane@doe.com")
 
 	t.Run("as non-member", func(t *testing.T) {
 		err := client.LeaveOrg(context.Background(), api.Auth{Token: user2.Token, Org: org.Name})
@@ -230,7 +225,7 @@ func SkipTestClient_RegisterUser(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	Login(t, client, conf, "jon@doe.com")
+	login(t, client, conf, "jon@doe.com")
 
 	t.Run("without token", func(t *testing.T) {
 		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
@@ -293,7 +288,7 @@ func SkipTestClient_RegisterUser(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	t.Parallel()
-	conf, shutdown := MakeTextile(t)
+	conf, shutdown := api.MakeTestTextile(t)
 	defer shutdown()
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
@@ -305,7 +300,7 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, func()) {
-	conf, shutdown := MakeTextile(t)
+	conf, shutdown := api.MakeTestTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, nil)
@@ -318,59 +313,7 @@ func setup(t *testing.T) (core.Config, *c.Client, func()) {
 	}
 }
 
-func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
-	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-
-	dir, err := ioutil.TempDir("", "")
-	require.Nil(t, err)
-
-	apiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
-	gatewayPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
-	threadsServiceApiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
-	threadsApiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
-
-	conf = core.Config{
-		RepoPath: dir,
-
-		AddrApi:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrApiProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-
-		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsServiceApi: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d",
-			threadsServiceApiPort)),
-		AddrThreadsServiceApiProxy: util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
-		AddrThreadsApi:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsApiPort)),
-		AddrThreadsApiProxy:        util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
-
-		AddrIpfsApi: util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
-
-		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-
-		EmailFrom:   "test@email.textile.io",
-		EmailDomain: "email.textile.io",
-		EmailApiKey: "",
-
-		SessionSecret: sessionSecret,
-
-		Debug: true,
-	}
-	textile, err := core.NewTextile(context.Background(), conf)
-	require.Nil(t, err)
-	textile.Bootstrap()
-
-	return conf, func() {
-		time.Sleep(time.Second) // give threads a chance to finish work
-		textile.Close()
-		_ = os.RemoveAll(dir)
-	}
-}
-
-func Login(t *testing.T, client *c.Client, conf core.Config, email string) *pb.LoginReply {
+func login(t *testing.T, client *c.Client, conf core.Config, email string) *pb.LoginReply {
 	var err error
 	var res *pb.LoginReply
 	go func() {
@@ -380,7 +323,7 @@ func Login(t *testing.T, client *c.Client, conf core.Config, email string) *pb.L
 
 	// Ensure login request has processed
 	time.Sleep(time.Second)
-	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, sessionSecret)
+	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, api.TestSessionSecret)
 	_, err = http.Get(url)
 	require.Nil(t, err)
 

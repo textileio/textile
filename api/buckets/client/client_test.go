@@ -1,6 +1,5 @@
 package client_test
 
-/*
 import (
 	"context"
 	"io/ioutil"
@@ -8,79 +7,50 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api"
 	c "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/core"
 )
 
-func TestClient_ListBucketPath(t *testing.T) {
+func TestClient_ListPath(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	_, client, done := setup(t)
 	defer done()
 
-	user := Login(t, client, conf, "jon@doe.com")
 	file, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer file.Close()
-	_, file1Root, err := client.PushBucketPath(
-		context.Background(), project.Name, "mybuck1/file1.jpg", file, c.Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck2/file1.jpg", file,
-		c.Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
+	_, file1Root, err := client.PushPath(context.Background(), "mybuck1/file1.jpg", file, api.Auth{})
+	require.Nil(t, err)
+	_, _, err = client.PushPath(context.Background(), "mybuck2/file1.jpg", file, api.Auth{})
+	require.Nil(t, err)
 
-	t.Run("test list buckets", func(t *testing.T) {
-		rep, err := client.ListBucketPath(context.Background(), project.Name, "", c.Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatalf("list buckets should succeed: %v", err)
-		}
-		if len(rep.Item.Items) != 2 {
-			t.Fatalf("got wrong bucket count from list buckets, expected %d, got %d", 2,
-				len(rep.Item.Items))
-		}
+	t.Run("buckets", func(t *testing.T) {
+		rep, err := client.ListPath(context.Background(), "", api.Auth{})
+		require.Nil(t, err)
+		assert.Equal(t, rep.Item.Items, 2)
 	})
 
-	t.Run("test list bucket path", func(t *testing.T) {
-		rep, err := client.ListBucketPath(context.Background(), project.Name, "mybuck1/file1.jpg",
-			c.Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.HasSuffix(rep.Item.Path, "file1.jpg") {
-			t.Fatal("got bad name from get bucket path")
-		}
-		if rep.Item.IsDir {
-			t.Fatal("path is not a dir")
-		}
-		if rep.Root.Path != file1Root.String() {
-			t.Fatal("path root should match bucket root")
-		}
+	t.Run("bucket path", func(t *testing.T) {
+		rep, err := client.ListPath(context.Background(), "mybuck1/file1.jpg", api.Auth{})
+		require.Nil(t, err)
+		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
+		assert.True(t, rep.Item.IsDir)
+		assert.Equal(t, rep.Root.Path, file1Root.String())
 	})
 }
 
-func TestClient_PushBucketPath(t *testing.T) {
+func TestClient_PushPath(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	_, client, done := setup(t)
 	defer done()
 
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("test push bucket path", func(t *testing.T) {
+	t.Run("bucket path", func(t *testing.T) {
 		file, err := os.Open("testdata/file1.jpg")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		defer file.Close()
 		progress := make(chan int64)
 		go func() {
@@ -88,25 +58,16 @@ func TestClient_PushBucketPath(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		pth, root, err := client.PushBucketPath(
-			context.Background(), project.Name, "mybuck/file1.jpg", file, c.Auth{Token: user.SessionID},
+		pth, root, err := client.PushPath(context.Background(), "mybuck/file1.jpg", file, api.Auth{},
 			c.WithPushProgress(progress))
-		if err != nil {
-			t.Fatalf("push bucket path should succeed: %v", err)
-		}
-		if pth == nil {
-			t.Fatal("got bad path from push bucket path")
-		}
-		if root == nil {
-			t.Fatal("got bad root from push bucket path")
-		}
+		require.Nil(t, err)
+		assert.NotEmpty(t, pth)
+		assert.NotEmpty(t, root)
 	})
 
-	t.Run("test push nested bucket path", func(t *testing.T) {
+	t.Run("nested bucket path", func(t *testing.T) {
 		file, err := os.Open("testdata/file2.jpg")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		defer file.Close()
 		progress := make(chan int64)
 		go func() {
@@ -114,56 +75,32 @@ func TestClient_PushBucketPath(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		pth, root, err := client.PushBucketPath(
-			context.Background(), project.Name, "mybuck/path/to/file2.jpg", file, c.Auth{Token: user.SessionID},
-			c.WithPushProgress(progress))
-		if err != nil {
-			t.Fatalf("push nested bucket path should succeed: %v", err)
-		}
-		if pth == nil {
-			t.Fatal("got bad path from push nested bucket path")
-		}
-		if root == nil {
-			t.Fatal("got bad root from push nested bucket path")
-		}
+		pth, root, err := client.PushPath(context.Background(), "mybuck/path/to/file2.jpg", file,
+			api.Auth{}, c.WithPushProgress(progress))
+		require.Nil(t, err)
+		assert.NotEmpty(t, pth)
+		assert.NotEmpty(t, root)
 
-		rep, err := client.ListBucketPath(context.Background(), project.Name, "mybuck",
-			c.Auth{Token: user.SessionID})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rep.Item.Items) != 2 {
-			t.Fatalf("got wrong bucket entry count from push nested bucket path, expected %d, got %d",
-				2, len(rep.Item.Items))
-		}
+		rep, err := client.ListPath(context.Background(), "mybuck", api.Auth{})
+		require.Nil(t, err)
+		assert.Equal(t, rep.Item.Items, 2)
 	})
 }
 
-func TestClient_PullBucketPath(t *testing.T) {
+func TestClient_PullPath(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	_, client, done := setup(t)
 	defer done()
 
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
 	file, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer file.Close()
-	if _, _, err := client.PushBucketPath(context.Background(), project.Name, "mybuck/file1.jpg", file,
-		c.Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
+	_, _, err = client.PushPath(context.Background(), "mybuck/file1.jpg", file, api.Auth{})
+	require.Nil(t, err)
 
-	t.Run("test pull bucket path", func(t *testing.T) {
+	t.Run("bucket path", func(t *testing.T) {
 		file, err := ioutil.TempFile("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		defer file.Close()
 
 		progress := make(chan int64)
@@ -172,105 +109,68 @@ func TestClient_PullBucketPath(t *testing.T) {
 				t.Logf("progress: %d", p)
 			}
 		}()
-		if err := client.PullBucketPath(
-			context.Background(), "mybuck/file1.jpg", file, c.Auth{Token: user.SessionID},
-			c.WithPullProgress(progress)); err != nil {
-			t.Fatalf("pull bucket path should succeed: %v", err)
-		}
+		err = client.PullPath(context.Background(), "mybuck/file1.jpg", file, api.Auth{},
+			c.WithPullProgress(progress))
+		require.Nil(t, err)
 		info, err := file.Stat()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		t.Logf("wrote file with size %d", info.Size())
 	})
 }
 
-func TestClient_RemoveBucketPath(t *testing.T) {
+func TestClient_RemovePath(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	_, client, done := setup(t)
 	defer done()
 
-	user := login(t, client, conf, "jon@doe.com")
-	project, err := client.AddProject(context.Background(), "foo", c.Auth{Token: user.SessionID})
-	if err != nil {
-		t.Fatal(err)
-	}
 	file1, err := os.Open("testdata/file1.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer file1.Close()
 	file2, err := os.Open("testdata/file2.jpg")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer file2.Close()
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck1/file1.jpg", file1,
-		c.Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck1/again/file2.jpg", file1,
-		c.Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
+	_, _, err = client.PushPath(context.Background(), "mybuck1/file1.jpg", file1, api.Auth{})
+	require.Nil(t, err)
+	_, _, err = client.PushPath(context.Background(), "mybuck1/again/file2.jpg", file1, api.Auth{})
+	require.Nil(t, err)
 
-	t.Run("test remove bucket path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck1/again/file2.jpg",
-			c.Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("remove bucket path should succeed: %v", err)
-		}
-		if _, err := client.ListBucketPath(context.Background(), project.Name, "mybuck1/again/file2.jpg",
-			c.Auth{Token: user.SessionID}); err == nil {
-			t.Fatal("got bucket path that should have been removed")
-		}
-		if _, err := client.ListBucketPath(context.Background(), project.Name, "mybuck1",
-			c.Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("bucket should still exist, but get failed: %v", err)
-		}
+	t.Run("bucket path", func(t *testing.T) {
+		err := client.RemovePath(context.Background(), "mybuck1/again/file2.jpg", api.Auth{})
+		require.Nil(t, err)
+		_, err = client.ListPath(context.Background(), "mybuck1/again/file2.jpg", api.Auth{})
+		require.NotNil(t, err)
+		_, err = client.ListPath(context.Background(), "mybuck1", api.Auth{})
+		require.Nil(t, err)
 	})
 
-	if _, _, err = client.PushBucketPath(
-		context.Background(), project.Name, "mybuck2/file1.jpg", file1,
-		c.Auth{Token: user.SessionID}); err != nil {
-		t.Fatal(err)
-	}
+	_, _, err = client.PushPath(context.Background(), "mybuck2/file1.jpg", file1, api.Auth{})
+	require.Nil(t, err)
 
-	t.Run("test remove entire bucket by path", func(t *testing.T) {
-		if err := client.RemoveBucketPath(context.Background(), "mybuck2/file1.jpg",
-			c.Auth{Token: user.SessionID}); err != nil {
-			t.Fatalf("remove bucket path should succeed: %v", err)
-		}
-		if _, err := client.ListBucketPath(context.Background(), project.Name, "mybuck2",
-			c.Auth{Token: user.SessionID}); err == nil {
-			t.Fatal("got bucket that should have been removed")
-		}
+	t.Run("entire bucket", func(t *testing.T) {
+		err := client.RemovePath(context.Background(), "mybuck2/file1.jpg", api.Auth{})
+		require.Nil(t, err)
+		_, err = client.ListPath(context.Background(), "mybuck2", api.Auth{})
+		require.NotNil(t, err)
 	})
 }
 
 func TestClose(t *testing.T) {
 	t.Parallel()
-	conf, shutdown := makeTextile(t)
+	conf, shutdown := api.MakeTestTextile(t)
 	defer shutdown()
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	client, err := c.NewClient(target, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	t.Run("test close", func(t *testing.T) {
-		if err := client.Close(); err != nil {
-			t.Fatal(err)
-		}
+		err := client.Close()
+		require.Nil(t, err)
 	})
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, func()) {
-	conf, shutdown := MakeTextile(t)
+	conf, shutdown := api.MakeTestTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, nil)
@@ -282,4 +182,3 @@ func setup(t *testing.T) (core.Config, *c.Client, func()) {
 		require.Nil(t, err)
 	}
 }
-*/
