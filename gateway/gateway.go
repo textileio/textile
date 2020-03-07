@@ -14,7 +14,6 @@ import (
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	logger "github.com/ipfs/go-log"
 	logging "github.com/ipfs/go-log"
 	assets "github.com/jessevdk/go-assets"
@@ -23,7 +22,6 @@ import (
 	gincors "github.com/rs/cors/wrapper/gin"
 	"github.com/textileio/go-threads/broadcast"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api"
 	buckets "github.com/textileio/textile/api/buckets/client"
 	cloud "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/collections"
@@ -59,7 +57,7 @@ type Gateway struct {
 	collections  *collections.Collections // @todo: Remove in favor of the client
 	cloud        *cloud.Client
 	buckets      *buckets.Client
-	clientAuth   api.Auth
+	token        string
 	sessionBus   *broadcast.Broadcaster
 }
 
@@ -100,7 +98,7 @@ func NewGateway(
 		collections:  collections,
 		cloud:        cc,
 		buckets:      bc,
-		clientAuth:   api.Auth{Token: apiToken},
+		token:        apiToken,
 		sessionBus:   sessionBus,
 	}, nil
 }
@@ -130,7 +128,7 @@ func (g *Gateway) Start() {
 
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
-		auth:    g.clientAuth,
+		token:   g.token,
 		timeout: handlerTimeout,
 		host:    g.bucketDomain,
 	}))
@@ -190,7 +188,7 @@ func (g *Gateway) Addr() string {
 
 // APIToken returns the gateway's internal API token.
 func (g *Gateway) APIToken() string {
-	return g.clientAuth.Token
+	return g.token
 }
 
 // Stop the gateway.
@@ -221,7 +219,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
-	rep, err := g.buckets.ListPath(ctx, buckName, g.clientAuth)
+	rep, err := g.buckets.ListPath(ctx, buckName, buckets.WithDevToken(g.token))
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return
@@ -232,7 +230,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			if err := g.buckets.PullPath(ctx, pth, c.Writer, g.clientAuth); err != nil {
+			if err := g.buckets.PullPath(ctx, pth, c.Writer, buckets.WithDevToken(g.token)); err != nil {
 				abort(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -257,14 +255,14 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 	defer cancel()
 
 	project := c.Param("project")
-	rep, err := g.buckets.ListPath(ctx, c.Param("path"), g.clientAuth)
+	rep, err := g.buckets.ListPath(ctx, c.Param("path"), buckets.WithDevToken(g.token))
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer, g.clientAuth); err != nil {
+		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer, buckets.WithDevToken(g.token)); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {
@@ -309,7 +307,7 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 
 // confirmEmail verifies an emailed secret.
 func (g *Gateway) confirmEmail(c *gin.Context) {
-	if err := g.sessionBus.Send(g.parseUUID(c, c.Param("secret"))); err != nil {
+	if err := g.sessionBus.Send(c.Param("secret")); err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -323,7 +321,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
-	invite, err := g.collections.Invites.Get(ctx, g.parseUUID(c, c.Param("invite")))
+	invite, err := g.collections.Invites.Get(ctx, c.Param("invite"))
 	if err != nil {
 		g.render404(c)
 		return
@@ -462,14 +460,4 @@ func byteCountDecimal(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
-}
-
-// parseUUID parses a string as a UUID, adding back hyphens.
-func (g *Gateway) parseUUID(c *gin.Context, param string) (parsed string) {
-	id, err := uuid.Parse(param)
-	if err != nil {
-		g.render404(c)
-		return
-	}
-	return id.String()
 }

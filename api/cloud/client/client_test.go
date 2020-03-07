@@ -9,17 +9,14 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api"
+	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/cloud/client"
-	pb "github.com/textileio/textile/api/cloud/pb"
 	"github.com/textileio/textile/core"
-	"github.com/textileio/textile/util"
 )
 
 func TestClient_Login(t *testing.T) {
@@ -27,7 +24,7 @@ func TestClient_Login(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	user := login(t, client, conf, "jon@doe.com")
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
 	assert.NotEmpty(t, user.Token)
 }
 
@@ -35,16 +32,17 @@ func TestClient_Logout(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
 	t.Run("without token", func(t *testing.T) {
-		err := client.Logout(context.Background(), api.Auth{})
+		err := client.Logout(ctx, c.Auth{})
 		require.NotNil(t, err)
 	})
 
-	user := login(t, client, conf, "jon@doe.com")
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("with token", func(t *testing.T) {
-		err := client.Logout(context.Background(), api.Auth{Token: user.Token})
+		err := client.Logout(ctx, c.Auth{Token: user.Token})
 		require.Nil(t, err)
 	})
 }
@@ -53,20 +51,22 @@ func TestClient_Whoami(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
 	t.Run("without token", func(t *testing.T) {
-		_, err := client.Whoami(context.Background(), api.Auth{})
+		_, err := client.Whoami(ctx, c.Auth{})
 		require.NotNil(t, err)
 	})
 
-	user := login(t, client, conf, "jon@doe.com")
+	email := apitest.NewEmail()
+	user := apitest.Login(t, client, conf, email)
 
 	t.Run("with token", func(t *testing.T) {
-		who, err := client.Whoami(context.Background(), api.Auth{Token: user.Token})
+		who, err := client.Whoami(ctx, c.Auth{Token: user.Token})
 		require.Nil(t, err)
 		assert.Equal(t, who.ID, user.ID)
 		assert.NotEmpty(t, who.Username)
-		assert.Equal(t, who.Email, "jon@doe.com")
+		assert.Equal(t, who.Email, email)
 	})
 }
 
@@ -74,19 +74,22 @@ func TestClient_AddOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
+
+	name := apitest.NewName()
 
 	t.Run("without token", func(t *testing.T) {
-		_, err := client.AddOrg(context.Background(), "foo", api.Auth{})
+		_, err := client.AddOrg(ctx, name, c.Auth{})
 		require.NotNil(t, err)
 	})
 
-	user := login(t, client, conf, "jon@doe.com")
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("with token", func(t *testing.T) {
-		org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+		org, err := client.AddOrg(ctx, name, c.Auth{Token: user.Token})
 		require.Nil(t, err)
 		assert.NotEmpty(t, org.ID)
-		assert.Equal(t, org.Name, "foo")
+		assert.Equal(t, org.Name, name)
 	})
 }
 
@@ -94,18 +97,20 @@ func TestClient_GetOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
-	user := login(t, client, conf, "jon@doe.com")
-	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+	name := apitest.NewName()
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	org, err := client.AddOrg(ctx, name, c.Auth{Token: user.Token})
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		_, err := client.GetOrg(context.Background(), api.Auth{Token: user.Token, Org: "bad"})
+		_, err := client.GetOrg(ctx, c.Auth{Token: user.Token, Org: "bad"})
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		got, err := client.GetOrg(context.Background(), api.Auth{Token: user.Token, Org: org.Name})
+		got, err := client.GetOrg(ctx, c.Auth{Token: user.Token, Org: org.Name})
 		require.Nil(t, err)
 		assert.Equal(t, got.ID, org.ID)
 	})
@@ -115,22 +120,25 @@ func TestClient_ListOrgs(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
-	user := login(t, client, conf, "jon@doe.com")
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("empty", func(t *testing.T) {
-		orgs, err := client.ListOrgs(context.Background(), api.Auth{Token: user.Token})
+		orgs, err := client.ListOrgs(ctx, c.Auth{Token: user.Token})
 		require.Nil(t, err)
 		assert.Empty(t, orgs.List)
 	})
 
-	_, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+	name1 := uuid.New().String()
+	_, err := client.AddOrg(ctx, name1, c.Auth{Token: user.Token})
 	require.Nil(t, err)
-	_, err = client.AddOrg(context.Background(), "bar", api.Auth{Token: user.Token})
+	name2 := uuid.New().String()
+	_, err = client.AddOrg(ctx, name2, c.Auth{Token: user.Token})
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
-		orgs, err := client.ListOrgs(context.Background(), api.Auth{Token: user.Token})
+		orgs, err := client.ListOrgs(ctx, c.Auth{Token: user.Token})
 		require.Nil(t, err)
 		assert.Equal(t, len(orgs.List), 2)
 	})
@@ -140,27 +148,29 @@ func TestClient_RemoveOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
-	user := login(t, client, conf, "jon@doe.com")
-	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+	name := apitest.NewName()
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	org, err := client.AddOrg(ctx, name, c.Auth{Token: user.Token})
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		err := client.RemoveOrg(context.Background(), api.Auth{Token: user.Token, Org: "bad"})
+		err := client.RemoveOrg(ctx, c.Auth{Token: user.Token, Org: "bad"})
 		require.NotNil(t, err)
 	})
 
-	user2 := login(t, client, conf, "jane@doe.com")
+	user2 := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("bad session", func(t *testing.T) {
-		err := client.RemoveOrg(context.Background(), api.Auth{Token: user2.Token, Org: org.Name})
+		err := client.RemoveOrg(ctx, c.Auth{Token: user2.Token, Org: org.Name})
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		err := client.RemoveOrg(context.Background(), api.Auth{Token: user.Token, Org: org.Name})
+		err := client.RemoveOrg(ctx, c.Auth{Token: user.Token, Org: org.Name})
 		require.Nil(t, err)
-		_, err = client.GetOrg(context.Background(), api.Auth{Token: user.Token, Org: org.Name})
+		_, err = client.GetOrg(ctx, c.Auth{Token: user.Token, Org: org.Name})
 		require.NotNil(t, err)
 	})
 }
@@ -169,19 +179,20 @@ func TestClient_InviteToOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
-	user := login(t, client, conf, "jon@doe.com")
-	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+	name := apitest.NewName()
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	org, err := client.AddOrg(ctx, name, c.Auth{Token: user.Token})
 	require.Nil(t, err)
 
 	t.Run("bad email", func(t *testing.T) {
-		_, err := client.InviteToOrg(context.Background(), "jane", api.Auth{Token: user.Token, Org: org.Name})
+		_, err := client.InviteToOrg(ctx, "jane", c.Auth{Token: user.Token, Org: org.Name})
 		require.NotNil(t, err)
 	})
 
 	t.Run("good email", func(t *testing.T) {
-		res, err := client.InviteToOrg(context.Background(), "jane@doe.com",
-			api.Auth{Token: user.Token, Org: org.Name})
+		res, err := client.InviteToOrg(ctx, apitest.NewEmail(), c.Auth{Token: user.Token, Org: org.Name})
 		require.Nil(t, err)
 		assert.NotEmpty(t, res.Token)
 	})
@@ -191,31 +202,33 @@ func TestClient_LeaveOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, done := setup(t)
 	defer done()
+	ctx := context.Background()
 
-	user := login(t, client, conf, "jon@doe.com")
-	org, err := client.AddOrg(context.Background(), "foo", api.Auth{Token: user.Token})
+	name := apitest.NewName()
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	org, err := client.AddOrg(ctx, name, c.Auth{Token: user.Token})
 	require.Nil(t, err)
 
 	t.Run("as owner", func(t *testing.T) {
-		err := client.LeaveOrg(context.Background(), api.Auth{Token: user.Token, Org: org.Name})
+		err := client.LeaveOrg(ctx, c.Auth{Token: user.Token, Org: org.Name})
 		require.NotNil(t, err)
 	})
 
-	user2 := login(t, client, conf, "jane@doe.com")
+	user2Email := apitest.NewEmail()
+	user2 := apitest.Login(t, client, conf, user2Email)
 
 	t.Run("as non-member", func(t *testing.T) {
-		err := client.LeaveOrg(context.Background(), api.Auth{Token: user2.Token, Org: org.Name})
+		err := client.LeaveOrg(ctx, c.Auth{Token: user2.Token, Org: org.Name})
 		require.NotNil(t, err)
 	})
 
-	invite, err := client.InviteToOrg(context.Background(), "jane@doe.com",
-		api.Auth{Token: user.Token, Org: org.Name})
+	invite, err := client.InviteToOrg(ctx, user2Email, c.Auth{Token: user.Token, Org: org.Name})
 	require.Nil(t, err)
 	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Token))
 	require.Nil(t, err)
 
 	t.Run("as member", func(t *testing.T) {
-		err := client.LeaveOrg(context.Background(), api.Auth{Token: user2.Token, Org: org.Name})
+		err := client.LeaveOrg(ctx, c.Auth{Token: user2.Token, Org: org.Name})
 		require.Nil(t, err)
 	})
 }
@@ -225,7 +238,7 @@ func SkipTestClient_RegisterUser(t *testing.T) {
 	conf, client, done := setup(t)
 	defer done()
 
-	login(t, client, conf, "jon@doe.com")
+	apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("without token", func(t *testing.T) {
 		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
@@ -288,7 +301,7 @@ func SkipTestClient_RegisterUser(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	t.Parallel()
-	conf, shutdown := api.MakeTestTextile(t)
+	conf, shutdown := apitest.MakeTextile(t)
 	defer shutdown()
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
@@ -300,7 +313,7 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, func()) {
-	conf, shutdown := api.MakeTestTextile(t)
+	conf, shutdown := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, nil)
@@ -311,25 +324,4 @@ func setup(t *testing.T) (core.Config, *c.Client, func()) {
 		err := client.Close()
 		require.Nil(t, err)
 	}
-}
-
-func login(t *testing.T, client *c.Client, conf core.Config, email string) *pb.LoginReply {
-	var err error
-	var res *pb.LoginReply
-	go func() {
-		res, err = client.Login(context.Background(), util.MakeToken(12), email)
-		require.Nil(t, err)
-	}()
-
-	// Ensure login request has processed
-	time.Sleep(time.Second)
-	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, api.TestSessionSecret)
-	_, err = http.Get(url)
-	require.Nil(t, err)
-
-	// Ensure login response has been received
-	time.Sleep(time.Second)
-	require.NotNil(t, res)
-	require.NotEmpty(t, res.Token)
-	return res
 }

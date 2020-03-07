@@ -20,7 +20,7 @@ func init() {
 	slug.MaxLength = 64
 }
 
-type key int
+type ctxKey string
 
 type Collections struct {
 	m *mongo.Client

@@ -1,24 +1,27 @@
-package api
+package apitest
 
 import (
 	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/textile/api/cloud/client"
+	pb "github.com/textileio/textile/api/cloud/pb"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 )
 
-var TestSessionSecret = uuid.New().String()
+var sessionSecret = NewName()
 
-func MakeTestTextile(t *testing.T) (conf core.Config, shutdown func()) {
+func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 
 	dir, err := ioutil.TempDir("", "")
@@ -54,7 +57,7 @@ func MakeTestTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailApiKey: "",
 
-		SessionSecret: TestSessionSecret,
+		SessionSecret: sessionSecret,
 
 		Debug: true,
 	}
@@ -63,8 +66,37 @@ func MakeTestTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	textile.Bootstrap()
 
 	return conf, func() {
-		time.Sleep(time.Second) // give threads a chance to finish work
+		time.Sleep(time.Second) // Give threads a chance to finish work
 		textile.Close()
 		_ = os.RemoveAll(dir)
 	}
+}
+
+func NewName() string {
+	return strings.ToLower(util.MakeToken(12))
+}
+
+func NewEmail() string {
+	return fmt.Sprintf("%s@doe.com", NewName())
+}
+
+func Login(t *testing.T, client *client.Client, conf core.Config, email string) *pb.LoginReply {
+	var err error
+	var res *pb.LoginReply
+	go func() {
+		res, err = client.Login(context.Background(), NewName(), email)
+		require.Nil(t, err)
+	}()
+
+	// Ensure login request has processed
+	time.Sleep(time.Second)
+	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, sessionSecret)
+	_, err = http.Get(url)
+	require.Nil(t, err)
+
+	// Ensure login response has been received
+	time.Sleep(time.Second)
+	require.NotNil(t, res)
+	require.NotEmpty(t, res.Token)
+	return res
 }

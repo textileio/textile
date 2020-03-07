@@ -22,14 +22,12 @@ type Session struct {
 	ExpiresAt   time.Time          `bson:"expires_at"`
 }
 
-var sessionKey key
-
 func NewSessionContext(ctx context.Context, session *Session) context.Context {
-	return context.WithValue(ctx, sessionKey, session)
+	return context.WithValue(ctx, ctxKey("session"), session)
 }
 
 func SessionFromContext(ctx context.Context) (*Session, bool) {
-	session, ok := ctx.Value(sessionKey).(*Session)
+	session, ok := ctx.Value(ctxKey("session")).(*Session)
 	return session, ok
 }
 

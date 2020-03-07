@@ -19,14 +19,12 @@ type Developer struct {
 	CreatedAt time.Time          `bson:"created_at"`
 }
 
-var devKey key
-
 func NewDevContext(ctx context.Context, dev *Developer) context.Context {
-	return context.WithValue(ctx, devKey, dev)
+	return context.WithValue(ctx, ctxKey("developer"), dev)
 }
 
 func DevFromContext(ctx context.Context) (*Developer, bool) {
-	dev, ok := ctx.Value(devKey).(*Developer)
+	dev, ok := ctx.Value(ctxKey("developer")).(*Developer)
 	return dev, ok
 }
 

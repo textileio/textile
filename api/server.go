@@ -22,6 +22,7 @@ import (
 	bucketspb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/cloud"
 	cloudpb "github.com/textileio/textile/api/cloud/pb"
+	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -34,15 +35,9 @@ var (
 	log = logging.Logger("textileapi")
 
 	ignoreMethods = []string{
-		"/pb.API/Login",
+		"/cloudpb.API/Login",
 	}
 )
-
-// Auth is used by clients to supply authorization credentials.
-type Auth struct {
-	Token string
-	Org   string
-}
 
 // Server provides a gRPC API to the textile daemon.
 type Server struct {
@@ -202,7 +197,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
-	if session.ExpiresAt.After(time.Now()) {
+	if time.Now().After(session.ExpiresAt) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
 	if err := s.cloud.Collections.Sessions.Touch(ctx, session.Token); err != nil {
@@ -259,7 +254,7 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, err
 		}
 		// @todo: Make sure the caller owns this store.
-		newCtx = newStoreContext(newCtx, id)
+		newCtx = common.NewStoreContext(newCtx, id)
 
 		//query, err := url.ParseQuery(u.RawQuery)
 		//if err != nil {
@@ -276,17 +271,4 @@ func (s *Server) authFunc(ctx context.Context) (context.Context, error) {
 	}
 
 	return newCtx, nil
-}
-
-type key int
-
-var storeKey key
-
-func newStoreContext(ctx context.Context, id thread.ID) context.Context {
-	return context.WithValue(ctx, storeKey, id)
-}
-
-func StoreFromContext(ctx context.Context) (thread.ID, bool) {
-	id, ok := ctx.Value(storeKey).(thread.ID)
-	return id, ok
 }

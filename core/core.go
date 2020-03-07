@@ -132,8 +132,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	threadsClient, err := threadsclient.NewClient(threadsTarget, grpc.WithInsecure(),
-		grpc.WithPerRPCCredentials(c.TokenAuth{}))
+	threadsClient, err := threadsclient.NewClient(threadsTarget, grpc.WithInsecure())
+	//grpc.WithPerRPCCredentials(c.TokenAuth{}))
 	if err != nil {
 		return nil, err
 	}

@@ -2,15 +2,18 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/textile/api"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	creds "google.golang.org/grpc/credentials"
 )
 
 const (
@@ -25,16 +28,16 @@ type Client struct {
 }
 
 // NewClient starts the client.
-func NewClient(target string, creds credentials.TransportCredentials) (*Client, error) {
+func NewClient(target string, creds creds.TransportCredentials) (*Client, error) {
 	var opts []grpc.DialOption
-	auth := tokenAuth{}
+	c := credentials{}
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(creds))
-		auth.secure = true
+		c.secure = true
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	opts = append(opts, grpc.WithPerRPCCredentials(auth))
+	opts = append(opts, grpc.WithPerRPCCredentials(c))
 	conn, err := grpc.Dial(target, opts...)
 	if err != nil {
 		return nil, err
@@ -51,25 +54,14 @@ func (c *Client) Close() error {
 }
 
 // ListPath returns information about a bucket path.
-func (c *Client) ListPath(ctx context.Context, pth string, auth api.Auth) (*pb.ListPathReply, error) {
-	return c.c.ListPath(authCtx(ctx, auth), &pb.ListPathRequest{
+func (c *Client) ListPath(ctx context.Context, pth string, opts ...Option) (*pb.ListPathReply, error) {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return c.c.ListPath(newOptsCtx(ctx, args), &pb.ListPathRequest{
 		Path: pth,
 	})
-}
-
-// PushPathOptions defines options for pushing a bucket path.
-type PushPathOptions struct {
-	Progress chan<- int64
-}
-
-// PushPathOption specifies an option for pushing a bucket path.
-type PushPathOption func(*PushPathOptions)
-
-// WithPushProgress writes progress updates to the given channel.
-func WithPushProgress(ch chan<- int64) PushPathOption {
-	return func(args *PushPathOptions) {
-		args.Progress = ch
-	}
 }
 
 type pushPathResult struct {
@@ -82,18 +74,18 @@ type pushPathResult struct {
 // The bucket and any directory paths will be created if they don't exist.
 // This will return the resolved path and the bucket's new root path.
 func (c *Client) PushPath(
-	ctx context.Context, bucketPath string, reader io.Reader, auth api.Auth,
-	opts ...PushPathOption) (result path.Resolved, root path.Path, err error) {
+	ctx context.Context, bucketPath string, reader io.Reader, opts ...Option) (
+	result path.Resolved, root path.Path, err error) {
 
-	args := &PushPathOptions{}
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	if args.Progress != nil {
-		defer close(args.Progress)
+	if args.progress != nil {
+		defer close(args.progress)
 	}
 
-	stream, err := c.c.PushPath(authCtx(ctx, auth))
+	stream, err := c.c.PushPath(newOptsCtx(ctx, args))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,8 +122,8 @@ func (c *Client) PushPath(
 						path: path.IpfsPath(id),
 						root: path.New(payload.Event.Root.Path),
 					}
-				} else if args.Progress != nil {
-					args.Progress <- payload.Event.Bytes
+				} else if args.progress != nil {
+					args.progress <- payload.Event.Bytes
 				}
 			case *pb.PushPathReply_Error:
 				waitCh <- pushPathResult{err: fmt.Errorf(payload.Error)}
@@ -173,34 +165,19 @@ func (c *Client) PushPath(
 	return res.path, res.root, res.err
 }
 
-// PullPathOptions defines options for pulling a bucket path.
-type PullPathOptions struct {
-	Progress chan<- int64
-}
-
-// PullPathOption specifies an option for pulling a bucket path.
-type PullPathOption func(*PullPathOptions)
-
-// WithPullProgress writes progress updates to the given channel.
-func WithPullProgress(ch chan<- int64) PullPathOption {
-	return func(args *PullPathOptions) {
-		args.Progress = ch
-	}
-}
-
 // PullPath pulls the bucket path, writing it to writer if it's a file.
 func (c *Client) PullPath(
-	ctx context.Context, bucketPath string, writer io.Writer, auth api.Auth, opts ...PullPathOption) error {
+	ctx context.Context, bucketPath string, writer io.Writer, opts ...Option) error {
 
-	args := &PullPathOptions{}
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	if args.Progress != nil {
-		defer close(args.Progress)
+	if args.progress != nil {
+		defer close(args.progress)
 	}
 
-	stream, err := c.c.PullPath(authCtx(ctx, auth), &pb.PullPathRequest{
+	stream, err := c.c.PullPath(newOptsCtx(ctx, args), &pb.PullPathRequest{
 		Path: bucketPath,
 	})
 	if err != nil {
@@ -220,8 +197,8 @@ func (c *Client) PullPath(
 			return err
 		}
 		written += int64(n)
-		if args.Progress != nil {
-			args.Progress <- written
+		if args.progress != nil {
+			args.progress <- written
 		}
 	}
 	return nil
@@ -230,40 +207,64 @@ func (c *Client) PullPath(
 // RemovePath removes the file or directory at path.
 //  files and directories will be unpinned.
 // If the resulting bucket is empty, it will also be removed.
-func (c *Client) RemovePath(ctx context.Context, pth string, auth api.Auth) error {
-	_, err := c.c.RemovePath(authCtx(ctx, auth), &pb.RemovePathRequest{
+func (c *Client) RemovePath(ctx context.Context, pth string, opts ...Option) error {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	_, err := c.c.RemovePath(newOptsCtx(ctx, args), &pb.RemovePathRequest{
 		Path: pth,
 	})
 	return err
 }
 
-type authKey string
+type optsKey string
 
-func authCtx(ctx context.Context, auth api.Auth) context.Context {
-	ctx = context.WithValue(ctx, authKey("token"), auth.Token)
-	if auth.Org != "" {
-		ctx = context.WithValue(ctx, authKey("org"), auth.Org)
+func newOptsCtx(ctx context.Context, args *options) context.Context {
+	if args.devToken != "" {
+		ctx = context.WithValue(ctx, optsKey("devToken"), args.devToken)
+	}
+	if args.appKey != nil {
+		ctx = context.WithValue(ctx, optsKey("appKey"), args.appKey)
+	}
+	if args.appAddr != nil {
+		ctx = context.WithValue(ctx, optsKey("appAddr"), args.appAddr)
+	}
+	if args.thread.Defined() {
+		ctx = context.WithValue(ctx, optsKey("thread"), args.thread)
 	}
 	return ctx
 }
 
-type tokenAuth struct {
+type credentials struct {
 	secure bool
 }
 
-func (t tokenAuth) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
+func (c credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
 	md := map[string]string{}
-	token, ok := ctx.Value(authKey("token")).(string)
-	if ok && token != "" {
-		md["authorization"] = "bearer " + token
+	devToken, ok := ctx.Value(optsKey("devToken")).(string)
+	if ok {
+		md["authorization"] = "bearer " + devToken
 	}
-	org, ok := ctx.Value(authKey("org")).(string)
-	if ok && org != "" {
-		md["x-org"] = org
+	appKey, ok := ctx.Value(optsKey("appKey")).(crypto.PrivKey)
+	if ok {
+		b, err := crypto.MarshalPrivateKey(appKey)
+		if err != nil {
+			return nil, err
+		}
+		md["authorization"] = "bearer " + hex.EncodeToString(b)
+	}
+	appAddr, ok := ctx.Value(optsKey("appAddr")).(ma.Multiaddr)
+	if ok {
+		md["x-app-addr"] = appAddr.String()
+	}
+	threadID, ok := ctx.Value(optsKey("thread")).(thread.ID)
+	if ok {
+		md["x-thread"] = threadID.String()
 	}
 	return md, nil
 }
 
-func (t tokenAuth) RequireTransportSecurity() bool {
-	return t.secure
+func (c credentials) RequireTransportSecurity() bool {
+	return c.secure
 }

@@ -44,14 +44,12 @@ func (r Role) String() (s string) {
 	return
 }
 
-var orgKey key
-
 func NewOrgContext(ctx context.Context, org *Org) context.Context {
-	return context.WithValue(ctx, orgKey, org)
+	return context.WithValue(ctx, ctxKey("org"), org)
 }
 
 func OrgFromContext(ctx context.Context) (*Org, bool) {
-	org, ok := ctx.Value(orgKey).(*Org)
+	org, ok := ctx.Value(ctxKey("org")).(*Org)
 	return org, ok
 }
 
