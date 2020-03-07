@@ -175,9 +175,20 @@ func TestOrgs_RemoveMember(t *testing.T) {
 
 	col, err := NewOrgs(context.Background(), db)
 	require.Nil(t, err)
-	created := &Org{Name: "test"}
+	ownerID := primitive.NewObjectID()
+	created := &Org{
+		Name: "test",
+		Members: []Member{{
+			ID:       ownerID,
+			Username: "owner",
+			Role:     OrgOwner,
+		}},
+	}
 	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
+	err = col.RemoveMember(context.Background(), created.Name, ownerID)
+	require.NotNil(t, err)
+
 	memberID := primitive.NewObjectID()
 	err = col.AddMember(context.Background(), created.Name, Member{
 		ID:       memberID,

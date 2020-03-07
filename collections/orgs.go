@@ -161,27 +161,38 @@ func (t *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive
 		return err
 	}
 	if isOwner { // Ensure there will still be at least one owner left
-		cursor, err := t.col.Aggregate(ctx, mongo.Pipeline{bson.D{
-			{"$match", bson.M{"name": name}},
-			{"$project", bson.M{
-				"_id":       "$_id",
-				"numOwners": bson.M{"$size": "$members"},
-			}},
-		}}, options.Aggregate().SetHint(bson.D{{"name", 1}}))
+		cursor, err := t.col.Aggregate(ctx, mongo.Pipeline{
+			bson.D{{"$match", bson.M{"name": name}}},
+			bson.D{{"$project", bson.M{
+				"members": bson.M{
+					"$filter": bson.M{
+						"input": "$members",
+						"as":    "member",
+						"cond":  bson.M{"$eq": bson.A{"$$member.role", 0}},
+					},
+				},
+			}}},
+			bson.D{{"$count", "members"}},
+		}, options.Aggregate().SetHint(bson.D{{"name", 1}}))
 		if err != nil {
 			return err
 		}
+		type res struct {
+			Owners int `bson:"members"`
+		}
+		var r res
 		for cursor.Next(ctx) {
-			fmt.Println(cursor.Current)
-			//var doc Org
-			//if err := cursor.Decode(&doc); err != nil {
-			//	return err
-			//}
+			if err := cursor.Decode(&r); err != nil {
+				return err
+			}
+			break
 		}
 		if err := cursor.Err(); err != nil {
 			return err
 		}
-
+		if r.Owners < 2 {
+			return fmt.Errorf("an org must have at least one owner")
+		}
 	}
 	res, err := t.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": memberID}}})
 	if err != nil {
