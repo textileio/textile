@@ -73,6 +73,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 	defer cancel()
 	rep, err := f.client.ListBucketPath(ctx, "", path.Join(bucket, pth), f.auth)
 	if err != nil {
+		log.Errorf("error listing bucket path: %v", err)
 		return false, ""
 	}
 	if rep.Item.IsDir {
