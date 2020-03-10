@@ -72,8 +72,9 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
 	rep, err := f.client.ListBucketPath(ctx, "", path.Join(bucket, pth), f.auth)
-	if err == nil && !rep.Item.IsDir {
-		return true, ""
+	if err != nil {
+		log.Errorf("error listing bucket path: %v", err)
+		return false, ""
 	}
 	if rep.Item.IsDir {
 		for _, item := range rep.Item.Items {
@@ -82,7 +83,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 			}
 		}
 	}
-	return false, ""
+	return true, ""
 }
 
 func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
