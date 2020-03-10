@@ -45,22 +45,6 @@ var (
 			Key:      "addr.threads.host",
 			DefValue: "/ip4/0.0.0.0/tcp/4006",
 		},
-		"addrThreadsServiceApi": {
-			Key:      "addr.threads_service.api",
-			DefValue: "/ip4/127.0.0.1/tcp/5006",
-		},
-		"addrThreadsServiceApiProxy": {
-			Key:      "addr.threads_service.api_proxy",
-			DefValue: "/ip4/127.0.0.1/tcp/5007",
-		},
-		"addrThreadsApi": {
-			Key:      "addr.threads.api",
-			DefValue: "/ip4/127.0.0.1/tcp/6006",
-		},
-		"addrThreadsApiProxy": {
-			Key:      "addr.threads.api_proxy",
-			DefValue: "/ip4/127.0.0.1/tcp/6007",
-		},
 		"addrGatewayHost": {
 			Key:      "addr.gateway.host",
 			DefValue: "/ip4/127.0.0.1/tcp/8006",
@@ -80,6 +64,10 @@ var (
 		"addrFilecoinApi": {
 			Key:      "addr.filecoin.api",
 			DefValue: "",
+		},
+		"addrMongoUri": {
+			Key:      "addr.mongo_uri",
+			DefValue: "mongodb://127.0.0.1:27017",
 		},
 		"dnsDomain": {
 			Key:      "dns.domain",
@@ -148,22 +136,6 @@ func init() {
 		"addrThreadsHost",
 		flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
-	rootCmd.PersistentFlags().String(
-		"addrThreadsServiceApi",
-		flags["addrThreadsServiceApi"].DefValue.(string),
-		"Threads Service API listen address")
-	rootCmd.PersistentFlags().String(
-		"addrThreadsServiceApiProxy",
-		flags["addrThreadsServiceApiProxy"].DefValue.(string),
-		"Threads Service API gRPC proxy address")
-	rootCmd.PersistentFlags().String(
-		"addrThreadsApi",
-		flags["addrThreadsApi"].DefValue.(string),
-		"Threads API listen address")
-	rootCmd.PersistentFlags().String(
-		"addrThreadsApiProxy",
-		flags["addrThreadsApiProxy"].DefValue.(string),
-		"Threads API gRPC proxy address")
 
 	rootCmd.PersistentFlags().String(
 		"addrIpfsApi",
@@ -189,6 +161,12 @@ func init() {
 		"addrFilecoinApi",
 		flags["addrFilecoinApi"].DefValue.(string),
 		"Filecoin gRPC API address")
+
+	// Mongo settings
+	rootCmd.PersistentFlags().String(
+		"addrMongoUri",
+		flags["addrMongoUri"].DefValue.(string),
+		"MongoDB connection URI")
 
 	// Cloudflare settings
 	rootCmd.PersistentFlags().String(
@@ -259,10 +237,6 @@ var rootCmd = &cobra.Command{
 		addrApi := cmd.AddrFromStr(configViper.GetString("addr.api"))
 		addrApiProxy := cmd.AddrFromStr(configViper.GetString("addr.api_proxy"))
 		addrThreadsHost := cmd.AddrFromStr(configViper.GetString("addr.threads.host"))
-		addrThreadsServiceApi := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api"))
-		addrThreadsServiceApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads_service.api_proxy"))
-		addrThreadsApi := cmd.AddrFromStr(configViper.GetString("addr.threads.api"))
-		addrThreadsApiProxy := cmd.AddrFromStr(configViper.GetString("addr.threads.api_proxy"))
 		addrIpfsApi := cmd.AddrFromStr(configViper.GetString("addr.ipfs.api"))
 
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
@@ -273,6 +247,8 @@ var rootCmd = &cobra.Command{
 		if str := configViper.GetString("addr.filecoin.api"); str != "" {
 			addrFilecoinApi = cmd.AddrFromStr(str)
 		}
+
+		addrMongoUri := configViper.GetString("addr.mongo_uri")
 
 		dnsDomain := configViper.GetString("dns.domain")
 		dnsZoneID := configViper.GetString("dns.zone_id")
@@ -291,26 +267,23 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:                   configViper.GetString("repo"),
-			AddrApi:                    addrApi,
-			AddrApiProxy:               addrApiProxy,
-			AddrThreadsHost:            addrThreadsHost,
-			AddrThreadsServiceApi:      addrThreadsServiceApi,
-			AddrThreadsServiceApiProxy: addrThreadsServiceApiProxy,
-			AddrThreadsApi:             addrThreadsApi,
-			AddrThreadsApiProxy:        addrThreadsApiProxy,
-			AddrIpfsApi:                addrIpfsApi,
-			AddrGatewayHost:            addrGatewayHost,
-			AddrGatewayUrl:             addrGatewayUrl,
-			AddrGatewayBucketDomain:    addrGatewayBucketDomain,
-			AddrFilecoinApi:            addrFilecoinApi,
-			DNSDomain:                  dnsDomain,
-			DNSZoneID:                  dnsZoneID,
-			DNSToken:                   dnsToken,
-			EmailFrom:                  emailFrom,
-			EmailDomain:                emailDomain,
-			EmailApiKey:                emailApiKey,
-			Debug:                      configViper.GetBool("log.debug"),
+			RepoPath:                configViper.GetString("repo"),
+			AddrApi:                 addrApi,
+			AddrApiProxy:            addrApiProxy,
+			AddrThreadsHost:         addrThreadsHost,
+			AddrIpfsApi:             addrIpfsApi,
+			AddrGatewayHost:         addrGatewayHost,
+			AddrGatewayUrl:          addrGatewayUrl,
+			AddrGatewayBucketDomain: addrGatewayBucketDomain,
+			AddrFilecoinApi:         addrFilecoinApi,
+			AddrMongoUri:            addrMongoUri,
+			DNSDomain:               dnsDomain,
+			DNSZoneID:               dnsZoneID,
+			DNSToken:                dnsToken,
+			EmailFrom:               emailFrom,
+			EmailDomain:             emailDomain,
+			EmailApiKey:             emailApiKey,
+			Debug:                   configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)

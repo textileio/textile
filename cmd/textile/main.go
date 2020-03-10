@@ -11,8 +11,10 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/util"
-	api "github.com/textileio/textile/api/client"
+	bc "github.com/textileio/textile/api/buckets/client"
+	cc "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/cmd"
 	"google.golang.org/grpc/credentials"
 )
@@ -48,7 +50,9 @@ var (
 		},
 	}
 
-	client *api.Client
+	cloud   *cc.Client
+	buckets *bc.Client
+	threads *tc.Client
 
 	cmdTimeout     = time.Second * 10
 	loginTimeout   = time.Minute * 3
@@ -57,7 +61,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(whoamiCmd, switchCmd)
+	rootCmd.AddCommand(whoamiCmd)
 
 	cobra.OnInitialize(cmd.InitConfig(authViper, authFile, ".textile", "auth"))
 	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textile", "config"))
@@ -136,14 +140,19 @@ var rootCmd = &cobra.Command{
 			creds = credentials.NewTLS(&tls.Config{})
 		}
 		var err error
-		client, err = api.NewClient(target, creds)
+		cloud, err = cc.NewClient(target, creds)
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		buckets, err = bc.NewClient(target, creds)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		threads, err = tc.NewClient("")
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
-		if client != nil {
-			if err := client.Close(); err != nil {
+		if cloud != nil {
+			if err := cloud.Close(); err != nil {
 				cmd.Fatal(err)
 			}
 		}
@@ -157,44 +166,15 @@ var whoamiCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
-		who, err := client.Whoami(
+		who, err := cloud.Whoami(
 			ctx,
-			api.Auth{
+			cc.Auth{
 				Token: authViper.GetString("token"),
 			})
 		if err != nil {
 			cmd.Fatal(err)
 		}
 
-		if who.TeamID != "" {
-			cmd.Message("You are %s in the %s team",
-				aurora.White(who.Email).Bold(), aurora.White(who.TeamName).Bold())
-		} else {
-			cmd.Message("You are %s", aurora.White(who.Email).Bold())
-		}
-	},
-}
-
-var switchCmd = &cobra.Command{
-	Use:   "switch",
-	Short: "Switch teams or personal account",
-	Long:  `Switch between teams and your personal account.`,
-	Run: func(c *cobra.Command, args []string) {
-		selected := selectTeam("Switch to", aurora.Sprintf(
-			aurora.BrightBlack("> Switching to {{ .Name | white | bold }}")),
-			true)
-
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		if err := client.Switch(
-			ctx,
-			api.Auth{
-				Token: authViper.GetString("token"),
-				Scope: selected.ID,
-			}); err != nil {
-			cmd.Fatal(err)
-		}
-
-		cmd.Success("Switched to %s", aurora.White(selected.Name).Bold())
+		cmd.Message("You are %s", aurora.White(who.Email).Bold())
 	},
 }

@@ -5,16 +5,11 @@ import (
 	"time"
 
 	"github.com/gosimple/slug"
-	logging "github.com/ipfs/go-log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const dbName = "textile"
-
-var (
-	_ = logging.Logger("collections")
-)
 
 func init() {
 	slug.MaxLength = 64

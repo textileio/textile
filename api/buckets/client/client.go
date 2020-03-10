@@ -205,7 +205,7 @@ func (c *Client) PullPath(
 }
 
 // RemovePath removes the file or directory at path.
-//  files and directories will be unpinned.
+// Files and directories will be unpinned.
 // If the resulting bucket is empty, it will also be removed.
 func (c *Client) RemovePath(ctx context.Context, pth string, opts ...Option) error {
 	args := &options{}

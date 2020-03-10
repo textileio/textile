@@ -31,10 +31,6 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	require.Nil(t, err)
 	gatewayPort, err := freeport.GetFreePort()
 	require.Nil(t, err)
-	threadsServiceApiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
-	threadsApiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
 
 	conf = core.Config{
 		RepoPath: dir,
@@ -42,13 +38,11 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		AddrApi:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
 		AddrApiProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 
-		AddrThreadsHost:            util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsServiceApi:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsServiceApiPort)),
-		AddrThreadsServiceApiProxy: util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
-		AddrThreadsApi:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", threadsApiPort)),
-		AddrThreadsApiProxy:        util.MustParseAddr("/ip4/127.0.0.1/tcp/0"),
+		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 
 		AddrIpfsApi: util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
+
+		AddrMongoUri: "mongodb://127.0.0.1:27017",
 
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
@@ -67,7 +61,8 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 
 	return conf, func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work
-		textile.Close()
+		err := textile.Close()
+		require.Nil(t, err)
 		_ = os.RemoveAll(dir)
 	}
 }
