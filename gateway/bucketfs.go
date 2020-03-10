@@ -82,6 +82,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 				return false, item.Name
 			}
 		}
+		return false, ""
 	}
 	return true, ""
 }
