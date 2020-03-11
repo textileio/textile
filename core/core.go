@@ -353,7 +353,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, err
 		}
 		// @todo: Make sure the caller owns this store.
-		newCtx = common.NewStoreContext(newCtx, id)
+		newCtx = common.NewDBContext(newCtx, id)
 
 		//query, err := url.ParseQuery(u.RawQuery)
 		//if err != nil {

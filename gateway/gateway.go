@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -24,6 +26,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	buckets "github.com/textileio/textile/api/buckets/client"
 	cloud "github.com/textileio/textile/api/cloud/client"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/collections"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -84,11 +87,15 @@ func NewGateway(
 		return nil, err
 	}
 
-	cc, err := cloud.NewClient(apiTarget, nil)
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(common.Credentials{}),
+	}
+	cc, err := cloud.NewClient(apiTarget, opts...)
 	if err != nil {
 		return nil, err
 	}
-	bc, err := buckets.NewClient(apiTarget, nil)
+	bc, err := buckets.NewClient(apiTarget, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -217,9 +224,9 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	ctx, cancel := context.WithTimeout(common.NewDevTokenContext(context.Background(), g.token), handlerTimeout)
 	defer cancel()
-	rep, err := g.buckets.ListPath(ctx, buckName, buckets.WithDevToken(g.token))
+	rep, err := g.buckets.ListPath(ctx, buckName)
 	if err != nil {
 		abort(c, http.StatusInternalServerError, err)
 		return
@@ -230,7 +237,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			if err := g.buckets.PullPath(ctx, pth, c.Writer, buckets.WithDevToken(g.token)); err != nil {
+			if err := g.buckets.PullPath(ctx, pth, c.Writer); err != nil {
 				abort(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -251,18 +258,18 @@ type link struct {
 // dashHandler renders a project dashboard.
 // Currently, this just shows bucket files and directories.
 func (g *Gateway) dashHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	ctx, cancel := context.WithTimeout(common.NewDevTokenContext(context.Background(), g.token), handlerTimeout)
 	defer cancel()
 
 	project := c.Param("project")
-	rep, err := g.buckets.ListPath(ctx, c.Param("path"), buckets.WithDevToken(g.token))
+	rep, err := g.buckets.ListPath(ctx, c.Param("path"))
 	if err != nil {
 		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
 		return
 	}
 
 	if !rep.Item.IsDir {
-		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer, buckets.WithDevToken(g.token)); err != nil {
+		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer); err != nil {
 			abort(c, http.StatusInternalServerError, err)
 		}
 	} else {

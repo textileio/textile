@@ -47,7 +47,7 @@ type Service struct {
 func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.ListPathReply, error) {
 	log.Debugf("received list bucket path request")
 
-	storeID, ok := common.StoreFromContext(ctx)
+	storeID, ok := common.DBFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("store required")
 	}
@@ -186,7 +186,7 @@ func (s *Service) pathToPb(
 func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	log.Debugf("received push bucket path request")
 
-	storeID, ok := common.StoreFromContext(server.Context())
+	storeID, ok := common.DBFromContext(server.Context())
 	if !ok {
 		return fmt.Errorf("store required")
 	}
@@ -359,7 +359,7 @@ func (s *Service) createBucket(ctx context.Context, storeID thread.ID, name stri
 func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer) error {
 	log.Debugf("received pull bucket path request")
 
-	storeID, ok := common.StoreFromContext(server.Context())
+	storeID, ok := common.DBFromContext(server.Context())
 	if !ok {
 		return fmt.Errorf("store required")
 	}
@@ -400,7 +400,7 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathReply, error) {
 	log.Debugf("received remove bucket path request")
 
-	storeID, ok := common.StoreFromContext(ctx)
+	storeID, ok := common.DBFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("store required")
 	}

@@ -2,18 +2,13 @@ package client
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"google.golang.org/grpc"
-	creds "google.golang.org/grpc/credentials"
 )
 
 const (
@@ -28,16 +23,7 @@ type Client struct {
 }
 
 // NewClient starts the client.
-func NewClient(target string, creds creds.TransportCredentials) (*Client, error) {
-	var opts []grpc.DialOption
-	c := credentials{}
-	if creds != nil {
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-		c.secure = true
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	opts = append(opts, grpc.WithPerRPCCredentials(c))
+func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 	conn, err := grpc.Dial(target, opts...)
 	if err != nil {
 		return nil, err
@@ -54,12 +40,8 @@ func (c *Client) Close() error {
 }
 
 // ListPath returns information about a bucket path.
-func (c *Client) ListPath(ctx context.Context, pth string, opts ...Option) (*pb.ListPathReply, error) {
-	args := &options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	return c.c.ListPath(newOptsCtx(ctx, args), &pb.ListPathRequest{
+func (c *Client) ListPath(ctx context.Context, pth string) (*pb.ListPathReply, error) {
+	return c.c.ListPath(ctx, &pb.ListPathRequest{
 		Path: pth,
 	})
 }
@@ -73,10 +55,8 @@ type pushPathResult struct {
 // PushPath pushes a file to a bucket path.
 // The bucket and any directory paths will be created if they don't exist.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(
-	ctx context.Context, bucketPath string, reader io.Reader, opts ...Option) (
+func (c *Client) PushPath(ctx context.Context, bucketPath string, reader io.Reader, opts ...Option) (
 	result path.Resolved, root path.Path, err error) {
-
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -85,7 +65,7 @@ func (c *Client) PushPath(
 		defer close(args.progress)
 	}
 
-	stream, err := c.c.PushPath(newOptsCtx(ctx, args))
+	stream, err := c.c.PushPath(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,9 +146,7 @@ func (c *Client) PushPath(
 }
 
 // PullPath pulls the bucket path, writing it to writer if it's a file.
-func (c *Client) PullPath(
-	ctx context.Context, bucketPath string, writer io.Writer, opts ...Option) error {
-
+func (c *Client) PullPath(ctx context.Context, bucketPath string, writer io.Writer, opts ...Option) error {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -177,7 +155,7 @@ func (c *Client) PullPath(
 		defer close(args.progress)
 	}
 
-	stream, err := c.c.PullPath(newOptsCtx(ctx, args), &pb.PullPathRequest{
+	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
 		Path: bucketPath,
 	})
 	if err != nil {
@@ -207,64 +185,9 @@ func (c *Client) PullPath(
 // RemovePath removes the file or directory at path.
 // Files and directories will be unpinned.
 // If the resulting bucket is empty, it will also be removed.
-func (c *Client) RemovePath(ctx context.Context, pth string, opts ...Option) error {
-	args := &options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	_, err := c.c.RemovePath(newOptsCtx(ctx, args), &pb.RemovePathRequest{
+func (c *Client) RemovePath(ctx context.Context, pth string) error {
+	_, err := c.c.RemovePath(ctx, &pb.RemovePathRequest{
 		Path: pth,
 	})
 	return err
-}
-
-type optsKey string
-
-func newOptsCtx(ctx context.Context, args *options) context.Context {
-	if args.devToken != "" {
-		ctx = context.WithValue(ctx, optsKey("devToken"), args.devToken)
-	}
-	if args.appKey != nil {
-		ctx = context.WithValue(ctx, optsKey("appKey"), args.appKey)
-	}
-	if args.appAddr != nil {
-		ctx = context.WithValue(ctx, optsKey("appAddr"), args.appAddr)
-	}
-	if args.thread.Defined() {
-		ctx = context.WithValue(ctx, optsKey("thread"), args.thread)
-	}
-	return ctx
-}
-
-type credentials struct {
-	secure bool
-}
-
-func (c credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
-	md := map[string]string{}
-	devToken, ok := ctx.Value(optsKey("devToken")).(string)
-	if ok {
-		md["authorization"] = "bearer " + devToken
-	}
-	appKey, ok := ctx.Value(optsKey("appKey")).(crypto.PrivKey)
-	if ok {
-		b, err := crypto.MarshalPrivateKey(appKey)
-		if err != nil {
-			return nil, err
-		}
-		md["authorization"] = "bearer " + hex.EncodeToString(b)
-	}
-	appAddr, ok := ctx.Value(optsKey("appAddr")).(ma.Multiaddr)
-	if ok {
-		md["x-app-addr"] = appAddr.String()
-	}
-	threadID, ok := ctx.Value(optsKey("thread")).(thread.ID)
-	if ok {
-		md["x-thread"] = threadID.String()
-	}
-	return md, nil
-}
-
-func (c credentials) RequireTransportSecurity() bool {
-	return c.secure
 }
