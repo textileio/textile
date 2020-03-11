@@ -16,11 +16,11 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/gosimple/slug v1.9.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/improbable-eng/grpc-web v0.12.0
 	github.com/ipfs/go-cid v0.0.5
-	github.com/ipfs/go-datastore v0.3.1
-	github.com/ipfs/go-ds-badger v0.2.0
+	github.com/ipfs/go-datastore v0.3.1 // indirect
+	github.com/ipfs/go-ds-badger v0.2.0 // indirect
 	github.com/ipfs/go-ipfs-files v0.0.6
 	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200205134739-3a5ff46efba6
 	github.com/ipfs/go-log v1.0.0

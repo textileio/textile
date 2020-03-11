@@ -10,8 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"google.golang.org/grpc"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +18,7 @@ import (
 	c "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/core"
+	"google.golang.org/grpc"
 )
 
 func TestClient_Login(t *testing.T) {

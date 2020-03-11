@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,10 +15,10 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	fc "github.com/textileio/filecoin/api/client"
-	threadsapi "github.com/textileio/go-threads/api"
-	threadsclient "github.com/textileio/go-threads/api/client"
-	threadspb "github.com/textileio/go-threads/api/pb"
+	filc "github.com/textileio/filecoin/api/client"
+	dbapi "github.com/textileio/go-threads/api"
+	dbc "github.com/textileio/go-threads/api/client"
+	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/service/api"
@@ -27,9 +26,9 @@ import (
 	s "github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
-	bucketspb "github.com/textileio/textile/api/buckets/pb"
+	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/cloud"
-	cloudpb "github.com/textileio/textile/api/cloud/pb"
+	cpb "github.com/textileio/textile/api/cloud/pb"
 	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
@@ -49,15 +48,15 @@ var (
 )
 
 type Textile struct {
-	collections *c.Collections
+	co *c.Collections
 
-	threadservice s.ServiceBoostrapper
-	threadsClient *threadsclient.Client
+	ts  s.ServiceBoostrapper
+	dbc *dbc.Client
 
-	threadsToken string
+	dbToken      string
 	gatewayToken string
 
-	filecoinClient *fc.Client
+	fc *filc.Client
 
 	server  *grpc.Server
 	proxy   *http.Server
@@ -103,35 +102,35 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t := &Textile{}
 
 	// Configure clients
-	ipfsClient, err := httpapi.NewApi(conf.AddrIpfsApi)
+	ic, err := httpapi.NewApi(conf.AddrIpfsApi)
 	if err != nil {
 		return nil, err
 	}
 	if conf.AddrFilecoinApi != nil {
-		t.filecoinClient, err = fc.NewClient(conf.AddrFilecoinApi)
+		t.fc, err = filc.NewClient(conf.AddrFilecoinApi)
 		if err != nil {
 			return nil, err
 		}
 	}
-	var dnsManager *dns.Manager
+	var dnsm *dns.Manager
 	if conf.DNSToken != "" {
-		dnsManager, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
+		dnsm, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
 		if err != nil {
 			return nil, err
 		}
 	}
-	emailClient, err := email.NewClient(
+	ec, err := email.NewClient(
 		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
-	t.collections, err = c.NewCollections(ctx, conf.AddrMongoUri)
+	t.co, err = c.NewCollections(ctx, conf.AddrMongoUri)
 	if err != nil {
 		return nil, err
 	}
 
 	// Configure threads
-	t.threadservice, err = s.DefaultService(
+	t.ts, err = s.DefaultService(
 		conf.RepoPath,
 		s.WithServiceHostAddr(conf.AddrThreadsHost),
 		s.WithServiceDebug(conf.Debug))
@@ -140,14 +139,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC services
-	ts, err := threadsapi.NewService(t.threadservice, threadsapi.Config{
+	ts, err := dbapi.NewService(t.ts, dbapi.Config{
 		RepoPath: conf.RepoPath,
 		Debug:    conf.Debug,
 	})
 	if err != nil {
 		return nil, err
 	}
-	ns, err := netapi.NewService(t.threadservice, netapi.Config{
+	ns, err := netapi.NewService(t.ts, netapi.Config{
 		Debug: conf.Debug,
 	})
 	if err != nil {
@@ -155,18 +154,19 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	t.sessionBus = broadcast.NewBroadcaster(0)
 	cs := &cloud.Service{
-		Collections:   t.collections,
-		EmailClient:   emailClient,
+		Collections:   t.co,
+		EmailClient:   ec,
 		GatewayUrl:    conf.AddrGatewayUrl,
 		SessionBus:    t.sessionBus,
 		SessionSecret: conf.SessionSecret,
 	}
+	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
-		Buckets:        buckets.NewBuckets(t.threadsClient),
-		IPFSClient:     ipfsClient,
-		FilecoinClient: t.filecoinClient,
+		Buckets:        bucks,
+		IPFSClient:     ic,
+		FilecoinClient: t.fc,
 		GatewayUrl:     conf.AddrGatewayUrl,
-		DNSManager:     dnsManager,
+		DNSManager:     dnsm,
 	}
 
 	// Configure gRPC server
@@ -174,7 +174,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	proxyTarget, err := util.TCPAddrFromMultiAddr(conf.AddrApiProxy)
+	ptarget, err := util.TCPAddrFromMultiAddr(conf.AddrApiProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -186,10 +186,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	go func() {
-		threadspb.RegisterAPIServer(t.server, ts)
+		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
-		cloudpb.RegisterAPIServer(t.server, cs)
-		bucketspb.RegisterAPIServer(t.server, bs)
+		cpb.RegisterAPIServer(t.server, cs)
+		bpb.RegisterAPIServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
@@ -204,7 +204,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return true
 		}))
 	t.proxy = &http.Server{
-		Addr: proxyTarget,
+		Addr: ptarget,
 	}
 	t.proxy.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if webrpc.IsGrpcWebRequest(r) ||
@@ -220,15 +220,22 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}()
 
 	// Start threads client
-	t.threadsClient, err = threadsclient.NewClient(target, grpc.WithInsecure())
+	t.dbc, err = dbc.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	if err != nil {
 		return nil, err
 	}
+	bucks.DB = t.dbc
 
 	// Configure gateway
 	t.gatewayToken = uuid.New().String()
-	t.gateway, err = gateway.NewGateway(conf.AddrGatewayHost, conf.AddrApi, t.gatewayToken,
-		conf.AddrGatewayBucketDomain, t.collections, t.sessionBus, conf.Debug)
+	t.gateway, err = gateway.NewGateway(
+		conf.AddrGatewayHost,
+		conf.AddrApi,
+		t.gatewayToken,
+		conf.AddrGatewayBucketDomain,
+		t.co,
+		t.sessionBus,
+		conf.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +247,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 }
 
 func (t *Textile) Bootstrap() {
-	t.threadservice.Bootstrap(util.DefaultBoostrapPeers())
+	t.ts.Bootstrap(util.DefaultBoostrapPeers())
 }
 
 func (t *Textile) Close() error {
@@ -254,25 +261,25 @@ func (t *Textile) Close() error {
 		return err
 	}
 	t.server.GracefulStop()
-	if err := t.threadsClient.Close(); err != nil {
+	if err := t.dbc.Close(); err != nil {
 		return err
 	}
-	if err := t.threadservice.Close(); err != nil {
+	if err := t.ts.Close(); err != nil {
 		return err
 	}
-	if t.filecoinClient != nil {
-		if err := t.filecoinClient.Close(); err != nil {
+	if t.fc != nil {
+		if err := t.fc.Close(); err != nil {
 			return err
 		}
 	}
-	if err := t.collections.Close(); err != nil {
+	if err := t.co.Close(); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *Textile) HostID() peer.ID {
-	return t.threadservice.Host().ID()
+	return t.ts.Host().ID()
 }
 
 func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
@@ -292,20 +299,20 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	//}
 
 	// Check for an active session
-	session, err := t.collections.Sessions.Get(ctx, token)
+	session, err := t.co.Sessions.Get(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
 	}
 	if time.Now().After(session.ExpiresAt) {
 		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
 	}
-	if err := t.collections.Sessions.Touch(ctx, session.Token); err != nil {
+	if err := t.co.Sessions.Touch(ctx, session.Token); err != nil {
 		return nil, err
 	}
 	newCtx := c.NewSessionContext(ctx, session)
 
 	// Load the developer
-	dev, err := t.collections.Developers.Get(ctx, session.DeveloperID)
+	dev, err := t.co.Developers.Get(ctx, session.DeveloperID)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
@@ -314,14 +321,14 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	// Load org if available
 	orgName := metautils.ExtractIncoming(ctx).Get("x-org")
 	if orgName != "" {
-		isMember, err := t.collections.Orgs.IsMember(ctx, orgName, dev.ID)
+		isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.ID)
 		if err != nil {
 			return nil, err
 		}
 		if !isMember {
 			return nil, status.Error(codes.PermissionDenied, "User is not an org member")
 		} else {
-			org, err := t.collections.Orgs.Get(ctx, orgName)
+			org, err := t.co.Orgs.Get(ctx, orgName)
 			if err != nil {
 				return nil, err
 			}
@@ -329,44 +336,28 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
-	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn/collection/buckets?id=UUID
-	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn/collection/buckets?name=foo
-	// /thread/sfvdfamdfvvfioadfvononofdvnovfionfvn?collection=buckets&name=foo
-
-	// Validate store header if available
-	threadAddr := metautils.ExtractIncoming(ctx).Get("x-thread-addr")
-	if threadAddr != "" {
-		u, err := url.Parse(threadAddr)
+	// Allow the other headers to pass through with ctx
+	newCtx = common.NewDevTokenContext(newCtx, token)
+	if orgName != "" {
+		newCtx = common.NewOrgContext(newCtx, orgName)
+	}
+	// @todo: Add app key if present
+	appAddr := metautils.ExtractIncoming(ctx).Get("x-app-addr")
+	if appAddr != "" {
+		addr, err := ma.NewMultiaddr(appAddr)
 		if err != nil {
 			return nil, err
 		}
-		addr, err := ma.NewMultiaddr(u.Path)
-		if err != nil {
-			return nil, err
-		}
-		idstr, err := addr.ValueForProtocol(thread.Code)
-		if err != nil {
-			return nil, err
-		}
-		id, err := thread.Decode(idstr)
+		newCtx = common.NewAppAddrContext(newCtx, addr)
+	}
+	dbID := metautils.ExtractIncoming(ctx).Get("x-db-id")
+	if dbID != "" {
+		id, err := thread.Decode(dbID)
 		if err != nil {
 			return nil, err
 		}
 		// @todo: Make sure the caller owns this store.
 		newCtx = common.NewDBContext(newCtx, id)
-
-		//query, err := url.ParseQuery(u.RawQuery)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//name := query.Get("name")
-		//if name != "" {
-		//	buck, err := s.buckets.Buckets.Get(ctx, id, name)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	newCtx = newBucketContext(newCtx, buck)
-		//}
 	}
 
 	return newCtx, nil

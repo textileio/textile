@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
@@ -35,14 +35,14 @@ func TestClient_ListPath(t *testing.T) {
 	t.Run("buckets", func(t *testing.T) {
 		rep, err := client.ListPath(ctx, "")
 		require.Nil(t, err)
-		assert.Equal(t, rep.Item.Items, 2)
+		assert.Equal(t, len(rep.Item.Items), 2)
 	})
 
 	t.Run("bucket path", func(t *testing.T) {
 		rep, err := client.ListPath(ctx, "mybuck1/file1.jpg")
 		require.Nil(t, err)
 		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
-		assert.True(t, rep.Item.IsDir)
+		assert.False(t, rep.Item.IsDir)
 		assert.Equal(t, rep.Root.Path, file1Root.String())
 	})
 }
@@ -85,7 +85,7 @@ func TestClient_PushPath(t *testing.T) {
 
 		rep, err := client.ListPath(ctx, "mybuck")
 		require.Nil(t, err)
-		assert.Equal(t, rep.Item.Items, 2)
+		assert.Equal(t, len(rep.Item.Items), 2)
 	})
 }
 
@@ -187,10 +187,11 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 
 	user := apitest.Login(t, cloudclient, conf, apitest.NewEmail())
 	ctx := common.NewDevTokenContext(context.Background(), user.Token)
-	res, err := threadsclient.NewStore(context.Background())
+	res, err := threadsclient.NewStore(ctx)
 	require.Nil(t, err)
-	fmt.Println(">>>>>>>>>>>>")
-	fmt.Println(res)
+	id, err := thread.Decode(res)
+	require.Nil(t, err)
+	ctx = common.NewDBContext(ctx, id)
 
 	return ctx, client, func() {
 		shutdown()
