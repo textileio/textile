@@ -8,7 +8,7 @@
     "build": "tsc",
     "test:node": "mocha --exit --require ts-node/register --require source-map-support/register --recursive src/**/*.spec.ts",
     "test:node:coverage": "nyc npm run test",
-    "test:browser": "polendina --cleanup src/**/*.spec.ts --webpack-config webpack.spec.js",
+    "test:browser": "polendina --cleanup src/**/*.spec.ts --webpack-config webpack.test.js",
     "test": "npm run test:node && npm run test:browser",
     "lint": "eslint --fix --ext .mjs,.js,.jsx,.ts,.tsx src",
     "docs": "typedoc && touch ./docs/.nojekyll",
