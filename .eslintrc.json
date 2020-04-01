@@ -26,15 +26,13 @@
     "sourceType": "module"
   },
   "rules": {
-    "indent": 0,
-    "@typescript-eslint/indent": [2, 2],
+    "prettier/prettier": "error",
     "@typescript-eslint/explicit-function-return-type": 0,
     "@typescript-eslint/no-explicit-any": 0,
     "@typescript-eslint/explicit-member-accessibility": 0,
     "@typescript-eslint/no-unused-vars": [0, {"argsIgnorePattern": "^_"}],
     "no-undefined": 0,
     "default-case": 0,
-    "prettier/prettier": 2,
     "import/no-absolute-path": 2,
     "import/no-cycle": 1,
     "import/export": 2,

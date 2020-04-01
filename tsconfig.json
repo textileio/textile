@@ -1,45 +1,37 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": ["es6", "dom", "esnext"],
-    "module": "commonjs",
+    "target": "es6", // 'es3' (default), 'es5', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019' or 'esnext'
+    "module": "commonjs", // 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'esnext'
+    "lib": [
+      "es6",
+      "dom",
+      "esnext"
+    ],
+    "composite": true,
     "moduleResolution": "node",
-    "declaration": true,
     "allowJs": false,
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "strict": true,
+    "declaration": true,
+    "sourceMap": true,
     "outDir": "dist",
-    "baseUrl": "."
+    "importHelpers": false,
+    "downlevelIteration": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": [
+      "node",
+      "mocha"
+    ]
   },
-  "include": [
-    "src"
-  ],
   "exclude": [
-    "scripts",
     "node_modules",
-    "examples",
-    "docs",
     "dist"
-  ],
-  "compileOnSave": true,
-  "typedocOptions": {
-    "readme": "./config/DOCS_TEMPLATE.md",
-    "mode": "file",
-    "out": "docs",
-    "include": "src/",
-    "exclude": "**/__test__/**/*",
-    "gitRevision": "master",
-    "excludePrivate": true,
-    "excludeNotExported": true,
-    "excludeProtected": true,
-    "hideGenerator": true,
-    "target": "ES6",
-    "moduleResolution": "node",
-    "preserveConstEnums": true,
-    "stripInternal": true,
-    "module": "commonjs",
-    "mdHideSources": true
-  }
+  ]
 }

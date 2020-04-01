@@ -1,28 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as pack from '../package.json'
-import { ThreadsConfig } from './ThreadsConfig'
+import { ThreadsConfig, APIConfig } from './Models'
 
-export { ThreadsConfig }
-
-export type APIConfig = {
-  token: string
-  deviceId: string
-  dev?: boolean
-  scheme?: string
-  authApi?: string
-  authPort?: number
-  threadApiScheme?: string
-  threadsApi?: string
-  threadsPort?: number
-}
-export class API {
-  /**
-   * version is the release version.
-   */
-  public static version(): string {
-    return pack.version
-  }
-
+class API {
   /**
    * threadsConfig is the (private) threads config.
    */

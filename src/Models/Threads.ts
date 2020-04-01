@@ -6,6 +6,12 @@ type Session = {
   id: string
   session_id: string
 }
+
+/**
+ * ThreadsConfig is automatically setup by the API
+ * and can be used to configure a Thread Client.
+ * Returned from API.threadsConfig()
+ */
 export class ThreadsConfig extends Config {
   public host: string
   public sessionId?: string
