@@ -1,13 +1,24 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ThreadsConfig, APIConfig } from './Models'
+/**
+ * @packageDocumentation
+ * @module API
+ */
 
-class API {
-  /**
-   * threadsConfig is the (private) threads config.
-   */
+import { Config } from './models/API'
+import { ThreadsConfig } from './models/Threads'
+
+export { Config }
+
+/**
+ * API is the primary interface to the Textile API
+ */
+export class API {
   private _threadsConfig: ThreadsConfig
 
-  constructor(config: APIConfig) {
+  /**
+   * New API class constructor.
+   * @param config Textile API config object.
+   */
+  constructor(config: Config) {
     // prettier-ignore
     this._threadsConfig =
       config.dev === true
@@ -35,19 +46,28 @@ class API {
         )
   }
 
+  /**
+   * Start must be called if no sessionId is known.
+   * After Start is called, the app should store sessionId
+   * for reuse using start(existingSession).
+   * @param sessionId Set to reuse an existing session.
+   */
   async start(sessionId?: string) {
     await this._threadsConfig.start(sessionId)
     return this
   }
 
+  /**
+   * Get the existing session ID after successfully running start.
+   */
   get sessionId(): string | undefined {
     return this._threadsConfig.sessionId
   }
 
+  /**
+   * Export the threadConfig.
+   */
   get threadsConfig(): ThreadsConfig {
     return this._threadsConfig
   }
 }
-
-// eslint-disable-next-line import/no-default-export
-export default API

@@ -1,3 +1,8 @@
+/**
+ * @packageDocumentation
+ * @module API
+ */
+
 import { grpc } from '@improbable-eng/grpc-web'
 import { Config } from '@textile/threads-client'
 import axios, { AxiosRequestConfig } from 'axios'
@@ -8,11 +13,12 @@ type Session = {
 }
 
 /**
+ * @internal
  * ThreadsConfig is automatically setup by the API
  * and can be used to configure a Thread Client.
  * Returned from API.threadsConfig()
  */
-export class ThreadsConfig extends Config {
+class ThreadsConfig extends Config {
   public host: string
   public sessionId?: string
   constructor(
@@ -80,3 +86,5 @@ export class ThreadsConfig extends Config {
     return values
   }
 }
+
+export { ThreadsConfig }
