@@ -6,7 +6,7 @@
 
 import { Client } from '@textile/threads-client'
 import { expect } from 'chai'
-import API from '../API'
+import { API } from '../API'
 
 describe('ThreadsConfig', function() {
   let api: API
