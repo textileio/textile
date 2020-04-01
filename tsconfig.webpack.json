@@ -5,7 +5,7 @@
     "paths": {}
   },
   "exclude": [
-    "**/__test__/*",
+    "**/*.spec.ts",
     "node_modules"
   ]
 }

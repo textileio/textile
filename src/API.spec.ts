@@ -6,7 +6,7 @@
 
 import { Client } from '@textile/threads-client'
 import { expect } from 'chai'
-import { API } from '../index'
+import { API } from './API'
 
 describe('API', function() {
   let api: API
