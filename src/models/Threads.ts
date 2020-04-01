@@ -1,6 +1,6 @@
 /**
  * @packageDocumentation
- * @module API
+ * @module @textile/textile
  */
 
 import { grpc } from '@improbable-eng/grpc-web'
