@@ -187,9 +187,8 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 
 	user := apitest.Login(t, cloudclient, conf, apitest.NewEmail())
 	ctx := common.NewDevTokenContext(context.Background(), user.Token)
-	res, err := threadsclient.NewStore(ctx)
-	require.Nil(t, err)
-	id, err := thread.Decode(res)
+	id := thread.NewIDV1(thread.Raw, 32)
+	err = threadsclient.NewDB(ctx, id)
 	require.Nil(t, err)
 	ctx = common.NewDBContext(ctx, id)
 

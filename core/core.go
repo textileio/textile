@@ -20,10 +20,10 @@ import (
 	dbc "github.com/textileio/go-threads/api/client"
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
+	tcommon "github.com/textileio/go-threads/common"
 	"github.com/textileio/go-threads/core/thread"
-	netapi "github.com/textileio/go-threads/service/api"
-	netpb "github.com/textileio/go-threads/service/api/pb"
-	s "github.com/textileio/go-threads/store"
+	netapi "github.com/textileio/go-threads/net/api"
+	netpb "github.com/textileio/go-threads/net/api/pb"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
@@ -50,7 +50,7 @@ var (
 type Textile struct {
 	co *c.Collections
 
-	ts  s.ServiceBoostrapper
+	ts  tcommon.NetBoostrapper
 	dbc *dbc.Client
 
 	dbToken      string
@@ -130,10 +130,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure threads
-	t.ts, err = s.DefaultService(
-		conf.RepoPath,
-		s.WithServiceHostAddr(conf.AddrThreadsHost),
-		s.WithServiceDebug(conf.Debug))
+	t.ts, err = tcommon.DefaultNetwork(conf.RepoPath, tcommon.WithNetHostAddr(conf.AddrThreadsHost), tcommon.WithNetDebug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}
