@@ -2,8 +2,9 @@ package common
 
 import (
 	"context"
-	"encoding/hex"
+	"encoding/base64"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/thread"
@@ -20,6 +21,14 @@ func DevTokenFromContext(ctx context.Context) (string, bool) {
 	return token, ok
 }
 
+func DevTokenFromMD(ctx context.Context) (dev string, ok bool) {
+	dev = metautils.ExtractIncoming(ctx).Get("x-dev")
+	if dev != "" {
+		ok = true
+	}
+	return
+}
+
 func NewOrgContext(ctx context.Context, org string) context.Context {
 	return context.WithValue(ctx, ctxKey("org"), org)
 }
@@ -27,6 +36,14 @@ func NewOrgContext(ctx context.Context, org string) context.Context {
 func OrgFromContext(ctx context.Context) (string, bool) {
 	org, ok := ctx.Value(ctxKey("org")).(string)
 	return org, ok
+}
+
+func OrgFromMD(ctx context.Context) (org string, ok bool) {
+	org = metautils.ExtractIncoming(ctx).Get("x-org")
+	if org != "" {
+		ok = true
+	}
+	return
 }
 
 func NewAppKeyContext(ctx context.Context, key crypto.PrivKey) context.Context {
@@ -38,6 +55,22 @@ func AppKeyFromContext(ctx context.Context) (crypto.PrivKey, bool) {
 	return key, ok
 }
 
+func AppKeyFromMD(ctx context.Context) (key crypto.PrivKey, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-app-key")
+	if str == "" {
+		return
+	}
+	data, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return
+	}
+	key, err = crypto.UnmarshalPrivateKey(data)
+	if err != nil {
+		return
+	}
+	return key, true
+}
+
 func NewAppAddrContext(ctx context.Context, addr ma.Multiaddr) context.Context {
 	return context.WithValue(ctx, ctxKey("appAddr"), addr)
 }
@@ -47,13 +80,39 @@ func AppAddrFromContext(ctx context.Context) (ma.Multiaddr, bool) {
 	return addr, ok
 }
 
-func NewDBContext(ctx context.Context, id thread.ID) context.Context {
+func AppAddrFromMD(ctx context.Context) (addr ma.Multiaddr, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-app-addr")
+	if str == "" {
+		return
+	}
+	var err error
+	addr, err = ma.NewMultiaddr(str)
+	if err != nil {
+		return
+	}
+	return addr, true
+}
+
+func NewDbIDContext(ctx context.Context, id thread.ID) context.Context {
 	return context.WithValue(ctx, ctxKey("dbID"), id)
 }
 
-func DBFromContext(ctx context.Context) (thread.ID, bool) {
+func DbIDFromContext(ctx context.Context) (thread.ID, bool) {
 	id, ok := ctx.Value(ctxKey("dbID")).(thread.ID)
 	return id, ok
+}
+
+func DbIDFromMD(ctx context.Context) (id thread.ID, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-db")
+	if str == "" {
+		return
+	}
+	var err error
+	id, err = thread.Decode(str)
+	if err != nil {
+		return id, false
+	}
+	return id, true
 }
 
 type Credentials struct {
@@ -64,7 +123,7 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 	md := map[string]string{}
 	devToken, ok := DevTokenFromContext(ctx)
 	if ok {
-		md["authorization"] = "bearer " + devToken
+		md["x-dev"] = devToken
 	}
 	org, ok := OrgFromContext(ctx)
 	if ok {
@@ -76,15 +135,15 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 		if err != nil {
 			return nil, err
 		}
-		md["authorization"] = "bearer " + hex.EncodeToString(b)
+		md["x-app-key"] = base64.StdEncoding.EncodeToString(b)
 	}
 	appAddr, ok := AppAddrFromContext(ctx)
 	if ok {
 		md["x-app-addr"] = appAddr.String()
 	}
-	dbID, ok := DBFromContext(ctx)
+	dbID, ok := DbIDFromContext(ctx)
 	if ok {
-		md["x-db-id"] = dbID.String()
+		md["x-db"] = dbID.String()
 	}
 	return md, nil
 }

@@ -67,7 +67,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 
 func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string) (*Bucket, error) {
 	query := db.Where("Name").Eq(name)
-	res, err := b.DB.Find(ctx, dbID, cname, query, []*Bucket{})
+	res, err := b.DB.Find(ctx, dbID, cname, query, &Bucket{})
 	if err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID); err != nil {
@@ -85,7 +85,7 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string) (*Bucket
 }
 
 func (b *Buckets) List(ctx context.Context, dbID thread.ID) ([]*Bucket, error) {
-	res, err := b.DB.Find(ctx, dbID, cname, &db.Query{}, []*Bucket{})
+	res, err := b.DB.Find(ctx, dbID, cname, &db.Query{}, &Bucket{})
 	if err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID); err != nil {

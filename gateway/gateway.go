@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -30,6 +28,7 @@ import (
 	"github.com/textileio/textile/collections"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
+	"google.golang.org/grpc"
 )
 
 const handlerTimeout = time.Second * 10
@@ -163,27 +162,11 @@ func (g *Gateway) Start() {
 		Handler: router,
 	}
 
-	errc := make(chan error)
 	go func() {
-		errc <- g.server.ListenAndServe()
-		close(errc)
-	}()
-	go func() {
-		for {
-			select {
-			case err, ok := <-errc:
-				if err != nil {
-					if err == http.ErrServerClosed {
-						return
-					}
-					log.Errorf("gateway error: %s", err)
-				}
-				if !ok {
-					log.Info("gateway was shutdown")
-					return
-				}
-			}
+		if err := g.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("gateway error: %s", err)
 		}
+		log.Info("gateway was shutdown")
 	}()
 	log.Infof("gateway listening at %s", g.server.Addr)
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
@@ -21,7 +20,6 @@ import (
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
 	tcommon "github.com/textileio/go-threads/common"
-	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/net/api"
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	"github.com/textileio/go-threads/util"
@@ -287,10 +285,11 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
-	token, err := auth.AuthFromMD(ctx, "bearer")
-	if err != nil {
-		return nil, err
+	token, ok := common.DevTokenFromMD(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "Auth token not found")
 	}
+	ctx = common.NewDevTokenContext(ctx, token)
 	//if token == s.gatewayToken {
 	//	return context.WithValue(ctx, reqKey("org"), "*"), nil
 	//}
@@ -306,18 +305,18 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	if err := t.co.Sessions.Touch(ctx, session.Token); err != nil {
 		return nil, err
 	}
-	newCtx := c.NewSessionContext(ctx, session)
+	ctx = c.NewSessionContext(ctx, session)
 
 	// Load the developer
 	dev, err := t.co.Developers.Get(ctx, session.DeveloperID)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
-	newCtx = c.NewDevContext(newCtx, dev)
+	ctx = c.NewDevContext(ctx, dev)
 
 	// Load org if available
-	orgName := metautils.ExtractIncoming(ctx).Get("x-org")
-	if orgName != "" {
+	orgName, ok := common.OrgFromMD(ctx)
+	if ok {
 		isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.ID)
 		if err != nil {
 			return nil, err
@@ -329,33 +328,21 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			if err != nil {
 				return nil, err
 			}
-			newCtx = c.NewOrgContext(newCtx, org)
+			ctx = c.NewOrgContext(ctx, org)
 		}
 	}
 
-	// Allow the other headers to pass through with ctx
-	newCtx = common.NewDevTokenContext(newCtx, token)
-	if orgName != "" {
-		newCtx = common.NewOrgContext(newCtx, orgName)
+	appKey, ok := common.AppKeyFromMD(ctx)
+	if ok {
+		ctx = common.NewAppKeyContext(ctx, appKey)
 	}
-	// @todo: Add app key if present
-	appAddr := metautils.ExtractIncoming(ctx).Get("x-app-addr")
-	if appAddr != "" {
-		addr, err := ma.NewMultiaddr(appAddr)
-		if err != nil {
-			return nil, err
-		}
-		newCtx = common.NewAppAddrContext(newCtx, addr)
+	appAddr, ok := common.AppAddrFromMD(ctx)
+	if ok {
+		ctx = common.NewAppAddrContext(ctx, appAddr)
 	}
-	dbID := metautils.ExtractIncoming(ctx).Get("x-db-id")
-	if dbID != "" {
-		id, err := thread.Decode(dbID)
-		if err != nil {
-			return nil, err
-		}
-		// @todo: Make sure the caller owns this store.
-		newCtx = common.NewDBContext(newCtx, id)
+	dbID, ok := common.DbIDFromMD(ctx)
+	if ok {
+		ctx = common.NewDbIDContext(ctx, dbID)
 	}
-
-	return newCtx, nil
+	return ctx, nil
 }

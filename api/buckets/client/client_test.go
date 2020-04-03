@@ -190,7 +190,7 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	id := thread.NewIDV1(thread.Raw, 32)
 	err = threadsclient.NewDB(ctx, id)
 	require.Nil(t, err)
-	ctx = common.NewDBContext(ctx, id)
+	ctx = common.NewDbIDContext(ctx, id)
 
 	return ctx, client, func() {
 		shutdown()
