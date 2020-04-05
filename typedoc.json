@@ -1,6 +1,6 @@
 {
   "readme": "./README.md",
-  "name": "Threads",
+  "name": "Textile",
   "mode": "modules",
   "out": "docs",
   "include": "src/",
