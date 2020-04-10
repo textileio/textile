@@ -6,6 +6,11 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/textile/api/common"
+
+	threads "github.com/textileio/go-threads/api/client"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/broadcast"
 	pb "github.com/textileio/textile/api/cloud/pb"
@@ -25,6 +30,7 @@ var (
 
 type Service struct {
 	Collections *c.Collections
+	Threads     *threads.Client
 
 	EmailClient *email.Client
 
@@ -59,10 +65,22 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	if err != nil {
 		return nil, err
 	}
+
+	if dev.ThreadToken == "" {
+		ctx = common.NewSessionContext(ctx, session.Token) // TODO add to credentials
+		tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.ThreadIdentity))
+		if err != nil {
+			return nil, err
+		}
+		if err := s.Collections.Developers.SetDBToken(ctx, dev.ID, tok); err != nil {
+			return nil, err
+		}
+	}
+
 	return &pb.LoginReply{
 		ID:       dev.ID.Hex(),
 		Username: dev.Username,
-		Token:    session.Token,
+		Session:  session.Token,
 	}, nil
 }
 
@@ -222,7 +240,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		ectx, org.Name, dev.Email, req.Email, s.GatewayUrl, invite.Token); err != nil {
 		return nil, err
 	}
-	return &pb.InviteToOrgReply{Token: invite.Token}, nil
+	return &pb.InviteToOrgReply{Session: invite.Token}, nil
 }
 
 func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgReply, error) {

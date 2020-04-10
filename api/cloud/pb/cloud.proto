@@ -14,7 +14,7 @@ message LoginRequest {
 message LoginReply {
     string ID = 1;
     string username = 2;
-    string token = 3;
+    string session = 3;
 }
 
 message LogoutRequest {}
@@ -38,7 +38,7 @@ message GetOrgRequest {}
 message GetOrgReply {
     string ID = 1;
     string name = 2;
-    string storeID = 3;
+    string dbID = 3;
     repeated Member members = 4;
     int64 createdAt = 5;
 
@@ -64,7 +64,7 @@ message InviteToOrgRequest {
 }
 
 message InviteToOrgReply {
-    string token = 1;
+    string session = 1;
 }
 
 message LeaveOrgRequest {}

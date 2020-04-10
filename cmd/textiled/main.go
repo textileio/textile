@@ -97,7 +97,7 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textiled", "config"))
+	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textiled", "config", true))
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,

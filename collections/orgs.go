@@ -16,7 +16,6 @@ import (
 type Org struct {
 	ID        primitive.ObjectID `bson:"_id"`
 	Name      string             `bson:"name"`
-	StoreID   string             `bson:"store_id"`
 	Members   []Member           `bson:"members"`
 	CreatedAt time.Time          `bson:"created_at"`
 }

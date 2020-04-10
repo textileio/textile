@@ -207,7 +207,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(common.NewDevTokenContext(context.Background(), g.token), handlerTimeout)
+	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.token), handlerTimeout)
 	defer cancel()
 	rep, err := g.buckets.ListPath(ctx, buckName)
 	if err != nil {
@@ -241,7 +241,7 @@ type link struct {
 // dashHandler renders a project dashboard.
 // Currently, this just shows bucket files and directories.
 func (g *Gateway) dashHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(common.NewDevTokenContext(context.Background(), g.token), handlerTimeout)
+	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.token), handlerTimeout)
 	defer cancel()
 
 	project := c.Param("project")
@@ -328,9 +328,8 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	}
 
 	if err = g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
-		ID:       dev.ID,
-		Username: dev.Username,
-		Role:     collections.OrgMember,
+		ID:   dev.ID,
+		Role: collections.OrgMember,
 	}); err != nil {
 		var code int
 		if err == mongo.ErrNoDocuments {

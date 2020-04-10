@@ -2,8 +2,11 @@ package collections
 
 import (
 	"context"
+	"crypto/rand"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -12,11 +15,12 @@ import (
 )
 
 type Developer struct {
-	ID        primitive.ObjectID `bson:"_id"`
-	Username  string             `bson:"username"`
-	Email     string             `bson:"email"`
-	StoreID   string             `bson:"store_id"`
-	CreatedAt time.Time          `bson:"created_at"`
+	ID             primitive.ObjectID `bson:"_id"`
+	Email          string             `bson:"email"`
+	Username       string             `bson:"username"`
+	ThreadIdentity crypto.PrivKey     `bson:"thread_identity"`
+	ThreadToken    thread.Token       `bson:"thread_token"`
+	CreatedAt      time.Time          `bson:"created_at"`
 }
 
 func NewDevContext(ctx context.Context, dev *Developer) context.Context {
@@ -43,6 +47,10 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 			Keys:    bson.D{{"username", 1}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys:    bson.D{{"thread_identity", 1}},
+			Options: options.Index().SetUnique(true).SetSparse(true),
+		},
 	})
 	return d, err
 }
@@ -52,23 +60,38 @@ func (d *Developers) GetOrCreate(ctx context.Context, username, email string) (*
 	if err != nil {
 		return nil, err
 	}
-	doc := &Developer{
-		ID:        primitive.NewObjectID(),
-		Username:  validUsername,
-		Email:     email,
-		CreatedAt: time.Now(),
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
 	}
-	if _, err := d.col.InsertOne(ctx, doc); err != nil {
+	doc := &Developer{
+		ID:             primitive.NewObjectID(),
+		Email:          email,
+		Username:       validUsername,
+		ThreadIdentity: sk,
+		CreatedAt:      time.Now(),
+	}
+	idb, err := crypto.MarshalPrivateKey(doc.ThreadIdentity)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := d.col.InsertOne(ctx, bson.M{
+		"_id":             doc.ID,
+		"email":           doc.Email,
+		"username":        doc.Username,
+		"thread_identity": idb,
+		"created_at":      doc.CreatedAt,
+	}); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
-			var doc *Developer
 			res := d.col.FindOne(ctx, bson.M{"email": email})
 			if res.Err() != nil {
 				return nil, res.Err()
 			}
-			if err := res.Decode(&doc); err != nil {
+			var raw bson.M
+			if err := res.Decode(&raw); err != nil {
 				return nil, err
 			}
-			return doc, nil
+			return decodeDeveloper(raw)
 		}
 		return nil, err
 	}
@@ -76,15 +99,26 @@ func (d *Developers) GetOrCreate(ctx context.Context, username, email string) (*
 }
 
 func (d *Developers) Get(ctx context.Context, id primitive.ObjectID) (*Developer, error) {
-	var doc *Developer
 	res := d.col.FindOne(ctx, bson.M{"_id": id})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
-	if err := res.Decode(&doc); err != nil {
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
 		return nil, err
 	}
-	return doc, nil
+	return decodeDeveloper(raw)
+}
+
+func (d *Developers) SetDBToken(ctx context.Context, id primitive.ObjectID, token thread.Token) error {
+	res, err := d.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"thread_token": token}})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }
 
 func (d *Developers) ListMembers(ctx context.Context, members []Member) ([]Developer, error) {
@@ -98,11 +132,15 @@ func (d *Developers) ListMembers(ctx context.Context, members []Member) ([]Devel
 	}
 	var docs []Developer
 	for cursor.Next(ctx) {
-		var doc Developer
-		if err := cursor.Decode(&doc); err != nil {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
 			return nil, err
 		}
-		docs = append(docs, doc)
+		doc, err := decodeDeveloper(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, err
@@ -121,4 +159,27 @@ func (d *Developers) Delete(ctx context.Context, id primitive.ObjectID) error {
 		return mongo.ErrNoDocuments
 	}
 	return nil
+}
+
+func decodeDeveloper(raw bson.M) (*Developer, error) {
+	id, err := crypto.UnmarshalPrivateKey(raw["thread_identity"].(primitive.Binary).Data)
+	if err != nil {
+		return nil, err
+	}
+	var token thread.Token
+	if v, ok := raw["thread_token"]; ok {
+		token = thread.Token(v.(string))
+	}
+	var created time.Time
+	if v, ok := raw["created_at"]; ok {
+		created = v.(primitive.DateTime).Time()
+	}
+	return &Developer{
+		ID:             raw["_id"].(primitive.ObjectID),
+		Email:          raw["email"].(string),
+		Username:       raw["username"].(string),
+		ThreadIdentity: id,
+		ThreadToken:    token,
+		CreatedAt:      created,
+	}, nil
 }

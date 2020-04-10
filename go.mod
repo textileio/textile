@@ -1,6 +1,8 @@
 module github.com/textileio/textile
 
-go 1.13
+go 1.14
+
+replace github.com/textileio/go-threads => ../go-threads
 
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
@@ -39,7 +41,7 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
-	github.com/textileio/go-threads v0.1.13-rc2
+	github.com/textileio/go-threads v0.1.13
 	go.mongodb.org/mongo-driver v1.3.0
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.26.0

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/mail"
 	"os"
@@ -24,34 +23,43 @@ var loginCmd = &cobra.Command{
 	Short: "Login",
 	Long:  `Login to Textile.`,
 	Run: func(c *cobra.Command, args []string) {
-		prompt := promptui.Prompt{
+		prompt1 := promptui.Prompt{
+			Label: "Choose a username",
+			Validate: func(un string) error {
+				return nil
+			},
+		}
+		username, err := prompt1.Run()
+		if err != nil {
+			cmd.End("")
+		}
+		prompt2 := promptui.Prompt{
 			Label: "Enter your email",
 			Validate: func(email string) error {
 				_, err := mail.ParseAddress(email)
 				return err
 			},
 		}
-		email, err := prompt.Run()
+		email, err := prompt2.Run()
 		if err != nil {
 			cmd.End("")
 		}
 
-		// @todo: Add a security code that can be visually verified in the email.
 		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
 			aurora.White(email).Bold())
 
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
+		ctx, cancel := authCtx(loginTimeout)
 		defer cancel()
-		res, err := client.Login(ctx, email)
+		res, err := cloud.Login(ctx, username, email)
 		s.Stop()
 		if err != nil {
 			cmd.Fatal(err)
 		}
 
-		authViper.Set("token", res.SessionID)
+		authViper.Set("session", res.Session)
 
 		home, err := homedir.Dir()
 		if err != nil {

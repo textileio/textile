@@ -1,31 +1,36 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	api "github.com/textileio/textile/api/client"
-	"github.com/textileio/textile/api/pb"
+	"github.com/textileio/textile/api/buckets/client"
+	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/cmd"
 )
 
 func init() {
 	rootCmd.AddCommand(bucketsCmd)
-	bucketsCmd.AddCommand(
-		lsBucketPathCmd,
-		pushBucketPathCmd,
-		pullBucketPathCmd,
-		catBucketPathCmd,
-		rmBucketPathCmd)
+	bucketsCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
+
+	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
+	initBucketPathCmd.PersistentFlags().String("path", "", "Local path")
+	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
+	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
+
+	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
+		cmd.Fatal(err)
+	}
 }
 
 var bucketsCmd = &cobra.Command{
@@ -33,10 +38,58 @@ var bucketsCmd = &cobra.Command{
 	Aliases: []string{
 		"bucket",
 	},
-	Short: "Manage project buckets",
-	Long:  `Manage your project's buckets.`,
+	Short: "Manage buckets",
+	Long:  `Manage your buckets.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsBucketPath(args)
+	},
+}
+
+var initBucketPathCmd = &cobra.Command{
+	Use:   "init [path]",
+	Short: "Init a local path  bucket path contents",
+	Long: `Create an empty bucket. 
+
+A .textile directory and config file will be created under the given path.
+Existing configs will not be overwritten.
+`,
+	Args: cobra.ExactArgs(1),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+	},
+	Run: func(c *cobra.Command, args []string) {
+		root, err := homedir.Expand(args[0])
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		pth, err := filepath.Abs(root)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		configViper.Set("path", filepath.Base(pth))
+
+		dir := filepath.Join(root, ".textile")
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+			cmd.Fatal(err)
+		}
+		filename := filepath.Join(dir, "config.yml")
+		if _, err := os.Stat(filename); err == nil {
+			cmd.Fatal(fmt.Errorf("bucket at %s already initialized", root))
+		}
+
+		if configViper.GetString("thread") == "" {
+			threadID := thread.NewIDV1(thread.Raw, 32)
+			ctx, cancel := authCtx(cmdTimeout)
+			defer cancel()
+			if err := threads.NewDB(ctx, threadID); err != nil {
+				cmd.Fatal(err)
+			}
+			configViper.Set("thread", threadID.String())
+		}
+
+		if err := configViper.WriteConfigAs(filename); err != nil {
+			cmd.Fatal(err)
+		}
 	},
 }
 
@@ -53,12 +106,7 @@ var lsBucketPathCmd = &cobra.Command{
 }
 
 func lsBucketPath(args []string) {
-	project := configViper.GetString("project")
-	if project == "" {
-		cmd.Fatal(errors.New("not a project directory"))
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
 
 	var pth string
@@ -68,13 +116,11 @@ func lsBucketPath(args []string) {
 	if pth == "." || pth == "/" || pth == "./" {
 		pth = ""
 	}
-	rep, err := client.ListBucketPath(ctx, project, pth, api.Auth{
-		Token: authViper.GetString("token"),
-	})
+	rep, err := buckets.ListPath(ctx, pth)
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	var items []*pb.ListBucketPathReply_Item
+	var items []*pb.ListPathReply_Item
 	if len(rep.Item.Items) > 0 {
 		items = rep.Item.Items
 	} else if !rep.Item.IsDir {
@@ -104,7 +150,6 @@ func lsBucketPath(args []string) {
 	if len(data) > 0 {
 		cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
 	}
-
 	cmd.Message("Found %d items", aurora.White(len(items)).Bold())
 }
 
@@ -142,11 +187,6 @@ These 'push' commands result in the following bucket structures.
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		project := configViper.GetString("project")
-		if project == "" {
-			cmd.Fatal(errors.New("not a project directory"))
-		}
-
 		var names []string
 		var paths []string
 		bucketPath, args := args[len(args)-1], args[:len(args)-1]
@@ -189,15 +229,13 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		for i := range names {
-			addFile(project, names[i], paths[i])
+			addFile(names[i], paths[i])
 		}
-
 		cmd.Success("Pushed %d files to %s", aurora.White(len(names)).Bold(), aurora.White(bucketPath).Bold())
 	},
 }
 
-// @todo: Support Stdin
-func addFile(project, name, filePath string) {
+func addFile(name, filePath string) {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -219,18 +257,10 @@ func addFile(project, name, filePath string) {
 	progress := make(chan int64)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), addFileTimeout)
+		ctx, cancel := authCtx(addFileTimeout)
 		defer cancel()
-		if _, _, err = client.PushBucketPath(
-			ctx,
-			project,
-			filePath,
-			file,
-			api.Auth{
-				Token: authViper.GetString("token"),
-			},
-			api.WithPushProgress(progress)); err != nil {
-			if strings.HasSuffix(err.Error(), "Scope does not own project") {
+		if _, _, err = buckets.PushPath(ctx, filePath, file, client.WithProgress(progress)); err != nil {
+			if strings.HasSuffix(err.Error(), "FIX ME") {
 				bucket := strings.SplitN(filePath, "/", 2)[0]
 				msg := aurora.Sprintf(aurora.BrightBlack(
 					"a bucket with name %s is already in use, try again (names are global)"),
@@ -281,30 +311,22 @@ These 'pull' commands result in the following local structures.
 `,
 	Args: cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
-		project := configViper.GetString("project")
-		if project == "" {
-			cmd.Fatal(errors.New("not a project directory"))
-		}
-
-		count := getPath(project, args[0], filepath.Dir(args[0]), args[1])
-
+		count := getPath(args[0], filepath.Dir(args[0]), args[1])
 		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
 	},
 }
 
-func getPath(project, pth, dir, dest string) (count int) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+func getPath(pth, dir, dest string) (count int) {
+	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	rep, err := client.ListBucketPath(ctx, project, pth, api.Auth{
-		Token: authViper.GetString("token"),
-	})
+	rep, err := buckets.ListPath(ctx, pth)
 	if err != nil {
 		cmd.Fatal(err)
 	}
 
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(project, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+			count += getPath(filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
 		}
 	} else {
 		name := filepath.Join(dest, strings.TrimPrefix(pth, dir))
@@ -334,16 +356,9 @@ func getFile(filePath, name string, size int64) {
 	progress := make(chan int64)
 
 	go func() {
-		ctx2, cancel2 := context.WithTimeout(context.Background(), getFileTimeout)
-		defer cancel2()
-		if err = client.PullBucketPath(
-			ctx2,
-			filePath,
-			file,
-			api.Auth{
-				Token: authViper.GetString("token"),
-			},
-			api.WithPullProgress(progress)); err != nil {
+		ctx, cancel := authCtx(getFileTimeout)
+		defer cancel()
+		if err = buckets.PullPath(ctx, filePath, file, client.WithProgress(progress)); err != nil {
 			cmd.Fatal(err)
 		}
 	}()
@@ -360,16 +375,9 @@ var catBucketPathCmd = &cobra.Command{
 	Long:  `Cat a file at a bucket path.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		project := configViper.GetString("project")
-		if project == "" {
-			cmd.Fatal(errors.New("not a project directory"))
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		ctx, cancel := authCtx(getFileTimeout)
 		defer cancel()
-		if err := client.PullBucketPath(ctx, args[0], os.Stdout, api.Auth{
-			Token: authViper.GetString("token"),
-		}); err != nil {
+		if err := buckets.PullPath(ctx, args[0], os.Stdout); err != nil {
 			cmd.Fatal(err)
 		}
 	},
@@ -384,21 +392,11 @@ var rmBucketPathCmd = &cobra.Command{
 	Long:  `Remove files and directories under a bucket path.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
-		if configViper.GetString("project") == "" {
-			cmd.Fatal(errors.New("not a project directory"))
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := client.RemoveBucketPath(
-			ctx,
-			args[0],
-			api.Auth{
-				Token: authViper.GetString("token"),
-			}); err != nil {
+		if err := buckets.RemovePath(ctx, args[0]); err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Success("Removed %s", aurora.White(args[0]).Bold())
 	},
 }

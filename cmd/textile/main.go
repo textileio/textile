@@ -7,27 +7,31 @@ import (
 	"strings"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
-	"github.com/textileio/go-threads/util"
 	bc "github.com/textileio/textile/api/buckets/client"
 	cc "github.com/textileio/textile/api/cloud/client"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 var (
-	_ = logging.Logger("textile")
-
 	authFile  string
 	authViper = viper.New()
 
 	authFlags = map[string]cmd.Flag{
-		"token": {
-			Key:      "token",
+		"api": {
+			Key:      "api",
+			DefValue: "api.textile.io:443",
+		},
+		"session": {
+			Key:      "session",
 			DefValue: "",
 		},
 	}
@@ -36,17 +40,21 @@ var (
 	configViper = viper.New()
 
 	flags = map[string]cmd.Flag{
-		"debug": {
-			Key:      "log.debug",
-			DefValue: false,
-		},
-		"project": {
-			Key:      "project",
+		"org": {
+			Key:      "org",
 			DefValue: "",
 		},
-		"apiTarget": {
-			Key:      "api_target",
-			DefValue: "api.textile.io:443",
+		"path": {
+			Key:      "path",
+			DefValue: "",
+		},
+		"public": {
+			Key:      "public",
+			DefValue: false,
+		},
+		"thread": {
+			Key:      "thread",
+			DefValue: "",
 		},
 	}
 
@@ -63,42 +71,21 @@ var (
 func init() {
 	rootCmd.AddCommand(whoamiCmd)
 
-	cobra.OnInitialize(cmd.InitConfig(authViper, authFile, ".textile", "auth"))
-	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textile", "config"))
+	cobra.OnInitialize(cmd.InitConfig(authViper, authFile, ".textile", "auth", true))
+	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textile", "config", false))
+
+	rootCmd.PersistentFlags().String(
+		"api",
+		authFlags["api"].DefValue.(string),
+		"API target")
 
 	rootCmd.PersistentFlags().StringP(
-		"token",
-		"t",
-		authFlags["token"].DefValue.(string),
-		"Authorization token")
+		"session",
+		"s",
+		authFlags["session"].DefValue.(string),
+		"User session token")
 
 	if err := cmd.BindFlags(authViper, rootCmd, authFlags); err != nil {
-		cmd.Fatal(err)
-	}
-
-	rootCmd.PersistentFlags().StringVar(
-		&configFile,
-		"config",
-		"",
-		"Config file (default ${HOME}/.textile/config.yml)")
-
-	rootCmd.PersistentFlags().BoolP(
-		"debug",
-		"d",
-		flags["debug"].DefValue.(bool),
-		"Enable debug logging")
-
-	rootCmd.PersistentFlags().String(
-		"project",
-		flags["project"].DefValue.(string),
-		"Project Name")
-
-	rootCmd.PersistentFlags().String(
-		"apiTarget",
-		flags["apiTarget"].DefValue.(string),
-		"Textile gRPC API Target")
-
-	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		cmd.Fatal(err)
 	}
 }
@@ -117,38 +104,38 @@ var rootCmd = &cobra.Command{
 		authViper.SetConfigType("yaml")
 		configViper.SetConfigType("yaml")
 
-		cmd.ExpandConfigVars(authViper, flags)
-		cmd.ExpandConfigVars(configViper, flags)
+		cmd.ExpandConfigVars(authViper, authFlags)
 
-		if authViper.GetString("token") == "" && c.Use != "login" {
+		if authViper.GetString("session") == "" && c.Use != "login" {
 			msg := "unauthorized! run `%s` or use `%s` to authorize"
 			cmd.Fatal(errors.New(msg),
-				aurora.Cyan("textile login"), aurora.Cyan("--token"))
+				aurora.Cyan("textile login"), aurora.Cyan("--session"))
 		}
 
-		if configViper.GetBool("log.debug") {
-			if err := util.SetLogLevels(map[string]logging.LogLevel{
-				"textile": logging.LevelDebug,
-			}); err != nil {
-				cmd.Fatal(err)
-			}
-		}
-
-		target := configViper.GetString("api_target")
-		var creds credentials.TransportCredentials
+		var opts []grpc.DialOption
+		auth := common.Credentials{}
+		target := authViper.GetString("api")
 		if strings.Contains(target, "443") {
-			creds = credentials.NewTLS(&tls.Config{})
+			creds := credentials.NewTLS(&tls.Config{})
+			opts = append(opts, grpc.WithTransportCredentials(creds))
+			auth.Secure = true
+		} else {
+			opts = append(opts, grpc.WithInsecure())
 		}
+		opts = append(opts, grpc.WithPerRPCCredentials(auth))
 		var err error
-		cloud, err = cc.NewClient(target, creds)
+		cloud, err = cc.NewClient(target, opts...)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		buckets, err = bc.NewClient(target, creds)
+		buckets, err = bc.NewClient(target, opts...)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		threads, err = tc.NewClient("")
+		threads, err = tc.NewClient(target, opts...)
+		if err != nil {
+			cmd.Fatal(err)
+		}
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
 		if cloud != nil {
@@ -161,20 +148,30 @@ var rootCmd = &cobra.Command{
 
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
-	Short: "Show user or team",
-	Long:  `Show the user or team for the current session.`,
+	Short: "Show current user",
+	Long:  `Show the user for the current session.`,
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		who, err := cloud.Whoami(
-			ctx,
-			cc.Auth{
-				Token: authViper.GetString("token"),
-			})
+		who, err := cloud.Whoami(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Message("You are %s", aurora.White(who.Email).Bold())
 	},
+}
+
+func authCtx(duration time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	ctx = common.NewSessionContext(ctx, authViper.GetString("session"))
+	ctx = common.NewOrgNameContext(ctx, configViper.GetString("org"))
+	idstr := configViper.GetString("thread")
+	if idstr != "" {
+		id, err := thread.Decode(idstr)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		ctx = common.NewThreadIDContext(ctx, id)
+	}
+	return ctx, cancel
 }

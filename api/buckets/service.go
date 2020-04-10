@@ -47,14 +47,15 @@ type Service struct {
 func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.ListPathReply, error) {
 	log.Debugf("received list bucket path request")
 
-	dbID, ok := common.DbIDFromContext(ctx)
+	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("db required")
 	}
+	dbToken, _ := thread.TokenFromContext(ctx)
 
 	req.Path = strings.TrimSuffix(req.Path, "/")
 	if req.Path == "" { // List top-level buckets
-		bucks, err := s.Buckets.List(ctx, dbID)
+		bucks, err := s.Buckets.List(ctx, dbID, WithToken(dbToken))
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +76,7 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 		}, nil
 	}
 
-	buck, pth, err := s.getBucketPath(ctx, dbID, req.Path)
+	buck, pth, err := s.getBucketPath(ctx, dbID, req.Path, dbToken)
 	if err != nil {
 		return nil, err
 	}
@@ -142,12 +143,12 @@ func parsePath(pth string) (buck, name string, err error) {
 	return
 }
 
-func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, pth string) (*Bucket, path.Path, error) {
+func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, pth string, dbToken thread.Token) (*Bucket, path.Path, error) {
 	buckName, filePath, err := parsePath(pth)
 	if err != nil {
 		return nil, nil, err
 	}
-	buck, err := s.Buckets.Get(ctx, dbID, buckName)
+	buck, err := s.Buckets.Get(ctx, dbID, buckName, WithToken(dbToken))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,8 +167,7 @@ func inflateFilePath(buck *Bucket, filePath string) (path.Path, error) {
 	return npth, nil
 }
 
-func (s *Service) pathToPb(
-	ctx context.Context, buck *Bucket, pth path.Path, followLinks bool) (*pb.ListPathReply, error) {
+func (s *Service) pathToPb(ctx context.Context, buck *Bucket, pth path.Path, followLinks bool) (*pb.ListPathReply, error) {
 	item, err := s.pathToItem(ctx, pth, followLinks)
 	if err != nil {
 		return nil, err
@@ -186,10 +186,11 @@ func (s *Service) pathToPb(
 func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	log.Debugf("received push bucket path request")
 
-	dbID, ok := common.DbIDFromContext(server.Context())
+	dbID, ok := common.ThreadIDFromContext(server.Context())
 	if !ok {
 		return fmt.Errorf("db required")
 	}
+	dbToken, _ := thread.TokenFromContext(server.Context())
 
 	req, err := server.Recv()
 	if err != nil {
@@ -206,12 +207,12 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	buck, err := s.Buckets.Get(server.Context(), dbID, buckName)
+	buck, err := s.Buckets.Get(server.Context(), dbID, buckName, WithToken(dbToken))
 	if err != nil {
 		return err
 	}
 	if buck == nil {
-		buck, err = s.createBucket(server.Context(), dbID, buckName)
+		buck, err = s.createBucket(server.Context(), dbID, buckName, dbToken)
 		if err != nil {
 			return err
 		}
@@ -307,7 +308,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 
 	buck.Path = dirpth.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.Save(server.Context(), dbID, buck); err != nil {
+	if err = s.Buckets.Save(server.Context(), dbID, buck, WithToken(dbToken)); err != nil {
 		return err
 	}
 
@@ -328,7 +329,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	return nil
 }
 
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, name string) (*Bucket, error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, name string, dbToken thread.Token) (*Bucket, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
@@ -353,18 +354,19 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, name string)
 		}
 	}
 
-	return s.Buckets.Create(ctx, dbID, pth, name)
+	return s.Buckets.Create(ctx, dbID, pth, name, WithToken(dbToken))
 }
 
 func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer) error {
 	log.Debugf("received pull bucket path request")
 
-	dbID, ok := common.DbIDFromContext(server.Context())
+	dbID, ok := common.ThreadIDFromContext(server.Context())
 	if !ok {
 		return fmt.Errorf("db required")
 	}
+	dbToken, _ := thread.TokenFromContext(server.Context())
 
-	_, pth, err := s.getBucketPath(server.Context(), dbID, req.Path)
+	_, pth, err := s.getBucketPath(server.Context(), dbID, req.Path, dbToken)
 	if err != nil {
 		return err
 	}
@@ -400,16 +402,17 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathReply, error) {
 	log.Debugf("received remove bucket path request")
 
-	dbID, ok := common.DbIDFromContext(ctx)
+	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("db required")
 	}
+	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buckName, filePath, err := parsePath(req.Path)
 	if err != nil {
 		return nil, err
 	}
-	buck, err := s.Buckets.Get(ctx, dbID, buckName)
+	buck, err := s.Buckets.Get(ctx, dbID, buckName, WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +442,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 
 		buck.Path = dirpth.String()
 		buck.UpdatedAt = time.Now().UnixNano()
-		if err = s.Buckets.Save(ctx, dbID, buck); err != nil {
+		if err = s.Buckets.Save(ctx, dbID, buck, WithToken(dbToken)); err != nil {
 			return nil, err
 		}
 		log.Debugf("removed %s from bucket: %s", filePath, buck.Name)
@@ -448,7 +451,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 			return nil, err
 		}
 
-		if err = s.Buckets.Delete(ctx, dbID, buck.ID); err != nil {
+		if err = s.Buckets.Delete(ctx, dbID, buck.ID, WithToken(dbToken)); err != nil {
 			return nil, err
 		}
 		log.Debugf("removed bucket: %s", buck.Name)

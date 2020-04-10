@@ -72,7 +72,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	rep, err := f.client.ListPath(common.NewDevTokenContext(ctx, f.token), path.Join(bucket, pth))
+	rep, err := f.client.ListPath(common.NewSessionContext(ctx, f.token), path.Join(bucket, pth))
 	if err != nil {
 		return false, ""
 	}
@@ -90,7 +90,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	return f.client.PullPath(common.NewDevTokenContext(ctx, f.token), path.Join(bucket, pth), writer)
+	return f.client.PullPath(common.NewSessionContext(ctx, f.token), path.Join(bucket, pth), writer)
 }
 
 func (f *bucketFileSystem) ValidHost() string {

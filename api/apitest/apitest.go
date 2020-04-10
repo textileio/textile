@@ -92,6 +92,6 @@ func Login(t *testing.T, client *client.Client, conf core.Config, email string) 
 	// Ensure login response has been received
 	time.Sleep(time.Second)
 	require.NotNil(t, res)
-	require.NotEmpty(t, res.Token)
+	require.NotEmpty(t, res.Session)
 	return res
 }

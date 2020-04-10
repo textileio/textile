@@ -6,57 +6,65 @@ import (
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/thread"
 )
 
 type ctxKey string
 
-func NewDevTokenContext(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, ctxKey("devToken"), token)
+func NewSessionContext(ctx context.Context, session string) context.Context {
+	if session == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey("session"), session)
 }
 
-func DevTokenFromContext(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(ctxKey("devToken")).(string)
-	return token, ok
+func SessionFromContext(ctx context.Context) (string, bool) {
+	session, ok := ctx.Value(ctxKey("session")).(string)
+	return session, ok
 }
 
-func DevTokenFromMD(ctx context.Context) (dev string, ok bool) {
-	dev = metautils.ExtractIncoming(ctx).Get("x-dev")
+func SessionFromMD(ctx context.Context) (dev string, ok bool) {
+	dev = metautils.ExtractIncoming(ctx).Get("x-textile-session")
 	if dev != "" {
 		ok = true
 	}
 	return
 }
 
-func NewOrgContext(ctx context.Context, org string) context.Context {
+func NewOrgNameContext(ctx context.Context, org string) context.Context {
+	if org == "" {
+		return ctx
+	}
 	return context.WithValue(ctx, ctxKey("org"), org)
 }
 
-func OrgFromContext(ctx context.Context) (string, bool) {
+func OrgNameFromContext(ctx context.Context) (string, bool) {
 	org, ok := ctx.Value(ctxKey("org")).(string)
 	return org, ok
 }
 
-func OrgFromMD(ctx context.Context) (org string, ok bool) {
-	org = metautils.ExtractIncoming(ctx).Get("x-org")
-	if org != "" {
+func OrgNameFromMD(ctx context.Context) (name string, ok bool) {
+	name = metautils.ExtractIncoming(ctx).Get("x-textile-org")
+	if name != "" {
 		ok = true
 	}
 	return
 }
 
-func NewAppKeyContext(ctx context.Context, key crypto.PrivKey) context.Context {
-	return context.WithValue(ctx, ctxKey("appKey"), key)
+func NewAPIKeyContext(ctx context.Context, key crypto.PubKey) context.Context {
+	if key == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey("apiKey"), key)
 }
 
-func AppKeyFromContext(ctx context.Context) (crypto.PrivKey, bool) {
-	key, ok := ctx.Value(ctxKey("appKey")).(crypto.PrivKey)
+func APIKeyFromContext(ctx context.Context) (crypto.PubKey, bool) {
+	key, ok := ctx.Value(ctxKey("apiKey")).(crypto.PubKey)
 	return key, ok
 }
 
-func AppKeyFromMD(ctx context.Context) (key crypto.PrivKey, ok bool) {
-	str := metautils.ExtractIncoming(ctx).Get("x-app-key")
+func APIKeyFromMD(ctx context.Context) (key crypto.PubKey, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-textile-api-key")
 	if str == "" {
 		return
 	}
@@ -64,46 +72,52 @@ func AppKeyFromMD(ctx context.Context) (key crypto.PrivKey, ok bool) {
 	if err != nil {
 		return
 	}
-	key, err = crypto.UnmarshalPrivateKey(data)
+	key, err = crypto.UnmarshalPublicKey(data)
 	if err != nil {
 		return
 	}
 	return key, true
 }
 
-func NewAppAddrContext(ctx context.Context, addr ma.Multiaddr) context.Context {
-	return context.WithValue(ctx, ctxKey("appAddr"), addr)
+func NewAPISigContext(ctx context.Context, sig []byte) context.Context {
+	if sig == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey("apiSig"), sig)
 }
 
-func AppAddrFromContext(ctx context.Context) (ma.Multiaddr, bool) {
-	addr, ok := ctx.Value(ctxKey("appAddr")).(ma.Multiaddr)
-	return addr, ok
+func APISigFromContext(ctx context.Context) ([]byte, bool) {
+	sig, ok := ctx.Value(ctxKey("apiSig")).([]byte)
+	return sig, ok
 }
 
-func AppAddrFromMD(ctx context.Context) (addr ma.Multiaddr, ok bool) {
-	str := metautils.ExtractIncoming(ctx).Get("x-app-addr")
+func APISigFromMD(ctx context.Context) (sig []byte, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-textile-api-sig")
 	if str == "" {
 		return
 	}
 	var err error
-	addr, err = ma.NewMultiaddr(str)
+	sig, err = base64.StdEncoding.DecodeString(str)
 	if err != nil {
 		return
 	}
-	return addr, true
+	return sig, true
 }
 
-func NewDbIDContext(ctx context.Context, id thread.ID) context.Context {
-	return context.WithValue(ctx, ctxKey("dbID"), id)
+func NewThreadIDContext(ctx context.Context, id thread.ID) context.Context {
+	if !id.Defined() {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey("threadID"), id)
 }
 
-func DbIDFromContext(ctx context.Context) (thread.ID, bool) {
-	id, ok := ctx.Value(ctxKey("dbID")).(thread.ID)
+func ThreadIDFromContext(ctx context.Context) (thread.ID, bool) {
+	id, ok := ctx.Value(ctxKey("threadID")).(thread.ID)
 	return id, ok
 }
 
-func DbIDFromMD(ctx context.Context) (id thread.ID, ok bool) {
-	str := metautils.ExtractIncoming(ctx).Get("x-db")
+func ThreadIDFromMD(ctx context.Context) (id thread.ID, ok bool) {
+	str := metautils.ExtractIncoming(ctx).Get("x-textile-thread")
 	if str == "" {
 		return
 	}
@@ -121,29 +135,33 @@ type Credentials struct {
 
 func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
 	md := map[string]string{}
-	devToken, ok := DevTokenFromContext(ctx)
+	session, ok := SessionFromContext(ctx)
 	if ok {
-		md["x-dev"] = devToken
+		md["x-textile-session"] = session
 	}
-	org, ok := OrgFromContext(ctx)
+	orgName, ok := OrgNameFromContext(ctx)
 	if ok {
-		md["x-org"] = org
+		md["x-textile-org"] = orgName
 	}
-	appKey, ok := AppKeyFromContext(ctx)
+	apiKey, ok := APIKeyFromContext(ctx)
 	if ok {
-		b, err := crypto.MarshalPrivateKey(appKey)
+		b, err := crypto.MarshalPublicKey(apiKey)
 		if err != nil {
 			return nil, err
 		}
-		md["x-app-key"] = base64.StdEncoding.EncodeToString(b)
+		md["x-textile-api-key"] = base64.StdEncoding.EncodeToString(b)
 	}
-	appAddr, ok := AppAddrFromContext(ctx)
+	apiSig, ok := APISigFromContext(ctx)
 	if ok {
-		md["x-app-addr"] = appAddr.String()
+		md["x-textile-api-sig"] = base64.StdEncoding.EncodeToString(apiSig)
 	}
-	dbID, ok := DbIDFromContext(ctx)
+	threadID, ok := ThreadIDFromContext(ctx)
 	if ok {
-		md["x-db"] = dbID.String()
+		md["x-textile-thread"] = threadID.String()
+	}
+	threadToken, ok := thread.TokenFromContext(ctx)
+	if ok {
+		md["authorization"] = "bearer " + string(threadToken)
 	}
 	return md, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,10 +17,11 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	filc "github.com/textileio/filecoin/api/client"
 	dbapi "github.com/textileio/go-threads/api"
-	dbc "github.com/textileio/go-threads/api/client"
+	threads "github.com/textileio/go-threads/api/client"
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
-	tcommon "github.com/textileio/go-threads/common"
+	tc "github.com/textileio/go-threads/common"
+	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/net/api"
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	"github.com/textileio/go-threads/util"
@@ -48,8 +50,8 @@ var (
 type Textile struct {
 	co *c.Collections
 
-	ts  tcommon.NetBoostrapper
-	dbc *dbc.Client
+	ts tc.NetBoostrapper
+	th *threads.Client
 
 	dbToken      string
 	gatewayToken string
@@ -128,7 +130,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure threads
-	t.ts, err = tcommon.DefaultNetwork(conf.RepoPath, tcommon.WithNetHostAddr(conf.AddrThreadsHost), tcommon.WithNetDebug(conf.Debug))
+	t.ts, err = tc.DefaultNetwork(conf.RepoPath, tc.WithNetHostAddr(conf.AddrThreadsHost), tc.WithNetDebug(conf.Debug))
 	if err != nil {
 		return nil, err
 	}
@@ -215,11 +217,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}()
 
 	// Start threads client
-	t.dbc, err = dbc.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	if err != nil {
 		return nil, err
 	}
-	bucks.DB = t.dbc
+	bucks.Threads = t.th
+	cs.Threads = t.th
 
 	// Configure gateway
 	t.gatewayToken = uuid.New().String()
@@ -256,7 +259,7 @@ func (t *Textile) Close() error {
 		return err
 	}
 	t.server.GracefulStop()
-	if err := t.dbc.Close(); err != nil {
+	if err := t.th.Close(); err != nil {
 		return err
 	}
 	if err := t.ts.Close(); err != nil {
@@ -277,6 +280,10 @@ func (t *Textile) HostID() peer.ID {
 	return t.ts.Host().ID()
 }
 
+func getService(method string) string {
+	return strings.Split(method, "/")[1]
+}
+
 func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	method, _ := grpc.Method(ctx)
 	for _, ignored := range ignoreMethods {
@@ -285,64 +292,67 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
-	token, ok := common.DevTokenFromMD(ctx)
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "Auth token not found")
-	}
-	ctx = common.NewDevTokenContext(ctx, token)
-	//if token == s.gatewayToken {
-	//	return context.WithValue(ctx, reqKey("org"), "*"), nil
-	//}
-
-	// Check for an active session
-	session, err := t.co.Sessions.Get(ctx, token)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "Invalid auth token")
-	}
-	if time.Now().After(session.ExpiresAt) {
-		return nil, status.Error(codes.Unauthenticated, "Expired auth token")
-	}
-	if err := t.co.Sessions.Touch(ctx, session.Token); err != nil {
-		return nil, err
-	}
-	ctx = c.NewSessionContext(ctx, session)
-
-	// Load the developer
-	dev, err := t.co.Developers.Get(ctx, session.DeveloperID)
-	if err != nil {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
-	ctx = c.NewDevContext(ctx, dev)
-
-	// Load org if available
-	orgName, ok := common.OrgFromMD(ctx)
-	if ok {
-		isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.ID)
+	sessionToken, isDev := common.SessionFromMD(ctx)
+	if isDev {
+		session, err := t.co.Sessions.Get(ctx, sessionToken)
 		if err != nil {
+			return nil, status.Error(codes.Unauthenticated, "Invalid session token")
+		}
+		if time.Now().After(session.ExpiresAt) {
+			return nil, status.Error(codes.Unauthenticated, "Expired session token")
+		}
+		if err := t.co.Sessions.Touch(ctx, session.Token); err != nil {
 			return nil, err
 		}
-		if !isMember {
-			return nil, status.Error(codes.PermissionDenied, "User is not an org member")
-		} else {
-			org, err := t.co.Orgs.Get(ctx, orgName)
+		ctx = c.NewSessionContext(ctx, session)
+		ctx = common.NewSessionContext(ctx, sessionToken) // For additional requests
+
+		dev, err := t.co.Developers.Get(ctx, session.DeveloperID)
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "User not found")
+		}
+		ctx = c.NewDevContext(ctx, dev)
+
+		orgName, ok := common.OrgNameFromMD(ctx)
+		if ok {
+			isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.ID)
 			if err != nil {
 				return nil, err
 			}
-			ctx = c.NewOrgContext(ctx, org)
+			if !isMember {
+				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
+			} else {
+				org, err := t.co.Orgs.Get(ctx, orgName)
+				if err != nil {
+					return nil, err
+				}
+				ctx = c.NewOrgContext(ctx, org)
+				ctx = common.NewOrgNameContext(ctx, orgName) // For additional requests
+				// @todo: Grab thread token from org object
+			}
+		} else {
+			ctx = thread.NewTokenContext(ctx, dev.ThreadToken)
 		}
 	}
 
-	appKey, ok := common.AppKeyFromMD(ctx)
+	threadID, ok := common.ThreadIDFromMD(ctx)
 	if ok {
-		ctx = common.NewAppKeyContext(ctx, appKey)
+		ctx = common.NewThreadIDContext(ctx, threadID)
 	}
-	appAddr, ok := common.AppAddrFromMD(ctx)
-	if ok {
-		ctx = common.NewAppAddrContext(ctx, appAddr)
-	}
-	dbID, ok := common.DbIDFromMD(ctx)
-	if ok {
-		ctx = common.NewDbIDContext(ctx, dbID)
+
+	switch getService(method) {
+	case "cloud.pb.API":
+		if !isDev {
+			return nil, status.Error(codes.Unauthenticated, "Session not found")
+		}
+	case "buckets.pb.API":
+		if !isDev {
+			return nil, status.Error(codes.Unauthenticated, "Session not found")
+		}
+	case "threads.pb.API":
+		if !isDev {
+			return nil, status.Error(codes.Unauthenticated, "Session not found")
+		}
 	}
 	return ctx, nil
 }

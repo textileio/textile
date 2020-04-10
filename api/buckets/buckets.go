@@ -38,10 +38,15 @@ func init() {
 }
 
 type Buckets struct {
-	DB *dbc.Client
+	Threads *dbc.Client
 }
 
-func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, name string) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, name string, opts ...Option) (*Bucket, error) {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
 	validName, err := util.ToValidName(name)
 	if err != nil {
 		return nil, err
@@ -52,10 +57,10 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 		CreatedAt: time.Now().UnixNano(),
 		UpdatedAt: time.Now().UnixNano(),
 	}
-	ids, err := b.DB.Create(ctx, dbID, cname, dbc.Instances{bucket})
+	ids, err := b.Threads.Create(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID); err != nil {
+			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
 			return b.Create(ctx, dbID, pth, name)
@@ -65,12 +70,17 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 	return bucket, nil
 }
 
-func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string) (*Bucket, error) {
+func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string, opts ...Option) (*Bucket, error) {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
 	query := db.Where("Name").Eq(name)
-	res, err := b.DB.Find(ctx, dbID, cname, query, &Bucket{})
+	res, err := b.Threads.Find(ctx, dbID, cname, query, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID); err != nil {
+			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
 			return b.Get(ctx, dbID, name)
@@ -84,11 +94,16 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string) (*Bucket
 	return buckets[0], nil
 }
 
-func (b *Buckets) List(ctx context.Context, dbID thread.ID) ([]*Bucket, error) {
-	res, err := b.DB.Find(ctx, dbID, cname, &db.Query{}, &Bucket{})
+func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*Bucket, error) {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
+	res, err := b.Threads.Find(ctx, dbID, cname, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID); err != nil {
+			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
 			return b.List(ctx, dbID)
@@ -98,20 +113,44 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID) ([]*Bucket, error) {
 	return res.([]*Bucket), nil
 }
 
-func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket) error {
-	return b.DB.Save(ctx, dbID, cname, dbc.Instances{bucket})
+func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return b.Threads.Save(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 }
 
-func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, id string) error {
-	return b.DB.Delete(ctx, dbID, cname, []string{id})
+func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, id string, opts ...Option) error {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return b.Threads.Delete(ctx, dbID, cname, []string{id}, db.WithTxnToken(args.Token))
 }
 
-func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID) error {
-	return b.DB.NewCollection(ctx, dbID, db.CollectionConfig{
+func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return b.Threads.NewCollection(ctx, dbID, db.CollectionConfig{
 		Name:    cname,
 		Schema:  schema,
 		Indexes: indexes,
-	})
+	}, db.WithManagedDBToken(args.Token))
+}
+
+type Options struct {
+	Token thread.Token
+}
+
+type Option func(*Options)
+
+func WithToken(t thread.Token) Option {
+	return func(args *Options) {
+		args.Token = t
+	}
 }
 
 func isCollNotFoundErr(err error) bool {

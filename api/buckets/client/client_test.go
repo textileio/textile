@@ -186,11 +186,11 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	require.Nil(t, err)
 
 	user := apitest.Login(t, cloudclient, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Token)
 	id := thread.NewIDV1(thread.Raw, 32)
 	err = threadsclient.NewDB(ctx, id)
 	require.Nil(t, err)
-	ctx = common.NewDbIDContext(ctx, id)
+	ctx = common.NewThreadIDContext(ctx, id)
 
 	return ctx, client, func() {
 		shutdown()

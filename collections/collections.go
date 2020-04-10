@@ -25,6 +25,8 @@ type Collections struct {
 	Orgs       *Orgs
 	Invites    *Invites
 
+	Databases *Threads
+
 	Users *Users
 }
 
@@ -52,6 +54,10 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 	if err != nil {
 		return nil, err
 	}
+	databases, err := NewThreads(ctx, db)
+	if err != nil {
+		return nil, err
+	}
 	users, err := NewUsers(ctx, db)
 	if err != nil {
 		return nil, err
@@ -64,6 +70,8 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 		Developers: developers,
 		Orgs:       teams,
 		Invites:    invites,
+
+		Databases: databases,
 
 		Users: users,
 	}, nil

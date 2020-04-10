@@ -20,7 +20,7 @@ type Flag struct {
 	DefValue interface{}
 }
 
-func InitConfig(v *viper.Viper, file string, defDir string, name string) func() {
+func InitConfig(v *viper.Viper, file string, defDir string, name string, global bool) func() {
 	return func() {
 		if file != "" {
 			v.SetConfigFile(file)
@@ -30,7 +30,9 @@ func InitConfig(v *viper.Viper, file string, defDir string, name string) func() 
 				panic(err)
 			}
 			v.AddConfigPath(path.Join("./", defDir)) // local config takes priority
-			v.AddConfigPath(path.Join(home, defDir))
+			if global {
+				v.AddConfigPath(path.Join(home, defDir))
+			}
 			v.SetConfigName(name)
 		}
 

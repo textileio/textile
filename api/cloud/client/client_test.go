@@ -27,7 +27,7 @@ func TestClient_Login(t *testing.T) {
 	defer done()
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	assert.NotEmpty(t, user.Token)
+	assert.NotEmpty(t, user.Session)
 }
 
 func TestClient_Logout(t *testing.T) {
@@ -44,7 +44,7 @@ func TestClient_Logout(t *testing.T) {
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("with token", func(t *testing.T) {
-		err := client.Logout(common.NewDevTokenContext(ctx, user.Token))
+		err := client.Logout(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 	})
 }
@@ -64,7 +64,7 @@ func TestClient_Whoami(t *testing.T) {
 	user := apitest.Login(t, client, conf, email)
 
 	t.Run("with token", func(t *testing.T) {
-		who, err := client.Whoami(common.NewDevTokenContext(ctx, user.Token))
+		who, err := client.Whoami(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 		assert.Equal(t, who.ID, user.ID)
 		assert.NotEmpty(t, who.Username)
@@ -88,7 +88,7 @@ func TestClient_AddOrg(t *testing.T) {
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("with token", func(t *testing.T) {
-		org, err := client.AddOrg(common.NewDevTokenContext(ctx, user.Token), name)
+		org, err := client.AddOrg(common.NewSessionContext(ctx, user.Session), name)
 		require.Nil(t, err)
 		assert.NotEmpty(t, org.ID)
 		assert.Equal(t, org.Name, name)
@@ -102,17 +102,17 @@ func TestClient_GetOrg(t *testing.T) {
 
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.AddOrg(ctx, name)
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		_, err := client.GetOrg(common.NewOrgContext(ctx, "bad"))
+		_, err := client.GetOrg(common.NewOrgNameContext(ctx, "bad"))
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		got, err := client.GetOrg(common.NewOrgContext(ctx, org.Name))
+		got, err := client.GetOrg(common.NewOrgNameContext(ctx, org.Name))
 		require.Nil(t, err)
 		assert.Equal(t, got.ID, org.ID)
 	})
@@ -124,7 +124,7 @@ func TestClient_ListOrgs(t *testing.T) {
 	defer done()
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 
 	t.Run("empty", func(t *testing.T) {
 		orgs, err := client.ListOrgs(ctx)
@@ -153,25 +153,25 @@ func TestClient_RemoveOrg(t *testing.T) {
 
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.AddOrg(ctx, name)
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		err := client.RemoveOrg(common.NewOrgContext(ctx, "bad"))
+		err := client.RemoveOrg(common.NewOrgNameContext(ctx, "bad"))
 		require.NotNil(t, err)
 	})
 
 	user2 := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx2 := common.NewDevTokenContext(context.Background(), user2.Token)
+	ctx2 := common.NewSessionContext(context.Background(), user2.Session)
 
 	t.Run("bad session", func(t *testing.T) {
-		err := client.RemoveOrg(common.NewOrgContext(ctx2, org.Name))
+		err := client.RemoveOrg(common.NewOrgNameContext(ctx2, org.Name))
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		octx := common.NewOrgContext(ctx, org.Name)
+		octx := common.NewOrgNameContext(ctx, org.Name)
 		err := client.RemoveOrg(octx)
 		require.Nil(t, err)
 		_, err = client.GetOrg(octx)
@@ -186,10 +186,10 @@ func TestClient_InviteToOrg(t *testing.T) {
 
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.AddOrg(ctx, name)
 	require.Nil(t, err)
-	ctx = common.NewOrgContext(ctx, org.Name)
+	ctx = common.NewOrgNameContext(ctx, org.Name)
 
 	t.Run("bad email", func(t *testing.T) {
 		_, err := client.InviteToOrg(ctx, "jane")
@@ -199,7 +199,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 	t.Run("good email", func(t *testing.T) {
 		res, err := client.InviteToOrg(ctx, apitest.NewEmail())
 		require.Nil(t, err)
-		assert.NotEmpty(t, res.Token)
+		assert.NotEmpty(t, res.Session)
 	})
 }
 
@@ -210,10 +210,10 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
-	ctx := common.NewDevTokenContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.AddOrg(ctx, name)
 	require.Nil(t, err)
-	ctx = common.NewOrgContext(ctx, org.Name)
+	ctx = common.NewOrgNameContext(ctx, org.Name)
 
 	t.Run("as owner", func(t *testing.T) {
 		err := client.LeaveOrg(ctx)
@@ -222,7 +222,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 	user2Email := apitest.NewEmail()
 	user2 := apitest.Login(t, client, conf, user2Email)
-	ctx2 := common.NewDevTokenContext(ctx, user2.Token)
+	ctx2 := common.NewSessionContext(ctx, user2.Session)
 
 	t.Run("as non-member", func(t *testing.T) {
 		err := client.LeaveOrg(ctx2)
@@ -231,7 +231,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 	invite, err := client.InviteToOrg(ctx, user2Email)
 	require.Nil(t, err)
-	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Token))
+	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Session))
 	require.Nil(t, err)
 
 	t.Run("as member", func(t *testing.T) {
