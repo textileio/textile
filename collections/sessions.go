@@ -10,9 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	sessionTokenLen = 44
-	sessionDur      = time.Hour * 24 * 7 * 30
+const (
+	sessionDur = time.Hour * 24 * 7 * 30 * 6
 )
 
 type Session struct {
@@ -52,7 +51,7 @@ func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (
 	doc := &Session{
 		ID:          primitive.NewObjectID(),
 		DeveloperID: developerID,
-		Token:       util.MakeToken(sessionTokenLen),
+		Token:       util.MakeToken(tokenLen),
 		ExpiresAt:   time.Now().Add(sessionDur),
 	}
 	res, err := s.col.InsertOne(ctx, doc)

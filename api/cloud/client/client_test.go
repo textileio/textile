@@ -1,18 +1,16 @@
 package client_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/cloud/client"
@@ -23,7 +21,7 @@ import (
 
 func TestClient_Login(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
@@ -32,18 +30,18 @@ func TestClient_Login(t *testing.T) {
 
 func TestClient_Logout(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
-	t.Run("without token", func(t *testing.T) {
+	t.Run("without session", func(t *testing.T) {
 		err := client.Logout(ctx)
 		require.NotNil(t, err)
 	})
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
-	t.Run("with token", func(t *testing.T) {
+	t.Run("with session", func(t *testing.T) {
 		err := client.Logout(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 	})
@@ -51,11 +49,11 @@ func TestClient_Logout(t *testing.T) {
 
 func TestClient_Whoami(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
-	t.Run("without token", func(t *testing.T) {
+	t.Run("without session", func(t *testing.T) {
 		_, err := client.Whoami(ctx)
 		require.NotNil(t, err)
 	})
@@ -63,7 +61,7 @@ func TestClient_Whoami(t *testing.T) {
 	email := apitest.NewEmail()
 	user := apitest.Login(t, client, conf, email)
 
-	t.Run("with token", func(t *testing.T) {
+	t.Run("with session", func(t *testing.T) {
 		who, err := client.Whoami(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 		assert.Equal(t, who.ID, user.ID)
@@ -72,22 +70,75 @@ func TestClient_Whoami(t *testing.T) {
 	})
 }
 
+func TestClient_ListThreads(t *testing.T) {
+	t.Parallel()
+	conf, client, threadsclient, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	t.Run("without session", func(t *testing.T) {
+		_, err := client.ListThreads(ctx)
+		require.NotNil(t, err)
+	})
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	t.Run("with session", func(t *testing.T) {
+		ctx = common.NewSessionContext(ctx, user.Session)
+		list, err := client.ListThreads(ctx)
+		require.Nil(t, err)
+		require.Empty(t, list.List)
+
+		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
+		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
+
+		list, err = client.ListThreads(ctx)
+		require.Nil(t, err)
+		require.Equal(t, len(list.List), 2)
+	})
+}
+
+func TestClient_UseThread(t *testing.T) {
+	t.Parallel()
+	conf, client, threadsclient, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	id := thread.NewIDV1(thread.Raw, 32)
+	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
+	require.Nil(t, err)
+
+	t.Run("without session", func(t *testing.T) {
+		err := client.UseThread(ctx, id)
+		require.NotNil(t, err)
+	})
+
+	t.Run("with session", func(t *testing.T) {
+		err = client.UseThread(common.NewSessionContext(ctx, user.Session), id)
+		require.Nil(t, err)
+	})
+}
+
 func TestClient_AddOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
 	name := apitest.NewName()
 
-	t.Run("without token", func(t *testing.T) {
+	t.Run("without session", func(t *testing.T) {
 		_, err := client.AddOrg(ctx, name)
 		require.NotNil(t, err)
 	})
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
-	t.Run("with token", func(t *testing.T) {
+	t.Run("with session", func(t *testing.T) {
 		org, err := client.AddOrg(common.NewSessionContext(ctx, user.Session), name)
 		require.Nil(t, err)
 		assert.NotEmpty(t, org.ID)
@@ -97,7 +148,7 @@ func TestClient_AddOrg(t *testing.T) {
 
 func TestClient_GetOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	name := apitest.NewName()
@@ -120,7 +171,7 @@ func TestClient_GetOrg(t *testing.T) {
 
 func TestClient_ListOrgs(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
@@ -148,7 +199,7 @@ func TestClient_ListOrgs(t *testing.T) {
 
 func TestClient_RemoveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	name := apitest.NewName()
@@ -181,7 +232,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 
 func TestClient_InviteToOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	name := apitest.NewName()
@@ -199,13 +250,13 @@ func TestClient_InviteToOrg(t *testing.T) {
 	t.Run("good email", func(t *testing.T) {
 		res, err := client.InviteToOrg(ctx, apitest.NewEmail())
 		require.Nil(t, err)
-		assert.NotEmpty(t, res.Session)
+		assert.NotEmpty(t, res.Token)
 	})
 }
 
 func TestClient_LeaveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, done := setup(t)
+	conf, client, _, done := setup(t)
 	defer done()
 
 	name := apitest.NewName()
@@ -231,78 +282,12 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 	invite, err := client.InviteToOrg(ctx, user2Email)
 	require.Nil(t, err)
-	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Session))
+	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Token))
 	require.Nil(t, err)
 
 	t.Run("as member", func(t *testing.T) {
 		err := client.LeaveOrg(ctx2)
 		require.Nil(t, err)
-	})
-}
-
-func SkipTestClient_RegisterUser(t *testing.T) {
-	t.Parallel()
-	conf, client, done := setup(t)
-	defer done()
-
-	apitest.Login(t, client, conf, apitest.NewEmail())
-
-	t.Run("without token", func(t *testing.T) {
-		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
-		res, err := http.Post(url, "application/json", strings.NewReader("{}"))
-		require.Nil(t, err)
-
-		body, err := ioutil.ReadAll(res.Body)
-		require.Nil(t, err)
-		defer res.Body.Close()
-
-		var data map[string]string
-		err = json.Unmarshal(body, &data)
-		require.Nil(t, err)
-
-		if _, ok := data["error"]; !ok {
-			t.Fatal("expected error in response body")
-		}
-		if res.StatusCode != http.StatusBadRequest {
-			t.Fatalf("expected status code 400, got %d", res.StatusCode)
-		}
-	})
-
-	t.Run("with token", func(t *testing.T) {
-		req, err := json.Marshal(&map[string]string{
-			//"token":     token.ID,
-			"device_id": uuid.New().String(),
-		})
-		require.Nil(t, err)
-		url := fmt.Sprintf("%s/register", conf.AddrGatewayUrl)
-		res, err := http.Post(url, "application/json", bytes.NewReader(req))
-		require.Nil(t, err)
-
-		body, err := ioutil.ReadAll(res.Body)
-		require.Nil(t, err)
-		defer res.Body.Close()
-
-		var data map[string]string
-		err = json.Unmarshal(body, &data)
-		require.Nil(t, err)
-
-		if e, ok := data["error"]; ok {
-			t.Fatalf("got error in response body: %s", e)
-		}
-		if id, ok := data["id"]; !ok {
-			t.Fatalf("response body missing id")
-		} else {
-			t.Logf("user id: %s", id)
-		}
-		session, ok := data["session_id"]
-		if !ok {
-			t.Fatalf("response body missing session id")
-		} else {
-			t.Logf("user session id: %s", session)
-		}
-		if res.StatusCode != http.StatusOK {
-			t.Fatalf("expected status code 200, got %d", res.StatusCode)
-		}
 	})
 }
 
@@ -319,16 +304,21 @@ func TestClose(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func setup(t *testing.T) (core.Config, *c.Client, func()) {
+func setup(t *testing.T) (core.Config, *c.Client, *tc.Client, func()) {
 	conf, shutdown := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
-	client, err := c.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
+	client, err := c.NewClient(target, opts...)
+	require.Nil(t, err)
+	threadsclient, err := tc.NewClient(target, opts...)
 	require.Nil(t, err)
 
-	return conf, client, func() {
+	return conf, client, threadsclient, func() {
 		shutdown()
 		err := client.Close()
+		require.Nil(t, err)
+		err = threadsclient.Close()
 		require.Nil(t, err)
 	}
 }

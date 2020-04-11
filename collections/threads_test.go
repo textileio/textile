@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/core/thread"
 	. "github.com/textileio/textile/collections"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -17,9 +18,14 @@ func TestThreads_Create(t *testing.T) {
 	col, err := NewThreads(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), primitive.NewObjectID())
+	threadID := thread.NewIDV1(thread.Raw, 32)
+	ownerID := primitive.NewObjectID()
+	created, err := col.Create(context.Background(), threadID, ownerID, primitive.NewObjectID())
 	require.Nil(t, err)
-	assert.True(t, created.ID.Defined())
+	assert.True(t, created.ThreadID.Defined())
+
+	_, err = col.Create(context.Background(), threadID, ownerID, primitive.NewObjectID())
+	require.NotNil(t, err)
 }
 
 func TestThreads_Get(t *testing.T) {
@@ -28,10 +34,11 @@ func TestThreads_Get(t *testing.T) {
 
 	col, err := NewThreads(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), primitive.NewObjectID())
+	ownerID := primitive.NewObjectID()
+	created, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
 	require.Nil(t, err)
 
-	got, err := col.Get(context.Background(), created.ID)
+	got, err := col.Get(context.Background(), created.ThreadID, ownerID)
 	require.Nil(t, err)
 	assert.Equal(t, created.ID, got.ID)
 }
@@ -43,9 +50,9 @@ func TestThreads_List(t *testing.T) {
 	col, err := NewThreads(context.Background(), db)
 	require.Nil(t, err)
 	ownerID := primitive.NewObjectID()
-	_, err = col.Create(context.Background(), ownerID, primitive.NewObjectID())
+	_, err = col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
 	require.Nil(t, err)
-	_, err = col.Create(context.Background(), ownerID, primitive.NewObjectID())
+	_, err = col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
 	require.Nil(t, err)
 
 	list1, err := col.List(context.Background(), ownerID)
@@ -57,17 +64,43 @@ func TestThreads_List(t *testing.T) {
 	assert.Equal(t, len(list2), 0)
 }
 
+func TestThreads_Use(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewThreads(context.Background(), db)
+	require.Nil(t, err)
+	ownerID := primitive.NewObjectID()
+	created1, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
+	require.Nil(t, err)
+	require.True(t, created1.Primary)
+
+	created2, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
+	require.Nil(t, err)
+
+	err = col.Use(context.Background(), created2.ThreadID, ownerID)
+	require.Nil(t, err)
+	got, err := col.Get(context.Background(), created2.ThreadID, ownerID)
+	require.Nil(t, err)
+	require.True(t, got.Primary)
+
+	got, err = col.Get(context.Background(), created1.ThreadID, ownerID)
+	require.Nil(t, err)
+	require.False(t, got.Primary)
+}
+
 func TestThreads_Delete(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
 
 	col, err := NewThreads(context.Background(), db)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), primitive.NewObjectID(), primitive.NewObjectID())
+	ownerID := primitive.NewObjectID()
+	created, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.ID)
+	err = col.Delete(context.Background(), created.ThreadID, ownerID)
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), created.ID)
+	_, err = col.Get(context.Background(), created.ThreadID, ownerID)
 	require.NotNil(t, err)
 }

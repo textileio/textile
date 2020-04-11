@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/mail"
 
-	"github.com/textileio/textile/api/common"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -14,7 +12,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(orgsCmd)
-	orgsCmd.AddCommand(addOrgsCmd, lsOrgsCmd, membersOrgsCmd, rmOrgsCmd, inviteOrgsCmd, leaveOrgsCmd)
+	orgsCmd.AddCommand(createOrgsCmd, lsOrgsCmd, membersOrgsCmd, rmOrgsCmd, inviteOrgsCmd, leaveOrgsCmd)
 }
 
 var orgsCmd = &cobra.Command{
@@ -29,10 +27,10 @@ var orgsCmd = &cobra.Command{
 	},
 }
 
-var addOrgsCmd = &cobra.Command{
-	Use:   "add [name]",
-	Short: "Add org",
-	Long:  `Add a new org (interactive).`,
+var createOrgsCmd = &cobra.Command{
+	Use:   "create [name]",
+	Short: "Create an org",
+	Long:  `Create a new organization (interactive).`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
@@ -40,7 +38,7 @@ var addOrgsCmd = &cobra.Command{
 		if _, err := cloud.AddOrg(ctx, args[0]); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Added new org %s", aurora.White(args[0]).Bold())
+		cmd.Success("Created new org %s", aurora.White(args[0]).Bold())
 	},
 }
 
@@ -80,11 +78,11 @@ var membersOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
+		configViper.Set("org", selected.Name)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
 
-		ctx = common.NewOrgNameContext(ctx, selected.ID)
 		org, err := cloud.GetOrg(ctx)
 		if err != nil {
 			cmd.Fatal(err)
@@ -112,6 +110,7 @@ var rmOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Remove org", aurora.Sprintf(
 			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
+		configViper.Set("org", selected.Name)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
@@ -128,6 +127,10 @@ var inviteOrgsCmd = &cobra.Command{
 	Short: "Invite members",
 	Long:  `Invite a new member to a org.`,
 	Run: func(c *cobra.Command, args []string) {
+		selected := selectOrg("Select org", aurora.Sprintf(
+			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
+		configViper.Set("org", selected.Name)
+
 		prompt := promptui.Prompt{
 			Label: "Enter email to invite",
 			Validate: func(email string) error {
@@ -146,8 +149,8 @@ var inviteOrgsCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		//cmd.Success("We sent %s an invitation to the %s org", aurora.White(email).Bold(),
-		//	aurora.White(who.OrgName).Bold())
+		cmd.Success("We sent %s an invitation to the %s org", aurora.White(email).Bold(),
+			aurora.White(selected.Name).Bold())
 	},
 }
 
@@ -158,6 +161,7 @@ var leaveOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
+		configViper.Set("org", selected.Name)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()

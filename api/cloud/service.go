@@ -6,14 +6,12 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/api/common"
-
-	threads "github.com/textileio/go-threads/api/client"
-
 	logging "github.com/ipfs/go-log"
+	threads "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
+	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/cloud/pb"
+	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/util"
@@ -110,6 +108,40 @@ func (s *Service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 		Username: dev.Username,
 		Email:    dev.Email,
 	}, nil
+}
+
+func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
+	log.Debugf("received list threads request")
+
+	dev, _ := c.DevFromContext(ctx)
+	list, err := s.Collections.Threads.List(ctx, dev.ID)
+	if err != nil {
+		return nil, err
+	}
+	reply := &pb.ListThreadsReply{
+		List: make([]*pb.ListThreadsReply_Thread, len(list)),
+	}
+	for i, t := range list {
+		reply.List[i] = &pb.ListThreadsReply_Thread{
+			ID:      t.ThreadID.Bytes(),
+			Primary: t.Primary,
+		}
+	}
+	return reply, nil
+}
+
+func (s *Service) UseThread(ctx context.Context, req *pb.UseThreadRequest) (*pb.UseThreadReply, error) {
+	log.Debugf("received use thread request")
+
+	dev, _ := c.DevFromContext(ctx)
+	id, err := thread.Cast(req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Collections.Threads.Use(ctx, id, dev.ID); err != nil {
+		return nil, err
+	}
+	return &pb.UseThreadReply{}, nil
 }
 
 // awaitVerification waits for a dev to verify their email via a sent email.
@@ -240,7 +272,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		ectx, org.Name, dev.Email, req.Email, s.GatewayUrl, invite.Token); err != nil {
 		return nil, err
 	}
-	return &pb.InviteToOrgReply{Session: invite.Token}, nil
+	return &pb.InviteToOrgReply{Token: invite.Token}, nil
 }
 
 func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgReply, error) {

@@ -7,12 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/textile/util"
 
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
@@ -24,7 +23,7 @@ func init() {
 	bucketsCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
-	initBucketPathCmd.PersistentFlags().String("path", "", "Local path")
+	initBucketPathCmd.PersistentFlags().String("name", "", "Bucket name")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
 
@@ -46,27 +45,26 @@ var bucketsCmd = &cobra.Command{
 }
 
 var initBucketPathCmd = &cobra.Command{
-	Use:   "init [path]",
-	Short: "Init a local path  bucket path contents",
+	Use:   "init",
+	Short: "Create an empty bucket",
 	Long: `Create an empty bucket. 
 
-A .textile directory and config file will be created under the given path.
+A .textile directory and config file will be created in the current working directory.
 Existing configs will not be overwritten.
 `,
-	Args: cobra.ExactArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		root, err := homedir.Expand(args[0])
+		root, err := os.Getwd()
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		pth, err := filepath.Abs(root)
+		name, err := util.ToValidName(filepath.Base(root))
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		configViper.Set("path", filepath.Base(pth))
+		configViper.Set("name", name)
 
 		dir := filepath.Join(root, ".textile")
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -77,19 +75,20 @@ Existing configs will not be overwritten.
 			cmd.Fatal(fmt.Errorf("bucket at %s already initialized", root))
 		}
 
-		if configViper.GetString("thread") == "" {
-			threadID := thread.NewIDV1(thread.Raw, 32)
-			ctx, cancel := authCtx(cmdTimeout)
-			defer cancel()
-			if err := threads.NewDB(ctx, threadID); err != nil {
-				cmd.Fatal(err)
-			}
-			configViper.Set("thread", threadID.String())
-		}
+		//if configViper.GetString("thread") == "" {
+		//	threadID := thread.NewIDV1(thread.Raw, 32)
+		//	ctx, cancel := authCtx(cmdTimeout)
+		//	defer cancel()
+		//	if err := threads.NewDB(ctx, threadID); err != nil {
+		//		cmd.Fatal(err)
+		//	}
+		//	configViper.Set("thread", threadID.String())
+		//}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
+		cmd.Success("Initialized empty bucket in %s", aurora.White(root).Bold())
 	},
 }
 

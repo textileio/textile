@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -34,6 +35,7 @@ import (
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -176,8 +178,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	t.server = grpc.NewServer(
-		grpc.UnaryInterceptor(auth.UnaryServerInterceptor(t.authFunc)),
-		grpc.StreamInterceptor(auth.StreamServerInterceptor(t.authFunc)))
+		grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.newThreadInterceptor()),
+		grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)))
 	listener, err := net.Listen("tcp", target)
 	if err != nil {
 		return nil, err
@@ -349,10 +351,78 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		if !isDev {
 			return nil, status.Error(codes.Unauthenticated, "Session not found")
 		}
+		// @todo Add user support
 	case "threads.pb.API":
 		if !isDev {
 			return nil, status.Error(codes.Unauthenticated, "Session not found")
 		}
+		// @todo Add user support
+	case "threads.net.pb.API":
+		if !isDev {
+			return nil, status.Error(codes.Unauthenticated, "Session not found")
+		}
+		// @todo Add user support
 	}
 	return ctx, nil
+}
+
+func (t *Textile) newThreadInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		var ownerID primitive.ObjectID
+		if org, ok := c.OrgFromContext(ctx); ok {
+			ownerID = org.ID
+		} else if dev, ok := c.DevFromContext(ctx); ok {
+			ownerID = dev.ID
+		}
+		// @todo: If not dev or org, need a key with user
+
+		// Let the request pass through
+		res, err := handler(ctx, req)
+		if err != nil {
+			return res, err
+		}
+
+		var threadID thread.ID
+		method, _ := grpc.Method(ctx)
+		switch method {
+		case "/threads.pb.API/NewDB":
+			threadID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
+			if err != nil {
+				return res, err
+			}
+		case "/threads.pb.API/NewDBFromAddr":
+			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
+			if err != nil {
+				return res, err
+			}
+			threadID, err = thread.FromAddr(addr)
+			if err != nil {
+				return res, err
+			}
+		case "/threads.net.pb.API/CreateThread":
+			threadID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
+			if err != nil {
+				return res, err
+			}
+		case "/threads.net.pb.API/AddThread":
+			addr, err := ma.NewMultiaddrBytes(req.(*netpb.AddThreadRequest).Addr)
+			if err != nil {
+				return res, err
+			}
+			threadID, err = thread.FromAddr(addr)
+			if err != nil {
+				return res, err
+			}
+		default:
+			return res, nil
+		}
+
+		// Keep a record of this new thread.
+		// Developer/Org threads will not have an associated key.
+		// User threads have Developer/Org custodians via an associated key.
+		if _, err := t.co.Threads.Create(ctx, threadID, ownerID, primitive.NilObjectID); err != nil {
+			return nil, err
+		}
+		return res, nil
+	}
 }

@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	pb "github.com/textileio/textile/api/cloud/pb"
 	"google.golang.org/grpc"
 )
@@ -48,6 +50,21 @@ func (c *Client) Logout(ctx context.Context) error {
 // Whoami returns session info.
 func (c *Client) Whoami(ctx context.Context) (*pb.WhoamiReply, error) {
 	return c.c.Whoami(ctx, &pb.WhoamiRequest{})
+}
+
+// ListThreads returns a list of threads.
+// Threads can be created using the threads or threads network client.
+func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) {
+	return c.c.ListThreads(ctx, &pb.ListThreadsRequest{})
+}
+
+// UseThread selects a thread as primary.
+// The primary thread will be used for new buckets.
+func (c *Client) UseThread(ctx context.Context, id thread.ID) error {
+	_, err := c.c.UseThread(ctx, &pb.UseThreadRequest{
+		ID: id.Bytes(),
+	})
+	return err
 }
 
 // AddOrg add a new org.

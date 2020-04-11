@@ -174,10 +174,7 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	conf, shutdown := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	require.Nil(t, err)
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithPerRPCCredentials(common.Credentials{}),
-	}
+	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)
 	require.Nil(t, err)
 	cloudclient, err := cc.NewClient(target, opts...)
@@ -186,7 +183,7 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	require.Nil(t, err)
 
 	user := apitest.Login(t, cloudclient, conf, apitest.NewEmail())
-	ctx := common.NewSessionContext(context.Background(), user.Token)
+	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
 	err = threadsclient.NewDB(ctx, id)
 	require.Nil(t, err)

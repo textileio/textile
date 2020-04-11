@@ -29,6 +29,23 @@ message WhoamiReply {
     string email = 3;
 }
 
+message ListThreadsRequest {}
+
+message ListThreadsReply {
+    repeated Thread list = 1;
+
+    message Thread {
+        bytes ID = 1;
+        bool primary = 2;
+    }
+}
+
+message UseThreadRequest {
+    bytes ID = 1;
+}
+
+message UseThreadReply {}
+
 message AddOrgRequest {
     string name = 1;
 }
@@ -38,9 +55,8 @@ message GetOrgRequest {}
 message GetOrgReply {
     string ID = 1;
     string name = 2;
-    string dbID = 3;
-    repeated Member members = 4;
-    int64 createdAt = 5;
+    repeated Member members = 3;
+    int64 createdAt = 4;
 
     message Member {
         string ID = 1;
@@ -64,7 +80,7 @@ message InviteToOrgRequest {
 }
 
 message InviteToOrgReply {
-    string session = 1;
+    string token = 1;
 }
 
 message LeaveOrgRequest {}
@@ -75,6 +91,9 @@ service API {
     rpc Login(LoginRequest) returns (LoginReply) {}
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
     rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
+
+    rpc ListThreads (ListThreadsRequest) returns (ListThreadsReply) {}
+    rpc UseThread (UseThreadRequest) returns (UseThreadReply) {}
 
     rpc AddOrg (AddOrgRequest) returns (GetOrgReply) {}
     rpc GetOrg (GetOrgRequest) returns (GetOrgReply) {}

@@ -1,5 +1,36 @@
 package main
 
+/*
+
+User/org management
+-------------------
+textile login
+textile logout
+textile whoami
+
+textile orgs create [name]
+textile orgs (ls)
+textile orgs members (ls)
+textile orgs rm
+textile orgs invite [username/email] [name] --role
+textile orgs leave [name]
+
+Thread management
+-----------------
+textile threads (ls) (view threads behind buckets) --org
+textile threads use [id] --org
+
+Bucket management
+-----------------
+textile buckets init [path] --org --name --public --thread (create new or from old)
+textile buckets (ls) [path]
+textile buckets push [local path] [remote path] (remote is optional)
+textile buckets pull [remote path] [local path] (local is optional)
+textile buckets cat [path]
+textile buckets rm
+
+*/
+
 import (
 	"context"
 	"crypto/tls"
@@ -7,12 +38,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/thread"
 	bc "github.com/textileio/textile/api/buckets/client"
 	cc "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/api/common"
@@ -44,8 +74,8 @@ var (
 			Key:      "org",
 			DefValue: "",
 		},
-		"path": {
-			Key:      "path",
+		"name": {
+			Key:      "name",
 			DefValue: "",
 		},
 		"public": {

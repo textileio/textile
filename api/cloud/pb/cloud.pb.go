@@ -274,6 +274,193 @@ func (m *WhoamiReply) GetEmail() string {
 	return ""
 }
 
+type ListThreadsRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListThreadsRequest) Reset()         { *m = ListThreadsRequest{} }
+func (m *ListThreadsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListThreadsRequest) ProtoMessage()    {}
+func (*ListThreadsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{6}
+}
+
+func (m *ListThreadsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListThreadsRequest.Unmarshal(m, b)
+}
+func (m *ListThreadsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListThreadsRequest.Marshal(b, m, deterministic)
+}
+func (m *ListThreadsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListThreadsRequest.Merge(m, src)
+}
+func (m *ListThreadsRequest) XXX_Size() int {
+	return xxx_messageInfo_ListThreadsRequest.Size(m)
+}
+func (m *ListThreadsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListThreadsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListThreadsRequest proto.InternalMessageInfo
+
+type ListThreadsReply struct {
+	List                 []*ListThreadsReply_Thread `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
+	XXX_unrecognized     []byte                     `json:"-"`
+	XXX_sizecache        int32                      `json:"-"`
+}
+
+func (m *ListThreadsReply) Reset()         { *m = ListThreadsReply{} }
+func (m *ListThreadsReply) String() string { return proto.CompactTextString(m) }
+func (*ListThreadsReply) ProtoMessage()    {}
+func (*ListThreadsReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{7}
+}
+
+func (m *ListThreadsReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListThreadsReply.Unmarshal(m, b)
+}
+func (m *ListThreadsReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListThreadsReply.Marshal(b, m, deterministic)
+}
+func (m *ListThreadsReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListThreadsReply.Merge(m, src)
+}
+func (m *ListThreadsReply) XXX_Size() int {
+	return xxx_messageInfo_ListThreadsReply.Size(m)
+}
+func (m *ListThreadsReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListThreadsReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListThreadsReply proto.InternalMessageInfo
+
+func (m *ListThreadsReply) GetList() []*ListThreadsReply_Thread {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type ListThreadsReply_Thread struct {
+	ID                   []byte   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Primary              bool     `protobuf:"varint,2,opt,name=primary,proto3" json:"primary,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListThreadsReply_Thread) Reset()         { *m = ListThreadsReply_Thread{} }
+func (m *ListThreadsReply_Thread) String() string { return proto.CompactTextString(m) }
+func (*ListThreadsReply_Thread) ProtoMessage()    {}
+func (*ListThreadsReply_Thread) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{7, 0}
+}
+
+func (m *ListThreadsReply_Thread) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListThreadsReply_Thread.Unmarshal(m, b)
+}
+func (m *ListThreadsReply_Thread) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListThreadsReply_Thread.Marshal(b, m, deterministic)
+}
+func (m *ListThreadsReply_Thread) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListThreadsReply_Thread.Merge(m, src)
+}
+func (m *ListThreadsReply_Thread) XXX_Size() int {
+	return xxx_messageInfo_ListThreadsReply_Thread.Size(m)
+}
+func (m *ListThreadsReply_Thread) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListThreadsReply_Thread.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListThreadsReply_Thread proto.InternalMessageInfo
+
+func (m *ListThreadsReply_Thread) GetID() []byte {
+	if m != nil {
+		return m.ID
+	}
+	return nil
+}
+
+func (m *ListThreadsReply_Thread) GetPrimary() bool {
+	if m != nil {
+		return m.Primary
+	}
+	return false
+}
+
+type UseThreadRequest struct {
+	ID                   []byte   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UseThreadRequest) Reset()         { *m = UseThreadRequest{} }
+func (m *UseThreadRequest) String() string { return proto.CompactTextString(m) }
+func (*UseThreadRequest) ProtoMessage()    {}
+func (*UseThreadRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{8}
+}
+
+func (m *UseThreadRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UseThreadRequest.Unmarshal(m, b)
+}
+func (m *UseThreadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UseThreadRequest.Marshal(b, m, deterministic)
+}
+func (m *UseThreadRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UseThreadRequest.Merge(m, src)
+}
+func (m *UseThreadRequest) XXX_Size() int {
+	return xxx_messageInfo_UseThreadRequest.Size(m)
+}
+func (m *UseThreadRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UseThreadRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UseThreadRequest proto.InternalMessageInfo
+
+func (m *UseThreadRequest) GetID() []byte {
+	if m != nil {
+		return m.ID
+	}
+	return nil
+}
+
+type UseThreadReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UseThreadReply) Reset()         { *m = UseThreadReply{} }
+func (m *UseThreadReply) String() string { return proto.CompactTextString(m) }
+func (*UseThreadReply) ProtoMessage()    {}
+func (*UseThreadReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{9}
+}
+
+func (m *UseThreadReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UseThreadReply.Unmarshal(m, b)
+}
+func (m *UseThreadReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UseThreadReply.Marshal(b, m, deterministic)
+}
+func (m *UseThreadReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UseThreadReply.Merge(m, src)
+}
+func (m *UseThreadReply) XXX_Size() int {
+	return xxx_messageInfo_UseThreadReply.Size(m)
+}
+func (m *UseThreadReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_UseThreadReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UseThreadReply proto.InternalMessageInfo
+
 type AddOrgRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -285,7 +472,7 @@ func (m *AddOrgRequest) Reset()         { *m = AddOrgRequest{} }
 func (m *AddOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*AddOrgRequest) ProtoMessage()    {}
 func (*AddOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{6}
+	return fileDescriptor_01f9cba63d8f209f, []int{10}
 }
 
 func (m *AddOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -323,7 +510,7 @@ func (m *GetOrgRequest) Reset()         { *m = GetOrgRequest{} }
 func (m *GetOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*GetOrgRequest) ProtoMessage()    {}
 func (*GetOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{7}
+	return fileDescriptor_01f9cba63d8f209f, []int{11}
 }
 
 func (m *GetOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -347,9 +534,8 @@ var xxx_messageInfo_GetOrgRequest proto.InternalMessageInfo
 type GetOrgReply struct {
 	ID                   string                `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Name                 string                `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	DbID                 string                `protobuf:"bytes,3,opt,name=dbID,proto3" json:"dbID,omitempty"`
-	Members              []*GetOrgReply_Member `protobuf:"bytes,4,rep,name=members,proto3" json:"members,omitempty"`
-	CreatedAt            int64                 `protobuf:"varint,5,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	Members              []*GetOrgReply_Member `protobuf:"bytes,3,rep,name=members,proto3" json:"members,omitempty"`
+	CreatedAt            int64                 `protobuf:"varint,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
 	XXX_sizecache        int32                 `json:"-"`
@@ -359,7 +545,7 @@ func (m *GetOrgReply) Reset()         { *m = GetOrgReply{} }
 func (m *GetOrgReply) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply) ProtoMessage()    {}
 func (*GetOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{8}
+	return fileDescriptor_01f9cba63d8f209f, []int{12}
 }
 
 func (m *GetOrgReply) XXX_Unmarshal(b []byte) error {
@@ -394,13 +580,6 @@ func (m *GetOrgReply) GetName() string {
 	return ""
 }
 
-func (m *GetOrgReply) GetDbID() string {
-	if m != nil {
-		return m.DbID
-	}
-	return ""
-}
-
 func (m *GetOrgReply) GetMembers() []*GetOrgReply_Member {
 	if m != nil {
 		return m.Members
@@ -428,7 +607,7 @@ func (m *GetOrgReply_Member) Reset()         { *m = GetOrgReply_Member{} }
 func (m *GetOrgReply_Member) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply_Member) ProtoMessage()    {}
 func (*GetOrgReply_Member) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{8, 0}
+	return fileDescriptor_01f9cba63d8f209f, []int{12, 0}
 }
 
 func (m *GetOrgReply_Member) XXX_Unmarshal(b []byte) error {
@@ -480,7 +659,7 @@ func (m *ListOrgsRequest) Reset()         { *m = ListOrgsRequest{} }
 func (m *ListOrgsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsRequest) ProtoMessage()    {}
 func (*ListOrgsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{9}
+	return fileDescriptor_01f9cba63d8f209f, []int{13}
 }
 
 func (m *ListOrgsRequest) XXX_Unmarshal(b []byte) error {
@@ -512,7 +691,7 @@ func (m *ListOrgsReply) Reset()         { *m = ListOrgsReply{} }
 func (m *ListOrgsReply) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsReply) ProtoMessage()    {}
 func (*ListOrgsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{10}
+	return fileDescriptor_01f9cba63d8f209f, []int{14}
 }
 
 func (m *ListOrgsReply) XXX_Unmarshal(b []byte) error {
@@ -550,7 +729,7 @@ func (m *RemoveOrgRequest) Reset()         { *m = RemoveOrgRequest{} }
 func (m *RemoveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgRequest) ProtoMessage()    {}
 func (*RemoveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{11}
+	return fileDescriptor_01f9cba63d8f209f, []int{15}
 }
 
 func (m *RemoveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -581,7 +760,7 @@ func (m *RemoveOrgReply) Reset()         { *m = RemoveOrgReply{} }
 func (m *RemoveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgReply) ProtoMessage()    {}
 func (*RemoveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{12}
+	return fileDescriptor_01f9cba63d8f209f, []int{16}
 }
 
 func (m *RemoveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -613,7 +792,7 @@ func (m *InviteToOrgRequest) Reset()         { *m = InviteToOrgRequest{} }
 func (m *InviteToOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgRequest) ProtoMessage()    {}
 func (*InviteToOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{13}
+	return fileDescriptor_01f9cba63d8f209f, []int{17}
 }
 
 func (m *InviteToOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -642,7 +821,7 @@ func (m *InviteToOrgRequest) GetEmail() string {
 }
 
 type InviteToOrgReply struct {
-	Session              string   `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	Token                string   `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -652,7 +831,7 @@ func (m *InviteToOrgReply) Reset()         { *m = InviteToOrgReply{} }
 func (m *InviteToOrgReply) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgReply) ProtoMessage()    {}
 func (*InviteToOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{14}
+	return fileDescriptor_01f9cba63d8f209f, []int{18}
 }
 
 func (m *InviteToOrgReply) XXX_Unmarshal(b []byte) error {
@@ -673,9 +852,9 @@ func (m *InviteToOrgReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_InviteToOrgReply proto.InternalMessageInfo
 
-func (m *InviteToOrgReply) GetSession() string {
+func (m *InviteToOrgReply) GetToken() string {
 	if m != nil {
-		return m.Session
+		return m.Token
 	}
 	return ""
 }
@@ -690,7 +869,7 @@ func (m *LeaveOrgRequest) Reset()         { *m = LeaveOrgRequest{} }
 func (m *LeaveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgRequest) ProtoMessage()    {}
 func (*LeaveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{15}
+	return fileDescriptor_01f9cba63d8f209f, []int{19}
 }
 
 func (m *LeaveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -721,7 +900,7 @@ func (m *LeaveOrgReply) Reset()         { *m = LeaveOrgReply{} }
 func (m *LeaveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgReply) ProtoMessage()    {}
 func (*LeaveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{16}
+	return fileDescriptor_01f9cba63d8f209f, []int{20}
 }
 
 func (m *LeaveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -749,6 +928,11 @@ func init() {
 	proto.RegisterType((*LogoutReply)(nil), "cloud.pb.LogoutReply")
 	proto.RegisterType((*WhoamiRequest)(nil), "cloud.pb.WhoamiRequest")
 	proto.RegisterType((*WhoamiReply)(nil), "cloud.pb.WhoamiReply")
+	proto.RegisterType((*ListThreadsRequest)(nil), "cloud.pb.ListThreadsRequest")
+	proto.RegisterType((*ListThreadsReply)(nil), "cloud.pb.ListThreadsReply")
+	proto.RegisterType((*ListThreadsReply_Thread)(nil), "cloud.pb.ListThreadsReply.Thread")
+	proto.RegisterType((*UseThreadRequest)(nil), "cloud.pb.UseThreadRequest")
+	proto.RegisterType((*UseThreadReply)(nil), "cloud.pb.UseThreadReply")
 	proto.RegisterType((*AddOrgRequest)(nil), "cloud.pb.AddOrgRequest")
 	proto.RegisterType((*GetOrgRequest)(nil), "cloud.pb.GetOrgRequest")
 	proto.RegisterType((*GetOrgReply)(nil), "cloud.pb.GetOrgReply")
@@ -766,43 +950,49 @@ func init() {
 func init() { proto.RegisterFile("cloud.proto", fileDescriptor_01f9cba63d8f209f) }
 
 var fileDescriptor_01f9cba63d8f209f = []byte{
-	// 567 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0xae, 0x9d, 0x9f, 0x26, 0xe3, 0xa6, 0x0d, 0xab, 0x86, 0x9a, 0x55, 0x0f, 0x91, 0xb9, 0x04,
-	0x84, 0x72, 0x28, 0x08, 0xa4, 0x9e, 0x9a, 0x26, 0x12, 0x58, 0x0a, 0x4a, 0x65, 0x05, 0xc1, 0xad,
-	0x72, 0xe2, 0x55, 0xb0, 0x64, 0x67, 0x8d, 0xbd, 0xa9, 0xc8, 0xeb, 0xf0, 0x28, 0xbc, 0x0b, 0xef,
-	0x81, 0xd6, 0xeb, 0xb5, 0x77, 0x1b, 0xf7, 0xd0, 0xdb, 0xee, 0x37, 0xf3, 0x8d, 0xe7, 0xdb, 0xf9,
-	0xc6, 0x60, 0xad, 0x23, 0xba, 0x0b, 0xc6, 0x49, 0x4a, 0x19, 0x45, 0x9d, 0xe2, 0xb2, 0x72, 0x6e,
-	0xe0, 0x64, 0x4e, 0x37, 0xe1, 0xd6, 0x23, 0xbf, 0x76, 0x24, 0x63, 0x08, 0x43, 0x67, 0x97, 0x91,
-	0x74, 0xeb, 0xc7, 0xc4, 0x36, 0x86, 0xc6, 0xa8, 0xeb, 0x95, 0x77, 0x74, 0x0e, 0x2d, 0x12, 0xfb,
-	0x61, 0x64, 0x9b, 0x79, 0x40, 0x5c, 0x1c, 0x0f, 0xa0, 0xa8, 0x90, 0x44, 0x7b, 0x74, 0x0a, 0xa6,
-	0x3b, 0x2b, 0x98, 0xa6, 0x3b, 0xd3, 0xea, 0x99, 0x8f, 0xea, 0xd9, 0x70, 0x9c, 0x91, 0x2c, 0x0b,
-	0xe9, 0xd6, 0x6e, 0xe4, 0x21, 0x79, 0x75, 0xce, 0xa0, 0x37, 0xa7, 0x1b, 0xba, 0x63, 0x45, 0x5b,
-	0x4e, 0x0f, 0x2c, 0x09, 0x24, 0xd1, 0x9e, 0xc7, 0xbf, 0xff, 0xa4, 0x7e, 0x1c, 0xca, 0xf8, 0x02,
-	0x2c, 0x09, 0x3c, 0xb7, 0x8b, 0x52, 0x55, 0x43, 0x55, 0xf5, 0x1a, 0x7a, 0x93, 0x20, 0x58, 0xa4,
-	0x1b, 0xf9, 0x30, 0x08, 0x9a, 0xca, 0xa3, 0xe4, 0x67, 0xde, 0xc6, 0x67, 0xc2, 0xaa, 0x24, 0xe7,
-	0x9f, 0x01, 0x96, 0x44, 0xea, 0xfa, 0x90, 0x45, 0xcc, 0xaa, 0x08, 0xc7, 0x82, 0x95, 0x3b, 0x2b,
-	0x3e, 0x9f, 0x9f, 0xd1, 0x47, 0x38, 0x8e, 0x49, 0xbc, 0x22, 0x69, 0x66, 0x37, 0x87, 0x8d, 0x91,
-	0x75, 0x75, 0x39, 0x96, 0x13, 0x1b, 0x2b, 0xf5, 0xc7, 0x5f, 0xf3, 0x24, 0x4f, 0x26, 0xa3, 0x4b,
-	0xe8, 0xae, 0x53, 0xe2, 0x33, 0x12, 0x4c, 0x98, 0xdd, 0x1a, 0x1a, 0xa3, 0x86, 0x57, 0x01, 0xf8,
-	0x0b, 0xb4, 0x05, 0xe1, 0x59, 0xef, 0x83, 0xa0, 0x99, 0xd2, 0x88, 0xc8, 0xfe, 0xf8, 0xd9, 0x79,
-	0x01, 0x67, 0xf3, 0x30, 0xe3, 0x7d, 0x64, 0x52, 0xfa, 0x35, 0xf4, 0x2a, 0x88, 0x6b, 0x7f, 0x03,
-	0xcd, 0x28, 0xcc, 0x98, 0x6d, 0xe4, 0x02, 0x06, 0xb5, 0x02, 0xbc, 0x3c, 0xc5, 0x41, 0xd0, 0xf7,
-	0x48, 0x4c, 0x1f, 0x88, 0xf2, 0x94, 0x7d, 0x38, 0x55, 0x30, 0x3e, 0xf4, 0xb7, 0x80, 0xdc, 0xed,
-	0x43, 0xc8, 0xc8, 0x92, 0x2a, 0x73, 0x29, 0xc7, 0x67, 0xa8, 0xe3, 0x7b, 0x07, 0x7d, 0x2d, 0x97,
-	0x37, 0xa4, 0xd8, 0xcd, 0xd0, 0xed, 0xc6, 0xe5, 0x10, 0x5f, 0xfb, 0x3c, 0x77, 0x60, 0x09, 0x25,
-	0xd1, 0xfe, 0xea, 0x6f, 0x13, 0x1a, 0x93, 0x3b, 0x17, 0x7d, 0x82, 0x56, 0x6e, 0x77, 0xf4, 0xb2,
-	0x52, 0xa4, 0x6e, 0x10, 0x3e, 0x3f, 0xc0, 0x79, 0xf3, 0x47, 0xe8, 0x1a, 0xda, 0xc2, 0xc2, 0xe8,
-	0x42, 0xcb, 0xa8, 0x5c, 0x8e, 0x07, 0x87, 0x81, 0x92, 0x2b, 0xec, 0xad, 0x72, 0xb5, 0x0d, 0x50,
-	0xb9, 0xca, 0x26, 0x08, 0xae, 0x70, 0xb2, 0xca, 0xd5, 0xbc, 0x8d, 0xeb, 0x87, 0x23, 0xb8, 0x02,
-	0x50, 0xb9, 0x9a, 0xe5, 0x9f, 0xe6, 0xde, 0x40, 0x47, 0x1a, 0x02, 0xbd, 0x52, 0x84, 0xe9, 0xbe,
-	0xc1, 0x17, 0x75, 0x21, 0x51, 0x61, 0x0a, 0xdd, 0xd2, 0x02, 0x08, 0x57, 0x79, 0x8f, 0xbd, 0x82,
-	0xed, 0xda, 0x98, 0x28, 0xe2, 0x82, 0xa5, 0x38, 0x01, 0x29, 0x8b, 0x74, 0x68, 0x26, 0x8c, 0x9f,
-	0x88, 0x56, 0x8a, 0x0a, 0x4f, 0x68, 0x8a, 0x74, 0xeb, 0x68, 0x8a, 0x54, 0x0b, 0x39, 0x47, 0xb7,
-	0x1f, 0x60, 0x10, 0xd2, 0x31, 0x23, 0xbf, 0x59, 0x18, 0x11, 0x91, 0x76, 0xbf, 0x49, 0x93, 0xf5,
-	0xed, 0xc9, 0x52, 0x60, 0x53, 0x0e, 0xdd, 0x19, 0x7f, 0x4c, 0x58, 0xfe, 0x58, 0xce, 0xef, 0xa7,
-	0xf3, 0xc5, 0xb7, 0xd9, 0xaa, 0x9d, 0xff, 0xb4, 0xdf, 0xff, 0x0f, 0x00, 0x00, 0xff, 0xff, 0x35,
-	0xdf, 0x40, 0x64, 0xc3, 0x05, 0x00, 0x00,
+	// 661 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xcb, 0x4e, 0xdb, 0x4c,
+	0x14, 0x8e, 0x73, 0x23, 0x9c, 0x10, 0xf0, 0x3f, 0x0a, 0x3f, 0xae, 0xc5, 0x82, 0x4e, 0x37, 0x69,
+	0x17, 0x5e, 0xd0, 0x9b, 0xc4, 0x8a, 0x9b, 0xd4, 0x46, 0x4a, 0x15, 0x64, 0x05, 0xb5, 0x3b, 0x64,
+	0xc8, 0x28, 0x58, 0xb5, 0x33, 0xae, 0x3d, 0x41, 0xcd, 0xa2, 0x2f, 0xd3, 0x37, 0x6a, 0x9f, 0xa8,
+	0xf2, 0x8c, 0xc7, 0x3e, 0x63, 0xc2, 0x82, 0x9d, 0xcf, 0x75, 0xce, 0x77, 0xce, 0xf7, 0xc9, 0xd0,
+	0xbf, 0x8b, 0xf8, 0x6a, 0xee, 0x25, 0x29, 0x17, 0x9c, 0xf4, 0x0a, 0xe3, 0x96, 0x9e, 0xc2, 0xce,
+	0x84, 0x2f, 0xc2, 0xa5, 0xcf, 0x7e, 0xac, 0x58, 0x26, 0x88, 0x0b, 0xbd, 0x55, 0xc6, 0xd2, 0x65,
+	0x10, 0x33, 0xc7, 0x3a, 0xb2, 0x46, 0xdb, 0x7e, 0x69, 0x93, 0x21, 0x74, 0x58, 0x1c, 0x84, 0x91,
+	0xd3, 0x94, 0x01, 0x65, 0x50, 0x1f, 0xa0, 0xe8, 0x90, 0x44, 0x6b, 0xb2, 0x0b, 0xcd, 0xf1, 0x65,
+	0x51, 0xd9, 0x1c, 0x5f, 0x1a, 0xfd, 0x9a, 0xb5, 0x7e, 0x0e, 0x6c, 0x65, 0x2c, 0xcb, 0x42, 0xbe,
+	0x74, 0x5a, 0x32, 0xa4, 0x4d, 0xba, 0x07, 0x83, 0x09, 0x5f, 0xf0, 0x95, 0x28, 0xc6, 0xa2, 0x03,
+	0xe8, 0x6b, 0x47, 0x12, 0xad, 0xf3, 0xf8, 0xd7, 0x7b, 0x1e, 0xc4, 0xa1, 0x8e, 0x4f, 0xa1, 0xaf,
+	0x1d, 0xcf, 0x9d, 0xa2, 0x44, 0xd5, 0xc2, 0xa8, 0x86, 0x40, 0x26, 0x61, 0x26, 0x66, 0xf7, 0x29,
+	0x0b, 0xe6, 0x99, 0x7e, 0xe6, 0x17, 0xd8, 0x86, 0x37, 0x7f, 0xeb, 0x3d, 0xb4, 0xa3, 0x30, 0x13,
+	0x8e, 0x75, 0xd4, 0x1a, 0xf5, 0x8f, 0x5f, 0x7a, 0x7a, 0xb5, 0x5e, 0x3d, 0xd3, 0x53, 0x86, 0x2f,
+	0xd3, 0xdd, 0x63, 0xe8, 0x2a, 0x1b, 0x0d, 0xbb, 0x23, 0x87, 0x75, 0x60, 0x2b, 0x49, 0xc3, 0x38,
+	0x48, 0xd7, 0x72, 0xd6, 0x9e, 0xaf, 0x4d, 0x4a, 0xc1, 0xbe, 0xce, 0x58, 0xd1, 0xa6, 0x38, 0x58,
+	0xad, 0x9a, 0xda, 0xb0, 0x8b, 0x72, 0xf2, 0x65, 0xbd, 0x82, 0xc1, 0xd9, 0x7c, 0x3e, 0x4d, 0x17,
+	0xba, 0x84, 0x40, 0x1b, 0xdd, 0x57, 0x7e, 0xe7, 0x1b, 0xfd, 0xc4, 0x44, 0x95, 0x44, 0xff, 0x58,
+	0xd0, 0xd7, 0x9e, 0x4d, 0x2b, 0xd5, 0x4d, 0x9a, 0x55, 0x13, 0xf2, 0x01, 0xb6, 0x62, 0x16, 0xdf,
+	0xb2, 0x34, 0x73, 0x5a, 0x72, 0x1b, 0x87, 0xd5, 0x36, 0x50, 0x2f, 0xef, 0x8b, 0x4c, 0xf2, 0x75,
+	0x32, 0x39, 0x84, 0xed, 0xbb, 0x94, 0x05, 0x82, 0xcd, 0xcf, 0x84, 0xd3, 0x3e, 0xb2, 0x46, 0x2d,
+	0xbf, 0x72, 0xb8, 0x9f, 0xa1, 0xab, 0x0a, 0x9e, 0x75, 0x56, 0x02, 0xed, 0x94, 0x47, 0xac, 0xb8,
+	0xaa, 0xfc, 0xa6, 0xff, 0xc1, 0x5e, 0x7e, 0x94, 0x69, 0xba, 0x28, 0x2f, 0x7a, 0x02, 0x83, 0xca,
+	0x95, 0xe3, 0x7c, 0x6d, 0x9c, 0x73, 0x7f, 0x23, 0x00, 0x75, 0x42, 0x4a, 0xc0, 0xf6, 0x59, 0xcc,
+	0x1f, 0x18, 0x5a, 0x9b, 0x0d, 0xbb, 0xc8, 0x97, 0xaf, 0xff, 0x0d, 0x90, 0xf1, 0xf2, 0x21, 0x14,
+	0x6c, 0xc6, 0xd1, 0x0d, 0x4a, 0xd6, 0x59, 0x98, 0x75, 0x23, 0xb0, 0x8d, 0xdc, 0x7c, 0xa0, 0x21,
+	0x74, 0x04, 0xff, 0xce, 0x96, 0x3a, 0x53, 0x1a, 0x12, 0x0a, 0x0b, 0x8c, 0xa7, 0x73, 0xd1, 0x94,
+	0xae, 0x24, 0x5a, 0x1f, 0xff, 0xed, 0x40, 0xeb, 0xec, 0x6a, 0x4c, 0x3e, 0x42, 0x47, 0x2a, 0x94,
+	0xfc, 0x8f, 0xc8, 0x89, 0x44, 0xef, 0x0e, 0x1f, 0xf9, 0xf3, 0xc1, 0x1b, 0xe4, 0x04, 0xba, 0x4a,
+	0x75, 0xe4, 0xc0, 0xc8, 0xa8, 0x84, 0xe9, 0xee, 0x3f, 0x0e, 0x94, 0xb5, 0x4a, 0x91, 0xb8, 0xd6,
+	0x10, 0x2d, 0xae, 0x45, 0xe2, 0xa5, 0x0d, 0x32, 0x86, 0x3e, 0x12, 0x0f, 0x39, 0x7c, 0x42, 0x53,
+	0xaa, 0x8b, 0xfb, 0xb4, 0xe2, 0x68, 0x83, 0x5c, 0xc0, 0x76, 0x29, 0x07, 0x82, 0x52, 0xeb, 0x3a,
+	0x72, 0x9d, 0x8d, 0xb1, 0x12, 0x8b, 0x52, 0x10, 0xc6, 0x62, 0x68, 0xca, 0xdd, 0x4c, 0x14, 0x55,
+	0xab, 0x1c, 0xb8, 0xd6, 0x90, 0xda, 0xd3, 0xb5, 0xa7, 0xd0, 0xd3, 0xe4, 0x24, 0x2f, 0x4c, 0x98,
+	0x88, 0xc3, 0xee, 0xc1, 0xa6, 0x50, 0x09, 0xbf, 0xa4, 0x23, 0x86, 0x5f, 0xe7, 0x2d, 0x86, 0x5f,
+	0xe3, 0xaf, 0x3c, 0x07, 0x62, 0x25, 0x3e, 0xc7, 0x63, 0x62, 0xe3, 0x73, 0xd4, 0xa9, 0x5c, 0x20,
+	0x2a, 0x38, 0x6a, 0x20, 0x32, 0xa9, 0x6c, 0x20, 0xc2, 0x94, 0xa6, 0x8d, 0xf3, 0x77, 0xb0, 0x1f,
+	0x72, 0x4f, 0xb0, 0x9f, 0x22, 0x8c, 0x98, 0x4a, 0xbb, 0x59, 0xa4, 0xc9, 0xdd, 0xf9, 0xce, 0x4c,
+	0xf9, 0x2e, 0x72, 0xd7, 0x95, 0xf5, 0xbb, 0x09, 0xb3, 0x6f, 0xb3, 0xc9, 0xcd, 0xc5, 0x64, 0x7a,
+	0x7d, 0x79, 0xdb, 0x95, 0xff, 0xbd, 0xb7, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0x83, 0x6f, 0x68,
+	0xac, 0x06, 0x07, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -820,6 +1010,8 @@ type APIClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error)
 	Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error)
+	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
+	UseThread(ctx context.Context, in *UseThreadRequest, opts ...grpc.CallOption) (*UseThreadReply, error)
 	AddOrg(ctx context.Context, in *AddOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error)
 	GetOrg(ctx context.Context, in *GetOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error)
 	ListOrgs(ctx context.Context, in *ListOrgsRequest, opts ...grpc.CallOption) (*ListOrgsReply, error)
@@ -857,6 +1049,24 @@ func (c *aPIClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.
 func (c *aPIClient) Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error) {
 	out := new(WhoamiReply)
 	err := c.cc.Invoke(ctx, "/cloud.pb.API/Whoami", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error) {
+	out := new(ListThreadsReply)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/ListThreads", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) UseThread(ctx context.Context, in *UseThreadRequest, opts ...grpc.CallOption) (*UseThreadReply, error) {
+	out := new(UseThreadReply)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/UseThread", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -922,6 +1132,8 @@ type APIServer interface {
 	Login(context.Context, *LoginRequest) (*LoginReply, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutReply, error)
 	Whoami(context.Context, *WhoamiRequest) (*WhoamiReply, error)
+	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
+	UseThread(context.Context, *UseThreadRequest) (*UseThreadReply, error)
 	AddOrg(context.Context, *AddOrgRequest) (*GetOrgReply, error)
 	GetOrg(context.Context, *GetOrgRequest) (*GetOrgReply, error)
 	ListOrgs(context.Context, *ListOrgsRequest) (*ListOrgsReply, error)
@@ -942,6 +1154,12 @@ func (*UnimplementedAPIServer) Logout(ctx context.Context, req *LogoutRequest) (
 }
 func (*UnimplementedAPIServer) Whoami(ctx context.Context, req *WhoamiRequest) (*WhoamiReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Whoami not implemented")
+}
+func (*UnimplementedAPIServer) ListThreads(ctx context.Context, req *ListThreadsRequest) (*ListThreadsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListThreads not implemented")
+}
+func (*UnimplementedAPIServer) UseThread(ctx context.Context, req *UseThreadRequest) (*UseThreadReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UseThread not implemented")
 }
 func (*UnimplementedAPIServer) AddOrg(ctx context.Context, req *AddOrgRequest) (*GetOrgReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddOrg not implemented")
@@ -1016,6 +1234,42 @@ func _API_Whoami_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(APIServer).Whoami(ctx, req.(*WhoamiRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListThreads_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListThreadsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListThreads(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cloud.pb.API/ListThreads",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListThreads(ctx, req.(*ListThreadsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_UseThread_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UseThreadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).UseThread(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cloud.pb.API/UseThread",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).UseThread(ctx, req.(*UseThreadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1143,6 +1397,14 @@ var _API_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Whoami",
 			Handler:    _API_Whoami_Handler,
+		},
+		{
+			MethodName: "ListThreads",
+			Handler:    _API_ListThreads_Handler,
+		},
+		{
+			MethodName: "UseThread",
+			Handler:    _API_UseThread_Handler,
 		},
 		{
 			MethodName: "AddOrg",

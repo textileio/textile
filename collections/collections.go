@@ -9,7 +9,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const dbName = "textile"
+const (
+	dbName   = "textile"
+	tokenLen = 44
+)
 
 func init() {
 	slug.MaxLength = 64
@@ -25,7 +28,7 @@ type Collections struct {
 	Orgs       *Orgs
 	Invites    *Invites
 
-	Databases *Threads
+	Threads *Threads
 
 	Users *Users
 }
@@ -71,7 +74,7 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 		Orgs:       teams,
 		Invites:    invites,
 
-		Databases: databases,
+		Threads: databases,
 
 		Users: users,
 	}, nil

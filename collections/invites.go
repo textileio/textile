@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	inviteTokenLen = 44
-	inviteDur      = time.Hour * 24 * 7 * 30
+	inviteDur = time.Hour * 24 * 7 * 30
 )
 
 type Invite struct {
@@ -49,7 +48,7 @@ func (i *Invites) Create(ctx context.Context, fromID primitive.ObjectID, org, em
 		ID:        primitive.NewObjectID(),
 		Org:       org,
 		FromID:    fromID,
-		Token:     util.MakeURLSafeToken(inviteTokenLen),
+		Token:     util.MakeURLSafeToken(tokenLen),
 		EmailTo:   emailTo,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}

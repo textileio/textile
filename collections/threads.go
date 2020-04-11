@@ -7,21 +7,24 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Thread struct {
-	ID      thread.ID          `bson:"_id"`
-	OwnerID primitive.ObjectID `bson:"owner_id"`
-	KeyID   primitive.ObjectID `bson:"key_id"`
+	ID       primitive.ObjectID `bson:"_id"`
+	ThreadID thread.ID          `bson:"thread_id"`
+	OwnerID  primitive.ObjectID `bson:"owner_id"`
+	KeyID    primitive.ObjectID `bson:"key_id"`
+	Primary  bool               `bson:"primary"`
 }
 
-func NewThreadContext(ctx context.Context, session *Session) context.Context {
-	return context.WithValue(ctx, ctxKey("session"), session)
+func NewThreadContext(ctx context.Context, thread *Thread) context.Context {
+	return context.WithValue(ctx, ctxKey("thread"), thread)
 }
 
 func ThreadFromContext(ctx context.Context) (*Thread, bool) {
-	db, ok := ctx.Value(ctxKey("db")).(*Thread)
-	return db, ok
+	th, ok := ctx.Value(ctxKey("thread")).(*Thread)
+	return th, ok
 }
 
 type Threads struct {
@@ -32,30 +35,44 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 	d := &Threads{col: db.Collection("threads")}
 	_, err := d.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"owner_id", 1}},
+			Keys:    bson.D{{"thread_id", 1}, {"owner_id", 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{{"owner_id", 1}, {"primary", 1}},
 		},
 	})
 	return d, err
 }
 
-func (d *Threads) Create(ctx context.Context, ownerID, keyID primitive.ObjectID) (*Thread, error) {
-	doc := &Thread{
-		ID:      thread.NewIDV1(thread.Raw, 32),
-		OwnerID: ownerID,
-		KeyID:   keyID,
+func (t *Threads) Create(ctx context.Context, threadID thread.ID, ownerID, keyID primitive.ObjectID) (*Thread, error) {
+	var primary bool
+	res := t.col.FindOne(ctx, bson.M{"owner_id": ownerID, "primary": true})
+	if res.Err() != nil {
+		primary = true
 	}
-	if _, err := d.col.InsertOne(ctx, bson.M{
-		"_id":      doc.ID.Bytes(),
-		"owner_id": doc.OwnerID,
-		"key_id":   doc.KeyID,
+
+	doc := &Thread{
+		ID:       primitive.NewObjectID(),
+		ThreadID: threadID,
+		OwnerID:  ownerID,
+		KeyID:    keyID,
+		Primary:  primary,
+	}
+	if _, err := t.col.InsertOne(ctx, bson.M{
+		"_id":       doc.ID,
+		"thread_id": doc.ThreadID.Bytes(),
+		"owner_id":  doc.OwnerID,
+		"key_id":    doc.KeyID,
+		"primary":   doc.Primary,
 	}); err != nil {
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (d *Threads) Get(ctx context.Context, id thread.ID) (*Thread, error) {
-	res := d.col.FindOne(ctx, bson.M{"_id": id.Bytes()})
+func (t *Threads) Get(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) (*Thread, error) {
+	res := t.col.FindOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -66,8 +83,8 @@ func (d *Threads) Get(ctx context.Context, id thread.ID) (*Thread, error) {
 	return decodeThread(raw)
 }
 
-func (d *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Thread, error) {
-	cursor, err := d.col.Find(ctx, bson.M{"owner_id": ownerID})
+func (t *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Thread, error) {
+	cursor, err := t.col.Find(ctx, bson.M{"owner_id": ownerID})
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +106,20 @@ func (d *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Threa
 	return docs, nil
 }
 
-func (d *Threads) Delete(ctx context.Context, id thread.ID) error {
-	res, err := d.col.DeleteOne(ctx, bson.M{"_id": id.Bytes()})
+func (t *Threads) Use(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) error {
+	res := t.col.FindOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID})
+	if res.Err() != nil {
+		return res.Err()
+	}
+	if _, err := t.col.UpdateOne(ctx, bson.M{"owner_id": ownerID, "primary": true}, bson.M{"$set": bson.M{"primary": false}}); err != nil {
+		return err
+	}
+	_, err := t.col.UpdateOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID}, bson.M{"$set": bson.M{"primary": true}})
+	return err
+}
+
+func (t *Threads) Delete(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) error {
+	res, err := t.col.DeleteOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID})
 	if err != nil {
 		return err
 	}
@@ -101,13 +130,15 @@ func (d *Threads) Delete(ctx context.Context, id thread.ID) error {
 }
 
 func decodeThread(raw bson.M) (*Thread, error) {
-	id, err := thread.Cast(raw["_id"].(primitive.Binary).Data)
+	threadID, err := thread.Cast(raw["thread_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}
 	return &Thread{
-		ID:      id,
-		OwnerID: raw["owner_id"].(primitive.ObjectID),
-		KeyID:   raw["key_id"].(primitive.ObjectID),
+		ID:       raw["_id"].(primitive.ObjectID),
+		ThreadID: threadID,
+		OwnerID:  raw["owner_id"].(primitive.ObjectID),
+		KeyID:    raw["key_id"].(primitive.ObjectID),
+		Primary:  raw["primary"].(bool),
 	}, nil
 }
