@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -20,27 +20,43 @@ type Flag struct {
 	DefValue interface{}
 }
 
-func InitConfig(v *viper.Viper, file string, defDir string, name string, global bool) func() {
+const maxSearchHeight = 50
+
+func InitConfig(v *viper.Viper, file, cdir, name string, global bool) func() {
 	return func() {
-		if file != "" {
-			v.SetConfigFile(file)
-		} else {
+		found := false
+		pre := "."
+		h := 1
+		for h <= maxSearchHeight && !found {
+			found = initConfig(v, file, pre, cdir, name, global)
+			pre = filepath.Join("../", pre)
+			h++
+		}
+	}
+}
+
+func initConfig(v *viper.Viper, file, pre, cdir, name string, global bool) bool {
+	if file != "" {
+		v.SetConfigFile(file)
+	} else {
+		v.AddConfigPath(filepath.Join(pre, cdir)) // local config takes priority
+		if global {
 			home, err := homedir.Dir()
 			if err != nil {
 				panic(err)
 			}
-			v.AddConfigPath(path.Join("./", defDir)) // local config takes priority
-			if global {
-				v.AddConfigPath(path.Join(home, defDir))
-			}
-			v.SetConfigName(name)
+			v.AddConfigPath(filepath.Join(home, cdir))
 		}
-
-		v.SetEnvPrefix("TXTL")
-		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-		v.AutomaticEnv()
-		_ = v.ReadInConfig()
+		v.SetConfigName(name)
 	}
+
+	v.SetEnvPrefix("TXTL")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	if err := v.ReadInConfig(); err != nil && strings.Contains(err.Error(), "Not Found") {
+		return false
+	}
+	return true
 }
 
 func BindFlags(v *viper.Viper, root *cobra.Command, flags map[string]Flag) error {

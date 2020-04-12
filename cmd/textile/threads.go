@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/manifoldco/promptui"
-
 	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/cmd"
@@ -69,18 +68,13 @@ var useThreadsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectThread("Select thread", aurora.Sprintf(
 			aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
-
-		id, err := thread.Decode(selected.ID)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		configViper.Set("thread", selected.ID)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err = cloud.UseThread(ctx, id); err != nil {
+		if err := cloud.SetPrimaryThread(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Success("Switched to thread %s", aurora.White(selected.ID).Bold())
 	},
 }

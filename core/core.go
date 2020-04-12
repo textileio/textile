@@ -178,7 +178,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	t.server = grpc.NewServer(
-		grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.newThreadInterceptor()),
+		grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
 		grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)))
 	listener, err := net.Listen("tcp", target)
 	if err != nil {
@@ -366,7 +366,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func (t *Textile) newThreadInterceptor() grpc.UnaryServerInterceptor {
+func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		var ownerID primitive.ObjectID
 		if org, ok := c.OrgFromContext(ctx); ok {
@@ -375,6 +375,8 @@ func (t *Textile) newThreadInterceptor() grpc.UnaryServerInterceptor {
 			ownerID = dev.ID
 		}
 		// @todo: If not dev or org, need a key with user
+		// @todo: Handle deletes
+		// @todo: Check access if not creating or let ACL handle it?
 
 		// Let the request pass through
 		res, err := handler(ctx, req)

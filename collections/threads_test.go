@@ -43,6 +43,47 @@ func TestThreads_Get(t *testing.T) {
 	assert.Equal(t, created.ID, got.ID)
 }
 
+func TestThreads_GetPrimary(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewThreads(context.Background(), db)
+	require.Nil(t, err)
+	ownerID := primitive.NewObjectID()
+	created, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
+	require.Nil(t, err)
+
+	got, err := col.GetPrimary(context.Background(), ownerID)
+	require.Nil(t, err)
+	require.True(t, got.Primary)
+	require.Equal(t, created.ID, got.ID)
+}
+
+func TestThreads_SetPrimary(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewThreads(context.Background(), db)
+	require.Nil(t, err)
+	ownerID := primitive.NewObjectID()
+	created1, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
+	require.Nil(t, err)
+	require.True(t, created1.Primary)
+
+	created2, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
+	require.Nil(t, err)
+
+	err = col.SetPrimary(context.Background(), created2.ThreadID, ownerID)
+	require.Nil(t, err)
+	got, err := col.Get(context.Background(), created2.ThreadID, ownerID)
+	require.Nil(t, err)
+	require.True(t, got.Primary)
+
+	got, err = col.Get(context.Background(), created1.ThreadID, ownerID)
+	require.Nil(t, err)
+	require.False(t, got.Primary)
+}
+
 func TestThreads_List(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
@@ -62,31 +103,6 @@ func TestThreads_List(t *testing.T) {
 	list2, err := col.List(context.Background(), primitive.NewObjectID())
 	require.Nil(t, err)
 	assert.Equal(t, len(list2), 0)
-}
-
-func TestThreads_Use(t *testing.T) {
-	t.Parallel()
-	db := newDB(t)
-
-	col, err := NewThreads(context.Background(), db)
-	require.Nil(t, err)
-	ownerID := primitive.NewObjectID()
-	created1, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
-	require.Nil(t, err)
-	require.True(t, created1.Primary)
-
-	created2, err := col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), ownerID, primitive.NewObjectID())
-	require.Nil(t, err)
-
-	err = col.Use(context.Background(), created2.ThreadID, ownerID)
-	require.Nil(t, err)
-	got, err := col.Get(context.Background(), created2.ThreadID, ownerID)
-	require.Nil(t, err)
-	require.True(t, got.Primary)
-
-	got, err = col.Get(context.Background(), created1.ThreadID, ownerID)
-	require.Nil(t, err)
-	require.False(t, got.Primary)
 }
 
 func TestThreads_Delete(t *testing.T) {

@@ -40,11 +40,15 @@ message ListThreadsReply {
     }
 }
 
-message UseThreadRequest {
+message SetPrimaryThreadRequest {}
+
+message SetPrimaryThreadReply {}
+
+message GetPrimaryThreadRequest {}
+
+message GetPrimaryThreadReply {
     bytes ID = 1;
 }
-
-message UseThreadReply {}
 
 message AddOrgRequest {
     string name = 1;
@@ -92,8 +96,9 @@ service API {
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
     rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
 
+    rpc GetPrimaryThread (GetPrimaryThreadRequest) returns (GetPrimaryThreadReply) {}
+    rpc SetPrimaryThread (SetPrimaryThreadRequest) returns (SetPrimaryThreadReply) {}
     rpc ListThreads (ListThreadsRequest) returns (ListThreadsReply) {}
-    rpc UseThread (UseThreadRequest) returns (UseThreadReply) {}
 
     rpc AddOrg (AddOrgRequest) returns (GetOrgReply) {}
     rpc GetOrg (GetOrgRequest) returns (GetOrgReply) {}

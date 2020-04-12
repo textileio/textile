@@ -70,12 +70,12 @@ var (
 	configViper = viper.New()
 
 	flags = map[string]cmd.Flag{
-		"org": {
-			Key:      "org",
-			DefValue: "",
-		},
 		"name": {
 			Key:      "name",
+			DefValue: "",
+		},
+		"org": {
+			Key:      "org",
 			DefValue: "",
 		},
 		"public": {
@@ -195,13 +195,18 @@ func authCtx(duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	ctx = common.NewSessionContext(ctx, authViper.GetString("session"))
 	ctx = common.NewOrgNameContext(ctx, configViper.GetString("org"))
+	ctx = common.NewThreadIDContext(ctx, getThreadID())
+	return ctx, cancel
+}
+
+func getThreadID() (id thread.ID) {
 	idstr := configViper.GetString("thread")
 	if idstr != "" {
-		id, err := thread.Decode(idstr)
+		var err error
+		id, err = thread.Decode(idstr)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		ctx = common.NewThreadIDContext(ctx, id)
 	}
-	return ctx, cancel
+	return
 }

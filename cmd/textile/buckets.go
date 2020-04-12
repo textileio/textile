@@ -7,23 +7,27 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/textileio/textile/util"
-
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
+)
+
+var (
+	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
 )
 
 func init() {
 	rootCmd.AddCommand(bucketsCmd)
 	bucketsCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
-	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
 	initBucketPathCmd.PersistentFlags().String("name", "", "Bucket name")
+	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
 
@@ -39,6 +43,12 @@ var bucketsCmd = &cobra.Command{
 	},
 	Short: "Manage buckets",
 	Long:  `Manage your buckets.`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
 		lsBucketPath(args)
 	},
@@ -75,16 +85,6 @@ Existing configs will not be overwritten.
 			cmd.Fatal(fmt.Errorf("bucket at %s already initialized", root))
 		}
 
-		//if configViper.GetString("thread") == "" {
-		//	threadID := thread.NewIDV1(thread.Raw, 32)
-		//	ctx, cancel := authCtx(cmdTimeout)
-		//	defer cancel()
-		//	if err := threads.NewDB(ctx, threadID); err != nil {
-		//		cmd.Fatal(err)
-		//	}
-		//	configViper.Set("thread", threadID.String())
-		//}
-
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
@@ -99,6 +99,12 @@ var lsBucketPathCmd = &cobra.Command{
 	},
 	Short: "List bucket path contents",
 	Long:  `List files and directories under a bucket path.`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
 		lsBucketPath(args)
 	},
@@ -154,8 +160,11 @@ func lsBucketPath(args []string) {
 
 var pushBucketPathCmd = &cobra.Command{
 	Use:   "push [target] [path]",
-	Short: "Push to a bucket path",
+	Short: "Push to a bucket path (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
+
+Buckets are written to a thread. By default, new buckets are created in your account's primary thread.
+Using the '--org' flag will instead create new buckets under the Organization's account.
 
 File structure is mirrored in the bucket. For example, given the directory:
     foo/one.txt
@@ -185,7 +194,31 @@ These 'push' commands result in the following bucket structures.
     foo/bar/baz/three.txt
 `,
 	Args: cobra.MinimumNArgs(2),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
+		dbID := getThreadID()
+		if !dbID.Defined() {
+			ctx, cancel := authCtx(addFileTimeout)
+			defer cancel()
+			var err error
+			dbID, err = cloud.GetPrimaryThread(ctx)
+			if err != nil { // @todo: Ensure this is a not found error
+				dbID = thread.NewIDV1(thread.Raw, 32)
+				if err = threads.NewDB(ctx, dbID); err != nil {
+					cmd.Fatal(err)
+				}
+			}
+			configViper.Set("thread", dbID.String())
+			if err := configViper.WriteConfig(); err != nil {
+				cmd.Fatal(err)
+			}
+		}
+
 		var names []string
 		var paths []string
 		bucketPath, args := args[len(args)-1], args[:len(args)-1]
@@ -309,6 +342,12 @@ These 'pull' commands result in the following local structures.
     foo/bar/baz/three.txt
 `,
 	Args: cobra.ExactArgs(2),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
 		count := getPath(args[0], filepath.Dir(args[0]), args[1])
 		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
@@ -373,6 +412,12 @@ var catBucketPathCmd = &cobra.Command{
 	Short: "Cat a bucket path file",
 	Long:  `Cat a file at a bucket path.`,
 	Args:  cobra.ExactArgs(1),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(getFileTimeout)
 		defer cancel()
@@ -390,6 +435,12 @@ var rmBucketPathCmd = &cobra.Command{
 	Short: "Remove bucket path contents",
 	Long:  `Remove files and directories under a bucket path.`,
 	Args:  cobra.ExactArgs(1),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()

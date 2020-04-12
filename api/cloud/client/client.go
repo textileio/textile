@@ -52,19 +52,26 @@ func (c *Client) Whoami(ctx context.Context) (*pb.WhoamiReply, error) {
 	return c.c.Whoami(ctx, &pb.WhoamiRequest{})
 }
 
+// GetPrimaryThread returns the primary thread for the dev/org.
+// The primary thread will be used for new buckets.
+func (c *Client) GetPrimaryThread(ctx context.Context) (id thread.ID, err error) {
+	res, err := c.c.GetPrimaryThread(ctx, &pb.GetPrimaryThreadRequest{})
+	if err != nil {
+		return
+	}
+	return thread.Cast(res.ID)
+}
+
+// SetPrimaryThread selects a thread as primary.
+func (c *Client) SetPrimaryThread(ctx context.Context) error {
+	_, err := c.c.SetPrimaryThread(ctx, &pb.SetPrimaryThreadRequest{})
+	return err
+}
+
 // ListThreads returns a list of threads.
 // Threads can be created using the threads or threads network client.
 func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) {
 	return c.c.ListThreads(ctx, &pb.ListThreadsRequest{})
-}
-
-// UseThread selects a thread as primary.
-// The primary thread will be used for new buckets.
-func (c *Client) UseThread(ctx context.Context, id thread.ID) error {
-	_, err := c.c.UseThread(ctx, &pb.UseThreadRequest{
-		ID: id.Bytes(),
-	})
-	return err
 }
 
 // AddOrg add a new org.

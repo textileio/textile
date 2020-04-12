@@ -83,6 +83,30 @@ func (t *Threads) Get(ctx context.Context, threadID thread.ID, ownerID primitive
 	return decodeThread(raw)
 }
 
+func (t *Threads) GetPrimary(ctx context.Context, ownerID primitive.ObjectID) (*Thread, error) {
+	res := t.col.FindOne(ctx, bson.M{"owner_id": ownerID, "primary": true})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decodeThread(raw)
+}
+
+func (t *Threads) SetPrimary(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) error {
+	res := t.col.FindOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID})
+	if res.Err() != nil {
+		return res.Err()
+	}
+	if _, err := t.col.UpdateOne(ctx, bson.M{"owner_id": ownerID, "primary": true}, bson.M{"$set": bson.M{"primary": false}}); err != nil {
+		return err
+	}
+	_, err := t.col.UpdateOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID}, bson.M{"$set": bson.M{"primary": true}})
+	return err
+}
+
 func (t *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Thread, error) {
 	cursor, err := t.col.Find(ctx, bson.M{"owner_id": ownerID})
 	if err != nil {
@@ -104,18 +128,6 @@ func (t *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Threa
 		return nil, err
 	}
 	return docs, nil
-}
-
-func (t *Threads) Use(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) error {
-	res := t.col.FindOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID})
-	if res.Err() != nil {
-		return res.Err()
-	}
-	if _, err := t.col.UpdateOne(ctx, bson.M{"owner_id": ownerID, "primary": true}, bson.M{"$set": bson.M{"primary": false}}); err != nil {
-		return err
-	}
-	_, err := t.col.UpdateOne(ctx, bson.M{"thread_id": threadID.Bytes(), "owner_id": ownerID}, bson.M{"$set": bson.M{"primary": true}})
-	return err
 }
 
 func (t *Threads) Delete(ctx context.Context, threadID thread.ID, ownerID primitive.ObjectID) error {

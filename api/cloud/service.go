@@ -82,6 +82,29 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 	}, nil
 }
 
+// awaitVerification waits for a dev to verify their email via a sent email.
+func (s *Service) awaitVerification(secret string) bool {
+	listen := s.SessionBus.Listen()
+	ch := make(chan struct{})
+	timer := time.NewTimer(loginTimeout)
+	go func() {
+		for i := range listen.Channel() {
+			if r, ok := i.(string); ok && r == secret {
+				ch <- struct{}{}
+			}
+		}
+	}()
+	select {
+	case <-ch:
+		listen.Discard()
+		timer.Stop()
+		return true
+	case <-timer.C:
+		listen.Discard()
+		return false
+	}
+}
+
 func getSessionSecret(secret string) string {
 	if secret != "" {
 		return secret
@@ -110,6 +133,34 @@ func (s *Service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 	}, nil
 }
 
+func (s *Service) GetPrimaryThread(ctx context.Context, _ *pb.GetPrimaryThreadRequest) (*pb.GetPrimaryThreadReply, error) {
+	log.Debugf("received get primary thread request")
+
+	dev, _ := c.DevFromContext(ctx)
+	doc, err := s.Collections.Threads.GetPrimary(ctx, dev.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetPrimaryThreadReply{
+		ID: doc.ThreadID.Bytes(),
+	}, nil
+}
+
+func (s *Service) SetPrimaryThread(ctx context.Context, _ *pb.SetPrimaryThreadRequest) (*pb.SetPrimaryThreadReply, error) {
+	log.Debugf("received set primary thread request")
+
+	id, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("thread ID required")
+	}
+	dev, _ := c.DevFromContext(ctx)
+
+	if err := s.Collections.Threads.SetPrimary(ctx, id, dev.ID); err != nil {
+		return nil, err
+	}
+	return &pb.SetPrimaryThreadReply{}, nil
+}
+
 func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
 	log.Debugf("received list threads request")
 
@@ -128,43 +179,6 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 		}
 	}
 	return reply, nil
-}
-
-func (s *Service) UseThread(ctx context.Context, req *pb.UseThreadRequest) (*pb.UseThreadReply, error) {
-	log.Debugf("received use thread request")
-
-	dev, _ := c.DevFromContext(ctx)
-	id, err := thread.Cast(req.ID)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.Collections.Threads.Use(ctx, id, dev.ID); err != nil {
-		return nil, err
-	}
-	return &pb.UseThreadReply{}, nil
-}
-
-// awaitVerification waits for a dev to verify their email via a sent email.
-func (s *Service) awaitVerification(secret string) bool {
-	listen := s.SessionBus.Listen()
-	ch := make(chan struct{})
-	timer := time.NewTimer(loginTimeout)
-	go func() {
-		for i := range listen.Channel() {
-			if r, ok := i.(string); ok && r == secret {
-				ch <- struct{}{}
-			}
-		}
-	}()
-	select {
-	case <-ch:
-		listen.Discard()
-		timer.Stop()
-		return true
-	case <-timer.C:
-		listen.Discard()
-		return false
-	}
 }
 
 func (s *Service) AddOrg(ctx context.Context, req *pb.AddOrgRequest) (*pb.GetOrgReply, error) {

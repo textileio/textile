@@ -70,6 +70,54 @@ func TestClient_Whoami(t *testing.T) {
 	})
 }
 
+func TestClient_GetPrimaryThread(t *testing.T) {
+	t.Parallel()
+	conf, client, threadsclient, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	id := thread.NewIDV1(thread.Raw, 32)
+	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
+	require.Nil(t, err)
+
+	t.Run("without session", func(t *testing.T) {
+		_, err := client.GetPrimaryThread(ctx)
+		require.NotNil(t, err)
+	})
+
+	t.Run("with session", func(t *testing.T) {
+		id, err = client.GetPrimaryThread(common.NewSessionContext(ctx, user.Session))
+		require.Nil(t, err)
+		require.True(t, id.Defined())
+	})
+}
+
+func TestClient_SetPrimaryThread(t *testing.T) {
+	t.Parallel()
+	conf, client, threadsclient, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	id := thread.NewIDV1(thread.Raw, 32)
+	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
+	require.Nil(t, err)
+	ctx = common.NewThreadIDContext(ctx, id)
+
+	t.Run("without session", func(t *testing.T) {
+		err := client.SetPrimaryThread(ctx)
+		require.NotNil(t, err)
+	})
+
+	t.Run("with session", func(t *testing.T) {
+		err = client.SetPrimaryThread(common.NewSessionContext(ctx, user.Session))
+		require.Nil(t, err)
+	})
+}
+
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
 	conf, client, threadsclient, done := setup(t)
@@ -97,29 +145,6 @@ func TestClient_ListThreads(t *testing.T) {
 		list, err = client.ListThreads(ctx)
 		require.Nil(t, err)
 		require.Equal(t, len(list.List), 2)
-	})
-}
-
-func TestClient_UseThread(t *testing.T) {
-	t.Parallel()
-	conf, client, threadsclient, done := setup(t)
-	defer done()
-	ctx := context.Background()
-
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
-
-	id := thread.NewIDV1(thread.Raw, 32)
-	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
-	require.Nil(t, err)
-
-	t.Run("without session", func(t *testing.T) {
-		err := client.UseThread(ctx, id)
-		require.NotNil(t, err)
-	})
-
-	t.Run("with session", func(t *testing.T) {
-		err = client.UseThread(common.NewSessionContext(ctx, user.Session), id)
-		require.Nil(t, err)
 	})
 }
 
