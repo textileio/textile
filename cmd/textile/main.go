@@ -13,8 +13,8 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	bc "github.com/textileio/textile/api/buckets/client"
-	cc "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/api/common"
+	hc "github.com/textileio/textile/api/hub/client"
 	"github.com/textileio/textile/cmd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -57,7 +57,7 @@ var (
 		},
 	}
 
-	cloud   *cc.Client
+	hub     *hc.Client
 	buckets *bc.Client
 	threads *tc.Client
 
@@ -123,7 +123,7 @@ var rootCmd = &cobra.Command{
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(auth))
 		var err error
-		cloud, err = cc.NewClient(target, opts...)
+		hub, err = hc.NewClient(target, opts...)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -137,8 +137,8 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
-		if cloud != nil {
-			if err := cloud.Close(); err != nil {
+		if hub != nil {
+			if err := hub.Close(); err != nil {
 				cmd.Fatal(err)
 			}
 		}
@@ -152,7 +152,7 @@ var whoamiCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		who, err := cloud.Whoami(ctx)
+		who, err := hub.Whoami(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}

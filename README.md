@@ -7,7 +7,7 @@
 [![GitHub action](https://github.com/textileio/textile/workflows/Tests/badge.svg?style=popout-square)](https://github.com/textileio/textile/actions)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=popout-square)](https://github.com/RichardLitt/standard-readme)
 
-> Textile's cloud node and client in Go
+> Textile's hub node and client in Go
 
 Go to [the docs](https://docs.textile.io/) for more about Textile.
 

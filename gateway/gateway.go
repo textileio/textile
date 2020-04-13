@@ -23,8 +23,8 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	tutil "github.com/textileio/go-threads/util"
 	buckets "github.com/textileio/textile/api/buckets/client"
-	cloud "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/api/common"
+	hub "github.com/textileio/textile/api/hub/client"
 	"github.com/textileio/textile/collections"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -57,7 +57,7 @@ type Gateway struct {
 	bucketDomain string
 	server       *http.Server
 	collections  *collections.Collections // @todo: Remove in favor of the client
-	cloud        *cloud.Client
+	hub          *hub.Client
 	buckets      *buckets.Client
 	token        string
 	sessionBus   *broadcast.Broadcaster
@@ -82,7 +82,7 @@ func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, colle
 		grpc.WithInsecure(),
 		grpc.WithPerRPCCredentials(common.Credentials{}),
 	}
-	cc, err := cloud.NewClient(apiTarget, opts...)
+	cc, err := hub.NewClient(apiTarget, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, colle
 		addr:         addr,
 		bucketDomain: bucketDomain,
 		collections:  collections,
-		cloud:        cc,
+		hub:          cc,
 		buckets:      bc,
 		token:        apiToken,
 		sessionBus:   sessionBus,
@@ -178,7 +178,7 @@ func (g *Gateway) Stop() error {
 	if err := g.server.Shutdown(ctx); err != nil {
 		return err
 	}
-	if err := g.cloud.Close(); err != nil {
+	if err := g.hub.Close(); err != nil {
 		return err
 	}
 	if err := g.buckets.Close(); err != nil {

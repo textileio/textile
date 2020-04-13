@@ -14,8 +14,8 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
-	cc "github.com/textileio/textile/api/cloud/client"
 	"github.com/textileio/textile/api/common"
+	hc "github.com/textileio/textile/api/hub/client"
 	"google.golang.org/grpc"
 )
 
@@ -177,12 +177,12 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)
 	require.Nil(t, err)
-	cloudclient, err := cc.NewClient(target, opts...)
+	hubclient, err := hc.NewClient(target, opts...)
 	require.Nil(t, err)
 	threadsclient, err := tc.NewClient(target, opts...)
 	require.Nil(t, err)
 
-	user := apitest.Login(t, cloudclient, conf, apitest.NewEmail())
+	user := apitest.Login(t, hubclient, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
 	err = threadsclient.NewDB(ctx, id)

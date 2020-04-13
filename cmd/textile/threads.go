@@ -43,7 +43,7 @@ var lsThreadsCmd = &cobra.Command{
 func lsThreads() {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := cloud.ListThreads(ctx)
+	list, err := hub.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -72,7 +72,7 @@ var useThreadsCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := cloud.SetPrimaryThread(ctx); err != nil {
+		if err := hub.SetPrimaryThread(ctx); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Switched to thread %s", aurora.White(selected.ID).Bold())
@@ -87,7 +87,7 @@ type threadItem struct {
 func selectThread(label, successMsg string) *threadItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := cloud.ListThreads(ctx)
+	list, err := hub.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}

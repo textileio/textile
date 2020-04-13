@@ -53,7 +53,7 @@ var loginCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(loginTimeout)
 		defer cancel()
-		res, err := cloud.Login(ctx, username, email)
+		res, err := hub.Login(ctx, username, email)
 		s.Stop()
 		if err != nil {
 			cmd.Fatal(err)

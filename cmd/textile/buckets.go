@@ -7,12 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/textileio/go-threads/core/thread"
-
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/cmd"

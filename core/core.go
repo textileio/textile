@@ -27,9 +27,9 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/cloud"
-	cpb "github.com/textileio/textile/api/cloud/pb"
 	"github.com/textileio/textile/api/common"
+	"github.com/textileio/textile/api/hub"
+	hpb "github.com/textileio/textile/api/hub/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -45,7 +45,7 @@ var (
 	log = logging.Logger("core")
 
 	ignoreMethods = []string{
-		"/cloud.pb.API/Login",
+		"/hub.pb.API/Login",
 	}
 )
 
@@ -154,7 +154,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	t.sessionBus = broadcast.NewBroadcaster(0)
-	cs := &cloud.Service{
+	hs := &hub.Service{
 		Collections:   t.co,
 		EmailClient:   ec,
 		GatewayUrl:    conf.AddrGatewayUrl,
@@ -189,7 +189,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	go func() {
 		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
-		cpb.RegisterAPIServer(t.server, cs)
+		hpb.RegisterAPIServer(t.server, hs)
 		bpb.RegisterAPIServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
@@ -226,7 +226,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	bucks.Threads = t.th
-	cs.Threads = t.th
+	hs.Threads = t.th
 
 	// Configure gateway
 	t.gatewayToken = util.MakeToken(44)
@@ -345,7 +345,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	}
 
 	switch getService(method) {
-	case "cloud.pb.API":
+	case "hub.pb.API":
 		if !isDev {
 			return nil, status.Error(codes.Unauthenticated, "Session not found")
 		}

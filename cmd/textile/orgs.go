@@ -35,7 +35,7 @@ var createOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if _, err := cloud.CreateOrg(ctx, args[0]); err != nil {
+		if _, err := hub.CreateOrg(ctx, args[0]); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Created new org %s", aurora.White(args[0]).Bold())
@@ -57,7 +57,7 @@ var lsOrgsCmd = &cobra.Command{
 func lsOrgs() {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	orgs, err := cloud.ListOrgs(ctx)
+	orgs, err := hub.ListOrgs(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -83,7 +83,7 @@ var membersOrgsCmd = &cobra.Command{
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
 
-		org, err := cloud.GetOrg(ctx)
+		org, err := hub.GetOrg(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -113,7 +113,7 @@ var rmOrgsCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := cloud.RemoveOrg(ctx); err != nil {
+		if err := hub.RemoveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Removed org %s", aurora.White(selected.Name).Bold())
@@ -143,7 +143,7 @@ var inviteOrgsCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if _, err := cloud.InviteToOrg(ctx, email); err != nil {
+		if _, err := hub.InviteToOrg(ctx, email); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("We sent %s an invitation to the %s org", aurora.White(email).Bold(),
@@ -162,7 +162,7 @@ var leaveOrgsCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := cloud.LeaveOrg(ctx); err != nil {
+		if err := hub.LeaveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Left org %s", aurora.White(selected.Name).Bold())
@@ -178,7 +178,7 @@ type orgItem struct {
 func selectOrg(label, successMsg string) *orgItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	orgs, err := cloud.ListOrgs(ctx)
+	orgs, err := hub.ListOrgs(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}

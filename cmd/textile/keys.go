@@ -37,7 +37,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		k, err := cloud.CreateKey(ctx)
+		k, err := hub.CreateKey(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -57,7 +57,7 @@ var invalidateKeysCmd = &cobra.Command{
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := cloud.InvalidateKey(ctx, selected.Token); err != nil {
+		if err := hub.InvalidateKey(ctx, selected.Token); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Invalidated key %s", aurora.White(selected.Token).Bold())
@@ -79,7 +79,7 @@ var lsKeysCmd = &cobra.Command{
 func lsKeys() {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := cloud.ListKeys(ctx)
+	list, err := hub.ListKeys(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -101,7 +101,7 @@ type keyItem struct {
 func selectKey(label, successMsg string) *keyItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := cloud.ListKeys(ctx)
+	list, err := hub.ListKeys(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}

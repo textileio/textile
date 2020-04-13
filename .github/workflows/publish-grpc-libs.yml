@@ -43,15 +43,15 @@ jobs:
         run: |
           npm install
           npm install -g json
-        working-directory: ./cloud/pb/javascript
-      - name: Protoc generate Cloud
+        working-directory: ./hub/pb/javascript
+      - name: Protoc generate Hub
         run: |
           make clean && make
-        working-directory: ./cloud/pb
-      - name: Publish JS Cloud
+        working-directory: ./hub/pb
+      - name: Publish JS Hub
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
         run: |
           json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
           npm publish --access=public
-        working-directory: ./cloud/pb/javascript
+        working-directory: ./hub/pb/javascript
