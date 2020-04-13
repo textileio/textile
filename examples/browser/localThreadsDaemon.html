@@ -53,21 +53,22 @@
       window.client = api.threadsClient
       try {
         // Create a new store
-        const res = await client.newStore()
-        const storeID = res.id
+        const threadId = client.ThreadID.fromRandom()
+        const dbID = threadId.bytes()
+        const res = await client.newDB(dbID)
 
         // Register a person schema
-        await client.registerSchema(storeID, 'Person', personSchema)
+        await client.registerSchema(dbID, 'Person', personSchema)
 
         // Create adam and eve
-        const people = await client.modelCreate(storeID, 'Person', [adam, eve])
+        const people = await client.modelCreate(dbID, 'Person', [adam, eve])
         const adamID = JSON.parse(people.entitiesList[0]).ID
         const eveID = JSON.parse(people.entitiesList[1]).ID
         console.debug('adam:', adamID)
         console.debug('eve:', eveID)
 
         // Subscribe to adam
-        await client.listen(storeID, 'Person', adamID, ((reply) => {
+        await client.listen(dbID, 'Person', adamID, ((reply) => {
           console.debug(reply)
         }))
       }
