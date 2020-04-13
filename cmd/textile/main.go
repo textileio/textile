@@ -1,42 +1,5 @@
 package main
 
-/*
-
-User/org management
--------------------
-textile login ✅
-textile logout ✅
-textile whoami ✅
-
-textile orgs create [name] ✅
-textile orgs (ls) ✅
-textile orgs members (ls) ✅
-textile orgs rm  ✅
-textile orgs invite [username/email] [name] ✅
-textile orgs leave [name] ✅
-
-Thread management
------------------
-textile threads (ls) (view threads behind buckets) --org ✅
-textile threads use [id] --org ✅
-
-Key management
---------------
-textile keys (ls)
-textile keys create
-textile keys rm
-
-Bucket management
------------------
-textile buckets init [path] --org --name --public --thread (create new or from old) ✅
-textile buckets (ls) [path]
-textile buckets push [local path] [remote path] (remote is optional)
-textile buckets pull [remote path] [local path] (local is optional)
-textile buckets cat [path]
-textile buckets rm
-
-*/
-
 import (
 	"context"
 	"crypto/tls"
