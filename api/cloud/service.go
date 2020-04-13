@@ -109,7 +109,7 @@ func getSessionSecret(secret string) string {
 	if secret != "" {
 		return secret
 	}
-	return util.MakeURLSafeToken(32)
+	return util.MakeToken(44)
 }
 
 func (s *Service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutReply, error) {
@@ -190,10 +190,10 @@ func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.Ge
 		return nil, err
 	}
 	return &pb.GetKeyReply{
-		Token:       key.Token,
-		Secret:      key.Secret,
-		Valid:       true,
-		ThreadCount: 0,
+		Token:   key.Token,
+		Secret:  key.Secret,
+		Valid:   true,
+		Threads: 0,
 	}, nil
 }
 
@@ -229,10 +229,10 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 			return nil, err
 		}
 		list[i] = &pb.GetKeyReply{
-			Token:       key.Token,
-			Secret:      key.Secret,
-			Valid:       key.Valid,
-			ThreadCount: int32(len(ts)),
+			Token:   key.Token,
+			Secret:  key.Secret,
+			Valid:   key.Valid,
+			Threads: int32(len(ts)),
 		}
 	}
 	return &pb.ListKeysReply{List: list}, nil

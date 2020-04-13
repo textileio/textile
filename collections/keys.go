@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const keyLen = 16
+
 type Key struct {
 	ID      primitive.ObjectID `bson:"_id"`
 	OwnerID primitive.ObjectID `bson:"owner_id"`
@@ -40,8 +42,8 @@ func (k *Keys) Create(ctx context.Context, ownerID primitive.ObjectID) (*Key, er
 	doc := &Key{
 		ID:      primitive.NewObjectID(),
 		OwnerID: ownerID,
-		Token:   util.MakeToken(tokenLen),
-		Secret:  util.MakeToken(tokenLen),
+		Token:   util.MakeToken(keyLen),
+		Secret:  util.MakeToken(keyLen),
 		Valid:   true,
 	}
 	res, err := k.col.InsertOne(ctx, doc)

@@ -50,7 +50,7 @@ func (i *Invites) Create(ctx context.Context, fromID primitive.ObjectID, org, em
 		ID:        primitive.NewObjectID(),
 		Org:       org,
 		FromID:    fromID,
-		Token:     util.MakeURLSafeToken(tokenLen),
+		Token:     util.MakeToken(tokenLen),
 		EmailTo:   emailTo,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}

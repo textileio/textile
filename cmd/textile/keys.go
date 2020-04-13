@@ -12,7 +12,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(keysCmd)
-	orgsCmd.AddCommand(createKeysCmd, invalidateKeysCmd, lsKeysCmd)
+	keysCmd.AddCommand(createKeysCmd, invalidateKeysCmd, lsKeysCmd)
 }
 
 var keysCmd = &cobra.Command{
@@ -30,16 +30,20 @@ var keysCmd = &cobra.Command{
 var createKeysCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an API key and secret",
-	Long:  `Create a new API key and secret. Keys are used by apps and services that leverage buckets and/or threads.`,
+	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets and/or threads.
+
+API secrets should be kept safely on a backend server, not in publicly readable client code.  
+`,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		key, err := cloud.CreateKey(ctx)
+		k, err := cloud.CreateKey(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Created new API key and secret:\nKey: %s\nSecret: %s",
-			aurora.White(key.Token).Bold(), aurora.White(key.Secret).Bold())
+
+		cmd.RenderTable([]string{"token", "secret"}, [][]string{{k.Token, k.Secret}})
+		cmd.Success("Created new API key and secret")
 	},
 }
 
@@ -49,7 +53,7 @@ var invalidateKeysCmd = &cobra.Command{
 	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectKey("Invalidate key", aurora.Sprintf(
-			aurora.BrightBlack("> Removing key {{ .Token | white | bold }}")))
+			aurora.BrightBlack("> Invalidating key {{ .Token | white | bold }}")))
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
@@ -82,16 +86,16 @@ func lsKeys() {
 	if len(list.List) > 0 {
 		data := make([][]string, len(list.List))
 		for i, k := range list.List {
-			data[i] = []string{k.Token, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.ThreadCount))}
+			data[i] = []string{k.Token, k.Secret, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
 		}
-		cmd.RenderTable([]string{"token", "valid", "thread count"}, data)
+		cmd.RenderTable([]string{"token", "secret", "valid", "threads"}, data)
 	}
 	cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
 }
 
 type keyItem struct {
-	Token       string
-	ThreadCount int
+	Token   string
+	Threads int
 }
 
 func selectKey(label, successMsg string) *keyItem {
@@ -102,23 +106,23 @@ func selectKey(label, successMsg string) *keyItem {
 		cmd.Fatal(err)
 	}
 
-	items := make([]*keyItem, len(list.List))
-	for i, k := range list.List {
+	items := make([]*keyItem, 0)
+	for _, k := range list.List {
 		if k.Valid {
-			items[i] = &keyItem{Token: k.Token, ThreadCount: int(k.ThreadCount)}
+			items = append(items, &keyItem{Token: k.Token, Threads: int(k.Threads)})
 		}
 	}
 	if len(items) == 0 {
-		cmd.End("You don't have any keys!")
+		cmd.End("You don't have any valid keys!")
 	}
 
 	prompt := promptui.Select{
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Token | bold }} {{ .ThreadCount | faint | bold }}`,
+			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Token | bold }} {{ .Threads | faint | bold }}`,
 				promptui.IconSelect),
-			Inactive: `{{ .Token | faint }} {{ .ThreadCount | faint | bold }}`,
+			Inactive: `{{ .Token | faint }} {{ .Threads | faint | bold }}`,
 			Selected: successMsg,
 		},
 	}

@@ -9,12 +9,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	tokenLen = 44
-)
+const tokenLen = 44
 
 func init() {
-	slug.MaxLength = 64
+	slug.MaxLength = 32
 }
 
 type ctxKey string

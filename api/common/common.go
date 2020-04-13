@@ -2,10 +2,10 @@ package common
 
 import (
 	"context"
-	"encoding/base64"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	mbase "github.com/multiformats/go-multibase"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -68,7 +68,7 @@ func APIKeyFromMD(ctx context.Context) (key crypto.PubKey, ok bool) {
 	if str == "" {
 		return
 	}
-	data, err := base64.StdEncoding.DecodeString(str)
+	_, data, err := mbase.Decode(str)
 	if err != nil {
 		return
 	}
@@ -97,7 +97,7 @@ func APISigFromMD(ctx context.Context) (sig []byte, ok bool) {
 		return
 	}
 	var err error
-	sig, err = base64.StdEncoding.DecodeString(str)
+	_, sig, err = mbase.Decode(str)
 	if err != nil {
 		return
 	}
@@ -149,11 +149,18 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 		if err != nil {
 			return nil, err
 		}
-		md["x-textile-api-key"] = base64.StdEncoding.EncodeToString(b)
+		md["x-textile-api-key"], err = mbase.Encode(mbase.Base64, b)
+		if err != nil {
+			return nil, err
+		}
 	}
 	apiSig, ok := APISigFromContext(ctx)
 	if ok {
-		md["x-textile-api-sig"] = base64.StdEncoding.EncodeToString(apiSig)
+		var err error
+		md["x-textile-api-sig"], err = mbase.Encode(mbase.Base64, apiSig)
+		if err != nil {
+			return nil, err
+		}
 	}
 	threadID, ok := ThreadIDFromContext(ctx)
 	if ok {

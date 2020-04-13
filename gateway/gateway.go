@@ -64,15 +64,7 @@ type Gateway struct {
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(
-	addr ma.Multiaddr,
-	apiAddr ma.Multiaddr,
-	apiToken string,
-	bucketDomain string,
-	collections *collections.Collections,
-	sessionBus *broadcast.Broadcaster,
-	debug bool,
-) (*Gateway, error) {
+func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, collections *collections.Collections, sessionBus *broadcast.Broadcaster, debug bool) (*Gateway, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"gateway": logging.LevelDebug,
@@ -299,7 +291,6 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
-
 	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
 }
 

@@ -56,7 +56,7 @@ message GetKeyReply {
     string token = 1;
     string secret = 2;
     bool valid = 3;
-    int32 threadCount = 4;
+    int32 threads = 4;
 }
 
 message InvalidateKeyRequest {

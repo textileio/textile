@@ -2,12 +2,11 @@ package util
 
 import (
 	"crypto/rand"
-	"encoding/base32"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/gosimple/slug"
 	ma "github.com/multiformats/go-multiaddr"
+	mbase "github.com/multiformats/go-multibase"
 )
 
 func ToValidName(str string) (name string, err error) {
@@ -30,12 +29,11 @@ func GenerateRandomBytes(n int) []byte {
 
 func MakeToken(n int) string {
 	bytes := GenerateRandomBytes(n)
-	return base32.StdEncoding.EncodeToString(bytes)
-}
-
-func MakeURLSafeToken(n int) string {
-	bytes := GenerateRandomBytes(n)
-	return base64.URLEncoding.EncodeToString(bytes)
+	encoded, err := mbase.Encode(mbase.Base32, bytes)
+	if err != nil {
+		panic(err)
+	}
+	return encoded
 }
 
 func MustParseAddr(str string) ma.Multiaddr {

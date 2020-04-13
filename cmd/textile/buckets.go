@@ -207,7 +207,7 @@ These 'push' commands result in the following bucket structures.
 			selected := selectThread("Select thread", aurora.Sprintf(
 				aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
 
-			if selected.ID == "new" {
+			if selected.ID == "Create new" {
 				ctx, cancel := authCtx(cmdTimeout)
 				defer cancel()
 				dbID = thread.NewIDV1(thread.Raw, 32)
@@ -221,7 +221,6 @@ These 'push' commands result in the following bucket structures.
 					cmd.Fatal(err)
 				}
 			}
-
 			configViper.Set("thread", dbID.String())
 			if err := configViper.WriteConfig(); err != nil {
 				cmd.Fatal(err)
