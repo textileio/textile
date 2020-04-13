@@ -49,7 +49,7 @@ func TestInvites_Delete(t *testing.T) {
 	created, err := col.Create(context.Background(), fromID, "myorg", "jane@doe.com")
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.ID)
+	err = col.Delete(context.Background(), created.Token)
 	require.Nil(t, err)
 	_, err = col.Get(context.Background(), created.Token)
 	require.NotNil(t, err)

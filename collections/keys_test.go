@@ -37,7 +37,28 @@ func TestKeys_Get(t *testing.T) {
 	assert.Equal(t, created.ID, got.ID)
 }
 
-func TestKeys_Delete(t *testing.T) {
+func TestKeys_List(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewKeys(context.Background(), db)
+	require.Nil(t, err)
+	ownerID := primitive.NewObjectID()
+	_, err = col.Create(context.Background(), ownerID)
+	require.Nil(t, err)
+	_, err = col.Create(context.Background(), ownerID)
+	require.Nil(t, err)
+
+	list1, err := col.List(context.Background(), ownerID)
+	require.Nil(t, err)
+	assert.Equal(t, len(list1), 2)
+
+	list2, err := col.List(context.Background(), primitive.NewObjectID())
+	require.Nil(t, err)
+	assert.Equal(t, len(list2), 0)
+}
+
+func TestKeys_Invalidate(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
 
@@ -46,8 +67,9 @@ func TestKeys_Delete(t *testing.T) {
 	created, err := col.Create(context.Background(), primitive.NewObjectID())
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.ID)
+	err = col.Invalidate(context.Background(), created.Token)
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), created.Token)
-	require.NotNil(t, err)
+	got, err := col.Get(context.Background(), created.Token)
+	require.Nil(t, err)
+	require.False(t, got.Valid)
 }

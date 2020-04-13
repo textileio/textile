@@ -105,6 +105,27 @@ func TestThreads_List(t *testing.T) {
 	assert.Equal(t, len(list2), 0)
 }
 
+func TestThreads_ListByKey(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+
+	col, err := NewThreads(context.Background(), db)
+	require.Nil(t, err)
+	keyID := primitive.NewObjectID()
+	_, err = col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), primitive.NewObjectID(), keyID)
+	require.Nil(t, err)
+	_, err = col.Create(context.Background(), thread.NewIDV1(thread.Raw, 32), primitive.NewObjectID(), keyID)
+	require.Nil(t, err)
+
+	list1, err := col.List(context.Background(), keyID)
+	require.Nil(t, err)
+	assert.Equal(t, len(list1), 2)
+
+	list2, err := col.List(context.Background(), primitive.NewObjectID())
+	require.Nil(t, err)
+	assert.Equal(t, len(list2), 0)
+}
+
 func TestThreads_Delete(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)

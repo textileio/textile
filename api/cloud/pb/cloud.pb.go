@@ -523,39 +523,273 @@ func (m *GetPrimaryThreadReply) GetID() []byte {
 	return nil
 }
 
-type AddOrgRequest struct {
+type CreateKeyRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CreateKeyRequest) Reset()         { *m = CreateKeyRequest{} }
+func (m *CreateKeyRequest) String() string { return proto.CompactTextString(m) }
+func (*CreateKeyRequest) ProtoMessage()    {}
+func (*CreateKeyRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{12}
+}
+
+func (m *CreateKeyRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CreateKeyRequest.Unmarshal(m, b)
+}
+func (m *CreateKeyRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CreateKeyRequest.Marshal(b, m, deterministic)
+}
+func (m *CreateKeyRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateKeyRequest.Merge(m, src)
+}
+func (m *CreateKeyRequest) XXX_Size() int {
+	return xxx_messageInfo_CreateKeyRequest.Size(m)
+}
+func (m *CreateKeyRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateKeyRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateKeyRequest proto.InternalMessageInfo
+
+type GetKeyReply struct {
+	Token                string   `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Secret               string   `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	Valid                bool     `protobuf:"varint,3,opt,name=valid,proto3" json:"valid,omitempty"`
+	ThreadCount          int32    `protobuf:"varint,4,opt,name=threadCount,proto3" json:"threadCount,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetKeyReply) Reset()         { *m = GetKeyReply{} }
+func (m *GetKeyReply) String() string { return proto.CompactTextString(m) }
+func (*GetKeyReply) ProtoMessage()    {}
+func (*GetKeyReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{13}
+}
+
+func (m *GetKeyReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetKeyReply.Unmarshal(m, b)
+}
+func (m *GetKeyReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetKeyReply.Marshal(b, m, deterministic)
+}
+func (m *GetKeyReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetKeyReply.Merge(m, src)
+}
+func (m *GetKeyReply) XXX_Size() int {
+	return xxx_messageInfo_GetKeyReply.Size(m)
+}
+func (m *GetKeyReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetKeyReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetKeyReply proto.InternalMessageInfo
+
+func (m *GetKeyReply) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+func (m *GetKeyReply) GetSecret() string {
+	if m != nil {
+		return m.Secret
+	}
+	return ""
+}
+
+func (m *GetKeyReply) GetValid() bool {
+	if m != nil {
+		return m.Valid
+	}
+	return false
+}
+
+func (m *GetKeyReply) GetThreadCount() int32 {
+	if m != nil {
+		return m.ThreadCount
+	}
+	return 0
+}
+
+type InvalidateKeyRequest struct {
+	Token                string   `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InvalidateKeyRequest) Reset()         { *m = InvalidateKeyRequest{} }
+func (m *InvalidateKeyRequest) String() string { return proto.CompactTextString(m) }
+func (*InvalidateKeyRequest) ProtoMessage()    {}
+func (*InvalidateKeyRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{14}
+}
+
+func (m *InvalidateKeyRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InvalidateKeyRequest.Unmarshal(m, b)
+}
+func (m *InvalidateKeyRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InvalidateKeyRequest.Marshal(b, m, deterministic)
+}
+func (m *InvalidateKeyRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InvalidateKeyRequest.Merge(m, src)
+}
+func (m *InvalidateKeyRequest) XXX_Size() int {
+	return xxx_messageInfo_InvalidateKeyRequest.Size(m)
+}
+func (m *InvalidateKeyRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InvalidateKeyRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InvalidateKeyRequest proto.InternalMessageInfo
+
+func (m *InvalidateKeyRequest) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+type InvalidateKeyReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InvalidateKeyReply) Reset()         { *m = InvalidateKeyReply{} }
+func (m *InvalidateKeyReply) String() string { return proto.CompactTextString(m) }
+func (*InvalidateKeyReply) ProtoMessage()    {}
+func (*InvalidateKeyReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{15}
+}
+
+func (m *InvalidateKeyReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InvalidateKeyReply.Unmarshal(m, b)
+}
+func (m *InvalidateKeyReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InvalidateKeyReply.Marshal(b, m, deterministic)
+}
+func (m *InvalidateKeyReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InvalidateKeyReply.Merge(m, src)
+}
+func (m *InvalidateKeyReply) XXX_Size() int {
+	return xxx_messageInfo_InvalidateKeyReply.Size(m)
+}
+func (m *InvalidateKeyReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_InvalidateKeyReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InvalidateKeyReply proto.InternalMessageInfo
+
+type ListKeysRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListKeysRequest) Reset()         { *m = ListKeysRequest{} }
+func (m *ListKeysRequest) String() string { return proto.CompactTextString(m) }
+func (*ListKeysRequest) ProtoMessage()    {}
+func (*ListKeysRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{16}
+}
+
+func (m *ListKeysRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListKeysRequest.Unmarshal(m, b)
+}
+func (m *ListKeysRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListKeysRequest.Marshal(b, m, deterministic)
+}
+func (m *ListKeysRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListKeysRequest.Merge(m, src)
+}
+func (m *ListKeysRequest) XXX_Size() int {
+	return xxx_messageInfo_ListKeysRequest.Size(m)
+}
+func (m *ListKeysRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListKeysRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListKeysRequest proto.InternalMessageInfo
+
+type ListKeysReply struct {
+	List                 []*GetKeyReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *ListKeysReply) Reset()         { *m = ListKeysReply{} }
+func (m *ListKeysReply) String() string { return proto.CompactTextString(m) }
+func (*ListKeysReply) ProtoMessage()    {}
+func (*ListKeysReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{17}
+}
+
+func (m *ListKeysReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListKeysReply.Unmarshal(m, b)
+}
+func (m *ListKeysReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListKeysReply.Marshal(b, m, deterministic)
+}
+func (m *ListKeysReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListKeysReply.Merge(m, src)
+}
+func (m *ListKeysReply) XXX_Size() int {
+	return xxx_messageInfo_ListKeysReply.Size(m)
+}
+func (m *ListKeysReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListKeysReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListKeysReply proto.InternalMessageInfo
+
+func (m *ListKeysReply) GetList() []*GetKeyReply {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+type CreateOrgRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AddOrgRequest) Reset()         { *m = AddOrgRequest{} }
-func (m *AddOrgRequest) String() string { return proto.CompactTextString(m) }
-func (*AddOrgRequest) ProtoMessage()    {}
-func (*AddOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{12}
+func (m *CreateOrgRequest) Reset()         { *m = CreateOrgRequest{} }
+func (m *CreateOrgRequest) String() string { return proto.CompactTextString(m) }
+func (*CreateOrgRequest) ProtoMessage()    {}
+func (*CreateOrgRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_01f9cba63d8f209f, []int{18}
 }
 
-func (m *AddOrgRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AddOrgRequest.Unmarshal(m, b)
+func (m *CreateOrgRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CreateOrgRequest.Unmarshal(m, b)
 }
-func (m *AddOrgRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AddOrgRequest.Marshal(b, m, deterministic)
+func (m *CreateOrgRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CreateOrgRequest.Marshal(b, m, deterministic)
 }
-func (m *AddOrgRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddOrgRequest.Merge(m, src)
+func (m *CreateOrgRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateOrgRequest.Merge(m, src)
 }
-func (m *AddOrgRequest) XXX_Size() int {
-	return xxx_messageInfo_AddOrgRequest.Size(m)
+func (m *CreateOrgRequest) XXX_Size() int {
+	return xxx_messageInfo_CreateOrgRequest.Size(m)
 }
-func (m *AddOrgRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_AddOrgRequest.DiscardUnknown(m)
+func (m *CreateOrgRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateOrgRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AddOrgRequest proto.InternalMessageInfo
+var xxx_messageInfo_CreateOrgRequest proto.InternalMessageInfo
 
-func (m *AddOrgRequest) GetName() string {
+func (m *CreateOrgRequest) GetName() string {
 	if m != nil {
 		return m.Name
 	}
@@ -572,7 +806,7 @@ func (m *GetOrgRequest) Reset()         { *m = GetOrgRequest{} }
 func (m *GetOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*GetOrgRequest) ProtoMessage()    {}
 func (*GetOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{13}
+	return fileDescriptor_01f9cba63d8f209f, []int{19}
 }
 
 func (m *GetOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -607,7 +841,7 @@ func (m *GetOrgReply) Reset()         { *m = GetOrgReply{} }
 func (m *GetOrgReply) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply) ProtoMessage()    {}
 func (*GetOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{14}
+	return fileDescriptor_01f9cba63d8f209f, []int{20}
 }
 
 func (m *GetOrgReply) XXX_Unmarshal(b []byte) error {
@@ -669,7 +903,7 @@ func (m *GetOrgReply_Member) Reset()         { *m = GetOrgReply_Member{} }
 func (m *GetOrgReply_Member) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply_Member) ProtoMessage()    {}
 func (*GetOrgReply_Member) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{14, 0}
+	return fileDescriptor_01f9cba63d8f209f, []int{20, 0}
 }
 
 func (m *GetOrgReply_Member) XXX_Unmarshal(b []byte) error {
@@ -721,7 +955,7 @@ func (m *ListOrgsRequest) Reset()         { *m = ListOrgsRequest{} }
 func (m *ListOrgsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsRequest) ProtoMessage()    {}
 func (*ListOrgsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{15}
+	return fileDescriptor_01f9cba63d8f209f, []int{21}
 }
 
 func (m *ListOrgsRequest) XXX_Unmarshal(b []byte) error {
@@ -753,7 +987,7 @@ func (m *ListOrgsReply) Reset()         { *m = ListOrgsReply{} }
 func (m *ListOrgsReply) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsReply) ProtoMessage()    {}
 func (*ListOrgsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{16}
+	return fileDescriptor_01f9cba63d8f209f, []int{22}
 }
 
 func (m *ListOrgsReply) XXX_Unmarshal(b []byte) error {
@@ -791,7 +1025,7 @@ func (m *RemoveOrgRequest) Reset()         { *m = RemoveOrgRequest{} }
 func (m *RemoveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgRequest) ProtoMessage()    {}
 func (*RemoveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{17}
+	return fileDescriptor_01f9cba63d8f209f, []int{23}
 }
 
 func (m *RemoveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -822,7 +1056,7 @@ func (m *RemoveOrgReply) Reset()         { *m = RemoveOrgReply{} }
 func (m *RemoveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgReply) ProtoMessage()    {}
 func (*RemoveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{18}
+	return fileDescriptor_01f9cba63d8f209f, []int{24}
 }
 
 func (m *RemoveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -854,7 +1088,7 @@ func (m *InviteToOrgRequest) Reset()         { *m = InviteToOrgRequest{} }
 func (m *InviteToOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgRequest) ProtoMessage()    {}
 func (*InviteToOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{19}
+	return fileDescriptor_01f9cba63d8f209f, []int{25}
 }
 
 func (m *InviteToOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -893,7 +1127,7 @@ func (m *InviteToOrgReply) Reset()         { *m = InviteToOrgReply{} }
 func (m *InviteToOrgReply) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgReply) ProtoMessage()    {}
 func (*InviteToOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{20}
+	return fileDescriptor_01f9cba63d8f209f, []int{26}
 }
 
 func (m *InviteToOrgReply) XXX_Unmarshal(b []byte) error {
@@ -931,7 +1165,7 @@ func (m *LeaveOrgRequest) Reset()         { *m = LeaveOrgRequest{} }
 func (m *LeaveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgRequest) ProtoMessage()    {}
 func (*LeaveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{21}
+	return fileDescriptor_01f9cba63d8f209f, []int{27}
 }
 
 func (m *LeaveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -962,7 +1196,7 @@ func (m *LeaveOrgReply) Reset()         { *m = LeaveOrgReply{} }
 func (m *LeaveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgReply) ProtoMessage()    {}
 func (*LeaveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_01f9cba63d8f209f, []int{22}
+	return fileDescriptor_01f9cba63d8f209f, []int{28}
 }
 
 func (m *LeaveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -997,7 +1231,13 @@ func init() {
 	proto.RegisterType((*SetPrimaryThreadReply)(nil), "cloud.pb.SetPrimaryThreadReply")
 	proto.RegisterType((*GetPrimaryThreadRequest)(nil), "cloud.pb.GetPrimaryThreadRequest")
 	proto.RegisterType((*GetPrimaryThreadReply)(nil), "cloud.pb.GetPrimaryThreadReply")
-	proto.RegisterType((*AddOrgRequest)(nil), "cloud.pb.AddOrgRequest")
+	proto.RegisterType((*CreateKeyRequest)(nil), "cloud.pb.CreateKeyRequest")
+	proto.RegisterType((*GetKeyReply)(nil), "cloud.pb.GetKeyReply")
+	proto.RegisterType((*InvalidateKeyRequest)(nil), "cloud.pb.InvalidateKeyRequest")
+	proto.RegisterType((*InvalidateKeyReply)(nil), "cloud.pb.InvalidateKeyReply")
+	proto.RegisterType((*ListKeysRequest)(nil), "cloud.pb.ListKeysRequest")
+	proto.RegisterType((*ListKeysReply)(nil), "cloud.pb.ListKeysReply")
+	proto.RegisterType((*CreateOrgRequest)(nil), "cloud.pb.CreateOrgRequest")
 	proto.RegisterType((*GetOrgRequest)(nil), "cloud.pb.GetOrgRequest")
 	proto.RegisterType((*GetOrgReply)(nil), "cloud.pb.GetOrgReply")
 	proto.RegisterType((*GetOrgReply_Member)(nil), "cloud.pb.GetOrgReply.Member")
@@ -1014,51 +1254,59 @@ func init() {
 func init() { proto.RegisterFile("cloud.proto", fileDescriptor_01f9cba63d8f209f) }
 
 var fileDescriptor_01f9cba63d8f209f = []byte{
-	// 696 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xcb, 0x4e, 0xdb, 0x4c,
-	0x14, 0xc6, 0x71, 0x08, 0xe1, 0x98, 0x40, 0xfe, 0x51, 0xf2, 0xc7, 0x58, 0x48, 0x05, 0x77, 0xd1,
-	0xb4, 0x0b, 0x2f, 0xe8, 0x4d, 0x62, 0xc5, 0x4d, 0xa2, 0x91, 0x52, 0x05, 0x39, 0xa9, 0xca, 0x0e,
-	0x19, 0x32, 0x0a, 0x56, 0xed, 0x8c, 0x6b, 0x4f, 0x50, 0xb3, 0xe8, 0xcb, 0xf4, 0x4d, 0xfa, 0x08,
-	0x7d, 0xa3, 0xca, 0x33, 0x1e, 0x7b, 0xc6, 0x71, 0xa8, 0xd8, 0xe5, 0xdc, 0x3e, 0x9f, 0xcb, 0xf7,
-	0x4d, 0xc0, 0xb8, 0x0f, 0xc8, 0x62, 0xea, 0x44, 0x31, 0xa1, 0x04, 0x35, 0x33, 0xe3, 0xce, 0x3e,
-	0x85, 0x9d, 0x21, 0x99, 0xf9, 0x73, 0x17, 0x7f, 0x5f, 0xe0, 0x84, 0x22, 0x0b, 0x9a, 0x8b, 0x04,
-	0xc7, 0x73, 0x2f, 0xc4, 0xa6, 0x76, 0xa8, 0xf5, 0xb7, 0xdd, 0xdc, 0x46, 0x1d, 0xd8, 0xc4, 0xa1,
-	0xe7, 0x07, 0x66, 0x8d, 0x05, 0xb8, 0x61, 0xbb, 0x00, 0x19, 0x42, 0x14, 0x2c, 0xd1, 0x2e, 0xd4,
-	0x06, 0x97, 0x59, 0x65, 0x6d, 0x70, 0xa9, 0xe0, 0xd5, 0x4a, 0x78, 0x26, 0x6c, 0x25, 0x38, 0x49,
-	0x7c, 0x32, 0x37, 0x75, 0x16, 0x12, 0xa6, 0xbd, 0x07, 0xad, 0x21, 0x99, 0x91, 0x05, 0xcd, 0xda,
-	0xb2, 0x5b, 0x60, 0x08, 0x47, 0x14, 0x2c, 0xd3, 0xf8, 0xd7, 0x07, 0xe2, 0x85, 0xbe, 0x88, 0x8f,
-	0xc0, 0x10, 0x8e, 0xe7, 0x76, 0x91, 0x4f, 0xa5, 0xcb, 0x53, 0x75, 0x00, 0x0d, 0xfd, 0x84, 0x4e,
-	0x1e, 0x62, 0xec, 0x4d, 0x13, 0xf1, 0x99, 0x9f, 0xd0, 0x56, 0xbc, 0xe9, 0xb7, 0xde, 0x43, 0x3d,
-	0xf0, 0x13, 0x6a, 0x6a, 0x87, 0x7a, 0xdf, 0x38, 0x3e, 0x72, 0xc4, 0x6a, 0x9d, 0x72, 0xa6, 0xc3,
-	0x0d, 0x97, 0xa5, 0x5b, 0xc7, 0xd0, 0xe0, 0xb6, 0xd4, 0xec, 0x0e, 0x6b, 0xd6, 0x84, 0xad, 0x28,
-	0xf6, 0x43, 0x2f, 0x5e, 0xb2, 0x5e, 0x9b, 0xae, 0x30, 0xed, 0x7d, 0xe8, 0x8d, 0x31, 0xbd, 0xe6,
-	0x56, 0x86, 0x96, 0x75, 0xd6, 0x83, 0xee, 0x6a, 0x28, 0x5d, 0xd5, 0x3e, 0xf4, 0xae, 0xd6, 0xd4,
-	0xbc, 0x82, 0xee, 0x55, 0x55, 0x4d, 0xb9, 0x23, 0xfb, 0x25, 0xb4, 0xce, 0xa6, 0xd3, 0x51, 0x3c,
-	0x13, 0x2c, 0x41, 0x50, 0x97, 0x18, 0xc2, 0x7e, 0xa7, 0x37, 0xb9, 0xc2, 0xb4, 0x48, 0xb2, 0xff,
-	0x68, 0x60, 0x08, 0x4f, 0xd5, 0x51, 0x04, 0x48, 0xad, 0x00, 0x41, 0x1f, 0x60, 0x2b, 0xc4, 0xe1,
-	0x1d, 0x8e, 0x13, 0x53, 0x67, 0xfb, 0x3c, 0x28, 0xf6, 0x29, 0x61, 0x39, 0x9f, 0x59, 0x92, 0x2b,
-	0x92, 0xd1, 0x01, 0x6c, 0xdf, 0xc7, 0xd8, 0xa3, 0x78, 0x7a, 0x46, 0xcd, 0xfa, 0xa1, 0xd6, 0xd7,
-	0xdd, 0xc2, 0x61, 0x7d, 0x82, 0x06, 0x2f, 0x78, 0x16, 0x31, 0x10, 0xd4, 0x63, 0x12, 0xe0, 0x8c,
-	0x17, 0xec, 0xb7, 0xfd, 0x1f, 0xec, 0xa5, 0x67, 0x1d, 0xc5, 0xb3, 0x9c, 0x13, 0x27, 0xd0, 0x2a,
-	0x5c, 0xe9, 0x9c, 0xaf, 0x15, 0x42, 0x74, 0x2b, 0x07, 0xe0, 0x24, 0xb0, 0x11, 0xb4, 0x5d, 0x1c,
-	0x92, 0x47, 0x2c, 0xad, 0xad, 0x0d, 0xbb, 0x92, 0x2f, 0x3d, 0xe1, 0x1b, 0x40, 0x83, 0xf9, 0xa3,
-	0x4f, 0xf1, 0x84, 0x48, 0x37, 0xc8, 0x79, 0xab, 0xc9, 0xbc, 0xed, 0x43, 0x5b, 0xc9, 0x4d, 0x1b,
-	0xea, 0xc0, 0x26, 0x25, 0xdf, 0xf0, 0x5c, 0x64, 0x32, 0x83, 0x8d, 0x82, 0x3d, 0xe5, 0xd3, 0xa9,
-	0xec, 0x72, 0x57, 0x14, 0x2c, 0x8f, 0x7f, 0x37, 0x40, 0x3f, 0xbb, 0x1e, 0xa0, 0x8f, 0xb0, 0xc9,
-	0x34, 0x8e, 0xfe, 0x97, 0xe8, 0x2d, 0x3d, 0x1b, 0x56, 0x67, 0xc5, 0x9f, 0x36, 0xbe, 0x81, 0x4e,
-	0xa0, 0xc1, 0x75, 0x8b, 0x7a, 0x4a, 0x46, 0x21, 0x6d, 0xab, 0xbb, 0x1a, 0xc8, 0x6b, 0xb9, 0xa6,
-	0xe5, 0x5a, 0x45, 0xf6, 0x72, 0xad, 0x24, 0x7f, 0x7b, 0x03, 0xdd, 0x40, 0xbb, 0x4c, 0x6d, 0x74,
-	0xa4, 0x5c, 0xa2, 0x4a, 0x11, 0xd6, 0x8b, 0xa7, 0x52, 0x72, 0xe4, 0xf1, 0x13, 0xc8, 0xe3, 0x7f,
-	0x23, 0x8f, 0xd7, 0x20, 0x0f, 0xc0, 0x90, 0x9e, 0x0c, 0x74, 0xb0, 0xe6, 0x25, 0xe1, 0x78, 0xd6,
-	0xfa, 0x77, 0x86, 0xaf, 0x8e, 0x0b, 0x56, 0x5e, 0x9d, 0x22, 0x61, 0xab, 0x9a, 0x97, 0xbc, 0x96,
-	0x3b, 0xe4, 0x5a, 0x45, 0xd9, 0xeb, 0x6b, 0x4f, 0xa1, 0x29, 0xb4, 0x80, 0xf6, 0xd5, 0x0e, 0x25,
-	0xc9, 0x58, 0xbd, 0xaa, 0x10, 0x47, 0xb8, 0x80, 0xed, 0x9c, 0xfd, 0x48, 0x1a, 0xb2, 0x2c, 0x13,
-	0xcb, 0xac, 0x8c, 0xe5, 0x9b, 0x94, 0x44, 0x20, 0x6f, 0x72, 0x55, 0x47, 0xf2, 0x26, 0xcb, 0xca,
-	0xc9, 0x26, 0xca, 0x24, 0xa1, 0x4c, 0xa4, 0x2a, 0x47, 0x99, 0x48, 0x56, 0x90, 0xbd, 0x71, 0xfe,
-	0x0e, 0xba, 0x3e, 0x71, 0x28, 0xfe, 0x41, 0xfd, 0x00, 0xf3, 0xb4, 0xdb, 0x59, 0x1c, 0xdd, 0x9f,
-	0xef, 0x4c, 0xb8, 0xef, 0x22, 0x75, 0x5d, 0x6b, 0xbf, 0x6a, 0x30, 0xb9, 0x99, 0x0c, 0x6f, 0x2f,
-	0x86, 0xa3, 0x2f, 0x97, 0x77, 0x0d, 0xf6, 0x47, 0xfd, 0xf6, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0xbc, 0x26, 0xef, 0x4c, 0xb7, 0x07, 0x00, 0x00,
+	// 827 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xcd, 0x6e, 0xda, 0x4a,
+	0x14, 0xe6, 0x3f, 0x70, 0x08, 0x09, 0x77, 0x04, 0xc1, 0xb1, 0xd0, 0xbd, 0xc4, 0x8b, 0x7b, 0xb9,
+	0x55, 0xc5, 0x22, 0xfd, 0x93, 0xb2, 0x4a, 0x42, 0x24, 0x8a, 0x42, 0x45, 0x64, 0xa8, 0x9a, 0x5d,
+	0xe4, 0xc0, 0x88, 0x58, 0x35, 0x98, 0xda, 0x43, 0x54, 0x16, 0x7d, 0x93, 0xae, 0xfa, 0x46, 0x7d,
+	0xa3, 0x6a, 0x66, 0x3c, 0xf6, 0x8c, 0xb1, 0x13, 0x65, 0xe7, 0xf3, 0x3b, 0xe7, 0x7c, 0xe7, 0x9c,
+	0x4f, 0x86, 0xea, 0xcc, 0x71, 0x37, 0xf3, 0xde, 0xda, 0x73, 0x89, 0x8b, 0xca, 0x81, 0x70, 0x6f,
+	0x9c, 0xc3, 0xfe, 0xc8, 0x5d, 0xd8, 0x2b, 0x13, 0x7f, 0xdb, 0x60, 0x9f, 0x20, 0x1d, 0xca, 0x1b,
+	0x1f, 0x7b, 0x2b, 0x6b, 0x89, 0xb5, 0x6c, 0x27, 0xdb, 0xad, 0x98, 0xa1, 0x8c, 0x1a, 0x50, 0xc4,
+	0x4b, 0xcb, 0x76, 0xb4, 0x1c, 0x33, 0x70, 0xc1, 0x30, 0x01, 0x82, 0x0c, 0x6b, 0x67, 0x8b, 0x0e,
+	0x20, 0x37, 0xbc, 0x0a, 0x22, 0x73, 0xc3, 0x2b, 0x25, 0x5f, 0x2e, 0x96, 0x4f, 0x83, 0x3d, 0x1f,
+	0xfb, 0xbe, 0xed, 0xae, 0xb4, 0x3c, 0x33, 0x09, 0xd1, 0x38, 0x84, 0xda, 0xc8, 0x5d, 0xb8, 0x1b,
+	0x12, 0x94, 0x65, 0xd4, 0xa0, 0x2a, 0x14, 0x6b, 0x67, 0x4b, 0xed, 0x5f, 0x1e, 0x5c, 0x6b, 0x69,
+	0x0b, 0xfb, 0x18, 0xaa, 0x42, 0xf1, 0xd2, 0x2a, 0xc2, 0xae, 0xf2, 0x72, 0x57, 0x0d, 0x40, 0x23,
+	0xdb, 0x27, 0xd3, 0x07, 0x0f, 0x5b, 0x73, 0x5f, 0x3c, 0xf3, 0x03, 0xea, 0x8a, 0x96, 0xbe, 0xf5,
+	0x0e, 0x0a, 0x8e, 0xed, 0x13, 0x2d, 0xdb, 0xc9, 0x77, 0xab, 0xa7, 0x27, 0x3d, 0x01, 0x6d, 0x2f,
+	0xee, 0xd9, 0xe3, 0x82, 0xc9, 0xdc, 0xf5, 0x53, 0x28, 0x71, 0x59, 0x2a, 0x76, 0x9f, 0x15, 0xab,
+	0xc1, 0xde, 0xda, 0xb3, 0x97, 0x96, 0xb7, 0x65, 0xb5, 0x96, 0x4d, 0x21, 0x1a, 0xc7, 0xd0, 0x9a,
+	0x60, 0x72, 0xc3, 0xa5, 0x20, 0x5b, 0x50, 0x59, 0x0b, 0x9a, 0xbb, 0x26, 0x0a, 0xd5, 0x31, 0xb4,
+	0x06, 0x29, 0x31, 0xff, 0x41, 0x73, 0x90, 0x14, 0x13, 0xaf, 0xc8, 0x40, 0x50, 0xef, 0x7b, 0xd8,
+	0x22, 0xf8, 0x1a, 0x6f, 0x45, 0xb0, 0x0f, 0xd5, 0x01, 0x26, 0x4c, 0x41, 0x43, 0x1a, 0x50, 0x24,
+	0xee, 0x57, 0xbc, 0x0a, 0x40, 0xe7, 0x02, 0x3a, 0x82, 0x92, 0x8f, 0x67, 0x1e, 0x26, 0x01, 0xea,
+	0x81, 0x44, 0xbd, 0x1f, 0x2d, 0xc7, 0x9e, 0x33, 0xcc, 0xcb, 0x26, 0x17, 0x50, 0x07, 0xaa, 0x84,
+	0x55, 0xd1, 0x77, 0x37, 0x2b, 0xa2, 0x15, 0x3a, 0xd9, 0x6e, 0xd1, 0x94, 0x55, 0xc6, 0x6b, 0x68,
+	0x0c, 0x57, 0xcc, 0x59, 0x29, 0x26, 0xf9, 0x75, 0x3a, 0xc3, 0x98, 0x37, 0x05, 0xe4, 0x2f, 0x38,
+	0xa4, 0x93, 0xb9, 0xc6, 0xdb, 0x70, 0xac, 0x67, 0x50, 0x8b, 0x54, 0xb4, 0x9b, 0xff, 0x95, 0x99,
+	0x36, 0xa3, 0x99, 0x4a, 0x2d, 0xf3, 0x39, 0x1a, 0xff, 0x0a, 0x6c, 0xc6, 0xde, 0x42, 0x94, 0x83,
+	0xa0, 0x20, 0x1d, 0x10, 0xfb, 0xa6, 0x2b, 0x3b, 0xc0, 0x24, 0x72, 0x32, 0x7e, 0x67, 0x19, 0x82,
+	0x4c, 0x93, 0xb4, 0xb3, 0x22, 0x49, 0x2e, 0x4a, 0x82, 0xde, 0xc3, 0xde, 0x12, 0x2f, 0xef, 0xb1,
+	0xe7, 0x6b, 0x79, 0x56, 0x5a, 0x5b, 0x29, 0x4d, 0xe4, 0xea, 0x7d, 0x62, 0x4e, 0xa6, 0x70, 0x46,
+	0x6d, 0xa8, 0xcc, 0x58, 0x91, 0xf3, 0x0b, 0x8e, 0x6b, 0xde, 0x8c, 0x14, 0xfa, 0x47, 0x28, 0xf1,
+	0x80, 0x17, 0xdd, 0x0d, 0x82, 0x82, 0xe7, 0x3a, 0x38, 0x38, 0x1b, 0xf6, 0x2d, 0xb0, 0x1d, 0x7b,
+	0x8b, 0x38, 0xb6, 0x5c, 0xf5, 0x1c, 0xb6, 0xa2, 0x81, 0x00, 0x5b, 0x04, 0x75, 0x13, 0x2f, 0xdd,
+	0x47, 0x09, 0x5b, 0xa3, 0x0e, 0x07, 0x92, 0x8e, 0x0e, 0xf4, 0x15, 0x1b, 0xb3, 0x4d, 0xf0, 0xd4,
+	0x95, 0x66, 0x10, 0x9e, 0x75, 0x56, 0x3e, 0xeb, 0x2e, 0xd4, 0x15, 0xdf, 0xd4, 0xd5, 0x65, 0xad,
+	0x60, 0x4b, 0x79, 0x9a, 0xb2, 0x52, 0xa8, 0x5a, 0x3b, 0xdb, 0xd3, 0x9f, 0x65, 0xc8, 0x5f, 0xdc,
+	0x0c, 0xd1, 0x07, 0x28, 0x32, 0x0a, 0x44, 0x47, 0xd2, 0xf5, 0x4b, 0xac, 0xaa, 0x37, 0x76, 0xf4,
+	0xb4, 0xf0, 0x0c, 0x3a, 0x83, 0x12, 0xa7, 0x35, 0xd4, 0x52, 0x3c, 0x22, 0xe6, 0xd3, 0x9b, 0xbb,
+	0x86, 0x30, 0x96, 0x53, 0x9e, 0x1c, 0xab, 0xb0, 0xa2, 0x1c, 0x2b, 0xb1, 0xa3, 0x91, 0x41, 0xb7,
+	0x50, 0x8f, 0x5f, 0x3e, 0x3a, 0x51, 0x26, 0x91, 0x44, 0x18, 0xfa, 0x3f, 0x4f, 0xb9, 0x84, 0x99,
+	0x27, 0x4f, 0x64, 0x9e, 0x3c, 0x9f, 0x79, 0x92, 0x92, 0x79, 0x08, 0x55, 0x89, 0x51, 0x51, 0x3b,
+	0x85, 0x68, 0x79, 0x3e, 0x3d, 0x9d, 0x86, 0x8d, 0x0c, 0x3a, 0x87, 0x4a, 0xc8, 0x67, 0x48, 0x72,
+	0x8d, 0x93, 0x9c, 0x9e, 0x7c, 0xf9, 0x2c, 0x43, 0x59, 0x30, 0x06, 0x3a, 0x56, 0xdf, 0x92, 0x88,
+	0x45, 0x6f, 0x25, 0x99, 0x78, 0x86, 0x31, 0xd4, 0x14, 0x72, 0x42, 0x7f, 0x47, 0xbe, 0x49, 0x1c,
+	0xa7, 0xb7, 0x53, 0xed, 0xb1, 0xa6, 0xc6, 0xde, 0x62, 0xb7, 0xa9, 0x68, 0x8d, 0xf5, 0xe4, 0x93,
+	0xe3, 0x1b, 0xc5, 0x15, 0xf2, 0x46, 0x29, 0xa4, 0x95, 0x1e, 0x1b, 0x00, 0x42, 0xcf, 0x3c, 0x0e,
+	0x88, 0xc4, 0x06, 0x71, 0x40, 0x42, 0x56, 0x30, 0x32, 0xa8, 0x0f, 0x95, 0xf0, 0xb0, 0xe5, 0xfa,
+	0xe3, 0x0c, 0xa0, 0x6b, 0x89, 0xb6, 0x70, 0x49, 0xa4, 0xfb, 0x46, 0x2a, 0x66, 0x31, 0x8a, 0x90,
+	0x97, 0x24, 0x4e, 0x0a, 0x41, 0x47, 0xc1, 0xb5, 0x2b, 0x1d, 0xa9, 0xa4, 0xa0, 0x74, 0x24, 0x93,
+	0x83, 0x91, 0xb9, 0x7c, 0x0b, 0x4d, 0xdb, 0xed, 0x11, 0xfc, 0x9d, 0xd8, 0x0e, 0xe6, 0x6e, 0x77,
+	0x0b, 0x6f, 0x3d, 0xbb, 0xdc, 0x9f, 0x72, 0x5d, 0x9f, 0xaa, 0x6e, 0xb2, 0xbf, 0x72, 0x30, 0xbd,
+	0x9d, 0x8e, 0xee, 0xfa, 0xa3, 0xf1, 0xe7, 0xab, 0xfb, 0x12, 0xfb, 0x45, 0x7b, 0xf3, 0x27, 0x00,
+	0x00, 0xff, 0xff, 0x77, 0x6d, 0x8c, 0x93, 0xb1, 0x09, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1079,7 +1327,10 @@ type APIClient interface {
 	GetPrimaryThread(ctx context.Context, in *GetPrimaryThreadRequest, opts ...grpc.CallOption) (*GetPrimaryThreadReply, error)
 	SetPrimaryThread(ctx context.Context, in *SetPrimaryThreadRequest, opts ...grpc.CallOption) (*SetPrimaryThreadReply, error)
 	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
-	AddOrg(ctx context.Context, in *AddOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error)
+	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*GetKeyReply, error)
+	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysReply, error)
+	InvalidateKey(ctx context.Context, in *InvalidateKeyRequest, opts ...grpc.CallOption) (*InvalidateKeyReply, error)
+	CreateOrg(ctx context.Context, in *CreateOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error)
 	GetOrg(ctx context.Context, in *GetOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error)
 	ListOrgs(ctx context.Context, in *ListOrgsRequest, opts ...grpc.CallOption) (*ListOrgsReply, error)
 	RemoveOrg(ctx context.Context, in *RemoveOrgRequest, opts ...grpc.CallOption) (*RemoveOrgReply, error)
@@ -1149,9 +1400,36 @@ func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opt
 	return out, nil
 }
 
-func (c *aPIClient) AddOrg(ctx context.Context, in *AddOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error) {
+func (c *aPIClient) CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*GetKeyReply, error) {
+	out := new(GetKeyReply)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/CreateKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysReply, error) {
+	out := new(ListKeysReply)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/ListKeys", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) InvalidateKey(ctx context.Context, in *InvalidateKeyRequest, opts ...grpc.CallOption) (*InvalidateKeyReply, error) {
+	out := new(InvalidateKeyReply)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/InvalidateKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) CreateOrg(ctx context.Context, in *CreateOrgRequest, opts ...grpc.CallOption) (*GetOrgReply, error) {
 	out := new(GetOrgReply)
-	err := c.cc.Invoke(ctx, "/cloud.pb.API/AddOrg", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cloud.pb.API/CreateOrg", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1211,7 +1489,10 @@ type APIServer interface {
 	GetPrimaryThread(context.Context, *GetPrimaryThreadRequest) (*GetPrimaryThreadReply, error)
 	SetPrimaryThread(context.Context, *SetPrimaryThreadRequest) (*SetPrimaryThreadReply, error)
 	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
-	AddOrg(context.Context, *AddOrgRequest) (*GetOrgReply, error)
+	CreateKey(context.Context, *CreateKeyRequest) (*GetKeyReply, error)
+	ListKeys(context.Context, *ListKeysRequest) (*ListKeysReply, error)
+	InvalidateKey(context.Context, *InvalidateKeyRequest) (*InvalidateKeyReply, error)
+	CreateOrg(context.Context, *CreateOrgRequest) (*GetOrgReply, error)
 	GetOrg(context.Context, *GetOrgRequest) (*GetOrgReply, error)
 	ListOrgs(context.Context, *ListOrgsRequest) (*ListOrgsReply, error)
 	RemoveOrg(context.Context, *RemoveOrgRequest) (*RemoveOrgReply, error)
@@ -1241,8 +1522,17 @@ func (*UnimplementedAPIServer) SetPrimaryThread(ctx context.Context, req *SetPri
 func (*UnimplementedAPIServer) ListThreads(ctx context.Context, req *ListThreadsRequest) (*ListThreadsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListThreads not implemented")
 }
-func (*UnimplementedAPIServer) AddOrg(ctx context.Context, req *AddOrgRequest) (*GetOrgReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddOrg not implemented")
+func (*UnimplementedAPIServer) CreateKey(ctx context.Context, req *CreateKeyRequest) (*GetKeyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
+}
+func (*UnimplementedAPIServer) ListKeys(ctx context.Context, req *ListKeysRequest) (*ListKeysReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeys not implemented")
+}
+func (*UnimplementedAPIServer) InvalidateKey(ctx context.Context, req *InvalidateKeyRequest) (*InvalidateKeyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InvalidateKey not implemented")
+}
+func (*UnimplementedAPIServer) CreateOrg(ctx context.Context, req *CreateOrgRequest) (*GetOrgReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateOrg not implemented")
 }
 func (*UnimplementedAPIServer) GetOrg(ctx context.Context, req *GetOrgRequest) (*GetOrgReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrg not implemented")
@@ -1372,20 +1662,74 @@ func _API_ListThreads_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_AddOrg_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddOrgRequest)
+func _API_CreateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).AddOrg(ctx, in)
+		return srv.(APIServer).CreateKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cloud.pb.API/AddOrg",
+		FullMethod: "/cloud.pb.API/CreateKey",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).AddOrg(ctx, req.(*AddOrgRequest))
+		return srv.(APIServer).CreateKey(ctx, req.(*CreateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cloud.pb.API/ListKeys",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListKeys(ctx, req.(*ListKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_InvalidateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InvalidateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).InvalidateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cloud.pb.API/InvalidateKey",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).InvalidateKey(ctx, req.(*InvalidateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_CreateOrg_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateOrgRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).CreateOrg(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cloud.pb.API/CreateOrg",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).CreateOrg(ctx, req.(*CreateOrgRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1509,8 +1853,20 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_ListThreads_Handler,
 		},
 		{
-			MethodName: "AddOrg",
-			Handler:    _API_AddOrg_Handler,
+			MethodName: "CreateKey",
+			Handler:    _API_CreateKey_Handler,
+		},
+		{
+			MethodName: "ListKeys",
+			Handler:    _API_ListKeys_Handler,
+		},
+		{
+			MethodName: "InvalidateKey",
+			Handler:    _API_InvalidateKey_Handler,
+		},
+		{
+			MethodName: "CreateOrg",
+			Handler:    _API_CreateOrg_Handler,
 		},
 		{
 			MethodName: "GetOrg",

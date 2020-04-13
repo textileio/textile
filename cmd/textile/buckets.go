@@ -7,11 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/cmd"
@@ -203,16 +204,24 @@ These 'push' commands result in the following bucket structures.
 	Run: func(c *cobra.Command, args []string) {
 		dbID := getThreadID()
 		if !dbID.Defined() {
-			ctx, cancel := authCtx(addFileTimeout)
-			defer cancel()
-			var err error
-			dbID, err = cloud.GetPrimaryThread(ctx)
-			if err != nil { // @todo: Ensure this is a not found error
+			selected := selectThread("Select thread", aurora.Sprintf(
+				aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
+
+			if selected.ID == "new" {
+				ctx, cancel := authCtx(cmdTimeout)
+				defer cancel()
 				dbID = thread.NewIDV1(thread.Raw, 32)
-				if err = threads.NewDB(ctx, dbID); err != nil {
+				if err := threads.NewDB(ctx, dbID); err != nil {
+					cmd.Fatal(err)
+				}
+			} else {
+				var err error
+				dbID, err = thread.Decode(selected.ID)
+				if err != nil {
 					cmd.Fatal(err)
 				}
 			}
+
 			configViper.Set("thread", dbID.String())
 			if err := configViper.WriteConfig(); err != nil {
 				cmd.Fatal(err)

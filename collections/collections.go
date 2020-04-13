@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	dbName   = "textile"
 	tokenLen = 44
 )
 
@@ -29,12 +28,13 @@ type Collections struct {
 	Invites    *Invites
 
 	Threads *Threads
+	Keys    *Keys
 
 	Users *Users
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, uri string) (*Collections, error) {
+func NewCollections(ctx context.Context, uri, dbName string) (*Collections, error) {
 	m, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
@@ -57,7 +57,11 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 	if err != nil {
 		return nil, err
 	}
-	databases, err := NewThreads(ctx, db)
+	threads, err := NewThreads(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := NewKeys(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +78,8 @@ func NewCollections(ctx context.Context, uri string) (*Collections, error) {
 		Orgs:       teams,
 		Invites:    invites,
 
-		Threads: databases,
+		Threads: threads,
+		Keys:    keys,
 
 		Users: users,
 	}, nil

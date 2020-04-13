@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -37,7 +38,8 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 			Keys: bson.D{{"from_id", 1}},
 		},
 		{
-			Keys: bson.D{{"token", 1}},
+			Keys:    bson.D{{"token", 1}},
+			Options: options.Index().SetUnique(true),
 		},
 	})
 	return i, err
@@ -72,8 +74,8 @@ func (i *Invites) Get(ctx context.Context, token string) (*Invite, error) {
 	return doc, nil
 }
 
-func (i *Invites) Delete(ctx context.Context, id primitive.ObjectID) error {
-	res, err := i.col.DeleteOne(ctx, bson.M{"_id": id})
+func (i *Invites) Delete(ctx context.Context, token string) error {
+	res, err := i.col.DeleteOne(ctx, bson.M{"token": token})
 	if err != nil {
 		return err
 	}

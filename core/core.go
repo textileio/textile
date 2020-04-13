@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -25,7 +24,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/net/api"
 	netpb "github.com/textileio/go-threads/net/api/pb"
-	"github.com/textileio/go-threads/util"
+	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/cloud"
@@ -35,6 +34,7 @@ import (
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -80,6 +80,8 @@ type Config struct {
 	AddrFilecoinApi         ma.Multiaddr
 	AddrMongoUri            string
 
+	MongoName string
+
 	DNSDomain string
 	DNSZoneID string
 	DNSToken  string
@@ -95,7 +97,7 @@ type Config struct {
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
-		if err := util.SetLogLevels(map[string]logging.LogLevel{
+		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"core": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
@@ -126,7 +128,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.co, err = c.NewCollections(ctx, conf.AddrMongoUri)
+	t.co, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
 	if err != nil {
 		return nil, err
 	}
@@ -169,11 +171,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC server
-	target, err := util.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
 	if err != nil {
 		return nil, err
 	}
-	ptarget, err := util.TCPAddrFromMultiAddr(conf.AddrApiProxy)
+	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrApiProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +229,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	cs.Threads = t.th
 
 	// Configure gateway
-	t.gatewayToken = uuid.New().String()
+	t.gatewayToken = util.MakeToken(44)
 	t.gateway, err = gateway.NewGateway(
 		conf.AddrGatewayHost,
 		conf.AddrApi,
@@ -247,7 +249,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 }
 
 func (t *Textile) Bootstrap() {
-	t.ts.Bootstrap(util.DefaultBoostrapPeers())
+	t.ts.Bootstrap(tutil.DefaultBoostrapPeers())
 }
 
 func (t *Textile) Close() error {

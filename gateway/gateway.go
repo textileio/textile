@@ -151,8 +151,6 @@ func (g *Gateway) Start() {
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	//router.POST("/register", g.registerUser)
-
 	router.NoRoute(func(c *gin.Context) {
 		g.render404(c)
 	})
@@ -321,15 +319,17 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		return
 	}
 
-	dev, err := g.collections.Developers.GetOrCreate(ctx, util.MakeToken(12), invite.EmailTo)
+	username := util.MakeToken(12) // @todo: Use signup to collect a chosen username
+	dev, err := g.collections.Developers.GetOrCreate(ctx, username, invite.EmailTo)
 	if err != nil {
 		g.renderError(c, http.StatusInternalServerError, err)
 		return
 	}
 
 	if err = g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
-		ID:   dev.ID,
-		Role: collections.OrgMember,
+		ID:       dev.ID,
+		Username: username,
+		Role:     collections.OrgMember,
 	}); err != nil {
 		var code int
 		if err == mongo.ErrNoDocuments {
@@ -345,51 +345,6 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		"Org": invite.Org,
 	})
 }
-
-type registrationParams struct {
-	Token    string `json:"token" binding:"required"`
-	DeviceID string `json:"device_id" binding:"required"`
-}
-
-// registerUser adds a user to a team.
-//func (g *Gateway) registerUser(c *gin.Context) {
-//	var params registrationParams
-//	err := c.BindJSON(&params)
-//	if err != nil {
-//		abort(c, http.StatusBadRequest, err)
-//		return
-//	}
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
-//	defer cancel()
-//
-//	token, err := g.collections.Tokens.Get(ctx, params.Token)
-//	if err != nil {
-//		abort(c, http.StatusNotFound, fmt.Errorf("token not found"))
-//		return
-//	}
-//	proj, err := g.collections.Projects.Get(ctx, token.ProjectID)
-//	if err != nil {
-//		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
-//		return
-//	}
-//	user, err := g.collections.Users.GetOrCreate(ctx, proj.ID, params.DeviceID)
-//	if err != nil {
-//		abort(c, http.StatusInternalServerError, err)
-//		return
-//	}
-//
-//	session, err := g.collections.Sessions.Create(ctx, user.ID, user.ID)
-//	if err != nil {
-//		abort(c, http.StatusInternalServerError, err)
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, gin.H{
-//		"id":         user.ID,
-//		"session_id": session.ID,
-//	})
-//}
 
 // render404 renders the 404 template.
 func (g *Gateway) render404(c *gin.Context) {

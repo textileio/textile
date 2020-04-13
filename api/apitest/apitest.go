@@ -35,17 +35,15 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	conf = core.Config{
 		RepoPath: dir,
 
-		AddrApi:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrApiProxy: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-
+		AddrApi:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		AddrApiProxy:    util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-
-		AddrIpfsApi: util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
-
-		AddrMongoUri: "mongodb://127.0.0.1:27017",
-
+		AddrIpfsApi:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		AddrMongoUri:    "mongodb://127.0.0.1:27017",
+
+		MongoName: util.MakeToken(12),
 
 		EmailFrom:   "test@email.textile.io",
 		EmailDomain: "email.textile.io",

@@ -148,7 +148,81 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 }
 
-func TestClient_AddOrg(t *testing.T) {
+func TestClient_CreateKey(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	t.Run("without session", func(t *testing.T) {
+		_, err := client.CreateKey(ctx)
+		require.NotNil(t, err)
+	})
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	t.Run("with session", func(t *testing.T) {
+		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
+		require.Nil(t, err)
+		assert.NotEmpty(t, key.Token)
+		assert.NotEmpty(t, key.Secret)
+	})
+}
+
+func TestClient_InvalidateKey(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
+	require.Nil(t, err)
+
+	t.Run("without session", func(t *testing.T) {
+		err := client.InvalidateKey(ctx, key.Token)
+		require.NotNil(t, err)
+	})
+
+	ctx = common.NewSessionContext(ctx, user.Session)
+
+	t.Run("with session", func(t *testing.T) {
+		err := client.InvalidateKey(ctx, key.Token)
+		require.Nil(t, err)
+		keys, err := client.ListKeys(ctx)
+		require.Nil(t, err)
+		require.Equal(t, len(keys.List), 1)
+		require.False(t, keys.List[0].Valid)
+	})
+}
+
+func TestClient_ListKeys(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	ctx := common.NewSessionContext(context.Background(), user.Session)
+
+	t.Run("empty", func(t *testing.T) {
+		keys, err := client.ListKeys(ctx)
+		require.Nil(t, err)
+		assert.Empty(t, keys.List)
+	})
+
+	_, err := client.CreateKey(ctx)
+	require.Nil(t, err)
+	_, err = client.CreateKey(ctx)
+	require.Nil(t, err)
+
+	t.Run("not empty", func(t *testing.T) {
+		keys, err := client.ListKeys(ctx)
+		require.Nil(t, err)
+		assert.Equal(t, len(keys.List), 2)
+	})
+}
+
+func TestClient_CreateOrg(t *testing.T) {
 	t.Parallel()
 	conf, client, _, done := setup(t)
 	defer done()
@@ -157,14 +231,14 @@ func TestClient_AddOrg(t *testing.T) {
 	name := apitest.NewName()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.AddOrg(ctx, name)
+		_, err := client.CreateOrg(ctx, name)
 		require.NotNil(t, err)
 	})
 
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		org, err := client.AddOrg(common.NewSessionContext(ctx, user.Session), name)
+		org, err := client.CreateOrg(common.NewSessionContext(ctx, user.Session), name)
 		require.Nil(t, err)
 		assert.NotEmpty(t, org.ID)
 		assert.Equal(t, org.Name, name)
@@ -179,7 +253,7 @@ func TestClient_GetOrg(t *testing.T) {
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.AddOrg(ctx, name)
+	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
@@ -209,10 +283,10 @@ func TestClient_ListOrgs(t *testing.T) {
 	})
 
 	name1 := uuid.New().String()
-	_, err := client.AddOrg(ctx, name1)
+	_, err := client.CreateOrg(ctx, name1)
 	require.Nil(t, err)
 	name2 := uuid.New().String()
-	_, err = client.AddOrg(ctx, name2)
+	_, err = client.CreateOrg(ctx, name2)
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -230,7 +304,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.AddOrg(ctx, name)
+	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
@@ -263,7 +337,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.AddOrg(ctx, name)
+	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
 	ctx = common.NewOrgNameContext(ctx, org.Name)
 
@@ -287,7 +361,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 	name := apitest.NewName()
 	user := apitest.Login(t, client, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.AddOrg(ctx, name)
+	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
 	ctx = common.NewOrgNameContext(ctx, org.Name)
 

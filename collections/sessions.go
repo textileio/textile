@@ -86,8 +86,8 @@ func (s *Sessions) Touch(ctx context.Context, token string) error {
 	return nil
 }
 
-func (s *Sessions) Delete(ctx context.Context, id primitive.ObjectID) error {
-	res, err := s.col.DeleteOne(ctx, bson.M{"_id": id})
+func (s *Sessions) Delete(ctx context.Context, token string) error {
+	res, err := s.col.DeleteOne(ctx, bson.M{"token": token})
 	if err != nil {
 		return err
 	}

@@ -116,7 +116,7 @@ func (s *Service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutRe
 	log.Debugf("received logout request")
 
 	session, _ := c.SessionFromContext(ctx)
-	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
+	if err := s.Collections.Sessions.Delete(ctx, session.Token); err != nil {
 		return nil, err
 	}
 	return &pb.LogoutReply{}, nil
@@ -181,8 +181,65 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	return reply, nil
 }
 
-func (s *Service) AddOrg(ctx context.Context, req *pb.AddOrgRequest) (*pb.GetOrgReply, error) {
-	log.Debugf("received add org request")
+func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
+	log.Debugf("received create key request")
+
+	dev, _ := c.DevFromContext(ctx)
+	key, err := s.Collections.Keys.Create(ctx, dev.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetKeyReply{
+		Token:       key.Token,
+		Secret:      key.Secret,
+		Valid:       true,
+		ThreadCount: 0,
+	}, nil
+}
+
+func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyReply, error) {
+	log.Debugf("received invalidate key request")
+
+	dev, _ := c.DevFromContext(ctx)
+	key, err := s.Collections.Keys.Get(ctx, req.Token)
+	if err != nil {
+		return nil, err
+	}
+	if dev.ID != key.OwnerID {
+		return nil, status.Error(codes.PermissionDenied, "User does not own key")
+	}
+	if err := s.Collections.Keys.Invalidate(ctx, req.Token); err != nil {
+		return nil, err
+	}
+	return &pb.InvalidateKeyReply{}, nil
+}
+
+func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysReply, error) {
+	log.Debugf("received list keys request")
+
+	dev, _ := c.DevFromContext(ctx)
+	keys, err := s.Collections.Keys.List(ctx, dev.ID)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*pb.GetKeyReply, len(keys))
+	for i, key := range keys {
+		ts, err := s.Collections.Threads.ListByKey(ctx, key.ID)
+		if err != nil {
+			return nil, err
+		}
+		list[i] = &pb.GetKeyReply{
+			Token:       key.Token,
+			Secret:      key.Secret,
+			Valid:       key.Valid,
+			ThreadCount: int32(len(ts)),
+		}
+	}
+	return &pb.ListKeysReply{List: list}, nil
+}
+
+func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.GetOrgReply, error) {
+	log.Debugf("received create org request")
 
 	dev, _ := c.DevFromContext(ctx)
 	org := &c.Org{
@@ -258,7 +315,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 		return nil, status.Error(codes.PermissionDenied, "User must be an org owner")
 	}
 
-	if err = s.Collections.Orgs.Delete(ctx, org.ID); err != nil {
+	if err = s.Collections.Orgs.Delete(ctx, org.Name); err != nil {
 		return nil, err
 	}
 	return &pb.RemoveOrgReply{}, nil

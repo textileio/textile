@@ -74,9 +74,26 @@ func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) 
 	return c.c.ListThreads(ctx, &pb.ListThreadsRequest{})
 }
 
-// AddOrg add a new org.
-func (c *Client) AddOrg(ctx context.Context, name string) (*pb.GetOrgReply, error) {
-	return c.c.AddOrg(ctx, &pb.AddOrgRequest{Name: name})
+// CreateKey creates a new key for the current session.
+func (c *Client) CreateKey(ctx context.Context) (*pb.GetKeyReply, error) {
+	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{})
+}
+
+// InvalidateKey marks a key as invalid.
+// New threads cannot be created with an invalid key.
+func (c *Client) InvalidateKey(ctx context.Context, token string) error {
+	_, err := c.c.InvalidateKey(ctx, &pb.InvalidateKeyRequest{Token: token})
+	return err
+}
+
+// ListKeys returns a list of keys for the current session.
+func (c *Client) ListKeys(ctx context.Context) (*pb.ListKeysReply, error) {
+	return c.c.ListKeys(ctx, &pb.ListKeysRequest{})
+}
+
+// CreateOrg creates a new org by name.
+func (c *Client) CreateOrg(ctx context.Context, name string) (*pb.GetOrgReply, error) {
+	return c.c.CreateOrg(ctx, &pb.CreateOrgRequest{Name: name})
 }
 
 // GetOrg returns an org.

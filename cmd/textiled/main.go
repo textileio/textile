@@ -277,6 +277,7 @@ var rootCmd = &cobra.Command{
 			AddrGatewayBucketDomain: addrGatewayBucketDomain,
 			AddrFilecoinApi:         addrFilecoinApi,
 			AddrMongoUri:            addrMongoUri,
+			MongoName:               "textile",
 			DNSDomain:               dnsDomain,
 			DNSZoneID:               dnsZoneID,
 			DNSToken:                dnsToken,

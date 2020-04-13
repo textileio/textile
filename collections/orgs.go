@@ -70,7 +70,7 @@ func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
 	return t, err
 }
 
-func (t *Orgs) Create(ctx context.Context, doc *Org) error {
+func (o *Orgs) Create(ctx context.Context, doc *Org) error {
 	doc.ID = primitive.NewObjectID()
 	doc.CreatedAt = time.Now()
 	name, err := util.ToValidName(doc.Name)
@@ -81,13 +81,13 @@ func (t *Orgs) Create(ctx context.Context, doc *Org) error {
 	if len(doc.Members) == 0 {
 		doc.Members = []Member{}
 	}
-	_, err = t.col.InsertOne(ctx, doc)
+	_, err = o.col.InsertOne(ctx, doc)
 	return err
 }
 
-func (t *Orgs) Get(ctx context.Context, name string) (*Org, error) {
+func (o *Orgs) Get(ctx context.Context, name string) (*Org, error) {
 	var doc *Org
-	res := t.col.FindOne(ctx, bson.M{"name": name})
+	res := o.col.FindOne(ctx, bson.M{"name": name})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -97,9 +97,9 @@ func (t *Orgs) Get(ctx context.Context, name string) (*Org, error) {
 	return doc, nil
 }
 
-func (t *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, error) {
+func (o *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, error) {
 	filter := bson.M{"members": bson.M{"$elemMatch": bson.M{"_id": memberID}}}
-	cursor, err := t.col.Find(ctx, filter)
+	cursor, err := o.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +117,9 @@ func (t *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, er
 	return docs, nil
 }
 
-func (t *Orgs) IsOwner(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
+func (o *Orgs) IsOwner(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
 	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": memberID, "role": OrgOwner}}}
-	res := t.col.FindOne(ctx, filter)
+	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return false, nil
@@ -130,9 +130,9 @@ func (t *Orgs) IsOwner(ctx context.Context, name string, memberID primitive.Obje
 	return true, nil
 }
 
-func (t *Orgs) IsMember(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
+func (o *Orgs) IsMember(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
 	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": memberID}}}
-	res := t.col.FindOne(ctx, filter)
+	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return false, nil
@@ -143,8 +143,8 @@ func (t *Orgs) IsMember(ctx context.Context, name string, memberID primitive.Obj
 	return true, nil
 }
 
-func (t *Orgs) AddMember(ctx context.Context, name string, member Member) error {
-	res, err := t.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$addToSet": bson.M{"members": member}})
+func (o *Orgs) AddMember(ctx context.Context, name string, member Member) error {
+	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$addToSet": bson.M{"members": member}})
 	if err != nil {
 		return err
 	}
@@ -154,13 +154,13 @@ func (t *Orgs) AddMember(ctx context.Context, name string, member Member) error 
 	return nil
 }
 
-func (t *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive.ObjectID) error {
-	isOwner, err := t.IsOwner(ctx, name, memberID)
+func (o *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive.ObjectID) error {
+	isOwner, err := o.IsOwner(ctx, name, memberID)
 	if err != nil {
 		return err
 	}
 	if isOwner { // Ensure there will still be at least one owner left
-		cursor, err := t.col.Aggregate(ctx, mongo.Pipeline{
+		cursor, err := o.col.Aggregate(ctx, mongo.Pipeline{
 			bson.D{{"$match", bson.M{"name": name}}},
 			bson.D{{"$project", bson.M{
 				"members": bson.M{
@@ -193,7 +193,7 @@ func (t *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive
 			return fmt.Errorf("an org must have at least one owner")
 		}
 	}
-	res, err := t.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": memberID}}})
+	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": memberID}}})
 	if err != nil {
 		return err
 	}
@@ -203,8 +203,8 @@ func (t *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive
 	return nil
 }
 
-func (t *Orgs) Delete(ctx context.Context, id primitive.ObjectID) error {
-	res, err := t.col.DeleteOne(ctx, bson.M{"_id": id})
+func (o *Orgs) Delete(ctx context.Context, name string) error {
+	res, err := o.col.DeleteOne(ctx, bson.M{"name": name})
 	if err != nil {
 		return err
 	}

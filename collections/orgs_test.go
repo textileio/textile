@@ -214,7 +214,7 @@ func TestOrgs_Delete(t *testing.T) {
 	err = col.Create(context.Background(), created)
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.ID)
+	err = col.Delete(context.Background(), created.Name)
 	require.Nil(t, err)
 	_, err = col.Get(context.Background(), created.Name)
 	require.NotNil(t, err)

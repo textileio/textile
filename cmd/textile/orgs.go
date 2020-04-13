@@ -35,7 +35,7 @@ var createOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if _, err := cloud.AddOrg(ctx, args[0]); err != nil {
+		if _, err := cloud.CreateOrg(ctx, args[0]); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Created new org %s", aurora.White(args[0]).Bold())
@@ -95,7 +95,6 @@ var membersOrgsCmd = &cobra.Command{
 			}
 			cmd.RenderTable([]string{"username", "id"}, data)
 		}
-
 		cmd.Message("Found %d members", aurora.White(len(org.Members)).Bold())
 	},
 }
@@ -117,7 +116,6 @@ var rmOrgsCmd = &cobra.Command{
 		if err := cloud.RemoveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Success("Removed org %s", aurora.White(selected.Name).Bold())
 	},
 }
@@ -148,7 +146,6 @@ var inviteOrgsCmd = &cobra.Command{
 		if _, err := cloud.InviteToOrg(ctx, email); err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Success("We sent %s an invitation to the %s org", aurora.White(email).Bold(),
 			aurora.White(selected.Name).Bold())
 	},
@@ -168,7 +165,6 @@ var leaveOrgsCmd = &cobra.Command{
 		if err := cloud.LeaveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-
 		cmd.Success("Left org %s", aurora.White(selected.Name).Bold())
 	},
 }

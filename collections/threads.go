@@ -39,7 +39,10 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 			Options: options.Index().SetUnique(true),
 		},
 		{
-			Keys: bson.D{{"owner_id", 1}, {"primary", 1}},
+			Keys: bson.D{{"owner_id", 1}},
+		},
+		{
+			Keys: bson.D{{"key_id", 1}},
 		},
 	})
 	return d, err
@@ -109,6 +112,29 @@ func (t *Threads) SetPrimary(ctx context.Context, threadID thread.ID, ownerID pr
 
 func (t *Threads) List(ctx context.Context, ownerID primitive.ObjectID) ([]Thread, error) {
 	cursor, err := t.col.Find(ctx, bson.M{"owner_id": ownerID})
+	if err != nil {
+		return nil, err
+	}
+	var docs []Thread
+	for cursor.Next(ctx) {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
+			return nil, err
+		}
+		doc, err := decodeThread(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
+func (t *Threads) ListByKey(ctx context.Context, keyID primitive.ObjectID) ([]Thread, error) {
+	cursor, err := t.col.Find(ctx, bson.M{"key_id": keyID})
 	if err != nil {
 		return nil, err
 	}

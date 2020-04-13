@@ -100,9 +100,7 @@ func selectThread(label, successMsg string) *threadItem {
 		}
 		items[i] = &threadItem{ID: id.String(), Primary: strconv.FormatBool(t.Primary)}
 	}
-	if len(items) == 0 {
-		cmd.End("You don't have any threads!")
-	}
+	items = append(items, &threadItem{ID: "Create new"})
 
 	prompt := promptui.Select{
 		Label: label,

@@ -2,6 +2,7 @@ package util
 
 import (
 	"crypto/rand"
+	"encoding/base32"
 	"encoding/base64"
 	"fmt"
 
@@ -28,12 +29,8 @@ func GenerateRandomBytes(n int) []byte {
 }
 
 func MakeToken(n int) string {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 	bytes := GenerateRandomBytes(n)
-	for i, b := range bytes {
-		bytes[i] = letters[b%byte(len(letters))]
-	}
-	return string(bytes)
+	return base32.StdEncoding.EncodeToString(bytes)
 }
 
 func MakeURLSafeToken(n int) string {
