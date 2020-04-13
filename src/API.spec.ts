@@ -6,7 +6,7 @@
 
 import { Client } from '@textile/threads-client'
 import { expect } from 'chai'
-import { API } from './API'
+import { API, ThreadID } from './API'
 
 describe('API', function() {
   let api: API
@@ -26,8 +26,10 @@ describe('API', function() {
       expect(client).to.not.be.undefined
     })
     it('create new store', async () => {
-      const store = await client.newStore()
-      expect(store).to.not.be.undefined
+      const threadId = ThreadID.fromRandom()
+      const dbID = threadId.bytes()
+      const db = await client.newDB(dbID)
+      expect(db).to.not.be.undefined
     })
   })
 })

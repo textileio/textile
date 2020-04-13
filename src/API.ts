@@ -3,10 +3,11 @@
  * @module @textile/textile
  */
 
+import { ThreadID } from '@textile/threads-core'
 import { Config } from './models/API'
 import { ThreadsConfig } from './models/Threads'
 
-export { Config }
+export { Config, ThreadID }
 
 /**
  * API is the primary interface to the Textile API
