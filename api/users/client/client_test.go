@@ -3,6 +3,7 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
+	"os"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -60,7 +61,7 @@ func TestClient_GetThread(t *testing.T) {
 
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _, done := setup(t)
+	conf, client, hub, threads, net, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
@@ -95,11 +96,44 @@ func TestClient_ListThreads(t *testing.T) {
 		require.Nil(t, err)
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.Nil(t, err)
+		_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
 
 		list, err := client.ListThreads(ctx)
 		require.Nil(t, err)
-		require.Equal(t, 2, len(list.List))
+		require.Equal(t, 3, len(list.List))
 	})
+}
+
+func TestBuckets(t *testing.T) {
+	t.Parallel()
+	conf, _, hub, threads, _, buckets, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	dev := apitest.Login(t, hub, conf, apitest.NewEmail())
+	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
+	require.Nil(t, err)
+	ctx = common.NewAPIKeyContext(ctx, key.Key)
+
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
+	require.Nil(t, err)
+	ctx = thread.NewTokenContext(ctx, tok)
+
+	ctx = common.NewThreadNameContext(ctx, "my bucket")
+	dbID := thread.NewIDV1(thread.Raw, 32)
+	err = threads.NewDB(ctx, dbID)
+	require.Nil(t, err)
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	ctx = common.NewThreadIDContext(ctx, dbID)
+	_, file1Root, err := buckets.PushPath(ctx, "mybuck1/file1.jpg", file)
+	require.Nil(t, err)
+	require.NotEmpty(t, file1Root.String())
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
