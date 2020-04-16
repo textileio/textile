@@ -27,7 +27,7 @@ describe('API', function() {
     })
     it('create new store', async () => {
       const threadId = ThreadID.fromRandom()
-      const dbID = threadId.bytes()
+      const dbID = threadId.toBytes()
       const db = await client.newDB(dbID)
       expect(db).to.not.be.undefined
     })
