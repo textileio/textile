@@ -57,6 +57,14 @@ jobs:
       run: |
            npm run test:node
 
+    - name: Build Browser
+      run: |
+           npm run browser
+
     - name: Test Browser
       run: |
            npm run test:browser
+
+    - name: Build Docs
+      run: |
+           npm run docs

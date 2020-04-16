@@ -20,6 +20,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "rootDir": ".",
+    "baseUrl": "src",
     "esModuleInterop": true,
     "inlineSourceMap": false,
     "inlineSources": false,
