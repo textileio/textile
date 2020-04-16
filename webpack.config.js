@@ -4,7 +4,7 @@ const path = require('path')
 const extensions = ['.tsx', '.ts', '.js', 'json']
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: './src/API.ts',
   devtool: 'inline-source-map',
   module: {
     rules: [
@@ -21,7 +21,7 @@ module.exports = {
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
-    library: 'threads',
+    library: 'textile',
     libraryTarget: 'var',
   },
   devServer: {
