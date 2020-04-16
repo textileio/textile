@@ -29,15 +29,6 @@ func TestThreads_Create(t *testing.T) {
 	assert.True(t, created.ID.Defined())
 
 	_, err = col.Create(ctx, id, owner)
-	//if err == nil {
-	//	list, err := col.List(ctx, owner)
-	//	require.Nil(t, err)
-	//	for _, t := range list {
-	//		ob, _ := crypto.MarshalPublicKey(t.Owner)
-	//		fmt.Println(hex.EncodeToString(ob))
-	//		fmt.Println(t.ID.String())
-	//	}
-	//}
 	require.NotNil(t, err)
 
 	_, err = col.Create(common.NewThreadNameContext(ctx, "db1"), thread.NewIDV1(thread.Raw, 32), owner)

@@ -212,8 +212,6 @@ github.com/gorilla/websocket v1.4.1 h1:q7AeDBpnBk8AogcD4DSag/Ukw/KV+YhzLj2bP5HvK
 github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gosimple/slug v1.9.0 h1:r5vDcYrFz9BmfIAMC829un9hq7hKM4cHUrsv36LbEqs=
 github.com/gosimple/slug v1.9.0/go.mod h1:AMZ+sOVe65uByN3kgEyf9WEBKBCSS+dJjMX9x4vDJbg=
-github.com/grpc-ecosystem/go-grpc-middleware v1.1.0 h1:THDBEeQ9xZ8JEaCLyLQqXMMdRqNr0QAUJTIkQAUtFjg=
-github.com/grpc-ecosystem/go-grpc-middleware v1.1.0/go.mod h1:f5nM7jw/oeRSadq3xCzHAvxcr8HZnzsqU6ILg/0NiiE=
 github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 h1:0IKlLyQ3Hs9nDaiK5cSHAGmcQEIC8l2Ts1u6x5Dfrqg=
 github.com/grpc-ecosystem/go-grpc-middleware v1.2.0/go.mod h1:mJzapYve32yjrKlk9GbyCZHuPgZsrbyIbyKhSzOpg6s=
 github.com/gxed/go-shellwords v1.0.3/go.mod h1:N7paucT91ByIjmVJHhvoarjoQnmsi3Jd3vH7VqgtMxQ=
@@ -497,7 +495,6 @@ github.com/libp2p/go-libp2p-gostream v0.2.0 h1:YGLebbo8KfylSkuralCCyas/hVrgWjc+c
 github.com/libp2p/go-libp2p-gostream v0.2.0/go.mod h1:nN/Aw00orrADXaXgNCeYjCtQrk6eT20PX/G8F12NW/s=
 github.com/libp2p/go-libp2p-host v0.0.1/go.mod h1:qWd+H1yuU0m5CwzAkvbSjqKairayEHdR5MMl7Cwa7Go=
 github.com/libp2p/go-libp2p-host v0.0.3/go.mod h1:Y/qPyA6C8j2coYyos1dfRm0I8+nvd4TGrDGt4tA7JR8=
-github.com/libp2p/go-libp2p-host v0.1.0/go.mod h1:5+fWuLbDn8OxoxPN3CV0vsLe1hAKScSMbT84qRfxum8=
 github.com/libp2p/go-libp2p-interface-connmgr v0.0.1/go.mod h1:GarlRLH0LdeWcLnYM/SaBykKFl9U5JFnbBGruAk/D5k=
 github.com/libp2p/go-libp2p-interface-connmgr v0.0.4/go.mod h1:GarlRLH0LdeWcLnYM/SaBykKFl9U5JFnbBGruAk/D5k=
 github.com/libp2p/go-libp2p-interface-connmgr v0.0.5/go.mod h1:GarlRLH0LdeWcLnYM/SaBykKFl9U5JFnbBGruAk/D5k=
@@ -852,16 +849,8 @@ github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFd
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6 h1:L5ywbgAf399OU/MSTLkMr0yHOcE1GMJBe6dAyTRf0ak=
 github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6/go.mod h1:T2dh+tUQvAKKiy4iKmeDOlZvJnqNSXFXhsXa1uXAfJk=
-github.com/textileio/go-threads v0.1.7-0.20200207170517-d3f681e38295 h1:Mbv9apBHCm4kP5gnN3Zlu9QVZ8fkUZkCfJaD9WfYlOg=
-github.com/textileio/go-threads v0.1.7-0.20200207170517-d3f681e38295/go.mod h1:Qf1rc/1ICAVDbyGf6Vc0Ch+52xglXmitPntEXSnQ1ao=
-github.com/textileio/go-threads v0.1.12 h1:X/AC+HIF3WHYU1tNZE75Qm6so3mX68u6HL9n/6qiiCY=
-github.com/textileio/go-threads v0.1.12/go.mod h1:/hQNVyxrMJ9w+OUb7qHD9bq/dDToL/8u2cOc/VGvMg8=
-github.com/textileio/go-threads v0.1.13-rc2 h1:dwt8rg7s2W22tdcaPsIKa1gXq4/Ia2O2oWmB8T2EGnU=
-github.com/textileio/go-threads v0.1.13-rc2/go.mod h1:cfx+dqh+T3KdU5TAXVl9Zza2ygSSvhl5X/yLlyDzDMI=
-github.com/textileio/go-threads v0.1.13 h1:QTmJo35zByeOXFq8Ul1/NcpKw8xQ7qzqo+KkK2vDpzY=
-github.com/textileio/go-threads v0.1.13/go.mod h1:SXKTejfhP7+oUKGDU7JF+aWQka7AGES3a/Lf/XDeGL8=
-github.com/textileio/go-threads v0.1.14 h1:3X0kwaeadbdSpMiDYuOSLlB0DKMctlMZL+usw7VrcCQ=
-github.com/textileio/go-threads v0.1.14/go.mod h1:t03nu+CZg/iJ8UF2L9XKxWa8z9f5KP+ZTqrt2AO7VeA=
+github.com/textileio/go-threads v0.1.15-0.20200416210843-8e681666aedf h1:Rzcn8NqR4NsOeTmCYzc9xi6nv/My9XPQSjyTWRHv5ck=
+github.com/textileio/go-threads v0.1.15-0.20200416210843-8e681666aedf/go.mod h1:p6S4FI2q3YoY+TMNv5KirEU6kPFU1OiBf6BvxKLUkh8=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=

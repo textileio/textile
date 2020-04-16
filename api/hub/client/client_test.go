@@ -70,6 +70,34 @@ func TestClient_Whoami(t *testing.T) {
 	})
 }
 
+func TestClient_GetThread(t *testing.T) {
+	t.Parallel()
+	conf, client, threadsclient, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	t.Run("without session", func(t *testing.T) {
+		_, err := client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+	})
+
+	user := apitest.Login(t, client, conf, apitest.NewEmail())
+
+	t.Run("with session", func(t *testing.T) {
+		ctx = common.NewSessionContext(ctx, user.Session)
+		_, err := client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+
+		ctx = common.NewThreadNameContext(ctx, "foo")
+		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
+
+		res, err := client.GetThread(ctx, "foo")
+		require.Nil(t, err)
+		require.Equal(t, "foo", res.Name)
+	})
+}
+
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
 	conf, client, threadsclient, done := setup(t)

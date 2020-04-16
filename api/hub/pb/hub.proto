@@ -29,15 +29,19 @@ message WhoamiReply {
     string email = 3;
 }
 
+message GetThreadRequest {
+    string name = 1;
+}
+
+message GetThreadReply {
+    bytes ID = 1;
+    string name = 2;
+}
+
 message ListThreadsRequest {}
 
 message ListThreadsReply {
-    repeated Thread list = 1;
-
-    message Thread {
-        bytes ID = 1;
-        string name = 2;
-    }
+    repeated GetThreadReply list = 1;
 }
 
 message CreateKeyRequest {}
@@ -107,6 +111,7 @@ service API {
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
     rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
 
+    rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 
     rpc CreateKey(CreateKeyRequest) returns (GetKeyReply) {}

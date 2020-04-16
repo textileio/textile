@@ -37,6 +37,15 @@ API.Whoami = {
   responseType: hub_pb.WhoamiReply
 };
 
+API.GetThread = {
+  methodName: "GetThread",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: hub_pb.GetThreadRequest,
+  responseType: hub_pb.GetThreadReply
+};
+
 API.ListThreads = {
   methodName: "ListThreads",
   service: API,
@@ -201,6 +210,37 @@ APIClient.prototype.whoami = function whoami(requestMessage, metadata, callback)
     callback = arguments[1];
   }
   var client = grpc.unary(API.Whoami, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.getThread = function getThread(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.GetThread, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

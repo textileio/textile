@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -304,20 +305,20 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
-	sessionToken, isDev := common.SessionFromMD(ctx)
-	if isDev {
-		session, err := t.co.Sessions.Get(ctx, sessionToken)
+	sid, ok := common.SessionFromMD(ctx)
+	if ok {
+		session, err := t.co.Sessions.Get(ctx, sid)
 		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "Invalid session token")
+			return nil, status.Error(codes.Unauthenticated, "Invalid session")
 		}
 		if time.Now().After(session.ExpiresAt) {
-			return nil, status.Error(codes.Unauthenticated, "Expired session token")
+			return nil, status.Error(codes.Unauthenticated, "Expired session")
 		}
 		if err := t.co.Sessions.Touch(ctx, session.ID); err != nil {
 			return nil, err
 		}
 		ctx = c.NewSessionContext(ctx, session)
-		ctx = common.NewSessionContext(ctx, sessionToken) // For additional requests
+		ctx = common.NewSessionContext(ctx, sid) // For additional requests
 
 		dev, err := t.co.Developers.Get(ctx, session.Owner)
 		if err != nil {
@@ -336,15 +337,24 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			} else {
 				org, err := t.co.Orgs.Get(ctx, orgName)
 				if err != nil {
-					return nil, err
+					return nil, status.Error(codes.NotFound, "Org not found")
 				}
 				ctx = c.NewOrgContext(ctx, org)
 				ctx = common.NewOrgNameContext(ctx, orgName) // For additional requests
-				// @todo: Grab thread token from org object
+				ctx = thread.NewTokenContext(ctx, org.Token)
 			}
 		} else {
 			ctx = thread.NewTokenContext(ctx, dev.Token)
 		}
+	} else if key, ok := common.APIKeyFromMD(ctx); ok {
+		ctx = common.NewAPIKeyContext(ctx, key)
+		tok, err := thread.NewTokenFromMD(ctx) // Can be empty
+		if err != nil {
+			return nil, err
+		}
+		ctx = thread.NewTokenContext(ctx, tok)
+	} else {
+		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
 	}
 
 	threadID, ok := common.ThreadIDFromMD(ctx)
@@ -355,42 +365,52 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	if ok {
 		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
-
-	switch getService(method) {
-	case "hub.pb.API":
-		if !isDev {
-			return nil, status.Error(codes.Unauthenticated, "Session not found")
-		}
-	case "buckets.pb.API":
-		if !isDev {
-			return nil, status.Error(codes.Unauthenticated, "Session not found")
-		}
-		// @todo Add user support
-	case "threads.pb.API":
-		if !isDev {
-			return nil, status.Error(codes.Unauthenticated, "Session not found")
-		}
-		// @todo Add user support
-	case "threads.net.pb.API":
-		if !isDev {
-			return nil, status.Error(codes.Unauthenticated, "Session not found")
-		}
-		// @todo Add user support
-	}
 	return ctx, nil
 }
 
+// threadInterceptor monitors for thread creation and deletion.
+// Textile tracks threads against dev, org, and user accounts.
+// Users must supply a valid API key from a dev/org.
 func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		method, _ := grpc.Method(ctx)
+		var isUser bool
 		var owner crypto.PubKey
 		if org, ok := c.OrgFromContext(ctx); ok {
 			owner = org.Key
 		} else if dev, ok := c.DevFromContext(ctx); ok {
 			owner = dev.Key
+		} else if k, ok := common.APIKeyFromContext(ctx); ok {
+			key, err := t.co.Keys.Get(ctx, k)
+			if err != nil || !key.Valid {
+				return nil, status.Error(codes.NotFound, "Key not found or is invalid")
+			}
+			// @todo: Verify request
+
+			// Pull user key out of the thread token
+			tok, ok := thread.TokenFromContext(ctx)
+			if !ok {
+				return nil, status.Error(codes.Unauthenticated, "Authorization required")
+			}
+			var claims jwt.StandardClaims
+			if _, _, err = new(jwt.Parser).ParseUnverified(string(tok), &claims); err != nil {
+				return nil, status.Error(codes.PermissionDenied, "Bad authorization")
+			}
+			ukey := &thread.Libp2pPubKey{}
+			if err = ukey.UnmarshalString(claims.Subject); err != nil {
+				return nil, err
+			}
+			owner = ukey.PubKey
+			isUser = true
+
+			if getService(method) == "users.pb.API" {
+				user, err := t.co.Users.Get(ctx, owner)
+				if err != nil {
+					return nil, status.Error(codes.NotFound, "User not found")
+				}
+				ctx = c.NewUserContext(ctx, user)
+			}
 		}
-		// @todo: If not dev or org, need a key with user
-		// @todo: Handle deletes
-		// @todo: Check access if not creating or let ACL handle it?
 
 		// Let the request pass through
 		res, err := handler(ctx, req)
@@ -398,11 +418,10 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			return res, err
 		}
 
-		var threadID thread.ID
-		method, _ := grpc.Method(ctx)
+		var createID, deleteID thread.ID
 		switch method {
 		case "/threads.pb.API/NewDB":
-			threadID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
+			createID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
 			if err != nil {
 				return res, err
 			}
@@ -411,12 +430,17 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return res, err
 			}
-			threadID, err = thread.FromAddr(addr)
+			createID, err = thread.FromAddr(addr)
+			if err != nil {
+				return res, err
+			}
+		case "/threads.pb.API/DeleteDB":
+			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
 			if err != nil {
 				return res, err
 			}
 		case "/threads.net.pb.API/CreateThread":
-			threadID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
+			createID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
 			if err != nil {
 				return res, err
 			}
@@ -425,7 +449,12 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return res, err
 			}
-			threadID, err = thread.FromAddr(addr)
+			createID, err = thread.FromAddr(addr)
+			if err != nil {
+				return res, err
+			}
+		case "/threads.net.pb.API/DeleteThread":
+			deleteID, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
 			if err != nil {
 				return res, err
 			}
@@ -433,11 +462,19 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			return res, nil
 		}
 
-		// Keep a record of this new thread.
-		// Developer/Org threads will not have an associated key.
-		// User threads have Developer/Org custodians via an associated key.
-		if _, err := t.co.Threads.Create(ctx, threadID, owner); err != nil {
-			return nil, err
+		if createID.Defined() {
+			if isUser {
+				if err := t.co.Users.Create(ctx, owner); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := t.co.Threads.Create(ctx, createID, owner); err != nil {
+				return nil, err
+			}
+		} else if deleteID.Defined() {
+			if err := t.co.Threads.Delete(ctx, deleteID, owner); err != nil {
+				return nil, err
+			}
 		}
 		return res, nil
 	}

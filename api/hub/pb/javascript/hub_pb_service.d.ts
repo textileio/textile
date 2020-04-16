@@ -31,6 +31,15 @@ type APIWhoami = {
   readonly responseType: typeof hub_pb.WhoamiReply;
 };
 
+type APIGetThread = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof hub_pb.GetThreadRequest;
+  readonly responseType: typeof hub_pb.GetThreadReply;
+};
+
 type APIListThreads = {
   readonly methodName: string;
   readonly service: typeof API;
@@ -126,6 +135,7 @@ export class API {
   static readonly Login: APILogin;
   static readonly Logout: APILogout;
   static readonly Whoami: APIWhoami;
+  static readonly GetThread: APIGetThread;
   static readonly ListThreads: APIListThreads;
   static readonly CreateKey: APICreateKey;
   static readonly ListKeys: APIListKeys;
@@ -196,6 +206,15 @@ export class APIClient {
   whoami(
     requestMessage: hub_pb.WhoamiRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.WhoamiReply|null) => void
+  ): UnaryResponse;
+  getThread(
+    requestMessage: hub_pb.GetThreadRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetThreadReply|null) => void
+  ): UnaryResponse;
+  getThread(
+    requestMessage: hub_pb.GetThreadRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetThreadReply|null) => void
   ): UnaryResponse;
   listThreads(
     requestMessage: hub_pb.ListThreadsRequest,

@@ -9,14 +9,19 @@ option objc_class_prefix = "TXTL_USERS";
 message ListThreadsRequest {}
 
 message ListThreadsReply {
-    repeated Thread list = 1;
+    repeated GetThreadReply list = 1;
+}
 
-    message Thread {
-        bytes ID = 1;
-        string name = 2;
-    }
+message GetThreadRequest {
+    string name = 1;
+}
+
+message GetThreadReply {
+    bytes ID = 1;
+    string name = 2;
 }
 
 service API {
+    rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 }

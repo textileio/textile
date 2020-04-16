@@ -4,6 +4,15 @@
 import * as users_pb from "./users_pb";
 import {grpc} from "@improbable-eng/grpc-web";
 
+type APIGetThread = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof users_pb.GetThreadRequest;
+  readonly responseType: typeof users_pb.GetThreadReply;
+};
+
 type APIListThreads = {
   readonly methodName: string;
   readonly service: typeof API;
@@ -15,6 +24,7 @@ type APIListThreads = {
 
 export class API {
   static readonly serviceName: string;
+  static readonly GetThread: APIGetThread;
   static readonly ListThreads: APIListThreads;
 }
 
@@ -50,6 +60,15 @@ export class APIClient {
   readonly serviceHost: string;
 
   constructor(serviceHost: string, options?: grpc.RpcOptions);
+  getThread(
+    requestMessage: users_pb.GetThreadRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: users_pb.GetThreadReply|null) => void
+  ): UnaryResponse;
+  getThread(
+    requestMessage: users_pb.GetThreadRequest,
+    callback: (error: ServiceError|null, responseMessage: users_pb.GetThreadReply|null) => void
+  ): UnaryResponse;
   listThreads(
     requestMessage: users_pb.ListThreadsRequest,
     metadata: grpc.Metadata,

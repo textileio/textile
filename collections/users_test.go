@@ -20,11 +20,10 @@ func TestUsers_GetOrCreate(t *testing.T) {
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.GetOrCreate(context.Background(), key)
+	err = col.Create(context.Background(), key)
 	require.Nil(t, err)
-	got, err := col.GetOrCreate(context.Background(), key)
+	err = col.Create(context.Background(), key)
 	require.Nil(t, err)
-	assert.Equal(t, created.Key, got.Key)
 }
 
 func TestUsers_Get(t *testing.T) {
@@ -35,12 +34,12 @@ func TestUsers_Get(t *testing.T) {
 	require.Nil(t, err)
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.GetOrCreate(context.Background(), key)
+	err = col.Create(context.Background(), key)
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), key)
 	require.Nil(t, err)
-	assert.Equal(t, created.Key, got.Key)
+	assert.Equal(t, key, got.Key)
 }
 
 func TestUsers_Delete(t *testing.T) {
@@ -51,11 +50,11 @@ func TestUsers_Delete(t *testing.T) {
 	require.Nil(t, err)
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.GetOrCreate(context.Background(), key)
+	err = col.Create(context.Background(), key)
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.Key)
+	err = col.Delete(context.Background(), key)
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), created.Key)
+	_, err = col.Get(context.Background(), key)
 	require.NotNil(t, err)
 }

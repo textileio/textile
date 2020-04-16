@@ -32,25 +32,25 @@ func NewUsers(_ context.Context, db *mongo.Database) (*Users, error) {
 	return &Users{col: db.Collection("users")}, nil
 }
 
-func (u *Users) GetOrCreate(ctx context.Context, key crypto.PubKey) (*User, error) {
+func (u *Users) Create(ctx context.Context, key crypto.PubKey) error {
 	doc := &User{
 		Key:       key,
 		CreatedAt: time.Now(),
 	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, err := u.col.InsertOne(ctx, bson.M{
 		"_id":        id,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
-			return u.Get(ctx, key)
+			return nil
 		}
-		return nil, err
+		return err
 	}
-	return doc, nil
+	return nil
 }
 
 func (u *Users) Get(ctx context.Context, key crypto.PubKey) (*User, error) {

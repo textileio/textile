@@ -56,10 +56,10 @@ func (m *ListThreadsRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_ListThreadsRequest proto.InternalMessageInfo
 
 type ListThreadsReply struct {
-	List                 []*ListThreadsReply_Thread `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
-	XXX_unrecognized     []byte                     `json:"-"`
-	XXX_sizecache        int32                      `json:"-"`
+	List                 []*GetThreadReply `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *ListThreadsReply) Reset()         { *m = ListThreadsReply{} }
@@ -87,14 +87,53 @@ func (m *ListThreadsReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ListThreadsReply proto.InternalMessageInfo
 
-func (m *ListThreadsReply) GetList() []*ListThreadsReply_Thread {
+func (m *ListThreadsReply) GetList() []*GetThreadReply {
 	if m != nil {
 		return m.List
 	}
 	return nil
 }
 
-type ListThreadsReply_Thread struct {
+type GetThreadRequest struct {
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetThreadRequest) Reset()         { *m = GetThreadRequest{} }
+func (m *GetThreadRequest) String() string { return proto.CompactTextString(m) }
+func (*GetThreadRequest) ProtoMessage()    {}
+func (*GetThreadRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{2}
+}
+
+func (m *GetThreadRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetThreadRequest.Unmarshal(m, b)
+}
+func (m *GetThreadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetThreadRequest.Marshal(b, m, deterministic)
+}
+func (m *GetThreadRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetThreadRequest.Merge(m, src)
+}
+func (m *GetThreadRequest) XXX_Size() int {
+	return xxx_messageInfo_GetThreadRequest.Size(m)
+}
+func (m *GetThreadRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetThreadRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetThreadRequest proto.InternalMessageInfo
+
+func (m *GetThreadRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+type GetThreadReply struct {
 	ID                   []byte   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -102,39 +141,39 @@ type ListThreadsReply_Thread struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListThreadsReply_Thread) Reset()         { *m = ListThreadsReply_Thread{} }
-func (m *ListThreadsReply_Thread) String() string { return proto.CompactTextString(m) }
-func (*ListThreadsReply_Thread) ProtoMessage()    {}
-func (*ListThreadsReply_Thread) Descriptor() ([]byte, []int) {
-	return fileDescriptor_030765f334c86cea, []int{1, 0}
+func (m *GetThreadReply) Reset()         { *m = GetThreadReply{} }
+func (m *GetThreadReply) String() string { return proto.CompactTextString(m) }
+func (*GetThreadReply) ProtoMessage()    {}
+func (*GetThreadReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{3}
 }
 
-func (m *ListThreadsReply_Thread) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListThreadsReply_Thread.Unmarshal(m, b)
+func (m *GetThreadReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetThreadReply.Unmarshal(m, b)
 }
-func (m *ListThreadsReply_Thread) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListThreadsReply_Thread.Marshal(b, m, deterministic)
+func (m *GetThreadReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetThreadReply.Marshal(b, m, deterministic)
 }
-func (m *ListThreadsReply_Thread) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListThreadsReply_Thread.Merge(m, src)
+func (m *GetThreadReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetThreadReply.Merge(m, src)
 }
-func (m *ListThreadsReply_Thread) XXX_Size() int {
-	return xxx_messageInfo_ListThreadsReply_Thread.Size(m)
+func (m *GetThreadReply) XXX_Size() int {
+	return xxx_messageInfo_GetThreadReply.Size(m)
 }
-func (m *ListThreadsReply_Thread) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListThreadsReply_Thread.DiscardUnknown(m)
+func (m *GetThreadReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetThreadReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListThreadsReply_Thread proto.InternalMessageInfo
+var xxx_messageInfo_GetThreadReply proto.InternalMessageInfo
 
-func (m *ListThreadsReply_Thread) GetID() []byte {
+func (m *GetThreadReply) GetID() []byte {
 	if m != nil {
 		return m.ID
 	}
 	return nil
 }
 
-func (m *ListThreadsReply_Thread) GetName() string {
+func (m *GetThreadReply) GetName() string {
 	if m != nil {
 		return m.Name
 	}
@@ -144,27 +183,30 @@ func (m *ListThreadsReply_Thread) GetName() string {
 func init() {
 	proto.RegisterType((*ListThreadsRequest)(nil), "users.pb.ListThreadsRequest")
 	proto.RegisterType((*ListThreadsReply)(nil), "users.pb.ListThreadsReply")
-	proto.RegisterType((*ListThreadsReply_Thread)(nil), "users.pb.ListThreadsReply.Thread")
+	proto.RegisterType((*GetThreadRequest)(nil), "users.pb.GetThreadRequest")
+	proto.RegisterType((*GetThreadReply)(nil), "users.pb.GetThreadReply")
 }
 
 func init() { proto.RegisterFile("users.proto", fileDescriptor_030765f334c86cea) }
 
 var fileDescriptor_030765f334c86cea = []byte{
-	// 215 bytes of a gzipped FileDescriptorProto
+	// 246 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2e, 0x2d, 0x4e, 0x2d,
 	0x2a, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x80, 0x72, 0x92, 0x94, 0x44, 0xb8, 0x84,
 	0x7c, 0x32, 0x8b, 0x4b, 0x42, 0x32, 0x8a, 0x52, 0x13, 0x53, 0x8a, 0x83, 0x52, 0x0b, 0x4b, 0x53,
-	0x8b, 0x4b, 0x94, 0xca, 0xb9, 0x04, 0x50, 0x44, 0x0b, 0x72, 0x2a, 0x85, 0x4c, 0xb9, 0x58, 0x72,
-	0x32, 0x8b, 0x4b, 0x24, 0x18, 0x15, 0x98, 0x35, 0xb8, 0x8d, 0x14, 0xf5, 0x60, 0x46, 0xe8, 0xa1,
-	0xab, 0xd4, 0x83, 0x70, 0x82, 0xc0, 0xca, 0xa5, 0x74, 0xb8, 0xd8, 0x20, 0x7c, 0x21, 0x3e, 0x2e,
-	0x26, 0x4f, 0x17, 0x09, 0x46, 0x05, 0x46, 0x0d, 0x9e, 0x20, 0x26, 0x4f, 0x17, 0x21, 0x21, 0x2e,
-	0x96, 0xbc, 0xc4, 0xdc, 0x54, 0x09, 0x26, 0x05, 0x46, 0x0d, 0xce, 0x20, 0x30, 0xdb, 0x28, 0x80,
-	0x8b, 0xd9, 0x31, 0xc0, 0x53, 0xc8, 0x93, 0x8b, 0x1b, 0xc9, 0x54, 0x21, 0x19, 0x1c, 0x96, 0x81,
-	0x1d, 0x2b, 0x25, 0x85, 0xdb, 0x29, 0x4a, 0x0c, 0x4e, 0x26, 0x5c, 0xa2, 0x99, 0xf9, 0x7a, 0x25,
-	0xa9, 0x15, 0x25, 0x99, 0x39, 0xa9, 0x10, 0x95, 0xf1, 0xe9, 0x45, 0x05, 0xc9, 0x4e, 0x3c, 0x21,
-	0x10, 0xb1, 0x50, 0x90, 0x50, 0x00, 0xe3, 0x22, 0x26, 0xae, 0x90, 0x88, 0x10, 0x9f, 0xf8, 0xd0,
-	0x60, 0xd7, 0xa0, 0xe0, 0x24, 0x36, 0x70, 0x38, 0x19, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xb0,
-	0x6e, 0x13, 0x8b, 0x36, 0x01, 0x00, 0x00,
+	0x8b, 0x4b, 0x94, 0x1c, 0xb8, 0x04, 0x50, 0x44, 0x0b, 0x72, 0x2a, 0x85, 0x74, 0xb8, 0x58, 0x72,
+	0x32, 0x8b, 0x4b, 0x24, 0x18, 0x15, 0x98, 0x35, 0xb8, 0x8d, 0x24, 0xf4, 0x60, 0x46, 0xe8, 0xb9,
+	0xa7, 0x42, 0x15, 0x82, 0xd5, 0x05, 0x81, 0x55, 0x29, 0xa9, 0x71, 0x09, 0x20, 0x89, 0x83, 0x4d,
+	0x15, 0x12, 0xe2, 0x62, 0xc9, 0x4b, 0xcc, 0x4d, 0x95, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x0c, 0x02,
+	0xb3, 0x95, 0x4c, 0xb8, 0xf8, 0x50, 0xf5, 0x0b, 0xf1, 0x71, 0x31, 0x79, 0xba, 0x80, 0xd5, 0xf0,
+	0x04, 0x31, 0x79, 0xba, 0xc0, 0x75, 0x31, 0x21, 0x74, 0x19, 0x4d, 0x65, 0xe4, 0x62, 0x76, 0x0c,
+	0xf0, 0x14, 0x72, 0xe6, 0xe2, 0x84, 0xeb, 0x16, 0x92, 0xc2, 0xea, 0x24, 0xb0, 0xd5, 0x52, 0x38,
+	0x9d, 0xab, 0xc4, 0x20, 0xe4, 0xc9, 0xc5, 0x8d, 0xe4, 0x59, 0x21, 0x19, 0x84, 0x52, 0xcc, 0x90,
+	0x91, 0x92, 0xc2, 0x21, 0x0b, 0x36, 0xca, 0xc9, 0x84, 0x4b, 0x34, 0x33, 0x5f, 0xaf, 0x24, 0xb5,
+	0xa2, 0x24, 0x33, 0x27, 0x15, 0xa2, 0x32, 0x3e, 0xbd, 0xa8, 0x20, 0xd9, 0x89, 0x27, 0x04, 0x22,
+	0x16, 0x0a, 0x12, 0x0a, 0x60, 0x5c, 0xc4, 0xc4, 0x15, 0x12, 0x11, 0xe2, 0x13, 0x1f, 0x1a, 0xec,
+	0x1a, 0x14, 0x9c, 0xc4, 0x06, 0x8e, 0x14, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0xfe, 0xb1,
+	0x8a, 0xee, 0xa3, 0x01, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -179,6 +221,7 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type APIClient interface {
+	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadReply, error)
 	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
 }
 
@@ -188,6 +231,15 @@ type aPIClient struct {
 
 func NewAPIClient(cc *grpc.ClientConn) APIClient {
 	return &aPIClient{cc}
+}
+
+func (c *aPIClient) GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadReply, error) {
+	out := new(GetThreadReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/GetThread", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error) {
@@ -201,6 +253,7 @@ func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opt
 
 // APIServer is the server API for API service.
 type APIServer interface {
+	GetThread(context.Context, *GetThreadRequest) (*GetThreadReply, error)
 	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
 }
 
@@ -208,12 +261,33 @@ type APIServer interface {
 type UnimplementedAPIServer struct {
 }
 
+func (*UnimplementedAPIServer) GetThread(ctx context.Context, req *GetThreadRequest) (*GetThreadReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetThread not implemented")
+}
 func (*UnimplementedAPIServer) ListThreads(ctx context.Context, req *ListThreadsRequest) (*ListThreadsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListThreads not implemented")
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
 	s.RegisterService(&_API_serviceDesc, srv)
+}
+
+func _API_GetThread_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetThreadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).GetThread(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/GetThread",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).GetThread(ctx, req.(*GetThreadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _API_ListThreads_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -238,6 +312,10 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "users.pb.API",
 	HandlerType: (*APIServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetThread",
+			Handler:    _API_GetThread_Handler,
+		},
 		{
 			MethodName: "ListThreads",
 			Handler:    _API_ListThreads_Handler,
