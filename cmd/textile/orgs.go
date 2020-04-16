@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/mail"
 
+	mbase "github.com/multiformats/go-multibase"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -63,10 +65,14 @@ func lsOrgs() {
 	}
 	if len(orgs.List) > 0 {
 		data := make([][]string, len(orgs.List))
-		for i, t := range orgs.List {
-			data[i] = []string{t.Name, t.ID}
+		for i, o := range orgs.List {
+			key, err := mbase.Encode(mbase.Base32, o.Key)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			data[i] = []string{o.Name, key}
 		}
-		cmd.RenderTable([]string{"name", "id"}, data)
+		cmd.RenderTable([]string{"name", "key"}, data)
 	}
 	cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
 }
@@ -91,9 +97,13 @@ var membersOrgsCmd = &cobra.Command{
 		if len(org.Members) > 0 {
 			data := make([][]string, len(org.Members))
 			for i, m := range org.Members {
-				data[i] = []string{m.Username, m.ID}
+				key, err := mbase.Encode(mbase.Base32, m.Key)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				data[i] = []string{m.Username, key}
 			}
-			cmd.RenderTable([]string{"username", "id"}, data)
+			cmd.RenderTable([]string{"username", "key"}, data)
 		}
 		cmd.Message("Found %d members", aurora.White(len(org.Members)).Bold())
 	},
@@ -170,8 +180,8 @@ var leaveOrgsCmd = &cobra.Command{
 }
 
 type orgItem struct {
-	ID    string
 	Name  string
+	Key   string
 	Extra string
 }
 
@@ -184,8 +194,12 @@ func selectOrg(label, successMsg string) *orgItem {
 	}
 
 	items := make([]*orgItem, len(orgs.List))
-	for i, t := range orgs.List {
-		items[i] = &orgItem{ID: t.ID, Name: t.Name}
+	for i, o := range orgs.List {
+		key, err := mbase.Encode(mbase.Base32, o.Key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		items[i] = &orgItem{Name: o.Name, Key: key}
 	}
 	if len(items) == 0 {
 		cmd.End("You're not a member of any orgs!")
@@ -198,7 +212,7 @@ func selectOrg(label, successMsg string) *orgItem {
 			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Extra | faint | bold }}`,
 				promptui.IconSelect),
 			Inactive: `{{ .Name | faint }} {{ .Extra | faint | bold }}`,
-			Details:  `{{ "(ID:" | faint }} {{ .ID | faint }}{{ ")" | faint }}`,
+			Details:  `{{ "(Key:" | faint }} {{ .Key | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
 	}

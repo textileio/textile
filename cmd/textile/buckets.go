@@ -163,7 +163,7 @@ var pushBucketPathCmd = &cobra.Command{
 	Short: "Push to a bucket path (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
-Buckets are written to a thread. By default, new buckets are created in your account's primary thread.
+Buckets are written to a thread. When pushing to an empty bucket, you may either select an existing thread or create a new one.
 Using the '--org' flag will instead create new buckets under the Organization's account.
 
 File structure is mirrored in the bucket. For example, given the directory:

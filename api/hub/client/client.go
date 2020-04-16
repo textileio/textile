@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 
-	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"google.golang.org/grpc"
 )
@@ -51,22 +50,6 @@ func (c *Client) Whoami(ctx context.Context) (*pb.WhoamiReply, error) {
 	return c.c.Whoami(ctx, &pb.WhoamiRequest{})
 }
 
-// GetPrimaryThread returns the primary thread for the dev/org.
-// The primary thread will be used for new buckets.
-func (c *Client) GetPrimaryThread(ctx context.Context) (id thread.ID, err error) {
-	res, err := c.c.GetPrimaryThread(ctx, &pb.GetPrimaryThreadRequest{})
-	if err != nil {
-		return
-	}
-	return thread.Cast(res.ID)
-}
-
-// SetPrimaryThread selects a thread as primary.
-func (c *Client) SetPrimaryThread(ctx context.Context) error {
-	_, err := c.c.SetPrimaryThread(ctx, &pb.SetPrimaryThreadRequest{})
-	return err
-}
-
 // ListThreads returns a list of threads.
 // Threads can be created using the threads or threads network client.
 func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) {
@@ -80,8 +63,8 @@ func (c *Client) CreateKey(ctx context.Context) (*pb.GetKeyReply, error) {
 
 // InvalidateKey marks a key as invalid.
 // New threads cannot be created with an invalid key.
-func (c *Client) InvalidateKey(ctx context.Context, token string) error {
-	_, err := c.c.InvalidateKey(ctx, &pb.InvalidateKeyRequest{Token: token})
+func (c *Client) InvalidateKey(ctx context.Context, key string) error {
+	_, err := c.c.InvalidateKey(ctx, &pb.InvalidateKeyRequest{Key: key})
 	return err
 }
 

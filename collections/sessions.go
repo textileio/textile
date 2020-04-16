@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,10 +16,9 @@ const (
 )
 
 type Session struct {
-	ID          primitive.ObjectID `bson:"_id"`
-	DeveloperID primitive.ObjectID `bson:"developer_id"`
-	Token       string             `bson:"token"`
-	ExpiresAt   time.Time          `bson:"expires_at"`
+	ID        string
+	Owner     crypto.PubKey
+	ExpiresAt time.Time
 }
 
 func NewSessionContext(ctx context.Context, session *Session) context.Context {
@@ -40,43 +40,45 @@ func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
 		{
 			Keys: bson.D{{"developer_id", 1}},
 		},
-		{
-			Keys: bson.D{{"token", 1}},
-		},
 	})
 	return s, err
 }
 
-func (s *Sessions) Create(ctx context.Context, developerID primitive.ObjectID) (*Session, error) {
+func (s *Sessions) Create(ctx context.Context, owner crypto.PubKey) (*Session, error) {
 	doc := &Session{
-		ID:          primitive.NewObjectID(),
-		DeveloperID: developerID,
-		Token:       util.MakeToken(tokenLen),
-		ExpiresAt:   time.Now().Add(sessionDur),
+		ID:        util.MakeToken(tokenLen),
+		Owner:     owner,
+		ExpiresAt: time.Now().Add(sessionDur),
 	}
-	res, err := s.col.InsertOne(ctx, doc)
+	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err
 	}
-	doc.ID = res.InsertedID.(primitive.ObjectID)
-	return doc, nil
-}
-
-func (s *Sessions) Get(ctx context.Context, token string) (*Session, error) {
-	var doc *Session
-	res := s.col.FindOne(ctx, bson.M{"token": token})
-	if res.Err() != nil {
-		return nil, res.Err()
-	}
-	if err := res.Decode(&doc); err != nil {
+	if _, err := s.col.InsertOne(ctx, bson.M{
+		"_id":        doc.ID,
+		"owner_id":   ownerID,
+		"expires_at": doc.ExpiresAt,
+	}); err != nil {
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (s *Sessions) Touch(ctx context.Context, token string) error {
+func (s *Sessions) Get(ctx context.Context, id string) (*Session, error) {
+	res := s.col.FindOne(ctx, bson.M{"_id": id})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decodeSession(raw)
+}
+
+func (s *Sessions) Touch(ctx context.Context, id string) error {
 	expiry := time.Now().Add(sessionDur)
-	res, err := s.col.UpdateOne(ctx, bson.M{"token": token}, bson.M{"$set": bson.M{"expires_at": expiry}})
+	res, err := s.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"expires_at": expiry}})
 	if err != nil {
 		return err
 	}
@@ -86,8 +88,8 @@ func (s *Sessions) Touch(ctx context.Context, token string) error {
 	return nil
 }
 
-func (s *Sessions) Delete(ctx context.Context, token string) error {
-	res, err := s.col.DeleteOne(ctx, bson.M{"token": token})
+func (s *Sessions) Delete(ctx context.Context, id string) error {
+	res, err := s.col.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
 		return err
 	}
@@ -95,4 +97,20 @@ func (s *Sessions) Delete(ctx context.Context, token string) error {
 		return mongo.ErrNoDocuments
 	}
 	return nil
+}
+
+func decodeSession(raw bson.M) (*Session, error) {
+	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
+	if err != nil {
+		return nil, err
+	}
+	var expiry time.Time
+	if v, ok := raw["expires_at"]; ok {
+		expiry = v.(primitive.DateTime).Time()
+	}
+	return &Session{
+		ID:        raw["_id"].(string),
+		Owner:     owner,
+		ExpiresAt: expiry,
+	}, nil
 }

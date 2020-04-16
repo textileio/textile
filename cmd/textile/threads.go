@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -13,7 +12,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(threadsCmd)
-	orgsCmd.AddCommand(lsThreadsCmd, useThreadsCmd)
+	orgsCmd.AddCommand(lsThreadsCmd)
 }
 
 var threadsCmd = &cobra.Command{
@@ -54,34 +53,16 @@ func lsThreads() {
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			data[i] = []string{id.String(), strconv.FormatBool(t.Primary)}
+			data[i] = []string{id.String(), t.Name}
 		}
-		cmd.RenderTable([]string{"id", "primary"}, data)
+		cmd.RenderTable([]string{"id", "name"}, data)
 	}
 	cmd.Message("Found %d threads", aurora.White(len(list.List)).Bold())
 }
 
-var useThreadsCmd = &cobra.Command{
-	Use:   "use",
-	Short: "Select a thread as primary",
-	Long:  `Use selects a thread as primary. The primary thread is used for new buckets.`,
-	Run: func(c *cobra.Command, args []string) {
-		selected := selectThread("Select thread", aurora.Sprintf(
-			aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
-		configViper.Set("thread", selected.ID)
-
-		ctx, cancel := authCtx(cmdTimeout)
-		defer cancel()
-		if err := hub.SetPrimaryThread(ctx); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Switched to thread %s", aurora.White(selected.ID).Bold())
-	},
-}
-
 type threadItem struct {
-	ID      string
-	Primary string
+	ID   string
+	Name string
 }
 
 func selectThread(label, successMsg string) *threadItem {
@@ -98,7 +79,7 @@ func selectThread(label, successMsg string) *threadItem {
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		items[i] = &threadItem{ID: id.String(), Primary: strconv.FormatBool(t.Primary)}
+		items[i] = &threadItem{ID: id.String(), Name: t.Name}
 	}
 	items = append(items, &threadItem{ID: "Create new"})
 
@@ -106,9 +87,9 @@ func selectThread(label, successMsg string) *threadItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Primary | faint | bold }}`,
+			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`,
 				promptui.IconSelect),
-			Inactive: `{{ .ID | faint }} {{ .Primary | faint | bold }}`,
+			Inactive: `{{ .ID | faint }} {{ .Name | faint | bold }}`,
 			Selected: successMsg,
 		},
 	}

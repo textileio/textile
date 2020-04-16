@@ -71,8 +71,8 @@ message RemovePathRequest {
 message RemovePathReply {}
 
 service API {
-    rpc ListPath (ListPathRequest) returns (ListPathReply) {}
-    rpc PushPath (stream PushPathRequest) returns (stream PushPathReply) {}
-    rpc PullPath (PullPathRequest) returns (stream PullPathReply) {}
-    rpc RemovePath (RemovePathRequest) returns (RemovePathReply) {}
+    rpc ListPath(ListPathRequest) returns (ListPathReply) {}
+    rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}
+    rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
+    rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
 }

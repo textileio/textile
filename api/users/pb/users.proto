@@ -1,0 +1,22 @@
+syntax = "proto3";
+package users.pb;
+
+option java_multiple_files = true;
+option java_package = "io.textile.users_grpc";
+option java_outer_classname = "TextileUsers";
+option objc_class_prefix = "TXTL_USERS";
+
+message ListThreadsRequest {}
+
+message ListThreadsReply {
+    repeated Thread list = 1;
+
+    message Thread {
+        bytes ID = 1;
+        string name = 2;
+    }
+}
+
+service API {
+    rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
+}

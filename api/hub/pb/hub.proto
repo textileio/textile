@@ -12,7 +12,7 @@ message LoginRequest {
 }
 
 message LoginReply {
-    string ID = 1;
+    bytes key = 1;
     string username = 2;
     string session = 3;
 }
@@ -24,7 +24,7 @@ message LogoutReply {}
 message WhoamiRequest {}
 
 message WhoamiReply {
-    string ID = 1;
+    bytes key = 1;
     string username = 2;
     string email = 3;
 }
@@ -36,31 +36,21 @@ message ListThreadsReply {
 
     message Thread {
         bytes ID = 1;
-        bool primary = 2;
+        string name = 2;
     }
-}
-
-message SetPrimaryThreadRequest {}
-
-message SetPrimaryThreadReply {}
-
-message GetPrimaryThreadRequest {}
-
-message GetPrimaryThreadReply {
-    bytes ID = 1;
 }
 
 message CreateKeyRequest {}
 
 message GetKeyReply {
-    string token = 1;
+    string key = 1;
     string secret = 2;
     bool valid = 3;
     int32 threads = 4;
 }
 
 message InvalidateKeyRequest {
-    string token = 1;
+    string key = 1;
 }
 
 message InvalidateKeyReply {}
@@ -78,13 +68,13 @@ message CreateOrgRequest {
 message GetOrgRequest {}
 
 message GetOrgReply {
-    string ID = 1;
+    bytes key = 1;
     string name = 2;
     repeated Member members = 3;
     int64 createdAt = 4;
 
     message Member {
-        string ID = 1;
+        bytes key = 1;
         string username = 2;
         string role = 3;
     }
@@ -117,18 +107,16 @@ service API {
     rpc Logout(LogoutRequest) returns (LogoutReply) {}
     rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
 
-    rpc GetPrimaryThread (GetPrimaryThreadRequest) returns (GetPrimaryThreadReply) {}
-    rpc SetPrimaryThread (SetPrimaryThreadRequest) returns (SetPrimaryThreadReply) {}
-    rpc ListThreads (ListThreadsRequest) returns (ListThreadsReply) {}
+    rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 
-    rpc CreateKey (CreateKeyRequest) returns (GetKeyReply) {}
-    rpc ListKeys (ListKeysRequest) returns (ListKeysReply) {}
-    rpc InvalidateKey (InvalidateKeyRequest) returns (InvalidateKeyReply) {}
+    rpc CreateKey(CreateKeyRequest) returns (GetKeyReply) {}
+    rpc ListKeys(ListKeysRequest) returns (ListKeysReply) {}
+    rpc InvalidateKey(InvalidateKeyRequest) returns (InvalidateKeyReply) {}
 
-    rpc CreateOrg (CreateOrgRequest) returns (GetOrgReply) {}
-    rpc GetOrg (GetOrgRequest) returns (GetOrgReply) {}
-    rpc ListOrgs (ListOrgsRequest) returns (ListOrgsReply) {}
-    rpc RemoveOrg (RemoveOrgRequest) returns (RemoveOrgReply) {}
-    rpc InviteToOrg (InviteToOrgRequest) returns (InviteToOrgReply) {}
-    rpc LeaveOrg (LeaveOrgRequest) returns (LeaveOrgReply) {}
+    rpc CreateOrg(CreateOrgRequest) returns (GetOrgReply) {}
+    rpc GetOrg(GetOrgRequest) returns (GetOrgReply) {}
+    rpc ListOrgs(ListOrgsRequest) returns (ListOrgsReply) {}
+    rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgReply) {}
+    rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgReply) {}
+    rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgReply) {}
 }

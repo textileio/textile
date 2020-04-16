@@ -28,8 +28,10 @@ export namespace LoginRequest {
 }
 
 export class LoginReply extends jspb.Message {
-  getId(): string;
-  setId(value: string): void;
+  getKey(): Uint8Array | string;
+  getKey_asU8(): Uint8Array;
+  getKey_asB64(): string;
+  setKey(value: Uint8Array | string): void;
 
   getUsername(): string;
   setUsername(value: string): void;
@@ -49,7 +51,7 @@ export class LoginReply extends jspb.Message {
 
 export namespace LoginReply {
   export type AsObject = {
-    id: string,
+    key: Uint8Array | string,
     username: string,
     session: string,
   }
@@ -104,8 +106,10 @@ export namespace WhoamiRequest {
 }
 
 export class WhoamiReply extends jspb.Message {
-  getId(): string;
-  setId(value: string): void;
+  getKey(): Uint8Array | string;
+  getKey_asU8(): Uint8Array;
+  getKey_asB64(): string;
+  setKey(value: Uint8Array | string): void;
 
   getUsername(): string;
   setUsername(value: string): void;
@@ -125,7 +129,7 @@ export class WhoamiReply extends jspb.Message {
 
 export namespace WhoamiReply {
   export type AsObject = {
-    id: string,
+    key: Uint8Array | string,
     username: string,
     email: string,
   }
@@ -174,8 +178,8 @@ export namespace ListThreadsReply {
     getId_asB64(): string;
     setId(value: Uint8Array | string): void;
 
-    getPrimary(): boolean;
-    setPrimary(value: boolean): void;
+    getName(): string;
+    setName(value: string): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Thread.AsObject;
@@ -190,78 +194,8 @@ export namespace ListThreadsReply {
   export namespace Thread {
     export type AsObject = {
       id: Uint8Array | string,
-      primary: boolean,
+      name: string,
     }
-  }
-}
-
-export class SetPrimaryThreadRequest extends jspb.Message {
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): SetPrimaryThreadRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: SetPrimaryThreadRequest): SetPrimaryThreadRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: SetPrimaryThreadRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): SetPrimaryThreadRequest;
-  static deserializeBinaryFromReader(message: SetPrimaryThreadRequest, reader: jspb.BinaryReader): SetPrimaryThreadRequest;
-}
-
-export namespace SetPrimaryThreadRequest {
-  export type AsObject = {
-  }
-}
-
-export class SetPrimaryThreadReply extends jspb.Message {
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): SetPrimaryThreadReply.AsObject;
-  static toObject(includeInstance: boolean, msg: SetPrimaryThreadReply): SetPrimaryThreadReply.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: SetPrimaryThreadReply, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): SetPrimaryThreadReply;
-  static deserializeBinaryFromReader(message: SetPrimaryThreadReply, reader: jspb.BinaryReader): SetPrimaryThreadReply;
-}
-
-export namespace SetPrimaryThreadReply {
-  export type AsObject = {
-  }
-}
-
-export class GetPrimaryThreadRequest extends jspb.Message {
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetPrimaryThreadRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: GetPrimaryThreadRequest): GetPrimaryThreadRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetPrimaryThreadRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetPrimaryThreadRequest;
-  static deserializeBinaryFromReader(message: GetPrimaryThreadRequest, reader: jspb.BinaryReader): GetPrimaryThreadRequest;
-}
-
-export namespace GetPrimaryThreadRequest {
-  export type AsObject = {
-  }
-}
-
-export class GetPrimaryThreadReply extends jspb.Message {
-  getId(): Uint8Array | string;
-  getId_asU8(): Uint8Array;
-  getId_asB64(): string;
-  setId(value: Uint8Array | string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetPrimaryThreadReply.AsObject;
-  static toObject(includeInstance: boolean, msg: GetPrimaryThreadReply): GetPrimaryThreadReply.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetPrimaryThreadReply, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetPrimaryThreadReply;
-  static deserializeBinaryFromReader(message: GetPrimaryThreadReply, reader: jspb.BinaryReader): GetPrimaryThreadReply;
-}
-
-export namespace GetPrimaryThreadReply {
-  export type AsObject = {
-    id: Uint8Array | string,
   }
 }
 
@@ -282,8 +216,8 @@ export namespace CreateKeyRequest {
 }
 
 export class GetKeyReply extends jspb.Message {
-  getToken(): string;
-  setToken(value: string): void;
+  getKey(): string;
+  setKey(value: string): void;
 
   getSecret(): string;
   setSecret(value: string): void;
@@ -306,7 +240,7 @@ export class GetKeyReply extends jspb.Message {
 
 export namespace GetKeyReply {
   export type AsObject = {
-    token: string,
+    key: string,
     secret: string,
     valid: boolean,
     threads: number,
@@ -314,8 +248,8 @@ export namespace GetKeyReply {
 }
 
 export class InvalidateKeyRequest extends jspb.Message {
-  getToken(): string;
-  setToken(value: string): void;
+  getKey(): string;
+  setKey(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): InvalidateKeyRequest.AsObject;
@@ -329,7 +263,7 @@ export class InvalidateKeyRequest extends jspb.Message {
 
 export namespace InvalidateKeyRequest {
   export type AsObject = {
-    token: string,
+    key: string,
   }
 }
 
@@ -424,8 +358,10 @@ export namespace GetOrgRequest {
 }
 
 export class GetOrgReply extends jspb.Message {
-  getId(): string;
-  setId(value: string): void;
+  getKey(): Uint8Array | string;
+  getKey_asU8(): Uint8Array;
+  getKey_asB64(): string;
+  setKey(value: Uint8Array | string): void;
 
   getName(): string;
   setName(value: string): void;
@@ -450,15 +386,17 @@ export class GetOrgReply extends jspb.Message {
 
 export namespace GetOrgReply {
   export type AsObject = {
-    id: string,
+    key: Uint8Array | string,
     name: string,
     membersList: Array<GetOrgReply.Member.AsObject>,
     createdat: number,
   }
 
   export class Member extends jspb.Message {
-    getId(): string;
-    setId(value: string): void;
+    getKey(): Uint8Array | string;
+    getKey_asU8(): Uint8Array;
+    getKey_asB64(): string;
+    setKey(value: Uint8Array | string): void;
 
     getUsername(): string;
     setUsername(value: string): void;
@@ -478,7 +416,7 @@ export namespace GetOrgReply {
 
   export namespace Member {
     export type AsObject = {
-      id: string,
+      key: Uint8Array | string,
       username: string,
       role: string,
     }

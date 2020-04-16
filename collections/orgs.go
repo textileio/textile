@@ -2,10 +2,13 @@ package collections
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,16 +17,18 @@ import (
 )
 
 type Org struct {
-	ID        primitive.ObjectID `bson:"_id"`
-	Name      string             `bson:"name"`
-	Members   []Member           `bson:"members"`
-	CreatedAt time.Time          `bson:"created_at"`
+	Key       crypto.PubKey
+	Secret    crypto.PrivKey
+	Name      string
+	Token     thread.Token
+	Members   []Member
+	CreatedAt time.Time
 }
 
 type Member struct {
-	ID       primitive.ObjectID `bson:"_id"`
-	Username string             `bson:"username"`
-	Role     Role               `bson:"role"`
+	Key      crypto.PubKey
+	Username string
+	Role     Role
 }
 
 type Role int
@@ -70,46 +75,108 @@ func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
 	return t, err
 }
 
-func (o *Orgs) Create(ctx context.Context, doc *Org) error {
-	doc.ID = primitive.NewObjectID()
-	doc.CreatedAt = time.Now()
-	name, err := util.ToValidName(doc.Name)
+func (o *Orgs) Create(ctx context.Context, name string, members []Member) (*Org, error) {
+	validName, err := util.ToValidName(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	doc.Name = name
-	if len(doc.Members) == 0 {
-		doc.Members = []Member{}
+	skey, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
 	}
-	_, err = o.col.InsertOne(ctx, doc)
-	return err
-}
-
-func (o *Orgs) Get(ctx context.Context, name string) (*Org, error) {
-	var doc *Org
-	res := o.col.FindOne(ctx, bson.M{"name": name})
-	if res.Err() != nil {
-		return nil, res.Err()
+	var haveOwner bool
+	for _, m := range members {
+		if m.Role == OrgOwner {
+			haveOwner = true
+			break
+		}
 	}
-	if err := res.Decode(&doc); err != nil {
+	if !haveOwner {
+		return nil, fmt.Errorf("an org must have at least one owner")
+	}
+	doc := &Org{
+		Key:       key,
+		Secret:    skey,
+		Name:      validName,
+		Members:   members,
+		CreatedAt: time.Now(),
+	}
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	secret, err := crypto.MarshalPrivateKey(skey)
+	if err != nil {
+		return nil, err
+	}
+	rmems := make(bson.A, len(doc.Members))
+	for i, m := range doc.Members {
+		k, err := crypto.MarshalPublicKey(m.Key)
+		if err != nil {
+			return nil, err
+		}
+		rmems[i] = bson.M{
+			"_id":      k,
+			"username": m.Username,
+			"role":     int(m.Role),
+		}
+	}
+	if _, err = o.col.InsertOne(ctx, bson.M{
+		"_id":        id,
+		"secret":     secret,
+		"name":       doc.Name,
+		"members":    rmems,
+		"created_at": doc.CreatedAt,
+	}); err != nil {
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (o *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, error) {
-	filter := bson.M{"members": bson.M{"$elemMatch": bson.M{"_id": memberID}}}
+func (o *Orgs) Get(ctx context.Context, name string) (*Org, error) {
+	res := o.col.FindOne(ctx, bson.M{"name": name})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decodeOrg(raw)
+}
+
+func (o *Orgs) SetToken(ctx context.Context, name string, token thread.Token) error {
+	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$set": bson.M{"token": token}})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
+}
+
+func (o *Orgs) List(ctx context.Context, member crypto.PubKey) ([]Org, error) {
+	mid, err := crypto.MarshalPublicKey(member)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"members": bson.M{"$elemMatch": bson.M{"_id": mid}}}
 	cursor, err := o.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	var docs []Org
 	for cursor.Next(ctx) {
-		var doc Org
-		if err := cursor.Decode(&doc); err != nil {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
 			return nil, err
 		}
-		docs = append(docs, doc)
+		doc, err := decodeOrg(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, err
@@ -117,8 +184,12 @@ func (o *Orgs) List(ctx context.Context, memberID primitive.ObjectID) ([]Org, er
 	return docs, nil
 }
 
-func (o *Orgs) IsOwner(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
-	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": memberID, "role": OrgOwner}}}
+func (o *Orgs) IsOwner(ctx context.Context, name string, member crypto.PubKey) (bool, error) {
+	mid, err := crypto.MarshalPublicKey(member)
+	if err != nil {
+		return false, err
+	}
+	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": mid, "role": OrgOwner}}}
 	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -130,8 +201,12 @@ func (o *Orgs) IsOwner(ctx context.Context, name string, memberID primitive.Obje
 	return true, nil
 }
 
-func (o *Orgs) IsMember(ctx context.Context, name string, memberID primitive.ObjectID) (bool, error) {
-	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": memberID}}}
+func (o *Orgs) IsMember(ctx context.Context, name string, member crypto.PubKey) (bool, error) {
+	mid, err := crypto.MarshalPublicKey(member)
+	if err != nil {
+		return false, err
+	}
+	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": mid}}}
 	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -144,18 +219,21 @@ func (o *Orgs) IsMember(ctx context.Context, name string, memberID primitive.Obj
 }
 
 func (o *Orgs) AddMember(ctx context.Context, name string, member Member) error {
-	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$addToSet": bson.M{"members": member}})
+	mk, err := crypto.MarshalPublicKey(member.Key)
 	if err != nil {
 		return err
 	}
-	if res.MatchedCount == 0 {
-		return mongo.ErrNoDocuments
+	raw := bson.M{
+		"_id":      mk,
+		"username": member.Username,
+		"role":     int(member.Role),
 	}
-	return nil
+	_, err = o.col.UpdateOne(ctx, bson.M{"name": name, "members._id": bson.M{"$ne": mk}}, bson.M{"$push": bson.M{"members": raw}})
+	return err
 }
 
-func (o *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive.ObjectID) error {
-	isOwner, err := o.IsOwner(ctx, name, memberID)
+func (o *Orgs) RemoveMember(ctx context.Context, name string, member crypto.PubKey) error {
+	isOwner, err := o.IsOwner(ctx, name, member)
 	if err != nil {
 		return err
 	}
@@ -193,7 +271,11 @@ func (o *Orgs) RemoveMember(ctx context.Context, name string, memberID primitive
 			return fmt.Errorf("an org must have at least one owner")
 		}
 	}
-	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": memberID}}})
+	mid, err := crypto.MarshalPublicKey(member)
+	if err != nil {
+		return err
+	}
+	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": mid}}})
 	if err != nil {
 		return err
 	}
@@ -212,4 +294,41 @@ func (o *Orgs) Delete(ctx context.Context, name string) error {
 		return mongo.ErrNoDocuments
 	}
 	return nil
+}
+
+func decodeOrg(raw bson.M) (*Org, error) {
+	skey, err := crypto.UnmarshalPrivateKey(raw["secret"].(primitive.Binary).Data)
+	if err != nil {
+		return nil, err
+	}
+	var token thread.Token
+	if v, ok := raw["token"]; ok {
+		token = thread.Token(v.(string))
+	}
+	rmems := raw["members"].(bson.A)
+	mems := make([]Member, len(rmems))
+	for i, m := range raw["members"].(bson.A) {
+		mem := m.(bson.M)
+		k, err := crypto.UnmarshalPublicKey(mem["_id"].(primitive.Binary).Data)
+		if err != nil {
+			return nil, err
+		}
+		mems[i] = Member{
+			Key:      k,
+			Username: mem["username"].(string),
+			Role:     Role(mem["role"].(int32)),
+		}
+	}
+	var created time.Time
+	if v, ok := raw["created_at"]; ok {
+		created = v.(primitive.DateTime).Time()
+	}
+	return &Org{
+		Key:       skey.GetPublic(),
+		Secret:    skey,
+		Name:      raw["name"].(string),
+		Token:     token,
+		Members:   mems,
+		CreatedAt: created,
+	}, nil
 }

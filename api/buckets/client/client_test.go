@@ -185,6 +185,7 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	user := apitest.Login(t, hubclient, conf, apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
+	ctx = common.NewThreadNameContext(ctx, "buckets")
 	err = threadsclient.NewDB(ctx, id)
 	require.Nil(t, err)
 	ctx = common.NewThreadIDContext(ctx, id)

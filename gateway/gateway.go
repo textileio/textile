@@ -318,7 +318,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	}
 
 	if err = g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
-		ID:       dev.ID,
+		Key:      dev.Key,
 		Username: username,
 		Role:     collections.OrgMember,
 	}); err != nil {

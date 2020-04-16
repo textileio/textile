@@ -13,6 +13,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	filc "github.com/textileio/filecoin/api/client"
@@ -30,12 +31,13 @@ import (
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/api/hub"
 	hpb "github.com/textileio/textile/api/hub/pb"
+	"github.com/textileio/textile/api/users"
+	upb "github.com/textileio/textile/api/users/pb"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/util"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -98,7 +100,10 @@ type Config struct {
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core": logging.LevelDebug,
+			"core":    logging.LevelDebug,
+			"hub":     logging.LevelDebug,
+			"buckets": logging.LevelDebug,
+			"users":   logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -123,8 +128,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	ec, err := email.NewClient(
-		conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
+	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +173,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		GatewayUrl:     conf.AddrGatewayUrl,
 		DNSManager:     dnsm,
 	}
+	us := &users.Service{
+		Collections: t.co,
+	}
 
 	// Configure gRPC server
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
@@ -191,6 +198,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		netpb.RegisterAPIServer(t.server, ns)
 		hpb.RegisterAPIServer(t.server, hs)
 		bpb.RegisterAPIServer(t.server, bs)
+		upb.RegisterAPIServer(t.server, us)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
@@ -305,13 +313,13 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		if time.Now().After(session.ExpiresAt) {
 			return nil, status.Error(codes.Unauthenticated, "Expired session token")
 		}
-		if err := t.co.Sessions.Touch(ctx, session.Token); err != nil {
+		if err := t.co.Sessions.Touch(ctx, session.ID); err != nil {
 			return nil, err
 		}
 		ctx = c.NewSessionContext(ctx, session)
 		ctx = common.NewSessionContext(ctx, sessionToken) // For additional requests
 
-		dev, err := t.co.Developers.Get(ctx, session.DeveloperID)
+		dev, err := t.co.Developers.Get(ctx, session.Owner)
 		if err != nil {
 			return nil, status.Error(codes.NotFound, "User not found")
 		}
@@ -319,7 +327,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 
 		orgName, ok := common.OrgNameFromMD(ctx)
 		if ok {
-			isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.ID)
+			isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.Key)
 			if err != nil {
 				return nil, err
 			}
@@ -335,13 +343,17 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				// @todo: Grab thread token from org object
 			}
 		} else {
-			ctx = thread.NewTokenContext(ctx, dev.ThreadToken)
+			ctx = thread.NewTokenContext(ctx, dev.Token)
 		}
 	}
 
 	threadID, ok := common.ThreadIDFromMD(ctx)
 	if ok {
 		ctx = common.NewThreadIDContext(ctx, threadID)
+	}
+	threadName, ok := common.ThreadNameFromMD(ctx)
+	if ok {
+		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
 
 	switch getService(method) {
@@ -370,11 +382,11 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 
 func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		var ownerID primitive.ObjectID
+		var owner crypto.PubKey
 		if org, ok := c.OrgFromContext(ctx); ok {
-			ownerID = org.ID
+			owner = org.Key
 		} else if dev, ok := c.DevFromContext(ctx); ok {
-			ownerID = dev.ID
+			owner = dev.Key
 		}
 		// @todo: If not dev or org, need a key with user
 		// @todo: Handle deletes
@@ -424,7 +436,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Keep a record of this new thread.
 		// Developer/Org threads will not have an associated key.
 		// User threads have Developer/Org custodians via an associated key.
-		if _, err := t.co.Threads.Create(ctx, threadID, ownerID, primitive.NilObjectID); err != nil {
+		if _, err := t.co.Threads.Create(ctx, threadID, owner); err != nil {
 			return nil, err
 		}
 		return res, nil

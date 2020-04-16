@@ -64,57 +64,9 @@ func TestClient_Whoami(t *testing.T) {
 	t.Run("with session", func(t *testing.T) {
 		who, err := client.Whoami(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
-		assert.Equal(t, who.ID, user.ID)
+		assert.Equal(t, user.Key, who.Key)
 		assert.NotEmpty(t, who.Username)
-		assert.Equal(t, who.Email, email)
-	})
-}
-
-func TestClient_GetPrimaryThread(t *testing.T) {
-	t.Parallel()
-	conf, client, threadsclient, done := setup(t)
-	defer done()
-	ctx := context.Background()
-
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
-
-	id := thread.NewIDV1(thread.Raw, 32)
-	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
-	require.Nil(t, err)
-
-	t.Run("without session", func(t *testing.T) {
-		_, err := client.GetPrimaryThread(ctx)
-		require.NotNil(t, err)
-	})
-
-	t.Run("with session", func(t *testing.T) {
-		id, err = client.GetPrimaryThread(common.NewSessionContext(ctx, user.Session))
-		require.Nil(t, err)
-		require.True(t, id.Defined())
-	})
-}
-
-func TestClient_SetPrimaryThread(t *testing.T) {
-	t.Parallel()
-	conf, client, threadsclient, done := setup(t)
-	defer done()
-	ctx := context.Background()
-
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
-
-	id := thread.NewIDV1(thread.Raw, 32)
-	err := threadsclient.NewDB(common.NewSessionContext(ctx, user.Session), id)
-	require.Nil(t, err)
-	ctx = common.NewThreadIDContext(ctx, id)
-
-	t.Run("without session", func(t *testing.T) {
-		err := client.SetPrimaryThread(ctx)
-		require.NotNil(t, err)
-	})
-
-	t.Run("with session", func(t *testing.T) {
-		err = client.SetPrimaryThread(common.NewSessionContext(ctx, user.Session))
-		require.Nil(t, err)
+		assert.Equal(t, email, who.Email)
 	})
 }
 
@@ -144,7 +96,7 @@ func TestClient_ListThreads(t *testing.T) {
 
 		list, err = client.ListThreads(ctx)
 		require.Nil(t, err)
-		require.Equal(t, len(list.List), 2)
+		require.Equal(t, 2, len(list.List))
 	})
 }
 
@@ -164,7 +116,7 @@ func TestClient_CreateKey(t *testing.T) {
 	t.Run("with session", func(t *testing.T) {
 		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
-		assert.NotEmpty(t, key.Token)
+		assert.NotEmpty(t, key.Key)
 		assert.NotEmpty(t, key.Secret)
 	})
 }
@@ -180,18 +132,18 @@ func TestClient_InvalidateKey(t *testing.T) {
 	require.Nil(t, err)
 
 	t.Run("without session", func(t *testing.T) {
-		err := client.InvalidateKey(ctx, key.Token)
+		err := client.InvalidateKey(ctx, key.Key)
 		require.NotNil(t, err)
 	})
 
 	ctx = common.NewSessionContext(ctx, user.Session)
 
 	t.Run("with session", func(t *testing.T) {
-		err := client.InvalidateKey(ctx, key.Token)
+		err := client.InvalidateKey(ctx, key.Key)
 		require.Nil(t, err)
 		keys, err := client.ListKeys(ctx)
 		require.Nil(t, err)
-		require.Equal(t, len(keys.List), 1)
+		require.Equal(t, 1, len(keys.List))
 		require.False(t, keys.List[0].Valid)
 	})
 }
@@ -218,7 +170,7 @@ func TestClient_ListKeys(t *testing.T) {
 	t.Run("not empty", func(t *testing.T) {
 		keys, err := client.ListKeys(ctx)
 		require.Nil(t, err)
-		assert.Equal(t, len(keys.List), 2)
+		assert.Equal(t, 2, len(keys.List))
 	})
 }
 
@@ -240,8 +192,8 @@ func TestClient_CreateOrg(t *testing.T) {
 	t.Run("with session", func(t *testing.T) {
 		org, err := client.CreateOrg(common.NewSessionContext(ctx, user.Session), name)
 		require.Nil(t, err)
-		assert.NotEmpty(t, org.ID)
-		assert.Equal(t, org.Name, name)
+		assert.NotEmpty(t, org.Key)
+		assert.Equal(t, name, org.Name)
 	})
 }
 
@@ -264,7 +216,7 @@ func TestClient_GetOrg(t *testing.T) {
 	t.Run("good org", func(t *testing.T) {
 		got, err := client.GetOrg(common.NewOrgNameContext(ctx, org.Name))
 		require.Nil(t, err)
-		assert.Equal(t, got.ID, org.ID)
+		assert.Equal(t, org.Key, got.Key)
 	})
 }
 
@@ -292,7 +244,7 @@ func TestClient_ListOrgs(t *testing.T) {
 	t.Run("not empty", func(t *testing.T) {
 		orgs, err := client.ListOrgs(ctx)
 		require.Nil(t, err)
-		assert.Equal(t, len(orgs.List), 2)
+		assert.Equal(t, 2, len(orgs.List))
 	})
 }
 

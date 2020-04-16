@@ -7,6 +7,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	threads "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
@@ -59,26 +60,30 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	session, err := s.Collections.Sessions.Create(ctx, dev.ID)
+	session, err := s.Collections.Sessions.Create(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
 
-	if dev.ThreadToken == "" {
-		ctx = common.NewSessionContext(ctx, session.Token) // TODO add to credentials
-		tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.ThreadIdentity))
+	if dev.Token == "" {
+		ctx = common.NewSessionContext(ctx, session.ID)
+		tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.Secret))
 		if err != nil {
 			return nil, err
 		}
-		if err := s.Collections.Developers.SetDBToken(ctx, dev.ID, tok); err != nil {
+		if err := s.Collections.Developers.SetToken(ctx, dev.Key, tok); err != nil {
 			return nil, err
 		}
 	}
 
+	key, err := crypto.MarshalPublicKey(dev.Key)
+	if err != nil {
+		return nil, err
+	}
 	return &pb.LoginReply{
-		ID:       dev.ID.Hex(),
+		Key:      key,
 		Username: dev.Username,
-		Session:  session.Token,
+		Session:  session.ID,
 	}, nil
 }
 
@@ -116,7 +121,7 @@ func (s *Service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutRe
 	log.Debugf("received logout request")
 
 	session, _ := c.SessionFromContext(ctx)
-	if err := s.Collections.Sessions.Delete(ctx, session.Token); err != nil {
+	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
 	return &pb.LogoutReply{}, nil
@@ -126,46 +131,22 @@ func (s *Service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 	log.Debugf("received whoami request")
 
 	dev, _ := c.DevFromContext(ctx)
-	return &pb.WhoamiReply{
-		ID:       dev.ID.Hex(),
-		Username: dev.Username,
-		Email:    dev.Email,
-	}, nil
-}
-
-func (s *Service) GetPrimaryThread(ctx context.Context, _ *pb.GetPrimaryThreadRequest) (*pb.GetPrimaryThreadReply, error) {
-	log.Debugf("received get primary thread request")
-
-	dev, _ := c.DevFromContext(ctx)
-	doc, err := s.Collections.Threads.GetPrimary(ctx, dev.ID)
+	key, err := crypto.MarshalPublicKey(dev.Key)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetPrimaryThreadReply{
-		ID: doc.ThreadID.Bytes(),
+	return &pb.WhoamiReply{
+		Key:      key,
+		Username: dev.Username,
+		Email:    dev.Email,
 	}, nil
-}
-
-func (s *Service) SetPrimaryThread(ctx context.Context, _ *pb.SetPrimaryThreadRequest) (*pb.SetPrimaryThreadReply, error) {
-	log.Debugf("received set primary thread request")
-
-	id, ok := common.ThreadIDFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("thread ID required")
-	}
-	dev, _ := c.DevFromContext(ctx)
-
-	if err := s.Collections.Threads.SetPrimary(ctx, id, dev.ID); err != nil {
-		return nil, err
-	}
-	return &pb.SetPrimaryThreadReply{}, nil
 }
 
 func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
 	log.Debugf("received list threads request")
 
 	dev, _ := c.DevFromContext(ctx)
-	list, err := s.Collections.Threads.List(ctx, dev.ID)
+	list, err := s.Collections.Threads.List(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +155,8 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	}
 	for i, t := range list {
 		reply.List[i] = &pb.ListThreadsReply_Thread{
-			ID:      t.ThreadID.Bytes(),
-			Primary: t.Primary,
+			ID:   t.ID.Bytes(),
+			Name: t.Name,
 		}
 	}
 	return reply, nil
@@ -185,12 +166,12 @@ func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.Ge
 	log.Debugf("received create key request")
 
 	dev, _ := c.DevFromContext(ctx)
-	key, err := s.Collections.Keys.Create(ctx, dev.ID)
+	key, err := s.Collections.Keys.Create(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.GetKeyReply{
-		Token:   key.Token,
+		Key:     key.Key,
 		Secret:  key.Secret,
 		Valid:   true,
 		Threads: 0,
@@ -201,14 +182,14 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 	log.Debugf("received invalidate key request")
 
 	dev, _ := c.DevFromContext(ctx)
-	key, err := s.Collections.Keys.Get(ctx, req.Token)
+	key, err := s.Collections.Keys.Get(ctx, req.Key)
 	if err != nil {
 		return nil, err
 	}
-	if dev.ID != key.OwnerID {
+	if !dev.Key.Equals(key.Owner) {
 		return nil, status.Error(codes.PermissionDenied, "User does not own key")
 	}
-	if err := s.Collections.Keys.Invalidate(ctx, req.Token); err != nil {
+	if err := s.Collections.Keys.Invalidate(ctx, req.Key); err != nil {
 		return nil, err
 	}
 	return &pb.InvalidateKeyReply{}, nil
@@ -218,18 +199,18 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 	log.Debugf("received list keys request")
 
 	dev, _ := c.DevFromContext(ctx)
-	keys, err := s.Collections.Keys.List(ctx, dev.ID)
+	keys, err := s.Collections.Keys.List(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
 	list := make([]*pb.GetKeyReply, len(keys))
 	for i, key := range keys {
-		ts, err := s.Collections.Threads.ListByKey(ctx, key.ID)
+		ts, err := s.Collections.Threads.ListByKey(ctx, key.Key)
 		if err != nil {
 			return nil, err
 		}
 		list[i] = &pb.GetKeyReply{
-			Token:   key.Token,
+			Key:     key.Key,
 			Secret:  key.Secret,
 			Valid:   key.Valid,
 			Threads: int32(len(ts)),
@@ -242,18 +223,22 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	log.Debugf("received create org request")
 
 	dev, _ := c.DevFromContext(ctx)
-	org := &c.Org{
-		Name: req.Name,
-		Members: []c.Member{{
-			ID:       dev.ID,
-			Username: dev.Username,
-			Role:     c.OrgOwner,
-		}},
-	}
-	if err := s.Collections.Orgs.Create(ctx, org); err != nil {
+	org, err := s.Collections.Orgs.Create(ctx, req.Name, []c.Member{{
+		Key:      dev.Key,
+		Username: dev.Username,
+		Role:     c.OrgOwner,
+	}})
+	if err != nil {
 		return nil, err
 	}
-	return orgToPbOrg(org), nil
+	tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(org.Secret))
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Collections.Orgs.SetToken(ctx, org.Name, tok); err != nil {
+		return nil, err
+	}
+	return orgToPbOrg(org)
 }
 
 func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgReply, error) {
@@ -263,37 +248,48 @@ func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgRe
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	return orgToPbOrg(org), nil
+	return orgToPbOrg(org)
 }
 
-func orgToPbOrg(org *c.Org) *pb.GetOrgReply {
+func orgToPbOrg(org *c.Org) (*pb.GetOrgReply, error) {
 	members := make([]*pb.GetOrgReply_Member, len(org.Members))
 	for i, m := range org.Members {
+		key, err := crypto.MarshalPublicKey(m.Key)
+		if err != nil {
+			return nil, err
+		}
 		members[i] = &pb.GetOrgReply_Member{
-			ID:       m.ID.Hex(),
+			Key:      key,
 			Username: m.Username,
 			Role:     m.Role.String(),
 		}
 	}
+	key, err := crypto.MarshalPublicKey(org.Key)
+	if err != nil {
+		return nil, err
+	}
 	return &pb.GetOrgReply{
-		ID:        org.ID.Hex(),
+		Key:       key,
 		Name:      org.Name,
 		Members:   members,
 		CreatedAt: org.CreatedAt.Unix(),
-	}
+	}, nil
 }
 
 func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsReply, error) {
 	log.Debugf("received list orgs request")
 
 	dev, _ := c.DevFromContext(ctx)
-	orgs, err := s.Collections.Orgs.List(ctx, dev.ID)
+	orgs, err := s.Collections.Orgs.List(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
 	list := make([]*pb.GetOrgReply, len(orgs))
 	for i, org := range orgs {
-		list[i] = orgToPbOrg(&org)
+		list[i], err = orgToPbOrg(&org)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &pb.ListOrgsReply{List: list}, nil
 }
@@ -307,7 +303,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	isOwner, err := s.Collections.Orgs.IsOwner(ctx, org.Name, dev.ID)
+	isOwner, err := s.Collections.Orgs.IsOwner(ctx, org.Name, dev.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +328,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-	invite, err := s.Collections.Invites.Create(ctx, dev.ID, org.Name, req.Email)
+	invite, err := s.Collections.Invites.Create(ctx, dev.Key, org.Name, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +350,7 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	if err := s.Collections.Orgs.RemoveMember(ctx, org.Name, dev.ID); err != nil {
+	if err := s.Collections.Orgs.RemoveMember(ctx, org.Name, dev.Key); err != nil {
 		return nil, err
 	}
 	return &pb.LeaveOrgReply{}, nil

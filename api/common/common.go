@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -23,24 +22,24 @@ func SessionFromContext(ctx context.Context) (string, bool) {
 	return session, ok
 }
 
-func SessionFromMD(ctx context.Context) (dev string, ok bool) {
-	dev = metautils.ExtractIncoming(ctx).Get("x-textile-session")
-	if dev != "" {
+func SessionFromMD(ctx context.Context) (session string, ok bool) {
+	session = metautils.ExtractIncoming(ctx).Get("x-textile-session")
+	if session != "" {
 		ok = true
 	}
 	return
 }
 
-func NewOrgNameContext(ctx context.Context, org string) context.Context {
-	if org == "" {
+func NewOrgNameContext(ctx context.Context, name string) context.Context {
+	if name == "" {
 		return ctx
 	}
-	return context.WithValue(ctx, ctxKey("org"), org)
+	return context.WithValue(ctx, ctxKey("orgName"), name)
 }
 
 func OrgNameFromContext(ctx context.Context) (string, bool) {
-	org, ok := ctx.Value(ctxKey("org")).(string)
-	return org, ok
+	name, ok := ctx.Value(ctxKey("orgName")).(string)
+	return name, ok
 }
 
 func OrgNameFromMD(ctx context.Context) (name string, ok bool) {
@@ -51,32 +50,24 @@ func OrgNameFromMD(ctx context.Context) (name string, ok bool) {
 	return
 }
 
-func NewAPIKeyContext(ctx context.Context, key crypto.PubKey) context.Context {
-	if key == nil {
+func NewAPIKeyContext(ctx context.Context, key string) context.Context {
+	if key == "" {
 		return ctx
 	}
 	return context.WithValue(ctx, ctxKey("apiKey"), key)
 }
 
-func APIKeyFromContext(ctx context.Context) (crypto.PubKey, bool) {
-	key, ok := ctx.Value(ctxKey("apiKey")).(crypto.PubKey)
+func APIKeyFromContext(ctx context.Context) (string, bool) {
+	key, ok := ctx.Value(ctxKey("apiKey")).(string)
 	return key, ok
 }
 
-func APIKeyFromMD(ctx context.Context) (key crypto.PubKey, ok bool) {
-	str := metautils.ExtractIncoming(ctx).Get("x-textile-api-key")
-	if str == "" {
-		return
+func APIKeyFromMD(ctx context.Context) (key string, ok bool) {
+	key = metautils.ExtractIncoming(ctx).Get("x-textile-api-key")
+	if key != "" {
+		ok = true
 	}
-	_, data, err := mbase.Decode(str)
-	if err != nil {
-		return
-	}
-	key, err = crypto.UnmarshalPublicKey(data)
-	if err != nil {
-		return
-	}
-	return key, true
+	return
 }
 
 func NewAPISigContext(ctx context.Context, sig []byte) context.Context {
@@ -129,6 +120,26 @@ func ThreadIDFromMD(ctx context.Context) (id thread.ID, ok bool) {
 	return id, true
 }
 
+func NewThreadNameContext(ctx context.Context, name string) context.Context {
+	if name == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxKey("threadName"), name)
+}
+
+func ThreadNameFromContext(ctx context.Context) (string, bool) {
+	name, ok := ctx.Value(ctxKey("threadName")).(string)
+	return name, ok
+}
+
+func ThreadNameFromMD(ctx context.Context) (name string, ok bool) {
+	name = metautils.ExtractIncoming(ctx).Get("x-textile-thread-name")
+	if name != "" {
+		ok = true
+	}
+	return
+}
+
 type Credentials struct {
 	Secure bool
 }
@@ -145,14 +156,7 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 	}
 	apiKey, ok := APIKeyFromContext(ctx)
 	if ok {
-		b, err := crypto.MarshalPublicKey(apiKey)
-		if err != nil {
-			return nil, err
-		}
-		md["x-textile-api-key"], err = mbase.Encode(mbase.Base64, b)
-		if err != nil {
-			return nil, err
-		}
+		md["x-textile-api-key"] = apiKey
 	}
 	apiSig, ok := APISigFromContext(ctx)
 	if ok {
@@ -165,6 +169,10 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 	threadID, ok := ThreadIDFromContext(ctx)
 	if ok {
 		md["x-textile-thread"] = threadID.String()
+	}
+	threadName, ok := ThreadNameFromContext(ctx)
+	if ok {
+		md["x-textile-thread-name"] = threadName
 	}
 	threadToken, ok := thread.TokenFromContext(ctx)
 	if ok {

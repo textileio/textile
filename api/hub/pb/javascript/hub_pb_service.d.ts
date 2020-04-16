@@ -31,24 +31,6 @@ type APIWhoami = {
   readonly responseType: typeof hub_pb.WhoamiReply;
 };
 
-type APIGetPrimaryThread = {
-  readonly methodName: string;
-  readonly service: typeof API;
-  readonly requestStream: false;
-  readonly responseStream: false;
-  readonly requestType: typeof hub_pb.GetPrimaryThreadRequest;
-  readonly responseType: typeof hub_pb.GetPrimaryThreadReply;
-};
-
-type APISetPrimaryThread = {
-  readonly methodName: string;
-  readonly service: typeof API;
-  readonly requestStream: false;
-  readonly responseStream: false;
-  readonly requestType: typeof hub_pb.SetPrimaryThreadRequest;
-  readonly responseType: typeof hub_pb.SetPrimaryThreadReply;
-};
-
 type APIListThreads = {
   readonly methodName: string;
   readonly service: typeof API;
@@ -144,8 +126,6 @@ export class API {
   static readonly Login: APILogin;
   static readonly Logout: APILogout;
   static readonly Whoami: APIWhoami;
-  static readonly GetPrimaryThread: APIGetPrimaryThread;
-  static readonly SetPrimaryThread: APISetPrimaryThread;
   static readonly ListThreads: APIListThreads;
   static readonly CreateKey: APICreateKey;
   static readonly ListKeys: APIListKeys;
@@ -216,24 +196,6 @@ export class APIClient {
   whoami(
     requestMessage: hub_pb.WhoamiRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.WhoamiReply|null) => void
-  ): UnaryResponse;
-  getPrimaryThread(
-    requestMessage: hub_pb.GetPrimaryThreadRequest,
-    metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetPrimaryThreadReply|null) => void
-  ): UnaryResponse;
-  getPrimaryThread(
-    requestMessage: hub_pb.GetPrimaryThreadRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetPrimaryThreadReply|null) => void
-  ): UnaryResponse;
-  setPrimaryThread(
-    requestMessage: hub_pb.SetPrimaryThreadRequest,
-    metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.SetPrimaryThreadReply|null) => void
-  ): UnaryResponse;
-  setPrimaryThread(
-    requestMessage: hub_pb.SetPrimaryThreadRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.SetPrimaryThreadReply|null) => void
   ): UnaryResponse;
   listThreads(
     requestMessage: hub_pb.ListThreadsRequest,

@@ -42,7 +42,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 			cmd.Fatal(err)
 		}
 
-		cmd.RenderTable([]string{"token", "secret"}, [][]string{{k.Token, k.Secret}})
+		cmd.RenderTable([]string{"key", "secret"}, [][]string{{k.Key, k.Secret}})
 		cmd.Success("Created new API key and secret")
 	},
 }
@@ -53,14 +53,14 @@ var invalidateKeysCmd = &cobra.Command{
 	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectKey("Invalidate key", aurora.Sprintf(
-			aurora.BrightBlack("> Invalidating key {{ .Token | white | bold }}")))
+			aurora.BrightBlack("> Invalidating key {{ .Key | white | bold }}")))
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := hub.InvalidateKey(ctx, selected.Token); err != nil {
+		if err := hub.InvalidateKey(ctx, selected.Key); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Invalidated key %s", aurora.White(selected.Token).Bold())
+		cmd.Success("Invalidated key %s", aurora.White(selected.Key).Bold())
 	},
 }
 
@@ -86,15 +86,15 @@ func lsKeys() {
 	if len(list.List) > 0 {
 		data := make([][]string, len(list.List))
 		for i, k := range list.List {
-			data[i] = []string{k.Token, k.Secret, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+			data[i] = []string{k.Key, k.Secret, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
 		}
-		cmd.RenderTable([]string{"token", "secret", "valid", "threads"}, data)
+		cmd.RenderTable([]string{"key", "secret", "valid", "threads"}, data)
 	}
 	cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
 }
 
 type keyItem struct {
-	Token   string
+	Key     string
 	Threads int
 }
 
@@ -109,7 +109,7 @@ func selectKey(label, successMsg string) *keyItem {
 	items := make([]*keyItem, 0)
 	for _, k := range list.List {
 		if k.Valid {
-			items = append(items, &keyItem{Token: k.Token, Threads: int(k.Threads)})
+			items = append(items, &keyItem{Key: k.Key, Threads: int(k.Threads)})
 		}
 	}
 	if len(items) == 0 {
@@ -120,9 +120,9 @@ func selectKey(label, successMsg string) *keyItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Token | bold }} {{ .Threads | faint | bold }}`,
+			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Key | bold }} {{ .Threads | faint | bold }}`,
 				promptui.IconSelect),
-			Inactive: `{{ .Token | faint }} {{ .Threads | faint | bold }}`,
+			Inactive: `{{ .Key | faint }} {{ .Threads | faint | bold }}`,
 			Selected: successMsg,
 		},
 	}
