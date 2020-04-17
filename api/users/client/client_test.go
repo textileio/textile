@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,22 @@ func TestClient_GetThread(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
+
+	t.Run("without key signature", func(t *testing.T) {
+		_, err := client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+	})
+
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
+	require.Nil(t, err)
+
+	t.Run("with old key signature", func(t *testing.T) {
+		_, err := client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+	})
+
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	require.Nil(t, err)
 
 	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)

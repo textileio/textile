@@ -10,7 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-const keyLen = 16
+const (
+	keyLen    = 16
+	secretLen = 24
+)
 
 type Key struct {
 	Key    string
@@ -36,7 +39,7 @@ func NewKeys(ctx context.Context, db *mongo.Database) (*Keys, error) {
 func (k *Keys) Create(ctx context.Context, owner crypto.PubKey) (*Key, error) {
 	doc := &Key{
 		Key:    util.MakeToken(keyLen),
-		Secret: util.MakeToken(keyLen),
+		Secret: util.MakeToken(secretLen),
 		Owner:  owner,
 		Valid:  true,
 	}

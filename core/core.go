@@ -348,6 +348,11 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	} else if key, ok := common.APIKeyFromMD(ctx); ok {
 		ctx = common.NewAPIKeyContext(ctx, key)
+		msg, sig, ok := common.APISigFromMD(ctx)
+		if !ok {
+			return nil, status.Error(codes.Unauthenticated, "API key signature required")
+		}
+		ctx = common.NewAPISigContext(ctx, msg, sig)
 		tok, err := thread.NewTokenFromMD(ctx) // Can be empty
 		if err != nil {
 			return nil, err
@@ -383,26 +388,26 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		} else if k, ok := common.APIKeyFromContext(ctx); ok {
 			key, err := t.co.Keys.Get(ctx, k)
 			if err != nil || !key.Valid {
-				return nil, status.Error(codes.NotFound, "Key not found or is invalid")
+				return nil, status.Error(codes.NotFound, "APi key not found or is invalid")
 			}
-			// @todo: Verify request
+			if !common.ValidateAPISigContext(ctx, key.Secret) {
+				return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
+			}
 
-			// Pull user key out of the thread token
+			// Pull user key out of the thread token if present
 			tok, ok := thread.TokenFromContext(ctx)
-			if !ok {
-				return nil, status.Error(codes.Unauthenticated, "Authorization required")
+			if ok {
+				var claims jwt.StandardClaims
+				if _, _, err = new(jwt.Parser).ParseUnverified(string(tok), &claims); err != nil {
+					return nil, status.Error(codes.PermissionDenied, "Bad authorization")
+				}
+				ukey := &thread.Libp2pPubKey{}
+				if err = ukey.UnmarshalString(claims.Subject); err != nil {
+					return nil, err
+				}
+				owner = ukey.PubKey
+				isUser = true
 			}
-			var claims jwt.StandardClaims
-			if _, _, err = new(jwt.Parser).ParseUnverified(string(tok), &claims); err != nil {
-				return nil, status.Error(codes.PermissionDenied, "Bad authorization")
-			}
-			ukey := &thread.Libp2pPubKey{}
-			if err = ukey.UnmarshalString(claims.Subject); err != nil {
-				return nil, err
-			}
-			owner = ukey.PubKey
-			isUser = true
-
 			if getService(method) == "users.pb.API" {
 				user, err := t.co.Users.Get(ctx, owner)
 				if err != nil {
