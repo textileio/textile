@@ -851,6 +851,8 @@ github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6 h1:L5ywbgAf399O
 github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6/go.mod h1:T2dh+tUQvAKKiy4iKmeDOlZvJnqNSXFXhsXa1uXAfJk=
 github.com/textileio/go-threads v0.1.15-0.20200416210843-8e681666aedf h1:Rzcn8NqR4NsOeTmCYzc9xi6nv/My9XPQSjyTWRHv5ck=
 github.com/textileio/go-threads v0.1.15-0.20200416210843-8e681666aedf/go.mod h1:p6S4FI2q3YoY+TMNv5KirEU6kPFU1OiBf6BvxKLUkh8=
+github.com/textileio/go-threads v0.1.15-0.20200417182734-e72593aed026 h1:7LDZo7OYTMH9/5m/gdIfO3cNkr7K74a1CSVAU9JghUk=
+github.com/textileio/go-threads v0.1.15-0.20200417182734-e72593aed026/go.mod h1:p6S4FI2q3YoY+TMNv5KirEU6kPFU1OiBf6BvxKLUkh8=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=

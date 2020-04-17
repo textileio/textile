@@ -145,8 +145,8 @@ func (s *Service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiRe
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadReply, error) {
 	log.Debugf("received get thread request")
 
-	dev, _ := c.DevFromContext(ctx)
-	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, dev.Key)
+	owner := ownerFromContext(ctx)
+	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +159,8 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
 	log.Debugf("received list threads request")
 
-	dev, _ := c.DevFromContext(ctx)
-	list, err := s.Collections.Threads.List(ctx, dev.Key)
+	owner := ownerFromContext(ctx)
+	list, err := s.Collections.Threads.List(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +179,8 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
 	log.Debugf("received create key request")
 
-	dev, _ := c.DevFromContext(ctx)
-	key, err := s.Collections.Keys.Create(ctx, dev.Key)
+	owner := ownerFromContext(ctx)
+	key, err := s.Collections.Keys.Create(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -195,12 +195,12 @@ func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.Ge
 func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyReply, error) {
 	log.Debugf("received invalidate key request")
 
-	dev, _ := c.DevFromContext(ctx)
 	key, err := s.Collections.Keys.Get(ctx, req.Key)
 	if err != nil {
 		return nil, err
 	}
-	if !dev.Key.Equals(key.Owner) {
+	owner := ownerFromContext(ctx)
+	if !owner.Equals(key.Owner) {
 		return nil, status.Error(codes.PermissionDenied, "User does not own key")
 	}
 	if err := s.Collections.Keys.Invalidate(ctx, req.Key); err != nil {
@@ -212,8 +212,8 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysReply, error) {
 	log.Debugf("received list keys request")
 
-	dev, _ := c.DevFromContext(ctx)
-	keys, err := s.Collections.Keys.List(ctx, dev.Key)
+	owner := ownerFromContext(ctx)
+	keys, err := s.Collections.Keys.List(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -368,4 +368,13 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 		return nil, err
 	}
 	return &pb.LeaveOrgReply{}, nil
+}
+
+func ownerFromContext(ctx context.Context) crypto.PubKey {
+	org, ok := c.OrgFromContext(ctx)
+	if !ok {
+		dev, _ := c.DevFromContext(ctx)
+		return dev.Key
+	}
+	return org.Key
 }
