@@ -12,17 +12,23 @@ import (
 	. "github.com/textileio/textile/collections"
 )
 
-func TestDevelopers_GetOrCreate(t *testing.T) {
+func TestDevelopers_Create(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
+	created, err := col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
-	got, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
-	require.Nil(t, err)
-	assert.Equal(t, created.Key, got.Key)
+	require.Equal(t, "jon", created.Username)
+	require.Equal(t, "jon@doe.com", created.Email)
+	require.NotEmpty(t, created.Key)
+	require.NotEmpty(t, created.Secret)
+
+	_, err = col.Create(context.Background(), "jon", "jon2@doe.com")
+	require.NotNil(t, err)
+	_, err = col.Create(context.Background(), "jon2", "jon@doe.com")
+	require.NotNil(t, err)
 }
 
 func TestDevelopers_Get(t *testing.T) {
@@ -31,12 +37,51 @@ func TestDevelopers_Get(t *testing.T) {
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
+	created, err := col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
 	require.Nil(t, err)
 	assert.Equal(t, created.Key, got.Key)
+}
+
+func TestDevelopers_GetByUsernameOrEmail(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+	col, err := NewDevelopers(context.Background(), db)
+	require.Nil(t, err)
+
+	created, err := col.Create(context.Background(), "jon", "jon@doe.com")
+	require.Nil(t, err)
+
+	got, err := col.GetByUsernameOrEmail(context.Background(), "jon")
+	require.Nil(t, err)
+	assert.Equal(t, created.Key, got.Key)
+
+	got, err = col.GetByUsernameOrEmail(context.Background(), "jon@doe.com")
+	require.Nil(t, err)
+	assert.Equal(t, created.Key, got.Key)
+
+	_, err = col.GetByUsernameOrEmail(context.Background(), "jon2")
+	require.NotNil(t, err)
+}
+
+func TestDevelopers_CheckUsername(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+	col, err := NewDevelopers(context.Background(), db)
+	require.Nil(t, err)
+
+	ok, err := col.CheckUsername(context.Background(), "jon")
+	require.Nil(t, err)
+	require.True(t, ok)
+
+	_, err = col.Create(context.Background(), "jon", "jon@doe.com")
+	require.Nil(t, err)
+
+	ok, err = col.CheckUsername(context.Background(), "jon")
+	require.Nil(t, err)
+	require.False(t, ok)
 }
 
 func TestDevelopers_SetToken(t *testing.T) {
@@ -45,7 +90,7 @@ func TestDevelopers_SetToken(t *testing.T) {
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
+	created, err := col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
 
 	iss, _, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -66,11 +111,11 @@ func TestDevelopers_ListMembers(t *testing.T) {
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	one, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
+	one, err := col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
-	two, err := col.GetOrCreate(context.Background(), "jane", "jane@doe.com")
+	two, err := col.Create(context.Background(), "jane", "jane@doe.com")
 	require.Nil(t, err)
-	_, err = col.GetOrCreate(context.Background(), "jone", "jone@doe.com")
+	_, err = col.Create(context.Background(), "jone", "jone@doe.com")
 	require.Nil(t, err)
 
 	list, err := col.ListMembers(context.Background(), []Member{{Key: one.Key}, {Key: two.Key}})
@@ -84,7 +129,7 @@ func TestDevelopers_Delete(t *testing.T) {
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.GetOrCreate(context.Background(), "jon", "jon@doe.com")
+	created, err := col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
 
 	err = col.Delete(context.Background(), created.Key)

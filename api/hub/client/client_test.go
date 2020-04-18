@@ -19,54 +19,103 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestClient_Login(t *testing.T) {
+func TestClient_Signup(t *testing.T) {
 	t.Parallel()
 	conf, client, _, done := setup(t)
 	defer done()
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
+	assert.NotEmpty(t, user.Key)
 	assert.NotEmpty(t, user.Session)
 }
 
-func TestClient_Logout(t *testing.T) {
+func TestClient_Signin(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	username := apitest.NewUsername()
+	email := apitest.NewEmail()
+	user := apitest.Signup(t, client, conf, username, email)
+	err := client.Signout(common.NewSessionContext(context.Background(), user.Session))
+	require.Nil(t, err)
+
+	res := apitest.Signin(t, client, conf, username)
+	assert.NotEmpty(t, res.Key)
+	assert.NotEmpty(t, res.Session)
+
+	err = client.Signout(common.NewSessionContext(context.Background(), user.Session))
+	require.Nil(t, err)
+
+	res = apitest.Signin(t, client, conf, email)
+	assert.NotEmpty(t, res.Key)
+	assert.NotEmpty(t, res.Session)
+}
+
+func TestClient_Signout(t *testing.T) {
 	t.Parallel()
 	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		err := client.Logout(ctx)
+		err := client.Signout(ctx)
 		require.NotNil(t, err)
 	})
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		err := client.Logout(common.NewSessionContext(ctx, user.Session))
+		err := client.Signout(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 	})
 }
 
-func TestClient_Whoami(t *testing.T) {
+func TestClient_CheckUsername(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	username := apitest.NewUsername()
+	email := apitest.NewEmail()
+	ok, err := client.CheckUsername(context.Background(), username)
+	require.Nil(t, err)
+	require.True(t, ok)
+	ok, err = client.CheckUsername(context.Background(), email)
+	require.Nil(t, err)
+	require.True(t, ok)
+
+	apitest.Signup(t, client, conf, username, email)
+
+	ok, err = client.CheckUsername(context.Background(), username)
+	require.Nil(t, err)
+	require.False(t, ok)
+	ok, err = client.CheckUsername(context.Background(), email)
+	require.Nil(t, err)
+	require.False(t, ok)
+}
+
+func TestClient_GetSession(t *testing.T) {
 	t.Parallel()
 	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.Whoami(ctx)
+		_, err := client.GetSession(ctx)
 		require.NotNil(t, err)
 	})
 
+	username := apitest.NewUsername()
 	email := apitest.NewEmail()
-	user := apitest.Login(t, client, conf, email)
+	user := apitest.Signup(t, client, conf, username, email)
 
 	t.Run("with session", func(t *testing.T) {
-		who, err := client.Whoami(common.NewSessionContext(ctx, user.Session))
+		res, err := client.GetSession(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
-		assert.Equal(t, user.Key, who.Key)
-		assert.NotEmpty(t, who.Username)
-		assert.Equal(t, email, who.Email)
+		assert.Equal(t, user.Key, res.Key)
+		assert.Equal(t, username, res.Username)
+		assert.Equal(t, email, res.Email)
 	})
 }
 
@@ -81,7 +130,7 @@ func TestClient_GetThread(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
 		ctx = common.NewSessionContext(ctx, user.Session)
@@ -109,7 +158,7 @@ func TestClient_ListThreads(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
 		ctx = common.NewSessionContext(ctx, user.Session)
@@ -139,7 +188,7 @@ func TestClient_CreateKey(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
 		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
@@ -155,7 +204,7 @@ func TestClient_InvalidateKey(t *testing.T) {
 	defer done()
 	ctx := context.Background()
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
 	require.Nil(t, err)
 
@@ -181,7 +230,7 @@ func TestClient_ListKeys(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 
 	t.Run("empty", func(t *testing.T) {
@@ -208,14 +257,14 @@ func TestClient_CreateOrg(t *testing.T) {
 	defer done()
 	ctx := context.Background()
 
-	name := apitest.NewName()
+	name := apitest.NewUsername()
 
 	t.Run("without session", func(t *testing.T) {
 		_, err := client.CreateOrg(ctx, name)
 		require.NotNil(t, err)
 	})
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
 		org, err := client.CreateOrg(common.NewSessionContext(ctx, user.Session), name)
@@ -230,8 +279,8 @@ func TestClient_GetOrg(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	name := apitest.NewName()
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	name := apitest.NewUsername()
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
@@ -253,7 +302,7 @@ func TestClient_ListOrgs(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 
 	t.Run("empty", func(t *testing.T) {
@@ -281,8 +330,8 @@ func TestClient_RemoveOrg(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	name := apitest.NewName()
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	name := apitest.NewUsername()
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
@@ -292,7 +341,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	user2 := apitest.Login(t, client, conf, apitest.NewEmail())
+	user2 := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx2 := common.NewSessionContext(context.Background(), user2.Session)
 
 	t.Run("bad session", func(t *testing.T) {
@@ -314,8 +363,8 @@ func TestClient_InviteToOrg(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	name := apitest.NewName()
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	name := apitest.NewUsername()
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
@@ -338,8 +387,8 @@ func TestClient_LeaveOrg(t *testing.T) {
 	conf, client, _, done := setup(t)
 	defer done()
 
-	name := apitest.NewName()
-	user := apitest.Login(t, client, conf, apitest.NewEmail())
+	name := apitest.NewUsername()
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
@@ -351,7 +400,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 	})
 
 	user2Email := apitest.NewEmail()
-	user2 := apitest.Login(t, client, conf, user2Email)
+	user2 := apitest.Signup(t, client, conf, apitest.NewUsername(), user2Email)
 	ctx2 := common.NewSessionContext(ctx, user2.Session)
 
 	t.Run("as non-member", func(t *testing.T) {

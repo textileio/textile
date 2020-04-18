@@ -3,6 +3,7 @@ package collections
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -51,7 +52,7 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 	return d, err
 }
 
-func (d *Developers) GetOrCreate(ctx context.Context, username, email string) (*Developer, error) {
+func (d *Developers) Create(ctx context.Context, username, email string) (*Developer, error) {
 	validUsername, err := util.ToValidName(username)
 	if err != nil {
 		return nil, err
@@ -82,17 +83,6 @@ func (d *Developers) GetOrCreate(ctx context.Context, username, email string) (*
 		"username":   doc.Username,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
-		if _, ok := err.(mongo.WriteException); ok {
-			res := d.col.FindOne(ctx, bson.D{{"$or", bson.A{bson.D{{"email", email}}, bson.D{{"username", username}}}}})
-			if res.Err() != nil {
-				return nil, res.Err()
-			}
-			var raw bson.M
-			if err := res.Decode(&raw); err != nil {
-				return nil, err
-			}
-			return decodeDeveloper(raw)
-		}
 		return nil, err
 	}
 	return doc, nil
@@ -112,6 +102,29 @@ func (d *Developers) Get(ctx context.Context, key crypto.PubKey) (*Developer, er
 		return nil, err
 	}
 	return decodeDeveloper(raw)
+}
+
+func (d *Developers) GetByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (*Developer, error) {
+	res := d.col.FindOne(ctx, bson.D{{"$or", bson.A{bson.D{{"email", usernameOrEmail}}, bson.D{{"username", usernameOrEmail}}}}})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decodeDeveloper(raw)
+}
+
+func (d *Developers) CheckUsername(ctx context.Context, username string) (bool, error) {
+	res := d.col.FindOne(ctx, bson.M{"username": username})
+	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return true, nil
+		}
+		return false, res.Err()
+	}
+	return false, nil
 }
 
 func (d *Developers) SetToken(ctx context.Context, key crypto.PubKey, token thread.Token) error {

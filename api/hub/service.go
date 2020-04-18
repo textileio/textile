@@ -6,6 +6,8 @@ import (
 	"net/mail"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	threads "github.com/textileio/go-threads/api/client"
@@ -39,15 +41,87 @@ type Service struct {
 	SessionSecret string
 }
 
-func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginReply, error) {
-	log.Debugf("received login request")
+func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
+	log.Debugf("received signup request")
 
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-	dev, err := s.Collections.Developers.GetOrCreate(ctx, req.Username, req.Email)
+
+	secret := getSessionSecret(s.SessionSecret)
+	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
+	defer cancel()
+	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayUrl, secret); err != nil {
+		return nil, err
+	}
+	if !s.awaitVerification(secret) {
+		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
+	}
+
+	dev, err := s.Collections.Developers.Create(ctx, req.Username, req.Email)
+	if err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "Account exists")
+	}
+	session, err := s.Collections.Sessions.Create(ctx, dev.Key)
 	if err != nil {
 		return nil, err
+	}
+	ctx = common.NewSessionContext(ctx, session.ID)
+	tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.Secret))
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Collections.Developers.SetToken(ctx, dev.Key, tok); err != nil {
+		return nil, err
+	}
+
+	// Check for pending invites
+	invites, err := s.Collections.Invites.List(ctx, dev.Email)
+	if err != nil {
+		return nil, err
+	}
+	for _, invite := range invites {
+		if invite.Accepted {
+			if err := s.Collections.Orgs.AddMember(ctx, invite.Org, c.Member{
+				Key:      dev.Key,
+				Username: dev.Username,
+				Role:     c.OrgMember,
+			}); err != nil {
+				if err == mongo.ErrNoDocuments {
+					if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
+						return nil, err
+					}
+				} else {
+					return nil, err
+				}
+			}
+			if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
+				return nil, err
+			}
+		}
+		if time.Now().After(invite.ExpiresAt) {
+			if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	key, err := crypto.MarshalPublicKey(dev.Key)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.SignupReply{
+		Key:     key,
+		Session: session.ID,
+	}, nil
+}
+
+func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.SigninReply, error) {
+	log.Debugf("received signin request")
+
+	dev, err := s.Collections.Developers.GetByUsernameOrEmail(ctx, req.UsernameOrEmail)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
 	secret := getSessionSecret(s.SessionSecret)
@@ -65,25 +139,13 @@ func (s *Service) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRep
 		return nil, err
 	}
 
-	if dev.Token == "" {
-		ctx = common.NewSessionContext(ctx, session.ID)
-		tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.Secret))
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Developers.SetToken(ctx, dev.Key, tok); err != nil {
-			return nil, err
-		}
-	}
-
 	key, err := crypto.MarshalPublicKey(dev.Key)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.LoginReply{
-		Key:      key,
-		Username: dev.Username,
-		Session:  session.ID,
+	return &pb.SigninReply{
+		Key:     key,
+		Session: session.ID,
 	}, nil
 }
 
@@ -117,25 +179,37 @@ func getSessionSecret(secret string) string {
 	return util.MakeToken(44)
 }
 
-func (s *Service) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutReply, error) {
-	log.Debugf("received logout request")
+func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.SignoutReply, error) {
+	log.Debugf("received signout request")
 
 	session, _ := c.SessionFromContext(ctx)
 	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
-	return &pb.LogoutReply{}, nil
+	return &pb.SignoutReply{}, nil
 }
 
-func (s *Service) Whoami(ctx context.Context, _ *pb.WhoamiRequest) (*pb.WhoamiReply, error) {
-	log.Debugf("received whoami request")
+func (s *Service) CheckUsername(ctx context.Context, req *pb.CheckUsernameRequest) (*pb.CheckUsernameReply, error) {
+	log.Debugf("received check username request")
+
+	ok, err := s.Collections.Developers.CheckUsername(ctx, req.Username)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.CheckUsernameReply{
+		Ok: ok,
+	}, nil
+}
+
+func (s *Service) GetSession(ctx context.Context, _ *pb.GetSessionRequest) (*pb.GetSessionReply, error) {
+	log.Debugf("received get session request")
 
 	dev, _ := c.DevFromContext(ctx)
 	key, err := crypto.MarshalPublicKey(dev.Key)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.WhoamiReply{
+	return &pb.GetSessionReply{
 		Key:      key,
 		Username: dev.Username,
 		Email:    dev.Email,

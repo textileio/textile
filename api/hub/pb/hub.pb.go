@@ -24,7 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type LoginRequest struct {
+type SignupRequest struct {
 	Username             string   `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Email                string   `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -32,194 +32,350 @@ type LoginRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LoginRequest) Reset()         { *m = LoginRequest{} }
-func (m *LoginRequest) String() string { return proto.CompactTextString(m) }
-func (*LoginRequest) ProtoMessage()    {}
-func (*LoginRequest) Descriptor() ([]byte, []int) {
+func (m *SignupRequest) Reset()         { *m = SignupRequest{} }
+func (m *SignupRequest) String() string { return proto.CompactTextString(m) }
+func (*SignupRequest) ProtoMessage()    {}
+func (*SignupRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b3103f8d3056b01c, []int{0}
 }
 
-func (m *LoginRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoginRequest.Unmarshal(m, b)
+func (m *SignupRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SignupRequest.Unmarshal(m, b)
 }
-func (m *LoginRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoginRequest.Marshal(b, m, deterministic)
+func (m *SignupRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SignupRequest.Marshal(b, m, deterministic)
 }
-func (m *LoginRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoginRequest.Merge(m, src)
+func (m *SignupRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignupRequest.Merge(m, src)
 }
-func (m *LoginRequest) XXX_Size() int {
-	return xxx_messageInfo_LoginRequest.Size(m)
+func (m *SignupRequest) XXX_Size() int {
+	return xxx_messageInfo_SignupRequest.Size(m)
 }
-func (m *LoginRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoginRequest.DiscardUnknown(m)
+func (m *SignupRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignupRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LoginRequest proto.InternalMessageInfo
+var xxx_messageInfo_SignupRequest proto.InternalMessageInfo
 
-func (m *LoginRequest) GetUsername() string {
+func (m *SignupRequest) GetUsername() string {
 	if m != nil {
 		return m.Username
 	}
 	return ""
 }
 
-func (m *LoginRequest) GetEmail() string {
+func (m *SignupRequest) GetEmail() string {
 	if m != nil {
 		return m.Email
 	}
 	return ""
 }
 
-type LoginReply struct {
+type SignupReply struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Username             string   `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Session              string   `protobuf:"bytes,3,opt,name=session,proto3" json:"session,omitempty"`
+	Session              string   `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LoginReply) Reset()         { *m = LoginReply{} }
-func (m *LoginReply) String() string { return proto.CompactTextString(m) }
-func (*LoginReply) ProtoMessage()    {}
-func (*LoginReply) Descriptor() ([]byte, []int) {
+func (m *SignupReply) Reset()         { *m = SignupReply{} }
+func (m *SignupReply) String() string { return proto.CompactTextString(m) }
+func (*SignupReply) ProtoMessage()    {}
+func (*SignupReply) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b3103f8d3056b01c, []int{1}
 }
 
-func (m *LoginReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoginReply.Unmarshal(m, b)
+func (m *SignupReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SignupReply.Unmarshal(m, b)
 }
-func (m *LoginReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoginReply.Marshal(b, m, deterministic)
+func (m *SignupReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SignupReply.Marshal(b, m, deterministic)
 }
-func (m *LoginReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoginReply.Merge(m, src)
+func (m *SignupReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignupReply.Merge(m, src)
 }
-func (m *LoginReply) XXX_Size() int {
-	return xxx_messageInfo_LoginReply.Size(m)
+func (m *SignupReply) XXX_Size() int {
+	return xxx_messageInfo_SignupReply.Size(m)
 }
-func (m *LoginReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoginReply.DiscardUnknown(m)
+func (m *SignupReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignupReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LoginReply proto.InternalMessageInfo
+var xxx_messageInfo_SignupReply proto.InternalMessageInfo
 
-func (m *LoginReply) GetKey() []byte {
+func (m *SignupReply) GetKey() []byte {
 	if m != nil {
 		return m.Key
 	}
 	return nil
 }
 
-func (m *LoginReply) GetUsername() string {
-	if m != nil {
-		return m.Username
-	}
-	return ""
-}
-
-func (m *LoginReply) GetSession() string {
+func (m *SignupReply) GetSession() string {
 	if m != nil {
 		return m.Session
 	}
 	return ""
 }
 
-type LogoutRequest struct {
+type SigninRequest struct {
+	UsernameOrEmail      string   `protobuf:"bytes,1,opt,name=usernameOrEmail,proto3" json:"usernameOrEmail,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LogoutRequest) Reset()         { *m = LogoutRequest{} }
-func (m *LogoutRequest) String() string { return proto.CompactTextString(m) }
-func (*LogoutRequest) ProtoMessage()    {}
-func (*LogoutRequest) Descriptor() ([]byte, []int) {
+func (m *SigninRequest) Reset()         { *m = SigninRequest{} }
+func (m *SigninRequest) String() string { return proto.CompactTextString(m) }
+func (*SigninRequest) ProtoMessage()    {}
+func (*SigninRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b3103f8d3056b01c, []int{2}
 }
 
-func (m *LogoutRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LogoutRequest.Unmarshal(m, b)
+func (m *SigninRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigninRequest.Unmarshal(m, b)
 }
-func (m *LogoutRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LogoutRequest.Marshal(b, m, deterministic)
+func (m *SigninRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigninRequest.Marshal(b, m, deterministic)
 }
-func (m *LogoutRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogoutRequest.Merge(m, src)
+func (m *SigninRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigninRequest.Merge(m, src)
 }
-func (m *LogoutRequest) XXX_Size() int {
-	return xxx_messageInfo_LogoutRequest.Size(m)
+func (m *SigninRequest) XXX_Size() int {
+	return xxx_messageInfo_SigninRequest.Size(m)
 }
-func (m *LogoutRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogoutRequest.DiscardUnknown(m)
+func (m *SigninRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigninRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LogoutRequest proto.InternalMessageInfo
+var xxx_messageInfo_SigninRequest proto.InternalMessageInfo
 
-type LogoutReply struct {
+func (m *SigninRequest) GetUsernameOrEmail() string {
+	if m != nil {
+		return m.UsernameOrEmail
+	}
+	return ""
+}
+
+type SigninReply struct {
+	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Session              string   `protobuf:"bytes,2,opt,name=session,proto3" json:"session,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LogoutReply) Reset()         { *m = LogoutReply{} }
-func (m *LogoutReply) String() string { return proto.CompactTextString(m) }
-func (*LogoutReply) ProtoMessage()    {}
-func (*LogoutReply) Descriptor() ([]byte, []int) {
+func (m *SigninReply) Reset()         { *m = SigninReply{} }
+func (m *SigninReply) String() string { return proto.CompactTextString(m) }
+func (*SigninReply) ProtoMessage()    {}
+func (*SigninReply) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b3103f8d3056b01c, []int{3}
 }
 
-func (m *LogoutReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LogoutReply.Unmarshal(m, b)
+func (m *SigninReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigninReply.Unmarshal(m, b)
 }
-func (m *LogoutReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LogoutReply.Marshal(b, m, deterministic)
+func (m *SigninReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigninReply.Marshal(b, m, deterministic)
 }
-func (m *LogoutReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogoutReply.Merge(m, src)
+func (m *SigninReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigninReply.Merge(m, src)
 }
-func (m *LogoutReply) XXX_Size() int {
-	return xxx_messageInfo_LogoutReply.Size(m)
+func (m *SigninReply) XXX_Size() int {
+	return xxx_messageInfo_SigninReply.Size(m)
 }
-func (m *LogoutReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogoutReply.DiscardUnknown(m)
+func (m *SigninReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigninReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LogoutReply proto.InternalMessageInfo
+var xxx_messageInfo_SigninReply proto.InternalMessageInfo
 
-type WhoamiRequest struct {
+func (m *SigninReply) GetKey() []byte {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+
+func (m *SigninReply) GetSession() string {
+	if m != nil {
+		return m.Session
+	}
+	return ""
+}
+
+type SignoutRequest struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WhoamiRequest) Reset()         { *m = WhoamiRequest{} }
-func (m *WhoamiRequest) String() string { return proto.CompactTextString(m) }
-func (*WhoamiRequest) ProtoMessage()    {}
-func (*WhoamiRequest) Descriptor() ([]byte, []int) {
+func (m *SignoutRequest) Reset()         { *m = SignoutRequest{} }
+func (m *SignoutRequest) String() string { return proto.CompactTextString(m) }
+func (*SignoutRequest) ProtoMessage()    {}
+func (*SignoutRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b3103f8d3056b01c, []int{4}
 }
 
-func (m *WhoamiRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WhoamiRequest.Unmarshal(m, b)
+func (m *SignoutRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SignoutRequest.Unmarshal(m, b)
 }
-func (m *WhoamiRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WhoamiRequest.Marshal(b, m, deterministic)
+func (m *SignoutRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SignoutRequest.Marshal(b, m, deterministic)
 }
-func (m *WhoamiRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WhoamiRequest.Merge(m, src)
+func (m *SignoutRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignoutRequest.Merge(m, src)
 }
-func (m *WhoamiRequest) XXX_Size() int {
-	return xxx_messageInfo_WhoamiRequest.Size(m)
+func (m *SignoutRequest) XXX_Size() int {
+	return xxx_messageInfo_SignoutRequest.Size(m)
 }
-func (m *WhoamiRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_WhoamiRequest.DiscardUnknown(m)
+func (m *SignoutRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignoutRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_WhoamiRequest proto.InternalMessageInfo
+var xxx_messageInfo_SignoutRequest proto.InternalMessageInfo
 
-type WhoamiReply struct {
+type SignoutReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SignoutReply) Reset()         { *m = SignoutReply{} }
+func (m *SignoutReply) String() string { return proto.CompactTextString(m) }
+func (*SignoutReply) ProtoMessage()    {}
+func (*SignoutReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b3103f8d3056b01c, []int{5}
+}
+
+func (m *SignoutReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SignoutReply.Unmarshal(m, b)
+}
+func (m *SignoutReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SignoutReply.Marshal(b, m, deterministic)
+}
+func (m *SignoutReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignoutReply.Merge(m, src)
+}
+func (m *SignoutReply) XXX_Size() int {
+	return xxx_messageInfo_SignoutReply.Size(m)
+}
+func (m *SignoutReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignoutReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SignoutReply proto.InternalMessageInfo
+
+type CheckUsernameRequest struct {
+	Username             string   `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CheckUsernameRequest) Reset()         { *m = CheckUsernameRequest{} }
+func (m *CheckUsernameRequest) String() string { return proto.CompactTextString(m) }
+func (*CheckUsernameRequest) ProtoMessage()    {}
+func (*CheckUsernameRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b3103f8d3056b01c, []int{6}
+}
+
+func (m *CheckUsernameRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CheckUsernameRequest.Unmarshal(m, b)
+}
+func (m *CheckUsernameRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CheckUsernameRequest.Marshal(b, m, deterministic)
+}
+func (m *CheckUsernameRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CheckUsernameRequest.Merge(m, src)
+}
+func (m *CheckUsernameRequest) XXX_Size() int {
+	return xxx_messageInfo_CheckUsernameRequest.Size(m)
+}
+func (m *CheckUsernameRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CheckUsernameRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CheckUsernameRequest proto.InternalMessageInfo
+
+func (m *CheckUsernameRequest) GetUsername() string {
+	if m != nil {
+		return m.Username
+	}
+	return ""
+}
+
+type CheckUsernameReply struct {
+	Ok                   bool     `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CheckUsernameReply) Reset()         { *m = CheckUsernameReply{} }
+func (m *CheckUsernameReply) String() string { return proto.CompactTextString(m) }
+func (*CheckUsernameReply) ProtoMessage()    {}
+func (*CheckUsernameReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b3103f8d3056b01c, []int{7}
+}
+
+func (m *CheckUsernameReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CheckUsernameReply.Unmarshal(m, b)
+}
+func (m *CheckUsernameReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CheckUsernameReply.Marshal(b, m, deterministic)
+}
+func (m *CheckUsernameReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CheckUsernameReply.Merge(m, src)
+}
+func (m *CheckUsernameReply) XXX_Size() int {
+	return xxx_messageInfo_CheckUsernameReply.Size(m)
+}
+func (m *CheckUsernameReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_CheckUsernameReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CheckUsernameReply proto.InternalMessageInfo
+
+func (m *CheckUsernameReply) GetOk() bool {
+	if m != nil {
+		return m.Ok
+	}
+	return false
+}
+
+type GetSessionRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetSessionRequest) Reset()         { *m = GetSessionRequest{} }
+func (m *GetSessionRequest) String() string { return proto.CompactTextString(m) }
+func (*GetSessionRequest) ProtoMessage()    {}
+func (*GetSessionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b3103f8d3056b01c, []int{8}
+}
+
+func (m *GetSessionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetSessionRequest.Unmarshal(m, b)
+}
+func (m *GetSessionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetSessionRequest.Marshal(b, m, deterministic)
+}
+func (m *GetSessionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetSessionRequest.Merge(m, src)
+}
+func (m *GetSessionRequest) XXX_Size() int {
+	return xxx_messageInfo_GetSessionRequest.Size(m)
+}
+func (m *GetSessionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetSessionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetSessionRequest proto.InternalMessageInfo
+
+type GetSessionReply struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Username             string   `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	Email                string   `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
@@ -228,46 +384,46 @@ type WhoamiReply struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WhoamiReply) Reset()         { *m = WhoamiReply{} }
-func (m *WhoamiReply) String() string { return proto.CompactTextString(m) }
-func (*WhoamiReply) ProtoMessage()    {}
-func (*WhoamiReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{5}
+func (m *GetSessionReply) Reset()         { *m = GetSessionReply{} }
+func (m *GetSessionReply) String() string { return proto.CompactTextString(m) }
+func (*GetSessionReply) ProtoMessage()    {}
+func (*GetSessionReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b3103f8d3056b01c, []int{9}
 }
 
-func (m *WhoamiReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WhoamiReply.Unmarshal(m, b)
+func (m *GetSessionReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetSessionReply.Unmarshal(m, b)
 }
-func (m *WhoamiReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WhoamiReply.Marshal(b, m, deterministic)
+func (m *GetSessionReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetSessionReply.Marshal(b, m, deterministic)
 }
-func (m *WhoamiReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WhoamiReply.Merge(m, src)
+func (m *GetSessionReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetSessionReply.Merge(m, src)
 }
-func (m *WhoamiReply) XXX_Size() int {
-	return xxx_messageInfo_WhoamiReply.Size(m)
+func (m *GetSessionReply) XXX_Size() int {
+	return xxx_messageInfo_GetSessionReply.Size(m)
 }
-func (m *WhoamiReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_WhoamiReply.DiscardUnknown(m)
+func (m *GetSessionReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetSessionReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_WhoamiReply proto.InternalMessageInfo
+var xxx_messageInfo_GetSessionReply proto.InternalMessageInfo
 
-func (m *WhoamiReply) GetKey() []byte {
+func (m *GetSessionReply) GetKey() []byte {
 	if m != nil {
 		return m.Key
 	}
 	return nil
 }
 
-func (m *WhoamiReply) GetUsername() string {
+func (m *GetSessionReply) GetUsername() string {
 	if m != nil {
 		return m.Username
 	}
 	return ""
 }
 
-func (m *WhoamiReply) GetEmail() string {
+func (m *GetSessionReply) GetEmail() string {
 	if m != nil {
 		return m.Email
 	}
@@ -285,7 +441,7 @@ func (m *GetThreadRequest) Reset()         { *m = GetThreadRequest{} }
 func (m *GetThreadRequest) String() string { return proto.CompactTextString(m) }
 func (*GetThreadRequest) ProtoMessage()    {}
 func (*GetThreadRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{6}
+	return fileDescriptor_b3103f8d3056b01c, []int{10}
 }
 
 func (m *GetThreadRequest) XXX_Unmarshal(b []byte) error {
@@ -325,7 +481,7 @@ func (m *GetThreadReply) Reset()         { *m = GetThreadReply{} }
 func (m *GetThreadReply) String() string { return proto.CompactTextString(m) }
 func (*GetThreadReply) ProtoMessage()    {}
 func (*GetThreadReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{7}
+	return fileDescriptor_b3103f8d3056b01c, []int{11}
 }
 
 func (m *GetThreadReply) XXX_Unmarshal(b []byte) error {
@@ -370,7 +526,7 @@ func (m *ListThreadsRequest) Reset()         { *m = ListThreadsRequest{} }
 func (m *ListThreadsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListThreadsRequest) ProtoMessage()    {}
 func (*ListThreadsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{8}
+	return fileDescriptor_b3103f8d3056b01c, []int{12}
 }
 
 func (m *ListThreadsRequest) XXX_Unmarshal(b []byte) error {
@@ -402,7 +558,7 @@ func (m *ListThreadsReply) Reset()         { *m = ListThreadsReply{} }
 func (m *ListThreadsReply) String() string { return proto.CompactTextString(m) }
 func (*ListThreadsReply) ProtoMessage()    {}
 func (*ListThreadsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{9}
+	return fileDescriptor_b3103f8d3056b01c, []int{13}
 }
 
 func (m *ListThreadsReply) XXX_Unmarshal(b []byte) error {
@@ -440,7 +596,7 @@ func (m *CreateKeyRequest) Reset()         { *m = CreateKeyRequest{} }
 func (m *CreateKeyRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateKeyRequest) ProtoMessage()    {}
 func (*CreateKeyRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{10}
+	return fileDescriptor_b3103f8d3056b01c, []int{14}
 }
 
 func (m *CreateKeyRequest) XXX_Unmarshal(b []byte) error {
@@ -475,7 +631,7 @@ func (m *GetKeyReply) Reset()         { *m = GetKeyReply{} }
 func (m *GetKeyReply) String() string { return proto.CompactTextString(m) }
 func (*GetKeyReply) ProtoMessage()    {}
 func (*GetKeyReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{11}
+	return fileDescriptor_b3103f8d3056b01c, []int{15}
 }
 
 func (m *GetKeyReply) XXX_Unmarshal(b []byte) error {
@@ -535,7 +691,7 @@ func (m *InvalidateKeyRequest) Reset()         { *m = InvalidateKeyRequest{} }
 func (m *InvalidateKeyRequest) String() string { return proto.CompactTextString(m) }
 func (*InvalidateKeyRequest) ProtoMessage()    {}
 func (*InvalidateKeyRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{12}
+	return fileDescriptor_b3103f8d3056b01c, []int{16}
 }
 
 func (m *InvalidateKeyRequest) XXX_Unmarshal(b []byte) error {
@@ -573,7 +729,7 @@ func (m *InvalidateKeyReply) Reset()         { *m = InvalidateKeyReply{} }
 func (m *InvalidateKeyReply) String() string { return proto.CompactTextString(m) }
 func (*InvalidateKeyReply) ProtoMessage()    {}
 func (*InvalidateKeyReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{13}
+	return fileDescriptor_b3103f8d3056b01c, []int{17}
 }
 
 func (m *InvalidateKeyReply) XXX_Unmarshal(b []byte) error {
@@ -604,7 +760,7 @@ func (m *ListKeysRequest) Reset()         { *m = ListKeysRequest{} }
 func (m *ListKeysRequest) String() string { return proto.CompactTextString(m) }
 func (*ListKeysRequest) ProtoMessage()    {}
 func (*ListKeysRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{14}
+	return fileDescriptor_b3103f8d3056b01c, []int{18}
 }
 
 func (m *ListKeysRequest) XXX_Unmarshal(b []byte) error {
@@ -636,7 +792,7 @@ func (m *ListKeysReply) Reset()         { *m = ListKeysReply{} }
 func (m *ListKeysReply) String() string { return proto.CompactTextString(m) }
 func (*ListKeysReply) ProtoMessage()    {}
 func (*ListKeysReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{15}
+	return fileDescriptor_b3103f8d3056b01c, []int{19}
 }
 
 func (m *ListKeysReply) XXX_Unmarshal(b []byte) error {
@@ -675,7 +831,7 @@ func (m *CreateOrgRequest) Reset()         { *m = CreateOrgRequest{} }
 func (m *CreateOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateOrgRequest) ProtoMessage()    {}
 func (*CreateOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{16}
+	return fileDescriptor_b3103f8d3056b01c, []int{20}
 }
 
 func (m *CreateOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -713,7 +869,7 @@ func (m *GetOrgRequest) Reset()         { *m = GetOrgRequest{} }
 func (m *GetOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*GetOrgRequest) ProtoMessage()    {}
 func (*GetOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{17}
+	return fileDescriptor_b3103f8d3056b01c, []int{21}
 }
 
 func (m *GetOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -748,7 +904,7 @@ func (m *GetOrgReply) Reset()         { *m = GetOrgReply{} }
 func (m *GetOrgReply) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply) ProtoMessage()    {}
 func (*GetOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{18}
+	return fileDescriptor_b3103f8d3056b01c, []int{22}
 }
 
 func (m *GetOrgReply) XXX_Unmarshal(b []byte) error {
@@ -810,7 +966,7 @@ func (m *GetOrgReply_Member) Reset()         { *m = GetOrgReply_Member{} }
 func (m *GetOrgReply_Member) String() string { return proto.CompactTextString(m) }
 func (*GetOrgReply_Member) ProtoMessage()    {}
 func (*GetOrgReply_Member) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{18, 0}
+	return fileDescriptor_b3103f8d3056b01c, []int{22, 0}
 }
 
 func (m *GetOrgReply_Member) XXX_Unmarshal(b []byte) error {
@@ -862,7 +1018,7 @@ func (m *ListOrgsRequest) Reset()         { *m = ListOrgsRequest{} }
 func (m *ListOrgsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsRequest) ProtoMessage()    {}
 func (*ListOrgsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{19}
+	return fileDescriptor_b3103f8d3056b01c, []int{23}
 }
 
 func (m *ListOrgsRequest) XXX_Unmarshal(b []byte) error {
@@ -894,7 +1050,7 @@ func (m *ListOrgsReply) Reset()         { *m = ListOrgsReply{} }
 func (m *ListOrgsReply) String() string { return proto.CompactTextString(m) }
 func (*ListOrgsReply) ProtoMessage()    {}
 func (*ListOrgsReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{20}
+	return fileDescriptor_b3103f8d3056b01c, []int{24}
 }
 
 func (m *ListOrgsReply) XXX_Unmarshal(b []byte) error {
@@ -932,7 +1088,7 @@ func (m *RemoveOrgRequest) Reset()         { *m = RemoveOrgRequest{} }
 func (m *RemoveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgRequest) ProtoMessage()    {}
 func (*RemoveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{21}
+	return fileDescriptor_b3103f8d3056b01c, []int{25}
 }
 
 func (m *RemoveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -963,7 +1119,7 @@ func (m *RemoveOrgReply) Reset()         { *m = RemoveOrgReply{} }
 func (m *RemoveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*RemoveOrgReply) ProtoMessage()    {}
 func (*RemoveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{22}
+	return fileDescriptor_b3103f8d3056b01c, []int{26}
 }
 
 func (m *RemoveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -995,7 +1151,7 @@ func (m *InviteToOrgRequest) Reset()         { *m = InviteToOrgRequest{} }
 func (m *InviteToOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgRequest) ProtoMessage()    {}
 func (*InviteToOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{23}
+	return fileDescriptor_b3103f8d3056b01c, []int{27}
 }
 
 func (m *InviteToOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -1034,7 +1190,7 @@ func (m *InviteToOrgReply) Reset()         { *m = InviteToOrgReply{} }
 func (m *InviteToOrgReply) String() string { return proto.CompactTextString(m) }
 func (*InviteToOrgReply) ProtoMessage()    {}
 func (*InviteToOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{24}
+	return fileDescriptor_b3103f8d3056b01c, []int{28}
 }
 
 func (m *InviteToOrgReply) XXX_Unmarshal(b []byte) error {
@@ -1072,7 +1228,7 @@ func (m *LeaveOrgRequest) Reset()         { *m = LeaveOrgRequest{} }
 func (m *LeaveOrgRequest) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgRequest) ProtoMessage()    {}
 func (*LeaveOrgRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{25}
+	return fileDescriptor_b3103f8d3056b01c, []int{29}
 }
 
 func (m *LeaveOrgRequest) XXX_Unmarshal(b []byte) error {
@@ -1103,7 +1259,7 @@ func (m *LeaveOrgReply) Reset()         { *m = LeaveOrgReply{} }
 func (m *LeaveOrgReply) String() string { return proto.CompactTextString(m) }
 func (*LeaveOrgReply) ProtoMessage()    {}
 func (*LeaveOrgReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b3103f8d3056b01c, []int{26}
+	return fileDescriptor_b3103f8d3056b01c, []int{30}
 }
 
 func (m *LeaveOrgReply) XXX_Unmarshal(b []byte) error {
@@ -1125,12 +1281,16 @@ func (m *LeaveOrgReply) XXX_DiscardUnknown() {
 var xxx_messageInfo_LeaveOrgReply proto.InternalMessageInfo
 
 func init() {
-	proto.RegisterType((*LoginRequest)(nil), "hub.pb.LoginRequest")
-	proto.RegisterType((*LoginReply)(nil), "hub.pb.LoginReply")
-	proto.RegisterType((*LogoutRequest)(nil), "hub.pb.LogoutRequest")
-	proto.RegisterType((*LogoutReply)(nil), "hub.pb.LogoutReply")
-	proto.RegisterType((*WhoamiRequest)(nil), "hub.pb.WhoamiRequest")
-	proto.RegisterType((*WhoamiReply)(nil), "hub.pb.WhoamiReply")
+	proto.RegisterType((*SignupRequest)(nil), "hub.pb.SignupRequest")
+	proto.RegisterType((*SignupReply)(nil), "hub.pb.SignupReply")
+	proto.RegisterType((*SigninRequest)(nil), "hub.pb.SigninRequest")
+	proto.RegisterType((*SigninReply)(nil), "hub.pb.SigninReply")
+	proto.RegisterType((*SignoutRequest)(nil), "hub.pb.SignoutRequest")
+	proto.RegisterType((*SignoutReply)(nil), "hub.pb.SignoutReply")
+	proto.RegisterType((*CheckUsernameRequest)(nil), "hub.pb.CheckUsernameRequest")
+	proto.RegisterType((*CheckUsernameReply)(nil), "hub.pb.CheckUsernameReply")
+	proto.RegisterType((*GetSessionRequest)(nil), "hub.pb.GetSessionRequest")
+	proto.RegisterType((*GetSessionReply)(nil), "hub.pb.GetSessionReply")
 	proto.RegisterType((*GetThreadRequest)(nil), "hub.pb.GetThreadRequest")
 	proto.RegisterType((*GetThreadReply)(nil), "hub.pb.GetThreadReply")
 	proto.RegisterType((*ListThreadsRequest)(nil), "hub.pb.ListThreadsRequest")
@@ -1158,56 +1318,61 @@ func init() {
 func init() { proto.RegisterFile("hub.proto", fileDescriptor_b3103f8d3056b01c) }
 
 var fileDescriptor_b3103f8d3056b01c = []byte{
-	// 773 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xc1, 0x4e, 0xdb, 0x4c,
-	0x10, 0x8e, 0xe3, 0x24, 0x24, 0x13, 0x02, 0xf9, 0x97, 0xc0, 0x6f, 0x59, 0x1c, 0x90, 0x0f, 0x34,
-	0xe2, 0x90, 0x03, 0xa0, 0xaa, 0x87, 0xaa, 0x2d, 0x94, 0x0a, 0x52, 0x52, 0x41, 0xad, 0x54, 0xed,
-	0x0d, 0x39, 0x30, 0x32, 0x16, 0x4e, 0x9c, 0xda, 0x1b, 0xd4, 0xbc, 0x4e, 0x5f, 0xa9, 0xcf, 0xd2,
-	0x7b, 0xb5, 0xbb, 0x5e, 0x7b, 0xbd, 0x38, 0x48, 0xdc, 0xbc, 0xb3, 0x33, 0xb3, 0x33, 0xdf, 0xcc,
-	0xf7, 0xc9, 0xd0, 0xba, 0x5f, 0x4c, 0x06, 0xf3, 0x38, 0xa2, 0x11, 0x69, 0xf0, 0xcf, 0x89, 0xf3,
-	0x01, 0xd6, 0x47, 0x91, 0x1f, 0xcc, 0x5c, 0xfc, 0xb9, 0xc0, 0x84, 0x12, 0x1b, 0x9a, 0x8b, 0x04,
-	0xe3, 0x99, 0x37, 0x45, 0xcb, 0xd8, 0x33, 0xfa, 0x2d, 0x37, 0x3b, 0x93, 0x1e, 0xd4, 0x71, 0xea,
-	0x05, 0xa1, 0x55, 0xe5, 0x17, 0xe2, 0xe0, 0x8c, 0x01, 0xd2, 0x0c, 0xf3, 0x70, 0x49, 0xba, 0x60,
-	0x3e, 0xe0, 0x92, 0x87, 0xae, 0xbb, 0xec, 0xb3, 0x90, 0xb1, 0xaa, 0x65, 0xb4, 0x60, 0x2d, 0xc1,
-	0x24, 0x09, 0xa2, 0x99, 0x65, 0xf2, 0x2b, 0x79, 0x74, 0x36, 0xa1, 0x33, 0x8a, 0xfc, 0x68, 0x41,
-	0xd3, 0xc2, 0x9c, 0x0e, 0xb4, 0xa5, 0x61, 0x1e, 0x2e, 0xd9, 0xfd, 0xf7, 0xfb, 0xc8, 0x9b, 0x06,
-	0xf2, 0xfe, 0x2b, 0xb4, 0xa5, 0xe1, 0xe5, 0x75, 0x64, 0x9d, 0x99, 0x6a, 0x67, 0xfb, 0xd0, 0x3d,
-	0x47, 0x3a, 0xbe, 0x8f, 0xd1, 0xbb, 0x93, 0xf8, 0x10, 0xa8, 0x29, 0xd8, 0xf0, 0x6f, 0xe7, 0x18,
-	0x36, 0x14, 0x3f, 0xf6, 0xfa, 0x06, 0x54, 0x87, 0x67, 0xe9, 0xe3, 0xd5, 0xe1, 0x59, 0x16, 0x55,
-	0x55, 0xa2, 0x7a, 0x40, 0x46, 0x41, 0x92, 0x86, 0x25, 0xb2, 0x8d, 0x77, 0xd0, 0x2d, 0x58, 0x59,
-	0xb6, 0x03, 0xa8, 0x85, 0x41, 0x42, 0x2d, 0x63, 0xcf, 0xec, 0xb7, 0x0f, 0x77, 0x06, 0x62, 0x74,
-	0x83, 0xe2, 0x9b, 0x2e, 0xf7, 0x71, 0x08, 0x74, 0x3f, 0xc6, 0xe8, 0x51, 0xbc, 0xc4, 0xa5, 0xcc,
-	0xe9, 0x43, 0xfb, 0x1c, 0x29, 0x37, 0x68, 0xd0, 0xb4, 0x04, 0x34, 0x3b, 0xd0, 0x48, 0xf0, 0x36,
-	0x46, 0x9a, 0x16, 0x98, 0x9e, 0x18, 0x2c, 0x8f, 0x5e, 0x18, 0xdc, 0x71, 0x58, 0x9a, 0xae, 0x38,
-	0xb0, 0xa1, 0x51, 0x51, 0x9e, 0x55, 0xdb, 0x33, 0xfa, 0x75, 0x57, 0x1e, 0x9d, 0x3e, 0xf4, 0x86,
-	0x33, 0xee, 0x54, 0x28, 0xe0, 0xe9, 0x8b, 0xac, 0x79, 0xcd, 0x93, 0x0d, 0xf5, 0x3f, 0xd8, 0x64,
-	0xcd, 0x5f, 0xe2, 0x32, 0xc3, 0xe3, 0x0d, 0x74, 0x72, 0x13, 0xab, 0xfe, 0x55, 0x01, 0x8c, 0x2d,
-	0x05, 0x0c, 0x99, 0x26, 0x45, 0x62, 0x5f, 0x22, 0x71, 0x15, 0xfb, 0xcf, 0x4d, 0x6f, 0x13, 0x3a,
-	0xe7, 0x48, 0x73, 0x27, 0xe7, 0x8f, 0xc1, 0xf1, 0xe2, 0x96, 0xf2, 0x55, 0x2a, 0x19, 0x27, 0x39,
-	0x86, 0xb5, 0x29, 0x4e, 0x27, 0x18, 0x27, 0x96, 0xc9, 0x4b, 0xb3, 0x95, 0xd2, 0x64, 0xae, 0xc1,
-	0x17, 0xee, 0xe2, 0x4a, 0x57, 0xb2, 0x0b, 0xad, 0x5b, 0x5e, 0xe4, 0xdd, 0x09, 0xe5, 0x68, 0x9a,
-	0x6e, 0x6e, 0xb0, 0x3f, 0x43, 0x43, 0x04, 0xbc, 0x70, 0x9d, 0x09, 0xd4, 0xe2, 0x28, 0xc4, 0x74,
-	0x9b, 0xf9, 0xb7, 0xc4, 0xf6, 0x2a, 0xf6, 0x75, 0x6c, 0x85, 0xe9, 0x79, 0x6c, 0x65, 0x03, 0xf9,
-	0x96, 0xb9, 0x38, 0x8d, 0x1e, 0x15, 0x6c, 0x9d, 0x2e, 0x6c, 0x28, 0x36, 0x36, 0xce, 0x03, 0x3e,
-	0xe4, 0x80, 0xe2, 0x38, 0x52, 0x66, 0x90, 0x71, 0xcd, 0x50, 0xb9, 0xd6, 0x87, 0x6e, 0xc1, 0x97,
-	0x95, 0xd3, 0x83, 0x3a, 0x8d, 0x1e, 0x70, 0x26, 0x3d, 0xf9, 0x81, 0x37, 0x82, 0x5e, 0xe1, 0x69,
-	0x26, 0x16, 0x99, 0x69, 0x1e, 0x2e, 0x0f, 0xff, 0x36, 0xc0, 0x3c, 0xb9, 0x1e, 0x92, 0x23, 0xa8,
-	0x73, 0x6d, 0x22, 0x3d, 0xd9, 0x8b, 0x2a, 0x76, 0x36, 0xd1, 0xac, 0xac, 0xe8, 0x0a, 0x79, 0x0d,
-	0x0d, 0xa1, 0x34, 0x64, 0x5b, 0xb9, 0xcf, 0xa5, 0xc8, 0xde, 0xd2, 0xcd, 0x59, 0x9c, 0x50, 0xa0,
-	0x3c, 0xae, 0x20, 0x51, 0x79, 0x9c, 0x22, 0x54, 0x4e, 0x85, 0xbc, 0x87, 0x56, 0x46, 0x65, 0x62,
-	0x95, 0xb0, 0x5b, 0x44, 0xaf, 0xe0, 0xbd, 0x53, 0x21, 0x9f, 0xa0, 0xad, 0x68, 0x06, 0xc9, 0x16,
-	0xef, 0xa9, 0xbc, 0xd8, 0x56, 0xe9, 0x9d, 0x48, 0xf3, 0x16, 0x5a, 0x99, 0x74, 0xe4, 0x75, 0xe8,
-	0x6a, 0x62, 0x97, 0x51, 0x8e, 0x47, 0x37, 0x25, 0x51, 0xc9, 0xff, 0xea, 0x2b, 0x0a, 0x9b, 0xed,
-	0xed, 0xa7, 0x17, 0x22, 0xfa, 0x12, 0x3a, 0x05, 0x3d, 0x20, 0xbb, 0xd2, 0xb3, 0x4c, 0x50, 0x6c,
-	0x7b, 0xc5, 0xad, 0xd6, 0xc8, 0x55, 0xec, 0xeb, 0x8d, 0xe4, 0x5b, 0x63, 0x97, 0xed, 0xb7, 0x18,
-	0xa3, 0x30, 0xe4, 0x63, 0x2c, 0xe8, 0xc3, 0xaa, 0xb8, 0x14, 0x00, 0xc6, 0xa6, 0x22, 0x00, 0x0a,
-	0xe5, 0x8a, 0x00, 0x64, 0xc4, 0x13, 0x4b, 0x90, 0xb1, 0x27, 0xaf, 0x59, 0x27, 0x59, 0xbe, 0x04,
-	0x1a, 0xd5, 0xf8, 0x12, 0x28, 0x04, 0x22, 0x2a, 0x42, 0x1a, 0x03, 0xf3, 0x25, 0xd0, 0x19, 0x97,
-	0x76, 0x91, 0x52, 0x49, 0xe9, 0xa2, 0xc8, 0x37, 0xa5, 0x0b, 0x95, 0x75, 0x4e, 0xe5, 0x74, 0x00,
-	0x5b, 0x41, 0x34, 0xa0, 0xf8, 0x8b, 0x06, 0x21, 0x32, 0xa7, 0x1b, 0x3f, 0x9e, 0xdf, 0x9e, 0xc2,
-	0x58, 0x58, 0x2e, 0x16, 0x93, 0x6b, 0xe3, 0x77, 0xb5, 0x39, 0xfe, 0x31, 0x1e, 0xdd, 0x5c, 0x7c,
-	0x3b, 0x9d, 0x34, 0xf8, 0xcf, 0xc8, 0xd1, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb5, 0xc3, 0xf0,
-	0x8f, 0x99, 0x08, 0x00, 0x00,
+	// 856 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xdb, 0x4e, 0xeb, 0x46,
+	0x14, 0xcd, 0x8d, 0x90, 0xec, 0x90, 0x0b, 0x93, 0x00, 0xae, 0xc5, 0x03, 0xb2, 0x2a, 0x1a, 0xf1,
+	0x90, 0x07, 0x8a, 0xaa, 0x22, 0x55, 0xad, 0x08, 0xa0, 0x90, 0x42, 0x15, 0x64, 0x82, 0xd4, 0x37,
+	0x94, 0x84, 0x51, 0xb0, 0xe2, 0xc4, 0xa9, 0x3d, 0x41, 0xcd, 0x3f, 0x9c, 0xaf, 0x38, 0xbf, 0x74,
+	0x7e, 0xe8, 0x68, 0x6e, 0x9e, 0x19, 0xc7, 0x41, 0x87, 0x37, 0xcf, 0x9e, 0x7d, 0x59, 0x7b, 0xed,
+	0x3d, 0x4b, 0x86, 0xf2, 0xdb, 0x6a, 0xdc, 0x59, 0x86, 0x01, 0x09, 0x50, 0x91, 0x7d, 0x8e, 0x9d,
+	0x2b, 0xa8, 0x3e, 0x79, 0xd3, 0xc5, 0x6a, 0xe9, 0xe2, 0xff, 0x56, 0x38, 0x22, 0xc8, 0x86, 0xd2,
+	0x2a, 0xc2, 0xe1, 0x62, 0x34, 0xc7, 0x56, 0xf6, 0x24, 0xdb, 0x2e, 0xbb, 0xf1, 0x19, 0xb5, 0x60,
+	0x07, 0xcf, 0x47, 0x9e, 0x6f, 0xe5, 0xd8, 0x05, 0x3f, 0x38, 0x97, 0x50, 0x91, 0x29, 0x96, 0xfe,
+	0x1a, 0x35, 0x20, 0x3f, 0xc3, 0x6b, 0x16, 0xbb, 0xe7, 0xd2, 0x4f, 0x64, 0xc1, 0x6e, 0x84, 0xa3,
+	0xc8, 0x0b, 0x16, 0x22, 0x50, 0x1e, 0x9d, 0x4b, 0x5e, 0xdd, 0x5b, 0xc8, 0xea, 0x6d, 0xa8, 0xcb,
+	0x6a, 0x83, 0xf0, 0x96, 0xd5, 0xe2, 0x20, 0x92, 0x66, 0x59, 0x95, 0x86, 0x7e, 0xb6, 0x6a, 0x03,
+	0x6a, 0x34, 0x34, 0x58, 0x11, 0x51, 0xd6, 0xa9, 0xc1, 0x5e, 0x6c, 0x59, 0xfa, 0x6b, 0xe7, 0x1c,
+	0x5a, 0xd7, 0x6f, 0x78, 0x32, 0x7b, 0x16, 0x45, 0x7f, 0x80, 0x1c, 0xe7, 0x67, 0x40, 0x89, 0x18,
+	0x8a, 0xab, 0x06, 0xb9, 0x60, 0xc6, 0x7c, 0x4b, 0x6e, 0x2e, 0x98, 0x39, 0x4d, 0xd8, 0xef, 0x61,
+	0xf2, 0xc4, 0x91, 0xc8, 0xf2, 0xcf, 0x50, 0xd7, 0x8d, 0xe9, 0xfd, 0xe8, 0xb5, 0x73, 0xdb, 0x06,
+	0x93, 0xd7, 0x07, 0x73, 0x0a, 0x8d, 0x1e, 0x26, 0xc3, 0xb7, 0x10, 0x8f, 0x5e, 0x65, 0x07, 0x08,
+	0x0a, 0x1a, 0x7a, 0xf6, 0xed, 0x5c, 0x40, 0x4d, 0xf3, 0x13, 0xa8, 0xfb, 0x37, 0xa2, 0x78, 0xae,
+	0x7f, 0x13, 0x47, 0xe5, 0xb4, 0xa8, 0x16, 0xa0, 0x07, 0x2f, 0x12, 0x61, 0x91, 0x6c, 0xe5, 0x4f,
+	0x68, 0x18, 0x56, 0x9a, 0xed, 0x0c, 0x0a, 0xbe, 0x17, 0x11, 0x2b, 0x7b, 0x92, 0x6f, 0x57, 0xce,
+	0x0f, 0x3b, 0x7c, 0xf5, 0x3a, 0x66, 0x4d, 0x97, 0xf9, 0x38, 0x08, 0x1a, 0xd7, 0x21, 0x1e, 0x11,
+	0x7c, 0x8f, 0xd7, 0x32, 0xe7, 0x14, 0x2a, 0x3d, 0x4c, 0x98, 0x21, 0x41, 0x4d, 0x99, 0x53, 0x73,
+	0x08, 0xc5, 0x08, 0x4f, 0x42, 0x4c, 0x04, 0x40, 0x71, 0xa2, 0xb4, 0xbc, 0x8f, 0x7c, 0xef, 0x95,
+	0xd1, 0x52, 0x72, 0xf9, 0x81, 0x2e, 0x06, 0xe1, 0xf0, 0xac, 0xc2, 0x49, 0xb6, 0xbd, 0xe3, 0xca,
+	0xa3, 0xd3, 0x86, 0x56, 0x7f, 0xc1, 0x9c, 0x0c, 0x00, 0x9b, 0x15, 0x69, 0xf3, 0x09, 0x4f, 0xba,
+	0x36, 0xfb, 0x50, 0xa7, 0xcd, 0xdf, 0xe3, 0x75, 0xcc, 0xc7, 0xef, 0x50, 0x55, 0x26, 0x8a, 0xfe,
+	0x17, 0x83, 0x8c, 0xa6, 0x46, 0x86, 0x4c, 0x23, 0x98, 0x38, 0x95, 0x4c, 0x0c, 0xc2, 0xe9, 0x47,
+	0xd3, 0xab, 0x43, 0xb5, 0x87, 0x89, 0x72, 0x72, 0xbe, 0x65, 0x19, 0x5f, 0xcc, 0x92, 0xbe, 0x4a,
+	0x29, 0xe3, 0x44, 0x17, 0xb0, 0x3b, 0xc7, 0xf3, 0x31, 0x0e, 0x23, 0x2b, 0xcf, 0xa0, 0xd9, 0x1a,
+	0x34, 0x99, 0xab, 0xf3, 0x0f, 0x73, 0x71, 0xa5, 0x2b, 0x3a, 0x86, 0xf2, 0x84, 0x81, 0x7c, 0xbd,
+	0x22, 0x8c, 0xcd, 0xbc, 0xab, 0x0c, 0xf6, 0xdf, 0x50, 0xe4, 0x01, 0x9f, 0x5c, 0x67, 0x04, 0x85,
+	0x30, 0xf0, 0xb1, 0xd8, 0x66, 0xf6, 0x2d, 0xb9, 0x1d, 0x84, 0xd3, 0x24, 0xb7, 0xdc, 0xf4, 0x31,
+	0xb7, 0xb2, 0x01, 0xb5, 0x65, 0x2e, 0x9e, 0x07, 0xef, 0x1a, 0xb7, 0x54, 0x15, 0x34, 0x1b, 0x1d,
+	0xe7, 0x19, 0x1b, 0xb2, 0x47, 0xf0, 0x30, 0xd0, 0x66, 0x10, 0xbf, 0xb5, 0xac, 0xfe, 0xd6, 0xda,
+	0xd0, 0x30, 0x7c, 0x29, 0x9c, 0x16, 0xec, 0x90, 0x60, 0x86, 0x17, 0xd2, 0x93, 0x1d, 0x58, 0x23,
+	0x78, 0x64, 0x94, 0xae, 0x43, 0x55, 0x99, 0x96, 0xfe, 0xfa, 0xfc, 0x4b, 0x09, 0xf2, 0x57, 0x8f,
+	0x7d, 0xf4, 0x1b, 0x14, 0xb9, 0xb4, 0xa2, 0x03, 0xd9, 0x8c, 0xa1, 0xd6, 0x76, 0x33, 0x69, 0xa6,
+	0xb8, 0x33, 0x32, 0xce, 0x5b, 0x98, 0x71, 0xb1, 0xce, 0x9a, 0x71, 0x42, 0x43, 0x9d, 0x0c, 0xba,
+	0x84, 0x5d, 0xa1, 0x83, 0xe8, 0x50, 0xf7, 0x50, 0x52, 0x69, 0xb7, 0x36, 0xec, 0x3c, 0xf4, 0x1e,
+	0xaa, 0x86, 0xfc, 0xa1, 0x63, 0xe9, 0x98, 0xa6, 0xa4, 0xb6, 0xbd, 0xe5, 0x96, 0x27, 0xeb, 0x02,
+	0x28, 0x41, 0x44, 0x3f, 0x69, 0x83, 0x34, 0x95, 0xd3, 0x3e, 0x4a, 0xbb, 0xe2, 0x39, 0xfe, 0x82,
+	0x72, 0xac, 0x30, 0xc8, 0x4a, 0x11, 0x1d, 0x9e, 0x61, 0x8b, 0x1c, 0x39, 0x19, 0x74, 0x0b, 0x15,
+	0x4d, 0xca, 0x50, 0x8c, 0x78, 0x53, 0xf5, 0x6c, 0x2b, 0xf5, 0x8e, 0xa7, 0xf9, 0x03, 0xca, 0xb1,
+	0xa2, 0x29, 0x1c, 0x49, 0x91, 0xb3, 0xd3, 0x94, 0x80, 0x45, 0x97, 0xa4, 0x7e, 0xa0, 0x23, 0xbd,
+	0x8a, 0x26, 0x32, 0xf6, 0xc1, 0xe6, 0x45, 0x3c, 0x14, 0x43, 0xa6, 0xd4, 0x50, 0xd2, 0x74, 0x4e,
+	0x0d, 0x25, 0x45, 0xdb, 0xb4, 0x46, 0x06, 0xe1, 0x34, 0xd9, 0x88, 0x5a, 0x66, 0x3b, 0xed, 0xd9,
+	0xf1, 0x95, 0xe4, 0x06, 0xb5, 0x92, 0x86, 0x6c, 0x6d, 0x8b, 0x13, 0x04, 0xd0, 0x47, 0x6e, 0x12,
+	0xa0, 0x29, 0x81, 0x49, 0x40, 0xac, 0x07, 0x7c, 0x09, 0xe2, 0x47, 0xad, 0x30, 0x27, 0xdf, 0xbe,
+	0x5a, 0x82, 0x84, 0x02, 0xb0, 0x25, 0xd0, 0xde, 0x35, 0xd2, 0x19, 0x4a, 0x08, 0x83, 0x5a, 0x82,
+	0xa4, 0x10, 0x88, 0x2e, 0xc4, 0x0b, 0xd7, 0xba, 0x30, 0x65, 0x40, 0xeb, 0x42, 0x17, 0x03, 0x27,
+	0xd3, 0xed, 0x40, 0xd3, 0x0b, 0x3a, 0x04, 0xff, 0x4f, 0x3c, 0x1f, 0x53, 0xa7, 0x97, 0x69, 0xb8,
+	0x9c, 0x74, 0x61, 0xc8, 0x2d, 0x77, 0xab, 0xf1, 0x63, 0xf6, 0x6b, 0xae, 0x34, 0xfc, 0x77, 0xf8,
+	0xf0, 0x72, 0xf7, 0xdc, 0x1d, 0x17, 0xd9, 0x3f, 0xde, 0xaf, 0xdf, 0x03, 0x00, 0x00, 0xff, 0xff,
+	0x80, 0x86, 0x4a, 0x42, 0xf0, 0x09, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1222,9 +1387,11 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type APIClient interface {
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error)
-	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error)
-	Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error)
+	Signup(ctx context.Context, in *SignupRequest, opts ...grpc.CallOption) (*SignupReply, error)
+	Signin(ctx context.Context, in *SigninRequest, opts ...grpc.CallOption) (*SigninReply, error)
+	Signout(ctx context.Context, in *SignoutRequest, opts ...grpc.CallOption) (*SignoutReply, error)
+	CheckUsername(ctx context.Context, in *CheckUsernameRequest, opts ...grpc.CallOption) (*CheckUsernameReply, error)
+	GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionReply, error)
 	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadReply, error)
 	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
 	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*GetKeyReply, error)
@@ -1246,27 +1413,45 @@ func NewAPIClient(cc *grpc.ClientConn) APIClient {
 	return &aPIClient{cc}
 }
 
-func (c *aPIClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginReply, error) {
-	out := new(LoginReply)
-	err := c.cc.Invoke(ctx, "/hub.pb.API/Login", in, out, opts...)
+func (c *aPIClient) Signup(ctx context.Context, in *SignupRequest, opts ...grpc.CallOption) (*SignupReply, error) {
+	out := new(SignupReply)
+	err := c.cc.Invoke(ctx, "/hub.pb.API/Signup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *aPIClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutReply, error) {
-	out := new(LogoutReply)
-	err := c.cc.Invoke(ctx, "/hub.pb.API/Logout", in, out, opts...)
+func (c *aPIClient) Signin(ctx context.Context, in *SigninRequest, opts ...grpc.CallOption) (*SigninReply, error) {
+	out := new(SigninReply)
+	err := c.cc.Invoke(ctx, "/hub.pb.API/Signin", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *aPIClient) Whoami(ctx context.Context, in *WhoamiRequest, opts ...grpc.CallOption) (*WhoamiReply, error) {
-	out := new(WhoamiReply)
-	err := c.cc.Invoke(ctx, "/hub.pb.API/Whoami", in, out, opts...)
+func (c *aPIClient) Signout(ctx context.Context, in *SignoutRequest, opts ...grpc.CallOption) (*SignoutReply, error) {
+	out := new(SignoutReply)
+	err := c.cc.Invoke(ctx, "/hub.pb.API/Signout", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) CheckUsername(ctx context.Context, in *CheckUsernameRequest, opts ...grpc.CallOption) (*CheckUsernameReply, error) {
+	out := new(CheckUsernameReply)
+	err := c.cc.Invoke(ctx, "/hub.pb.API/CheckUsername", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionReply, error) {
+	out := new(GetSessionReply)
+	err := c.cc.Invoke(ctx, "/hub.pb.API/GetSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1374,9 +1559,11 @@ func (c *aPIClient) LeaveOrg(ctx context.Context, in *LeaveOrgRequest, opts ...g
 
 // APIServer is the server API for API service.
 type APIServer interface {
-	Login(context.Context, *LoginRequest) (*LoginReply, error)
-	Logout(context.Context, *LogoutRequest) (*LogoutReply, error)
-	Whoami(context.Context, *WhoamiRequest) (*WhoamiReply, error)
+	Signup(context.Context, *SignupRequest) (*SignupReply, error)
+	Signin(context.Context, *SigninRequest) (*SigninReply, error)
+	Signout(context.Context, *SignoutRequest) (*SignoutReply, error)
+	CheckUsername(context.Context, *CheckUsernameRequest) (*CheckUsernameReply, error)
+	GetSession(context.Context, *GetSessionRequest) (*GetSessionReply, error)
 	GetThread(context.Context, *GetThreadRequest) (*GetThreadReply, error)
 	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
 	CreateKey(context.Context, *CreateKeyRequest) (*GetKeyReply, error)
@@ -1394,14 +1581,20 @@ type APIServer interface {
 type UnimplementedAPIServer struct {
 }
 
-func (*UnimplementedAPIServer) Login(ctx context.Context, req *LoginRequest) (*LoginReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+func (*UnimplementedAPIServer) Signup(ctx context.Context, req *SignupRequest) (*SignupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Signup not implemented")
 }
-func (*UnimplementedAPIServer) Logout(ctx context.Context, req *LogoutRequest) (*LogoutReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
+func (*UnimplementedAPIServer) Signin(ctx context.Context, req *SigninRequest) (*SigninReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Signin not implemented")
 }
-func (*UnimplementedAPIServer) Whoami(ctx context.Context, req *WhoamiRequest) (*WhoamiReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Whoami not implemented")
+func (*UnimplementedAPIServer) Signout(ctx context.Context, req *SignoutRequest) (*SignoutReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Signout not implemented")
+}
+func (*UnimplementedAPIServer) CheckUsername(ctx context.Context, req *CheckUsernameRequest) (*CheckUsernameReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUsername not implemented")
+}
+func (*UnimplementedAPIServer) GetSession(ctx context.Context, req *GetSessionRequest) (*GetSessionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
 func (*UnimplementedAPIServer) GetThread(ctx context.Context, req *GetThreadRequest) (*GetThreadReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetThread not implemented")
@@ -1441,56 +1634,92 @@ func RegisterAPIServer(s *grpc.Server, srv APIServer) {
 	s.RegisterService(&_API_serviceDesc, srv)
 }
 
-func _API_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoginRequest)
+func _API_Signup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).Login(ctx, in)
+		return srv.(APIServer).Signup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/hub.pb.API/Login",
+		FullMethod: "/hub.pb.API/Signup",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).Login(ctx, req.(*LoginRequest))
+		return srv.(APIServer).Signup(ctx, req.(*SignupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogoutRequest)
+func _API_Signin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SigninRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).Logout(ctx, in)
+		return srv.(APIServer).Signin(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/hub.pb.API/Logout",
+		FullMethod: "/hub.pb.API/Signin",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).Logout(ctx, req.(*LogoutRequest))
+		return srv.(APIServer).Signin(ctx, req.(*SigninRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_Whoami_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WhoamiRequest)
+func _API_Signout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignoutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).Whoami(ctx, in)
+		return srv.(APIServer).Signout(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/hub.pb.API/Whoami",
+		FullMethod: "/hub.pb.API/Signout",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).Whoami(ctx, req.(*WhoamiRequest))
+		return srv.(APIServer).Signout(ctx, req.(*SignoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_CheckUsername_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUsernameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).CheckUsername(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hub.pb.API/CheckUsername",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).CheckUsername(ctx, req.(*CheckUsernameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).GetSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hub.pb.API/GetSession",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).GetSession(ctx, req.(*GetSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1698,16 +1927,24 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*APIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Login",
-			Handler:    _API_Login_Handler,
+			MethodName: "Signup",
+			Handler:    _API_Signup_Handler,
 		},
 		{
-			MethodName: "Logout",
-			Handler:    _API_Logout_Handler,
+			MethodName: "Signin",
+			Handler:    _API_Signin_Handler,
 		},
 		{
-			MethodName: "Whoami",
-			Handler:    _API_Whoami_Handler,
+			MethodName: "Signout",
+			Handler:    _API_Signout_Handler,
+		},
+		{
+			MethodName: "CheckUsername",
+			Handler:    _API_CheckUsername_Handler,
+		},
+		{
+			MethodName: "GetSession",
+			Handler:    _API_GetSession_Handler,
 		},
 		{
 			MethodName: "GetThread",

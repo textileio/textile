@@ -62,7 +62,7 @@ var (
 	threads *tc.Client
 
 	cmdTimeout     = time.Second * 10
-	loginTimeout   = time.Minute * 3
+	confirmTimeout = time.Minute * 3
 	addFileTimeout = time.Hour * 24
 	getFileTimeout = time.Hour * 24
 )
@@ -105,10 +105,10 @@ var rootCmd = &cobra.Command{
 
 		cmd.ExpandConfigVars(authViper, authFlags)
 
-		if authViper.GetString("session") == "" && c.Use != "login" {
-			msg := "unauthorized! run `%s` or use `%s` to authorize"
+		if authViper.GetString("session") == "" && c.Use != "init" && c.Use != "login" {
+			msg := "unauthorized! run `%s` or use `%s` or `%s` to authorize"
 			cmd.Fatal(errors.New(msg),
-				aurora.Cyan("textile login"), aurora.Cyan("--session"))
+				aurora.Cyan("textile login"), aurora.Cyan("textile login"), aurora.Cyan("--session"))
 		}
 
 		var opts []grpc.DialOption
@@ -152,7 +152,7 @@ var whoamiCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		who, err := hub.Whoami(ctx)
+		who, err := hub.GetSession(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}

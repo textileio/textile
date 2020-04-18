@@ -33,7 +33,7 @@ func TestClient_GetThread(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	dev := apitest.Login(t, hub, conf, apitest.NewEmail())
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
@@ -87,7 +87,7 @@ func TestClient_ListThreads(t *testing.T) {
 		require.NotNil(t, err)
 	})
 
-	dev := apitest.Login(t, hub, conf, apitest.NewEmail())
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
@@ -128,7 +128,7 @@ func TestBuckets(t *testing.T) {
 	defer done()
 	ctx := context.Background()
 
-	dev := apitest.Login(t, hub, conf, apitest.NewEmail())
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)

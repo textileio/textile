@@ -4,31 +4,49 @@
 import * as hub_pb from "./hub_pb";
 import {grpc} from "@improbable-eng/grpc-web";
 
-type APILogin = {
+type APISignup = {
   readonly methodName: string;
   readonly service: typeof API;
   readonly requestStream: false;
   readonly responseStream: false;
-  readonly requestType: typeof hub_pb.LoginRequest;
-  readonly responseType: typeof hub_pb.LoginReply;
+  readonly requestType: typeof hub_pb.SignupRequest;
+  readonly responseType: typeof hub_pb.SignupReply;
 };
 
-type APILogout = {
+type APISignin = {
   readonly methodName: string;
   readonly service: typeof API;
   readonly requestStream: false;
   readonly responseStream: false;
-  readonly requestType: typeof hub_pb.LogoutRequest;
-  readonly responseType: typeof hub_pb.LogoutReply;
+  readonly requestType: typeof hub_pb.SigninRequest;
+  readonly responseType: typeof hub_pb.SigninReply;
 };
 
-type APIWhoami = {
+type APISignout = {
   readonly methodName: string;
   readonly service: typeof API;
   readonly requestStream: false;
   readonly responseStream: false;
-  readonly requestType: typeof hub_pb.WhoamiRequest;
-  readonly responseType: typeof hub_pb.WhoamiReply;
+  readonly requestType: typeof hub_pb.SignoutRequest;
+  readonly responseType: typeof hub_pb.SignoutReply;
+};
+
+type APICheckUsername = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof hub_pb.CheckUsernameRequest;
+  readonly responseType: typeof hub_pb.CheckUsernameReply;
+};
+
+type APIGetSession = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof hub_pb.GetSessionRequest;
+  readonly responseType: typeof hub_pb.GetSessionReply;
 };
 
 type APIGetThread = {
@@ -132,9 +150,11 @@ type APILeaveOrg = {
 
 export class API {
   static readonly serviceName: string;
-  static readonly Login: APILogin;
-  static readonly Logout: APILogout;
-  static readonly Whoami: APIWhoami;
+  static readonly Signup: APISignup;
+  static readonly Signin: APISignin;
+  static readonly Signout: APISignout;
+  static readonly CheckUsername: APICheckUsername;
+  static readonly GetSession: APIGetSession;
   static readonly GetThread: APIGetThread;
   static readonly ListThreads: APIListThreads;
   static readonly CreateKey: APICreateKey;
@@ -180,32 +200,50 @@ export class APIClient {
   readonly serviceHost: string;
 
   constructor(serviceHost: string, options?: grpc.RpcOptions);
-  login(
-    requestMessage: hub_pb.LoginRequest,
+  signup(
+    requestMessage: hub_pb.SignupRequest,
     metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.LoginReply|null) => void
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SignupReply|null) => void
   ): UnaryResponse;
-  login(
-    requestMessage: hub_pb.LoginRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.LoginReply|null) => void
+  signup(
+    requestMessage: hub_pb.SignupRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SignupReply|null) => void
   ): UnaryResponse;
-  logout(
-    requestMessage: hub_pb.LogoutRequest,
+  signin(
+    requestMessage: hub_pb.SigninRequest,
     metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.LogoutReply|null) => void
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SigninReply|null) => void
   ): UnaryResponse;
-  logout(
-    requestMessage: hub_pb.LogoutRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.LogoutReply|null) => void
+  signin(
+    requestMessage: hub_pb.SigninRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SigninReply|null) => void
   ): UnaryResponse;
-  whoami(
-    requestMessage: hub_pb.WhoamiRequest,
+  signout(
+    requestMessage: hub_pb.SignoutRequest,
     metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.WhoamiReply|null) => void
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SignoutReply|null) => void
   ): UnaryResponse;
-  whoami(
-    requestMessage: hub_pb.WhoamiRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.WhoamiReply|null) => void
+  signout(
+    requestMessage: hub_pb.SignoutRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.SignoutReply|null) => void
+  ): UnaryResponse;
+  checkUsername(
+    requestMessage: hub_pb.CheckUsernameRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.CheckUsernameReply|null) => void
+  ): UnaryResponse;
+  checkUsername(
+    requestMessage: hub_pb.CheckUsernameRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.CheckUsernameReply|null) => void
+  ): UnaryResponse;
+  getSession(
+    requestMessage: hub_pb.GetSessionRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionReply|null) => void
+  ): UnaryResponse;
+  getSession(
+    requestMessage: hub_pb.GetSessionRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionReply|null) => void
   ): UnaryResponse;
   getThread(
     requestMessage: hub_pb.GetThreadRequest,

@@ -6,24 +6,40 @@ option java_package = "io.textile.hub_grpc";
 option java_outer_classname = "TextileHub";
 option objc_class_prefix = "TXTL_HUB";
 
-message LoginRequest {
+message SignupRequest {
     string username = 1;
     string email = 2;
 }
 
-message LoginReply {
+message SignupReply {
     bytes key = 1;
-    string username = 2;
-    string session = 3;
+    string session = 2;
 }
 
-message LogoutRequest {}
+message SigninRequest {
+    string usernameOrEmail = 1;
+}
 
-message LogoutReply {}
+message SigninReply {
+    bytes key = 1;
+    string session = 2;
+}
 
-message WhoamiRequest {}
+message SignoutRequest {}
 
-message WhoamiReply {
+message SignoutReply {}
+
+message CheckUsernameRequest {
+    string username = 1;
+}
+
+message CheckUsernameReply {
+    bool ok = 1;
+}
+
+message GetSessionRequest {}
+
+message GetSessionReply {
     bytes key = 1;
     string username = 2;
     string email = 3;
@@ -107,9 +123,13 @@ message LeaveOrgRequest {}
 message LeaveOrgReply {}
 
 service API {
-    rpc Login(LoginRequest) returns (LoginReply) {}
-    rpc Logout(LogoutRequest) returns (LogoutReply) {}
-    rpc Whoami(WhoamiRequest) returns (WhoamiReply) {}
+    rpc Signup(SignupRequest) returns (SignupReply) {}
+    rpc Signin(SigninRequest) returns (SigninReply) {}
+    rpc Signout(SignoutRequest) returns (SignoutReply) {}
+
+    rpc CheckUsername(CheckUsernameRequest) returns (CheckUsernameReply) {}
+
+    rpc GetSession(GetSessionRequest) returns (GetSessionReply) {}
 
     rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}

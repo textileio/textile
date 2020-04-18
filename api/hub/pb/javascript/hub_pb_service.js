@@ -10,31 +10,49 @@ var API = (function () {
   return API;
 }());
 
-API.Login = {
-  methodName: "Login",
+API.Signup = {
+  methodName: "Signup",
   service: API,
   requestStream: false,
   responseStream: false,
-  requestType: hub_pb.LoginRequest,
-  responseType: hub_pb.LoginReply
+  requestType: hub_pb.SignupRequest,
+  responseType: hub_pb.SignupReply
 };
 
-API.Logout = {
-  methodName: "Logout",
+API.Signin = {
+  methodName: "Signin",
   service: API,
   requestStream: false,
   responseStream: false,
-  requestType: hub_pb.LogoutRequest,
-  responseType: hub_pb.LogoutReply
+  requestType: hub_pb.SigninRequest,
+  responseType: hub_pb.SigninReply
 };
 
-API.Whoami = {
-  methodName: "Whoami",
+API.Signout = {
+  methodName: "Signout",
   service: API,
   requestStream: false,
   responseStream: false,
-  requestType: hub_pb.WhoamiRequest,
-  responseType: hub_pb.WhoamiReply
+  requestType: hub_pb.SignoutRequest,
+  responseType: hub_pb.SignoutReply
+};
+
+API.CheckUsername = {
+  methodName: "CheckUsername",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: hub_pb.CheckUsernameRequest,
+  responseType: hub_pb.CheckUsernameReply
+};
+
+API.GetSession = {
+  methodName: "GetSession",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: hub_pb.GetSessionRequest,
+  responseType: hub_pb.GetSessionReply
 };
 
 API.GetThread = {
@@ -143,11 +161,11 @@ function APIClient(serviceHost, options) {
   this.options = options || {};
 }
 
-APIClient.prototype.login = function login(requestMessage, metadata, callback) {
+APIClient.prototype.signup = function signup(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
-  var client = grpc.unary(API.Login, {
+  var client = grpc.unary(API.Signup, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,
@@ -174,11 +192,11 @@ APIClient.prototype.login = function login(requestMessage, metadata, callback) {
   };
 };
 
-APIClient.prototype.logout = function logout(requestMessage, metadata, callback) {
+APIClient.prototype.signin = function signin(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
-  var client = grpc.unary(API.Logout, {
+  var client = grpc.unary(API.Signin, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,
@@ -205,11 +223,73 @@ APIClient.prototype.logout = function logout(requestMessage, metadata, callback)
   };
 };
 
-APIClient.prototype.whoami = function whoami(requestMessage, metadata, callback) {
+APIClient.prototype.signout = function signout(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
-  var client = grpc.unary(API.Whoami, {
+  var client = grpc.unary(API.Signout, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.checkUsername = function checkUsername(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.CheckUsername, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.getSession = function getSession(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.GetSession, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

@@ -18,7 +18,7 @@ var logoutCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if err := hub.Logout(ctx); err != nil {
+		if err := hub.Signout(ctx); err != nil {
 			cmd.Fatal(err)
 		}
 		_ = os.RemoveAll(authViper.ConfigFileUsed())

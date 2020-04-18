@@ -19,7 +19,7 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-var sessionSecret = NewName()
+var sessionSecret = NewUsername()
 
 func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
@@ -65,31 +65,48 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	}
 }
 
-func NewName() string {
+func NewUsername() string {
 	return strings.ToLower(util.MakeToken(12))
 }
 
 func NewEmail() string {
-	return fmt.Sprintf("%s@doe.com", NewName())
+	return fmt.Sprintf("%s@doe.com", NewUsername())
 }
 
-func Login(t *testing.T, client *client.Client, conf core.Config, email string) *pb.LoginReply {
+func Signup(t *testing.T, client *client.Client, conf core.Config, username, email string) *pb.SignupReply {
 	var err error
-	var res *pb.LoginReply
+	var res *pb.SignupReply
 	go func() {
-		res, err = client.Login(context.Background(), NewName(), email)
+		res, err = client.Signup(context.Background(), username, email)
 		require.Nil(t, err)
 	}()
 
-	// Ensure login request has processed
-	time.Sleep(time.Second)
-	url := fmt.Sprintf("%s/confirm/%s", conf.AddrGatewayUrl, sessionSecret)
-	_, err = http.Get(url)
-	require.Nil(t, err)
+	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
 
-	// Ensure login response has been received
-	time.Sleep(time.Second)
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
 	return res
+}
+
+func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEmail string) *pb.SigninReply {
+	var err error
+	var res *pb.SigninReply
+	go func() {
+		res, err = client.Signin(context.Background(), usernameOrEmail)
+		require.Nil(t, err)
+	}()
+
+	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
+
+	require.NotNil(t, res)
+	require.NotEmpty(t, res.Session)
+	return res
+}
+
+func confirmEmail(t *testing.T, gurl string, secret string) {
+	time.Sleep(time.Second)
+	url := fmt.Sprintf("%s/confirm/%s", gurl, secret)
+	_, err := http.Get(url)
+	require.Nil(t, err)
+	time.Sleep(time.Second)
 }

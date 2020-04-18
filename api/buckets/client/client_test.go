@@ -182,7 +182,7 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	threadsclient, err := tc.NewClient(target, opts...)
 	require.Nil(t, err)
 
-	user := apitest.Login(t, hubclient, conf, apitest.NewEmail())
+	user := apitest.Signup(t, hubclient, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
 	ctx = common.NewThreadNameContext(ctx, "buckets")

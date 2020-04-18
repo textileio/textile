@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/mail"
 	"os"
 	"path/filepath"
 
@@ -23,37 +22,22 @@ var loginCmd = &cobra.Command{
 	Short: "Login",
 	Long:  `Login to Textile.`,
 	Run: func(c *cobra.Command, args []string) {
-		prompt1 := promptui.Prompt{
-			Label: "Choose a username",
-			Validate: func(un string) error {
-				return nil
-			},
+		prompt := promptui.Prompt{
+			Label: "Enter your username or email",
 		}
-		username, err := prompt1.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		prompt2 := promptui.Prompt{
-			Label: "Enter your email",
-			Validate: func(email string) error {
-				_, err := mail.ParseAddress(email)
-				return err
-			},
-		}
-		email, err := prompt2.Run()
+		usernameOrEmail, err := prompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
 
-		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
-			aurora.White(email).Bold())
+		cmd.Message("We sent an email to the account address. Please follow the steps provided inside it.")
 
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel := authCtx(loginTimeout)
+		ctx, cancel := authCtx(confirmTimeout)
 		defer cancel()
-		res, err := hub.Login(ctx, username, email)
+		res, err := hub.Signin(ctx, usernameOrEmail)
 		s.Stop()
 		if err != nil {
 			cmd.Fatal(err)

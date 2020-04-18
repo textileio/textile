@@ -48,7 +48,9 @@ var (
 	log = logging.Logger("core")
 
 	ignoreMethods = []string{
-		"/hub.pb.API/Login",
+		"/hub.pb.API/Signup",
+		"/hub.pb.API/Signin",
+		"/hub.pb.API/CheckUsername",
 	}
 )
 

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -26,7 +27,6 @@ import (
 	"github.com/textileio/textile/api/common"
 	hub "github.com/textileio/textile/api/hub/client"
 	"github.com/textileio/textile/collections"
-	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 )
@@ -294,46 +294,70 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
 }
 
-// consentInvite adds a user to a team.
-// @todo: New devs should be signed up before accepting an invite.
+// consentInvite marks an invite as accepted.
+// If the associated email belongs to an existing user, they will be added to the org.
 func (g *Gateway) consentInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 
 	invite, err := g.collections.Invites.Get(ctx, c.Param("invite"))
 	if err != nil {
-		g.render404(c)
-		return
-	}
-	if time.Now().After(invite.ExpiresAt) {
-		g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
-		return
-	}
-
-	username := util.MakeToken(12) // @todo: Use signup to collect a chosen username
-	dev, err := g.collections.Developers.GetOrCreate(ctx, username, invite.EmailTo)
-	if err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	if err = g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
-		Key:      dev.Key,
-		Username: username,
-		Role:     collections.OrgMember,
-	}); err != nil {
-		var code int
-		if err == mongo.ErrNoDocuments {
-			code = http.StatusNotFound
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			g.render404(c)
 		} else {
-			code = http.StatusInternalServerError
+			g.renderError(c, http.StatusInternalServerError, err)
 		}
-		g.renderError(c, code, err)
 		return
+	}
+	if !invite.Accepted {
+		if time.Now().After(invite.ExpiresAt) {
+			if err := g.collections.Invites.Delete(ctx, invite.Token); err != nil {
+				g.renderError(c, http.StatusInternalServerError, err)
+			} else {
+				g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
+			}
+			return
+		}
+
+		dev, err := g.collections.Developers.GetByUsernameOrEmail(ctx, invite.EmailTo)
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				if err := g.collections.Invites.Accept(ctx, invite.Token); err != nil {
+					g.renderError(c, http.StatusInternalServerError, err)
+				}
+			} else {
+				g.renderError(c, http.StatusInternalServerError, err)
+				return
+			}
+		}
+		if dev != nil {
+			if err := g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
+				Key:      dev.Key,
+				Username: dev.Username,
+				Role:     collections.OrgMember,
+			}); err != nil {
+				if err == mongo.ErrNoDocuments {
+					if err := g.collections.Invites.Delete(ctx, invite.Token); err != nil {
+						g.renderError(c, http.StatusInternalServerError, err)
+
+					} else {
+						g.renderError(c, http.StatusNotFound, fmt.Errorf("org not found"))
+					}
+				} else {
+					g.renderError(c, http.StatusInternalServerError, err)
+				}
+				return
+			}
+			if err = g.collections.Invites.Delete(ctx, invite.Token); err != nil {
+				g.renderError(c, http.StatusInternalServerError, err)
+				return
+			}
+		}
 	}
 
 	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
-		"Org": invite.Org,
+		"Org":   invite.Org,
+		"Email": invite.EmailTo,
 	})
 }
 

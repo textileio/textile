@@ -30,24 +30,44 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Login currently gets or creates a user for the given email address,
-// and then waits for email-based verification.
-func (c *Client) Login(ctx context.Context, username, email string) (*pb.LoginReply, error) {
-	return c.c.Login(ctx, &pb.LoginRequest{
+// Signup creates a new user and returns a session.
+// This method will block and wait for email-based verification.
+func (c *Client) Signup(ctx context.Context, username, email string) (*pb.SignupReply, error) {
+	return c.c.Signup(ctx, &pb.SignupRequest{
 		Username: username,
 		Email:    email,
 	})
 }
 
-// Logout deletes a remote session.
-func (c *Client) Logout(ctx context.Context) error {
-	_, err := c.c.Logout(ctx, &pb.LogoutRequest{})
+// Signin returns a session for an existing username or email.
+// This method will block and wait for email-based verification.
+func (c *Client) Signin(ctx context.Context, usernameOrEmail string) (*pb.SigninReply, error) {
+	return c.c.Signin(ctx, &pb.SigninRequest{
+		UsernameOrEmail: usernameOrEmail,
+	})
+}
+
+// Signout deletes a session.
+func (c *Client) Signout(ctx context.Context) error {
+	_, err := c.c.Signout(ctx, &pb.SignoutRequest{})
 	return err
 }
 
-// Whoami returns session info.
-func (c *Client) Whoami(ctx context.Context) (*pb.WhoamiReply, error) {
-	return c.c.Whoami(ctx, &pb.WhoamiRequest{})
+// CheckUsername returns a boolean indicating whether or not a username exists.
+// This is used to enhance the signup flow.
+func (c *Client) CheckUsername(ctx context.Context, username string) (bool, error) {
+	res, err := c.c.CheckUsername(ctx, &pb.CheckUsernameRequest{
+		Username: username,
+	})
+	if err != nil {
+		return false, err
+	}
+	return res.Ok, nil
+}
+
+// GetSession returns session info.
+func (c *Client) GetSession(ctx context.Context) (*pb.GetSessionReply, error) {
+	return c.c.GetSession(ctx, &pb.GetSessionRequest{})
 }
 
 // GetThread returns a thread by name.
