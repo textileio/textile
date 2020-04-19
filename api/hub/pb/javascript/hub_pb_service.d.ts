@@ -31,15 +31,6 @@ type APISignout = {
   readonly responseType: typeof hub_pb.SignoutReply;
 };
 
-type APICheckUsername = {
-  readonly methodName: string;
-  readonly service: typeof API;
-  readonly requestStream: false;
-  readonly responseStream: false;
-  readonly requestType: typeof hub_pb.CheckUsernameRequest;
-  readonly responseType: typeof hub_pb.CheckUsernameReply;
-};
-
 type APIGetSession = {
   readonly methodName: string;
   readonly service: typeof API;
@@ -148,12 +139,29 @@ type APILeaveOrg = {
   readonly responseType: typeof hub_pb.LeaveOrgReply;
 };
 
+type APIIsUsernameAvailable = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof hub_pb.IsUsernameAvailableRequest;
+  readonly responseType: typeof hub_pb.IsUsernameAvailableReply;
+};
+
+type APIIsOrgNameAvailable = {
+  readonly methodName: string;
+  readonly service: typeof API;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof hub_pb.IsOrgNameAvailableRequest;
+  readonly responseType: typeof hub_pb.IsOrgNameAvailableReply;
+};
+
 export class API {
   static readonly serviceName: string;
   static readonly Signup: APISignup;
   static readonly Signin: APISignin;
   static readonly Signout: APISignout;
-  static readonly CheckUsername: APICheckUsername;
   static readonly GetSession: APIGetSession;
   static readonly GetThread: APIGetThread;
   static readonly ListThreads: APIListThreads;
@@ -166,6 +174,8 @@ export class API {
   static readonly RemoveOrg: APIRemoveOrg;
   static readonly InviteToOrg: APIInviteToOrg;
   static readonly LeaveOrg: APILeaveOrg;
+  static readonly IsUsernameAvailable: APIIsUsernameAvailable;
+  static readonly IsOrgNameAvailable: APIIsOrgNameAvailable;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -227,15 +237,6 @@ export class APIClient {
     requestMessage: hub_pb.SignoutRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.SignoutReply|null) => void
   ): UnaryResponse;
-  checkUsername(
-    requestMessage: hub_pb.CheckUsernameRequest,
-    metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.CheckUsernameReply|null) => void
-  ): UnaryResponse;
-  checkUsername(
-    requestMessage: hub_pb.CheckUsernameRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.CheckUsernameReply|null) => void
-  ): UnaryResponse;
   getSession(
     requestMessage: hub_pb.GetSessionRequest,
     metadata: grpc.Metadata,
@@ -343,6 +344,24 @@ export class APIClient {
   leaveOrg(
     requestMessage: hub_pb.LeaveOrgRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.LeaveOrgReply|null) => void
+  ): UnaryResponse;
+  isUsernameAvailable(
+    requestMessage: hub_pb.IsUsernameAvailableRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.IsUsernameAvailableReply|null) => void
+  ): UnaryResponse;
+  isUsernameAvailable(
+    requestMessage: hub_pb.IsUsernameAvailableRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.IsUsernameAvailableReply|null) => void
+  ): UnaryResponse;
+  isOrgNameAvailable(
+    requestMessage: hub_pb.IsOrgNameAvailableRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.IsOrgNameAvailableReply|null) => void
+  ): UnaryResponse;
+  isOrgNameAvailable(
+    requestMessage: hub_pb.IsOrgNameAvailableRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.IsOrgNameAvailableReply|null) => void
   ): UnaryResponse;
 }
 

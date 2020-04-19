@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"net/mail"
 
-	mbase "github.com/multiformats/go-multibase"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
+	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
@@ -30,17 +29,47 @@ var orgsCmd = &cobra.Command{
 }
 
 var createOrgsCmd = &cobra.Command{
-	Use:   "create [name]",
+	Use:   "create",
 	Short: "Create an Org",
 	Long:  `Create a new Organization (interactive).`,
-	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
+		prompt1 := promptui.Prompt{
+			Label: "Choose an Org name",
+			Templates: &promptui.PromptTemplates{
+				Valid: fmt.Sprintf("%s {{ . | bold }}%s ", bold(promptui.IconInitial), bold(":")),
+			},
+		}
+		name, err := prompt1.Run()
+		if err != nil {
+			cmd.End("")
+		}
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		if _, err := hub.CreateOrg(ctx, args[0]); err != nil {
+		res, err := hub.IsOrgNameAvailable(ctx, name)
+		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Created new org %s", aurora.White(args[0]).Bold())
+		url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
+
+		cmd.Message("The name of your account on Textile will be %s", aurora.White(name).Bold())
+		cmd.Message("Your URL will be %s", aurora.White(url).Bold())
+
+		prompt2 := promptui.Prompt{
+			Label:     "Please confirm",
+			IsConfirm: true,
+		}
+		if _, err = prompt2.Run(); err != nil {
+			cmd.End("")
+		}
+
+		ctx, cancel = authCtx(cmdTimeout)
+		defer cancel()
+		org, err := hub.CreateOrg(ctx, name)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		url = fmt.Sprintf("%s/%s", org.Host, org.Slug)
+		cmd.Success("Created new org %s with URL %s", aurora.White(org.Name).Bold(), aurora.Underline(url))
 	},
 }
 
@@ -70,9 +99,10 @@ func lsOrgs() {
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			data[i] = []string{o.Name, key}
+			url := fmt.Sprintf("%s/%s", o.Host, o.Slug)
+			data[i] = []string{o.Name, url, key}
 		}
-		cmd.RenderTable([]string{"name", "key"}, data)
+		cmd.RenderTable([]string{"name", "url", "key"}, data)
 	}
 	cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
 }

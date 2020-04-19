@@ -36,24 +36,24 @@ func SessionFromMD(ctx context.Context) (session string, ok bool) {
 	return
 }
 
-// NewOrgNameContext adds an org name to a context.
-func NewOrgNameContext(ctx context.Context, name string) context.Context {
-	if name == "" {
+// NewOrgSlugContext adds an org name to a context.
+func NewOrgSlugContext(ctx context.Context, slug string) context.Context {
+	if slug == "" {
 		return ctx
 	}
-	return context.WithValue(ctx, ctxKey("orgName"), name)
+	return context.WithValue(ctx, ctxKey("orgSlug"), slug)
 }
 
-// OrgNameFromContext returns an org name from a context.
-func OrgNameFromContext(ctx context.Context) (string, bool) {
-	name, ok := ctx.Value(ctxKey("orgName")).(string)
+// OrgSlugFromContext returns an org name from a context.
+func OrgSlugFromContext(ctx context.Context) (string, bool) {
+	name, ok := ctx.Value(ctxKey("orgSlug")).(string)
 	return name, ok
 }
 
-// OrgNameFromMD returns an org name from context metadata.
-func OrgNameFromMD(ctx context.Context) (name string, ok bool) {
-	name = metautils.ExtractIncoming(ctx).Get("x-textile-org")
-	if name != "" {
+// OrgSlugFromMD returns an org name from context metadata.
+func OrgSlugFromMD(ctx context.Context) (slug string, ok bool) {
+	slug = metautils.ExtractIncoming(ctx).Get("x-textile-org")
+	if slug != "" {
 		ok = true
 	}
 	return
@@ -234,9 +234,9 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 	if ok {
 		md["x-textile-session"] = session
 	}
-	orgName, ok := OrgNameFromContext(ctx)
+	orgSlug, ok := OrgSlugFromContext(ctx)
 	if ok {
-		md["x-textile-org"] = orgName
+		md["x-textile-org"] = orgSlug
 	}
 	apiKey, ok := APIKeyFromContext(ctx)
 	if ok {

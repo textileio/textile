@@ -61,6 +61,30 @@ func TestOrgs_Get(t *testing.T) {
 	assert.Equal(t, created.Key, got.Key)
 }
 
+func TestOrgs_IsNameAvailable(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+	col, err := NewOrgs(context.Background(), db)
+	require.Nil(t, err)
+
+	_, err = col.IsNameAvailable(context.Background(), "test")
+	require.Nil(t, err)
+
+	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), "Test!", []Member{{
+		Key:      mem,
+		Username: "test",
+		Role:     OrgOwner,
+	}})
+	require.Nil(t, err)
+	require.Equal(t, created.Slug, "test")
+
+	slug, err := col.IsNameAvailable(context.Background(), "Test!")
+	require.NotNil(t, err)
+	require.Equal(t, created.Slug, slug)
+}
+
 func TestOrgs_SetToken(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)

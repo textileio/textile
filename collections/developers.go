@@ -4,16 +4,27 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var (
+	usernameRx *regexp.Regexp
+
+	ErrInvalidUsername = fmt.Errorf("username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen")
+)
+
+func init() {
+	usernameRx = regexp.MustCompile(`^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)?$`)
+}
 
 type Developer struct {
 	Key       crypto.PubKey
@@ -53,8 +64,7 @@ func NewDevelopers(ctx context.Context, db *mongo.Database) (*Developers, error)
 }
 
 func (d *Developers) Create(ctx context.Context, username, email string) (*Developer, error) {
-	validUsername, err := util.ToValidName(username)
-	if err != nil {
+	if err := d.ValidateUsername(username); err != nil {
 		return nil, err
 	}
 	skey, key, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -65,7 +75,7 @@ func (d *Developers) Create(ctx context.Context, username, email string) (*Devel
 		Key:       key,
 		Secret:    skey,
 		Email:     email,
-		Username:  validUsername,
+		Username:  username,
 		CreatedAt: time.Now(),
 	}
 	id, err := crypto.MarshalPublicKey(key)
@@ -116,15 +126,25 @@ func (d *Developers) GetByUsernameOrEmail(ctx context.Context, usernameOrEmail s
 	return decodeDeveloper(raw)
 }
 
-func (d *Developers) CheckUsername(ctx context.Context, username string) (bool, error) {
+func (d *Developers) ValidateUsername(username string) error {
+	if !usernameRx.MatchString(username) {
+		return ErrInvalidUsername
+	}
+	return nil
+}
+
+func (d *Developers) IsUsernameAvailable(ctx context.Context, username string) error {
+	if err := d.ValidateUsername(username); err != nil {
+		return err
+	}
 	res := d.col.FindOne(ctx, bson.M{"username": username})
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-			return true, nil
+			return nil
 		}
-		return false, res.Err()
+		return res.Err()
 	}
-	return false, nil
+	return fmt.Errorf("username '%s' is not available", username)
 }
 
 func (d *Developers) SetToken(ctx context.Context, key crypto.PubKey, token thread.Token) error {

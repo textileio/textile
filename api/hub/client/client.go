@@ -53,18 +53,6 @@ func (c *Client) Signout(ctx context.Context) error {
 	return err
 }
 
-// CheckUsername returns a boolean indicating whether or not a username exists.
-// This is used to enhance the signup flow.
-func (c *Client) CheckUsername(ctx context.Context, username string) (bool, error) {
-	res, err := c.c.CheckUsername(ctx, &pb.CheckUsernameRequest{
-		Username: username,
-	})
-	if err != nil {
-		return false, err
-	}
-	return res.Ok, nil
-}
-
 // GetSession returns session info.
 func (c *Client) GetSession(ctx context.Context) (*pb.GetSessionReply, error) {
 	return c.c.GetSession(ctx, &pb.GetSessionRequest{})
@@ -132,4 +120,19 @@ func (c *Client) InviteToOrg(ctx context.Context, email string) (*pb.InviteToOrg
 func (c *Client) LeaveOrg(ctx context.Context) error {
 	_, err := c.c.LeaveOrg(ctx, &pb.LeaveOrgRequest{})
 	return err
+}
+
+// IsUsernameAvailable returns a nil error if the username is valid and available.
+func (c *Client) IsUsernameAvailable(ctx context.Context, username string) error {
+	_, err := c.c.IsUsernameAvailable(ctx, &pb.IsUsernameAvailableRequest{
+		Username: username,
+	})
+	return err
+}
+
+// IsOrgNameAvailable returns a nil error if the name is valid and available.
+func (c *Client) IsOrgNameAvailable(ctx context.Context, name string) (*pb.IsOrgNameAvailableReply, error) {
+	return c.c.IsOrgNameAvailable(ctx, &pb.IsOrgNameAvailableRequest{
+		Name: name,
+	})
 }

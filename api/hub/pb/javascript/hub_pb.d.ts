@@ -131,46 +131,6 @@ export namespace SignoutReply {
   }
 }
 
-export class CheckUsernameRequest extends jspb.Message {
-  getUsername(): string;
-  setUsername(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): CheckUsernameRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: CheckUsernameRequest): CheckUsernameRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: CheckUsernameRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): CheckUsernameRequest;
-  static deserializeBinaryFromReader(message: CheckUsernameRequest, reader: jspb.BinaryReader): CheckUsernameRequest;
-}
-
-export namespace CheckUsernameRequest {
-  export type AsObject = {
-    username: string,
-  }
-}
-
-export class CheckUsernameReply extends jspb.Message {
-  getOk(): boolean;
-  setOk(value: boolean): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): CheckUsernameReply.AsObject;
-  static toObject(includeInstance: boolean, msg: CheckUsernameReply): CheckUsernameReply.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: CheckUsernameReply, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): CheckUsernameReply;
-  static deserializeBinaryFromReader(message: CheckUsernameReply, reader: jspb.BinaryReader): CheckUsernameReply;
-}
-
-export namespace CheckUsernameReply {
-  export type AsObject = {
-    ok: boolean,
-  }
-}
-
 export class GetSessionRequest extends jspb.Message {
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetSessionRequest.AsObject;
@@ -468,6 +428,12 @@ export class GetOrgReply extends jspb.Message {
   getName(): string;
   setName(value: string): void;
 
+  getSlug(): string;
+  setSlug(value: string): void;
+
+  getHost(): string;
+  setHost(value: string): void;
+
   clearMembersList(): void;
   getMembersList(): Array<GetOrgReply.Member>;
   setMembersList(value: Array<GetOrgReply.Member>): void;
@@ -490,6 +456,8 @@ export namespace GetOrgReply {
   export type AsObject = {
     key: Uint8Array | string,
     name: string,
+    slug: string,
+    host: string,
     membersList: Array<GetOrgReply.Member.AsObject>,
     createdat: number,
   }
@@ -664,6 +632,86 @@ export class LeaveOrgReply extends jspb.Message {
 
 export namespace LeaveOrgReply {
   export type AsObject = {
+  }
+}
+
+export class IsUsernameAvailableRequest extends jspb.Message {
+  getUsername(): string;
+  setUsername(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): IsUsernameAvailableRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: IsUsernameAvailableRequest): IsUsernameAvailableRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: IsUsernameAvailableRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): IsUsernameAvailableRequest;
+  static deserializeBinaryFromReader(message: IsUsernameAvailableRequest, reader: jspb.BinaryReader): IsUsernameAvailableRequest;
+}
+
+export namespace IsUsernameAvailableRequest {
+  export type AsObject = {
+    username: string,
+  }
+}
+
+export class IsUsernameAvailableReply extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): IsUsernameAvailableReply.AsObject;
+  static toObject(includeInstance: boolean, msg: IsUsernameAvailableReply): IsUsernameAvailableReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: IsUsernameAvailableReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): IsUsernameAvailableReply;
+  static deserializeBinaryFromReader(message: IsUsernameAvailableReply, reader: jspb.BinaryReader): IsUsernameAvailableReply;
+}
+
+export namespace IsUsernameAvailableReply {
+  export type AsObject = {
+  }
+}
+
+export class IsOrgNameAvailableRequest extends jspb.Message {
+  getName(): string;
+  setName(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): IsOrgNameAvailableRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: IsOrgNameAvailableRequest): IsOrgNameAvailableRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: IsOrgNameAvailableRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): IsOrgNameAvailableRequest;
+  static deserializeBinaryFromReader(message: IsOrgNameAvailableRequest, reader: jspb.BinaryReader): IsOrgNameAvailableRequest;
+}
+
+export namespace IsOrgNameAvailableRequest {
+  export type AsObject = {
+    name: string,
+  }
+}
+
+export class IsOrgNameAvailableReply extends jspb.Message {
+  getSlug(): string;
+  setSlug(value: string): void;
+
+  getHost(): string;
+  setHost(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): IsOrgNameAvailableReply.AsObject;
+  static toObject(includeInstance: boolean, msg: IsOrgNameAvailableReply): IsOrgNameAvailableReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: IsOrgNameAvailableReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): IsOrgNameAvailableReply;
+  static deserializeBinaryFromReader(message: IsOrgNameAvailableReply, reader: jspb.BinaryReader): IsOrgNameAvailableReply;
+}
+
+export namespace IsOrgNameAvailableReply {
+  export type AsObject = {
+    slug: string,
+    host: string,
   }
 }
 

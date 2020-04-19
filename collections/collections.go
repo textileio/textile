@@ -4,16 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/gosimple/slug"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const tokenLen = 44
-
-func init() {
-	slug.MaxLength = 32
-}
 
 type ctxKey string
 

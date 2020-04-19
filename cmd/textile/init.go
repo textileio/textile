@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/textileio/textile/util"
-
 	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -23,31 +21,24 @@ func init() {
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize account",
-	Long:  `Initialize a new Textile account.`,
+	Long:  `Initialize a new Textile account (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
-			Label: "Choose a username (letters and numbers only)",
-			Validate: func(un string) error {
-				ctx, cancel := authCtx(cmdTimeout)
-				defer cancel()
-				ok, err := hub.CheckUsername(ctx, un)
-				if err != nil {
-					cmd.Fatal(err)
-				}
-				if !ok {
-					return fmt.Errorf("username taken")
-				}
-				return nil
+			Label: "Choose a username",
+			Templates: &promptui.PromptTemplates{
+				Valid: fmt.Sprintf("%s {{ . | bold }}%s ", bold(promptui.IconInitial), bold(":")),
 			},
 		}
 		username, err := prompt1.Run()
 		if err != nil {
 			cmd.End("")
 		}
-		validUsername, err := util.ToValidName(username)
-		if err != nil {
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		if err := hub.IsUsernameAvailable(ctx, username); err != nil {
 			cmd.Fatal(err)
 		}
+
 		prompt2 := promptui.Prompt{
 			Label: "Enter your email",
 			Validate: func(email string) error {
@@ -59,19 +50,6 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			cmd.End("")
 		}
-		prompt3 := promptui.Prompt{
-			Label:     fmt.Sprintf("Username: %s\n Email: %s", validUsername, email),
-			IsConfirm: true,
-		}
-		ok, err := prompt3.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		fmt.Println(ok)
-		//if !ok {
-		//	cmd.End("")
-		//}
-		cmd.End("")
 
 		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
 			aurora.White(email).Bold())
@@ -79,7 +57,7 @@ var initCmd = &cobra.Command{
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel := authCtx(confirmTimeout)
+		ctx, cancel = authCtx(confirmTimeout)
 		defer cancel()
 		res, err := hub.Signup(ctx, username, email)
 		s.Stop()

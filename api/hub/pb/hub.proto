@@ -29,14 +29,6 @@ message SignoutRequest {}
 
 message SignoutReply {}
 
-message CheckUsernameRequest {
-    string username = 1;
-}
-
-message CheckUsernameReply {
-    bool ok = 1;
-}
-
 message GetSessionRequest {}
 
 message GetSessionReply {
@@ -90,8 +82,10 @@ message GetOrgRequest {}
 message GetOrgReply {
     bytes key = 1;
     string name = 2;
-    repeated Member members = 3;
-    int64 createdAt = 4;
+    string slug = 3;
+    string host = 4;
+    repeated Member members = 5;
+    int64 createdAt = 6;
 
     message Member {
         bytes key = 1;
@@ -122,12 +116,25 @@ message LeaveOrgRequest {}
 
 message LeaveOrgReply {}
 
+message IsUsernameAvailableRequest {
+    string username = 1;
+}
+
+message IsUsernameAvailableReply {}
+
+message IsOrgNameAvailableRequest {
+    string name = 1;
+}
+
+message IsOrgNameAvailableReply {
+    string slug = 1;
+    string host = 2;
+}
+
 service API {
     rpc Signup(SignupRequest) returns (SignupReply) {}
     rpc Signin(SigninRequest) returns (SigninReply) {}
     rpc Signout(SignoutRequest) returns (SignoutReply) {}
-
-    rpc CheckUsername(CheckUsernameRequest) returns (CheckUsernameReply) {}
 
     rpc GetSession(GetSessionRequest) returns (GetSessionReply) {}
 
@@ -144,4 +151,7 @@ service API {
     rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgReply) {}
     rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgReply) {}
     rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgReply) {}
+
+    rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableReply) {}
+    rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableReply) {}
 }

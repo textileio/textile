@@ -66,22 +66,48 @@ func TestDevelopers_GetByUsernameOrEmail(t *testing.T) {
 	require.NotNil(t, err)
 }
 
-func TestDevelopers_CheckUsername(t *testing.T) {
+func TestDevelopers_ValidateUsername(t *testing.T) {
 	t.Parallel()
 	db := newDB(t)
 	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
 
-	ok, err := col.CheckUsername(context.Background(), "jon")
+	tests := map[string]bool{
+		"":      false,
+		" ":     false,
+		"f oo":  false,
+		"-":     false,
+		"-foo":  false,
+		"foo-":  false,
+		"f-o-o": false,
+		"fo--o": false,
+
+		"foo":  true,
+		"fo-o": true,
+		"fOO":  true,
+		"f00":  true,
+	}
+
+	for un, valid := range tests {
+		err := col.ValidateUsername(un)
+		require.Equal(t, valid, err == nil)
+	}
+}
+
+func TestDevelopers_IsUsernameAvailable(t *testing.T) {
+	t.Parallel()
+	db := newDB(t)
+	col, err := NewDevelopers(context.Background(), db)
 	require.Nil(t, err)
-	require.True(t, ok)
+
+	err = col.IsUsernameAvailable(context.Background(), "jon")
+	require.Nil(t, err)
 
 	_, err = col.Create(context.Background(), "jon", "jon@doe.com")
 	require.Nil(t, err)
 
-	ok, err = col.CheckUsername(context.Background(), "jon")
-	require.Nil(t, err)
-	require.False(t, ok)
+	err = col.IsUsernameAvailable(context.Background(), "jon")
+	require.NotNil(t, err)
 }
 
 func TestDevelopers_SetToken(t *testing.T) {

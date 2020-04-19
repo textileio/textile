@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -44,7 +43,7 @@ func TestClient_Signin(t *testing.T) {
 	assert.NotEmpty(t, res.Key)
 	assert.NotEmpty(t, res.Session)
 
-	err = client.Signout(common.NewSessionContext(context.Background(), user.Session))
+	err = client.Signout(common.NewSessionContext(context.Background(), res.Session))
 	require.Nil(t, err)
 
 	res = apitest.Signin(t, client, conf, email)
@@ -69,30 +68,6 @@ func TestClient_Signout(t *testing.T) {
 		err := client.Signout(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 	})
-}
-
-func TestClient_CheckUsername(t *testing.T) {
-	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
-
-	username := apitest.NewUsername()
-	email := apitest.NewEmail()
-	ok, err := client.CheckUsername(context.Background(), username)
-	require.Nil(t, err)
-	require.True(t, ok)
-	ok, err = client.CheckUsername(context.Background(), email)
-	require.Nil(t, err)
-	require.True(t, ok)
-
-	apitest.Signup(t, client, conf, username, email)
-
-	ok, err = client.CheckUsername(context.Background(), username)
-	require.Nil(t, err)
-	require.False(t, ok)
-	ok, err = client.CheckUsername(context.Background(), email)
-	require.Nil(t, err)
-	require.False(t, ok)
 }
 
 func TestClient_GetSession(t *testing.T) {
@@ -286,12 +261,12 @@ func TestClient_GetOrg(t *testing.T) {
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		_, err := client.GetOrg(common.NewOrgNameContext(ctx, "bad"))
+		_, err := client.GetOrg(common.NewOrgSlugContext(ctx, "bad"))
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		got, err := client.GetOrg(common.NewOrgNameContext(ctx, org.Name))
+		got, err := client.GetOrg(common.NewOrgSlugContext(ctx, org.Name))
 		require.Nil(t, err)
 		assert.Equal(t, org.Key, got.Key)
 	})
@@ -311,11 +286,9 @@ func TestClient_ListOrgs(t *testing.T) {
 		assert.Empty(t, orgs.List)
 	})
 
-	name1 := uuid.New().String()
-	_, err := client.CreateOrg(ctx, name1)
+	_, err := client.CreateOrg(ctx, "My Org 1")
 	require.Nil(t, err)
-	name2 := uuid.New().String()
-	_, err = client.CreateOrg(ctx, name2)
+	_, err = client.CreateOrg(ctx, "My Org 2")
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -337,7 +310,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 	require.Nil(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
-		err := client.RemoveOrg(common.NewOrgNameContext(ctx, "bad"))
+		err := client.RemoveOrg(common.NewOrgSlugContext(ctx, "bad"))
 		require.NotNil(t, err)
 	})
 
@@ -345,12 +318,12 @@ func TestClient_RemoveOrg(t *testing.T) {
 	ctx2 := common.NewSessionContext(context.Background(), user2.Session)
 
 	t.Run("bad session", func(t *testing.T) {
-		err := client.RemoveOrg(common.NewOrgNameContext(ctx2, org.Name))
+		err := client.RemoveOrg(common.NewOrgSlugContext(ctx2, org.Name))
 		require.NotNil(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		octx := common.NewOrgNameContext(ctx, org.Name)
+		octx := common.NewOrgSlugContext(ctx, org.Name)
 		err := client.RemoveOrg(octx)
 		require.Nil(t, err)
 		_, err = client.GetOrg(octx)
@@ -368,7 +341,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
-	ctx = common.NewOrgNameContext(ctx, org.Name)
+	ctx = common.NewOrgSlugContext(ctx, org.Name)
 
 	t.Run("bad email", func(t *testing.T) {
 		_, err := client.InviteToOrg(ctx, "jane")
@@ -392,7 +365,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	org, err := client.CreateOrg(ctx, name)
 	require.Nil(t, err)
-	ctx = common.NewOrgNameContext(ctx, org.Name)
+	ctx = common.NewOrgSlugContext(ctx, org.Name)
 
 	t.Run("as owner", func(t *testing.T) {
 		err := client.LeaveOrg(ctx)
@@ -417,6 +390,42 @@ func TestClient_LeaveOrg(t *testing.T) {
 		err := client.LeaveOrg(ctx2)
 		require.Nil(t, err)
 	})
+}
+
+func TestClient_IsUsernameAvailable(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	username := apitest.NewUsername()
+	err := client.IsUsernameAvailable(context.Background(), username)
+	require.Nil(t, err)
+
+	apitest.Signup(t, client, conf, username, apitest.NewEmail())
+
+	err = client.IsUsernameAvailable(context.Background(), username)
+	require.NotNil(t, err)
+}
+
+func TestClient_IsOrgNameAvailable(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
+	ctx := common.NewSessionContext(context.Background(), user.Session)
+
+	name := "My awesome org!"
+	res, err := client.IsOrgNameAvailable(ctx, name)
+	require.Nil(t, err)
+	require.Equal(t, "My-awesome-org", res.Slug)
+
+	org, err := client.CreateOrg(ctx, name)
+	require.Nil(t, err)
+	require.Equal(t, res.Slug, org.Slug)
+
+	res, err = client.IsOrgNameAvailable(ctx, name)
+	require.NotNil(t, err)
 }
 
 func TestClose(t *testing.T) {

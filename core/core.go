@@ -50,7 +50,7 @@ var (
 	ignoreMethods = []string{
 		"/hub.pb.API/Signup",
 		"/hub.pb.API/Signin",
-		"/hub.pb.API/CheckUsername",
+		"/hub.pb.API/IsUsernameAvailable",
 	}
 )
 
@@ -328,21 +328,21 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 		ctx = c.NewDevContext(ctx, dev)
 
-		orgName, ok := common.OrgNameFromMD(ctx)
+		orgSlug, ok := common.OrgSlugFromMD(ctx)
 		if ok {
-			isMember, err := t.co.Orgs.IsMember(ctx, orgName, dev.Key)
+			isMember, err := t.co.Orgs.IsMember(ctx, orgSlug, dev.Key)
 			if err != nil {
 				return nil, err
 			}
 			if !isMember {
 				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
 			} else {
-				org, err := t.co.Orgs.Get(ctx, orgName)
+				org, err := t.co.Orgs.Get(ctx, orgSlug)
 				if err != nil {
 					return nil, status.Error(codes.NotFound, "Org not found")
 				}
 				ctx = c.NewOrgContext(ctx, org)
-				ctx = common.NewOrgNameContext(ctx, orgName) // For additional requests
+				ctx = common.NewOrgSlugContext(ctx, orgSlug) // For additional requests
 				ctx = thread.NewTokenContext(ctx, org.Token)
 			}
 		} else {

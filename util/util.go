@@ -2,20 +2,24 @@ package util
 
 import (
 	"crypto/rand"
-	"fmt"
 
 	"github.com/gosimple/slug"
 	ma "github.com/multiformats/go-multiaddr"
 	mbase "github.com/multiformats/go-multibase"
 )
 
-func ToValidName(str string) (name string, err error) {
+func init() {
+	slug.MaxLength = 32
+	slug.Lowercase = false
+}
+
+func ToValidName(str string) (name string, ok bool) {
 	name = slug.Make(str)
-	if len(name) < 3 {
-		err = fmt.Errorf("name must contain at least three URL-safe characters")
+	if len(name) == 0 {
+		ok = false
 		return
 	}
-	return name, nil
+	return name, true
 }
 
 func GenerateRandomBytes(n int) []byte {

@@ -2,6 +2,7 @@ package buckets
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -47,13 +48,13 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 		opt(args)
 	}
 
-	validName, err := util.ToValidName(name)
-	if err != nil {
-		return nil, err
+	slg, ok := util.ToValidName(name)
+	if !ok {
+		return nil, fmt.Errorf("name '%s' is not available", name)
 	}
 	bucket := &Bucket{
 		Path:      pth.String(),
-		Name:      validName,
+		Name:      slg,
 		CreatedAt: time.Now().UnixNano(),
 		UpdatedAt: time.Now().UnixNano(),
 	}

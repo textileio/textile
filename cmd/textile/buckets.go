@@ -70,9 +70,9 @@ Existing configs will not be overwritten.
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		name, err := util.ToValidName(filepath.Base(root))
-		if err != nil {
-			cmd.Fatal(err)
+		name, ok := util.ToValidName(filepath.Base(root))
+		if !ok {
+			cmd.Fatal(fmt.Errorf("name '%s' is not available", root))
 		}
 		configViper.Set("name", name)
 
@@ -82,13 +82,13 @@ Existing configs will not be overwritten.
 		}
 		filename := filepath.Join(dir, "config.yml")
 		if _, err := os.Stat(filename); err == nil {
-			cmd.Fatal(fmt.Errorf("bucket at %s already initialized", root))
+			cmd.Fatal(fmt.Errorf("bucket in %s is already initialized", root))
 		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Initialized empty bucket in %s", aurora.White(root).Bold())
+		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 	},
 }
 
@@ -299,6 +299,7 @@ func addFile(name, filePath string) {
 		ctx, cancel := authCtx(addFileTimeout)
 		defer cancel()
 		if _, _, err = buckets.PushPath(ctx, filePath, file, client.WithProgress(progress)); err != nil {
+			// @todo: Clean this up with new config
 			if strings.HasSuffix(err.Error(), "FIX ME") {
 				bucket := strings.SplitN(filePath, "/", 2)[0]
 				msg := aurora.Sprintf(aurora.BrightBlack(

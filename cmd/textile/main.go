@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	mbase "github.com/multiformats/go-multibase"
+
 	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
@@ -65,6 +68,8 @@ var (
 	confirmTimeout = time.Minute * 3
 	addFileTimeout = time.Hour * 24
 	getFileTimeout = time.Hour * 24
+
+	bold = promptui.Styler(promptui.FGBold)
 )
 
 func init() {
@@ -106,9 +111,8 @@ var rootCmd = &cobra.Command{
 		cmd.ExpandConfigVars(authViper, authFlags)
 
 		if authViper.GetString("session") == "" && c.Use != "init" && c.Use != "login" {
-			msg := "unauthorized! run `%s` or use `%s` or `%s` to authorize"
-			cmd.Fatal(errors.New(msg),
-				aurora.Cyan("textile login"), aurora.Cyan("textile login"), aurora.Cyan("--session"))
+			msg := "unauthorized! run `%s` or use `%s` to authorize"
+			cmd.Fatal(errors.New(msg), aurora.Cyan("textile init|login"), aurora.Cyan("--session"))
 		}
 
 		var opts []grpc.DialOption
@@ -156,14 +160,19 @@ var whoamiCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("You are %s", aurora.White(who.Email).Bold())
+		key, err := mbase.Encode(mbase.Base32, who.Key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("You are %s", aurora.White(who.Username).Bold())
+		cmd.Message("Your key is %s", aurora.White(key).Bold())
 	},
 }
 
 func authCtx(duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	ctx = common.NewSessionContext(ctx, authViper.GetString("session"))
-	ctx = common.NewOrgNameContext(ctx, configViper.GetString("org"))
+	ctx = common.NewOrgSlugContext(ctx, configViper.GetString("org"))
 	ctx = common.NewThreadIDContext(ctx, getThreadID())
 	return ctx, cancel
 }

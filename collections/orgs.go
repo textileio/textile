@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
@@ -20,6 +21,7 @@ type Org struct {
 	Key       crypto.PubKey
 	Secret    crypto.PrivKey
 	Name      string
+	Slug      string
 	Token     thread.Token
 	Members   []Member
 	CreatedAt time.Time
@@ -65,7 +67,7 @@ func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
 	t := &Orgs{col: db.Collection("orgs")}
 	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"name", 1}},
+			Keys:    bson.D{{"slug", 1}},
 			Options: options.Index().SetUnique(true),
 		},
 		{
@@ -76,9 +78,9 @@ func NewOrgs(ctx context.Context, db *mongo.Database) (*Orgs, error) {
 }
 
 func (o *Orgs) Create(ctx context.Context, name string, members []Member) (*Org, error) {
-	validName, err := util.ToValidName(name)
-	if err != nil {
-		return nil, err
+	slg, ok := util.ToValidName(name)
+	if !ok {
+		return nil, fmt.Errorf("name '%s' is not available", name)
 	}
 	skey, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
@@ -97,7 +99,8 @@ func (o *Orgs) Create(ctx context.Context, name string, members []Member) (*Org,
 	doc := &Org{
 		Key:       key,
 		Secret:    skey,
-		Name:      validName,
+		Name:      name,
+		Slug:      slg,
 		Members:   members,
 		CreatedAt: time.Now(),
 	}
@@ -125,6 +128,7 @@ func (o *Orgs) Create(ctx context.Context, name string, members []Member) (*Org,
 		"_id":        id,
 		"secret":     secret,
 		"name":       doc.Name,
+		"slug":       doc.Slug,
 		"members":    rmems,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
@@ -133,8 +137,8 @@ func (o *Orgs) Create(ctx context.Context, name string, members []Member) (*Org,
 	return doc, nil
 }
 
-func (o *Orgs) Get(ctx context.Context, name string) (*Org, error) {
-	res := o.col.FindOne(ctx, bson.M{"name": name})
+func (o *Orgs) Get(ctx context.Context, slug string) (*Org, error) {
+	res := o.col.FindOne(ctx, bson.M{"slug": slug})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -145,8 +149,21 @@ func (o *Orgs) Get(ctx context.Context, name string) (*Org, error) {
 	return decodeOrg(raw)
 }
 
-func (o *Orgs) SetToken(ctx context.Context, name string, token thread.Token) error {
-	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$set": bson.M{"token": token}})
+func (o *Orgs) IsNameAvailable(ctx context.Context, name string) (s string, err error) {
+	s = slug.Make(name)
+	res := o.col.FindOne(ctx, bson.M{"slug": s})
+	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return
+		}
+		err = res.Err()
+		return
+	}
+	return s, fmt.Errorf("the name '%s' is already taken", name)
+}
+
+func (o *Orgs) SetToken(ctx context.Context, slug string, token thread.Token) error {
+	res, err := o.col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{"$set": bson.M{"token": token}})
 	if err != nil {
 		return err
 	}
@@ -184,12 +201,12 @@ func (o *Orgs) List(ctx context.Context, member crypto.PubKey) ([]Org, error) {
 	return docs, nil
 }
 
-func (o *Orgs) IsOwner(ctx context.Context, name string, member crypto.PubKey) (bool, error) {
+func (o *Orgs) IsOwner(ctx context.Context, slug string, member crypto.PubKey) (bool, error) {
 	mid, err := crypto.MarshalPublicKey(member)
 	if err != nil {
 		return false, err
 	}
-	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": mid, "role": OrgOwner}}}
+	filter := bson.M{"slug": slug, "members": bson.M{"$elemMatch": bson.M{"_id": mid, "role": OrgOwner}}}
 	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -201,12 +218,12 @@ func (o *Orgs) IsOwner(ctx context.Context, name string, member crypto.PubKey) (
 	return true, nil
 }
 
-func (o *Orgs) IsMember(ctx context.Context, name string, member crypto.PubKey) (bool, error) {
+func (o *Orgs) IsMember(ctx context.Context, slug string, member crypto.PubKey) (bool, error) {
 	mid, err := crypto.MarshalPublicKey(member)
 	if err != nil {
 		return false, err
 	}
-	filter := bson.M{"name": name, "members": bson.M{"$elemMatch": bson.M{"_id": mid}}}
+	filter := bson.M{"slug": slug, "members": bson.M{"$elemMatch": bson.M{"_id": mid}}}
 	res := o.col.FindOne(ctx, filter)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -218,7 +235,7 @@ func (o *Orgs) IsMember(ctx context.Context, name string, member crypto.PubKey) 
 	return true, nil
 }
 
-func (o *Orgs) AddMember(ctx context.Context, name string, member Member) error {
+func (o *Orgs) AddMember(ctx context.Context, slug string, member Member) error {
 	mk, err := crypto.MarshalPublicKey(member.Key)
 	if err != nil {
 		return err
@@ -228,18 +245,18 @@ func (o *Orgs) AddMember(ctx context.Context, name string, member Member) error 
 		"username": member.Username,
 		"role":     int(member.Role),
 	}
-	_, err = o.col.UpdateOne(ctx, bson.M{"name": name, "members._id": bson.M{"$ne": mk}}, bson.M{"$push": bson.M{"members": raw}})
+	_, err = o.col.UpdateOne(ctx, bson.M{"slug": slug, "members._id": bson.M{"$ne": mk}}, bson.M{"$push": bson.M{"members": raw}})
 	return err
 }
 
-func (o *Orgs) RemoveMember(ctx context.Context, name string, member crypto.PubKey) error {
-	isOwner, err := o.IsOwner(ctx, name, member)
+func (o *Orgs) RemoveMember(ctx context.Context, slug string, member crypto.PubKey) error {
+	isOwner, err := o.IsOwner(ctx, slug, member)
 	if err != nil {
 		return err
 	}
 	if isOwner { // Ensure there will still be at least one owner left
 		cursor, err := o.col.Aggregate(ctx, mongo.Pipeline{
-			bson.D{{"$match", bson.M{"name": name}}},
+			bson.D{{"$match", bson.M{"slug": slug}}},
 			bson.D{{"$project", bson.M{
 				"members": bson.M{
 					"$filter": bson.M{
@@ -250,7 +267,7 @@ func (o *Orgs) RemoveMember(ctx context.Context, name string, member crypto.PubK
 				},
 			}}},
 			bson.D{{"$count", "members"}},
-		}, options.Aggregate().SetHint(bson.D{{"name", 1}}))
+		}, options.Aggregate().SetHint(bson.D{{"slug", 1}}))
 		if err != nil {
 			return err
 		}
@@ -275,7 +292,7 @@ func (o *Orgs) RemoveMember(ctx context.Context, name string, member crypto.PubK
 	if err != nil {
 		return err
 	}
-	res, err := o.col.UpdateOne(ctx, bson.M{"name": name}, bson.M{"$pull": bson.M{"members": bson.M{"_id": mid}}})
+	res, err := o.col.UpdateOne(ctx, bson.M{"slug": slug}, bson.M{"$pull": bson.M{"members": bson.M{"_id": mid}}})
 	if err != nil {
 		return err
 	}
@@ -285,8 +302,8 @@ func (o *Orgs) RemoveMember(ctx context.Context, name string, member crypto.PubK
 	return nil
 }
 
-func (o *Orgs) Delete(ctx context.Context, name string) error {
-	res, err := o.col.DeleteOne(ctx, bson.M{"name": name})
+func (o *Orgs) Delete(ctx context.Context, slug string) error {
+	res, err := o.col.DeleteOne(ctx, bson.M{"slug": slug})
 	if err != nil {
 		return err
 	}
@@ -327,6 +344,7 @@ func decodeOrg(raw bson.M) (*Org, error) {
 		Key:       skey.GetPublic(),
 		Secret:    skey,
 		Name:      raw["name"].(string),
+		Slug:      raw["slug"].(string),
 		Token:     token,
 		Members:   mems,
 		CreatedAt: created,

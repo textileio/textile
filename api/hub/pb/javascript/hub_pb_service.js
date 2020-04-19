@@ -37,15 +37,6 @@ API.Signout = {
   responseType: hub_pb.SignoutReply
 };
 
-API.CheckUsername = {
-  methodName: "CheckUsername",
-  service: API,
-  requestStream: false,
-  responseStream: false,
-  requestType: hub_pb.CheckUsernameRequest,
-  responseType: hub_pb.CheckUsernameReply
-};
-
 API.GetSession = {
   methodName: "GetSession",
   service: API,
@@ -154,6 +145,24 @@ API.LeaveOrg = {
   responseType: hub_pb.LeaveOrgReply
 };
 
+API.IsUsernameAvailable = {
+  methodName: "IsUsernameAvailable",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: hub_pb.IsUsernameAvailableRequest,
+  responseType: hub_pb.IsUsernameAvailableReply
+};
+
+API.IsOrgNameAvailable = {
+  methodName: "IsOrgNameAvailable",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: hub_pb.IsOrgNameAvailableRequest,
+  responseType: hub_pb.IsOrgNameAvailableReply
+};
+
 exports.API = API;
 
 function APIClient(serviceHost, options) {
@@ -228,37 +237,6 @@ APIClient.prototype.signout = function signout(requestMessage, metadata, callbac
     callback = arguments[1];
   }
   var client = grpc.unary(API.Signout, {
-    request: requestMessage,
-    host: this.serviceHost,
-    metadata: metadata,
-    transport: this.options.transport,
-    debug: this.options.debug,
-    onEnd: function (response) {
-      if (callback) {
-        if (response.status !== grpc.Code.OK) {
-          var err = new Error(response.statusMessage);
-          err.code = response.status;
-          err.metadata = response.trailers;
-          callback(err, null);
-        } else {
-          callback(null, response.message);
-        }
-      }
-    }
-  });
-  return {
-    cancel: function () {
-      callback = null;
-      client.close();
-    }
-  };
-};
-
-APIClient.prototype.checkUsername = function checkUsername(requestMessage, metadata, callback) {
-  if (arguments.length === 2) {
-    callback = arguments[1];
-  }
-  var client = grpc.unary(API.CheckUsername, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,
@@ -631,6 +609,68 @@ APIClient.prototype.leaveOrg = function leaveOrg(requestMessage, metadata, callb
     callback = arguments[1];
   }
   var client = grpc.unary(API.LeaveOrg, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.isUsernameAvailable = function isUsernameAvailable(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.IsUsernameAvailable, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.isOrgNameAvailable = function isOrgNameAvailable(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.IsOrgNameAvailable, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

@@ -6,8 +6,6 @@ import (
 	"net/mail"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	threads "github.com/textileio/go-threads/api/client"
@@ -18,6 +16,7 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/util"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -44,6 +43,9 @@ type Service struct {
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
 	log.Debugf("received signup request")
 
+	if err := s.Collections.Developers.ValidateUsername(req.Username); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
@@ -189,18 +191,6 @@ func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.Signou
 	return &pb.SignoutReply{}, nil
 }
 
-func (s *Service) CheckUsername(ctx context.Context, req *pb.CheckUsernameRequest) (*pb.CheckUsernameReply, error) {
-	log.Debugf("received check username request")
-
-	ok, err := s.Collections.Developers.CheckUsername(ctx, req.Username)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.CheckUsernameReply{
-		Ok: ok,
-	}, nil
-}
-
 func (s *Service) GetSession(ctx context.Context, _ *pb.GetSessionRequest) (*pb.GetSessionReply, error) {
 	log.Debugf("received get session request")
 
@@ -323,10 +313,10 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Collections.Orgs.SetToken(ctx, org.Name, tok); err != nil {
+	if err := s.Collections.Orgs.SetToken(ctx, org.Slug, tok); err != nil {
 		return nil, err
 	}
-	return orgToPbOrg(org)
+	return s.orgToPbOrg(org)
 }
 
 func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgReply, error) {
@@ -336,10 +326,10 @@ func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgRe
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	return orgToPbOrg(org)
+	return s.orgToPbOrg(org)
 }
 
-func orgToPbOrg(org *c.Org) (*pb.GetOrgReply, error) {
+func (s *Service) orgToPbOrg(org *c.Org) (*pb.GetOrgReply, error) {
 	members := make([]*pb.GetOrgReply_Member, len(org.Members))
 	for i, m := range org.Members {
 		key, err := crypto.MarshalPublicKey(m.Key)
@@ -359,6 +349,8 @@ func orgToPbOrg(org *c.Org) (*pb.GetOrgReply, error) {
 	return &pb.GetOrgReply{
 		Key:       key,
 		Name:      org.Name,
+		Slug:      org.Slug,
+		Host:      s.GatewayUrl,
 		Members:   members,
 		CreatedAt: org.CreatedAt.Unix(),
 	}, nil
@@ -374,7 +366,7 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 	}
 	list := make([]*pb.GetOrgReply, len(orgs))
 	for i, org := range orgs {
-		list[i], err = orgToPbOrg(&org)
+		list[i], err = s.orgToPbOrg(&org)
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +383,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	isOwner, err := s.Collections.Orgs.IsOwner(ctx, org.Name, dev.Key)
+	isOwner, err := s.Collections.Orgs.IsOwner(ctx, org.Slug, dev.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +391,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 		return nil, status.Error(codes.PermissionDenied, "User must be an org owner")
 	}
 
-	if err = s.Collections.Orgs.Delete(ctx, org.Name); err != nil {
+	if err = s.Collections.Orgs.Delete(ctx, org.Slug); err != nil {
 		return nil, err
 	}
 	return &pb.RemoveOrgReply{}, nil
@@ -416,7 +408,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-	invite, err := s.Collections.Invites.Create(ctx, dev.Key, org.Name, req.Email)
+	invite, err := s.Collections.Invites.Create(ctx, dev.Key, org.Slug, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -438,10 +430,32 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	if err := s.Collections.Orgs.RemoveMember(ctx, org.Name, dev.Key); err != nil {
+	if err := s.Collections.Orgs.RemoveMember(ctx, org.Slug, dev.Key); err != nil {
 		return nil, err
 	}
 	return &pb.LeaveOrgReply{}, nil
+}
+
+func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableReply, error) {
+	log.Debugf("received is username available request")
+
+	if err := s.Collections.Developers.IsUsernameAvailable(ctx, req.Username); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return &pb.IsUsernameAvailableReply{}, nil
+}
+
+func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvailableRequest) (*pb.IsOrgNameAvailableReply, error) {
+	log.Debugf("received is org name available request")
+
+	slug, err := s.Collections.Orgs.IsNameAvailable(ctx, req.Name)
+	if err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return &pb.IsOrgNameAvailableReply{
+		Slug: slug,
+		Host: s.GatewayUrl,
+	}, nil
 }
 
 func ownerFromContext(ctx context.Context) crypto.PubKey {
