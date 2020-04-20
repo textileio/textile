@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/textile/util"
 )
@@ -196,11 +197,15 @@ These 'push' commands result in the following bucket structures.
 	Args: cobra.MinimumNArgs(2),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
 	},
 	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+		name := configViper.GetString("name")
+
 		dbID := getThreadID()
 		if !dbID.Defined() {
 			selected := selectThread("Select thread", aurora.Sprintf(
@@ -210,7 +215,7 @@ These 'push' commands result in the following bucket structures.
 				ctx, cancel := authCtx(cmdTimeout)
 				defer cancel()
 				dbID = thread.NewIDV1(thread.Raw, 32)
-				if err := threads.NewDB(ctx, dbID); err != nil {
+				if err := threads.NewDB(common.NewThreadNameContext(ctx, "buckets"), dbID); err != nil {
 					cmd.Fatal(err)
 				}
 			} else {
@@ -230,8 +235,16 @@ These 'push' commands result in the following bucket structures.
 		var paths []string
 		bucketPath, args := args[len(args)-1], args[:len(args)-1]
 		for _, a := range args {
+			abs, err := filepath.Abs(a)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if !strings.HasPrefix(abs, root) {
+				cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
+			}
+
 			dir := filepath.Dir(a)
-			err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
+			if err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
 				if err != nil {
 					cmd.Fatal(err)
 				}
@@ -243,13 +256,15 @@ These 'push' commands result in the following bucket structures.
 						p = filepath.Join(bucketPath, info.Name())
 					} else { // This is a directory given as an arg, or one of its sub directories
 						// The bucket path should maintain directory structure
-						p = filepath.Join(bucketPath, strings.TrimPrefix(n, dir))
+						if dir != "." {
+							n = strings.TrimPrefix(n, dir)
+						}
+						p = filepath.Join(bucketPath, n)
 					}
-					paths = append(paths, p)
+					paths = append(paths, filepath.Join(name, p))
 				}
 				return nil
-			})
-			if err != nil {
+			}); err != nil {
 				cmd.Fatal(err)
 			}
 		}
@@ -357,6 +372,19 @@ These 'pull' commands result in the following local structures.
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+		abs, err := filepath.Abs(args[1])
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if !strings.HasPrefix(abs, root) {
+			cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
+		}
+
 		count := getPath(args[0], filepath.Dir(args[0]), args[1])
 		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
 	},
