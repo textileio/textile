@@ -2,6 +2,8 @@ module github.com/textileio/textile
 
 go 1.14
 
+replace github.com/textileio/go-threads => ../go-threads
+
 require (
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
@@ -30,6 +32,7 @@ require (
 	github.com/mailgun/mailgun-go/v3 v3.6.3
 	github.com/manifoldco/promptui v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multibase v0.0.1
 	github.com/olekukonko/tablewriter v0.0.4
@@ -39,7 +42,7 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
-	github.com/textileio/go-threads v0.1.15-0.20200417182734-e72593aed026
+	github.com/textileio/go-threads v0.1.15-0.20200420234134-f83ed3d8daa7
 	go.mongodb.org/mongo-driver v1.3.0
 	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
 	google.golang.org/grpc v1.26.0

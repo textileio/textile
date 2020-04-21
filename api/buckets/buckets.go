@@ -19,19 +19,22 @@ const cname = "buckets"
 var (
 	schema  *jsonschema.Schema
 	indexes = []db.IndexConfig{{
-		Path: "Path",
-	}, {
-		Path:   "Name",
+		Path:   "name",
 		Unique: true,
+	}, {
+		Path: "slug",
+	}, {
+		Path: "path",
 	}}
 )
 
 type Bucket struct {
-	ID        string
-	Path      string
-	Name      string
-	CreatedAt int64
-	UpdatedAt int64
+	ID        string `json:"_id"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	Path      string `json:"path"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
 }
 
 func init() {
@@ -53,8 +56,9 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 		return nil, fmt.Errorf("name '%s' is not available", name)
 	}
 	bucket := &Bucket{
+		Name:      name,
+		Slug:      strings.Join([]string{slg, util.MakeToken(8)}, "-"),
 		Path:      pth.String(),
-		Name:      slg,
 		CreatedAt: time.Now().UnixNano(),
 		UpdatedAt: time.Now().UnixNano(),
 	}
@@ -66,6 +70,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 			}
 			return b.Create(ctx, dbID, pth, name)
 		}
+		return nil, err
 	}
 	bucket.ID = ids[0]
 	return bucket, nil
@@ -77,7 +82,7 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string, opts ...
 		opt(args)
 	}
 
-	query := db.Where("Name").Eq(name)
+	query := db.Where("name").Eq(name)
 	res, err := b.Threads.Find(ctx, dbID, cname, query, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {

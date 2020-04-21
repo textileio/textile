@@ -65,6 +65,7 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 			if err != nil {
 				return nil, err
 			}
+			items[i].ID = buck.ID
 			items[i].Name = buck.Name
 		}
 
@@ -172,9 +173,11 @@ func (s *Service) pathToPb(ctx context.Context, buck *Bucket, pth path.Path, fol
 	if err != nil {
 		return nil, err
 	}
+	item.ID = buck.ID
 	return &pb.ListPathReply{
 		Item: item,
 		Root: &pb.Root{
+			ID:        buck.ID,
 			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
@@ -316,6 +319,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		Path: pth.String(),
 		Size: size,
 		Root: &pb.Root{
+			ID:        buck.ID,
 			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,

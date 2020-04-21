@@ -60,16 +60,14 @@ type Textile struct {
 	ts tc.NetBoostrapper
 	th *threads.Client
 
-	dbToken      string
-	gatewayToken string
-
 	fc *filc.Client
 
-	server  *grpc.Server
-	proxy   *http.Server
-	gateway *gateway.Gateway
+	server *grpc.Server
+	proxy  *http.Server
 
-	sessionBus *broadcast.Broadcaster
+	gateway        *gateway.Gateway
+	gatewaySession string
+	sessionBus     *broadcast.Broadcaster
 }
 
 type Config struct {
@@ -240,11 +238,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	hs.Threads = t.th
 
 	// Configure gateway
-	t.gatewayToken = util.MakeToken(44)
+	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(
 		conf.AddrGatewayHost,
 		conf.AddrApi,
-		t.gatewayToken,
+		t.gatewaySession,
 		conf.AddrGatewayBucketDomain,
 		t.co,
 		t.sessionBus,
@@ -307,8 +305,26 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
+	threadID, ok := common.ThreadIDFromMD(ctx)
+	if ok {
+		ctx = common.NewThreadIDContext(ctx, threadID)
+	}
+	threadName, ok := common.ThreadNameFromMD(ctx)
+	if ok {
+		ctx = common.NewThreadNameContext(ctx, threadName)
+	}
+	threadToken, err := thread.NewTokenFromMD(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ctx = thread.NewTokenContext(ctx, threadToken)
+
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
+		ctx = common.NewSessionContext(ctx, sid) // For additional requests
+		if sid == t.gatewaySession {
+			return ctx, nil
+		}
 		session, err := t.co.Sessions.Get(ctx, sid)
 		if err != nil {
 			return nil, status.Error(codes.Unauthenticated, "Invalid session")
@@ -320,7 +336,6 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, err
 		}
 		ctx = c.NewSessionContext(ctx, session)
-		ctx = common.NewSessionContext(ctx, sid) // For additional requests
 
 		dev, err := t.co.Developers.Get(ctx, session.Owner)
 		if err != nil {
@@ -355,22 +370,8 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, status.Error(codes.Unauthenticated, "API key signature required")
 		}
 		ctx = common.NewAPISigContext(ctx, msg, sig)
-		tok, err := thread.NewTokenFromMD(ctx) // Can be empty
-		if err != nil {
-			return nil, err
-		}
-		ctx = thread.NewTokenContext(ctx, tok)
 	} else {
 		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
-	}
-
-	threadID, ok := common.ThreadIDFromMD(ctx)
-	if ok {
-		ctx = common.NewThreadIDContext(ctx, threadID)
-	}
-	threadName, ok := common.ThreadNameFromMD(ctx)
-	if ok {
-		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
 	return ctx, nil
 }
@@ -397,10 +398,10 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			}
 
 			// Pull user key out of the thread token if present
-			tok, ok := thread.TokenFromContext(ctx)
+			token, ok := thread.TokenFromContext(ctx)
 			if ok {
 				var claims jwt.StandardClaims
-				if _, _, err = new(jwt.Parser).ParseUnverified(string(tok), &claims); err != nil {
+				if _, _, err = new(jwt.Parser).ParseUnverified(string(token), &claims); err != nil {
 					return nil, status.Error(codes.PermissionDenied, "Bad authorization")
 				}
 				ukey := &thread.Libp2pPubKey{}

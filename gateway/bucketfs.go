@@ -24,7 +24,7 @@ type serveBucketFileSystem interface {
 
 type bucketFileSystem struct {
 	client  *client.Client
-	token   string
+	session string
 	timeout time.Duration
 	host    string
 }
@@ -46,7 +46,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			}
 			c.Writer.Header().Set("Content-Type", ctype)
 			if err := fs.Write(bucket, c.Request.URL.Path, c.Writer); err != nil {
-				abort(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
 			}
@@ -56,7 +56,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", ctype)
 			if err := fs.Write(bucket, content, c.Writer); err != nil {
-				abort(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
 			}
@@ -72,7 +72,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	rep, err := f.client.ListPath(common.NewSessionContext(ctx, f.token), path.Join(bucket, pth))
+	rep, err := f.client.ListPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth))
 	if err != nil {
 		return false, ""
 	}
@@ -90,7 +90,7 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	return f.client.PullPath(common.NewSessionContext(ctx, f.token), path.Join(bucket, pth), writer)
+	return f.client.PullPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth), writer)
 }
 
 func (f *bucketFileSystem) ValidHost() string {

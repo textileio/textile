@@ -4,6 +4,9 @@
 import * as jspb from "google-protobuf";
 
 export class Root extends jspb.Message {
+  getId(): string;
+  setId(value: string): void;
+
   getName(): string;
   setName(value: string): void;
 
@@ -28,6 +31,7 @@ export class Root extends jspb.Message {
 
 export namespace Root {
   export type AsObject = {
+    id: string,
     name: string,
     path: string,
     createdat: number,
@@ -83,6 +87,9 @@ export namespace ListPathReply {
   }
 
   export class Item extends jspb.Message {
+    getId(): string;
+    setId(value: string): void;
+
     getName(): string;
     setName(value: string): void;
 
@@ -112,6 +119,7 @@ export namespace ListPathReply {
 
   export namespace Item {
     export type AsObject = {
+      id: string,
       name: string,
       path: string,
       size: number,

@@ -310,10 +310,11 @@ proto.buckets.pb.Root.prototype.toObject = function(opt_includeInstance) {
  */
 proto.buckets.pb.Root.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    createdat: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    updatedat: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    path: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    createdat: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    updatedat: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -352,17 +353,21 @@ proto.buckets.pb.Root.deserializeBinaryFromReader = function(msg, reader) {
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setName(value);
+      msg.setId(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPath(value);
+      msg.setName(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPath(value);
+      break;
+    case 4:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setCreatedat(value);
       break;
-    case 4:
+    case 5:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setUpdatedat(value);
       break;
@@ -395,31 +400,38 @@ proto.buckets.pb.Root.prototype.serializeBinary = function() {
  */
 proto.buckets.pb.Root.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getName();
+  f = message.getId();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getPath();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
+  f = message.getPath();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
   f = message.getCreatedat();
   if (f !== 0) {
     writer.writeInt64(
-      3,
+      4,
       f
     );
   }
   f = message.getUpdatedat();
   if (f !== 0) {
     writer.writeInt64(
-      4,
+      5,
       f
     );
   }
@@ -427,10 +439,10 @@ proto.buckets.pb.Root.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional string name = 1;
+ * optional string ID = 1;
  * @return {string}
  */
-proto.buckets.pb.Root.prototype.getName = function() {
+proto.buckets.pb.Root.prototype.getId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -439,16 +451,16 @@ proto.buckets.pb.Root.prototype.getName = function() {
  * @param {string} value
  * @return {!proto.buckets.pb.Root} returns this
  */
-proto.buckets.pb.Root.prototype.setName = function(value) {
+proto.buckets.pb.Root.prototype.setId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string path = 2;
+ * optional string name = 2;
  * @return {string}
  */
-proto.buckets.pb.Root.prototype.getPath = function() {
+proto.buckets.pb.Root.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -457,34 +469,34 @@ proto.buckets.pb.Root.prototype.getPath = function() {
  * @param {string} value
  * @return {!proto.buckets.pb.Root} returns this
  */
-proto.buckets.pb.Root.prototype.setPath = function(value) {
+proto.buckets.pb.Root.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional int64 createdAt = 3;
+ * optional string path = 3;
+ * @return {string}
+ */
+proto.buckets.pb.Root.prototype.getPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.buckets.pb.Root} returns this
+ */
+proto.buckets.pb.Root.prototype.setPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional int64 createdAt = 4;
  * @return {number}
  */
 proto.buckets.pb.Root.prototype.getCreatedat = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.buckets.pb.Root} returns this
- */
-proto.buckets.pb.Root.prototype.setCreatedat = function(value) {
-  return jspb.Message.setProto3IntField(this, 3, value);
-};
-
-
-/**
- * optional int64 updatedAt = 4;
- * @return {number}
- */
-proto.buckets.pb.Root.prototype.getUpdatedat = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
@@ -493,8 +505,26 @@ proto.buckets.pb.Root.prototype.getUpdatedat = function() {
  * @param {number} value
  * @return {!proto.buckets.pb.Root} returns this
  */
-proto.buckets.pb.Root.prototype.setUpdatedat = function(value) {
+proto.buckets.pb.Root.prototype.setCreatedat = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional int64 updatedAt = 5;
+ * @return {number}
+ */
+proto.buckets.pb.Root.prototype.getUpdatedat = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.buckets.pb.Root} returns this
+ */
+proto.buckets.pb.Root.prototype.setUpdatedat = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
@@ -762,7 +792,7 @@ proto.buckets.pb.ListPathReply.serializeBinaryToWriter = function(message, write
  * @private {!Array<number>}
  * @const
  */
-proto.buckets.pb.ListPathReply.Item.repeatedFields_ = [5];
+proto.buckets.pb.ListPathReply.Item.repeatedFields_ = [6];
 
 
 
@@ -795,10 +825,11 @@ proto.buckets.pb.ListPathReply.Item.prototype.toObject = function(opt_includeIns
  */
 proto.buckets.pb.ListPathReply.Item.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    size: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    isdir: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    path: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    size: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    isdir: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
     itemsList: jspb.Message.toObjectList(msg.getItemsList(),
     proto.buckets.pb.ListPathReply.Item.toObject, includeInstance)
   };
@@ -839,21 +870,25 @@ proto.buckets.pb.ListPathReply.Item.deserializeBinaryFromReader = function(msg, 
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setName(value);
+      msg.setId(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPath(value);
+      msg.setName(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPath(value);
+      break;
+    case 4:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setSize(value);
       break;
-    case 4:
+    case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setIsdir(value);
       break;
-    case 5:
+    case 6:
       var value = new proto.buckets.pb.ListPathReply.Item;
       reader.readMessage(value,proto.buckets.pb.ListPathReply.Item.deserializeBinaryFromReader);
       msg.addItems(value);
@@ -887,38 +922,45 @@ proto.buckets.pb.ListPathReply.Item.prototype.serializeBinary = function() {
  */
 proto.buckets.pb.ListPathReply.Item.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getName();
+  f = message.getId();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getPath();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
+  f = message.getPath();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
   f = message.getSize();
   if (f !== 0) {
     writer.writeInt64(
-      3,
+      4,
       f
     );
   }
   f = message.getIsdir();
   if (f) {
     writer.writeBool(
-      4,
+      5,
       f
     );
   }
   f = message.getItemsList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
-      5,
+      6,
       f,
       proto.buckets.pb.ListPathReply.Item.serializeBinaryToWriter
     );
@@ -927,10 +969,10 @@ proto.buckets.pb.ListPathReply.Item.serializeBinaryToWriter = function(message, 
 
 
 /**
- * optional string name = 1;
+ * optional string ID = 1;
  * @return {string}
  */
-proto.buckets.pb.ListPathReply.Item.prototype.getName = function() {
+proto.buckets.pb.ListPathReply.Item.prototype.getId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -939,16 +981,16 @@ proto.buckets.pb.ListPathReply.Item.prototype.getName = function() {
  * @param {string} value
  * @return {!proto.buckets.pb.ListPathReply.Item} returns this
  */
-proto.buckets.pb.ListPathReply.Item.prototype.setName = function(value) {
+proto.buckets.pb.ListPathReply.Item.prototype.setId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string path = 2;
+ * optional string name = 2;
  * @return {string}
  */
-proto.buckets.pb.ListPathReply.Item.prototype.getPath = function() {
+proto.buckets.pb.ListPathReply.Item.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -957,17 +999,35 @@ proto.buckets.pb.ListPathReply.Item.prototype.getPath = function() {
  * @param {string} value
  * @return {!proto.buckets.pb.ListPathReply.Item} returns this
  */
-proto.buckets.pb.ListPathReply.Item.prototype.setPath = function(value) {
+proto.buckets.pb.ListPathReply.Item.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional int64 size = 3;
+ * optional string path = 3;
+ * @return {string}
+ */
+proto.buckets.pb.ListPathReply.Item.prototype.getPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.buckets.pb.ListPathReply.Item} returns this
+ */
+proto.buckets.pb.ListPathReply.Item.prototype.setPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional int64 size = 4;
  * @return {number}
  */
 proto.buckets.pb.ListPathReply.Item.prototype.getSize = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
 
@@ -976,16 +1036,16 @@ proto.buckets.pb.ListPathReply.Item.prototype.getSize = function() {
  * @return {!proto.buckets.pb.ListPathReply.Item} returns this
  */
 proto.buckets.pb.ListPathReply.Item.prototype.setSize = function(value) {
-  return jspb.Message.setProto3IntField(this, 3, value);
+  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 
 /**
- * optional bool isDir = 4;
+ * optional bool isDir = 5;
  * @return {boolean}
  */
 proto.buckets.pb.ListPathReply.Item.prototype.getIsdir = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
 };
 
 
@@ -994,17 +1054,17 @@ proto.buckets.pb.ListPathReply.Item.prototype.getIsdir = function() {
  * @return {!proto.buckets.pb.ListPathReply.Item} returns this
  */
 proto.buckets.pb.ListPathReply.Item.prototype.setIsdir = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 4, value);
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 
 /**
- * repeated Item items = 5;
+ * repeated Item items = 6;
  * @return {!Array<!proto.buckets.pb.ListPathReply.Item>}
  */
 proto.buckets.pb.ListPathReply.Item.prototype.getItemsList = function() {
   return /** @type{!Array<!proto.buckets.pb.ListPathReply.Item>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.buckets.pb.ListPathReply.Item, 5));
+    jspb.Message.getRepeatedWrapperField(this, proto.buckets.pb.ListPathReply.Item, 6));
 };
 
 
@@ -1013,7 +1073,7 @@ proto.buckets.pb.ListPathReply.Item.prototype.getItemsList = function() {
  * @return {!proto.buckets.pb.ListPathReply.Item} returns this
 */
 proto.buckets.pb.ListPathReply.Item.prototype.setItemsList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 5, value);
+  return jspb.Message.setRepeatedWrapperField(this, 6, value);
 };
 
 
@@ -1023,7 +1083,7 @@ proto.buckets.pb.ListPathReply.Item.prototype.setItemsList = function(value) {
  * @return {!proto.buckets.pb.ListPathReply.Item}
  */
 proto.buckets.pb.ListPathReply.Item.prototype.addItems = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 5, opt_value, proto.buckets.pb.ListPathReply.Item, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 6, opt_value, proto.buckets.pb.ListPathReply.Item, opt_index);
 };
 
 

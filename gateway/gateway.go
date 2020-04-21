@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/textileio/textile/api/buckets"
+
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -21,19 +23,25 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
+	threadsclient "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
+	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
-	buckets "github.com/textileio/textile/api/buckets/client"
+	bucketsclient "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
-	hub "github.com/textileio/textile/api/hub/client"
 	"github.com/textileio/textile/collections"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 )
 
+var log = logger.Logger("gateway")
+
 const handlerTimeout = time.Second * 10
 
-var log = logger.Logger("gateway")
+func init() {
+	gin.SetMode(gin.ReleaseMode)
+}
 
 // fileSystem extends the binary asset file system with Exists,
 // enabling its use with the static middleware.
@@ -56,15 +64,15 @@ type Gateway struct {
 	addr         ma.Multiaddr
 	bucketDomain string
 	server       *http.Server
-	collections  *collections.Collections // @todo: Remove in favor of the client
-	hub          *hub.Client
-	buckets      *buckets.Client
-	token        string
+	collections  *collections.Collections
+	buckets      *bucketsclient.Client
+	threads      *threadsclient.Client
+	session      string
 	sessionBus   *broadcast.Broadcaster
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, collections *collections.Collections, sessionBus *broadcast.Broadcaster, debug bool) (*Gateway, error) {
+func NewGateway(addr, apiAddr ma.Multiaddr, session, bucketDomain string, collections *collections.Collections, sessionBus *broadcast.Broadcaster, debug bool) (*Gateway, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"gateway": logging.LevelDebug,
@@ -77,16 +85,15 @@ func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, colle
 	if err != nil {
 		return nil, err
 	}
-
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithPerRPCCredentials(common.Credentials{}),
 	}
-	cc, err := hub.NewClient(apiTarget, opts...)
+	tc, err := threadsclient.NewClient(apiTarget, opts...)
 	if err != nil {
 		return nil, err
 	}
-	bc, err := buckets.NewClient(apiTarget, opts...)
+	bc, err := bucketsclient.NewClient(apiTarget, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +101,9 @@ func NewGateway(addr, apiAddr ma.Multiaddr, apiToken, bucketDomain string, colle
 		addr:         addr,
 		bucketDomain: bucketDomain,
 		collections:  collections,
-		hub:          cc,
+		threads:      tc,
 		buckets:      bc,
-		token:        apiToken,
+		session:      session,
 		sessionBus:   sessionBus,
 	}, nil
 }
@@ -107,14 +114,7 @@ func (g *Gateway) Start() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
-	router.Use(location.Default())
-
-	// @todo: Config based headers
-	options := cors.Options{}
-	router.Use(gincors.New(options))
 
 	temp, err := loadTemplate()
 	if err != nil {
@@ -122,29 +122,30 @@ func (g *Gateway) Start() {
 	}
 	router.SetHTMLTemplate(temp)
 
+	router.Use(location.Default())
 	router.Use(static.Serve("", &fileSystem{Assets}))
-
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
-		token:   g.token,
+		session: g.session,
 		timeout: handlerTimeout,
 		host:    g.bucketDomain,
 	}))
+	router.Use(gincors.New(cors.Options{}))
 
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("", g.bucketHandler)
-
-	router.GET("/dashboard/:project", g.dashHandler)
-	router.GET("/dashboard/:project/*path", g.dashHandler)
-
+	router.GET("", g.renderBucketHandler)
+	router.GET("/thread/:thread/:collection", g.bucketsHandler)
+	router.GET("/thread/:thread/:collection/:id", g.bucketHandler)
+	router.GET("/thread/:thread/:collection/:id/*path", g.bucketHandler)
+	router.GET("/dashboard/:name", g.dashHandler)
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
 	router.NoRoute(func(c *gin.Context) {
-		g.render404(c)
+		render404(c)
 	})
 
 	g.server = &http.Server{
@@ -166,11 +167,6 @@ func (g *Gateway) Addr() string {
 	return g.server.Addr
 }
 
-// APIToken returns the gateway's internal API token.
-func (g *Gateway) APIToken() string {
-	return g.token
-}
-
 // Stop the gateway.
 func (g *Gateway) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -178,7 +174,7 @@ func (g *Gateway) Stop() error {
 	if err := g.server.Shutdown(ctx); err != nil {
 		return err
 	}
-	if err := g.hub.Close(); err != nil {
+	if err := g.threads.Close(); err != nil {
 		return err
 	}
 	if err := g.buckets.Close(); err != nil {
@@ -187,21 +183,19 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// bucketHandler renders a bucket as a website.
-func (g *Gateway) bucketHandler(c *gin.Context) {
-	log.Debugf("host: %s", c.Request.Host)
-
+// renderBucketHandler renders a bucket as a website.
+func (g *Gateway) renderBucketHandler(c *gin.Context) {
 	buckName, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
-		abort(c, http.StatusBadRequest, err)
+		renderError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.token), handlerTimeout)
+	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
 	rep, err := g.buckets.ListPath(ctx, buckName)
 	if err != nil {
-		abort(c, http.StatusInternalServerError, err)
+		renderError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -211,84 +205,166 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 			c.Writer.Header().Set("Content-Type", "text/html")
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
 			if err := g.buckets.PullPath(ctx, pth, c.Writer); err != nil {
-				abort(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			}
 			return
 		}
 	}
 
 	// No index was found, use the default (404 for now)
-	g.render404(c)
+	render404(c)
 }
 
 type link struct {
+	ID    string
 	Name  string
 	Path  string
 	Size  string
 	Links string
 }
 
-// dashHandler renders a project dashboard.
-// Currently, this just shows bucket files and directories.
+// dashHandler renders a dev or org dashboard.
 func (g *Gateway) dashHandler(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.token), handlerTimeout)
+	render404(c)
+}
+
+// bucketsHandler render buckets in a thread.
+func (g *Gateway) bucketsHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
 
-	project := c.Param("project")
-	rep, err := g.buckets.ListPath(ctx, c.Param("path"))
+	threadID, err := thread.Decode(c.Param("thread"))
 	if err != nil {
-		abort(c, http.StatusNotFound, fmt.Errorf("project not found"))
+		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
 		return
 	}
+	ctx = common.NewThreadIDContext(ctx, threadID)
+	token := thread.Token(c.Query("token"))
+	if token.Defined() {
+		ctx = thread.NewTokenContext(ctx, token)
+	}
 
-	if !rep.Item.IsDir {
-		if err := g.buckets.PullPath(ctx, c.Param("path"), c.Writer); err != nil {
-			abort(c, http.StatusInternalServerError, err)
+	collection := c.Param("collection")
+	switch collection {
+	case "buckets":
+		rep, err := g.buckets.ListPath(ctx, "")
+		if err != nil {
+			renderError(c, http.StatusBadRequest, err)
+			return
 		}
-	} else {
-		projectPath := path.Join("dashboard", project)
-
 		links := make([]link, len(rep.Item.Items))
 		for i, item := range rep.Item.Items {
 			var pth string
 			if rep.Root != nil {
-				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
+				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.ID, 1)
 			} else {
-				pth = item.Name
+				pth = item.ID
 			}
-
 			links[i] = link{
+				ID:    item.ID,
 				Name:  item.Name,
-				Path:  path.Join(projectPath, pth),
+				Path:  path.Join("thread", threadID.String(), "buckets", pth),
 				Size:  byteCountDecimal(item.Size),
 				Links: strconv.Itoa(len(item.Items)),
 			}
 		}
-
-		var root, back string
-		if rep.Root != nil {
-			root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
-		} else {
-			root = ""
-		}
-		if root == "" {
-			back = projectPath
-		} else {
-			back = path.Dir(path.Join(projectPath, root))
-		}
 		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
 			"Path":  rep.Item.Path,
-			"Root":  root,
-			"Back":  back,
+			"Root":  "",
+			"Back":  "",
 			"Links": links,
 		})
+	default:
+		var dummy interface{}
+		res, err := g.threads.Find(ctx, threadID, collection, &db.Query{}, dummy, db.WithTxnToken(token))
+		if err != nil {
+			renderError(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// bucketHandler render the standard bucket UI.
+func (g *Gateway) bucketHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
+	defer cancel()
+
+	threadID, err := thread.Decode(c.Param("thread"))
+	if err != nil {
+		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
+		return
+	}
+	ctx = common.NewThreadIDContext(ctx, threadID)
+	token := thread.Token(c.Query("token"))
+	if token.Defined() {
+		ctx = thread.NewTokenContext(ctx, token)
+	}
+
+	collection := c.Param("collection")
+	switch collection {
+	case "buckets":
+		var buck buckets.Bucket
+		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &buck, db.WithTxnToken(token)); err != nil {
+			render404(c)
+			return
+		}
+		bpth := path.Join(buck.Name, c.Param("path"))
+		rep, err := g.buckets.ListPath(ctx, bpth)
+		if err != nil {
+			render404(c)
+			return
+		}
+		if !rep.Item.IsDir {
+			if err := g.buckets.PullPath(ctx, bpth, c.Writer); err != nil {
+				renderError(c, http.StatusInternalServerError, err)
+			}
+		} else {
+			base := path.Join("thread", threadID.String(), collection)
+			links := make([]link, len(rep.Item.Items))
+			for i, item := range rep.Item.Items {
+				var pth string
+				if rep.Root != nil {
+					pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.ID, 1)
+				} else {
+					pth = item.ID
+				}
+				links[i] = link{
+					ID:    item.ID,
+					Name:  item.Name,
+					Path:  path.Join(base, pth),
+					Size:  byteCountDecimal(item.Size),
+					Links: strconv.Itoa(len(item.Items)),
+				}
+			}
+			var root, back string
+			if rep.Root != nil {
+				root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
+				back = path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.ID, 1)))
+			} else {
+				back = path.Join(base, buck.ID)
+			}
+			c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
+				"Path":  rep.Item.Path,
+				"Root":  root,
+				"Back":  back,
+				"Links": links,
+			})
+		}
+	default:
+		var res interface{}
+		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &res, db.WithTxnToken(token)); err != nil {
+			render404(c)
+			return
+		}
+		c.JSON(http.StatusOK, res)
 	}
 }
 
 // confirmEmail verifies an emailed secret.
 func (g *Gateway) confirmEmail(c *gin.Context) {
 	if err := g.sessionBus.Send(c.Param("secret")); err != nil {
-		g.renderError(c, http.StatusInternalServerError, err)
+		renderError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.HTML(http.StatusOK, "/public/html/confirm.gohtml", nil)
@@ -303,18 +379,18 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	invite, err := g.collections.Invites.Get(ctx, c.Param("invite"))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			g.render404(c)
+			render404(c)
 		} else {
-			g.renderError(c, http.StatusInternalServerError, err)
+			renderError(c, http.StatusInternalServerError, err)
 		}
 		return
 	}
 	if !invite.Accepted {
 		if time.Now().After(invite.ExpiresAt) {
 			if err := g.collections.Invites.Delete(ctx, invite.Token); err != nil {
-				g.renderError(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			} else {
-				g.renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
+				renderError(c, http.StatusPreconditionFailed, fmt.Errorf("this invitation has expired"))
 			}
 			return
 		}
@@ -323,10 +399,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				if err := g.collections.Invites.Accept(ctx, invite.Token); err != nil {
-					g.renderError(c, http.StatusInternalServerError, err)
+					renderError(c, http.StatusInternalServerError, err)
 				}
 			} else {
-				g.renderError(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 				return
 			}
 		}
@@ -338,18 +414,18 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			}); err != nil {
 				if err == mongo.ErrNoDocuments {
 					if err := g.collections.Invites.Delete(ctx, invite.Token); err != nil {
-						g.renderError(c, http.StatusInternalServerError, err)
+						renderError(c, http.StatusInternalServerError, err)
 
 					} else {
-						g.renderError(c, http.StatusNotFound, fmt.Errorf("org not found"))
+						renderError(c, http.StatusNotFound, fmt.Errorf("org not found"))
 					}
 				} else {
-					g.renderError(c, http.StatusInternalServerError, err)
+					renderError(c, http.StatusInternalServerError, err)
 				}
 				return
 			}
 			if err = g.collections.Invites.Delete(ctx, invite.Token); err != nil {
-				g.renderError(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 				return
 			}
 		}
@@ -362,22 +438,15 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 }
 
 // render404 renders the 404 template.
-func (g *Gateway) render404(c *gin.Context) {
+func render404(c *gin.Context) {
 	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
 }
 
 // renderError renders the error template.
-func (g *Gateway) renderError(c *gin.Context, code int, err error) {
+func renderError(c *gin.Context, code int, err error) {
 	c.HTML(code, "/public/html/error.gohtml", gin.H{
 		"Code":  code,
 		"Error": formatError(err),
-	})
-}
-
-// abort the request with code and error.
-func abort(c *gin.Context, code int, err error) {
-	c.AbortWithStatusJSON(code, gin.H{
-		"error": err.Error(),
 	})
 }
 

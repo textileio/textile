@@ -7,10 +7,11 @@ option java_outer_classname = "TextileBuckets";
 option objc_class_prefix = "TXTL_BUCKETS";
 
 message Root {
-    string name = 1;
-    string path = 2;
-    int64 createdAt = 3;
-    int64 updatedAt = 4;
+    string ID = 1;
+    string name = 2;
+    string path = 3;
+    int64 createdAt = 4;
+    int64 updatedAt = 5;
 }
 
 message ListPathRequest {
@@ -22,11 +23,12 @@ message ListPathReply {
     Root root = 2;
 
     message Item {
-        string name = 1;
-        string path = 2;
-        int64 size = 3;
-        bool isDir = 4;
-        repeated Item items = 5;
+        string ID = 1;
+        string name = 2;
+        string path = 3;
+        int64 size = 4;
+        bool isDir = 5;
+        repeated Item items = 6;
     }
 }
 

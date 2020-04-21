@@ -16,7 +16,6 @@ import (
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/util"
 )
 
 var (
@@ -71,11 +70,7 @@ Existing configs will not be overwritten.
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		name, ok := util.ToValidName(filepath.Base(root))
-		if !ok {
-			cmd.Fatal(fmt.Errorf("name '%s' is not available", root))
-		}
-		configViper.Set("name", name)
+		configViper.Set("name", filepath.Base(root))
 
 		dir := filepath.Join(root, ".textile")
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -249,6 +244,9 @@ These 'push' commands result in the following bucket structures.
 					cmd.Fatal(err)
 				}
 				if !info.IsDir() {
+					if strings.HasSuffix(n, ".DS_Store") {
+						return nil
+					}
 					names = append(names, n)
 					var p string
 					if n == a { // This is a file given as an arg

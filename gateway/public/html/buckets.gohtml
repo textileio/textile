@@ -1,7 +1,9 @@
 {{template "header" "Bucket"}}
 <div class="title"><span class="yellow">/{{.Root}}</span>: {{.Path}}</div>
 <ul>
-    <li><a href="/{{.Back}}">..</a></li>
+    {{ if ne .Back "" }}
+        <li><a href="/{{.Back}}">..</a></li>
+    {{ end }}
     {{range .Links}}
         <li><a href="/{{.Path}}">{{.Name}}<span class="right">{{.Size}}</span></a></li>
     {{end}}

@@ -5,6 +5,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
@@ -62,7 +63,12 @@ var initCmd = &cobra.Command{
 		res, err := hub.Signup(ctx, username, email)
 		s.Stop()
 		if err != nil {
-			cmd.Fatal(err)
+			if strings.Contains(err.Error(), "Account exists") {
+				cmd.Fatal(fmt.Errorf("an account with email %s already exists, use `textile login` instead", email))
+			} else {
+				cmd.Fatal(err)
+			}
+			return
 		}
 
 		authViper.Set("session", res.Session)
