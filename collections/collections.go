@@ -15,10 +15,9 @@ type ctxKey string
 type Collections struct {
 	m *mongo.Client
 
-	Sessions   *Sessions
-	Developers *Developers
-	Orgs       *Orgs
-	Invites    *Invites
+	Sessions *Sessions
+	Accounts *Accounts
+	Invites  *Invites
 
 	Threads *Threads
 	Keys    *Keys
@@ -38,11 +37,7 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 	if err != nil {
 		return nil, err
 	}
-	developers, err := NewDevelopers(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	teams, err := NewOrgs(ctx, db)
+	accounts, err := NewAccounts(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +61,9 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 	return &Collections{
 		m: m,
 
-		Sessions:   sessions,
-		Developers: developers,
-		Orgs:       teams,
-		Invites:    invites,
+		Sessions: sessions,
+		Accounts: accounts,
+		Invites:  invites,
 
 		Threads: threads,
 		Keys:    keys,

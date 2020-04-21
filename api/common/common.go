@@ -200,7 +200,7 @@ func ThreadIDFromMD(ctx context.Context) (id thread.ID, ok bool) {
 
 // NewThreadNameContext adds a thread name to a context,
 // which is used to name threads and dbs during creation.
-// Note: Thread names may be useful for some app logic, but are not required.
+// Thread names may be useful for some app logic, but are not required.
 func NewThreadNameContext(ctx context.Context, name string) context.Context {
 	if name == "" {
 		return ctx

@@ -2,6 +2,8 @@ package collections
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
@@ -11,6 +13,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var (
+	threadNameRx *regexp.Regexp
+
+	ErrInvalidThreadName = fmt.Errorf("name may only contain alphanumeric characters or non-consecutive hyphens, and cannot begin or end with a hyphen")
+)
+
+func init() {
+	threadNameRx = regexp.MustCompile(`^[A-Za-z0-9]+(?:[-][A-Za-z0-9]+)*$`)
+}
 
 type Thread struct {
 	ID    thread.ID
@@ -27,8 +39,10 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 	d := &Threads{col: db.Collection("threads")}
 	_, err := d.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys:    bson.D{{"_id.owner", 1}, {"name", 1}},
-			Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.D{{"name", bson.M{"$exists": 1}}}),
+			Keys: bson.D{{"_id.owner", 1}, {"name", 1}},
+			Options: options.Index().SetUnique(true).
+				SetPartialFilterExpression(bson.D{{"name", bson.M{"$exists": 1}}}).
+				SetCollation(&options.Collation{Locale: "en", Strength: 2}),
 		},
 		{
 			Keys: bson.D{{"key_id", 1}},
@@ -39,6 +53,9 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 
 func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey) (*Thread, error) {
 	name, _ := common.ThreadNameFromContext(ctx)
+	if name != "" && !threadNameRx.MatchString(name) {
+		return nil, ErrInvalidThreadName
+	}
 	key, _ := common.APIKeyFromContext(ctx)
 	doc := &Thread{
 		ID:    id,

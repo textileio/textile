@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/gin-gonic/gin"
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
@@ -32,7 +34,7 @@ type bucketFileSystem struct {
 // serveBucket returns a middleware handler that serves files in a bucket.
 func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
+		_, bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
 		if err != nil {
 			return
 		}
@@ -97,11 +99,14 @@ func (f *bucketFileSystem) ValidHost() string {
 	return f.host
 }
 
-func bucketFromHost(host, valid string) (buck string, err error) {
+func bucketFromHost(host, valid string) (id thread.ID, slug string, err error) {
 	parts := strings.SplitN(host, ".", 2)
 	if parts[len(parts)-1] != valid {
 		err = fmt.Errorf("invalid bucket host")
 		return
 	}
-	return parts[0], nil
+	slug = parts[0]
+	parts = strings.Split(slug, "-")
+	id, err = thread.Decode(parts[len(parts)-1])
+	return
 }

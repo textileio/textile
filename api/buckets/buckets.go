@@ -22,7 +22,8 @@ var (
 		Path:   "name",
 		Unique: true,
 	}, {
-		Path: "slug",
+		Path:   "slug",
+		Unique: true,
 	}, {
 		Path: "path",
 	}}
@@ -57,7 +58,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 	}
 	bucket := &Bucket{
 		Name:      name,
-		Slug:      strings.Join([]string{slg, util.MakeToken(8)}, "-"),
+		Slug:      strings.Join([]string{slg, dbID.String()}, "-"),
 		Path:      pth.String(),
 		CreatedAt: time.Now().UnixNano(),
 		UpdatedAt: time.Now().UnixNano(),

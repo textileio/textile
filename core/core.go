@@ -337,7 +337,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 		ctx = c.NewSessionContext(ctx, session)
 
-		dev, err := t.co.Developers.Get(ctx, session.Owner)
+		dev, err := t.co.Accounts.Get(ctx, session.Owner)
 		if err != nil {
 			return nil, status.Error(codes.NotFound, "User not found")
 		}
@@ -345,14 +345,14 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 
 		orgSlug, ok := common.OrgSlugFromMD(ctx)
 		if ok {
-			isMember, err := t.co.Orgs.IsMember(ctx, orgSlug, dev.Key)
+			isMember, err := t.co.Accounts.IsMember(ctx, orgSlug, dev.Key)
 			if err != nil {
 				return nil, err
 			}
 			if !isMember {
 				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
 			} else {
-				org, err := t.co.Orgs.Get(ctx, orgSlug)
+				org, err := t.co.Accounts.GetByUsername(ctx, orgSlug)
 				if err != nil {
 					return nil, status.Error(codes.NotFound, "Org not found")
 				}
@@ -391,7 +391,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		} else if k, ok := common.APIKeyFromContext(ctx); ok {
 			key, err := t.co.Keys.Get(ctx, k)
 			if err != nil || !key.Valid {
-				return nil, status.Error(codes.NotFound, "APi key not found or is invalid")
+				return nil, status.Error(codes.NotFound, "API key not found or is invalid")
 			}
 			if !common.ValidateAPISigContext(ctx, key.Secret) {
 				return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
@@ -412,6 +412,9 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				isUser = true
 			}
 			if getService(method) == "users.pb.API" {
+				if owner == nil {
+					return nil, status.Error(codes.Unauthenticated, "Token required")
+				}
 				user, err := t.co.Users.Get(ctx, owner)
 				if err != nil {
 					return nil, status.Error(codes.NotFound, "User not found")

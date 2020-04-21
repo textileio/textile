@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/textile/api/buckets"
-
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -28,6 +26,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api/buckets"
 	bucketsclient "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/collections"
@@ -185,7 +184,7 @@ func (g *Gateway) Stop() error {
 
 // renderBucketHandler renders a bucket as a website.
 func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	buckName, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	threadID, slug, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
 		renderError(c, http.StatusBadRequest, err)
 		return
@@ -193,12 +192,30 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
-	rep, err := g.buckets.ListPath(ctx, buckName)
+	ctx = common.NewThreadIDContext(ctx, threadID)
+	token := thread.Token(c.Query("token"))
+	if token.Defined() {
+		ctx = thread.NewTokenContext(ctx, token)
+	}
+
+	query := db.Where("slug").Eq(slug)
+	res, err := g.threads.Find(ctx, threadID, "buckets", query, &buckets.Bucket{}, db.WithTxnToken(token))
 	if err != nil {
 		renderError(c, http.StatusInternalServerError, err)
 		return
 	}
+	bucks := res.([]*buckets.Bucket)
+	if len(bucks) == 0 {
+		render404(c)
+		return
+	}
+	buck := bucks[0]
 
+	rep, err := g.buckets.ListPath(ctx, buck.Name)
+	if err != nil {
+		renderError(c, http.StatusInternalServerError, err)
+		return
+	}
 	for _, item := range rep.Item.Items {
 		if item.Name == "index.html" {
 			c.Writer.WriteHeader(http.StatusOK)
@@ -210,8 +227,6 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 			return
 		}
 	}
-
-	// No index was found, use the default (404 for now)
 	render404(c)
 }
 
@@ -230,9 +245,10 @@ func (g *Gateway) dashHandler(c *gin.Context) {
 
 // bucketsHandler render buckets in a thread.
 func (g *Gateway) bucketsHandler(c *gin.Context) {
+	collection := c.Param("collection")
+
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
-
 	threadID, err := thread.Decode(c.Param("thread"))
 	if err != nil {
 		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
@@ -244,7 +260,6 @@ func (g *Gateway) bucketsHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	collection := c.Param("collection")
 	switch collection {
 	case "buckets":
 		rep, err := g.buckets.ListPath(ctx, "")
@@ -287,9 +302,14 @@ func (g *Gateway) bucketsHandler(c *gin.Context) {
 
 // bucketHandler render the standard bucket UI.
 func (g *Gateway) bucketHandler(c *gin.Context) {
+	collection := c.Param("collection")
+	if collection != "buckets" && c.Param("path") != "" {
+		render404(c)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
-
 	threadID, err := thread.Decode(c.Param("thread"))
 	if err != nil {
 		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
@@ -301,7 +321,6 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	collection := c.Param("collection")
 	switch collection {
 	case "buckets":
 		var buck buckets.Bucket
@@ -395,7 +414,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			return
 		}
 
-		dev, err := g.collections.Developers.GetByUsernameOrEmail(ctx, invite.EmailTo)
+		dev, err := g.collections.Accounts.GetByUsernameOrEmail(ctx, invite.EmailTo)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				if err := g.collections.Invites.Accept(ctx, invite.Token); err != nil {
@@ -407,7 +426,7 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			}
 		}
 		if dev != nil {
-			if err := g.collections.Orgs.AddMember(ctx, invite.Org, collections.Member{
+			if err := g.collections.Accounts.AddMember(ctx, invite.Org, collections.Member{
 				Key:      dev.Key,
 				Username: dev.Username,
 				Role:     collections.OrgMember,

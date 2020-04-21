@@ -91,6 +91,8 @@ func TestClient_ListThreads(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	require.Nil(t, err)
 
 	t.Run("with key, without token", func(t *testing.T) {
 		_, err := client.ListThreads(ctx)
@@ -132,6 +134,8 @@ func TestBuckets(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	require.Nil(t, err)
 
 	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
@@ -139,7 +143,7 @@ func TestBuckets(t *testing.T) {
 	require.Nil(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
 
-	ctx = common.NewThreadNameContext(ctx, "my bucket")
+	ctx = common.NewThreadNameContext(ctx, "my-buckets")
 	dbID := thread.NewIDV1(thread.Raw, 32)
 	err = threads.NewDB(ctx, dbID)
 	require.Nil(t, err)
