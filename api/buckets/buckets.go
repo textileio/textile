@@ -34,7 +34,7 @@ type Bucket struct {
 	Name      string `json:"name"`
 	Slug      string `json:"slug"`
 	Path      string `json:"path"`
-	DNSRecord string `json:"dns_record"`
+	DNSRecord string `json:"dns_record,omitempty"`
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 }
