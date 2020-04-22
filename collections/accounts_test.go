@@ -13,7 +13,6 @@ import (
 )
 
 func TestAccounts_CreateDev(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -42,7 +41,6 @@ func TestAccounts_CreateDev(t *testing.T) {
 }
 
 func TestAccounts_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -56,7 +54,6 @@ func TestAccounts_Get(t *testing.T) {
 }
 
 func TestAccounts_GetByUsernameOrEmail(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -77,7 +74,6 @@ func TestAccounts_GetByUsernameOrEmail(t *testing.T) {
 }
 
 func TestAccounts_ValidateUsername(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -105,7 +101,6 @@ func TestAccounts_ValidateUsername(t *testing.T) {
 }
 
 func TestAccounts_IsUsernameAvailable(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -121,7 +116,6 @@ func TestAccounts_IsUsernameAvailable(t *testing.T) {
 }
 
 func TestAccounts_SetToken(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -142,7 +136,6 @@ func TestAccounts_SetToken(t *testing.T) {
 }
 
 func TestAccounts_ListMembers(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -160,7 +153,6 @@ func TestAccounts_ListMembers(t *testing.T) {
 }
 
 func TestAccounts_Delete(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -175,7 +167,6 @@ func TestAccounts_Delete(t *testing.T) {
 }
 
 func TestAccounts_CreateOrg(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -208,7 +199,6 @@ func TestAccounts_CreateOrg(t *testing.T) {
 }
 
 func TestAccounts_GetByUsername(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -228,7 +218,6 @@ func TestAccounts_GetByUsername(t *testing.T) {
 }
 
 func TestAccounts_IsNameAvailable(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -252,7 +241,6 @@ func TestAccounts_IsNameAvailable(t *testing.T) {
 }
 
 func TestAccounts_List(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -273,7 +261,6 @@ func TestAccounts_List(t *testing.T) {
 }
 
 func TestAccounts_IsOwner(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -305,7 +292,6 @@ func TestAccounts_IsOwner(t *testing.T) {
 }
 
 func TestAccounts_IsMember(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -339,7 +325,6 @@ func TestAccounts_IsMember(t *testing.T) {
 }
 
 func TestAccounts_AddMember(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -374,7 +359,6 @@ func TestAccounts_AddMember(t *testing.T) {
 }
 
 func TestAccounts_RemoveMember(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)

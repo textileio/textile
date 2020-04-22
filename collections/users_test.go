@@ -12,7 +12,6 @@ import (
 )
 
 func TestUsers_GetOrCreate(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 
 	col, err := NewUsers(context.Background(), db)
@@ -27,7 +26,6 @@ func TestUsers_GetOrCreate(t *testing.T) {
 }
 
 func TestUsers_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 
 	col, err := NewUsers(context.Background(), db)
@@ -43,7 +41,6 @@ func TestUsers_Get(t *testing.T) {
 }
 
 func TestUsers_Delete(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 
 	col, err := NewUsers(context.Background(), db)

@@ -12,7 +12,6 @@ import (
 )
 
 func TestKeys_Create(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewKeys(context.Background(), db)
 	require.Nil(t, err)
@@ -25,7 +24,6 @@ func TestKeys_Create(t *testing.T) {
 }
 
 func TestKeys_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewKeys(context.Background(), db)
 	require.Nil(t, err)
@@ -41,7 +39,6 @@ func TestKeys_Get(t *testing.T) {
 }
 
 func TestKeys_List(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewKeys(context.Background(), db)
 	require.Nil(t, err)
@@ -65,7 +62,6 @@ func TestKeys_List(t *testing.T) {
 }
 
 func TestKeys_Invalidate(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewKeys(context.Background(), db)
 	require.Nil(t, err)

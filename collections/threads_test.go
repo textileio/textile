@@ -15,7 +15,6 @@ import (
 )
 
 func TestThreads_Create(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -38,7 +37,6 @@ func TestThreads_Create(t *testing.T) {
 }
 
 func TestThreads_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -56,7 +54,6 @@ func TestThreads_Get(t *testing.T) {
 }
 
 func TestThreads_GetByName(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -74,7 +71,6 @@ func TestThreads_GetByName(t *testing.T) {
 }
 
 func TestThreads_List(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -99,7 +95,6 @@ func TestThreads_List(t *testing.T) {
 }
 
 func TestThreads_ListByKey(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -127,7 +122,6 @@ func TestThreads_ListByKey(t *testing.T) {
 }
 
 func TestThreads_Delete(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)

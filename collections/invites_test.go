@@ -13,7 +13,6 @@ import (
 )
 
 func TestInvites_Create(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
@@ -26,7 +25,6 @@ func TestInvites_Create(t *testing.T) {
 }
 
 func TestInvites_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
@@ -42,7 +40,6 @@ func TestInvites_Get(t *testing.T) {
 }
 
 func TestInvites_List(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
@@ -63,7 +60,6 @@ func TestInvites_List(t *testing.T) {
 }
 
 func TestInvites_Accept(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
@@ -82,7 +78,6 @@ func TestInvites_Accept(t *testing.T) {
 }
 
 func TestInvites_Delete(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)

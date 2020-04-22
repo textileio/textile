@@ -13,7 +13,6 @@ import (
 )
 
 func TestSessions_Create(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewSessions(context.Background(), db)
 	require.Nil(t, err)
@@ -26,7 +25,6 @@ func TestSessions_Create(t *testing.T) {
 }
 
 func TestSessions_Get(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewSessions(context.Background(), db)
 	require.Nil(t, err)
@@ -42,7 +40,6 @@ func TestSessions_Get(t *testing.T) {
 }
 
 func TestSessions_Touch(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewSessions(context.Background(), db)
 	require.Nil(t, err)
@@ -60,7 +57,6 @@ func TestSessions_Touch(t *testing.T) {
 }
 
 func TestSessions_Delete(t *testing.T) {
-	t.Parallel()
 	db := newDB(t)
 	col, err := NewSessions(context.Background(), db)
 	require.Nil(t, err)
