@@ -55,7 +55,7 @@ var (
 		},
 		"addrGatewayBucketDomain": {
 			Key:      "addr.gateway.bucket_domain",
-			DefValue: "textile.cafe",
+			DefValue: "textile.space",
 		},
 		"addrIpfsApi": {
 			Key:      "addr.ipfs.api",

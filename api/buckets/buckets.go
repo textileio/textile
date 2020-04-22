@@ -57,12 +57,13 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 	if !ok {
 		return nil, fmt.Errorf("name '%s' is not available", name)
 	}
+	now := time.Now().UnixNano()
 	bucket := &Bucket{
 		Name:      name,
 		Slug:      strings.Join([]string{slg, dbID.String()}, "-"),
 		Path:      pth.String(),
-		CreatedAt: time.Now().UnixNano(),
-		UpdatedAt: time.Now().UnixNano(),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	ids, err := b.Threads.Create(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 	if err != nil {

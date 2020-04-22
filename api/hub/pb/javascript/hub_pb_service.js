@@ -37,13 +37,13 @@ API.Signout = {
   responseType: hub_pb.SignoutReply
 };
 
-API.GetSession = {
-  methodName: "GetSession",
+API.GetSessionInfo = {
+  methodName: "GetSessionInfo",
   service: API,
   requestStream: false,
   responseStream: false,
-  requestType: hub_pb.GetSessionRequest,
-  responseType: hub_pb.GetSessionReply
+  requestType: hub_pb.GetSessionInfoRequest,
+  responseType: hub_pb.GetSessionInfoReply
 };
 
 API.GetThread = {
@@ -263,11 +263,11 @@ APIClient.prototype.signout = function signout(requestMessage, metadata, callbac
   };
 };
 
-APIClient.prototype.getSession = function getSession(requestMessage, metadata, callback) {
+APIClient.prototype.getSessionInfo = function getSessionInfo(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
-  var client = grpc.unary(API.GetSession, {
+  var client = grpc.unary(API.GetSessionInfo, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

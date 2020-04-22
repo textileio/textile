@@ -432,11 +432,9 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member cry
 			Owners int `bson:"members"`
 		}
 		var r res
-		for cursor.Next(ctx) {
-			if err := cursor.Decode(&r); err != nil {
-				return err
-			}
-			break
+		cursor.Next(ctx)
+		if err := cursor.Decode(&r); err != nil {
+			return err
 		}
 		if err := cursor.Err(); err != nil {
 			return err

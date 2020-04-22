@@ -174,6 +174,8 @@ func (s *Service) awaitVerification(secret string) bool {
 	}
 }
 
+// getSessionSecret returns a random secret for use with email verification.
+// To cover tests that need to auto-verify, the API can be started with a static secret.
 func getSessionSecret(secret string) string {
 	if secret != "" {
 		return secret
@@ -191,15 +193,15 @@ func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.Signou
 	return &pb.SignoutReply{}, nil
 }
 
-func (s *Service) GetSession(ctx context.Context, _ *pb.GetSessionRequest) (*pb.GetSessionReply, error) {
-	log.Debugf("received get session request")
+func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoRequest) (*pb.GetSessionInfoReply, error) {
+	log.Debugf("received get session info request")
 
 	dev, _ := c.DevFromContext(ctx)
 	key, err := crypto.MarshalPublicKey(dev.Key)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetSessionReply{
+	return &pb.GetSessionInfoReply{
 		Key:      key,
 		Username: dev.Username,
 		Email:    dev.Email,

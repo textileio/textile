@@ -131,23 +131,23 @@ export namespace SignoutReply {
   }
 }
 
-export class GetSessionRequest extends jspb.Message {
+export class GetSessionInfoRequest extends jspb.Message {
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetSessionRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: GetSessionRequest): GetSessionRequest.AsObject;
+  toObject(includeInstance?: boolean): GetSessionInfoRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetSessionInfoRequest): GetSessionInfoRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetSessionRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetSessionRequest;
-  static deserializeBinaryFromReader(message: GetSessionRequest, reader: jspb.BinaryReader): GetSessionRequest;
+  static serializeBinaryToWriter(message: GetSessionInfoRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetSessionInfoRequest;
+  static deserializeBinaryFromReader(message: GetSessionInfoRequest, reader: jspb.BinaryReader): GetSessionInfoRequest;
 }
 
-export namespace GetSessionRequest {
+export namespace GetSessionInfoRequest {
   export type AsObject = {
   }
 }
 
-export class GetSessionReply extends jspb.Message {
+export class GetSessionInfoReply extends jspb.Message {
   getKey(): Uint8Array | string;
   getKey_asU8(): Uint8Array;
   getKey_asB64(): string;
@@ -160,16 +160,16 @@ export class GetSessionReply extends jspb.Message {
   setEmail(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetSessionReply.AsObject;
-  static toObject(includeInstance: boolean, msg: GetSessionReply): GetSessionReply.AsObject;
+  toObject(includeInstance?: boolean): GetSessionInfoReply.AsObject;
+  static toObject(includeInstance: boolean, msg: GetSessionInfoReply): GetSessionInfoReply.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetSessionReply, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetSessionReply;
-  static deserializeBinaryFromReader(message: GetSessionReply, reader: jspb.BinaryReader): GetSessionReply;
+  static serializeBinaryToWriter(message: GetSessionInfoReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetSessionInfoReply;
+  static deserializeBinaryFromReader(message: GetSessionInfoReply, reader: jspb.BinaryReader): GetSessionInfoReply;
 }
 
-export namespace GetSessionReply {
+export namespace GetSessionInfoReply {
   export type AsObject = {
     key: Uint8Array | string,
     username: string,

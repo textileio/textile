@@ -15,7 +15,6 @@ import (
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	logger "github.com/ipfs/go-log"
 	logging "github.com/ipfs/go-log"
 	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
@@ -34,7 +33,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var log = logger.Logger("gateway")
+var log = logging.Logger("gateway")
 
 const handlerTimeout = time.Second * 10
 

@@ -31,13 +31,13 @@ type APISignout = {
   readonly responseType: typeof hub_pb.SignoutReply;
 };
 
-type APIGetSession = {
+type APIGetSessionInfo = {
   readonly methodName: string;
   readonly service: typeof API;
   readonly requestStream: false;
   readonly responseStream: false;
-  readonly requestType: typeof hub_pb.GetSessionRequest;
-  readonly responseType: typeof hub_pb.GetSessionReply;
+  readonly requestType: typeof hub_pb.GetSessionInfoRequest;
+  readonly responseType: typeof hub_pb.GetSessionInfoReply;
 };
 
 type APIGetThread = {
@@ -162,7 +162,7 @@ export class API {
   static readonly Signup: APISignup;
   static readonly Signin: APISignin;
   static readonly Signout: APISignout;
-  static readonly GetSession: APIGetSession;
+  static readonly GetSessionInfo: APIGetSessionInfo;
   static readonly GetThread: APIGetThread;
   static readonly ListThreads: APIListThreads;
   static readonly CreateKey: APICreateKey;
@@ -237,14 +237,14 @@ export class APIClient {
     requestMessage: hub_pb.SignoutRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.SignoutReply|null) => void
   ): UnaryResponse;
-  getSession(
-    requestMessage: hub_pb.GetSessionRequest,
+  getSessionInfo(
+    requestMessage: hub_pb.GetSessionInfoRequest,
     metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionReply|null) => void
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionInfoReply|null) => void
   ): UnaryResponse;
-  getSession(
-    requestMessage: hub_pb.GetSessionRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionReply|null) => void
+  getSessionInfo(
+    requestMessage: hub_pb.GetSessionInfoRequest,
+    callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionInfoReply|null) => void
   ): UnaryResponse;
   getThread(
     requestMessage: hub_pb.GetThreadRequest,

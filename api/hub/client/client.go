@@ -53,9 +53,9 @@ func (c *Client) Signout(ctx context.Context) error {
 	return err
 }
 
-// GetSession returns session info.
-func (c *Client) GetSession(ctx context.Context) (*pb.GetSessionReply, error) {
-	return c.c.GetSession(ctx, &pb.GetSessionRequest{})
+// GetSessionInfo returns session info.
+func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoReply, error) {
+	return c.c.GetSessionInfo(ctx, &pb.GetSessionInfoRequest{})
 }
 
 // GetThread returns a thread by name.

@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	mbase "github.com/multiformats/go-multibase"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
+	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
@@ -156,7 +155,7 @@ var whoamiCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		who, err := hub.GetSession(ctx)
+		who, err := hub.GetSessionInfo(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}

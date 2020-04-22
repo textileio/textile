@@ -70,14 +70,14 @@ func TestClient_Signout(t *testing.T) {
 	})
 }
 
-func TestClient_GetSession(t *testing.T) {
+func TestClient_GetSessionInfo(t *testing.T) {
 	t.Parallel()
 	conf, client, _, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.GetSession(ctx)
+		_, err := client.GetSessionInfo(ctx)
 		require.NotNil(t, err)
 	})
 
@@ -86,7 +86,7 @@ func TestClient_GetSession(t *testing.T) {
 	user := apitest.Signup(t, client, conf, username, email)
 
 	t.Run("with session", func(t *testing.T) {
-		res, err := client.GetSession(common.NewSessionContext(ctx, user.Session))
+		res, err := client.GetSessionInfo(common.NewSessionContext(ctx, user.Session))
 		require.Nil(t, err)
 		assert.Equal(t, user.Key, res.Key)
 		assert.Equal(t, username, res.Username)

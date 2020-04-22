@@ -29,9 +29,9 @@ message SignoutRequest {}
 
 message SignoutReply {}
 
-message GetSessionRequest {}
+message GetSessionInfoRequest {}
 
-message GetSessionReply {
+message GetSessionInfoReply {
     bytes key = 1;
     string username = 2;
     string email = 3;
@@ -136,7 +136,7 @@ service API {
     rpc Signin(SigninRequest) returns (SigninReply) {}
     rpc Signout(SignoutRequest) returns (SignoutReply) {}
 
-    rpc GetSession(GetSessionRequest) returns (GetSessionReply) {}
+    rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoReply) {}
 
     rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
