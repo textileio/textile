@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
@@ -25,10 +26,11 @@ func init() {
 }
 
 type Thread struct {
-	ID    thread.ID
-	Owner crypto.PubKey
-	Name  string
-	Key   string
+	ID        thread.ID
+	Owner     crypto.PubKey
+	Name      string
+	Key       string
+	CreatedAt time.Time
 }
 
 type Threads struct {
@@ -45,6 +47,9 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 				SetCollation(&options.Collation{Locale: "en", Strength: 2}),
 		},
 		{
+			Keys: bson.D{{"_id.thread", 1}},
+		},
+		{
 			Keys: bson.D{{"key_id", 1}},
 		},
 	})
@@ -58,18 +63,20 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey)
 	}
 	key, _ := common.APIKeyFromContext(ctx)
 	doc := &Thread{
-		ID:    id,
-		Owner: owner,
-		Name:  name,
-		Key:   key,
+		ID:        id,
+		Owner:     owner,
+		Name:      name,
+		Key:       key,
+		CreatedAt: time.Now(),
 	}
 	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err
 	}
 	raw := bson.M{
-		"_id":    bson.M{"owner": ownerID, "thread": id.Bytes()},
-		"key_id": doc.Key,
+		"_id":        bson.D{{"owner", ownerID}, {"thread", id.Bytes()}},
+		"key_id":     doc.Key,
+		"created_at": doc.CreatedAt,
 	}
 	if doc.Name != "" {
 		raw["name"] = doc.Name
@@ -85,7 +92,7 @@ func (t *Threads) Get(ctx context.Context, id thread.ID, owner crypto.PubKey) (*
 	if err != nil {
 		return nil, err
 	}
-	res := t.col.FindOne(ctx, bson.M{"_id.owner": ownerID, "_id.thread": id.Bytes()})
+	res := t.col.FindOne(ctx, bson.M{"_id": bson.D{{"owner", ownerID}, {"thread", id.Bytes()}}})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -167,7 +174,7 @@ func (t *Threads) Delete(ctx context.Context, id thread.ID, owner crypto.PubKey)
 	if err != nil {
 		return err
 	}
-	res, err := t.col.DeleteOne(ctx, bson.M{"_id.owner": ownerID, "_id.thread": id.Bytes()})
+	res, err := t.col.DeleteOne(ctx, bson.M{"_id": bson.D{{"owner", ownerID}, {"thread", id.Bytes()}}})
 	if err != nil {
 		return err
 	}
@@ -195,10 +202,15 @@ func decodeThread(raw bson.M) (*Thread, error) {
 	if raw["key_id"] != nil {
 		key = raw["key_id"].(string)
 	}
+	var created time.Time
+	if v, ok := raw["created_at"]; ok {
+		created = v.(primitive.DateTime).Time()
+	}
 	return &Thread{
-		ID:    id,
-		Owner: owner,
-		Name:  name,
-		Key:   key,
+		ID:        id,
+		Owner:     owner,
+		Name:      name,
+		Key:       key,
+		CreatedAt: created,
 	}, nil
 }

@@ -2,6 +2,7 @@ package collections
 
 import (
 	"context"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/textile/util"
@@ -16,10 +17,11 @@ const (
 )
 
 type Key struct {
-	Key    string
-	Secret string
-	Owner  crypto.PubKey
-	Valid  bool
+	Key       string
+	Secret    string
+	Owner     crypto.PubKey
+	Valid     bool
+	CreatedAt time.Time
 }
 
 type Keys struct {
@@ -38,20 +40,22 @@ func NewKeys(ctx context.Context, db *mongo.Database) (*Keys, error) {
 
 func (k *Keys) Create(ctx context.Context, owner crypto.PubKey) (*Key, error) {
 	doc := &Key{
-		Key:    util.MakeToken(keyLen),
-		Secret: util.MakeToken(secretLen),
-		Owner:  owner,
-		Valid:  true,
+		Key:       util.MakeToken(keyLen),
+		Secret:    util.MakeToken(secretLen),
+		Owner:     owner,
+		Valid:     true,
+		CreatedAt: time.Now(),
 	}
 	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := k.col.InsertOne(ctx, bson.M{
-		"_id":      doc.Key,
-		"secret":   doc.Secret,
-		"owner_id": ownerID,
-		"valid":    doc.Valid,
+		"_id":        doc.Key,
+		"secret":     doc.Secret,
+		"owner_id":   ownerID,
+		"valid":      doc.Valid,
+		"created_at": doc.CreatedAt,
 	}); err != nil {
 		return nil, err
 	}
@@ -113,10 +117,15 @@ func decodeKey(raw bson.M) (*Key, error) {
 	if err != nil {
 		return nil, err
 	}
+	var created time.Time
+	if v, ok := raw["created_at"]; ok {
+		created = v.(primitive.DateTime).Time()
+	}
 	return &Key{
-		Key:    raw["_id"].(string),
-		Secret: raw["secret"].(string),
-		Owner:  owner,
-		Valid:  raw["valid"].(bool),
+		Key:       raw["_id"].(string),
+		Secret:    raw["secret"].(string),
+		Owner:     owner,
+		Valid:     raw["valid"].(bool),
+		CreatedAt: created,
 	}, nil
 }

@@ -3,7 +3,6 @@ package collections_test
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -28,17 +27,7 @@ func TestThreads_Create(t *testing.T) {
 	require.Nil(t, err)
 	assert.True(t, created1.ID.Defined())
 
-	created2, err := col.Create(ctx, id, owner)
-	if err == nil {
-		t.Logf("ID1: %s", created1.ID.String())
-		t.Logf("ID2: %s", created2.ID.String())
-		b1, err := crypto.MarshalPublicKey(created1.Owner)
-		require.Nil(t, err)
-		b2, err := crypto.MarshalPublicKey(created2.Owner)
-		require.Nil(t, err)
-		t.Logf("Owner1: %s", hex.EncodeToString(b1))
-		t.Logf("Owner2: %s", hex.EncodeToString(b2))
-	}
+	_, err = col.Create(ctx, id, owner)
 	require.NotNil(t, err)
 
 	_, err = col.Create(common.NewThreadNameContext(ctx, "db1"), thread.NewIDV1(thread.Raw, 32), owner)
