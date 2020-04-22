@@ -1,0 +1,57 @@
+name: Publish gRPC Libs
+on:
+  release:
+    types: [published]
+jobs:
+
+  publish_grpc_libs:
+    name: Publish gRPC Libs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+      - name: Get latest tag
+        id: latesttag
+        uses: "WyriHaximus/github-action-get-previous-tag@master"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Install build tools
+        run: |
+          apt-get update && apt-get install -y build-essential
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+      - name: Setup env
+        run: |
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+          echo "::add-path::$(go env GOPATH)/bin"
+      - name: Set up Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install protoc
+        uses: Arduino/actions/setup-protoc@master
+        with:
+          version: '3.11.2'
+      - name: Install Go protoc plugins
+        run: |
+          export GO111MODULE=off
+          go get github.com/golang/protobuf/protoc-gen-go
+      - name: Get JS dependencies
+        run: |
+          npm install
+          npm install -g json
+        working-directory: ./hub/pb/javascript
+      - name: Protoc generate Hub
+        run: |
+          make clean && make
+        working-directory: ./hub/pb
+      - name: Publish JS Hub
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+        run: |
+          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
+          npm publish --access=public
+        working-directory: ./hub/pb/javascript

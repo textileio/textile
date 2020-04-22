@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ var configCmd = &cobra.Command{
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create config",
-	Long:  `Create a default config file.`,
+	Long:  `Create a config file.`,
 	Run: func(c *cobra.Command, args []string) {
 		var dir string
 		if !c.Flag("dir").Changed {
@@ -37,14 +37,14 @@ var createCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			dir = path.Join(home, ".textiled")
+			dir = filepath.Join(home, ".textiled")
 			if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 				log.Fatal(err)
 			}
 		} else {
 			dir = c.Flag("dir").Value.String()
 		}
-		filename := path.Join(dir, "config.yml")
+		filename := filepath.Join(dir, "config.yml")
 
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("%s already exists", filename))

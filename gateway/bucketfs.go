@@ -11,8 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/gin-gonic/gin"
-	"github.com/textileio/textile/api/client"
+	"github.com/textileio/textile/api/buckets/client"
+	"github.com/textileio/textile/api/common"
 )
 
 type serveBucketFileSystem interface {
@@ -23,7 +26,7 @@ type serveBucketFileSystem interface {
 
 type bucketFileSystem struct {
 	client  *client.Client
-	auth    client.Auth
+	session string
 	timeout time.Duration
 	host    string
 }
@@ -31,7 +34,7 @@ type bucketFileSystem struct {
 // serveBucket returns a middleware handler that serves files in a bucket.
 func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
+		_, bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
 		if err != nil {
 			return
 		}
@@ -45,7 +48,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			}
 			c.Writer.Header().Set("Content-Type", ctype)
 			if err := fs.Write(bucket, c.Request.URL.Path, c.Writer); err != nil {
-				abort(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
 			}
@@ -55,7 +58,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", ctype)
 			if err := fs.Write(bucket, content, c.Writer); err != nil {
-				abort(c, http.StatusInternalServerError, err)
+				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
 			}
@@ -71,9 +74,8 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	rep, err := f.client.ListBucketPath(ctx, "", path.Join(bucket, pth), f.auth)
+	rep, err := f.client.ListPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth))
 	if err != nil {
-		log.Errorf("error listing bucket path: %v", err)
 		return false, ""
 	}
 	if rep.Item.IsDir {
@@ -90,18 +92,21 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
-	return f.client.PullBucketPath(ctx, path.Join(bucket, pth), writer, f.auth)
+	return f.client.PullPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth), writer)
 }
 
 func (f *bucketFileSystem) ValidHost() string {
 	return f.host
 }
 
-func bucketFromHost(host, valid string) (buck string, err error) {
+func bucketFromHost(host, valid string) (id thread.ID, slug string, err error) {
 	parts := strings.SplitN(host, ".", 2)
 	if parts[len(parts)-1] != valid {
 		err = fmt.Errorf("invalid bucket host")
 		return
 	}
-	return parts[0], nil
+	slug = parts[0]
+	parts = strings.Split(slug, "-")
+	id, err = thread.Decode(parts[len(parts)-1])
+	return
 }

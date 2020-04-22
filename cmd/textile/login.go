@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"net/mail"
 	"os"
 	"path/filepath"
 
@@ -25,33 +23,27 @@ var loginCmd = &cobra.Command{
 	Long:  `Login to Textile.`,
 	Run: func(c *cobra.Command, args []string) {
 		prompt := promptui.Prompt{
-			Label: "Enter your email",
-			Validate: func(email string) error {
-				_, err := mail.ParseAddress(email)
-				return err
-			},
+			Label: "Enter your username or email",
 		}
-		email, err := prompt.Run()
+		usernameOrEmail, err := prompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
 
-		// @todo: Add a security code that can be visually verified in the email.
-		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
-			aurora.White(email).Bold())
+		cmd.Message("We sent an email to the account address. Please follow the steps provided inside it.")
 
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
+		ctx, cancel := authCtx(confirmTimeout)
 		defer cancel()
-		res, err := client.Login(ctx, email)
+		res, err := hub.Signin(ctx, usernameOrEmail)
 		s.Stop()
 		if err != nil {
 			cmd.Fatal(err)
 		}
 
-		authViper.Set("token", res.SessionID)
+		authViper.Set("session", res.Session)
 
 		home, err := homedir.Dir()
 		if err != nil {
@@ -69,7 +61,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
-		cmd.Success("You are now logged in. Initialize a new project directory with `%s`.",
-			aurora.Cyan("textile init <project_name>"))
+		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.",
+			aurora.Cyan("textile buckets init"))
 	},
 }
