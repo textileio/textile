@@ -136,10 +136,10 @@ func (g *Gateway) Start() {
 	})
 
 	router.GET("", g.renderBucketHandler)
-	router.GET("/thread/:thread/:collection", g.bucketsHandler)
-	router.GET("/thread/:thread/:collection/:id", g.bucketHandler)
-	router.GET("/thread/:thread/:collection/:id/*path", g.bucketHandler)
-	router.GET("/dashboard/:name", g.dashHandler)
+	router.GET("/thread/:thread/:collection", g.collectionHandler)
+	router.GET("/thread/:thread/:collection/:id", g.instanceHandler)
+	router.GET("/thread/:thread/:collection/:id/*path", g.instanceHandler)
+	router.GET("/dashboard/:name", g.dashboardHandler)
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
@@ -238,13 +238,13 @@ type link struct {
 	Links string
 }
 
-// dashHandler renders a dev or org dashboard.
-func (g *Gateway) dashHandler(c *gin.Context) {
+// dashboardHandler renders a dev or org dashboard.
+func (g *Gateway) dashboardHandler(c *gin.Context) {
 	render404(c)
 }
 
-// bucketsHandler render buckets in a thread.
-func (g *Gateway) bucketsHandler(c *gin.Context) {
+// collectionHandler renders all instances in a collection.
+func (g *Gateway) collectionHandler(c *gin.Context) {
 	collection := c.Param("collection")
 
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
@@ -300,10 +300,13 @@ func (g *Gateway) bucketsHandler(c *gin.Context) {
 	}
 }
 
-// bucketHandler render the standard bucket UI.
-func (g *Gateway) bucketHandler(c *gin.Context) {
+// instanceHandler renders an instance in a collection.
+// If the collection is bucket, the built-in buckets UI in rendered instead.
+// This can be overridden with the query param json=true.
+func (g *Gateway) instanceHandler(c *gin.Context) {
 	collection := c.Param("collection")
-	if collection != "buckets" && c.Param("path") != "" {
+	json := c.Param("json") == "true"
+	if (collection != "buckets" || json) && c.Param("path") != "" {
 		render404(c)
 		return
 	}
@@ -321,8 +324,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	switch collection {
-	case "buckets":
+	if collection == "buckets" && !json {
 		var buck buckets.Bucket
 		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &buck, db.WithTxnToken(token)); err != nil {
 			render404(c)
@@ -370,7 +372,7 @@ func (g *Gateway) bucketHandler(c *gin.Context) {
 				"Links": links,
 			})
 		}
-	default:
+	} else {
 		var res interface{}
 		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &res, db.WithTxnToken(token)); err != nil {
 			render404(c)

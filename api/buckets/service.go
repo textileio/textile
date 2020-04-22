@@ -338,7 +338,6 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, name string,
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
 	}
-
 	pth, err := s.IPFSClient.Unixfs().Add(
 		ctx,
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
@@ -349,16 +348,23 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, name string,
 		return nil, err
 	}
 
+	buck, err := s.Buckets.Create(ctx, dbID, pth, name, WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
 	if s.DNSManager != nil {
-		parts := strings.SplitN(s.GatewayUrl, "//", 2)
-		if len(parts) > 1 {
-			if _, err := s.DNSManager.NewCNAME(name, parts[1]); err != nil {
+		if host, ok := s.getGatewayHost(); ok {
+			rec, err := s.DNSManager.NewCNAME(buck.Slug, host)
+			if err != nil {
+				return nil, err
+			}
+			buck.DNSRecord = rec.ID
+			if err = s.Buckets.Save(ctx, dbID, buck, WithToken(dbToken)); err != nil {
 				return nil, err
 			}
 		}
 	}
-
-	return s.Buckets.Create(ctx, dbID, pth, name, WithToken(dbToken))
+	return buck, nil
 }
 
 func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer) error {
@@ -458,8 +464,21 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 		if err = s.Buckets.Delete(ctx, dbID, buck.ID, WithToken(dbToken)); err != nil {
 			return nil, err
 		}
+		if buck.DNSRecord != "" && s.DNSManager != nil {
+			if err = s.DNSManager.DeleteRecord(buck.DNSRecord); err != nil {
+				return nil, err
+			}
+		}
 		log.Debugf("removed bucket: %s", buck.Name)
 	}
 
 	return &pb.RemovePathReply{}, nil
+}
+
+func (s *Service) getGatewayHost() (host string, ok bool) {
+	parts := strings.SplitN(s.GatewayUrl, "//", 2)
+	if len(parts) > 1 {
+		return parts[1], true
+	}
+	return
 }

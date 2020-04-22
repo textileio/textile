@@ -11,8 +11,12 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     services:
+      mongodb:
+        image: mongo:4.2.5
+        ports:
+          - 127.0.0.1:27017:27017
       ipfs:
-        image: ipfs/go-ipfs:latest
+        image: ipfs/go-ipfs:v0.5.0-rc2
         env:
           IPFS_PROFILE: test
         ports:
