@@ -73,15 +73,14 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrApi                 ma.Multiaddr
-	AddrApiProxy            ma.Multiaddr
-	AddrThreadsHost         ma.Multiaddr
-	AddrIpfsApi             ma.Multiaddr
-	AddrGatewayHost         ma.Multiaddr
-	AddrGatewayUrl          string
-	AddrGatewayBucketDomain string
-	AddrFilecoinApi         ma.Multiaddr
-	AddrMongoUri            string
+	AddrApi         ma.Multiaddr
+	AddrApiProxy    ma.Multiaddr
+	AddrThreadsHost ma.Multiaddr
+	AddrIpfsApi     ma.Multiaddr
+	AddrGatewayHost ma.Multiaddr
+	AddrGatewayUrl  string
+	AddrFilecoinApi ma.Multiaddr
+	AddrMongoUri    string
 
 	MongoName string
 
@@ -239,14 +238,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)
-	t.gateway, err = gateway.NewGateway(
-		conf.AddrGatewayHost,
-		conf.AddrApi,
-		t.gatewaySession,
-		conf.AddrGatewayBucketDomain,
-		t.co,
-		t.sessionBus,
-		conf.Debug)
+	t.gateway, err = gateway.NewGateway(conf.AddrGatewayHost, conf.AddrApi, t.gatewaySession, conf.DNSDomain, t.co, t.sessionBus, conf.Debug)
 	if err != nil {
 		return nil, err
 	}

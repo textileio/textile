@@ -9,37 +9,41 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/gin-gonic/gin"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 )
 
 type serveBucketFileSystem interface {
-	Exists(bucket, pth string) (bool, string)
-	Write(bucket, pth string, writer io.Writer) error
+	Exists(ctx context.Context, bucket, pth string) (bool, string)
+	Write(ctx context.Context, bucket, pth string, writer io.Writer) error
 	ValidHost() string
 }
 
 type bucketFileSystem struct {
 	client  *client.Client
 	session string
-	timeout time.Duration
 	host    string
 }
 
 // serveBucket returns a middleware handler that serves files in a bucket.
 func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
+		threadID, bucket, err := bucketFromHost(c.Request.Host, fs.ValidHost())
 		if err != nil {
 			return
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+		defer cancel()
+		ctx = common.NewThreadIDContext(ctx, threadID)
+		token := thread.Token(c.Query("token"))
+		if token.Defined() {
+			ctx = thread.NewTokenContext(ctx, token)
+		}
 
-		exists, target := fs.Exists(bucket, c.Request.URL.Path)
+		exists, target := fs.Exists(ctx, bucket, c.Request.URL.Path)
 		if exists {
 			c.Writer.WriteHeader(http.StatusOK)
 			ctype := mime.TypeByExtension(filepath.Ext(c.Request.URL.Path))
@@ -47,7 +51,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 				ctype = "application/octet-stream"
 			}
 			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(bucket, c.Request.URL.Path, c.Writer); err != nil {
+			if err := fs.Write(ctx, bucket, c.Request.URL.Path, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
@@ -57,24 +61,21 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			ctype := mime.TypeByExtension(filepath.Ext(content))
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(bucket, content, c.Writer); err != nil {
+			if err := fs.Write(ctx, bucket, content, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
 			}
 		}
-
 	}
 }
 
-func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
+func (f *bucketFileSystem) Exists(ctx context.Context, bucket, pth string) (bool, string) {
 	if bucket == "" || pth == "/" {
 		return false, ""
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
-	defer cancel()
-	rep, err := f.client.ListPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth))
+	ctx = common.NewSessionContext(ctx, f.session)
+	rep, err := f.client.ListPath(ctx, path.Join(bucket, pth))
 	if err != nil {
 		return false, ""
 	}
@@ -89,24 +90,25 @@ func (f *bucketFileSystem) Exists(bucket, pth string) (bool, string) {
 	return true, ""
 }
 
-func (f *bucketFileSystem) Write(bucket, pth string, writer io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
-	defer cancel()
-	return f.client.PullPath(common.NewSessionContext(ctx, f.session), path.Join(bucket, pth), writer)
+func (f *bucketFileSystem) Write(ctx context.Context, bucket, pth string, writer io.Writer) error {
+	ctx = common.NewSessionContext(ctx, f.session)
+	return f.client.PullPath(ctx, path.Join(bucket, pth), writer)
 }
 
 func (f *bucketFileSystem) ValidHost() string {
 	return f.host
 }
 
-func bucketFromHost(host, valid string) (id thread.ID, slug string, err error) {
+func bucketFromHost(host, valid string) (id thread.ID, buck string, err error) {
 	parts := strings.SplitN(host, ".", 2)
-	if parts[len(parts)-1] != valid {
+	hostport := parts[len(parts)-1]
+	hostparts := strings.SplitN(hostport, ":", 2)
+	if hostparts[0] != valid || valid == "" {
 		err = fmt.Errorf("invalid bucket host")
 		return
 	}
-	slug = parts[0]
-	parts = strings.Split(slug, "-")
+	parts = strings.Split(parts[0], "-")
+	buck = strings.Join(parts[:len(parts)-1], "-")
 	id, err = thread.Decode(parts[len(parts)-1])
 	return
 }

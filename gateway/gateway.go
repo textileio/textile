@@ -35,7 +35,7 @@ import (
 
 var log = logging.Logger("gateway")
 
-const handlerTimeout = time.Second * 10
+const handlerTimeout = time.Minute
 
 func init() {
 	gin.SetMode(gin.ReleaseMode)
@@ -125,7 +125,6 @@ func (g *Gateway) Start() {
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
 		session: g.session,
-		timeout: handlerTimeout,
 		host:    g.bucketDomain,
 	}))
 	router.Use(gincors.New(cors.Options{}))
@@ -183,9 +182,9 @@ func (g *Gateway) Stop() error {
 
 // renderBucketHandler renders a bucket as a website.
 func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	threadID, slug, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	threadID, name, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
-		renderError(c, http.StatusBadRequest, err)
+		render404(c)
 		return
 	}
 
@@ -197,6 +196,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
+	slug := name + "-" + threadID.String()
 	query := db.Where("slug").Eq(slug)
 	res, err := g.threads.Find(ctx, threadID, "buckets", query, &buckets.Bucket{}, db.WithTxnToken(token))
 	if err != nil {
