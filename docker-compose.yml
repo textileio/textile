@@ -28,7 +28,7 @@ services:
     image: mongo:latest
     restart: on-failure
     volumes:
-      - "${REPO_PATH}/ipfs:/data/mongo"
+      - "${REPO_PATH}/mongo:/data/mongo"
     ports:
       - "127.0.0.1:27017:27017"
   ipfs:

@@ -57,7 +57,7 @@ var bucketsCmd = &cobra.Command{
 var initBucketPathCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create an empty bucket",
-	Long: `Create an empty bucket. 
+	Long: `Create an empty bucket.
 
 A .textile directory and config file will be created in the current working directory.
 Existing configs will not be overwritten.

@@ -32,7 +32,7 @@ var createKeysCmd = &cobra.Command{
 	Short: "Create an API key and secret",
 	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets and/or threads.
 
-API secrets should be kept safely on a backend server, not in publicly readable client code.  
+API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)

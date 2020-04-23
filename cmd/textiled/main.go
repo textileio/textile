@@ -53,10 +53,6 @@ var (
 			Key:      "addr.gateway.url",
 			DefValue: "http://127.0.0.1:8006",
 		},
-		"addrGatewayBucketDomain": {
-			Key:      "addr.gateway.bucket_domain",
-			DefValue: "textile.space",
-		},
 		"addrIpfsApi": {
 			Key:      "addr.ipfs.api",
 			DefValue: "/ip4/127.0.0.1/tcp/5001",
@@ -151,10 +147,6 @@ func init() {
 		"addrGatewayUrl",
 		flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
-	rootCmd.PersistentFlags().String(
-		"addrGatewayBucketDomain",
-		flags["addrGatewayBucketDomain"].DefValue.(string),
-		"Public gateway bucket domain")
 
 	// Filecoin settings
 	rootCmd.PersistentFlags().String(
@@ -241,7 +233,6 @@ var rootCmd = &cobra.Command{
 
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
-		addrGatewayBucketDomain := configViper.GetString("addr.gateway.bucket_domain")
 
 		var addrFilecoinApi ma.Multiaddr
 		if str := configViper.GetString("addr.filecoin.api"); str != "" {
@@ -267,24 +258,23 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:                configViper.GetString("repo"),
-			AddrApi:                 addrApi,
-			AddrApiProxy:            addrApiProxy,
-			AddrThreadsHost:         addrThreadsHost,
-			AddrIpfsApi:             addrIpfsApi,
-			AddrGatewayHost:         addrGatewayHost,
-			AddrGatewayUrl:          addrGatewayUrl,
-			AddrGatewayBucketDomain: addrGatewayBucketDomain,
-			AddrFilecoinApi:         addrFilecoinApi,
-			AddrMongoUri:            addrMongoUri,
-			MongoName:               "textile",
-			DNSDomain:               dnsDomain,
-			DNSZoneID:               dnsZoneID,
-			DNSToken:                dnsToken,
-			EmailFrom:               emailFrom,
-			EmailDomain:             emailDomain,
-			EmailApiKey:             emailApiKey,
-			Debug:                   configViper.GetBool("log.debug"),
+			RepoPath:        configViper.GetString("repo"),
+			AddrApi:         addrApi,
+			AddrApiProxy:    addrApiProxy,
+			AddrThreadsHost: addrThreadsHost,
+			AddrIpfsApi:     addrIpfsApi,
+			AddrGatewayHost: addrGatewayHost,
+			AddrGatewayUrl:  addrGatewayUrl,
+			AddrFilecoinApi: addrFilecoinApi,
+			AddrMongoUri:    addrMongoUri,
+			MongoName:       "textile",
+			DNSDomain:       dnsDomain,
+			DNSZoneID:       dnsZoneID,
+			DNSToken:        dnsToken,
+			EmailFrom:       emailFrom,
+			EmailDomain:     emailDomain,
+			EmailApiKey:     emailApiKey,
+			Debug:           configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)
