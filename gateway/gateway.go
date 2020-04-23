@@ -226,7 +226,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 			return
 		}
 	}
-	render404(c)
+	renderError(c, http.StatusNotFound, fmt.Errorf("index.html not found"))
 }
 
 type link struct {
