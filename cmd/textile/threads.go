@@ -12,7 +12,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(threadsCmd)
-	orgsCmd.AddCommand(lsThreadsCmd)
+	threadsCmd.AddCommand(lsThreadsCmd)
 }
 
 var threadsCmd = &cobra.Command{
