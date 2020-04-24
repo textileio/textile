@@ -15,24 +15,19 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
 
 ## Table of Contents
 
--   [Install](#install)
+-   [Install](#install-tt)
 -   [Usage](#usage)
 -   [Contributing](#contributing)
 -   [Changelog](#changelog)
 -   [License](#license)
 
-## Install
+## Install `tt`
 
-### Daemon (`textiled`)
-    go install github.com/textileio/textile/cmd/textiled
-
-### Client (`textile`)
-
-    go install github.com/textileio/textile/cmd/textile
+You can find the latest `tt` CLI on the [releases page](https://github.com/textileio/textile/releases).
 
 ## Usage
 
-Try `textiled --help` or `textile` --help.
+Try `tt --help`.
 
 Go to https://godoc.org/github.com/textileio/textile for more.
 

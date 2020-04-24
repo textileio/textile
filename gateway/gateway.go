@@ -35,7 +35,7 @@ import (
 
 var log = logging.Logger("gateway")
 
-const handlerTimeout = time.Second * 10
+const handlerTimeout = time.Minute
 
 func init() {
 	gin.SetMode(gin.ReleaseMode)
@@ -125,7 +125,6 @@ func (g *Gateway) Start() {
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
 		session: g.session,
-		timeout: handlerTimeout,
 		host:    g.bucketDomain,
 	}))
 	router.Use(gincors.New(cors.Options{}))
@@ -183,9 +182,9 @@ func (g *Gateway) Stop() error {
 
 // renderBucketHandler renders a bucket as a website.
 func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	threadID, slug, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	threadID, name, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
-		renderError(c, http.StatusBadRequest, err)
+		render404(c)
 		return
 	}
 
@@ -197,6 +196,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
+	slug := name + "-" + threadID.String()
 	query := db.Where("slug").Eq(slug)
 	res, err := g.threads.Find(ctx, threadID, "buckets", query, &buckets.Bucket{}, db.WithTxnToken(token))
 	if err != nil {
@@ -226,7 +226,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 			return
 		}
 	}
-	render404(c)
+	renderError(c, http.StatusNotFound, fmt.Errorf("an index.html file was not found in this bucket"))
 }
 
 type link struct {
@@ -259,8 +259,8 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	switch collection {
-	case "buckets":
+	json := c.Query("json") == "true"
+	if collection == "buckets" && !json {
 		rep, err := g.buckets.ListPath(ctx, "")
 		if err != nil {
 			renderError(c, http.StatusBadRequest, err)
@@ -288,9 +288,9 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 			"Back":  "",
 			"Links": links,
 		})
-	default:
+	} else {
 		var dummy interface{}
-		res, err := g.threads.Find(ctx, threadID, collection, &db.Query{}, dummy, db.WithTxnToken(token))
+		res, err := g.threads.Find(ctx, threadID, collection, &db.Query{}, &dummy, db.WithTxnToken(token))
 		if err != nil {
 			renderError(c, http.StatusInternalServerError, err)
 			return
@@ -304,7 +304,7 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 // This can be overridden with the query param json=true.
 func (g *Gateway) instanceHandler(c *gin.Context) {
 	collection := c.Param("collection")
-	json := c.Param("json") == "true"
+	json := c.Query("json") == "true"
 	if (collection != "buckets" || json) && c.Param("path") != "" {
 		render404(c)
 		return
