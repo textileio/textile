@@ -2,7 +2,7 @@ version: "3"
 services:
   textile:
     image: textile/textile:latest
-    restart: on-failure
+    restart: always
     volumes:
       - "${REPO_PATH}/textile:/data/textile"
     environment:
@@ -26,14 +26,14 @@ services:
       - "127.0.0.1:8006:8006"
   mongo:
     image: mongo:latest
-    restart: on-failure
+    restart: always
     volumes:
-      - "${REPO_PATH}/mongo:/data/mongo"
+      - "${REPO_PATH}/mongo:/data/db"
     ports:
       - "127.0.0.1:27017:27017"
   ipfs:
     image: ipfs/go-ipfs:v0.5.0-rc2
-    restart: on-failure
+    restart: always
     volumes:
       - "${REPO_PATH}/ipfs:/data/ipfs"
     ports:
