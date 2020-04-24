@@ -93,6 +93,10 @@ var (
 			Key:      "email.api_key",
 			DefValue: "",
 		},
+		"sessionSecret": {
+			Key:      "email.session_secret",
+			DefValue: "",
+		},
 	}
 )
 
@@ -200,6 +204,11 @@ func init() {
 		flags["emailApiKey"].DefValue.(string),
 		"Mailgun API key for sending emails")
 
+	rootCmd.PersistentFlags().String(
+		"sessionSecret",
+		flags["sessionSecret"].DefValue.(string),
+		"Session secret to use when testing email APIs")
+
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
@@ -257,6 +266,7 @@ var rootCmd = &cobra.Command{
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
 		emailApiKey := configViper.GetString("email.api_key")
+		sessionSecret := configViper.GetString("email.session_secret")
 
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
@@ -285,6 +295,7 @@ var rootCmd = &cobra.Command{
 			EmailDomain:             emailDomain,
 			EmailApiKey:             emailApiKey,
 			Debug:                   configViper.GetBool("log.debug"),
+			SessionSecret:           sessionSecret,
 		})
 		if err != nil {
 			log.Fatal(err)
