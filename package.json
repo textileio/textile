@@ -59,8 +59,10 @@
     "@improbable-eng/grpc-web": "^0.12.0",
     "@textile/threads-client": "^0.2.10",
     "@textile/threads-core": "^0.1.2",
+    "@textile/threads-id": "0.0.2",
     "@types/google-protobuf": "^3.7.2",
     "axios": "^0.19.2",
+    "delay": "^4.3.0",
     "google-protobuf": "^3.10.0",
     "isomorphic-ws": "^4.0.1",
     "uuid": "^7.0.2"
