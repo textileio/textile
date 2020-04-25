@@ -404,12 +404,40 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			}
 		}
 
+		var newID thread.ID
+		var err error
 		switch method {
-		case "/threads.pb.API/NewDB",
-			"/threads.pb.API/NewDBFromAddr",
-			"/threads.net.pb.API/CreateThread",
-			"/threads.net.pb.API/AddThread":
+		case "/threads.pb.API/NewDB":
+			newID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
+			if err != nil {
+				return nil, err
+			}
+		case "/threads.pb.API/NewDBFromAddr":
+			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
+			if err != nil {
+				return nil, err
+			}
+			newID, err = thread.FromAddr(addr)
+			if err != nil {
+				return nil, err
+			}
+		case "/threads.net.pb.API/CreateThread":
+			newID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
+			if err != nil {
+				return nil, err
+			}
+		case "/threads.net.pb.API/AddThread":
+			addr, err := ma.NewMultiaddrBytes(req.(*netpb.AddThreadRequest).Addr)
+			if err != nil {
+				return nil, err
+			}
+			newID, err = thread.FromAddr(addr)
+			if err != nil {
+				return nil, err
+			}
 		default:
+			// If we're dealing with an existing thread, make sure that the owner
+			// owns the thread directly or via an API key.
 			threadID, ok := common.ThreadIDFromContext(ctx)
 			if ok {
 				th, err := t.co.Threads.Get(ctx, threadID, owner)
@@ -419,7 +447,11 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 					} else {
 						return nil, err
 					}
-				} else if k, ok := common.APIKeyFromContext(ctx); ok {
+				}
+				if owner != th.Owner {
+					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
+				}
+				if k, ok := common.APIKeyFromContext(ctx); ok {
 					if k != th.Key {
 						return nil, status.Error(codes.PermissionDenied, "Bad API key")
 					}
@@ -427,44 +459,37 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			}
 		}
 
-		// Let the request pass through
+		// Preemptively track the new thread ID for the owner.
+		// This needs to happen before the request is handled in case there's a conflict
+		// with the owner and thread name.
+		if newID.Defined() {
+			if _, ok := c.UserFromContext(ctx); !ok {
+				if err := t.co.Users.Create(ctx, owner); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := t.co.Threads.Create(ctx, newID, owner); err != nil {
+				return nil, err
+			}
+		}
+
+		// Let the request pass through.
 		res, err := handler(ctx, req)
 		if err != nil {
+			// Clean up the new thread if there was an error.
+			if newID.Defined() {
+				if err := t.co.Threads.Delete(ctx, newID, owner); err != nil {
+					log.Errorf("error deleting thread %s: %v", newID, err)
+				}
+			}
 			return res, err
 		}
 
-		var createID, deleteID thread.ID
+		// Clean up the tracked thread if it was deleted.
+		var deleteID thread.ID
 		switch method {
-		case "/threads.pb.API/NewDB":
-			createID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
-			if err != nil {
-				return res, err
-			}
-		case "/threads.pb.API/NewDBFromAddr":
-			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
-			if err != nil {
-				return res, err
-			}
-			createID, err = thread.FromAddr(addr)
-			if err != nil {
-				return res, err
-			}
 		case "/threads.pb.API/DeleteDB":
 			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
-			if err != nil {
-				return res, err
-			}
-		case "/threads.net.pb.API/CreateThread":
-			createID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
-			if err != nil {
-				return res, err
-			}
-		case "/threads.net.pb.API/AddThread":
-			addr, err := ma.NewMultiaddrBytes(req.(*netpb.AddThreadRequest).Addr)
-			if err != nil {
-				return res, err
-			}
-			createID, err = thread.FromAddr(addr)
 			if err != nil {
 				return res, err
 			}
@@ -476,17 +501,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		default:
 			return res, nil
 		}
-
-		if createID.Defined() {
-			if _, ok := c.UserFromContext(ctx); !ok {
-				if err := t.co.Users.Create(ctx, owner); err != nil {
-					return nil, err
-				}
-			}
-			if _, err := t.co.Threads.Create(ctx, createID, owner); err != nil {
-				return nil, err
-			}
-		} else if deleteID.Defined() {
+		if deleteID.Defined() {
 			if err := t.co.Threads.Delete(ctx, deleteID, owner); err != nil {
 				return nil, err
 			}
