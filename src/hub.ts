@@ -228,6 +228,7 @@ export class Client {
     const req = new pb.IsUsernameAvailableRequest()
     req.setUsername(username)
     // Should throw if not available/valid
+    // @todo: Should we just catch and return false here instead?
     await this.unary(API.IsUsernameAvailable, req, credentials)
     return true
   }
@@ -243,8 +244,9 @@ export class Client {
     const req = new pb.IsOrgNameAvailableRequest()
     req.setName(name)
     // Should throw if not available/valid
-    await this.unary(API.IsOrgNameAvailable, req, credentials)
-    return true
+    // @todo: Should we just catch and return false here instead?
+    const res: pb.IsOrgNameAvailableReply = await this.unary(API.IsOrgNameAvailable, req, credentials)
+    return res.toObject()
   }
 
   private unary<
@@ -256,7 +258,7 @@ export class Client {
       const creds = { ...this.credentials?.toJSON(), ...credentials?.toJSON() }
       grpc.unary(methodDescriptor, {
         request: req,
-        host: this.credentials!.host,
+        host: this.credentials?.host || '',
         metadata: creds,
         onEnd: (res: grpc.UnaryOutput<T>) => {
           const { status, statusMessage, message } = res

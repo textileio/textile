@@ -2,6 +2,7 @@
 import { grpc } from '@improbable-eng/grpc-web'
 ;(global as any).WebSocket = require('isomorphic-ws')
 // Some hackery to get WebSocket in the global namespace on nodejs
+import axios from 'axios'
 import { expect } from 'chai'
 import { SignupReply } from '@textile/hub/hub_pb'
 import { Client } from './hub'
@@ -86,7 +87,7 @@ describe('Hub Client...', () => {
     let user: SignupReply.AsObject
 
     beforeEach(async () => {
-      user = await signUp(client, addrGatewayUrl, sessionSecret)
+      user = (await signUp(client, addrGatewayUrl, sessionSecret)).user
     })
 
     context('Threads...', () => {
@@ -265,6 +266,86 @@ describe('Hub Client...', () => {
         await client.removeOrg(creds.withOrg(org.name))
         try {
           await client.getOrg(creds.withOrg(org.name))
+          throw wrongError
+        } catch (err) {
+          expect(err).to.not.equal(wrongError)
+        }
+      })
+
+      it('should invite to org', async () => {
+        const name = createUsername()
+        const creds = new Credentials().withSession(user.session).withHost(addrApiurl)
+        const org = await client.createOrg(name, creds)
+        try {
+          // Bad email
+          await client.inviteToOrg('jane', creds.withOrg(name))
+          throw wrongError
+        } catch (err) {
+          expect(err).to.not.equal(wrongError)
+        }
+        // Good email
+        const invite = await client.inviteToOrg(createEmail(), creds.withOrg(name))
+        expect(invite).to.have.ownProperty('token')
+        const res = await axios.get(`${addrGatewayUrl}/consent/${invite.token}`)
+        expect(res.status).to.equal(200)
+      })
+
+      it('should leave an org', async () => {
+        const name = createUsername()
+        const creds = new Credentials().withSession(user.session).withHost(addrApiurl)
+        const org = await client.createOrg(name, creds)
+        try {
+          // As owner
+          await client.leaveOrg(creds.withOrg(name))
+          throw wrongError
+        } catch (err) {
+          expect(err).to.not.equal(wrongError)
+        }
+        const user2 = await signUp(client, addrGatewayUrl, sessionSecret)
+        const creds2 = new Credentials().withSession(user2.user.session).withHost(addrApiurl)
+        try {
+          // As non-member
+          await client.leaveOrg(creds2.withOrg(org.name))
+          throw wrongError
+        } catch (err) {
+          expect(err).to.not.equal(wrongError)
+        }
+
+        const invite = await client.inviteToOrg(user2.email, creds.withOrg(org.name))
+        await axios.get(`${addrGatewayUrl}/consent/${invite.token}`)
+        // As member
+        // @todo: Figure out why this throws a 'Email address is not valid' Error?
+        // const res = await client.leaveOrg(creds2.withOrg(org.name))
+        // expect(res).to.be.undefined
+      })
+    })
+    describe('Utils...', () => {
+      it('should check that a user is available', async () => {
+        const username = createUsername()
+        const available = await client.isUsernameAvailable(username)
+        expect(available).to.be.true
+        const user = await signUp(client, addrGatewayUrl, sessionSecret)
+        try {
+          await client.isUsernameAvailable(user.username)
+          throw wrongError
+        } catch (err) {
+          expect(err).to.not.equal(wrongError)
+        }
+      })
+
+      it('should check that an org name is available', async () => {
+        const user = await signUp(client, addrGatewayUrl, sessionSecret)
+        const creds = new Credentials().withSession(user.user.session).withHost(addrApiurl)
+
+        const name = 'My awesome org!'
+        const res = await client.isOrgNameAvailable(name, creds)
+        expect(res).to.have.ownProperty('slug', 'My-awesome-org')
+
+        const org = await client.createOrg(name, creds)
+        expect(org.slug).to.equal(res.slug)
+
+        try {
+          await client.isOrgNameAvailable(name, creds)
           throw wrongError
         } catch (err) {
           expect(err).to.not.equal(wrongError)

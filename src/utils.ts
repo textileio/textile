@@ -28,11 +28,11 @@ export const confirmEmail = async (gurl: string, secret: string) => {
 export const signUp = (client: Client, addrGatewayUrl: string, sessionSecret: string) => {
   const username = createUsername()
   const email = createEmail()
-  return new Promise<SignupReply.AsObject>((resolve, reject) => {
+  return new Promise<{ user: SignupReply.AsObject; username: string; email: string }>((resolve, reject) => {
     client
       .signUp(username, email)
       .then((user) => {
-        resolve(user)
+        resolve({ user, username, email })
       })
       .catch((err) => reject(err))
     confirmEmail(addrGatewayUrl, sessionSecret).catch((err) => reject(err))
