@@ -10,6 +10,24 @@ var API = (function () {
   return API;
 }());
 
+API.Init = {
+  methodName: "Init",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: buckets_pb.InitRequest,
+  responseType: buckets_pb.InitReply
+};
+
+API.List = {
+  methodName: "List",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: buckets_pb.ListRequest,
+  responseType: buckets_pb.ListReply
+};
+
 API.ListPath = {
   methodName: "ListPath",
   service: API,
@@ -37,6 +55,15 @@ API.PullPath = {
   responseType: buckets_pb.PullPathReply
 };
 
+API.Remove = {
+  methodName: "Remove",
+  service: API,
+  requestStream: false,
+  responseStream: false,
+  requestType: buckets_pb.RemoveRequest,
+  responseType: buckets_pb.RemoveReply
+};
+
 API.RemovePath = {
   methodName: "RemovePath",
   service: API,
@@ -52,6 +79,68 @@ function APIClient(serviceHost, options) {
   this.serviceHost = serviceHost;
   this.options = options || {};
 }
+
+APIClient.prototype.init = function init(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.Init, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.list = function list(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.List, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
 
 APIClient.prototype.listPath = function listPath(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
@@ -163,6 +252,37 @@ APIClient.prototype.pullPath = function pullPath(requestMessage, metadata) {
     },
     cancel: function () {
       listeners = null;
+      client.close();
+    }
+  };
+};
+
+APIClient.prototype.remove = function remove(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(API.Remove, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
       client.close();
     }
   };

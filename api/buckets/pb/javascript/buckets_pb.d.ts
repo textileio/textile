@@ -3,12 +3,47 @@
 
 import * as jspb from "google-protobuf";
 
-export class Root extends jspb.Message {
-  getId(): string;
-  setId(value: string): void;
+export class InitRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): InitRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: InitRequest): InitRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: InitRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): InitRequest;
+  static deserializeBinaryFromReader(message: InitRequest, reader: jspb.BinaryReader): InitRequest;
+}
 
-  getName(): string;
-  setName(value: string): void;
+export namespace InitRequest {
+  export type AsObject = {
+  }
+}
+
+export class InitReply extends jspb.Message {
+  hasRoot(): boolean;
+  clearRoot(): void;
+  getRoot(): Root | undefined;
+  setRoot(value?: Root): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): InitReply.AsObject;
+  static toObject(includeInstance: boolean, msg: InitReply): InitReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: InitReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): InitReply;
+  static deserializeBinaryFromReader(message: InitReply, reader: jspb.BinaryReader): InitReply;
+}
+
+export namespace InitReply {
+  export type AsObject = {
+    root?: Root.AsObject,
+  }
+}
+
+export class Root extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
 
   getPath(): string;
   setPath(value: string): void;
@@ -31,15 +66,55 @@ export class Root extends jspb.Message {
 
 export namespace Root {
   export type AsObject = {
-    id: string,
-    name: string,
+    key: string,
     path: string,
     createdat: number,
     updatedat: number,
   }
 }
 
+export class ListRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ListRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: ListRequest): ListRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ListRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ListRequest;
+  static deserializeBinaryFromReader(message: ListRequest, reader: jspb.BinaryReader): ListRequest;
+}
+
+export namespace ListRequest {
+  export type AsObject = {
+  }
+}
+
+export class ListReply extends jspb.Message {
+  clearRootsList(): void;
+  getRootsList(): Array<Root>;
+  setRootsList(value: Array<Root>): void;
+  addRoots(value?: Root, index?: number): Root;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ListReply.AsObject;
+  static toObject(includeInstance: boolean, msg: ListReply): ListReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ListReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ListReply;
+  static deserializeBinaryFromReader(message: ListReply, reader: jspb.BinaryReader): ListReply;
+}
+
+export namespace ListReply {
+  export type AsObject = {
+    rootsList: Array<Root.AsObject>,
+  }
+}
+
 export class ListPathRequest extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
+
   getPath(): string;
   setPath(value: string): void;
 
@@ -55,6 +130,7 @@ export class ListPathRequest extends jspb.Message {
 
 export namespace ListPathRequest {
   export type AsObject = {
+    key: string,
     path: string,
   }
 }
@@ -87,9 +163,6 @@ export namespace ListPathReply {
   }
 
   export class Item extends jspb.Message {
-    getId(): string;
-    setId(value: string): void;
-
     getName(): string;
     setName(value: string): void;
 
@@ -119,7 +192,6 @@ export namespace ListPathReply {
 
   export namespace Item {
     export type AsObject = {
-      id: string,
       name: string,
       path: string,
       size: number,
@@ -160,6 +232,9 @@ export namespace PushPathRequest {
   }
 
   export class Header extends jspb.Message {
+    getKey(): string;
+    setKey(value: string): void;
+
     getPath(): string;
     setPath(value: string): void;
 
@@ -175,6 +250,7 @@ export namespace PushPathRequest {
 
   export namespace Header {
     export type AsObject = {
+      key: string,
       path: string,
     }
   }
@@ -260,6 +336,9 @@ export namespace PushPathReply {
 }
 
 export class PullPathRequest extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
+
   getPath(): string;
   setPath(value: string): void;
 
@@ -275,6 +354,7 @@ export class PullPathRequest extends jspb.Message {
 
 export namespace PullPathRequest {
   export type AsObject = {
+    key: string,
     path: string,
   }
 }
@@ -301,7 +381,46 @@ export namespace PullPathReply {
   }
 }
 
+export class RemoveRequest extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveRequest): RemoveRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveRequest;
+  static deserializeBinaryFromReader(message: RemoveRequest, reader: jspb.BinaryReader): RemoveRequest;
+}
+
+export namespace RemoveRequest {
+  export type AsObject = {
+    key: string,
+  }
+}
+
+export class RemoveReply extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): RemoveReply.AsObject;
+  static toObject(includeInstance: boolean, msg: RemoveReply): RemoveReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: RemoveReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): RemoveReply;
+  static deserializeBinaryFromReader(message: RemoveReply, reader: jspb.BinaryReader): RemoveReply;
+}
+
+export namespace RemoveReply {
+  export type AsObject = {
+  }
+}
+
 export class RemovePathRequest extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
+
   getPath(): string;
   setPath(value: string): void;
 
@@ -317,6 +436,7 @@ export class RemovePathRequest extends jspb.Message {
 
 export namespace RemovePathRequest {
   export type AsObject = {
+    key: string,
     path: string,
   }
 }

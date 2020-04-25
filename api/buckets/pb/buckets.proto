@@ -6,16 +6,28 @@ option java_package = "io.textile.buckets_grpc";
 option java_outer_classname = "TextileBuckets";
 option objc_class_prefix = "TXTL_BUCKETS";
 
+message InitRequest {}
+
+message InitReply {
+    Root root = 1;
+}
+
 message Root {
-    string ID = 1;
-    string name = 2;
-    string path = 3;
-    int64 createdAt = 4;
-    int64 updatedAt = 5;
+    string key = 1;
+    string path = 2;
+    int64 createdAt = 3;
+    int64 updatedAt = 4;
+}
+
+message ListRequest {}
+
+message ListReply {
+    repeated Root roots = 1;
 }
 
 message ListPathRequest {
-    string path = 1;
+    string key = 1;
+    string path = 2;
 }
 
 message ListPathReply {
@@ -23,7 +35,6 @@ message ListPathReply {
     Root root = 2;
 
     message Item {
-        string ID = 1;
         string name = 2;
         string path = 3;
         int64 size = 4;
@@ -39,7 +50,8 @@ message PushPathRequest {
     }
 
     message Header {
-        string path = 1;
+        string key = 1;
+        string path = 2;
     }
 }
 
@@ -59,22 +71,33 @@ message PushPathReply {
 }
 
 message PullPathRequest {
-    string path = 1;
+    string key = 1;
+    string path = 2;
 }
 
 message PullPathReply {
     bytes chunk = 1;
 }
 
+message RemoveRequest {
+    string key = 1;
+}
+
+message RemoveReply {}
+
 message RemovePathRequest {
-    string path = 1;
+    string key = 1;
+    string path = 2;
 }
 
 message RemovePathReply {}
 
 service API {
+    rpc Init(InitRequest) returns (InitReply) {}
+    rpc List(ListRequest) returns (ListReply) {}
     rpc ListPath(ListPathRequest) returns (ListPathReply) {}
     rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}
     rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
+    rpc Remove(RemoveRequest) returns (RemoveReply) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
 }

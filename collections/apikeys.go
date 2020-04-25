@@ -16,7 +16,7 @@ const (
 	secretLen = 24
 )
 
-type Key struct {
+type APIKey struct {
 	Key       string
 	Secret    string
 	Owner     crypto.PubKey
@@ -24,12 +24,12 @@ type Key struct {
 	CreatedAt time.Time
 }
 
-type Keys struct {
+type APIKeys struct {
 	col *mongo.Collection
 }
 
-func NewKeys(ctx context.Context, db *mongo.Database) (*Keys, error) {
-	s := &Keys{col: db.Collection("keys")}
+func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
+	s := &APIKeys{col: db.Collection("apikeys")}
 	_, err := s.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"owner_id", 1}},
@@ -38,8 +38,8 @@ func NewKeys(ctx context.Context, db *mongo.Database) (*Keys, error) {
 	return s, err
 }
 
-func (k *Keys) Create(ctx context.Context, owner crypto.PubKey) (*Key, error) {
-	doc := &Key{
+func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey) (*APIKey, error) {
+	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
 		Owner:     owner,
@@ -62,7 +62,7 @@ func (k *Keys) Create(ctx context.Context, owner crypto.PubKey) (*Key, error) {
 	return doc, nil
 }
 
-func (k *Keys) Get(ctx context.Context, key string) (*Key, error) {
+func (k *APIKeys) Get(ctx context.Context, key string) (*APIKey, error) {
 	res := k.col.FindOne(ctx, bson.M{"_id": key})
 	if res.Err() != nil {
 		return nil, res.Err()
@@ -74,7 +74,7 @@ func (k *Keys) Get(ctx context.Context, key string) (*Key, error) {
 	return decodeKey(raw)
 }
 
-func (k *Keys) List(ctx context.Context, owner crypto.PubKey) ([]Key, error) {
+func (k *APIKeys) List(ctx context.Context, owner crypto.PubKey) ([]APIKey, error) {
 	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (k *Keys) List(ctx context.Context, owner crypto.PubKey) ([]Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	var docs []Key
+	var docs []APIKey
 	for cursor.Next(ctx) {
 		var raw bson.M
 		if err := cursor.Decode(&raw); err != nil {
@@ -101,7 +101,7 @@ func (k *Keys) List(ctx context.Context, owner crypto.PubKey) ([]Key, error) {
 	return docs, nil
 }
 
-func (k *Keys) Invalidate(ctx context.Context, key string) error {
+func (k *APIKeys) Invalidate(ctx context.Context, key string) error {
 	res, err := k.col.UpdateOne(ctx, bson.M{"_id": key}, bson.M{"$set": bson.M{"valid": false}})
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (k *Keys) Invalidate(ctx context.Context, key string) error {
 	return nil
 }
 
-func decodeKey(raw bson.M) (*Key, error) {
+func decodeKey(raw bson.M) (*APIKey, error) {
 	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func decodeKey(raw bson.M) (*Key, error) {
 	if v, ok := raw["created_at"]; ok {
 		created = v.(primitive.DateTime).Time()
 	}
-	return &Key{
+	return &APIKey{
 		Key:       raw["_id"].(string),
 		Secret:    raw["secret"].(string),
 		Owner:     owner,

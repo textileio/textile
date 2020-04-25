@@ -24,12 +24,81 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type InitRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InitRequest) Reset()         { *m = InitRequest{} }
+func (m *InitRequest) String() string { return proto.CompactTextString(m) }
+func (*InitRequest) ProtoMessage()    {}
+func (*InitRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{0}
+}
+
+func (m *InitRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InitRequest.Unmarshal(m, b)
+}
+func (m *InitRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InitRequest.Marshal(b, m, deterministic)
+}
+func (m *InitRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InitRequest.Merge(m, src)
+}
+func (m *InitRequest) XXX_Size() int {
+	return xxx_messageInfo_InitRequest.Size(m)
+}
+func (m *InitRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InitRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InitRequest proto.InternalMessageInfo
+
+type InitReply struct {
+	Root                 *Root    `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InitReply) Reset()         { *m = InitReply{} }
+func (m *InitReply) String() string { return proto.CompactTextString(m) }
+func (*InitReply) ProtoMessage()    {}
+func (*InitReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{1}
+}
+
+func (m *InitReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InitReply.Unmarshal(m, b)
+}
+func (m *InitReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InitReply.Marshal(b, m, deterministic)
+}
+func (m *InitReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InitReply.Merge(m, src)
+}
+func (m *InitReply) XXX_Size() int {
+	return xxx_messageInfo_InitReply.Size(m)
+}
+func (m *InitReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_InitReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InitReply proto.InternalMessageInfo
+
+func (m *InitReply) GetRoot() *Root {
+	if m != nil {
+		return m.Root
+	}
+	return nil
+}
+
 type Root struct {
-	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	Name                 string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Path                 string   `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
-	CreatedAt            int64    `protobuf:"varint,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
-	UpdatedAt            int64    `protobuf:"varint,5,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	CreatedAt            int64    `protobuf:"varint,3,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	UpdatedAt            int64    `protobuf:"varint,4,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -39,7 +108,7 @@ func (m *Root) Reset()         { *m = Root{} }
 func (m *Root) String() string { return proto.CompactTextString(m) }
 func (*Root) ProtoMessage()    {}
 func (*Root) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{0}
+	return fileDescriptor_95035767e889ecda, []int{2}
 }
 
 func (m *Root) XXX_Unmarshal(b []byte) error {
@@ -60,16 +129,9 @@ func (m *Root) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Root proto.InternalMessageInfo
 
-func (m *Root) GetID() string {
+func (m *Root) GetKey() string {
 	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
-func (m *Root) GetName() string {
-	if m != nil {
-		return m.Name
+		return m.Key
 	}
 	return ""
 }
@@ -95,8 +157,79 @@ func (m *Root) GetUpdatedAt() int64 {
 	return 0
 }
 
+type ListRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListRequest) Reset()         { *m = ListRequest{} }
+func (m *ListRequest) String() string { return proto.CompactTextString(m) }
+func (*ListRequest) ProtoMessage()    {}
+func (*ListRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{3}
+}
+
+func (m *ListRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListRequest.Unmarshal(m, b)
+}
+func (m *ListRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListRequest.Marshal(b, m, deterministic)
+}
+func (m *ListRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListRequest.Merge(m, src)
+}
+func (m *ListRequest) XXX_Size() int {
+	return xxx_messageInfo_ListRequest.Size(m)
+}
+func (m *ListRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListRequest proto.InternalMessageInfo
+
+type ListReply struct {
+	Roots                []*Root  `protobuf:"bytes,1,rep,name=roots,proto3" json:"roots,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListReply) Reset()         { *m = ListReply{} }
+func (m *ListReply) String() string { return proto.CompactTextString(m) }
+func (*ListReply) ProtoMessage()    {}
+func (*ListReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{4}
+}
+
+func (m *ListReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListReply.Unmarshal(m, b)
+}
+func (m *ListReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListReply.Marshal(b, m, deterministic)
+}
+func (m *ListReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListReply.Merge(m, src)
+}
+func (m *ListReply) XXX_Size() int {
+	return xxx_messageInfo_ListReply.Size(m)
+}
+func (m *ListReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListReply proto.InternalMessageInfo
+
+func (m *ListReply) GetRoots() []*Root {
+	if m != nil {
+		return m.Roots
+	}
+	return nil
+}
+
 type ListPathRequest struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -106,7 +239,7 @@ func (m *ListPathRequest) Reset()         { *m = ListPathRequest{} }
 func (m *ListPathRequest) String() string { return proto.CompactTextString(m) }
 func (*ListPathRequest) ProtoMessage()    {}
 func (*ListPathRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{1}
+	return fileDescriptor_95035767e889ecda, []int{5}
 }
 
 func (m *ListPathRequest) XXX_Unmarshal(b []byte) error {
@@ -127,6 +260,13 @@ func (m *ListPathRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ListPathRequest proto.InternalMessageInfo
 
+func (m *ListPathRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
 func (m *ListPathRequest) GetPath() string {
 	if m != nil {
 		return m.Path
@@ -146,7 +286,7 @@ func (m *ListPathReply) Reset()         { *m = ListPathReply{} }
 func (m *ListPathReply) String() string { return proto.CompactTextString(m) }
 func (*ListPathReply) ProtoMessage()    {}
 func (*ListPathReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{2}
+	return fileDescriptor_95035767e889ecda, []int{6}
 }
 
 func (m *ListPathReply) XXX_Unmarshal(b []byte) error {
@@ -182,7 +322,6 @@ func (m *ListPathReply) GetRoot() *Root {
 }
 
 type ListPathReply_Item struct {
-	ID                   string                `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Name                 string                `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Path                 string                `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
 	Size                 int64                 `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
@@ -197,7 +336,7 @@ func (m *ListPathReply_Item) Reset()         { *m = ListPathReply_Item{} }
 func (m *ListPathReply_Item) String() string { return proto.CompactTextString(m) }
 func (*ListPathReply_Item) ProtoMessage()    {}
 func (*ListPathReply_Item) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{2, 0}
+	return fileDescriptor_95035767e889ecda, []int{6, 0}
 }
 
 func (m *ListPathReply_Item) XXX_Unmarshal(b []byte) error {
@@ -217,13 +356,6 @@ func (m *ListPathReply_Item) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_ListPathReply_Item proto.InternalMessageInfo
-
-func (m *ListPathReply_Item) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
 
 func (m *ListPathReply_Item) GetName() string {
 	if m != nil {
@@ -274,7 +406,7 @@ func (m *PushPathRequest) Reset()         { *m = PushPathRequest{} }
 func (m *PushPathRequest) String() string { return proto.CompactTextString(m) }
 func (*PushPathRequest) ProtoMessage()    {}
 func (*PushPathRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{3}
+	return fileDescriptor_95035767e889ecda, []int{7}
 }
 
 func (m *PushPathRequest) XXX_Unmarshal(b []byte) error {
@@ -341,7 +473,8 @@ func (*PushPathRequest) XXX_OneofWrappers() []interface{} {
 }
 
 type PushPathRequest_Header struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -351,7 +484,7 @@ func (m *PushPathRequest_Header) Reset()         { *m = PushPathRequest_Header{}
 func (m *PushPathRequest_Header) String() string { return proto.CompactTextString(m) }
 func (*PushPathRequest_Header) ProtoMessage()    {}
 func (*PushPathRequest_Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{3, 0}
+	return fileDescriptor_95035767e889ecda, []int{7, 0}
 }
 
 func (m *PushPathRequest_Header) XXX_Unmarshal(b []byte) error {
@@ -371,6 +504,13 @@ func (m *PushPathRequest_Header) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_PushPathRequest_Header proto.InternalMessageInfo
+
+func (m *PushPathRequest_Header) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
 
 func (m *PushPathRequest_Header) GetPath() string {
 	if m != nil {
@@ -393,7 +533,7 @@ func (m *PushPathReply) Reset()         { *m = PushPathReply{} }
 func (m *PushPathReply) String() string { return proto.CompactTextString(m) }
 func (*PushPathReply) ProtoMessage()    {}
 func (*PushPathReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{4}
+	return fileDescriptor_95035767e889ecda, []int{8}
 }
 
 func (m *PushPathReply) XXX_Unmarshal(b []byte) error {
@@ -474,7 +614,7 @@ func (m *PushPathReply_Event) Reset()         { *m = PushPathReply_Event{} }
 func (m *PushPathReply_Event) String() string { return proto.CompactTextString(m) }
 func (*PushPathReply_Event) ProtoMessage()    {}
 func (*PushPathReply_Event) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{4, 0}
+	return fileDescriptor_95035767e889ecda, []int{8, 0}
 }
 
 func (m *PushPathReply_Event) XXX_Unmarshal(b []byte) error {
@@ -531,7 +671,8 @@ func (m *PushPathReply_Event) GetRoot() *Root {
 }
 
 type PullPathRequest struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -541,7 +682,7 @@ func (m *PullPathRequest) Reset()         { *m = PullPathRequest{} }
 func (m *PullPathRequest) String() string { return proto.CompactTextString(m) }
 func (*PullPathRequest) ProtoMessage()    {}
 func (*PullPathRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{5}
+	return fileDescriptor_95035767e889ecda, []int{9}
 }
 
 func (m *PullPathRequest) XXX_Unmarshal(b []byte) error {
@@ -562,6 +703,13 @@ func (m *PullPathRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PullPathRequest proto.InternalMessageInfo
 
+func (m *PullPathRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
 func (m *PullPathRequest) GetPath() string {
 	if m != nil {
 		return m.Path
@@ -580,7 +728,7 @@ func (m *PullPathReply) Reset()         { *m = PullPathReply{} }
 func (m *PullPathReply) String() string { return proto.CompactTextString(m) }
 func (*PullPathReply) ProtoMessage()    {}
 func (*PullPathReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{6}
+	return fileDescriptor_95035767e889ecda, []int{10}
 }
 
 func (m *PullPathReply) XXX_Unmarshal(b []byte) error {
@@ -608,8 +756,79 @@ func (m *PullPathReply) GetChunk() []byte {
 	return nil
 }
 
+type RemoveRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveRequest) Reset()         { *m = RemoveRequest{} }
+func (m *RemoveRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveRequest) ProtoMessage()    {}
+func (*RemoveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{11}
+}
+
+func (m *RemoveRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveRequest.Unmarshal(m, b)
+}
+func (m *RemoveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveRequest.Marshal(b, m, deterministic)
+}
+func (m *RemoveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveRequest.Merge(m, src)
+}
+func (m *RemoveRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveRequest.Size(m)
+}
+func (m *RemoveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveRequest proto.InternalMessageInfo
+
+func (m *RemoveRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type RemoveReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveReply) Reset()         { *m = RemoveReply{} }
+func (m *RemoveReply) String() string { return proto.CompactTextString(m) }
+func (*RemoveReply) ProtoMessage()    {}
+func (*RemoveReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{12}
+}
+
+func (m *RemoveReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveReply.Unmarshal(m, b)
+}
+func (m *RemoveReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveReply.Marshal(b, m, deterministic)
+}
+func (m *RemoveReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveReply.Merge(m, src)
+}
+func (m *RemoveReply) XXX_Size() int {
+	return xxx_messageInfo_RemoveReply.Size(m)
+}
+func (m *RemoveReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveReply proto.InternalMessageInfo
+
 type RemovePathRequest struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -619,7 +838,7 @@ func (m *RemovePathRequest) Reset()         { *m = RemovePathRequest{} }
 func (m *RemovePathRequest) String() string { return proto.CompactTextString(m) }
 func (*RemovePathRequest) ProtoMessage()    {}
 func (*RemovePathRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{7}
+	return fileDescriptor_95035767e889ecda, []int{13}
 }
 
 func (m *RemovePathRequest) XXX_Unmarshal(b []byte) error {
@@ -640,6 +859,13 @@ func (m *RemovePathRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RemovePathRequest proto.InternalMessageInfo
 
+func (m *RemovePathRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
 func (m *RemovePathRequest) GetPath() string {
 	if m != nil {
 		return m.Path
@@ -657,7 +883,7 @@ func (m *RemovePathReply) Reset()         { *m = RemovePathReply{} }
 func (m *RemovePathReply) String() string { return proto.CompactTextString(m) }
 func (*RemovePathReply) ProtoMessage()    {}
 func (*RemovePathReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_95035767e889ecda, []int{8}
+	return fileDescriptor_95035767e889ecda, []int{14}
 }
 
 func (m *RemovePathReply) XXX_Unmarshal(b []byte) error {
@@ -679,7 +905,11 @@ func (m *RemovePathReply) XXX_DiscardUnknown() {
 var xxx_messageInfo_RemovePathReply proto.InternalMessageInfo
 
 func init() {
+	proto.RegisterType((*InitRequest)(nil), "buckets.pb.InitRequest")
+	proto.RegisterType((*InitReply)(nil), "buckets.pb.InitReply")
 	proto.RegisterType((*Root)(nil), "buckets.pb.Root")
+	proto.RegisterType((*ListRequest)(nil), "buckets.pb.ListRequest")
+	proto.RegisterType((*ListReply)(nil), "buckets.pb.ListReply")
 	proto.RegisterType((*ListPathRequest)(nil), "buckets.pb.ListPathRequest")
 	proto.RegisterType((*ListPathReply)(nil), "buckets.pb.ListPathReply")
 	proto.RegisterType((*ListPathReply_Item)(nil), "buckets.pb.ListPathReply.Item")
@@ -689,6 +919,8 @@ func init() {
 	proto.RegisterType((*PushPathReply_Event)(nil), "buckets.pb.PushPathReply.Event")
 	proto.RegisterType((*PullPathRequest)(nil), "buckets.pb.PullPathRequest")
 	proto.RegisterType((*PullPathReply)(nil), "buckets.pb.PullPathReply")
+	proto.RegisterType((*RemoveRequest)(nil), "buckets.pb.RemoveRequest")
+	proto.RegisterType((*RemoveReply)(nil), "buckets.pb.RemoveReply")
 	proto.RegisterType((*RemovePathRequest)(nil), "buckets.pb.RemovePathRequest")
 	proto.RegisterType((*RemovePathReply)(nil), "buckets.pb.RemovePathReply")
 }
@@ -696,43 +928,50 @@ func init() {
 func init() { proto.RegisterFile("buckets.proto", fileDescriptor_95035767e889ecda) }
 
 var fileDescriptor_95035767e889ecda = []byte{
-	// 574 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x54, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0xcd, 0x3a, 0x76, 0x68, 0xa6, 0x49, 0x43, 0x57, 0x11, 0x84, 0xb4, 0x40, 0xb4, 0x22, 0x22,
-	0x27, 0xab, 0x0a, 0x48, 0x48, 0x88, 0x4b, 0x43, 0x8a, 0x12, 0xe8, 0x21, 0x5a, 0x82, 0xc4, 0xad,
-	0x72, 0x92, 0x15, 0xb1, 0xea, 0x64, 0x8d, 0xbd, 0xae, 0x48, 0x2f, 0xdc, 0x39, 0xf1, 0x0b, 0x38,
-	0x70, 0xe3, 0xbf, 0xf1, 0x23, 0xd0, 0xee, 0xda, 0xf1, 0x87, 0x52, 0x8a, 0xb8, 0x79, 0x66, 0xde,
-	0xbe, 0xdd, 0xf7, 0xde, 0xc8, 0x50, 0x9f, 0x45, 0xf3, 0x4b, 0x26, 0x42, 0xdb, 0x0f, 0xb8, 0xe0,
-	0x18, 0xb6, 0xe5, 0x8c, 0x5c, 0x83, 0x49, 0x39, 0x17, 0xf8, 0x00, 0x8c, 0xf1, 0xb0, 0x85, 0x3a,
-	0xa8, 0x57, 0xa5, 0xc6, 0x78, 0x88, 0x31, 0x98, 0x6b, 0x67, 0xc5, 0x5a, 0x86, 0xea, 0xa8, 0x6f,
-	0xd9, 0xf3, 0x1d, 0xb1, 0x6c, 0x95, 0x75, 0x4f, 0x7e, 0xe3, 0x63, 0xa8, 0xce, 0x03, 0xe6, 0x08,
-	0xb6, 0x38, 0x15, 0x2d, 0xb3, 0x83, 0x7a, 0x65, 0x9a, 0x36, 0xe4, 0x34, 0xf2, 0x17, 0xf1, 0xd4,
-	0xd2, 0xd3, 0x6d, 0x83, 0x74, 0xa1, 0x71, 0xee, 0x86, 0x62, 0xe2, 0x88, 0x25, 0x65, 0x9f, 0x23,
-	0x16, 0x8a, 0xed, 0x15, 0x28, 0xbd, 0x82, 0x7c, 0x33, 0xa0, 0x9e, 0xe2, 0x7c, 0x6f, 0x83, 0xfb,
-	0x60, 0xba, 0x82, 0xad, 0x14, 0x6a, 0xbf, 0xff, 0xc8, 0x4e, 0xf5, 0xd8, 0x39, 0xa0, 0x3d, 0x16,
-	0x6c, 0x45, 0x15, 0x16, 0x3f, 0x01, 0x33, 0xe0, 0x5c, 0x28, 0x41, 0xfb, 0xfd, 0xbb, 0xd9, 0x33,
-	0xd2, 0x00, 0xaa, 0xa6, 0xed, 0x1f, 0x08, 0x4c, 0x79, 0xe8, 0xbf, 0xfd, 0xc0, 0x60, 0x86, 0xee,
-	0x35, 0x8b, 0xad, 0x50, 0xdf, 0xb8, 0x09, 0x96, 0x1b, 0x0e, 0xdd, 0x40, 0x39, 0xb0, 0x47, 0x75,
-	0x81, 0x9f, 0x83, 0x25, 0x1f, 0x16, 0xb6, 0x2a, 0x9d, 0xf2, 0x3f, 0xa8, 0xd0, 0x60, 0xf2, 0x1d,
-	0x41, 0x63, 0x12, 0x85, 0xcb, 0xac, 0x69, 0xaf, 0xa0, 0xb2, 0x64, 0xce, 0x82, 0x05, 0xb1, 0x21,
-	0x24, 0x4b, 0x55, 0x00, 0xdb, 0x23, 0x85, 0x1c, 0x95, 0x68, 0x7c, 0x06, 0xdf, 0x03, 0x6b, 0xbe,
-	0x8c, 0xd6, 0x97, 0x4a, 0x5a, 0x6d, 0x54, 0xa2, 0xba, 0x6c, 0x1f, 0x43, 0x45, 0x63, 0x77, 0x85,
-	0x32, 0xa8, 0xc2, 0x1d, 0xdf, 0xd9, 0x78, 0xdc, 0x59, 0x90, 0xdf, 0x08, 0xea, 0xe9, 0x2d, 0x32,
-	0x9f, 0x17, 0x60, 0xb1, 0x2b, 0xb6, 0x16, 0xf1, 0x7b, 0x1e, 0xef, 0x7e, 0x8f, 0x94, 0x76, 0x26,
-	0x61, 0xf2, 0x4e, 0x85, 0x97, 0x6f, 0x61, 0x41, 0xc0, 0x03, 0x6d, 0xb3, 0xea, 0xcb, 0xb2, 0xfd,
-	0x15, 0x2c, 0x85, 0xdc, 0xc6, 0x80, 0x76, 0xc4, 0x60, 0x64, 0x62, 0x68, 0x82, 0x35, 0xdb, 0x08,
-	0x16, 0xaa, 0x6c, 0xca, 0x54, 0x17, 0xb9, 0x70, 0xaa, 0x71, 0x38, 0xc9, 0x5e, 0x58, 0x7f, 0xdb,
-	0x8b, 0xac, 0xdc, 0xae, 0x0c, 0xc0, 0xf3, 0x6e, 0xdb, 0xda, 0xae, 0x34, 0x25, 0x81, 0x49, 0x53,
-	0x9a, 0x89, 0xcf, 0x12, 0x55, 0x8b, 0x5d, 0x26, 0x4f, 0xe1, 0x90, 0xb2, 0x15, 0xbf, 0x62, 0xb7,
-	0xf1, 0x1d, 0x42, 0x23, 0x0b, 0xf4, 0xbd, 0x4d, 0xff, 0x97, 0x01, 0xe5, 0xd3, 0xc9, 0x18, 0x0f,
-	0x61, 0x2f, 0x59, 0x18, 0x7c, 0xb4, 0x7b, 0x8d, 0x14, 0x6f, 0xfb, 0xc1, 0x8d, 0x3b, 0x46, 0x4a,
-	0x78, 0x04, 0x7b, 0x49, 0x36, 0x79, 0x96, 0xc2, 0x06, 0xe5, 0x59, 0x72, 0x71, 0x92, 0x52, 0x0f,
-	0x9d, 0x20, 0xfc, 0x46, 0x32, 0x69, 0xe9, 0x45, 0xa6, 0x9c, 0x6f, 0x45, 0xa6, 0x8c, 0x5b, 0xa4,
-	0x74, 0x82, 0xf0, 0x5b, 0x80, 0x54, 0x32, 0x7e, 0x98, 0x8b, 0xa6, 0xe8, 0x59, 0xfb, 0xe8, 0xa6,
-	0xb1, 0x62, 0x1b, 0xbc, 0x84, 0xfb, 0x2e, 0xb7, 0x05, 0xfb, 0x22, 0x5c, 0x8f, 0x25, 0xd0, 0x8b,
-	0x4f, 0x81, 0x3f, 0x1f, 0x1c, 0x4c, 0x75, 0x77, 0xa0, 0x9b, 0x13, 0xf4, 0xd3, 0xa8, 0x4d, 0x3f,
-	0x4e, 0xcf, 0x2f, 0x06, 0x1f, 0x5e, 0xbf, 0x3b, 0x9b, 0xbe, 0x9f, 0x55, 0xd4, 0x6f, 0xf3, 0xd9,
-	0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xbf, 0x98, 0x76, 0x34, 0x47, 0x05, 0x00, 0x00,
+	// 674 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xdd, 0x6e, 0xd3, 0x30,
+	0x14, 0x8e, 0x97, 0xa4, 0xac, 0x67, 0x2b, 0xdb, 0xac, 0xc1, 0x4a, 0xc7, 0x4f, 0xb1, 0x00, 0xf5,
+	0x2a, 0x1a, 0x1b, 0xd2, 0x00, 0x21, 0xa4, 0x95, 0x0d, 0x75, 0xb0, 0x8b, 0x2a, 0x14, 0x89, 0xbb,
+	0x29, 0x6d, 0x2d, 0x1a, 0x2d, 0x6d, 0x42, 0xe2, 0x4e, 0x94, 0x1b, 0xde, 0x80, 0x87, 0xd8, 0x7b,
+	0xf1, 0x06, 0x3c, 0x01, 0x57, 0xe8, 0xd8, 0x49, 0xea, 0x74, 0xed, 0xd8, 0xee, 0x72, 0x7c, 0xbe,
+	0x73, 0xfc, 0xf9, 0xfb, 0x8e, 0x1d, 0xa8, 0x74, 0xc7, 0xbd, 0x33, 0x2e, 0x12, 0x27, 0x8a, 0x43,
+	0x11, 0x52, 0xc8, 0xc3, 0x2e, 0xab, 0xc0, 0xca, 0xf1, 0xc8, 0x17, 0x2e, 0xff, 0x36, 0xe6, 0x89,
+	0x60, 0xcf, 0xa1, 0xac, 0xc2, 0x28, 0x98, 0xd0, 0x27, 0x60, 0xc5, 0x61, 0x28, 0xaa, 0xa4, 0x4e,
+	0x1a, 0x2b, 0xbb, 0xeb, 0xce, 0xb4, 0xcc, 0x71, 0xc3, 0x50, 0xb8, 0x32, 0xcb, 0x06, 0x60, 0x61,
+	0x44, 0xd7, 0xc1, 0x3c, 0xe3, 0x13, 0x09, 0x2e, 0xbb, 0xf8, 0x49, 0x29, 0x58, 0x91, 0x27, 0x06,
+	0xd5, 0x25, 0xb9, 0x24, 0xbf, 0xe9, 0x7d, 0x28, 0xf7, 0x62, 0xee, 0x09, 0xde, 0x3f, 0x10, 0x55,
+	0xb3, 0x4e, 0x1a, 0xa6, 0x3b, 0x5d, 0xc0, 0xec, 0x38, 0xea, 0xa7, 0x59, 0x4b, 0x65, 0xf3, 0x05,
+	0xe4, 0x7a, 0xe2, 0x27, 0x39, 0xd7, 0x3d, 0x28, 0xab, 0x10, 0xb9, 0x3e, 0x03, 0x1b, 0xd9, 0x24,
+	0x55, 0x52, 0x37, 0xe7, 0x92, 0x55, 0x69, 0xb6, 0x0f, 0x6b, 0x58, 0xd4, 0xf6, 0xc4, 0x20, 0xed,
+	0x73, 0x3d, 0xe2, 0xec, 0x2f, 0x81, 0xca, 0xb4, 0x12, 0xb7, 0xdc, 0x05, 0xcb, 0x17, 0x7c, 0x98,
+	0xca, 0xf3, 0x50, 0xdf, 0xb1, 0x00, 0x74, 0x8e, 0x05, 0x1f, 0xba, 0x12, 0x9b, 0x4b, 0xba, 0x74,
+	0x95, 0xa4, 0xb5, 0x5f, 0x04, 0x2c, 0x2c, 0x42, 0x22, 0x23, 0x6f, 0xc8, 0x33, 0x22, 0xf8, 0x9d,
+	0x93, 0x33, 0x35, 0x55, 0x29, 0x58, 0x89, 0xff, 0x83, 0xa7, 0x92, 0xc9, 0x6f, 0xba, 0x09, 0xb6,
+	0x9f, 0x1c, 0xfa, 0x71, 0xd5, 0xae, 0x93, 0xc6, 0xb2, 0xab, 0x02, 0xfa, 0x02, 0x6c, 0x24, 0x92,
+	0x54, 0x4b, 0x52, 0xa7, 0xff, 0xb1, 0x56, 0x60, 0x76, 0x41, 0x60, 0xad, 0x3d, 0x4e, 0x06, 0xba,
+	0x6c, 0x6f, 0xa0, 0x34, 0xe0, 0x5e, 0x9f, 0xc7, 0xa9, 0x00, 0x4c, 0x6f, 0x35, 0x03, 0x76, 0x5a,
+	0x12, 0xd9, 0x32, 0xdc, 0xb4, 0x86, 0xde, 0x05, 0xbb, 0x37, 0x18, 0x8f, 0xce, 0xe4, 0xd1, 0x56,
+	0x5b, 0x86, 0xab, 0xc2, 0x9a, 0x03, 0x25, 0x85, 0xbd, 0x9e, 0x2d, 0xcd, 0x32, 0xdc, 0x8a, 0xbc,
+	0x49, 0x10, 0x7a, 0x7d, 0xf6, 0x87, 0x40, 0x65, 0xba, 0x2f, 0x3a, 0xb4, 0x0f, 0x36, 0x3f, 0xe7,
+	0xa3, 0x6c, 0x82, 0x1f, 0xcd, 0x67, 0x88, 0x87, 0x3d, 0x42, 0x18, 0xb2, 0x90, 0x78, 0x64, 0xc7,
+	0xe3, 0x38, 0x8c, 0xd5, 0x56, 0x72, 0x1d, 0xc3, 0xda, 0x4f, 0xb0, 0x25, 0x32, 0x37, 0x86, 0xcc,
+	0x31, 0x46, 0x1f, 0xf7, 0x4d, 0xb0, 0xbb, 0x13, 0xc1, 0x93, 0x74, 0xd4, 0x55, 0x50, 0xb0, 0xab,
+	0x9c, 0xda, 0x95, 0x4d, 0x86, 0x7d, 0xd5, 0x64, 0xe8, 0xc7, 0xdd, 0x47, 0x4b, 0x82, 0xe0, 0xe6,
+	0x93, 0xfc, 0x14, 0x65, 0xca, 0x0a, 0x51, 0xa6, 0xcd, 0xcc, 0x0b, 0x2c, 0x5c, 0x4d, 0x9d, 0x60,
+	0x8f, 0xa1, 0xe2, 0xf2, 0x61, 0x78, 0xce, 0x17, 0x76, 0xc7, 0x0b, 0x99, 0x41, 0xa2, 0x60, 0xc2,
+	0x5e, 0xc1, 0x86, 0x0a, 0x6f, 0xce, 0x69, 0x03, 0xd6, 0xf4, 0xd2, 0x28, 0x98, 0xec, 0xfe, 0x36,
+	0xc1, 0x3c, 0x68, 0x1f, 0xd3, 0x97, 0x60, 0xe1, 0x93, 0x44, 0xb7, 0x74, 0x49, 0xb4, 0x37, 0xab,
+	0x76, 0xe7, 0x72, 0x02, 0xd9, 0x18, 0x58, 0x89, 0x23, 0x5d, 0xac, 0xd4, 0x5e, 0x90, 0x62, 0x65,
+	0xfe, 0x96, 0x30, 0x83, 0x1e, 0xc2, 0x72, 0x76, 0x19, 0xe8, 0xf6, 0xfc, 0x2b, 0xa2, 0x3a, 0xdc,
+	0x5b, 0x78, 0x7f, 0x98, 0x41, 0x5b, 0xb0, 0x9c, 0x4d, 0x59, 0xb1, 0xcb, 0xcc, 0xed, 0x28, 0x76,
+	0x29, 0x0c, 0x26, 0x33, 0x1a, 0x64, 0x87, 0xd0, 0xf7, 0xd8, 0x49, 0x59, 0x36, 0xdb, 0xa9, 0x30,
+	0x01, 0xb3, 0x9d, 0x34, 0x97, 0x99, 0xb1, 0x43, 0xe8, 0x5b, 0x28, 0x29, 0x99, 0x69, 0x01, 0x58,
+	0xf0, 0xb9, 0xb6, 0x35, 0x2f, 0xa5, 0x4e, 0xf4, 0x01, 0x60, 0x6a, 0x13, 0x7d, 0x70, 0x19, 0xa8,
+	0x73, 0xd9, 0x5e, 0x94, 0x96, 0xbd, 0x9a, 0xaf, 0x61, 0xcb, 0x0f, 0x1d, 0xc1, 0xbf, 0x0b, 0x3f,
+	0xe0, 0x19, 0xf4, 0xf4, 0x6b, 0x1c, 0xf5, 0x9a, 0xb7, 0x3b, 0x6a, 0xb5, 0xa9, 0x16, 0xdb, 0xe4,
+	0x62, 0x69, 0xb5, 0xf3, 0xa5, 0x73, 0x72, 0xda, 0xfc, 0xfc, 0xee, 0xe3, 0x51, 0xe7, 0x53, 0xb7,
+	0x24, 0x7f, 0x64, 0x7b, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0x75, 0x5b, 0x25, 0x20, 0xd9, 0x06,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -747,9 +986,12 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type APIClient interface {
+	Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitReply, error)
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListReply, error)
 	ListPath(ctx context.Context, in *ListPathRequest, opts ...grpc.CallOption) (*ListPathReply, error)
 	PushPath(ctx context.Context, opts ...grpc.CallOption) (API_PushPathClient, error)
 	PullPath(ctx context.Context, in *PullPathRequest, opts ...grpc.CallOption) (API_PullPathClient, error)
+	Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveReply, error)
 	RemovePath(ctx context.Context, in *RemovePathRequest, opts ...grpc.CallOption) (*RemovePathReply, error)
 }
 
@@ -759,6 +1001,24 @@ type aPIClient struct {
 
 func NewAPIClient(cc *grpc.ClientConn) APIClient {
 	return &aPIClient{cc}
+}
+
+func (c *aPIClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitReply, error) {
+	out := new(InitReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListReply, error) {
+	out := new(ListReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/List", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *aPIClient) ListPath(ctx context.Context, in *ListPathRequest, opts ...grpc.CallOption) (*ListPathReply, error) {
@@ -833,6 +1093,15 @@ func (x *aPIPullPathClient) Recv() (*PullPathReply, error) {
 	return m, nil
 }
 
+func (c *aPIClient) Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveReply, error) {
+	out := new(RemoveReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/Remove", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *aPIClient) RemovePath(ctx context.Context, in *RemovePathRequest, opts ...grpc.CallOption) (*RemovePathReply, error) {
 	out := new(RemovePathReply)
 	err := c.cc.Invoke(ctx, "/buckets.pb.API/RemovePath", in, out, opts...)
@@ -844,9 +1113,12 @@ func (c *aPIClient) RemovePath(ctx context.Context, in *RemovePathRequest, opts 
 
 // APIServer is the server API for API service.
 type APIServer interface {
+	Init(context.Context, *InitRequest) (*InitReply, error)
+	List(context.Context, *ListRequest) (*ListReply, error)
 	ListPath(context.Context, *ListPathRequest) (*ListPathReply, error)
 	PushPath(API_PushPathServer) error
 	PullPath(*PullPathRequest, API_PullPathServer) error
+	Remove(context.Context, *RemoveRequest) (*RemoveReply, error)
 	RemovePath(context.Context, *RemovePathRequest) (*RemovePathReply, error)
 }
 
@@ -854,6 +1126,12 @@ type APIServer interface {
 type UnimplementedAPIServer struct {
 }
 
+func (*UnimplementedAPIServer) Init(ctx context.Context, req *InitRequest) (*InitReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+}
+func (*UnimplementedAPIServer) List(ctx context.Context, req *ListRequest) (*ListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
 func (*UnimplementedAPIServer) ListPath(ctx context.Context, req *ListPathRequest) (*ListPathReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPath not implemented")
 }
@@ -863,12 +1141,51 @@ func (*UnimplementedAPIServer) PushPath(srv API_PushPathServer) error {
 func (*UnimplementedAPIServer) PullPath(req *PullPathRequest, srv API_PullPathServer) error {
 	return status.Errorf(codes.Unimplemented, "method PullPath not implemented")
 }
+func (*UnimplementedAPIServer) Remove(ctx context.Context, req *RemoveRequest) (*RemoveReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
+}
 func (*UnimplementedAPIServer) RemovePath(ctx context.Context, req *RemovePathRequest) (*RemovePathReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePath not implemented")
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
 	s.RegisterService(&_API_serviceDesc, srv)
+}
+
+func _API_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Init(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/Init",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Init(ctx, req.(*InitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).List(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/List",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).List(ctx, req.(*ListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _API_ListPath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -936,6 +1253,24 @@ func (x *aPIPullPathServer) Send(m *PullPathReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _API_Remove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Remove(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/Remove",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Remove(ctx, req.(*RemoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _API_RemovePath_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemovePathRequest)
 	if err := dec(in); err != nil {
@@ -959,8 +1294,20 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*APIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Init",
+			Handler:    _API_Init_Handler,
+		},
+		{
+			MethodName: "List",
+			Handler:    _API_List_Handler,
+		},
+		{
 			MethodName: "ListPath",
 			Handler:    _API_ListPath_Handler,
+		},
+		{
+			MethodName: "Remove",
+			Handler:    _API_Remove_Handler,
 		},
 		{
 			MethodName: "RemovePath",

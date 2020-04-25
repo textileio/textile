@@ -11,9 +11,9 @@ import (
 	. "github.com/textileio/textile/collections"
 )
 
-func TestKeys_Create(t *testing.T) {
+func TestAPIKeys_Create(t *testing.T) {
 	db := newDB(t)
-	col, err := NewKeys(context.Background(), db)
+	col, err := NewAPIKeys(context.Background(), db)
 	require.Nil(t, err)
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -23,9 +23,9 @@ func TestKeys_Create(t *testing.T) {
 	assert.NotEmpty(t, created.Secret)
 }
 
-func TestKeys_Get(t *testing.T) {
+func TestAPIKeys_Get(t *testing.T) {
 	db := newDB(t)
-	col, err := NewKeys(context.Background(), db)
+	col, err := NewAPIKeys(context.Background(), db)
 	require.Nil(t, err)
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -38,9 +38,9 @@ func TestKeys_Get(t *testing.T) {
 	assert.Equal(t, created.Key, got.Key)
 }
 
-func TestKeys_List(t *testing.T) {
+func TestAPIKeys_List(t *testing.T) {
 	db := newDB(t)
-	col, err := NewKeys(context.Background(), db)
+	col, err := NewAPIKeys(context.Background(), db)
 	require.Nil(t, err)
 
 	_, owner1, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -61,9 +61,9 @@ func TestKeys_List(t *testing.T) {
 	assert.Equal(t, 0, len(list2))
 }
 
-func TestKeys_Invalidate(t *testing.T) {
+func TestAPIKeys_Invalidate(t *testing.T) {
 	db := newDB(t)
-	col, err := NewKeys(context.Background(), db)
+	col, err := NewAPIKeys(context.Background(), db)
 	require.Nil(t, err)
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)

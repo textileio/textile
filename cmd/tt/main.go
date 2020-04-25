@@ -41,8 +41,8 @@ var (
 	configViper = viper.New()
 
 	flags = map[string]cmd.Flag{
-		"name": {
-			Key:      "name",
+		"key": {
+			Key:      "key",
 			DefValue: "",
 		},
 		"org": {

@@ -19,8 +19,9 @@ type Collections struct {
 	Accounts *Accounts
 	Invites  *Invites
 
-	Threads *Threads
-	Keys    *Keys
+	Threads  *Threads
+	APIKeys  *APIKeys
+	IPNSKeys *IPNSKeys
 
 	Users *Users
 }
@@ -49,7 +50,11 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 	if err != nil {
 		return nil, err
 	}
-	keys, err := NewKeys(ctx, db)
+	apikeys, err := NewAPIKeys(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	ipnskeys, err := NewIPNSKeys(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +70,9 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 		Accounts: accounts,
 		Invites:  invites,
 
-		Threads: threads,
-		Keys:    keys,
+		Threads:  threads,
+		APIKeys:  apikeys,
+		IPNSKeys: ipnskeys,
 
 		Users: users,
 	}, nil

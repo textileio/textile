@@ -246,7 +246,7 @@ func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.Ge
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.Keys.Create(ctx, owner)
+	key, err := s.Collections.APIKeys.Create(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.Ge
 func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyReply, error) {
 	log.Debugf("received invalidate key request")
 
-	key, err := s.Collections.Keys.Get(ctx, req.Key)
+	key, err := s.Collections.APIKeys.Get(ctx, req.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 	if !owner.Equals(key.Owner) {
 		return nil, status.Error(codes.PermissionDenied, "User does not own key")
 	}
-	if err := s.Collections.Keys.Invalidate(ctx, req.Key); err != nil {
+	if err := s.Collections.APIKeys.Invalidate(ctx, req.Key); err != nil {
 		return nil, err
 	}
 	return &pb.InvalidateKeyReply{}, nil
@@ -279,7 +279,7 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 	log.Debugf("received list keys request")
 
 	owner := ownerFromContext(ctx)
-	keys, err := s.Collections.Keys.List(ctx, owner)
+	keys, err := s.Collections.APIKeys.List(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
