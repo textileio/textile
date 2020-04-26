@@ -1,7 +1,7 @@
 {
-  "name": "@textile/hub",
+  "name": "@textile/hub-grpc",
   "version": "0.0.0",
-  "description": "A client for interacting with the Textile Hub gRPC API.",
+  "description": "Interfaces/classes for interacting with the Textile Hub gRPC API.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/textileio/textile.git"
