@@ -13,7 +13,6 @@ import (
 
 func TestUsers_GetOrCreate(t *testing.T) {
 	db := newDB(t)
-
 	col, err := NewUsers(context.Background(), db)
 	require.Nil(t, err)
 
@@ -27,9 +26,9 @@ func TestUsers_GetOrCreate(t *testing.T) {
 
 func TestUsers_Get(t *testing.T) {
 	db := newDB(t)
-
 	col, err := NewUsers(context.Background(), db)
 	require.Nil(t, err)
+
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
 	err = col.Create(context.Background(), key)
@@ -42,9 +41,9 @@ func TestUsers_Get(t *testing.T) {
 
 func TestUsers_Delete(t *testing.T) {
 	db := newDB(t)
-
 	col, err := NewUsers(context.Background(), db)
 	require.Nil(t, err)
+
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
 	err = col.Create(context.Background(), key)

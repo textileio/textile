@@ -3,6 +3,9 @@ package users
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	logging "github.com/ipfs/go-log"
 	pb "github.com/textileio/textile/api/users/pb"
 	c "github.com/textileio/textile/collections"
@@ -19,7 +22,10 @@ type Service struct {
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadReply, error) {
 	log.Debugf("received get thread request")
 
-	user, _ := c.UserFromContext(ctx)
+	user, ok := c.UserFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
 	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, user.Key)
 	if err != nil {
 		return nil, err
@@ -33,7 +39,10 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
 	log.Debugf("received list threads request")
 
-	user, _ := c.UserFromContext(ctx)
+	user, ok := c.UserFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
 	list, err := s.Collections.Threads.List(ctx, user.Key)
 	if err != nil {
 		return nil, err

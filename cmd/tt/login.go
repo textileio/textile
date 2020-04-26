@@ -31,7 +31,6 @@ var loginCmd = &cobra.Command{
 		}
 
 		cmd.Message("We sent an email to the account address. Please follow the steps provided inside it.")
-
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 

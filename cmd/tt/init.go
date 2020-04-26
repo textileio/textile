@@ -54,7 +54,6 @@ var initCmd = &cobra.Command{
 
 		cmd.Message("We sent an email to %s. Please follow the steps provided inside it.",
 			aurora.White(email).Bold())
-
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 

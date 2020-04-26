@@ -2,7 +2,6 @@ package buckets
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/util"
 )
 
 const cname = "buckets"
@@ -19,20 +17,13 @@ const cname = "buckets"
 var (
 	schema  *jsonschema.Schema
 	indexes = []db.IndexConfig{{
-		Path:   "name",
-		Unique: true,
-	}, {
-		Path:   "slug",
-		Unique: true,
-	}, {
 		Path: "path",
 	}}
 )
 
 type Bucket struct {
-	ID        string `json:"_id"`
+	Key       string `json:"_id"`
 	Name      string `json:"name"`
-	Slug      string `json:"slug"`
 	Path      string `json:"path"`
 	DNSRecord string `json:"dns_record,omitempty"`
 	CreatedAt int64  `json:"created_at"`
@@ -47,20 +38,15 @@ type Buckets struct {
 	Threads *dbc.Client
 }
 
-func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, name string, opts ...Option) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, pth path.Path, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-
-	slg, ok := util.ToValidName(name)
-	if !ok {
-		return nil, fmt.Errorf("name '%s' is not available", name)
-	}
 	now := time.Now().UnixNano()
 	bucket := &Bucket{
+		Key:       key,
 		Name:      name,
-		Slug:      strings.Join([]string{slg, dbID.String()}, "-"),
 		Path:      pth.String(),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -71,36 +57,30 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, pth path.Path, nam
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
-			return b.Create(ctx, dbID, pth, name)
+			return b.Create(ctx, dbID, key, name, pth, opts...)
 		}
 		return nil, err
 	}
-	bucket.ID = ids[0]
+	bucket.Key = ids[0]
 	return bucket, nil
 }
 
-func (b *Buckets) Get(ctx context.Context, dbID thread.ID, name string, opts ...Option) (*Bucket, error) {
+func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-
-	query := db.Where("name").Eq(name)
-	res, err := b.Threads.Find(ctx, dbID, cname, query, &Bucket{}, db.WithTxnToken(args.Token))
-	if err != nil {
+	buck := &Bucket{}
+	if err := b.Threads.FindByID(ctx, dbID, cname, key, buck, db.WithTxnToken(args.Token)); err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
-			return b.Get(ctx, dbID, name)
+			return b.Get(ctx, dbID, key, opts...)
 		}
 		return nil, err
 	}
-	buckets := res.([]*Bucket)
-	if len(buckets) == 0 {
-		return nil, nil
-	}
-	return buckets[0], nil
+	return buck, nil
 }
 
 func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*Bucket, error) {
@@ -108,14 +88,13 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*
 	for _, opt := range opts {
 		opt(args)
 	}
-
 	res, err := b.Threads.Find(ctx, dbID, cname, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
-			return b.List(ctx, dbID)
+			return b.List(ctx, dbID, opts...)
 		}
 		return nil, err
 	}
@@ -130,12 +109,12 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 	return b.Threads.Save(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 }
 
-func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, id string, opts ...Option) error {
+func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	return b.Threads.Delete(ctx, dbID, cname, []string{id}, db.WithTxnToken(args.Token))
+	return b.Threads.Delete(ctx, dbID, cname, []string{key}, db.WithTxnToken(args.Token))
 }
 
 func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {

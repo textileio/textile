@@ -39,9 +39,23 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+// Init initializes a new bucket.
+// The bucket name is only meant to help identify a bucket in a UI and is not unique.
+func (c *Client) Init(ctx context.Context, name string) (*pb.InitReply, error) {
+	return c.c.Init(ctx, &pb.InitRequest{
+		Name: name,
+	})
+}
+
+// List returns a list of all bucket roots.
+func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
+	return c.c.List(ctx, &pb.ListRequest{})
+}
+
 // ListPath returns information about a bucket path.
-func (c *Client) ListPath(ctx context.Context, pth string) (*pb.ListPathReply, error) {
+func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathReply, error) {
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
+		Key:  key,
 		Path: pth,
 	})
 }
@@ -53,10 +67,8 @@ type pushPathResult struct {
 }
 
 // PushPath pushes a file to a bucket path.
-// The bucket and any directory paths will be created if they don't exist.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, bucketPath string, reader io.Reader, opts ...Option) (
-	result path.Resolved, root path.Path, err error) {
+func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Path, err error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -72,7 +84,8 @@ func (c *Client) PushPath(ctx context.Context, bucketPath string, reader io.Read
 	if err = stream.Send(&pb.PushPathRequest{
 		Payload: &pb.PushPathRequest_Header_{
 			Header: &pb.PushPathRequest_Header{
-				Path: bucketPath,
+				Key:  key,
+				Path: pth,
 			},
 		},
 	}); err != nil {
@@ -146,7 +159,7 @@ func (c *Client) PushPath(ctx context.Context, bucketPath string, reader io.Read
 }
 
 // PullPath pulls the bucket path, writing it to writer if it's a file.
-func (c *Client) PullPath(ctx context.Context, bucketPath string, writer io.Writer, opts ...Option) error {
+func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer, opts ...Option) error {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -156,7 +169,8 @@ func (c *Client) PullPath(ctx context.Context, bucketPath string, writer io.Writ
 	}
 
 	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
-		Path: bucketPath,
+		Key:  key,
+		Path: pth,
 	})
 	if err != nil {
 		return err
@@ -182,11 +196,20 @@ func (c *Client) PullPath(ctx context.Context, bucketPath string, writer io.Writ
 	return nil
 }
 
+// Remove removes an entire bucket.
+// Files and directories will be unpinned.
+func (c *Client) Remove(ctx context.Context, key string) error {
+	_, err := c.c.Remove(ctx, &pb.RemoveRequest{
+		Key: key,
+	})
+	return err
+}
+
 // RemovePath removes the file or directory at path.
 // Files and directories will be unpinned.
-// If the resulting bucket is empty, it will also be removed.
-func (c *Client) RemovePath(ctx context.Context, pth string) error {
+func (c *Client) RemovePath(ctx context.Context, key, pth string) error {
 	_, err := c.c.RemovePath(ctx, &pb.RemovePathRequest{
+		Key:  key,
 		Path: pth,
 	})
 	return err

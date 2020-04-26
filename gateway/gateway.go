@@ -124,6 +124,7 @@ func (g *Gateway) Start() {
 	router.Use(static.Serve("", &fileSystem{Assets}))
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
+		keys:    g.collections.IPNSKeys,
 		session: g.session,
 		host:    g.bucketDomain,
 	}))
@@ -182,7 +183,7 @@ func (g *Gateway) Stop() error {
 
 // renderBucketHandler renders a bucket as a website.
 func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	threadID, name, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	key, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
 		render404(c)
 		return
@@ -190,27 +191,23 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
-	ctx = common.NewThreadIDContext(ctx, threadID)
+	ik, err := g.collections.IPNSKeys.Get(ctx, key)
+	if err != nil {
+		render404(c)
+		return
+	}
+	ctx = common.NewThreadIDContext(ctx, ik.ThreadID)
 	token := thread.Token(c.Query("token"))
 	if token.Defined() {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	slug := name + "-" + threadID.String()
-	query := db.Where("slug").Eq(slug)
-	res, err := g.threads.Find(ctx, threadID, "buckets", query, &buckets.Bucket{}, db.WithTxnToken(token))
-	if err != nil {
-		renderError(c, http.StatusInternalServerError, err)
-		return
-	}
-	bucks := res.([]*buckets.Bucket)
-	if len(bucks) == 0 {
+	buck := &buckets.Bucket{}
+	if err := g.threads.FindByID(ctx, ik.ThreadID, "buckets", key, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
 	}
-	buck := bucks[0]
-
-	rep, err := g.buckets.ListPath(ctx, buck.Name)
+	rep, err := g.buckets.ListPath(ctx, buck.Key, "")
 	if err != nil {
 		renderError(c, http.StatusInternalServerError, err)
 		return
@@ -219,8 +216,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 		if item.Name == "index.html" {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
-			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Name, 1)
-			if err := g.buckets.PullPath(ctx, pth, c.Writer); err != nil {
+			if err := g.buckets.PullPath(ctx, buck.Key, item.Name, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -230,7 +226,6 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 }
 
 type link struct {
-	ID    string
 	Name  string
 	Path  string
 	Size  string
@@ -261,32 +256,32 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 
 	json := c.Query("json") == "true"
 	if collection == "buckets" && !json {
-		rep, err := g.buckets.ListPath(ctx, "")
+		rep, err := g.buckets.List(ctx)
 		if err != nil {
 			renderError(c, http.StatusBadRequest, err)
 			return
 		}
-		links := make([]link, len(rep.Item.Items))
-		for i, item := range rep.Item.Items {
-			var pth string
-			if rep.Root != nil {
-				pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.ID, 1)
+		links := make([]link, len(rep.Roots))
+		for i, r := range rep.Roots {
+			var name string
+			if r.Name != "" {
+				name = r.Name
 			} else {
-				pth = item.ID
+				name = r.Key
 			}
 			links[i] = link{
-				ID:    item.ID,
-				Name:  item.Name,
-				Path:  path.Join("thread", threadID.String(), "buckets", pth),
-				Size:  byteCountDecimal(item.Size),
-				Links: strconv.Itoa(len(item.Items)),
+				Name:  name,
+				Path:  path.Join("thread", threadID.String(), "buckets", r.Key),
+				Size:  "",
+				Links: "",
 			}
 		}
 		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-			"Path":  rep.Item.Path,
-			"Root":  "",
-			"Back":  "",
-			"Links": links,
+			"Root":    "",
+			"Path":    "",
+			"Updated": "",
+			"Back":    "",
+			"Links":   links,
 		})
 	} else {
 		var dummy interface{}
@@ -329,46 +324,42 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 			render404(c)
 			return
 		}
-		bpth := path.Join(buck.Name, c.Param("path"))
-		rep, err := g.buckets.ListPath(ctx, bpth)
+		bpth := c.Param("path")
+		rep, err := g.buckets.ListPath(ctx, buck.Key, bpth)
 		if err != nil {
 			render404(c)
 			return
 		}
 		if !rep.Item.IsDir {
-			if err := g.buckets.PullPath(ctx, bpth, c.Writer); err != nil {
+			if err := g.buckets.PullPath(ctx, buck.Key, bpth, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			}
 		} else {
-			base := path.Join("thread", threadID.String(), collection)
+			base := path.Join("thread", threadID.String(), "buckets")
 			links := make([]link, len(rep.Item.Items))
 			for i, item := range rep.Item.Items {
-				var pth string
-				if rep.Root != nil {
-					pth = strings.Replace(item.Path, rep.Root.Path, rep.Root.ID, 1)
-				} else {
-					pth = item.ID
-				}
+				pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
 				links[i] = link{
-					ID:    item.ID,
 					Name:  item.Name,
 					Path:  path.Join(base, pth),
 					Size:  byteCountDecimal(item.Size),
 					Links: strconv.Itoa(len(item.Items)),
 				}
 			}
-			var root, back string
-			if rep.Root != nil {
-				root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
-				back = path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.ID, 1)))
+			var name string
+			if rep.Root.Name != "" {
+				name = rep.Root.Name
 			} else {
-				back = path.Join(base, buck.ID)
+				name = rep.Root.Key
 			}
+			root := strings.Replace(rep.Item.Path, rep.Root.Path, name, 1)
+			back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
 			c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-				"Path":  rep.Item.Path,
-				"Root":  root,
-				"Back":  back,
-				"Links": links,
+				"Root":    root,
+				"Path":    rep.Item.Path,
+				"Updated": time.Unix(0, rep.Root.UpdatedAt).String(),
+				"Back":    back,
+				"Links":   links,
 			})
 		}
 	} else {

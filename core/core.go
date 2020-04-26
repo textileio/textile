@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -39,6 +38,7 @@ import (
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/util"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -167,6 +167,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
+		Collections:    t.co,
 		Buckets:        bucks,
 		IPFSClient:     ic,
 		FilecoinClient: t.fc,
@@ -285,10 +286,6 @@ func (t *Textile) HostID() peer.ID {
 	return t.ts.Host().ID()
 }
 
-func getService(method string) string {
-	return strings.Split(method, "/")[1]
-}
-
 func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	method, _ := grpc.Method(ctx)
 	for _, ignored := range ignoreMethods {
@@ -297,19 +294,17 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 	}
 
-	threadID, ok := common.ThreadIDFromMD(ctx)
-	if ok {
+	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
 		ctx = common.NewThreadIDContext(ctx, threadID)
 	}
-	threadName, ok := common.ThreadNameFromMD(ctx)
-	if ok {
+	if threadName, ok := common.ThreadNameFromMD(ctx); ok {
 		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
-	threadToken, err := thread.NewTokenFromMD(ctx)
-	if err != nil {
+	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
 		return nil, err
+	} else {
+		ctx = thread.NewTokenContext(ctx, threadToken)
 	}
-	ctx = thread.NewTokenContext(ctx, threadToken)
 
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
@@ -374,22 +369,19 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		method, _ := grpc.Method(ctx)
-		var isUser bool
 		var owner crypto.PubKey
 		if org, ok := c.OrgFromContext(ctx); ok {
 			owner = org.Key
 		} else if dev, ok := c.DevFromContext(ctx); ok {
 			owner = dev.Key
 		} else if k, ok := common.APIKeyFromContext(ctx); ok {
-			key, err := t.co.Keys.Get(ctx, k)
+			key, err := t.co.APIKeys.Get(ctx, k)
 			if err != nil || !key.Valid {
 				return nil, status.Error(codes.NotFound, "API key not found or is invalid")
 			}
 			if !common.ValidateAPISigContext(ctx, key.Secret) {
 				return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
 			}
-
-			// Pull user key out of the thread token if present
 			token, ok := thread.TokenFromContext(ctx)
 			if ok {
 				var claims jwt.StandardClaims
@@ -400,59 +392,108 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				if err = ukey.UnmarshalString(claims.Subject); err != nil {
 					return nil, err
 				}
+				user, err := t.co.Users.Get(ctx, ukey.PubKey)
+				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+					return nil, err
+				}
+				if user != nil {
+					ctx = c.NewUserContext(ctx, user)
+				}
 				owner = ukey.PubKey
-				isUser = true
-			}
-			if getService(method) == "users.pb.API" {
-				if owner == nil {
-					return nil, status.Error(codes.Unauthenticated, "Token required")
-				}
-				user, err := t.co.Users.Get(ctx, owner)
-				if err != nil {
-					return nil, status.Error(codes.NotFound, "User not found")
-				}
-				ctx = c.NewUserContext(ctx, user)
+			} else {
+				return nil, status.Error(codes.Unauthenticated, "Token required")
 			}
 		}
 
-		// Let the request pass through
-		res, err := handler(ctx, req)
-		if err != nil {
-			return res, err
-		}
-
-		var createID, deleteID thread.ID
+		var newID thread.ID
+		var err error
 		switch method {
 		case "/threads.pb.API/NewDB":
-			createID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
+			newID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
 		case "/threads.pb.API/NewDBFromAddr":
 			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
-			createID, err = thread.FromAddr(addr)
+			newID, err = thread.FromAddr(addr)
 			if err != nil {
-				return res, err
-			}
-		case "/threads.pb.API/DeleteDB":
-			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
-			if err != nil {
-				return res, err
+				return nil, err
 			}
 		case "/threads.net.pb.API/CreateThread":
-			createID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
+			newID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
 		case "/threads.net.pb.API/AddThread":
 			addr, err := ma.NewMultiaddrBytes(req.(*netpb.AddThreadRequest).Addr)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
-			createID, err = thread.FromAddr(addr)
+			newID, err = thread.FromAddr(addr)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			if owner == nil {
+				break
+			}
+			// If we're dealing with an existing thread, make sure that the owner
+			// owns the thread directly or via an API key.
+			threadID, ok := common.ThreadIDFromContext(ctx)
+			if ok {
+				th, err := t.co.Threads.Get(ctx, threadID, owner)
+				if err != nil {
+					if errors.Is(err, mongo.ErrNoDocuments) {
+						return nil, status.Error(codes.NotFound, "Thread not found")
+					} else {
+						return nil, err
+					}
+				}
+				if !owner.Equals(th.Owner) {
+					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
+				}
+				if k, ok := common.APIKeyFromContext(ctx); ok {
+					if k != th.Key {
+						return nil, status.Error(codes.PermissionDenied, "Bad API key")
+					}
+				}
+			}
+		}
+
+		// Preemptively track the new thread ID for the owner.
+		// This needs to happen before the request is handled in case there's a conflict
+		// with the owner and thread name.
+		if newID.Defined() {
+			if _, ok := c.UserFromContext(ctx); !ok {
+				if err := t.co.Users.Create(ctx, owner); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := t.co.Threads.Create(ctx, newID, owner); err != nil {
+				return nil, err
+			}
+		}
+
+		// Let the request pass through.
+		res, err := handler(ctx, req)
+		if err != nil {
+			// Clean up the new thread if there was an error.
+			if newID.Defined() {
+				if err := t.co.Threads.Delete(ctx, newID, owner); err != nil {
+					log.Errorf("error deleting thread %s: %v", newID, err)
+				}
+			}
+			return res, err
+		}
+
+		// Clean up the tracked thread if it was deleted.
+		var deleteID thread.ID
+		switch method {
+		case "/threads.pb.API/DeleteDB":
+			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
 			if err != nil {
 				return res, err
 			}
@@ -464,17 +505,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		default:
 			return res, nil
 		}
-
-		if createID.Defined() {
-			if isUser {
-				if err := t.co.Users.Create(ctx, owner); err != nil {
-					return nil, err
-				}
-			}
-			if _, err := t.co.Threads.Create(ctx, createID, owner); err != nil {
-				return nil, err
-			}
-		} else if deleteID.Defined() {
+		if deleteID.Defined() {
 			if err := t.co.Threads.Delete(ctx, deleteID, owner); err != nil {
 				return nil, err
 			}
