@@ -48,7 +48,7 @@ type Service struct {
 	DNSManager *dns.Manager
 }
 
-func (s *Service) Init(ctx context.Context, _ *pb.InitRequest) (*pb.InitReply, error) {
+func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
 	log.Debugf("received init request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -57,13 +57,14 @@ func (s *Service) Init(ctx context.Context, _ *pb.InitRequest) (*pb.InitReply, e
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.createBucket(ctx, dbID, dbToken)
+	buck, err := s.createBucket(ctx, dbID, dbToken, req.Name)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.InitReply{
 		Root: &pb.Root{
 			Key:       buck.Key,
+			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
@@ -71,7 +72,7 @@ func (s *Service) Init(ctx context.Context, _ *pb.InitRequest) (*pb.InitReply, e
 	}, nil
 }
 
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token) (*Bucket, error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*Bucket, error) {
 	key, err := s.Collections.IPNSKeys.Create(ctx, dbID)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	if err != nil {
 		return nil, err
 	}
-	id, err := mbase.Encode(mbase.Base32, bytes)
+	bkey, err := mbase.Encode(mbase.Base32, bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		return nil, err
 	}
 
-	buck, err := s.Buckets.Create(ctx, dbID, id, pth, WithToken(dbToken))
+	buck, err := s.Buckets.Create(ctx, dbID, bkey, name, pth, WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +136,7 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 	for i, buck := range bucks {
 		roots[i] = &pb.Root{
 			Key:       buck.Key,
+			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
@@ -156,7 +158,14 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	if err != nil {
 		return nil, err
 	}
-	return s.pathToPb(ctx, buck, pth, true)
+	rep, err := s.pathToPb(ctx, buck, pth, true)
+	if err != nil {
+		return nil, err
+	}
+	if pth.String() == buck.Path {
+		rep.Item.Name = buck.Name
+	}
+	return rep, nil
 }
 
 func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathReply_Item, error) {
@@ -247,6 +256,7 @@ func (s *Service) pathToPb(ctx context.Context, buck *Bucket, pth path.Path, fol
 		Item: item,
 		Root: &pb.Root{
 			Key:       buck.Key,
+			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
@@ -383,6 +393,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		Size: size,
 		Root: &pb.Root{
 			Key:       buck.Key,
+			Name:      buck.Name,
 			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,

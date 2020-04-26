@@ -40,8 +40,11 @@ func (c *Client) Close() error {
 }
 
 // Init initializes a new bucket.
-func (c *Client) Init(ctx context.Context) (*pb.InitReply, error) {
-	return c.c.Init(ctx, &pb.InitRequest{})
+// The bucket name is only meant to help identify a bucket in a UI and is not unique.
+func (c *Client) Init(ctx context.Context, name string) (*pb.InitReply, error) {
+	return c.c.Init(ctx, &pb.InitRequest{
+		Name: name,
+	})
 }
 
 // List returns a list of all bucket roots.

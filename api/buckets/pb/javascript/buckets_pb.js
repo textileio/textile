@@ -442,7 +442,7 @@ proto.buckets.pb.InitRequest.prototype.toObject = function(opt_includeInstance) 
  */
 proto.buckets.pb.InitRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    name: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -479,6 +479,10 @@ proto.buckets.pb.InitRequest.deserializeBinaryFromReader = function(msg, reader)
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -508,6 +512,31 @@ proto.buckets.pb.InitRequest.prototype.serializeBinary = function() {
  */
 proto.buckets.pb.InitRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string name = 1;
+ * @return {string}
+ */
+proto.buckets.pb.InitRequest.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.buckets.pb.InitRequest} returns this
+ */
+proto.buckets.pb.InitRequest.prototype.setName = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -695,9 +724,10 @@ proto.buckets.pb.Root.prototype.toObject = function(opt_includeInstance) {
 proto.buckets.pb.Root.toObject = function(includeInstance, msg) {
   var f, obj = {
     key: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    createdat: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    updatedat: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    path: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    createdat: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    updatedat: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -740,13 +770,17 @@ proto.buckets.pb.Root.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPath(value);
+      msg.setName(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPath(value);
+      break;
+    case 4:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setCreatedat(value);
       break;
-    case 4:
+    case 5:
       var value = /** @type {number} */ (reader.readInt64());
       msg.setUpdatedat(value);
       break;
@@ -786,24 +820,31 @@ proto.buckets.pb.Root.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getPath();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
+  f = message.getPath();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
   f = message.getCreatedat();
   if (f !== 0) {
     writer.writeInt64(
-      3,
+      4,
       f
     );
   }
   f = message.getUpdatedat();
   if (f !== 0) {
     writer.writeInt64(
-      4,
+      5,
       f
     );
   }
@@ -829,10 +870,10 @@ proto.buckets.pb.Root.prototype.setKey = function(value) {
 
 
 /**
- * optional string path = 2;
+ * optional string name = 2;
  * @return {string}
  */
-proto.buckets.pb.Root.prototype.getPath = function() {
+proto.buckets.pb.Root.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -841,34 +882,34 @@ proto.buckets.pb.Root.prototype.getPath = function() {
  * @param {string} value
  * @return {!proto.buckets.pb.Root} returns this
  */
-proto.buckets.pb.Root.prototype.setPath = function(value) {
+proto.buckets.pb.Root.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional int64 createdAt = 3;
+ * optional string path = 3;
+ * @return {string}
+ */
+proto.buckets.pb.Root.prototype.getPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.buckets.pb.Root} returns this
+ */
+proto.buckets.pb.Root.prototype.setPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional int64 createdAt = 4;
  * @return {number}
  */
 proto.buckets.pb.Root.prototype.getCreatedat = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.buckets.pb.Root} returns this
- */
-proto.buckets.pb.Root.prototype.setCreatedat = function(value) {
-  return jspb.Message.setProto3IntField(this, 3, value);
-};
-
-
-/**
- * optional int64 updatedAt = 4;
- * @return {number}
- */
-proto.buckets.pb.Root.prototype.getUpdatedat = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
@@ -877,8 +918,26 @@ proto.buckets.pb.Root.prototype.getUpdatedat = function() {
  * @param {number} value
  * @return {!proto.buckets.pb.Root} returns this
  */
-proto.buckets.pb.Root.prototype.setUpdatedat = function(value) {
+proto.buckets.pb.Root.prototype.setCreatedat = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional int64 updatedAt = 5;
+ * @return {number}
+ */
+proto.buckets.pb.Root.prototype.getUpdatedat = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.buckets.pb.Root} returns this
+ */
+proto.buckets.pb.Root.prototype.setUpdatedat = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 

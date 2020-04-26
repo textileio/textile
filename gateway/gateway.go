@@ -124,6 +124,7 @@ func (g *Gateway) Start() {
 	router.Use(static.Serve("", &fileSystem{Assets}))
 	router.Use(serveBucket(&bucketFileSystem{
 		client:  g.buckets,
+		keys:    g.collections.IPNSKeys,
 		session: g.session,
 		host:    g.bucketDomain,
 	}))
@@ -215,8 +216,7 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 		if item.Name == "index.html" {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
-			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
-			if err := g.buckets.PullPath(ctx, buck.Key, pth, c.Writer); err != nil {
+			if err := g.buckets.PullPath(ctx, buck.Key, item.Name, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			}
 			return
@@ -264,10 +264,10 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 		links := make([]link, len(rep.Roots))
 		for i, r := range rep.Roots {
 			links[i] = link{
-				Name:  r.Key,
+				Name:  r.Name,
 				Path:  path.Join("thread", threadID.String(), "buckets", r.Key),
-				Size:  "n/a",
-				Links: "n/a",
+				Size:  "",
+				Links: "",
 			}
 		}
 		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
@@ -339,13 +339,8 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 					Links: strconv.Itoa(len(item.Items)),
 				}
 			}
-			var root, back string
-			if rep.Root != nil {
-				root = strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)
-				back = path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
-			} else {
-				back = path.Join(base, buck.Key)
-			}
+			root := strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
+			back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
 			c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
 				"Path":  rep.Item.Path,
 				"Root":  root,

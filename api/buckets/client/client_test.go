@@ -24,7 +24,7 @@ func TestClient_Init(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 	assert.NotEmpty(t, buck.Root)
 	assert.NotEmpty(t, buck.Root.Key)
@@ -44,7 +44,7 @@ func TestClient_List(t *testing.T) {
 		assert.Equal(t, 0, len(rep.Roots))
 	})
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestClient_ListPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	t.Run("empty", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestClient_PushPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	t.Run("bucket path", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestClient_PullPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	file, err := os.Open("testdata/file1.jpg")
@@ -188,7 +188,7 @@ func TestClient_Remove(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -213,7 +213,7 @@ func TestClient_RemovePath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")

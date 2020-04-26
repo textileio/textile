@@ -4,6 +4,9 @@
 import * as jspb from "google-protobuf";
 
 export class InitRequest extends jspb.Message {
+  getName(): string;
+  setName(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): InitRequest.AsObject;
   static toObject(includeInstance: boolean, msg: InitRequest): InitRequest.AsObject;
@@ -16,6 +19,7 @@ export class InitRequest extends jspb.Message {
 
 export namespace InitRequest {
   export type AsObject = {
+    name: string,
   }
 }
 
@@ -45,6 +49,9 @@ export class Root extends jspb.Message {
   getKey(): string;
   setKey(value: string): void;
 
+  getName(): string;
+  setName(value: string): void;
+
   getPath(): string;
   setPath(value: string): void;
 
@@ -67,6 +74,7 @@ export class Root extends jspb.Message {
 export namespace Root {
   export type AsObject = {
     key: string,
+    name: string,
     path: string,
     createdat: number,
     updatedat: number,

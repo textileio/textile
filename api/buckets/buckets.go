@@ -23,6 +23,7 @@ var (
 
 type Bucket struct {
 	Key       string `json:"_id"`
+	Name      string `json:"name"`
 	Path      string `json:"path"`
 	DNSRecord string `json:"dns_record,omitempty"`
 	CreatedAt int64  `json:"created_at"`
@@ -37,7 +38,7 @@ type Buckets struct {
 	Threads *dbc.Client
 }
 
-func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth path.Path, opts ...Option) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, pth path.Path, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -45,6 +46,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth pa
 	now := time.Now().UnixNano()
 	bucket := &Bucket{
 		Key:       key,
+		Name:      name,
 		Path:      pth.String(),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -55,7 +57,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth pa
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
-			return b.Create(ctx, dbID, key, pth, opts...)
+			return b.Create(ctx, dbID, key, name, pth, opts...)
 		}
 		return nil, err
 	}

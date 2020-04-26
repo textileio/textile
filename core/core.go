@@ -436,6 +436,9 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return nil, err
 			}
 		default:
+			if owner == nil {
+				break
+			}
 			// If we're dealing with an existing thread, make sure that the owner
 			// owns the thread directly or via an API key.
 			threadID, ok := common.ThreadIDFromContext(ctx)
@@ -448,7 +451,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 						return nil, err
 					}
 				}
-				if owner != th.Owner {
+				if !owner.Equals(th.Owner) {
 					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
 				}
 				if k, ok := common.APIKeyFromContext(ctx); ok {

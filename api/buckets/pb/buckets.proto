@@ -6,7 +6,9 @@ option java_package = "io.textile.buckets_grpc";
 option java_outer_classname = "TextileBuckets";
 option objc_class_prefix = "TXTL_BUCKETS";
 
-message InitRequest {}
+message InitRequest {
+    string name = 1;
+}
 
 message InitReply {
     Root root = 1;
@@ -14,9 +16,10 @@ message InitReply {
 
 message Root {
     string key = 1;
-    string path = 2;
-    int64 createdAt = 3;
-    int64 updatedAt = 4;
+    string name = 2;
+    string path = 3;
+    int64 createdAt = 4;
+    int64 updatedAt = 5;
 }
 
 message ListRequest {}

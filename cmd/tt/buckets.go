@@ -14,7 +14,6 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -61,8 +60,6 @@ var initBucketPathCmd = &cobra.Command{
 
 A .textile directory and config file will be created in the current working directory.
 Existing configs will not be overwritten.
-
-Buckets are written to a thread. You may either select an existing thread or create a new one.
 `,
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -82,15 +79,23 @@ Buckets are written to a thread. You may either select an existing thread or cre
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
 
-		selected := selectThread("Select thread", aurora.Sprintf(
-			aurora.BrightBlack("> Selected thread {{ .Key | white | bold }}")))
+		prompt := promptui.Prompt{
+			Label: "Enter a name for your bucket (optional)",
+		}
+		name, err := prompt.Run()
+		if err != nil {
+			cmd.End("")
+		}
+
+		selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
+			aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
 
 		var dbID thread.ID
 		if selected.ID == "Create new" {
 			ctx, cancel := authCtx(cmdTimeout)
 			defer cancel()
 			dbID = thread.NewIDV1(thread.Raw, 32)
-			if err := threads.NewDB(common.NewThreadNameContext(ctx, "buckets"), dbID); err != nil {
+			if err := threads.NewDB(ctx, dbID); err != nil {
 				cmd.Fatal(err)
 			}
 		} else {
@@ -104,7 +109,7 @@ Buckets are written to a thread. You may either select an existing thread or cre
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		buck, err := buckets.Init(ctx)
+		buck, err := buckets.Init(ctx, name)
 		if err != nil {
 			cmd.Fatal(err)
 		}
