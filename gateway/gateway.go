@@ -263,18 +263,25 @@ func (g *Gateway) collectionHandler(c *gin.Context) {
 		}
 		links := make([]link, len(rep.Roots))
 		for i, r := range rep.Roots {
+			var name string
+			if r.Name != "" {
+				name = r.Name
+			} else {
+				name = r.Key
+			}
 			links[i] = link{
-				Name:  r.Name,
+				Name:  name,
 				Path:  path.Join("thread", threadID.String(), "buckets", r.Key),
 				Size:  "",
 				Links: "",
 			}
 		}
 		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-			"Path":  "",
-			"Root":  "",
-			"Back":  "",
-			"Links": links,
+			"Root":    "",
+			"Path":    "",
+			"Updated": "",
+			"Back":    "",
+			"Links":   links,
 		})
 	} else {
 		var dummy interface{}
@@ -339,13 +346,20 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 					Links: strconv.Itoa(len(item.Items)),
 				}
 			}
-			root := strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Name, 1)
+			var name string
+			if rep.Root.Name != "" {
+				name = rep.Root.Name
+			} else {
+				name = rep.Root.Key
+			}
+			root := strings.Replace(rep.Item.Path, rep.Root.Path, name, 1)
 			back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
 			c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-				"Path":  rep.Item.Path,
-				"Root":  root,
-				"Back":  back,
-				"Links": links,
+				"Root":    root,
+				"Path":    rep.Item.Path,
+				"Updated": time.Unix(0, rep.Root.UpdatedAt).String(),
+				"Back":    back,
+				"Links":   links,
 			})
 		}
 	} else {

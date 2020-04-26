@@ -1,5 +1,10 @@
 {{template "header" "Bucket"}}
-<div class="title"><span class="yellow">/{{.Root}}</span>: {{.Path}}</div>
+<div class="title">
+    <span class="yellow">/{{.Root}}</span>: {{.Path}}
+    {{ if ne .Updated "" }}
+        <span class="right">Updated {{.Updated}}</span>
+    {{ end }}
+</div>
 <ul>
     {{ if ne .Back "" }}
         <li><a href="/{{.Back}}">..</a></li>

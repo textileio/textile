@@ -395,7 +395,8 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				user, err := t.co.Users.Get(ctx, ukey.PubKey)
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 					return nil, err
-				} else {
+				}
+				if user != nil {
 					ctx = c.NewUserContext(ctx, user)
 				}
 				owner = ukey.PubKey

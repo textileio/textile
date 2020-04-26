@@ -148,11 +148,14 @@ func TestBuckets(t *testing.T) {
 	err = threads.NewDB(ctx, dbID)
 	require.Nil(t, err)
 
+	ctx = common.NewThreadIDContext(ctx, dbID)
+	buck, err := buckets.Init(ctx, "mybuck")
+	require.Nil(t, err)
+
 	file, err := os.Open("testdata/file1.jpg")
 	require.Nil(t, err)
 	defer file.Close()
-	ctx = common.NewThreadIDContext(ctx, dbID)
-	_, file1Root, err := buckets.PushPath(ctx, "mybuck1/file1.jpg", file)
+	_, file1Root, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
 	require.Nil(t, err)
 	require.NotEmpty(t, file1Root.String())
 }

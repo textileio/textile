@@ -33,6 +33,10 @@ body {
     color: #FFCE00;
 }
 
+.title span.right {
+    float: right;
+}
+
 a {
     color: #FFB6D5;
     text-decoration: none;
