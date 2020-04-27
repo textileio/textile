@@ -1,5 +1,5 @@
 {
-  "name": "@textile/buckets",
+  "name": "@textile/buckets-grpc",
   "version": "0.0.0",
   "description": "A client for interacting with the Textile Buckets gRPC API.",
   "repository": {

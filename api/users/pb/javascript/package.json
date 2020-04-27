@@ -1,5 +1,5 @@
 {
-  "name": "@textile/users",
+  "name": "@textile/users-grpc",
   "version": "0.0.0",
   "description": "A client for interacting with the Textile Users gRPC API.",
   "repository": {
