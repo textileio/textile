@@ -63,7 +63,7 @@ var initCmd = &cobra.Command{
 		s.Stop()
 		if err != nil {
 			if strings.Contains(err.Error(), "Account exists") {
-				cmd.Fatal(fmt.Errorf("an account with email %s already exists, use `textile login` instead", email))
+				cmd.Fatal(fmt.Errorf("an account with email %s already exists, use `tt login` instead", email))
 			} else {
 				cmd.Fatal(err)
 			}
@@ -89,6 +89,6 @@ var initCmd = &cobra.Command{
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("Welcome to Textile. Initialize a new bucket with `%s`.",
-			aurora.Cyan("textile buckets init"))
+			aurora.Cyan("tt buckets init"))
 	},
 }

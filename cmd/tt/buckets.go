@@ -203,22 +203,22 @@ File structure is mirrored in the bucket. For example, given the directory:
 
 These 'push' commands result in the following bucket structures.
 
-'textile buckets push foo mybuck':
+'tt buckets push foo mybuck':
     mybuck/foo/one.txt
     mybuck/foo/bar/two.txt
     mybuck/foo/bar/baz/three.txt
 
-'textile buckets push foo/bar mybuck':
+'tt buckets push foo/bar mybuck':
     mybuck/bar/two.txt
     mybuck/bar/baz/three.txt
 
-'textile buckets push foo/bar/baz mybuck':
+'tt buckets push foo/bar/baz mybuck':
     mybuck/baz/three.txt
 
-'textile buckets push foo/bar/baz/three.txt mybuck':
+'tt buckets push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
 
-'textile buckets push foo/* foo':
+'tt buckets push foo/* foo':
     foo/one.txt
     foo/bar/two.txt
     foo/bar/baz/three.txt
@@ -346,22 +346,22 @@ Bucket structure is mirrored locally. For example, given the bucket:
 
 These 'pull' commands result in the following local structures.
 
-'textile buckets pull foo mydir':
+'tt buckets pull foo mydir':
     mydir/foo/one.txt
     mydir/foo/bar/two.txt
     mydir/foo/bar/baz/three.txt
 
-'textile buckets pull foo/bar mydir':
+'tt buckets pull foo/bar mydir':
     mydir/bar/two.txt
     mydir/bar/baz/three.txt
 
-'textile buckets pull foo/bar/baz mydir':
+'tt buckets pull foo/bar/baz mydir':
     mydir/baz/three.txt
 
-'textile buckets pull foo/bar/baz/three.txt mydir':
+'tt buckets pull foo/bar/baz/three.txt mydir':
     mydir/three.txt
 
-'textile buckets pull foo .':
+'tt buckets pull foo .':
     foo/one.txt
     foo/bar/two.txt
     foo/bar/baz/three.txt

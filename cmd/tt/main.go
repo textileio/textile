@@ -111,7 +111,7 @@ var rootCmd = &cobra.Command{
 
 		if authViper.GetString("session") == "" && c.Use != "init" && c.Use != "login" {
 			msg := "unauthorized! run `%s` or use `%s` to authorize"
-			cmd.Fatal(errors.New(msg), aurora.Cyan("textile init|login"), aurora.Cyan("--session"))
+			cmd.Fatal(errors.New(msg), aurora.Cyan("tt init|login"), aurora.Cyan("--session"))
 		}
 
 		var opts []grpc.DialOption
