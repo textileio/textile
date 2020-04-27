@@ -242,17 +242,18 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	return reply, nil
 }
 
-func (s *Service) CreateKey(ctx context.Context, _ *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
+func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, owner)
+	key, err := s.Collections.APIKeys.Create(ctx, owner, c.APIKeyType(req.Type))
 	if err != nil {
 		return nil, err
 	}
 	return &pb.GetKeyReply{
 		Key:     key.Key,
 		Secret:  key.Secret,
+		Type:    pb.KeyType(key.Type),
 		Valid:   true,
 		Threads: 0,
 	}, nil
@@ -292,6 +293,7 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 		list[i] = &pb.GetKeyReply{
 			Key:     key.Key,
 			Secret:  key.Secret,
+			Type:    pb.KeyType(key.Type),
 			Valid:   key.Valid,
 			Threads: int32(len(ts)),
 		}

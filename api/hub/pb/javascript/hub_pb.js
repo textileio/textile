@@ -30,6 +30,7 @@ goog.exportSymbol('proto.hub.pb.IsOrgNameAvailableReply', null, global);
 goog.exportSymbol('proto.hub.pb.IsOrgNameAvailableRequest', null, global);
 goog.exportSymbol('proto.hub.pb.IsUsernameAvailableReply', null, global);
 goog.exportSymbol('proto.hub.pb.IsUsernameAvailableRequest', null, global);
+goog.exportSymbol('proto.hub.pb.KeyType', null, global);
 goog.exportSymbol('proto.hub.pb.LeaveOrgReply', null, global);
 goog.exportSymbol('proto.hub.pb.LeaveOrgRequest', null, global);
 goog.exportSymbol('proto.hub.pb.ListKeysReply', null, global);
@@ -2542,7 +2543,7 @@ proto.hub.pb.CreateKeyRequest.prototype.toObject = function(opt_includeInstance)
  */
 proto.hub.pb.CreateKeyRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    type: jspb.Message.getFieldWithDefault(msg, 1, 0)
   };
 
   if (includeInstance) {
@@ -2579,6 +2580,10 @@ proto.hub.pb.CreateKeyRequest.deserializeBinaryFromReader = function(msg, reader
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {!proto.hub.pb.KeyType} */ (reader.readEnum());
+      msg.setType(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2608,6 +2613,31 @@ proto.hub.pb.CreateKeyRequest.prototype.serializeBinary = function() {
  */
 proto.hub.pb.CreateKeyRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional KeyType type = 1;
+ * @return {!proto.hub.pb.KeyType}
+ */
+proto.hub.pb.CreateKeyRequest.prototype.getType = function() {
+  return /** @type {!proto.hub.pb.KeyType} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+};
+
+
+/**
+ * @param {!proto.hub.pb.KeyType} value
+ * @return {!proto.hub.pb.CreateKeyRequest} returns this
+ */
+proto.hub.pb.CreateKeyRequest.prototype.setType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
@@ -2645,8 +2675,9 @@ proto.hub.pb.GetKeyReply.toObject = function(includeInstance, msg) {
   var f, obj = {
     key: jspb.Message.getFieldWithDefault(msg, 1, ""),
     secret: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    valid: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-    threads: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    type: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    valid: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    threads: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -2692,10 +2723,14 @@ proto.hub.pb.GetKeyReply.deserializeBinaryFromReader = function(msg, reader) {
       msg.setSecret(value);
       break;
     case 3:
+      var value = /** @type {!proto.hub.pb.KeyType} */ (reader.readEnum());
+      msg.setType(value);
+      break;
+    case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setValid(value);
       break;
-    case 4:
+    case 5:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setThreads(value);
       break;
@@ -2742,17 +2777,24 @@ proto.hub.pb.GetKeyReply.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getType();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      3,
+      f
+    );
+  }
   f = message.getValid();
   if (f) {
     writer.writeBool(
-      3,
+      4,
       f
     );
   }
   f = message.getThreads();
   if (f !== 0) {
     writer.writeInt32(
-      4,
+      5,
       f
     );
   }
@@ -2796,11 +2838,29 @@ proto.hub.pb.GetKeyReply.prototype.setSecret = function(value) {
 
 
 /**
- * optional bool valid = 3;
+ * optional KeyType type = 3;
+ * @return {!proto.hub.pb.KeyType}
+ */
+proto.hub.pb.GetKeyReply.prototype.getType = function() {
+  return /** @type {!proto.hub.pb.KeyType} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/**
+ * @param {!proto.hub.pb.KeyType} value
+ * @return {!proto.hub.pb.GetKeyReply} returns this
+ */
+proto.hub.pb.GetKeyReply.prototype.setType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 3, value);
+};
+
+
+/**
+ * optional bool valid = 4;
  * @return {boolean}
  */
 proto.hub.pb.GetKeyReply.prototype.getValid = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
 
@@ -2809,16 +2869,16 @@ proto.hub.pb.GetKeyReply.prototype.getValid = function() {
  * @return {!proto.hub.pb.GetKeyReply} returns this
  */
 proto.hub.pb.GetKeyReply.prototype.setValid = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 3, value);
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
 /**
- * optional int32 threads = 4;
+ * optional int32 threads = 5;
  * @return {number}
  */
 proto.hub.pb.GetKeyReply.prototype.getThreads = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
@@ -2827,7 +2887,7 @@ proto.hub.pb.GetKeyReply.prototype.getThreads = function() {
  * @return {!proto.hub.pb.GetKeyReply} returns this
  */
 proto.hub.pb.GetKeyReply.prototype.setThreads = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
+  return jspb.Message.setProto3IntField(this, 5, value);
 };
 
 
@@ -5547,5 +5607,13 @@ proto.hub.pb.IsOrgNameAvailableReply.prototype.setHost = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.hub.pb.KeyType = {
+  ACCOUNT: 0,
+  USER: 1
+};
 
 goog.object.extend(exports, proto.hub.pb);

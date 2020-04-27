@@ -79,22 +79,22 @@ func (e *Client) ConfirmAddress(ctx context.Context, to, url, secret string) err
 
 type inviteData struct {
 	From string
-	Team string
+	Org  string
 	Link string
 }
 
 // InviteAddress sends an invite link to a recipient.
-func (e *Client) InviteAddress(ctx context.Context, team, from, to, url, token string) error {
+func (e *Client) InviteAddress(ctx context.Context, org, from, to, url, token string) error {
 	var tpl bytes.Buffer
 	if err := e.inviteTmp.Execute(&tpl, &inviteData{
 		From: from,
-		Team: team,
+		Org:  org,
 		Link: fmt.Sprintf("%s/consent/%s", url, token),
 	}); err != nil {
 		return err
 	}
 
-	return e.send(ctx, to, "Textile Team Invitation", tpl.String())
+	return e.send(ctx, to, "Textile Org Invitation", tpl.String())
 }
 
 // send wraps the MailGun client's send method.

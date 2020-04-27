@@ -172,6 +172,11 @@ func authCtx(duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	ctx = common.NewSessionContext(ctx, authViper.GetString("session"))
 	ctx = common.NewOrgSlugContext(ctx, configViper.GetString("org"))
+	return ctx, cancel
+}
+
+func threadCtx(duration time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := authCtx(duration)
 	ctx = common.NewThreadIDContext(ctx, getThreadID())
 	return ctx, cancel
 }

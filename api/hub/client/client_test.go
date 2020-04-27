@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/textile/api/apitest"
 	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/api/hub/client"
+	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/core"
 	"google.golang.org/grpc"
 )
@@ -159,17 +160,18 @@ func TestClient_CreateKey(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.CreateKey(ctx)
+		_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT)
 		require.NotNil(t, err)
 	})
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
+		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_USER)
 		require.Nil(t, err)
 		assert.NotEmpty(t, key.Key)
 		assert.NotEmpty(t, key.Secret)
+		assert.Equal(t, pb.KeyType_USER, key.Type)
 	})
 }
 
@@ -180,7 +182,7 @@ func TestClient_InvalidateKey(t *testing.T) {
 	ctx := context.Background()
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session))
+	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT)
 	require.Nil(t, err)
 
 	t.Run("without session", func(t *testing.T) {
@@ -214,9 +216,9 @@ func TestClient_ListKeys(t *testing.T) {
 		assert.Empty(t, keys.List)
 	})
 
-	_, err := client.CreateKey(ctx)
+	_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT)
 	require.Nil(t, err)
-	_, err = client.CreateKey(ctx)
+	_, err = client.CreateKey(ctx, pb.KeyType_USER)
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {

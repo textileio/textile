@@ -72,8 +72,10 @@ func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) 
 }
 
 // CreateKey creates a new key for the current session.
-func (c *Client) CreateKey(ctx context.Context) (*pb.GetKeyReply, error) {
-	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{})
+func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType) (*pb.GetKeyReply, error) {
+	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{
+		Type: keyType,
+	})
 }
 
 // InvalidateKey marks a key as invalid.

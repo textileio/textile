@@ -61,6 +61,9 @@ EXPOSE 8006
 # Create the repo directory and switch to a non-privileged user.
 ENV TEXTILE_PATH /data/textile
 RUN mkdir -p $TEXTILE_PATH \
+  && mkdir -p $TEXTILE_PATH/logstore \
+  && mkdir -p $TEXTILE_PATH/eventstore \
+  && mkdir -p $TEXTILE_PATH/ipfslite \
   && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
   && chown -R textile:users $TEXTILE_PATH
 

@@ -13,6 +13,8 @@ import (
 func init() {
 	rootCmd.AddCommand(threadsCmd)
 	threadsCmd.AddCommand(lsThreadsCmd)
+
+	threadsCmd.PersistentFlags().String("org", "", "Org name")
 }
 
 var threadsCmd = &cobra.Command{
@@ -87,8 +89,7 @@ func selectThread(label, successMsg string) *threadItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`,
-				promptui.IconSelect),
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
 			Inactive: `{{ .ID | faint }} {{ .Name | faint | bold }}`,
 			Selected: successMsg,
 		},

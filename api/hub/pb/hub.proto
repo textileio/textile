@@ -52,13 +52,21 @@ message ListThreadsReply {
     repeated GetThreadReply list = 1;
 }
 
-message CreateKeyRequest {}
+message CreateKeyRequest {
+    KeyType type = 1;
+}
+
+enum KeyType {
+    ACCOUNT = 0;
+    USER = 1;
+}
 
 message GetKeyReply {
     string key = 1;
     string secret = 2;
-    bool valid = 3;
-    int32 threads = 4;
+    KeyType type = 3;
+    bool valid = 4;
+    int32 threads = 5;
 }
 
 message InvalidateKeyRequest {

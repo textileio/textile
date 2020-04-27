@@ -262,6 +262,9 @@ export namespace ListThreadsReply {
 }
 
 export class CreateKeyRequest extends jspb.Message {
+  getType(): KeyTypeMap[keyof KeyTypeMap];
+  setType(value: KeyTypeMap[keyof KeyTypeMap]): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): CreateKeyRequest.AsObject;
   static toObject(includeInstance: boolean, msg: CreateKeyRequest): CreateKeyRequest.AsObject;
@@ -274,6 +277,7 @@ export class CreateKeyRequest extends jspb.Message {
 
 export namespace CreateKeyRequest {
   export type AsObject = {
+    type: KeyTypeMap[keyof KeyTypeMap],
   }
 }
 
@@ -283,6 +287,9 @@ export class GetKeyReply extends jspb.Message {
 
   getSecret(): string;
   setSecret(value: string): void;
+
+  getType(): KeyTypeMap[keyof KeyTypeMap];
+  setType(value: KeyTypeMap[keyof KeyTypeMap]): void;
 
   getValid(): boolean;
   setValid(value: boolean): void;
@@ -304,6 +311,7 @@ export namespace GetKeyReply {
   export type AsObject = {
     key: string,
     secret: string,
+    type: KeyTypeMap[keyof KeyTypeMap],
     valid: boolean,
     threads: number,
   }
@@ -714,4 +722,11 @@ export namespace IsOrgNameAvailableReply {
     host: string,
   }
 }
+
+export interface KeyTypeMap {
+  ACCOUNT: 0;
+  USER: 1;
+}
+
+export const KeyType: KeyTypeMap;
 
