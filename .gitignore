@@ -16,9 +16,8 @@ vendor/
 
 # JS
 node_modules/
-**/javascript/src/*
-!**/javascript/src/index.ts
-**/javascript/dist/
+**/javascript/*.js
+**/javascript/*.d.ts
 
 # IDEs
 .idea/

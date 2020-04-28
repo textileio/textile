@@ -37,28 +37,21 @@ message GetSessionInfoReply {
     string email = 3;
 }
 
-message GetThreadRequest {
-    string name = 1;
+message CreateKeyRequest {
+    KeyType type = 1;
 }
 
-message GetThreadReply {
-    bytes ID = 1;
-    string name = 2;
+enum KeyType {
+    ACCOUNT = 0;
+    USER = 1;
 }
-
-message ListThreadsRequest {}
-
-message ListThreadsReply {
-    repeated GetThreadReply list = 1;
-}
-
-message CreateKeyRequest {}
 
 message GetKeyReply {
     string key = 1;
     string secret = 2;
-    bool valid = 3;
-    int32 threads = 4;
+    KeyType type = 3;
+    bool valid = 4;
+    int32 threads = 5;
 }
 
 message InvalidateKeyRequest {
@@ -137,9 +130,6 @@ service API {
     rpc Signout(SignoutRequest) returns (SignoutReply) {}
 
     rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoReply) {}
-
-    rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
-    rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 
     rpc CreateKey(CreateKeyRequest) returns (GetKeyReply) {}
     rpc ListKeys(ListKeysRequest) returns (ListKeysReply) {}

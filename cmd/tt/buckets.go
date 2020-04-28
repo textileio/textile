@@ -92,7 +92,7 @@ Existing configs will not be overwritten.
 
 		var dbID thread.ID
 		if selected.ID == "Create new" {
-			ctx, cancel := authCtx(cmdTimeout)
+			ctx, cancel := threadCtx(cmdTimeout)
 			defer cancel()
 			dbID = thread.NewIDV1(thread.Raw, 32)
 			if err := threads.NewDB(ctx, dbID); err != nil {
@@ -107,7 +107,7 @@ Existing configs will not be overwritten.
 		}
 		configViper.Set("thread", dbID.String())
 
-		ctx, cancel := authCtx(cmdTimeout)
+		ctx, cancel := threadCtx(cmdTimeout)
 		defer cancel()
 		buck, err := buckets.Init(ctx, name)
 		if err != nil {
@@ -141,7 +141,7 @@ var lsBucketPathCmd = &cobra.Command{
 }
 
 func lsBucketPath(args []string) {
-	ctx, cancel := authCtx(cmdTimeout)
+	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 
 	var pth string
@@ -194,7 +194,7 @@ var pushBucketPathCmd = &cobra.Command{
 	Short: "Push to a bucket path (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
-Using the '--org' flag will instead create new buckets under the Organization's account.
+Using the '--org' flag will create new buckets under the organization's account.
 
 File structure is mirrored in the bucket. For example, given the directory:
     foo/one.txt
@@ -321,7 +321,7 @@ func addFile(key, name, filePath string) {
 	progress := make(chan int64)
 
 	go func() {
-		ctx, cancel := authCtx(addFileTimeout)
+		ctx, cancel := threadCtx(addFileTimeout)
 		defer cancel()
 		if _, _, err = buckets.PushPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
 			cmd.Fatal(err)
@@ -394,7 +394,7 @@ These 'pull' commands result in the following local structures.
 }
 
 func getPath(key, pth, dir, dest string) (count int) {
-	ctx, cancel := authCtx(cmdTimeout)
+	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 	rep, err := buckets.ListPath(ctx, key, pth)
 	if err != nil {
@@ -432,7 +432,7 @@ func getFile(key, filePath, name string, size int64) {
 	progress := make(chan int64)
 
 	go func() {
-		ctx, cancel := authCtx(getFileTimeout)
+		ctx, cancel := threadCtx(getFileTimeout)
 		defer cancel()
 		if err = buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
 			cmd.Fatal(err)
@@ -457,7 +457,7 @@ var catBucketPathCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := authCtx(getFileTimeout)
+		ctx, cancel := threadCtx(getFileTimeout)
 		defer cancel()
 		key := configViper.GetString("key")
 		if err := buckets.PullPath(ctx, key, args[0], os.Stdout); err != nil {
@@ -481,7 +481,7 @@ var rmBucketPathCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := authCtx(cmdTimeout)
+		ctx, cancel := threadCtx(cmdTimeout)
 		defer cancel()
 		key := configViper.GetString("key")
 		if err := buckets.RemovePath(ctx, key, args[0]); err != nil {

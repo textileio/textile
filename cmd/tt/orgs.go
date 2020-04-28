@@ -22,7 +22,7 @@ var orgsCmd = &cobra.Command{
 		"org",
 	},
 	Short: "Org management",
-	Long:  `Manage your Organizations.`,
+	Long:  `Manage your organizations.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsOrgs()
 	},
@@ -31,7 +31,7 @@ var orgsCmd = &cobra.Command{
 var createOrgsCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an Org",
-	Long:  `Create a new Organization (interactive).`,
+	Long:  `Create a new organization (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
 			Label: "Choose an Org name",
@@ -79,7 +79,7 @@ var lsOrgsCmd = &cobra.Command{
 		"list",
 	},
 	Short: "List Orgs you're a member of",
-	Long:  `List all the Organizations that you're a member of.`,
+	Long:  `List all the organizations that you're a member of.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsOrgs()
 	},
@@ -110,7 +110,7 @@ func lsOrgs() {
 var membersOrgsCmd = &cobra.Command{
 	Use:   "members",
 	Short: "List Org members",
-	Long:  `List current Organization members (interactive).`,
+	Long:  `List current organization members (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
@@ -145,7 +145,7 @@ var rmOrgsCmd = &cobra.Command{
 		"remove",
 	},
 	Short: "Remove an Org",
-	Long:  `Remove an Organization (interactive). You must be the Org owner.`,
+	Long:  `Remove an organization (interactive). You must be the Org owner.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Remove org", aurora.Sprintf(
 			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
@@ -163,7 +163,7 @@ var rmOrgsCmd = &cobra.Command{
 var inviteOrgsCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members to an Org",
-	Long:  `Invite a new member to an Organization.`,
+	Long:  `Invite a new member to an organization.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
@@ -194,7 +194,7 @@ var inviteOrgsCmd = &cobra.Command{
 var leaveOrgsCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave an Org",
-	Long:  `Leave an Organization (interactive).`,
+	Long:  `Leave an organization (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
@@ -239,8 +239,7 @@ func selectOrg(label, successMsg string) *orgItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Extra | faint | bold }}`,
-				promptui.IconSelect),
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Extra | faint | bold }}`, promptui.IconSelect),
 			Inactive: `{{ .Name | faint }} {{ .Extra | faint | bold }}`,
 			Details:  `{{ "(Key:" | faint }} {{ .Key | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,

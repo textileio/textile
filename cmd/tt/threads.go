@@ -13,6 +13,8 @@ import (
 func init() {
 	rootCmd.AddCommand(threadsCmd)
 	threadsCmd.AddCommand(lsThreadsCmd)
+
+	threadsCmd.PersistentFlags().String("org", "", "Org name")
 }
 
 var threadsCmd = &cobra.Command{
@@ -42,7 +44,7 @@ var lsThreadsCmd = &cobra.Command{
 func lsThreads() {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := hub.ListThreads(ctx)
+	list, err := users.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -68,7 +70,7 @@ type threadItem struct {
 func selectThread(label, successMsg string) *threadItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := hub.ListThreads(ctx)
+	list, err := users.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -87,8 +89,7 @@ func selectThread(label, successMsg string) *threadItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`,
-				promptui.IconSelect),
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
 			Inactive: `{{ .ID | faint }} {{ .Name | faint | bold }}`,
 			Selected: successMsg,
 		},

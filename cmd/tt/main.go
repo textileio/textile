@@ -17,6 +17,7 @@ import (
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	uc "github.com/textileio/textile/api/users/client"
 	"github.com/textileio/textile/cmd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -62,6 +63,7 @@ var (
 	hub     *hc.Client
 	buckets *bc.Client
 	threads *tc.Client
+	users   *uc.Client
 
 	cmdTimeout     = time.Second * 10
 	confirmTimeout = time.Minute * 3
@@ -138,6 +140,10 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		users, err = uc.NewClient(target, opts...)
+		if err != nil {
+			cmd.Fatal(err)
+		}
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
 		if hub != nil {
@@ -172,6 +178,11 @@ func authCtx(duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	ctx = common.NewSessionContext(ctx, authViper.GetString("session"))
 	ctx = common.NewOrgSlugContext(ctx, configViper.GetString("org"))
+	return ctx, cancel
+}
+
+func threadCtx(duration time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := authCtx(duration)
 	ctx = common.NewThreadIDContext(ctx, getThreadID())
 	return ctx, cancel
 }

@@ -2,13 +2,14 @@ package users
 
 import (
 	"context"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"errors"
 
 	logging "github.com/ipfs/go-log"
 	pb "github.com/textileio/textile/api/users/pb"
 	c "github.com/textileio/textile/collections"
+	"go.mongodb.org/mongo-driver/mongo"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -28,6 +29,9 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 	}
 	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, user.Key)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Error(codes.NotFound, "Thread not found")
+		}
 		return nil, err
 	}
 	return &pb.GetThreadReply{

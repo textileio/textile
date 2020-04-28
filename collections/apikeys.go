@@ -16,12 +16,29 @@ const (
 	secretLen = 24
 )
 
+type APIKeyType int
+
+const (
+	AccountKey APIKeyType = iota
+	UserKey
+)
+
 type APIKey struct {
 	Key       string
 	Secret    string
 	Owner     crypto.PubKey
+	Type      APIKeyType
 	Valid     bool
 	CreatedAt time.Time
+}
+
+func NewAPIKeyContext(ctx context.Context, key *APIKey) context.Context {
+	return context.WithValue(ctx, ctxKey("apiKey"), key)
+}
+
+func APIKeyFromContext(ctx context.Context) (*APIKey, bool) {
+	key, ok := ctx.Value(ctxKey("apiKey")).(*APIKey)
+	return key, ok
 }
 
 type APIKeys struct {
@@ -38,11 +55,12 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 	return s, err
 }
 
-func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey) (*APIKey, error) {
+func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType) (*APIKey, error) {
 	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
 		Owner:     owner,
+		Type:      keyType,
 		Valid:     true,
 		CreatedAt: time.Now(),
 	}
@@ -54,6 +72,7 @@ func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey) (*APIKey, err
 		"_id":        doc.Key,
 		"secret":     doc.Secret,
 		"owner_id":   ownerID,
+		"type":       int32(doc.Type),
 		"valid":      doc.Valid,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
@@ -125,6 +144,7 @@ func decodeKey(raw bson.M) (*APIKey, error) {
 		Key:       raw["_id"].(string),
 		Secret:    raw["secret"].(string),
 		Owner:     owner,
+		Type:      APIKeyType(raw["type"].(int32)),
 		Valid:     raw["valid"].(bool),
 		CreatedAt: created,
 	}, nil
