@@ -1,8 +1,8 @@
 import { grpc } from '@improbable-eng/grpc-web'
 import log from 'loglevel'
-import * as pb from '@textile/hub/hub_pb'
-import { API } from '@textile/hub/hub_pb_service'
-import { Credentials } from './credentials'
+import * as pb from '@textile/hub-grpc/hub_pb'
+import { API } from '@textile/hub-grpc/hub_pb_service'
+import { Context } from './Context'
 
 const logger = log.getLogger('hub')
 
@@ -14,7 +14,7 @@ export class Client {
    * Creates a new gRPC client instance for accessing the Textile Hub APIs
    * @param credentials The credentials to use for interacting with the Textile Hub APIs. Can be modified.
    */
-  constructor(public credentials?: Credentials) {
+  constructor(public credentials?: Context) {
     const transport = credentials?.transport || grpc.WebsocketTransport()
     grpc.setDefaultTransport(transport)
   }
@@ -23,11 +23,11 @@ export class Client {
    * Creates a new user (if username is available) and returns a session.
    * @param username The desired username.
    * @param email The user's email address.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    * @note This method will block and wait for email-based verification.
    */
-  async signUp(username: string, email: string, credentials?: Credentials) {
+  async signUp(username: string, email: string, credentials?: Context) {
     logger.debug('signup request')
     const req = new pb.SignupRequest()
     req.setEmail(email)
@@ -39,11 +39,11 @@ export class Client {
   /**
    * Returns a session for an existing username or email.
    * @param usernameOrEmail An existing username or email address.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    * @note This method will block and wait for email-based verification.
    */
-  async signIn(usernameOrEmail: string, credentials?: Credentials) {
+  async signIn(usernameOrEmail: string, credentials?: Context) {
     logger.debug('signin request')
     const req = new pb.SigninRequest()
     req.setUsernameoremail(usernameOrEmail)
@@ -53,10 +53,10 @@ export class Client {
 
   /**
    * Deletes the current session.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async signOut(credentials?: Credentials) {
+  async signOut(credentials?: Context) {
     logger.debug('signout request')
     const req = new pb.SignoutRequest()
     await this.unary(API.Signout, req, credentials)
@@ -65,10 +65,10 @@ export class Client {
 
   /**
    * Returns the current session information.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async getSessionInfo(credentials?: Credentials) {
+  async getSessionInfo(credentials?: Context) {
     logger.debug('get session info request')
     const req = new pb.GetSessionInfoRequest()
     const res: pb.GetSessionInfoReply = await this.unary(API.GetSessionInfo, req, credentials)
@@ -78,10 +78,10 @@ export class Client {
   /**
    * Returns a Thread by name.
    * @param name The name of the Thread.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async getThread(name: string, credentials?: Credentials) {
+  async getThread(name: string, credentials?: Context) {
     logger.debug('get thread request')
     const req = new pb.GetThreadRequest()
     req.setName(name)
@@ -91,11 +91,11 @@ export class Client {
 
   /**
    * Returns a list of available Threads.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    * @note Threads can be created using the threads or threads network clients.
    */
-  async listThreads(credentials?: Credentials) {
+  async listThreads(credentials?: Context) {
     logger.debug('list thread request')
     const req = new pb.ListThreadsRequest()
     const res: pb.ListThreadsReply = await this.unary(API.ListThreads, req, credentials)
@@ -104,10 +104,10 @@ export class Client {
 
   /**
    * Creates a new key for the current session.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async createKey(credentials?: Credentials) {
+  async createKey(credentials?: Context) {
     logger.debug('create key request')
     const req = new pb.CreateKeyRequest()
     const res: pb.GetKeyReply = await this.unary(API.CreateKey, req, credentials)
@@ -117,11 +117,11 @@ export class Client {
   /**
    * Marks a key as invalid.
    * @param key The session key to invalidate.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    * @note New Threads cannot be created with an invalid key.
    */
-  async invalidateKey(key: string, credentials?: Credentials) {
+  async invalidateKey(key: string, credentials?: Context) {
     logger.debug('invalidate key request')
     const req = new pb.InvalidateKeyRequest()
     req.setKey(key)
@@ -131,10 +131,10 @@ export class Client {
 
   /**
    * Returns a list of keys for the current session.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async listKeys(credentials?: Credentials) {
+  async listKeys(credentials?: Context) {
     logger.debug('list keys request')
     const req = new pb.ListKeysRequest()
     const res: pb.ListKeysReply = await this.unary(API.ListKeys, req, credentials)
@@ -144,10 +144,10 @@ export class Client {
   /**
    * Creates a new org (if name is available) by name.
    * @param name The desired org name.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async createOrg(name: string, credentials?: Credentials) {
+  async createOrg(name: string, credentials?: Context) {
     logger.debug('create org request')
     const req = new pb.CreateOrgRequest()
     req.setName(name)
@@ -157,10 +157,10 @@ export class Client {
 
   /**
    * Returns the current org.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async getOrg(credentials?: Credentials) {
+  async getOrg(credentials?: Context) {
     logger.debug('get org request')
     const req = new pb.GetOrgRequest()
     const res: pb.GetOrgReply = await this.unary(API.GetOrg, req, credentials)
@@ -169,10 +169,10 @@ export class Client {
 
   /**
    * Returns a list of orgs for the current session.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async listOrgs(credentials?: Credentials) {
+  async listOrgs(credentials?: Context) {
     logger.debug('list orgs request')
     const req = new pb.ListOrgsRequest()
     const res: pb.ListOrgsReply = await this.unary(API.ListOrgs, req, credentials)
@@ -181,10 +181,10 @@ export class Client {
 
   /**
    * Removes the current org.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async removeOrg(credentials?: Credentials) {
+  async removeOrg(credentials?: Context) {
     logger.debug('remove org request')
     const req = new pb.RemoveOrgRequest()
     await this.unary(API.RemoveOrg, req, credentials)
@@ -194,10 +194,10 @@ export class Client {
   /**
    * Invites the given email to an org.
    * @param email The email to add to an org.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async inviteToOrg(email: string, credentials?: Credentials) {
+  async inviteToOrg(email: string, credentials?: Context) {
     logger.debug('invite to org request')
     const req = new pb.InviteToOrgRequest()
     req.setEmail(email)
@@ -207,10 +207,10 @@ export class Client {
 
   /**
    * Removes the current session dev from an org.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async leaveOrg(credentials?: Credentials) {
+  async leaveOrg(credentials?: Context) {
     logger.debug('leave org request')
     const req = new pb.LeaveOrgRequest()
     await this.unary(API.InviteToOrg, req, credentials)
@@ -220,10 +220,10 @@ export class Client {
   /**
    * Returns whether the username is valid and available.
    * @param username The desired username.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async isUsernameAvailable(username: string, credentials?: Credentials) {
+  async isUsernameAvailable(username: string, credentials?: Context) {
     logger.debug('is username available request')
     const req = new pb.IsUsernameAvailableRequest()
     req.setUsername(username)
@@ -236,10 +236,10 @@ export class Client {
   /**
    * Returns whether the org name is valid and available.
    * @param name The desired org name.
-   * @param credentials Credentials containing gRPC headers and settings.
+   * @param credentials Context containing gRPC headers and settings.
    * These will be merged with any internal credentials.
    */
-  async isOrgNameAvailable(name: string, credentials?: Credentials) {
+  async isOrgNameAvailable(name: string, credentials?: Context) {
     logger.debug('is org name available request')
     const req = new pb.IsOrgNameAvailableRequest()
     req.setName(name)
@@ -253,7 +253,7 @@ export class Client {
     R extends grpc.ProtobufMessage,
     T extends grpc.ProtobufMessage,
     M extends grpc.UnaryMethodDefinition<R, T>
-  >(methodDescriptor: M, req: R, credentials?: Credentials): Promise<T> {
+  >(methodDescriptor: M, req: R, credentials?: Context): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const creds = { ...this.credentials?.toJSON(), ...credentials?.toJSON() }
       grpc.unary(methodDescriptor, {

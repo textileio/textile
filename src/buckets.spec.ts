@@ -69,8 +69,6 @@ describe('Buckets...', () => {
 
   it('should push data from filesystem on node', async () => {
     const pth = path.join(__dirname, '..', 'testdata', 'file1.jpg')
-    const stats = fs.statSync(pth)
-    console.log(stats)
     const stream = fs.createReadStream(pth)
     const res = await client.pushPath(buck.root?.key || '', stream, {}, ctx)
     const roots = await client.listPath(buck.root?.key || '', '', ctx)
