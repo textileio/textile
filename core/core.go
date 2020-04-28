@@ -362,7 +362,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
 		}
 		if !common.ValidateAPISigContext(ctx, key.Secret) {
-			return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
+			return nil, status.Error(codes.Unauthenticated, "Bad API key signature")
 		}
 		switch key.Type {
 		case c.AccountKey:

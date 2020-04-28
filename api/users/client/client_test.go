@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
@@ -21,6 +22,8 @@ import (
 	c "github.com/textileio/textile/api/users/client"
 	"github.com/textileio/textile/core"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestClient_GetThread(t *testing.T) {
@@ -29,51 +32,80 @@ func TestClient_GetThread(t *testing.T) {
 	defer done()
 	ctx := context.Background()
 
-	t.Run("without key", func(t *testing.T) {
-		_, err := client.GetThread(ctx, "foo")
-		require.NotNil(t, err)
-	})
-
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
-	require.Nil(t, err)
-	ctx = common.NewAPIKeyContext(ctx, key.Key)
 
-	t.Run("without key signature", func(t *testing.T) {
+	t.Run("bad keys", func(t *testing.T) {
+		// No key
 		_, err := client.GetThread(ctx, "foo")
 		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// No key signature
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		_, err = client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// Old key signature
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
+		require.Nil(t, err)
+		_, err = client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 	})
 
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
-	require.Nil(t, err)
+	t.Run("account keys", func(t *testing.T) {
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		require.Nil(t, err)
 
-	t.Run("with old key signature", func(t *testing.T) {
-		_, err := client.GetThread(ctx, "foo")
+		// Not found
+		_, err = client.GetThread(ctx, "foo")
 		require.NotNil(t, err)
-	})
+		assert.Equal(t, codes.NotFound, status.Code(err))
 
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
-	require.Nil(t, err)
-
-	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
-	tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
-	require.Nil(t, err)
-	ctx = thread.NewTokenContext(ctx, tok)
-	err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
-	require.Nil(t, err)
-
-	t.Run("with key", func(t *testing.T) {
-		_, err := client.GetThread(ctx, "foo")
-		require.NotNil(t, err)
-
+		// All good
 		ctx = common.NewThreadNameContext(ctx, "foo")
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.Nil(t, err)
-
 		res, err := client.GetThread(ctx, "foo")
 		require.Nil(t, err)
-		require.Equal(t, "foo", res.Name)
+		assert.Equal(t, "foo", res.Name)
+	})
+
+	t.Run("users keys", func(t *testing.T) {
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		require.Nil(t, err)
+
+		// No token
+		_, err = client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// Not found
+		sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.Nil(t, err)
+		tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
+		require.Nil(t, err)
+		ctx = thread.NewTokenContext(ctx, tok)
+		_, err = client.GetThread(ctx, "foo")
+		require.NotNil(t, err)
+		assert.Equal(t, codes.NotFound, status.Code(err))
+
+		// All good
+		ctx = common.NewThreadNameContext(ctx, "foo")
+		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
+		res, err := client.GetThread(ctx, "foo")
+		require.Nil(t, err)
+		assert.Equal(t, "foo", res.Name)
 	})
 }
 
@@ -83,77 +115,174 @@ func TestClient_ListThreads(t *testing.T) {
 	defer done()
 	ctx := context.Background()
 
-	t.Run("without key", func(t *testing.T) {
-		_, err := client.ListThreads(ctx)
-		require.NotNil(t, err)
-	})
-
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
-	require.Nil(t, err)
-	ctx = common.NewAPIKeyContext(ctx, key.Key)
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
-	require.Nil(t, err)
 
-	t.Run("with key, without token", func(t *testing.T) {
+	t.Run("bad keys", func(t *testing.T) {
+		// No key
 		_, err := client.ListThreads(ctx)
 		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// No key signature
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		_, err = client.ListThreads(ctx)
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// Old key signature
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
+		require.Nil(t, err)
+		_, err = client.ListThreads(ctx)
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 	})
 
-	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
-	tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
-	require.Nil(t, err)
-	ctx = thread.NewTokenContext(ctx, tok)
+	t.Run("account keys", func(t *testing.T) {
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		require.Nil(t, err)
 
-	t.Run("with key, with token", func(t *testing.T) {
-		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		// Empty
+		res, err := client.ListThreads(ctx)
 		require.Nil(t, err)
-		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
-		require.Nil(t, err)
+		assert.Equal(t, 0, len(res.List))
+
+		// Got one
 		_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.Nil(t, err)
-
-		list, err := client.ListThreads(ctx)
+		res, err = client.ListThreads(ctx)
 		require.Nil(t, err)
-		require.Equal(t, 3, len(list.List))
+		assert.Equal(t, 1, len(res.List))
+	})
+
+	t.Run("users keys", func(t *testing.T) {
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
+		require.Nil(t, err)
+		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		require.Nil(t, err)
+
+		// No token
+		_, err = client.ListThreads(ctx)
+		require.NotNil(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+
+		// Empty
+		sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.Nil(t, err)
+		tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
+		require.Nil(t, err)
+		ctx = thread.NewTokenContext(ctx, tok)
+		res, err := client.ListThreads(ctx)
+		require.Nil(t, err)
+		assert.Equal(t, 0, len(res.List))
+
+		// Got one
+		ctx = common.NewThreadNameContext(ctx, "foo")
+		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
+		require.Nil(t, err)
+		res, err = client.ListThreads(ctx)
+		require.Nil(t, err)
+		assert.Equal(t, 1, len(res.List))
+		assert.Equal(t, "foo", res.List[0].Name)
 	})
 }
 
-func TestBuckets(t *testing.T) {
+func TestAccountBuckets(t *testing.T) {
 	t.Parallel()
-	conf, _, hub, threads, _, buckets, done := setup(t)
+	conf, users, hub, threads, _, buckets, done := setup(t)
 	defer done()
 	ctx := context.Background()
 
+	// Signup, create an API key, and sign it for the requests
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
+	devCtx := common.NewSessionContext(ctx, dev.Session)
+	key, err := hub.CreateKey(devCtx, hubpb.KeyType_ACCOUNT)
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
 	require.Nil(t, err)
 
-	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
-	tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
-	require.Nil(t, err)
-	ctx = thread.NewTokenContext(ctx, tok)
-
+	// Create a db for the bucket
 	ctx = common.NewThreadNameContext(ctx, "my-buckets")
 	dbID := thread.NewIDV1(thread.Raw, 32)
 	err = threads.NewDB(ctx, dbID)
 	require.Nil(t, err)
 
+	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
 	buck, err := buckets.Init(ctx, "mybuck")
 	require.Nil(t, err)
 
+	// Finally, push a file to the bucket.
 	file, err := os.Open("testdata/file1.jpg")
 	require.Nil(t, err)
 	defer file.Close()
 	_, file1Root, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
 	require.Nil(t, err)
-	require.NotEmpty(t, file1Root.String())
+	assert.NotEmpty(t, file1Root.String())
+
+	// We should have a thread named "my-buckets"
+	res, err := users.GetThread(ctx, "my-buckets")
+	require.Nil(t, err)
+	assert.Equal(t, dbID.Bytes(), res.ID)
+}
+
+func TestUserBuckets(t *testing.T) {
+	t.Parallel()
+	conf, users, hub, threads, _, buckets, done := setup(t)
+	defer done()
+	ctx := context.Background()
+
+	// Signup, create an API key, and sign it for the requests
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
+	devCtx := common.NewSessionContext(ctx, dev.Session)
+	key, err := hub.CreateKey(devCtx, hubpb.KeyType_USER)
+	require.Nil(t, err)
+	ctx = common.NewAPIKeyContext(ctx, key.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	require.Nil(t, err)
+
+	// Generate a user identity and get a token for it
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
+	require.Nil(t, err)
+	ctx = thread.NewTokenContext(ctx, tok)
+
+	// Create a db for the bucket
+	ctx = common.NewThreadNameContext(ctx, "my-buckets")
+	dbID := thread.NewIDV1(thread.Raw, 32)
+	err = threads.NewDB(ctx, dbID)
+	require.Nil(t, err)
+
+	// Initialize a new bucket in the db
+	ctx = common.NewThreadIDContext(ctx, dbID)
+	buck, err := buckets.Init(ctx, "mybuck")
+	require.Nil(t, err)
+
+	// Finally, push a file to the bucket.
+	file, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	_, file1Root, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
+	require.Nil(t, err)
+	assert.NotEmpty(t, file1Root.String())
+
+	// We should have a thread named "my-buckets"
+	res, err := users.GetThread(ctx, "my-buckets")
+	require.Nil(t, err)
+	assert.Equal(t, dbID.Bytes(), res.ID)
+
+	// The dev should see that the key was used to create one thread
+	keys, err := hub.ListKeys(devCtx)
+	require.Nil(t, err)
+	assert.Equal(t, 1, len(keys.List))
+	assert.Equal(t, 1, int(keys.List[0].Threads))
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
