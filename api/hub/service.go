@@ -208,40 +208,6 @@ func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoReques
 	}, nil
 }
 
-func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadReply, error) {
-	log.Debugf("received get thread request")
-
-	owner := ownerFromContext(ctx)
-	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, owner)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetThreadReply{
-		ID:   thrd.ID.Bytes(),
-		Name: thrd.Name,
-	}, nil
-}
-
-func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
-	log.Debugf("received list threads request")
-
-	owner := ownerFromContext(ctx)
-	list, err := s.Collections.Threads.List(ctx, owner)
-	if err != nil {
-		return nil, err
-	}
-	reply := &pb.ListThreadsReply{
-		List: make([]*pb.GetThreadReply, len(list)),
-	}
-	for i, t := range list {
-		reply.List[i] = &pb.GetThreadReply{
-			ID:   t.ID.Bytes(),
-			Name: t.Name,
-		}
-	}
-	return reply, nil
-}
-
 func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
 	log.Debugf("received create key request")
 

@@ -17,6 +17,7 @@ import (
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	uc "github.com/textileio/textile/api/users/client"
 	"github.com/textileio/textile/cmd"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -62,6 +63,7 @@ var (
 	hub     *hc.Client
 	buckets *bc.Client
 	threads *tc.Client
+	users   *uc.Client
 
 	cmdTimeout     = time.Second * 10
 	confirmTimeout = time.Minute * 3
@@ -135,6 +137,10 @@ var rootCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		threads, err = tc.NewClient(target, opts...)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		users, err = uc.NewClient(target, opts...)
 		if err != nil {
 			cmd.Fatal(err)
 		}

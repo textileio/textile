@@ -32,6 +32,15 @@ type APIKey struct {
 	CreatedAt time.Time
 }
 
+func NewAPIKeyContext(ctx context.Context, key *APIKey) context.Context {
+	return context.WithValue(ctx, ctxKey("apiKey"), key)
+}
+
+func APIKeyFromContext(ctx context.Context) (*APIKey, bool) {
+	key, ok := ctx.Value(ctxKey("apiKey")).(*APIKey)
+	return key, ok
+}
+
 type APIKeys struct {
 	col *mongo.Collection
 }

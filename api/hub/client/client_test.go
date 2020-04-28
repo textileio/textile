@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
-	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
 	"github.com/textileio/textile/api/common"
@@ -92,64 +91,6 @@ func TestClient_GetSessionInfo(t *testing.T) {
 		assert.Equal(t, user.Key, res.Key)
 		assert.Equal(t, username, res.Username)
 		assert.Equal(t, email, res.Email)
-	})
-}
-
-func TestClient_GetThread(t *testing.T) {
-	t.Parallel()
-	conf, client, threadsclient, done := setup(t)
-	defer done()
-	ctx := context.Background()
-
-	t.Run("without session", func(t *testing.T) {
-		_, err := client.GetThread(ctx, "foo")
-		require.NotNil(t, err)
-	})
-
-	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-
-	t.Run("with session", func(t *testing.T) {
-		ctx = common.NewSessionContext(ctx, user.Session)
-		_, err := client.GetThread(ctx, "foo")
-		require.NotNil(t, err)
-
-		ctx = common.NewThreadNameContext(ctx, "foo")
-		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
-		require.Nil(t, err)
-
-		res, err := client.GetThread(ctx, "foo")
-		require.Nil(t, err)
-		require.Equal(t, "foo", res.Name)
-	})
-}
-
-func TestClient_ListThreads(t *testing.T) {
-	t.Parallel()
-	conf, client, threadsclient, done := setup(t)
-	defer done()
-	ctx := context.Background()
-
-	t.Run("without session", func(t *testing.T) {
-		_, err := client.ListThreads(ctx)
-		require.NotNil(t, err)
-	})
-
-	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-
-	t.Run("with session", func(t *testing.T) {
-		ctx = common.NewSessionContext(ctx, user.Session)
-		list, err := client.ListThreads(ctx)
-		require.Nil(t, err)
-		require.Empty(t, list.List)
-
-		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
-		require.Nil(t, err)
-		err = threadsclient.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
-		require.Nil(t, err)
-
-		list, err = client.ListThreads(ctx)
-		require.Nil(t, err)
-		require.Equal(t, 2, len(list.List))
 	})
 }
 

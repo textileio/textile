@@ -308,7 +308,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
-		ctx = common.NewSessionContext(ctx, sid) // For additional requests
+		ctx = common.NewSessionContext(ctx, sid)
 		if sid == t.gatewaySession {
 			return ctx, nil
 		}
@@ -344,44 +344,40 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 					return nil, status.Error(codes.NotFound, "Org not found")
 				}
 				ctx = c.NewOrgContext(ctx, org)
-				ctx = common.NewOrgSlugContext(ctx, orgSlug) // For additional requests
+				ctx = common.NewOrgSlugContext(ctx, orgSlug)
 				ctx = thread.NewTokenContext(ctx, org.Token)
 			}
 		} else {
 			ctx = thread.NewTokenContext(ctx, dev.Token)
 		}
-	} else if key, ok := common.APIKeyFromMD(ctx); ok {
-		ctx = common.NewAPIKeyContext(ctx, key)
+	} else if k, ok := common.APIKeyFromMD(ctx); ok {
+		ctx = common.NewAPIKeyContext(ctx, k)
 		msg, sig, ok := common.APISigFromMD(ctx)
 		if !ok {
 			return nil, status.Error(codes.Unauthenticated, "API key signature required")
 		}
 		ctx = common.NewAPISigContext(ctx, msg, sig)
-	} else {
-		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
-	}
-	return ctx, nil
-}
-
-// threadInterceptor monitors for thread creation and deletion.
-// Textile tracks threads against dev, org, and user accounts.
-// Users must supply a valid API key from a dev/org.
-func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		method, _ := grpc.Method(ctx)
-		var owner crypto.PubKey
-		if org, ok := c.OrgFromContext(ctx); ok {
-			owner = org.Key
-		} else if dev, ok := c.DevFromContext(ctx); ok {
-			owner = dev.Key
-		} else if k, ok := common.APIKeyFromContext(ctx); ok {
-			key, err := t.co.APIKeys.Get(ctx, k)
-			if err != nil || !key.Valid {
-				return nil, status.Error(codes.NotFound, "API key not found or is invalid")
+		key, err := t.co.APIKeys.Get(ctx, k)
+		if err != nil || !key.Valid {
+			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
+		}
+		if !common.ValidateAPISigContext(ctx, key.Secret) {
+			return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
+		}
+		switch key.Type {
+		case c.AccountKey:
+			acc, err := t.co.Accounts.Get(ctx, key.Owner)
+			if err != nil {
+				return nil, status.Error(codes.NotFound, "Account not found")
 			}
-			if !common.ValidateAPISigContext(ctx, key.Secret) {
-				return nil, status.Error(codes.PermissionDenied, "Bad API key signature")
+			switch acc.Type {
+			case c.Dev:
+				ctx = c.NewDevContext(ctx, acc)
+			case c.Org:
+				ctx = c.NewOrgContext(ctx, acc)
 			}
+			ctx = thread.NewTokenContext(ctx, acc.Token)
+		case c.UserKey:
 			token, ok := thread.TokenFromContext(ctx)
 			if ok {
 				var claims jwt.StandardClaims
@@ -396,14 +392,43 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 					return nil, err
 				}
-				if user != nil {
-					ctx = c.NewUserContext(ctx, user)
+				if user == nil {
+					// Attach a temp user context that will be accessible in the next interceptor.
+					user = &c.User{Key: ukey.PubKey}
 				}
-				owner = ukey.PubKey
-			} else {
+				ctx = c.NewUserContext(ctx, user)
+			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
 				return nil, status.Error(codes.Unauthenticated, "Token required")
 			}
 		}
+		ctx = c.NewAPIKeyContext(ctx, key)
+	} else {
+		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
+	}
+	return ctx, nil
+}
+
+// threadInterceptor monitors for thread creation and deletion.
+// Textile tracks threads against dev, org, and user accounts.
+// Users must supply a valid API key from a dev/org.
+func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		method, _ := grpc.Method(ctx)
+		for _, ignored := range ignoreMethods {
+			if method == ignored {
+				return handler(ctx, req)
+			}
+		}
+
+		var owner crypto.PubKey
+		if org, ok := c.OrgFromContext(ctx); ok {
+			owner = org.Key
+		} else if dev, ok := c.DevFromContext(ctx); ok {
+			owner = dev.Key
+		} else if user, ok := c.UserFromContext(ctx); ok {
+			owner = user.Key
+		}
+		key, _ := c.APIKeyFromContext(ctx)
 
 		var newID thread.ID
 		var err error
@@ -437,9 +462,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return nil, err
 			}
 		default:
-			if owner == nil {
-				break
-			}
 			// If we're dealing with an existing thread, make sure that the owner
 			// owns the thread directly or via an API key.
 			threadID, ok := common.ThreadIDFromContext(ctx)
@@ -452,26 +474,34 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 						return nil, err
 					}
 				}
-				if !owner.Equals(th.Owner) {
+				if owner == nil || !owner.Equals(th.Owner) { // Linter can't see that owner can't be nil
 					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
 				}
-				if k, ok := common.APIKeyFromContext(ctx); ok {
-					if k != th.Key {
+				if key != nil && key.Type == c.UserKey {
+					// Extra user check for user API keys.
+					if key.Key != th.Key {
 						return nil, status.Error(codes.PermissionDenied, "Bad API key")
 					}
 				}
 			}
 		}
 
+		// Collect the user if we haven't seen them before.
+		user, ok := c.UserFromContext(ctx)
+		if ok && user.CreatedAt.IsZero() {
+			if err := t.co.Users.Create(ctx, owner); err != nil {
+				return nil, err
+			}
+		}
+		if !ok && owner != nil {
+			// Add the dev/org as the user for the user API.
+			ctx = c.NewUserContext(ctx, &c.User{Key: owner})
+		}
+
 		// Preemptively track the new thread ID for the owner.
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.
 		if newID.Defined() {
-			if _, ok := c.UserFromContext(ctx); !ok {
-				if err := t.co.Users.Create(ctx, owner); err != nil {
-					return nil, err
-				}
-			}
 			if _, err := t.co.Threads.Create(ctx, newID, owner); err != nil {
 				return nil, err
 			}

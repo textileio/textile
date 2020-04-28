@@ -40,24 +40,6 @@ type APIGetSessionInfo = {
   readonly responseType: typeof hub_pb.GetSessionInfoReply;
 };
 
-type APIGetThread = {
-  readonly methodName: string;
-  readonly service: typeof API;
-  readonly requestStream: false;
-  readonly responseStream: false;
-  readonly requestType: typeof hub_pb.GetThreadRequest;
-  readonly responseType: typeof hub_pb.GetThreadReply;
-};
-
-type APIListThreads = {
-  readonly methodName: string;
-  readonly service: typeof API;
-  readonly requestStream: false;
-  readonly responseStream: false;
-  readonly requestType: typeof hub_pb.ListThreadsRequest;
-  readonly responseType: typeof hub_pb.ListThreadsReply;
-};
-
 type APICreateKey = {
   readonly methodName: string;
   readonly service: typeof API;
@@ -163,8 +145,6 @@ export class API {
   static readonly Signin: APISignin;
   static readonly Signout: APISignout;
   static readonly GetSessionInfo: APIGetSessionInfo;
-  static readonly GetThread: APIGetThread;
-  static readonly ListThreads: APIListThreads;
   static readonly CreateKey: APICreateKey;
   static readonly ListKeys: APIListKeys;
   static readonly InvalidateKey: APIInvalidateKey;
@@ -245,24 +225,6 @@ export class APIClient {
   getSessionInfo(
     requestMessage: hub_pb.GetSessionInfoRequest,
     callback: (error: ServiceError|null, responseMessage: hub_pb.GetSessionInfoReply|null) => void
-  ): UnaryResponse;
-  getThread(
-    requestMessage: hub_pb.GetThreadRequest,
-    metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetThreadReply|null) => void
-  ): UnaryResponse;
-  getThread(
-    requestMessage: hub_pb.GetThreadRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.GetThreadReply|null) => void
-  ): UnaryResponse;
-  listThreads(
-    requestMessage: hub_pb.ListThreadsRequest,
-    metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.ListThreadsReply|null) => void
-  ): UnaryResponse;
-  listThreads(
-    requestMessage: hub_pb.ListThreadsRequest,
-    callback: (error: ServiceError|null, responseMessage: hub_pb.ListThreadsReply|null) => void
   ): UnaryResponse;
   createKey(
     requestMessage: hub_pb.CreateKeyRequest,

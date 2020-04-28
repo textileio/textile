@@ -17,6 +17,7 @@ import (
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	hubpb "github.com/textileio/textile/api/hub/pb"
 	c "github.com/textileio/textile/api/users/client"
 	"github.com/textileio/textile/core"
 	"google.golang.org/grpc"
@@ -34,7 +35,7 @@ func TestClient_GetThread(t *testing.T) {
 	})
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
+	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 
@@ -88,7 +89,7 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
+	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -105,12 +106,7 @@ func TestClient_ListThreads(t *testing.T) {
 	require.Nil(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
 
-	t.Run("with key, with token, without user", func(t *testing.T) {
-		_, err := client.ListThreads(ctx)
-		require.NotNil(t, err)
-	})
-
-	t.Run("with key, with token, with user", func(t *testing.T) {
+	t.Run("with key, with token", func(t *testing.T) {
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.Nil(t, err)
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
@@ -131,7 +127,7 @@ func TestBuckets(t *testing.T) {
 	ctx := context.Background()
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session))
+	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)

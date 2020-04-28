@@ -37,21 +37,6 @@ message GetSessionInfoReply {
     string email = 3;
 }
 
-message GetThreadRequest {
-    string name = 1;
-}
-
-message GetThreadReply {
-    bytes ID = 1;
-    string name = 2;
-}
-
-message ListThreadsRequest {}
-
-message ListThreadsReply {
-    repeated GetThreadReply list = 1;
-}
-
 message CreateKeyRequest {
     KeyType type = 1;
 }
@@ -145,9 +130,6 @@ service API {
     rpc Signout(SignoutRequest) returns (SignoutReply) {}
 
     rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoReply) {}
-
-    rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
-    rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 
     rpc CreateKey(CreateKeyRequest) returns (GetKeyReply) {}
     rpc ListKeys(ListKeysRequest) returns (ListKeysReply) {}

@@ -44,7 +44,7 @@ var lsThreadsCmd = &cobra.Command{
 func lsThreads() {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := hub.ListThreads(ctx)
+	list, err := users.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -70,7 +70,7 @@ type threadItem struct {
 func selectThread(label, successMsg string) *threadItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
-	list, err := hub.ListThreads(ctx)
+	list, err := users.ListThreads(ctx)
 	if err != nil {
 		cmd.Fatal(err)
 	}

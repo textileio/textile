@@ -58,19 +58,6 @@ func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoReply, e
 	return c.c.GetSessionInfo(ctx, &pb.GetSessionInfoRequest{})
 }
 
-// GetThread returns a thread by name.
-func (c *Client) GetThread(ctx context.Context, name string) (*pb.GetThreadReply, error) {
-	return c.c.GetThread(ctx, &pb.GetThreadRequest{
-		Name: name,
-	})
-}
-
-// ListThreads returns a list of threads.
-// Threads can be created using the threads or threads network client.
-func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) {
-	return c.c.ListThreads(ctx, &pb.ListThreadsRequest{})
-}
-
 // CreateKey creates a new key for the current session.
 func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType) (*pb.GetKeyReply, error) {
 	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{
