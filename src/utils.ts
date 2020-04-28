@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from 'axios'
 import delay from 'delay'
 import { Config } from '@textile/threads-client'
 import { grpc } from '@improbable-eng/grpc-web'
-import { SignupReply } from '@textile/hub/hub_pb'
+import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { Client } from './hub'
 
 export const createUsername = (size = 12) => {
