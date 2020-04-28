@@ -49,6 +49,7 @@ func TestSessions_Touch(t *testing.T) {
 	created, err := col.Create(context.Background(), owner)
 	require.Nil(t, err)
 
+	time.Sleep(time.Second)
 	err = col.Touch(context.Background(), created.ID)
 	require.Nil(t, err)
 	got, err := col.Get(context.Background(), created.ID)

@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	logging "github.com/ipfs/go-log"
 	pb "github.com/textileio/textile/api/users/pb"
 	c "github.com/textileio/textile/collections"
+	"go.mongodb.org/mongo-driver/mongo"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
