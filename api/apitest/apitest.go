@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,13 +77,17 @@ func NewEmail() string {
 func Signup(t *testing.T, client *client.Client, conf core.Config, username, email string) *pb.SignupReply {
 	var err error
 	var res *pb.SignupReply
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		res, err = client.Signup(context.Background(), username, email)
 		require.Nil(t, err)
 	}()
 
 	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
 
+	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
 	return res
@@ -91,13 +96,17 @@ func Signup(t *testing.T, client *client.Client, conf core.Config, username, ema
 func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEmail string) *pb.SigninReply {
 	var err error
 	var res *pb.SigninReply
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		res, err = client.Signin(context.Background(), usernameOrEmail)
 		require.Nil(t, err)
 	}()
 
 	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
 
+	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
 	return res

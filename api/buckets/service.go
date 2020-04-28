@@ -339,9 +339,9 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		}
 	}()
 
-	var size string
 	eventCh := make(chan interface{})
 	defer close(eventCh)
+	chSize := make(chan string)
 	go func() {
 		for e := range eventCh {
 			event, ok := e.(*iface.AddEvent)
@@ -357,7 +357,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 					log.Errorf("error sending event: %v", err)
 				}
 			} else {
-				size = event.Size // Save size for use in the final response
+				chSize <- event.Size // Save size for use in the final response
 			}
 		}
 	}()
@@ -388,6 +388,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		return err
 	}
 
+	size := <-chSize
 	if err = sendEvent(&pb.PushPathReply_Event{
 		Path: pth.String(),
 		Size: size,
