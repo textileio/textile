@@ -15,11 +15,8 @@ func TestIPNSKeys_Create(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.Nil(t, err)
 
-	threadID := thread.NewIDV1(thread.Raw, 32)
-	created, err := col.Create(context.Background(), threadID)
+	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32))
 	require.Nil(t, err)
-	assert.NotEmpty(t, created.Key)
-	assert.NotEmpty(t, created.CreatedAt)
 }
 
 func TestIPNSKeys_Get(t *testing.T) {
@@ -28,13 +25,28 @@ func TestIPNSKeys_Get(t *testing.T) {
 	require.Nil(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	created, err := col.Create(context.Background(), threadID)
+	err = col.Create(context.Background(), "foo", "cid", threadID)
 	require.Nil(t, err)
 
-	got, err := col.Get(context.Background(), created.ID)
+	got, err := col.Get(context.Background(), "foo")
 	require.Nil(t, err)
-	assert.Equal(t, created.Key, got.Key)
-	assert.Equal(t, created.ThreadID, got.ThreadID)
+	assert.Equal(t, "cid", got.Cid)
+	assert.Equal(t, threadID, got.ThreadID)
+}
+
+func TestIPNSKeys_GetByCid(t *testing.T) {
+	db := newDB(t)
+	col, err := NewIPNSKeys(context.Background(), db)
+	require.Nil(t, err)
+
+	threadID := thread.NewIDV1(thread.Raw, 32)
+	err = col.Create(context.Background(), "foo", "cid", threadID)
+	require.Nil(t, err)
+
+	got, err := col.GetByCid(context.Background(), "cid")
+	require.Nil(t, err)
+	assert.Equal(t, "foo", got.Name)
+	assert.Equal(t, threadID, got.ThreadID)
 }
 
 func TestIPNSKeys_Delete(t *testing.T) {
@@ -42,12 +54,11 @@ func TestIPNSKeys_Delete(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.Nil(t, err)
 
-	threadID := thread.NewIDV1(thread.Raw, 32)
-	created, err := col.Create(context.Background(), threadID)
+	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32))
 	require.Nil(t, err)
 
-	err = col.Delete(context.Background(), created.ID)
+	err = col.Delete(context.Background(), "foo")
 	require.Nil(t, err)
-	_, err = col.Get(context.Background(), created.ID)
+	_, err = col.Get(context.Background(), "foo")
 	require.NotNil(t, err)
 }

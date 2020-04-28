@@ -93,8 +93,8 @@ type Accounts struct {
 }
 
 func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
-	t := &Accounts{col: db.Collection("accounts")}
-	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+	a := &Accounts{col: db.Collection("accounts")}
+	_, err := a.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"username", 1}},
 			Options: options.Index().SetUnique(true).
@@ -108,7 +108,7 @@ func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
 			Keys: bson.D{{"members._id", 1}},
 		},
 	})
-	return t, err
+	return a, err
 }
 
 func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Account, error) {

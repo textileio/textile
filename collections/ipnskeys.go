@@ -2,11 +2,8 @@ package collections
 
 import (
 	"context"
-	"crypto/rand"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	mbase "github.com/multiformats/go-multibase"
 	"github.com/textileio/go-threads/core/thread"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,8 +11,8 @@ import (
 )
 
 type IPNSKey struct {
-	ID        string
-	Key       crypto.PrivKey
+	Name      string
+	Cid       string
 	ThreadID  thread.ID
 	CreatedAt time.Time
 }
@@ -24,46 +21,28 @@ type IPNSKeys struct {
 	col *mongo.Collection
 }
 
-func NewIPNSKeys(_ context.Context, db *mongo.Database) (*IPNSKeys, error) {
-	return &IPNSKeys{col: db.Collection("ipnskeys")}, nil
+func NewIPNSKeys(ctx context.Context, db *mongo.Database) (*IPNSKeys, error) {
+	k := &IPNSKeys{col: db.Collection("ipnskeys")}
+	_, err := k.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{"cid", 1}},
+		},
+	})
+	return k, err
 }
 
-func (k *IPNSKeys) Create(ctx context.Context, threadID thread.ID) (*IPNSKey, error) {
-	sk, pk, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	bytes, err := crypto.MarshalPublicKey(pk)
-	if err != nil {
-		return nil, err
-	}
-	id, err := mbase.Encode(mbase.Base32, bytes)
-	if err != nil {
-		return nil, err
-	}
-	doc := &IPNSKey{
-		ID:        id,
-		Key:       sk,
-		ThreadID:  threadID,
-		CreatedAt: time.Now(),
-	}
-	key, err := crypto.MarshalPrivateKey(sk)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := k.col.InsertOne(ctx, bson.M{
-		"_id":        id,
-		"key":        key,
+func (k *IPNSKeys) Create(ctx context.Context, name, cid string, threadID thread.ID) error {
+	_, err := k.col.InsertOne(ctx, bson.M{
+		"_id":        name,
+		"cid":        cid,
 		"thread_id":  threadID.Bytes(),
-		"created_at": doc.CreatedAt,
-	}); err != nil {
-		return nil, err
-	}
-	return doc, nil
+		"created_at": time.Now(),
+	})
+	return err
 }
 
-func (k *IPNSKeys) Get(ctx context.Context, id string) (*IPNSKey, error) {
-	res := k.col.FindOne(ctx, bson.M{"_id": id})
+func (k *IPNSKeys) Get(ctx context.Context, name string) (*IPNSKey, error) {
+	res := k.col.FindOne(ctx, bson.M{"_id": name})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -74,8 +53,20 @@ func (k *IPNSKeys) Get(ctx context.Context, id string) (*IPNSKey, error) {
 	return decodeIPNSKey(raw)
 }
 
-func (k *IPNSKeys) Delete(ctx context.Context, id string) error {
-	res, err := k.col.DeleteOne(ctx, bson.M{"_id": id})
+func (k *IPNSKeys) GetByCid(ctx context.Context, cid string) (*IPNSKey, error) {
+	res := k.col.FindOne(ctx, bson.M{"cid": cid})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+	var raw bson.M
+	if err := res.Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decodeIPNSKey(raw)
+}
+
+func (k *IPNSKeys) Delete(ctx context.Context, name string) error {
+	res, err := k.col.DeleteOne(ctx, bson.M{"_id": name})
 	if err != nil {
 		return err
 	}
@@ -86,10 +77,6 @@ func (k *IPNSKeys) Delete(ctx context.Context, id string) error {
 }
 
 func decodeIPNSKey(raw bson.M) (*IPNSKey, error) {
-	key, err := crypto.UnmarshalPrivateKey(raw["key"].(primitive.Binary).Data)
-	if err != nil {
-		return nil, err
-	}
 	threadID, err := thread.Cast(raw["thread_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
@@ -99,8 +86,8 @@ func decodeIPNSKey(raw bson.M) (*IPNSKey, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &IPNSKey{
-		ID:        raw["_id"].(string),
-		Key:       key,
+		Name:      raw["_id"].(string),
+		Cid:       raw["cid"].(string),
 		ThreadID:  threadID,
 		CreatedAt: created,
 	}, nil

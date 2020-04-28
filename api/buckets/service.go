@@ -13,8 +13,9 @@ import (
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	opt "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mbase "github.com/multiformats/go-multibase"
 	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/core/thread"
@@ -22,6 +23,7 @@ import (
 	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
+	"github.com/textileio/textile/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,8 +31,10 @@ import (
 var log = logging.Logger("buckets")
 
 const (
-	// bucketSeedName is the name of the seed file used to ensure buckets are unique
-	bucketSeedName = ".textilebucketseed"
+	// keyLen for new buckets, which is also used as thhe bucket's IPNS key name.
+	keyLen = 16
+	// seedName is the name of the seed file used to ensure buckets are unique
+	seedName = ".textilebucketseed"
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32
 )
@@ -43,9 +47,9 @@ type Service struct {
 	IPFSClient     iface.CoreAPI
 	FilecoinClient *fc.Client
 
-	GatewayUrl string
-
-	DNSManager *dns.Manager
+	GatewayUrl  string
+	DNSManager  *dns.Manager
+	IPNSManager *IPNSManager
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
@@ -73,19 +77,6 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 }
 
 func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*Bucket, error) {
-	key, err := s.Collections.IPNSKeys.Create(ctx, dbID)
-	if err != nil {
-		return nil, err
-	}
-	bytes, err := crypto.MarshalPublicKey(key.Key.GetPublic())
-	if err != nil {
-		return nil, err
-	}
-	bkey, err := mbase.Encode(mbase.Base32, bytes)
-	if err != nil {
-		return nil, err
-	}
-
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
@@ -93,13 +84,24 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	pth, err := s.IPFSClient.Unixfs().Add(
 		ctx,
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			bucketSeedName: ipfsfiles.NewBytesFile(seed),
+			seedName: ipfsfiles.NewBytesFile(seed),
 		}),
 		options.Unixfs.Pin(true))
 	if err != nil {
 		return nil, err
 	}
 
+	key, err := s.IPFSClient.Key().Generate(ctx, util.MakeToken(keyLen), opt.Key.Type(options.Ed25519Key))
+	if err != nil {
+		return nil, err
+	}
+	bkey, err := peer.ToCid(key.ID()).StringOfBase(mbase.Base32)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Collections.IPNSKeys.Create(ctx, key.Name(), bkey, dbID); err != nil {
+		return nil, err
+	}
 	buck, err := s.Buckets.Create(ctx, dbID, bkey, name, pth, WithToken(dbToken))
 	if err != nil {
 		return nil, err
@@ -116,6 +118,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 			}
 		}
 	}
+	go s.IPNSManager.publish(pth, buck.Key)
 	return buck, nil
 }
 
@@ -192,7 +195,7 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			if entries.Name() == bucketSeedName {
+			if entries.Name() == seedName {
 				continue
 			}
 			i := &pb.ListPathReply_Item{}
@@ -215,8 +218,8 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 }
 
 func parsePath(pth string) (fpth string, err error) {
-	if strings.Contains(pth, bucketSeedName) {
-		err = fmt.Errorf("paths containing %s are not allowed", bucketSeedName)
+	if strings.Contains(pth, seedName) {
+		err = fmt.Errorf("paths containing %s are not allowed", seedName)
 		return
 	}
 	fpth = strings.TrimPrefix(pth, "/")
@@ -403,6 +406,8 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		return err
 	}
 
+	go s.IPNSManager.publish(dirpth, buck.Key)
+
 	log.Debugf("pushed %s to bucket: %s", filePath, buck.Key)
 	return nil
 }
@@ -468,7 +473,14 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	if err = s.Buckets.Delete(ctx, dbID, buck.Key, WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	if err = s.Collections.IPNSKeys.Delete(ctx, buck.Key); err != nil {
+	key, err := s.Collections.IPNSKeys.GetByCid(ctx, buck.Key)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = s.IPFSClient.Key().Remove(ctx, key.Name); err != nil {
+		return nil, err
+	}
+	if err = s.Collections.IPNSKeys.Delete(ctx, key.Name); err != nil {
 		return nil, err
 	}
 	if buck.DNSRecord != "" && s.DNSManager != nil {
@@ -512,6 +524,8 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	if err = s.Buckets.Save(ctx, dbID, buck, WithToken(dbToken)); err != nil {
 		return nil, err
 	}
+
+	go s.IPNSManager.publish(dirpth, buck.Key)
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
 	return &pb.RemovePathReply{}, nil

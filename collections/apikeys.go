@@ -46,13 +46,13 @@ type APIKeys struct {
 }
 
 func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
-	s := &APIKeys{col: db.Collection("apikeys")}
-	_, err := s.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+	k := &APIKeys{col: db.Collection("apikeys")}
+	_, err := k.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"owner_id", 1}},
 		},
 	})
-	return s, err
+	return k, err
 }
 
 func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType) (*APIKey, error) {

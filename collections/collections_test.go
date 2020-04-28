@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,7 +16,7 @@ func newDB(t *testing.T) *mongo.Database {
 	ctx, cancel := context.WithCancel(context.Background())
 	m, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	require.Nil(t, err)
-	db := m.Database(uuid.New().String())
+	db := m.Database(util.MakeToken(12))
 
 	t.Cleanup(func() {
 		err := db.Drop(ctx)

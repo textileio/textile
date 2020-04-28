@@ -35,7 +35,7 @@ var createKeysCmd = &cobra.Command{
 	Short: "Create an API key and secret",
 	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
 
-Using the '--org' flag will create new keys under the Organization's account.
+Using the '--org' flag will create a new key under the Organization's account.
 
 There are two types of API keys:
 1. 'Account' keys provide direct access to developer/org account buckets and threads.

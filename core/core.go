@@ -173,6 +173,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		FilecoinClient: t.fc,
 		GatewayUrl:     conf.AddrGatewayUrl,
 		DNSManager:     dnsm,
+		IPNSManager:    buckets.NewIPNSManager(t.co.IPNSKeys, ic.Name()),
 	}
 	us := &users.Service{
 		Collections: t.co,
