@@ -1,9 +1,9 @@
-import axios, { AxiosRequestConfig } from 'axios'
+import axios from 'axios'
 import delay from 'delay'
-import { Config } from '@textile/threads-client'
-import { grpc } from '@improbable-eng/grpc-web'
 import { SignupReply } from '@textile/hub-grpc/hub_pb'
-import { Client } from './hub'
+import * as pb from '@textile/hub-grpc/hub_pb'
+import { APIClient, ServiceError } from '@textile/hub-grpc/hub_pb_service'
+import { Context } from './context'
 
 export const createUsername = (size = 12) => {
   return Array(size)
@@ -25,28 +25,18 @@ export const confirmEmail = async (gurl: string, secret: string) => {
   return true
 }
 
-export const signUp = (client: Client, addrGatewayUrl: string, sessionSecret: string) => {
+export const signUp = (ctx: Context, addrGatewayUrl: string, sessionSecret: string) => {
   const username = createUsername()
   const email = createEmail()
-  return new Promise<{ user: SignupReply.AsObject; username: string; email: string }>((resolve, reject) => {
-    client
-      .signUp(username, email)
-      .then((user) => {
-        resolve({ user, username, email })
-      })
-      .catch((err) => reject(err))
-    confirmEmail(addrGatewayUrl, sessionSecret).catch((err) => reject(err))
-  })
-}
-
-export const signIn = (client: Client, name: string, addrGatewayUrl: string, sessionSecret: string) => {
-  return new Promise<SignupReply.AsObject>((resolve, reject) => {
-    client
-      .signIn(name)
-      .then((user) => {
-        resolve(user)
-      })
-      .catch((err) => reject(err))
+  return new Promise<{ user: SignupReply.AsObject | undefined; username: string; email: string }>((resolve, reject) => {
+    const req = new pb.SignupRequest()
+    req.setEmail(email)
+    req.setUsername(username)
+    const client = new APIClient(ctx.host, { transport: ctx.transport, debug: ctx.debug })
+    client.signup(req, ctx.toMetadata(), (err: ServiceError | null, message: SignupReply | null) => {
+      if (err) reject(err)
+      resolve({ user: message?.toObject(), username, email })
+    })
     confirmEmail(addrGatewayUrl, sessionSecret).catch((err) => reject(err))
   })
 }

@@ -11,7 +11,6 @@ import { InitReply } from '@textile/buckets-grpc/buckets_pb'
 import { Context } from './context'
 import { Buckets } from './buckets'
 import { signUp } from './utils'
-import { Client as HubClient } from './hub'
 
 // Settings for localhost development and testing
 const addrApiurl = 'http://127.0.0.1:3007'
@@ -25,8 +24,8 @@ describe('Buckets...', () => {
   let buck: InitReply.AsObject
   let fileSize: number
   before(async () => {
-    const user = await signUp(new HubClient(ctx), addrGatewayUrl, sessionSecret)
-    ctx = ctx.withSession(user.user.session).withThreadName('buckets')
+    const user = await signUp(ctx, addrGatewayUrl, sessionSecret)
+    ctx = ctx.withSession(user.user?.session).withThreadName('buckets')
     const id = ThreadID.fromRandom()
     const db = new Client(ctx)
     // @todo: Warning, this is a hack!
