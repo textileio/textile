@@ -4,7 +4,7 @@ const path = require('path')
 const extensions = ['.tsx', '.ts', '.js', 'json']
 
 module.exports = {
-  entry: './src/API.ts',
+  entry: './src/index.ts',
   devtool: 'inline-source-map',
   module: {
     rules: [
