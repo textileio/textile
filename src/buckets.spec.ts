@@ -17,7 +17,7 @@ import { Client as HubClient } from './hub'
 const addrApiurl = 'http://127.0.0.1:3007'
 const addrGatewayUrl = 'http://127.0.0.1:8006'
 const wrongError = new Error('wrong error!')
-const sessionSecret = 'testing'
+const sessionSecret = 'textilesession'
 
 describe('Buckets...', () => {
   let ctx: Context = new Context(addrApiurl, undefined)
