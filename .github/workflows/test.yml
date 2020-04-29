@@ -52,6 +52,10 @@ jobs:
     - name: Install
       run: npm install
 
+    - name: Test Node
+      run: |
+        npm run test:node
+
     - name: Build Browser
       run: |
            npm run browser
