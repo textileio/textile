@@ -2,7 +2,7 @@ import { grpc } from '@improbable-eng/grpc-web'
 import log from 'loglevel'
 import * as pb from '@textile/hub-grpc/hub_pb'
 import { API } from '@textile/hub-grpc/hub_pb_service'
-import { Context } from './Context'
+import { Context } from './context'
 
 const logger = log.getLogger('hub')
 
