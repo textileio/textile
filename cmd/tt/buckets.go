@@ -212,8 +212,8 @@ These 'push' commands result in the following bucket structures.
 
 'tt buckets push foo/ mybuck':
     mybuck/one.txt
-		mybuck/bar/two.txt
-		mybuck/bar/baz/three.txt
+    mybuck/bar/two.txt
+    mybuck/bar/baz/three.txt
 		
 'tt buckets push foo mybuck':
     mybuck/foo/one.txt
