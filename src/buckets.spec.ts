@@ -141,7 +141,8 @@ describe('Buckets...', () => {
     expect(rep.item?.isdir).to.be.false
   })
 
-  it('should pull files by path', async () => {
+  it('should pull files by path and write to file on node', async function () {
+    if (isBrowser) return this.skip()
     // Bucket path
     const rootKey = buck.root?.key || ''
     let length = 0
