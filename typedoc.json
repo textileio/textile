@@ -3,18 +3,20 @@
   "name": "Textile",
   "mode": "modules",
   "out": "docs",
-  "include": "src/",
+  "lib": [
+    "es6",
+    "dom",
+    "esnext"
+  ],
   "exclude": ["**/*.spec.ts", "examples/**", "**/node_modules/**"],
   "gitRevision": "master",
   "excludePrivate": true,
   "excludeNotExported": true,
   "excludeProtected": true,
   "hideGenerator": true,
-  "target": "ES6",
+  "target": "es6",
   "moduleResolution": "node",
   "preserveConstEnums": true,
   "stripInternal": true,
-  "module": "commonjs",
-  "mdHideSources": true,
-  "pathExclude": ["examples/**"]
+  "module": "commonjs"
 }
