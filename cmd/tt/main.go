@@ -102,9 +102,9 @@ func main() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "textile",
-	Short: "Textile client",
-	Long:  `The Textile client.`,
+	Use:   "tt",
+	Short: "Textile Hub Client",
+	Long:  `Textile Hub Client.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		authViper.SetConfigType("yaml")
 		configViper.SetConfigType("yaml")

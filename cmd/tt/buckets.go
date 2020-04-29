@@ -35,10 +35,20 @@ func init() {
 	}
 }
 
+<<<<<<< HEAD
 var bucketCmd = &cobra.Command{
 	Use:   "bucket",
 	Short: "Manage a bucket",
 	Long:  `Init a bucket and push and pull files and folders.`,
+=======
+var bucketsCmd = &cobra.Command{
+	Use: "bucket",
+	Aliases: []string{
+		"buckets",
+	},
+	Short: "Bucket management",
+	Long:  `Create and manage your buckets.`,
+>>>>>>> chore(docs): update doc strings
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -200,7 +210,12 @@ File structure is mirrored in the bucket. For example, given the directory:
 
 These 'push' commands result in the following bucket structures.
 
-'tt bucket push foo mybuck':
+'tt buckets push foo/ mybuck':
+    mybuck/one.txt
+    mybuck/bar/two.txt
+    mybuck/bar/baz/three.txt
+		
+'tt buckets push foo mybuck':
     mybuck/foo/one.txt
     mybuck/foo/bar/two.txt
     mybuck/foo/bar/baz/three.txt
@@ -214,11 +229,6 @@ These 'push' commands result in the following bucket structures.
 
 'tt bucket push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
-
-'tt bucket push foo/* foo':
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
 `,
 	Args: cobra.MinimumNArgs(2),
 	PreRun: func(c *cobra.Command, args []string) {
