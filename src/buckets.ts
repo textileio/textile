@@ -1,6 +1,6 @@
 import log from 'loglevel'
 import * as pb from '@textile/buckets-grpc/buckets_pb'
-import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
+import { API, APIPushPath, APIPullPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
@@ -104,6 +104,15 @@ export class Buckets {
     return
   }
 
+  /**
+   * Pushes a file to a bucket path.
+   * @param key Unique (IPNS compatible) identifier key for a bucket.
+   * @param path A file/object (sub)-path within a bucket.
+   * @param input The input file/stream/object.
+   * @param ctx Context object containing web-gRPC headers and settings.
+   * @param opts Options to control response stream. Currently only supports a progress function.
+   * @note This will return the resolved path and the bucket's new root path.
+   */
   async pushPath(key: string, path: string, input: any, ctx?: Context, opts?: { progress?: (num?: number) => void }) {
     return new Promise<PushPathResult>(async (resolve, reject) => {
       // Only process the first  input if there are more than one
@@ -166,6 +175,49 @@ export class Buckets {
         }
       }
     })
+  }
+
+  /**
+   * Pulls the bucket path, returning the bytes of the given file.
+   * @param key Unique (IPNS compatible) identifier key for a bucket.
+   * @param path A file/object (sub)-path within a bucket.
+   * @param ctx Context object containing web-gRPC headers and settings.
+   * @param opts Options to control response stream. Currently only supports a progress function.
+   */
+  pullPath(
+    key: string,
+    path: string,
+    ctx?: Context,
+    opts?: { progress?: (num?: number) => void },
+  ): AsyncIterableIterator<Uint8Array> {
+    const metadata = this.context.withContext(ctx).toJSON()
+    const chan = new Channel<Uint8Array>()
+    const request = new pb.PullPathRequest()
+    request.setKey(key)
+    request.setPath(path)
+    let written = 0
+    const response = grpc.invoke(API.PullPath, {
+      host: this.serviceHost,
+      transport: this.rpcOptions.transport,
+      debug: this.rpcOptions.debug,
+      request,
+      metadata,
+      onMessage: async (res: pb.PullPathReply) => {
+        const chunk = res.getChunk_asU8()
+        await chan.push(chunk)
+        written += chunk.byteLength
+        if (opts?.progress) {
+          opts.progress(written)
+        }
+      },
+      onEnd: async (status: grpc.Code, message: string, _trailers: grpc.Metadata) => {
+        if (status !== grpc.Code.OK) {
+          throw new Error(message)
+        }
+        await chan.push(Buffer.alloc(0), true)
+      },
+    })
+    return chan.wrap(() => response.close())
   }
 
   private unary<

@@ -23,6 +23,7 @@ describe('Buckets...', () => {
   let ctx: Context = new Context(addrApiurl, undefined)
   const client = new Buckets(ctx)
   let buck: InitReply.AsObject
+  let fileSize: number
   before(async () => {
     const user = await signUp(new HubClient(ctx), addrGatewayUrl, sessionSecret)
     ctx = ctx.withSession(user.user.session).withThreadName('buckets')
@@ -71,7 +72,7 @@ describe('Buckets...', () => {
   it('should push data from filesystem on node', async function () {
     if (isBrowser) return this.skip()
     const pth = path.join(__dirname, '..', 'testdata')
-    const size = fs.statSync(path.join(pth, 'file1.jpg')).size
+    fileSize = fs.statSync(path.join(pth, 'file1.jpg')).size
     let stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
     const rootKey = buck.root?.key || ''
     let length = 0
@@ -80,7 +81,7 @@ describe('Buckets...', () => {
     const res = await client.pushPath(rootKey, 'dir1/file1.jpg', stream, ctx, {
       progress: (num) => (length = num || 0),
     })
-    expect(length).to.equal(size)
+    expect(length).to.equal(fileSize)
     expect(res.path).to.not.be.undefined
     expect(res.root).to.not.be.undefined
 
@@ -140,8 +141,26 @@ describe('Buckets...', () => {
     expect(rep.item?.isdir).to.be.false
   })
 
-  it('should pull files by path', () => {
+  it('should pull files by path', async () => {
     // Bucket path
+    const rootKey = buck.root?.key || ''
+    let length = 0
+
+    // Bucket path
+    const chunks = client.pullPath(rootKey, 'dir1/file1.jpg', ctx, {
+      progress: (num) => (length = num || 0),
+    })
+    const pth = path.join(__dirname, '..', 'testdata')
+    const stream = fs.createWriteStream(path.join(pth, 'output.jpg'))
+    for await (const chunk of chunks) {
+      stream.write(chunk)
+    }
+    stream.close()
+    expect(length).to.equal(fileSize)
+    const stored = fs.statSync(path.join(pth, 'file1.jpg'))
+    const written = fs.statSync(path.join(pth, 'output.jpg'))
+    expect(stored.size).to.deep.equal(written.size)
+    fs.unlinkSync(path.join(pth, 'output.jpg'))
   })
 
   it('should remove files by path', async () => {
