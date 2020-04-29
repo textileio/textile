@@ -3,12 +3,21 @@ import * as pb from '@textile/buckets-grpc/buckets_pb'
 import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
-import { Context } from './context'
 import { grpc } from '@improbable-eng/grpc-web'
+import { Context } from './context'
 import { normaliseInput, File } from './normalize'
-import { createUsername } from './utils'
 
 const logger = log.getLogger('buckets')
+
+export interface PushPathResult {
+  path: {
+    path: string
+    cid: CID
+    root: CID
+    remainder: string
+  }
+  root: string
+}
 
 /**
  * Buckets is a web-gRPC wrapper client for communicating with the web-gRPC enabled Textile Buckets API.
@@ -91,70 +100,72 @@ export class Buckets {
     const req = new pb.RemovePathRequest()
     req.setKey(key)
     req.setPath(path)
-    const res: pb.RemovePathReply = await this.unary(API.RemovePath, req, ctx)
-    return res.toObject()
+    await this.unary(API.RemovePath, req, ctx)
+    return
   }
 
-  async pushPath(key: string, input: any, opts?: { progress?: (num?: number) => void }, ctx?: Context) {
-    const source: File | undefined = (await normaliseInput(input).next()).value
-    const client = grpc.client<pb.PushPathRequest, pb.PushPathReply, APIPushPath>(API.PushPath, {
-      host: this.serviceHost,
-      transport: this.rpcOptions.transport,
-      debug: true, // @todo: hardcoded for testing
-    })
-    client.onMessage((message) => {
-      if (message.hasError()) {
-        throw new Error(message.getError())
-      } else if (message.hasEvent()) {
-        const event = message.getEvent()?.toObject()
-        if (event?.path) {
-          const cid = new CID(event.path)
-          const res = {
-            path: {
-              path: `/ipfs/${cid.toString()}`,
-              cid: cid,
-              root: cid,
-              remainder: '',
-            },
+  async pushPath(key: string, path: string, input: any, ctx?: Context, opts?: { progress?: (num?: number) => void }) {
+    return new Promise<PushPathResult>(async (resolve, reject) => {
+      // Only process the first  input if there are more than one
+      const source: File | undefined = (await normaliseInput(input).next()).value
+      const client = grpc.client<pb.PushPathRequest, pb.PushPathReply, APIPushPath>(API.PushPath, {
+        host: this.serviceHost,
+        transport: this.rpcOptions.transport,
+        debug: this.rpcOptions.debug,
+      })
+      client.onMessage((message) => {
+        if (message.hasError()) {
+          // Reject on first error
+          reject(new Error(message.getError()))
+        } else if (message.hasEvent()) {
+          const event = message.getEvent()?.toObject()
+          if (event?.path) {
+            // @todo: Is there an standard library/tool for this step in JS?
+            const pth = event.path.startsWith('/ipfs/') ? event.path.split('/ipfs/')[1] : event.path
+            const cid = new CID(pth)
+            const res: PushPathResult = {
+              path: {
+                path: `/ipfs/${cid.toString()}`,
+                cid: cid,
+                root: cid,
+                remainder: '',
+              },
+              root: event.root?.path ?? '',
+            }
+            resolve(res)
+          } else if (opts?.progress) {
+            opts.progress(event?.bytes)
           }
-          console.log(res) // @todo: once this is working properly, we'll just return this
-        } else if (opts?.progress) {
-          opts.progress(event?.bytes)
+        } else {
+          reject(new Error('Invalid reply'))
         }
-      } else {
-        throw new Error('Invalid reply')
-      }
-    })
-    client.onEnd((code) => {
-      if (code === grpc.Code.OK) {
-        console.log('done')
-      } else {
-        throw new Error(code.toString())
-      }
-    })
-    // @todo: hot needed
-    // client.onHeaders((headers) => {
-    //   console.log('headers', headers)
-    // })
-    if (source) {
-      const head = new pb.PushPathRequest.Header()
-      head.setPath('dir1/test.jpg') // @todo: hardcoded for testing
-      head.setKey(key)
-      const req = new pb.PushPathRequest()
-      req.setHeader(head)
-      client.start(this.context.withContext(ctx).toJSON())
-      client.send(req)
+      })
+      client.onEnd((code) => {
+        if (code === grpc.Code.OK) {
+          resolve()
+        } else {
+          reject(new Error(code.toString()))
+        }
+      })
+      if (source) {
+        const head = new pb.PushPathRequest.Header()
+        head.setPath(source.path || path)
+        head.setKey(key)
+        const req = new pb.PushPathRequest()
+        req.setHeader(head)
+        client.start(this.context.withContext(ctx).toJSON())
+        client.send(req)
 
-      if (source.content) {
-        for await (const chunk of source.content) {
-          const part = new pb.PushPathRequest()
-          part.setChunk(chunk as Buffer)
-          client.send(part)
+        if (source.content) {
+          for await (const chunk of source.content) {
+            const part = new pb.PushPathRequest()
+            part.setChunk(chunk as Buffer)
+            client.send(part)
+          }
+          client.finishSend()
         }
-        // All done, let's tell the server we're done
-        client.finishSend()
       }
-    }
+    })
   }
 
   private unary<

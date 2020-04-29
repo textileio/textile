@@ -1,16 +1,17 @@
 /* eslint-disable import/first */
-// Some hackery to get WebSocket in the global namespace on nodejs
-import { ThreadID } from '@textile/threads-id'
 ;(global as any).WebSocket = require('isomorphic-ws')
+
+import fs from 'fs'
+import path from 'path'
+import { isBrowser, isNode } from 'browser-or-node'
+import { ThreadID } from '@textile/threads-id'
 import { expect } from 'chai'
-import { Client, Config } from '@textile/threads-client'
+import { Client } from '@textile/threads-client'
+import { InitReply } from '@textile/buckets-grpc/buckets_pb'
 import { Context } from './context'
 import { Buckets } from './buckets'
 import { signUp } from './utils'
 import { Client as HubClient } from './hub'
-import { InitReply } from '@textile/buckets-grpc/buckets_pb'
-import fs from 'fs'
-import path from 'path'
 
 // Settings for localhost development and testing
 const addrApiurl = 'http://127.0.0.1:3007'
@@ -57,7 +58,7 @@ describe('Buckets...', () => {
     expect(root).to.have.ownProperty('updatedat', buck.root?.updatedat)
   })
 
-  it('should list bucket content at path', async () => {
+  it('should list empty bucket content at path', async () => {
     // Mostly empty
     const res = await client.listPath(buck.root?.key || '', '', ctx)
     expect(res).to.have.ownProperty('root')
@@ -67,13 +68,114 @@ describe('Buckets...', () => {
     expect(res.item?.itemsList).to.have.length(0)
   })
 
-  it('should push data from filesystem on node', async () => {
-    const pth = path.join(__dirname, '..', 'testdata', 'file1.jpg')
-    const stream = fs.createReadStream(pth)
-    const res = await client.pushPath(buck.root?.key || '', stream, {}, ctx)
-    const roots = await client.listPath(buck.root?.key || '', '', ctx)
-    console.log(roots)
-    const paths = await client.listPath(buck.root?.key || '', 'dir1/test.jpg', ctx)
-    console.log(paths)
+  it('should push data from filesystem on node', async function () {
+    if (isBrowser) return this.skip()
+    const pth = path.join(__dirname, '..', 'testdata')
+    const size = fs.statSync(path.join(pth, 'file1.jpg')).size
+    let stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
+    const rootKey = buck.root?.key || ''
+    let length = 0
+
+    // Bucket path
+    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', stream, ctx, {
+      progress: (num) => (length = num || 0),
+    })
+    expect(length).to.equal(size)
+    expect(res.path).to.not.be.undefined
+    expect(res.root).to.not.be.undefined
+
+    // Nested bucket path
+    stream = fs.createReadStream(path.join(pth, 'file2.jpg'))
+    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', stream, ctx)
+    expect(root).to.not.be.undefined
+
+    // Root dir
+    const rep = await client.listPath(rootKey, '', ctx)
+    expect(rep.item?.isdir).to.be.true
+    expect(rep.item?.itemsList).to.have.length(2)
+  })
+
+  it('should push data from file API in browser', async function () {
+    if (isNode) return this.skip()
+    const parts = [
+      new Blob(['you construct a file...'], { type: 'text/plain' }),
+      ' Same way as you do with blob',
+      new Uint16Array([33]),
+    ]
+    // Construct a file
+    const file = new File(parts, 'file1.txt')
+    const rootKey = buck.root?.key || ''
+    let length = 0
+
+    // Bucket path
+    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', file, ctx, {
+      progress: (num) => (length = num || 0),
+    })
+    expect(length).to.equal(54)
+    expect(res.path).to.not.be.undefined
+    expect(res.root).to.not.be.undefined
+
+    // Nested bucket path
+    // @note: We're reusing file here...
+    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', file, ctx)
+    expect(root).to.not.be.undefined
+
+    // Root dir
+    const rep = await client.listPath(rootKey, '', ctx)
+    expect(rep.item?.isdir).to.be.true
+    expect(rep.item?.itemsList).to.have.length(2)
+  })
+
+  it('should list (nested) files within a bucket', async () => {
+    const rootKey = buck.root?.key || ''
+
+    // Nested dir
+    let rep = await client.listPath(rootKey, 'dir1', ctx)
+    expect(rep.item?.isdir).to.be.true
+    expect(rep.item?.itemsList).to.have.length(1)
+
+    // File
+    rep = await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+    expect(rep.item?.path.endsWith('file1.jpg')).to.be.true
+    expect(rep.item?.isdir).to.be.false
+  })
+
+  it('should pull files by path', () => {
+    // Bucket path
+  })
+
+  it('should remove files by path', async () => {
+    const rootKey = buck.root?.key || ''
+    await client.removePath(rootKey, 'path/to/file2.jpg', ctx)
+    try {
+      await client.listPath(rootKey, 'path/to/file2.jpg', ctx)
+      throw wrongError
+    } catch (err) {
+      expect(err).to.not.equal(wrongError)
+    }
+    let list = await client.listPath(rootKey, '', ctx)
+    expect(list.item?.itemsList).to.have.length(2)
+    await client.removePath(rootKey, 'path', ctx)
+    try {
+      await client.listPath(rootKey, 'path', ctx)
+      throw wrongError
+    } catch (err) {
+      expect(err).to.not.equal(wrongError)
+    }
+    list = await client.listPath(rootKey, '', ctx)
+    expect(list.item?.itemsList).to.have.length(1)
+  })
+
+  it('should remove an entire bucket', async () => {
+    const rootKey = buck.root?.key || ''
+    const rep = await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+    expect(rep).to.not.be.undefined
+    await client.remove(rootKey, ctx)
+    try {
+      await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+      throw wrongError
+    } catch (err) {
+      expect(err).to.not.equal(wrongError)
+    }
   })
 })
