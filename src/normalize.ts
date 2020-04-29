@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import { Buffer } from 'buffer'
 
 export interface File {
   path: string
   content?: AsyncIterable<Buffer | ArrayBuffer>
+
   [key: string]: any
 }
+
+// This function comes from https://github.com/ipfs/js-ipfs-utils/blob/master/src/files/normalise-input.js
 
 /*
  * Transform one of:

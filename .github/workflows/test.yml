@@ -21,16 +21,16 @@ jobs:
           TXTL_ADDR_API_PROXY: /ip4/0.0.0.0/tcp/3007
           TXTL_ADDR_THREADS_HOST: /ip4/0.0.0.0/tcp/4006
           TXTL_ADDR_GATEWAY_HOST: /ip4/0.0.0.0/tcp/8006
-          TXTL_ADDR_GATEWAY_URL
-          TXTL_ADDR_MONGO_URI
+          TXTL_ADDR_GATEWAY_URL:
+          TXTL_ADDR_MONGO_URI:
           TXTL_ADDR_IPFS_API: /dns4/ipfs/tcp/5001
-          TXTL_EMAIL_API_KEY
+          TXTL_EMAIL_API_KEY:
           TXTL_EMAIL_SESSION_SECRET: testing
-          TXTL_DNS_DOMAIN
-          TXTL_DNS_ZONE_ID
-          TXTL_DNS_TOKEN
-          TXTL_LOG_DEBUG
-          TXTL_LOG_FILE
+          TXTL_DNS_DOMAIN:
+          TXTL_DNS_ZONE_ID:
+          TXTL_DNS_TOKEN:
+          TXTL_LOG_DEBUG:
+          TXTL_LOG_FILE:
         ports:
           - "127.0.0.1:3006:3006"
           - "3007:3007"
