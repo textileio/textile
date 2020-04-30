@@ -38,8 +38,8 @@ type Threads struct {
 }
 
 func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
-	d := &Threads{col: db.Collection("threads")}
-	_, err := d.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+	t := &Threads{col: db.Collection("threads")}
+	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"_id.owner", 1}, {"name", 1}},
 			Options: options.Index().SetUnique(true).
@@ -53,7 +53,7 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 			Keys: bson.D{{"key_id", 1}},
 		},
 	})
-	return d, err
+	return t, err
 }
 
 func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey) (*Thread, error) {

@@ -34,14 +34,14 @@ type bucketFileSystem struct {
 // serveBucket returns a middleware handler that serves files in a bucket.
 func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key, err := bucketFromHost(c.Request.Host, fs.ValidHost())
+		bkey, err := bucketFromHost(c.Request.Host, fs.ValidHost())
 		if err != nil {
 			return
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 		defer cancel()
-		threadID, err := fs.GetThread(ctx, key)
+		threadID, err := fs.GetThread(ctx, bkey)
 		if err != nil {
 			return
 		}
@@ -51,7 +51,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			ctx = thread.NewTokenContext(ctx, token)
 		}
 
-		exists, target := fs.Exists(ctx, key, c.Request.URL.Path)
+		exists, target := fs.Exists(ctx, bkey, c.Request.URL.Path)
 		if exists {
 			c.Writer.WriteHeader(http.StatusOK)
 			ctype := mime.TypeByExtension(filepath.Ext(c.Request.URL.Path))
@@ -59,7 +59,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 				ctype = "application/octet-stream"
 			}
 			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(ctx, key, c.Request.URL.Path, c.Writer); err != nil {
+			if err := fs.Write(ctx, bkey, c.Request.URL.Path, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
@@ -69,7 +69,7 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 			ctype := mime.TypeByExtension(filepath.Ext(content))
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(ctx, key, content, c.Writer); err != nil {
+			if err := fs.Write(ctx, bkey, content, c.Writer); err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
 				c.Abort()
@@ -78,12 +78,12 @@ func serveBucket(fs serveBucketFileSystem) gin.HandlerFunc {
 	}
 }
 
-func (f *bucketFileSystem) GetThread(ctx context.Context, key string) (id thread.ID, err error) {
-	ik, err := f.keys.Get(ctx, key)
+func (f *bucketFileSystem) GetThread(ctx context.Context, bkey string) (id thread.ID, err error) {
+	key, err := f.keys.GetByCid(ctx, bkey)
 	if err != nil {
 		return
 	}
-	return ik.ThreadID, nil
+	return key.ThreadID, nil
 }
 
 func (f *bucketFileSystem) Exists(ctx context.Context, key, pth string) (ok bool, name string) {

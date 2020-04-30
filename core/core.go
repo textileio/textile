@@ -173,6 +173,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		FilecoinClient: t.fc,
 		GatewayUrl:     conf.AddrGatewayUrl,
 		DNSManager:     dnsm,
+		IPNSManager:    buckets.NewIPNSManager(t.co.IPNSKeys, ic.Name()),
 	}
 	us := &users.Service{
 		Collections: t.co,
@@ -200,8 +201,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		hpb.RegisterAPIServer(t.server, hs)
 		bpb.RegisterAPIServer(t.server, bs)
 		upb.RegisterAPIServer(t.server, us)
-		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			log.Fatalf("serve error: %v", err)
+		if err := t.server.Serve(listener); err != nil {
+			if errors.Is(err, grpc.ErrServerStopped) {
+				bs.IPNSManager.Cancel()
+			} else {
+				log.Fatalf("serve error: %v", err)
+			}
 		}
 	}()
 	webrpc := grpcweb.WrapServer(

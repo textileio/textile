@@ -183,7 +183,7 @@ func (g *Gateway) Stop() error {
 
 // renderBucketHandler renders a bucket as a website.
 func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	key, err := bucketFromHost(c.Request.Host, g.bucketDomain)
+	bkey, err := bucketFromHost(c.Request.Host, g.bucketDomain)
 	if err != nil {
 		render404(c)
 		return
@@ -191,19 +191,19 @@ func (g *Gateway) renderBucketHandler(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
 	defer cancel()
-	ik, err := g.collections.IPNSKeys.Get(ctx, key)
+	key, err := g.collections.IPNSKeys.GetByCid(ctx, bkey)
 	if err != nil {
 		render404(c)
 		return
 	}
-	ctx = common.NewThreadIDContext(ctx, ik.ThreadID)
+	ctx = common.NewThreadIDContext(ctx, key.ThreadID)
 	token := thread.Token(c.Query("token"))
 	if token.Defined() {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
 	buck := &buckets.Bucket{}
-	if err := g.threads.FindByID(ctx, ik.ThreadID, "buckets", key, &buck, db.WithTxnToken(token)); err != nil {
+	if err := g.threads.FindByID(ctx, key.ThreadID, "buckets", bkey, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
 	}

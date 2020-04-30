@@ -22,8 +22,8 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(bucketsCmd)
-	bucketsCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
+	rootCmd.AddCommand(bucketCmd)
+	bucketCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
 	initBucketPathCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
@@ -35,13 +35,10 @@ func init() {
 	}
 }
 
-var bucketsCmd = &cobra.Command{
-	Use: "buckets",
-	Aliases: []string{
-		"bucket",
-	},
-	Short: "Manage buckets",
-	Long:  `Manage your buckets.`,
+var bucketCmd = &cobra.Command{
+	Use:   "bucket",
+	Short: "Manage a bucket",
+	Long:  `Init a bucket and push and pull files and folders.`,
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -194,7 +191,7 @@ var pushBucketPathCmd = &cobra.Command{
 	Short: "Push to a bucket path (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
-Using the '--org' flag will create new buckets under the organization's account.
+Using the '--org' flag will create a new bucket under the organization's account.
 
 File structure is mirrored in the bucket. For example, given the directory:
     foo/one.txt
@@ -203,22 +200,22 @@ File structure is mirrored in the bucket. For example, given the directory:
 
 These 'push' commands result in the following bucket structures.
 
-'tt buckets push foo mybuck':
+'tt bucket push foo mybuck':
     mybuck/foo/one.txt
     mybuck/foo/bar/two.txt
     mybuck/foo/bar/baz/three.txt
 
-'tt buckets push foo/bar mybuck':
+'tt bucket push foo/bar mybuck':
     mybuck/bar/two.txt
     mybuck/bar/baz/three.txt
 
-'tt buckets push foo/bar/baz mybuck':
+'tt bucket push foo/bar/baz mybuck':
     mybuck/baz/three.txt
 
-'tt buckets push foo/bar/baz/three.txt mybuck':
+'tt bucket push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
 
-'tt buckets push foo/* foo':
+'tt bucket push foo/* foo':
     foo/one.txt
     foo/bar/two.txt
     foo/bar/baz/three.txt
@@ -346,22 +343,22 @@ Bucket structure is mirrored locally. For example, given the bucket:
 
 These 'pull' commands result in the following local structures.
 
-'tt buckets pull foo mydir':
+'tt bucket pull foo mydir':
     mydir/foo/one.txt
     mydir/foo/bar/two.txt
     mydir/foo/bar/baz/three.txt
 
-'tt buckets pull foo/bar mydir':
+'tt bucket pull foo/bar mydir':
     mydir/bar/two.txt
     mydir/bar/baz/three.txt
 
-'tt buckets pull foo/bar/baz mydir':
+'tt bucket pull foo/bar/baz mydir':
     mydir/baz/three.txt
 
-'tt buckets pull foo/bar/baz/three.txt mydir':
+'tt bucket pull foo/bar/baz/three.txt mydir':
     mydir/three.txt
 
-'tt buckets pull foo .':
+'tt bucket pull foo .':
     foo/one.txt
     foo/bar/two.txt
     foo/bar/baz/three.txt
