@@ -1,5 +1,35 @@
 package gateway
 
+/*
+https://github.com/jessevdk/go-assets/blob/master/LICENSE:
+	Copyright (c) 2013 Jesse van den Kieboom. All rights reserved.
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions are
+	met:
+
+	   * Redistributions of source code must retain the above copyright
+		 notice, this list of conditions and the following disclaimer.
+	   * Redistributions in binary form must reproduce the above
+		 copyright notice, this list of conditions and the following disclaimer
+		 in the documentation and/or other materials provided with the
+		 distribution.
+	   * Neither the name of Google Inc. nor the names of its
+		 contributors may be used to endorse or promote products derived from
+		 this software without specific prior written permission.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+	"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+	LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+	OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+	LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+	DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 import (
 	"context"
 	"errors"
@@ -10,16 +40,17 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log"
-	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
+	assets "github.com/textileio/go-assets"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
@@ -59,6 +90,7 @@ func (f *fileSystem) Exists(prefix, path string) bool {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
+	sync.Mutex
 	addr         ma.Multiaddr
 	bucketDomain string
 	server       *http.Server
@@ -325,6 +357,10 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 			return
 		}
 		bpth := c.Param("path")
+		if strings.HasSuffix(bpth, ".textile/config.yml") {
+			render404(c)
+			return
+		}
 		rep, err := g.buckets.ListPath(ctx, buck.Key, bpth)
 		if err != nil {
 			render404(c)
@@ -335,16 +371,23 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 				renderError(c, http.StatusInternalServerError, err)
 			}
 		} else {
+			if rep.Item.Name == ".textile" {
+				render404(c)
+				return
+			}
 			base := path.Join("thread", threadID.String(), "buckets")
-			links := make([]link, len(rep.Item.Items))
-			for i, item := range rep.Item.Items {
+			var links []link
+			for _, item := range rep.Item.Items {
+				if item.Name == ".textile" {
+					continue
+				}
 				pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
-				links[i] = link{
+				links = append(links, link{
 					Name:  item.Name,
 					Path:  path.Join(base, pth),
 					Size:  byteCountDecimal(item.Size),
 					Links: strconv.Itoa(len(item.Items)),
-				}
+				})
 			}
 			var name string
 			if rep.Root.Name != "" {

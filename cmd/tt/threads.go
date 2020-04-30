@@ -14,7 +14,7 @@ func init() {
 	rootCmd.AddCommand(threadsCmd)
 	threadsCmd.AddCommand(lsThreadsCmd)
 
-	threadsCmd.PersistentFlags().String("org", "", "Org name")
+	threadsCmd.PersistentFlags().String("org", "", "Org username")
 }
 
 var threadsCmd = &cobra.Command{

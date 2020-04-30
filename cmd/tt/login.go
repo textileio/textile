@@ -60,7 +60,6 @@ var loginCmd = &cobra.Command{
 		}
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
-		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.",
-			aurora.Cyan("tt buckets init"))
+		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan("tt bucket init"))
 	},
 }
