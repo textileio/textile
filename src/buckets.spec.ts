@@ -28,8 +28,6 @@ describe('Buckets...', () => {
     ctx = ctx.withSession(user.user?.session).withThreadName('buckets')
     const id = ThreadID.fromRandom()
     const db = new Client(ctx)
-    // @todo: Warning, this is a hack!
-    ;(db as any).config = ctx
     await db.newDB(id.toBytes())
     ctx = ctx.withThread(id)
   })

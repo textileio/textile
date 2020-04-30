@@ -29,6 +29,11 @@ export interface ContextKeys {
    */
   ['x-textile-api-key']?: string
 
+  /**
+   * Authorization token for interacting with remote APIs,
+   */
+  authorization?: string
+
   // @todo: Add docs here
   ['x-textile-api-sig']?: string
   ['x-textile-api-sig-msg']?: string
@@ -98,6 +103,11 @@ export class Context implements Config {
   withOrg(value?: string) {
     if (value === undefined) return this
     return Context.fromJSON({ ...this._context, ['x-textile-org']: value })
+  }
+
+  withToken(value?: string) {
+    if (value === undefined) return this
+    return Context.fromJSON({ ...this._context, ['authorization']: `bearer ${value}` })
   }
 
   withAPIKey(value?: string) {
