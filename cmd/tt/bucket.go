@@ -26,7 +26,7 @@ func init() {
 	bucketCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
 	initBucketPathCmd.PersistentFlags().String("key", "", "Bucket key")
-	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
+	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
 
@@ -76,52 +76,80 @@ Existing configs will not be overwritten.
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
 
-		prompt := promptui.Prompt{
-			Label: "Enter a name for your bucket (optional)",
-		}
-		name, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-
-		selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
-			aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
-
 		var dbID thread.ID
-		if selected.ID == "Create new" {
-			ctx, cancel := threadCtx(cmdTimeout)
-			defer cancel()
-			dbID = thread.NewIDV1(thread.Raw, 32)
-			if err := threads.NewDB(ctx, dbID); err != nil {
-				cmd.Fatal(err)
-			}
-		} else {
+		xthread := configViper.GetString("thread")
+		if configViper.GetString("thread") != "" {
 			var err error
-			dbID, err = thread.Decode(selected.ID)
+			dbID, err = thread.Decode(xthread)
 			if err != nil {
-				cmd.Fatal(err)
+				cmd.Fatal(fmt.Errorf("invalid thread ID"))
 			}
 		}
-		configViper.Set("thread", dbID.String())
 
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		buck, err := buckets.Init(ctx, name)
-		if err != nil {
-			cmd.Fatal(err)
+		xkey := configViper.GetString("key")
+		initRemote := true
+		if xkey != "" {
+			if !dbID.Defined() {
+				cmd.Fatal(fmt.Errorf("the --thread flag is required when using --key"))
+			}
+			initRemote = false
 		}
-		configViper.Set("key", buck.Root.Key)
+
+		var name string
+		if initRemote {
+			prompt := promptui.Prompt{
+				Label: "Enter a name for your new bucket (optional)",
+			}
+			var err error
+			name, err = prompt.Run()
+			if err != nil {
+				cmd.End("")
+			}
+		}
+
+		if !dbID.Defined() {
+			selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
+				aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
+
+			if selected.ID == "Create new" {
+				ctx, cancel := threadCtx(cmdTimeout)
+				defer cancel()
+				dbID = thread.NewIDV1(thread.Raw, 32)
+				if err := threads.NewDB(ctx, dbID); err != nil {
+					cmd.Fatal(err)
+				}
+			} else {
+				var err error
+				dbID, err = thread.Decode(selected.ID)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+			}
+			configViper.Set("thread", dbID.String())
+		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
-		cmd.Message("Your bucket links:")
-		cmd.Message("%s Thread link", aurora.White(buck.URL).Bold())
-		if buck.WWW != "" {
-			cmd.Message("%s Bucket website", aurora.White(buck.WWW).Bold())
+
+		if initRemote {
+			ctx, cancel := threadCtx(cmdTimeout)
+			defer cancel()
+			buck, err := buckets.Init(ctx, name)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			configViper.Set("key", buck.Root.Key)
+
+			cmd.Message("Your bucket links:")
+			cmd.Message("%s Thread link", aurora.White(buck.URL).Bold())
+			if buck.WWW != "" {
+				cmd.Message("%s Bucket website", aurora.White(buck.WWW).Bold())
+			}
+			cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
 		}
-		cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
+
+		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 	},
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/mail"
+	"strconv"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -101,9 +102,9 @@ func lsOrgs() {
 				cmd.Fatal(err)
 			}
 			url := fmt.Sprintf("%s/%s", o.Host, o.Slug)
-			data[i] = []string{o.Name, url, key}
+			data[i] = []string{o.Name, url, key, strconv.Itoa(len(o.Members))}
 		}
-		cmd.RenderTable([]string{"name", "url", "key"}, data)
+		cmd.RenderTable([]string{"name", "url", "key", "members"}, data)
 	}
 	cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
 }
@@ -115,7 +116,7 @@ var membersOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		configViper.Set("org", selected.Name)
+		configViper.Set("org", selected.Slug)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
@@ -150,7 +151,7 @@ var rmOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Remove org", aurora.Sprintf(
 			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
-		configViper.Set("org", selected.Name)
+		configViper.Set("org", selected.Slug)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
@@ -168,7 +169,7 @@ var inviteOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		configViper.Set("org", selected.Name)
+		configViper.Set("org", selected.Slug)
 
 		prompt := promptui.Prompt{
 			Label: "Enter email to invite",
@@ -199,7 +200,7 @@ var leaveOrgsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
-		configViper.Set("org", selected.Name)
+		configViper.Set("org", selected.Slug)
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
@@ -211,9 +212,9 @@ var leaveOrgsCmd = &cobra.Command{
 }
 
 type orgItem struct {
-	Name  string
-	Key   string
-	Extra string
+	Name    string
+	Slug    string
+	Members string
 }
 
 func selectOrg(label, successMsg string) *orgItem {
@@ -226,11 +227,7 @@ func selectOrg(label, successMsg string) *orgItem {
 
 	items := make([]*orgItem, len(orgs.List))
 	for i, o := range orgs.List {
-		key, err := mbase.Encode(mbase.Base32, o.Key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		items[i] = &orgItem{Name: o.Name, Key: key}
+		items[i] = &orgItem{Name: o.Name, Slug: o.Slug, Members: strconv.Itoa(len(o.Members))}
 	}
 	if len(items) == 0 {
 		cmd.End("You're not a member of any orgs!")
@@ -240,9 +237,9 @@ func selectOrg(label, successMsg string) *orgItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Extra | faint | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .Name | faint }} {{ .Extra | faint | bold }}`,
-			Details:  `{{ "(Key:" | faint }} {{ .Key | faint }}{{ ")" | faint }}`,
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Slug | faint | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Name | faint }} {{ .Slug | faint | bold }}`,
+			Details:  `{{ "(Members:" | faint }} {{ .Members | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
 	}

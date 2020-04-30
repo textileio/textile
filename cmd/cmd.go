@@ -121,6 +121,7 @@ func Fatal(err error, args ...interface{}) {
 }
 
 func RenderTable(header []string, data [][]string) {
+	fmt.Println()
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoWrapText(false)
@@ -133,7 +134,7 @@ func RenderTable(header []string, data [][]string) {
 	table.SetHeaderLine(false)
 	table.SetBorder(false)
 	table.SetTablePadding("\t")
-	table.SetNoWhiteSpace(true)
+	table.SetNoWhiteSpace(false)
 	headersColors := make([]tablewriter.Colors, len(data[0]))
 	for i := range headersColors {
 		headersColors[i] = tablewriter.Colors{tablewriter.FgHiBlackColor}

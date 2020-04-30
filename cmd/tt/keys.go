@@ -15,7 +15,7 @@ func init() {
 	rootCmd.AddCommand(keysCmd)
 	keysCmd.AddCommand(createKeysCmd, invalidateKeysCmd, lsKeysCmd)
 
-	keysCmd.PersistentFlags().String("org", "", "Org name")
+	keysCmd.PersistentFlags().String("org", "", "Org username")
 }
 
 var keysCmd = &cobra.Command{
@@ -143,8 +143,9 @@ func selectKey(label, successMsg string) *keyItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Key | bold }} {{ .Type | faint }} {{ .Threads | faint | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .Key | faint }} {{ .Type | faint }} {{ .Threads | faint | bold }}`,
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Key | bold }} {{ .Type | faint }}`, promptui.IconSelect),
+			Inactive: `{{ .Key | faint }} {{ .Type | faint }}`,
+			Details:  `{{ "(Threads:" | faint }} {{ .Threads | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
 	}
