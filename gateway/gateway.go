@@ -325,6 +325,10 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 			return
 		}
 		bpth := c.Param("path")
+		if strings.HasSuffix(bpth, ".textile/config.yml") {
+			render404(c)
+			return
+		}
 		rep, err := g.buckets.ListPath(ctx, buck.Key, bpth)
 		if err != nil {
 			render404(c)
@@ -335,16 +339,23 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 				renderError(c, http.StatusInternalServerError, err)
 			}
 		} else {
+			if rep.Item.Name == ".textile" {
+				render404(c)
+				return
+			}
 			base := path.Join("thread", threadID.String(), "buckets")
-			links := make([]link, len(rep.Item.Items))
-			for i, item := range rep.Item.Items {
+			var links []link
+			for _, item := range rep.Item.Items {
+				if item.Name == ".textile" {
+					continue
+				}
 				pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
-				links[i] = link{
+				links = append(links, link{
 					Name:  item.Name,
 					Path:  path.Join(base, pth),
 					Size:  byteCountDecimal(item.Size),
 					Links: strconv.Itoa(len(item.Items)),
-				}
+				})
 			}
 			var name string
 			if rep.Root.Name != "" {

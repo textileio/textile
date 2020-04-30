@@ -110,7 +110,6 @@ Existing configs will not be overwritten.
 		if !dbID.Defined() {
 			selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
 				aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
-
 			if selected.ID == "Create new" {
 				ctx, cancel := threadCtx(cmdTimeout)
 				defer cancel()
@@ -126,10 +125,6 @@ Existing configs will not be overwritten.
 				}
 			}
 			configViper.Set("thread", dbID.String())
-		}
-
-		if err := configViper.WriteConfigAs(filename); err != nil {
-			cmd.Fatal(err)
 		}
 
 		if initRemote {
@@ -149,6 +144,9 @@ Existing configs will not be overwritten.
 			cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
 		}
 
+		if err := configViper.WriteConfigAs(filename); err != nil {
+			cmd.Fatal(err)
+		}
 		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 	},
 }
