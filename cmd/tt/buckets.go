@@ -200,6 +200,11 @@ File structure is mirrored in the bucket. For example, given the directory:
 
 These 'push' commands result in the following bucket structures.
 
+'tt bucket push foo/ .':
+    one.txt
+    bar/two.txt
+    bar/baz/three.txt
+		
 'tt bucket push foo mybuck':
     mybuck/foo/one.txt
     mybuck/foo/bar/two.txt
@@ -214,11 +219,6 @@ These 'push' commands result in the following bucket structures.
 
 'tt bucket push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
-
-'tt bucket push foo/* foo':
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
 `,
 	Args: cobra.MinimumNArgs(2),
 	PreRun: func(c *cobra.Command, args []string) {
