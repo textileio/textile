@@ -3,6 +3,7 @@ import * as pb from '@textile/users-grpc/users_pb'
 import { APIClient } from '@textile/users-grpc/users_pb_service'
 import { ServiceError } from '@textile/hub-grpc/hub_pb_service'
 import { Context } from './context'
+import { ThreadID } from '@textile/threads-id'
 
 const logger = log.getLogger('users')
 
@@ -39,7 +40,11 @@ export class Users {
         this.context.withContext(ctx).toMetadata(),
         (err: ServiceError | null, message: pb.GetThreadReply | null) => {
           if (err) reject(err)
-          resolve(message?.toObject())
+          const msg = message?.toObject()
+          if (msg) {
+            msg.id = ThreadID.fromBytes(Buffer.from(msg.id as string, 'base64')).toString()
+          }
+          resolve(msg)
         },
       )
     })
@@ -60,7 +65,13 @@ export class Users {
         this.context.withContext(ctx).toMetadata(),
         (err: ServiceError | null, message: pb.ListThreadsReply | null) => {
           if (err) reject(err)
-          resolve(message?.toObject())
+          const msg = message?.toObject()
+          if (msg) {
+            msg.listList.forEach((thread) => {
+              thread.id = ThreadID.fromBytes(Buffer.from(thread.id as string, 'base64')).toString()
+            })
+          }
+          resolve(msg)
         },
       )
     })

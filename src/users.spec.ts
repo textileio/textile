@@ -1,15 +1,19 @@
 /* eslint-disable import/first */
 ;(global as any).WebSocket = require('isomorphic-ws')
 
+import path from 'path'
+import fs from 'fs'
 import { ThreadID } from '@textile/threads-id'
 import { grpc } from '@improbable-eng/grpc-web'
 import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { expect } from 'chai'
 import { Client } from '@textile/threads-client'
 import { Libp2pCryptoIdentity } from '@textile/threads-core'
+import { isBrowser } from 'browser-or-node'
 import { Context } from './context'
 import { Users } from './users'
 import { signUp, createKey, createAPISig } from './utils'
+import { Buckets } from './buckets'
 
 // Settings for localhost development and testing
 const addrApiurl = 'http://127.0.0.1:3007'
@@ -195,6 +199,52 @@ describe('Users...', () => {
       res = await client.listThreads(ctx)
       expect(res.listList).to.have.length(1)
       expect(res.listList[0].name).to.equal('foo')
+    })
+  })
+
+  describe('Buckets and accounts', () => {
+    let ctx: Context = new Context(addrApiurl, undefined)
+    let dev: SignupReply.AsObject
+    context('a developer', () => {
+      it('should sign-up, create an API key, and sign it for the requests', async () => {
+        // @note This should be done using the cli
+        const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
+        if (user) dev = user
+        ctx = ctx.withSession(dev.session)
+        // @note This should be done using the cli
+        const key = await createKey(ctx, 'ACCOUNT')
+        const sig = await createAPISig(key.secret) // Defaults to 1 minute from now
+        ctx = ctx.withAPIKey(key.key).withAPISig(sig)
+        expect(ctx.toJSON()).to.have.ownProperty('x-textile-api-sig')
+      })
+      it('should then create a db for the bucket', async () => {
+        const db = new Client(ctx)
+        ctx = ctx.withThreadName('my-buckets')
+        const id = ThreadID.fromRandom()
+        db.config = ctx
+        await db.newDB(id.toBytes())
+        ctx = ctx.withThread(id)
+        expect(ctx.toJSON()).to.have.ownProperty('x-textile-thread-name')
+      })
+      it('should then initialize a new bucket in the db and push to it', async function () {
+        if (isBrowser) return this.skip()
+        // Initialize a new bucket in the db
+        const buckets = new Buckets(ctx)
+        const buck = await buckets.init('mybuck', ctx)
+        expect(buck.root?.name).to.equal('mybuck')
+
+        // Finally, push a file to the bucket.
+        const pth = path.join(__dirname, '..', 'testdata')
+        const stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
+        const rootKey = buck.root?.key || ''
+        const { root } = await buckets.pushPath(rootKey, 'dir1/file1.jpg', stream, ctx)
+        expect(root).to.not.be.undefined
+
+        // We should have a thread named "my-buckets"
+        const users = new Users(ctx)
+        const res = await users.getThread('my-buckets', ctx)
+        expect(res.id).to.deep.equal(ctx.toJSON()['x-textile-thread'])
+      })
     })
   })
 })
