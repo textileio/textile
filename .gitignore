@@ -1,6 +1,8 @@
 # Build files
 dist/
 
+**/.DS_Store
+
 # Test results
 allure-results/
 allure-result/

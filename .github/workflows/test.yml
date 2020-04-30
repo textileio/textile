@@ -1,0 +1,69 @@
+name: Test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip-ci')"
+
+    services:
+      textile:
+        image: textile/textile:latest
+        env:
+          TXTL_ADDR_API: /ip4/0.0.0.0/tcp/3006
+          TXTL_ADDR_API_PROXY: /ip4/0.0.0.0/tcp/3007
+          TXTL_ADDR_THREADS_HOST: /ip4/0.0.0.0/tcp/4006
+          TXTL_ADDR_GATEWAY_HOST: /ip4/0.0.0.0/tcp/8006
+          TXTL_ADDR_MONGO_URI: mongodb://mongo:27017
+          TXTL_ADDR_IPFS_API: /dns4/ipfs/tcp/5001
+          TXTL_EMAIL_SESSION_SECRET: textilesession
+        ports:
+          - "127.0.0.1:3006:3006"
+          - "3007:3007"
+          - "4006:4006"
+          - "127.0.0.1:8006:8006"
+      mongo:
+        image: mongo:latest
+        ports:
+          - "127.0.0.1:27017:27017"
+      ipfs:
+        image: ipfs/go-ipfs:v0.5.0-rc2
+        ports:
+          - "4001:4001"
+          - "127.0.0.1:5001:5001"
+          - "8080:8080"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Setup
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12
+
+    - name: Install
+      run: npm install
+
+    - name: Build Browser
+      run: |
+           npm run browser
+
+    - name: Test Node
+      run: |
+        npm run test:node
+
+    - name: Test Browser
+      run: |
+           npm run test:browser
+
+    - name: Build Docs
+      run: |
+           npm run docs
