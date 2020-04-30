@@ -35,20 +35,10 @@ func init() {
 	}
 }
 
-<<<<<<< HEAD
 var bucketCmd = &cobra.Command{
 	Use:   "bucket",
 	Short: "Manage a bucket",
 	Long:  `Init a bucket and push and pull files and folders.`,
-=======
-var bucketsCmd = &cobra.Command{
-	Use: "bucket",
-	Aliases: []string{
-		"buckets",
-	},
-	Short: "Bucket management",
-	Long:  `Create and manage your buckets.`,
->>>>>>> chore(docs): update doc strings
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
