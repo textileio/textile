@@ -424,6 +424,9 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return handler(ctx, req)
 			}
 		}
+		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.gatewaySession {
+			return handler(ctx, req)
+		}
 
 		var owner crypto.PubKey
 		if org, ok := c.OrgFromContext(ctx); ok {

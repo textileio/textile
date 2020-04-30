@@ -52,7 +52,7 @@ var (
 		},
 		"public": {
 			Key:      "public",
-			DefValue: false,
+			DefValue: true,
 		},
 		"thread": {
 			Key:      "thread",
