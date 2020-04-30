@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/location"
@@ -59,6 +60,7 @@ func (f *fileSystem) Exists(prefix, path string) bool {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
+	sync.Mutex
 	addr         ma.Multiaddr
 	bucketDomain string
 	server       *http.Server
@@ -114,7 +116,7 @@ func (g *Gateway) Start() {
 	}
 	router := gin.Default()
 
-	temp, err := loadTemplate()
+	temp, err := g.loadTemplate()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -459,21 +461,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	})
 }
 
-// render404 renders the 404 template.
-func render404(c *gin.Context) {
-	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
-}
-
-// renderError renders the error template.
-func renderError(c *gin.Context, code int, err error) {
-	c.HTML(code, "/public/html/error.gohtml", gin.H{
-		"Code":  code,
-		"Error": formatError(err),
-	})
-}
-
 // loadTemplate loads HTML templates.
-func loadTemplate() (*template.Template, error) {
+func (g *Gateway) loadTemplate() (*template.Template, error) {
+	g.Lock()
+	defer g.Unlock()
 	t := template.New("")
 	for name, file := range Assets.Files {
 		if file.IsDir() || !strings.HasSuffix(name, ".gohtml") {
@@ -489,6 +480,19 @@ func loadTemplate() (*template.Template, error) {
 		}
 	}
 	return t, nil
+}
+
+// render404 renders the 404 template.
+func render404(c *gin.Context) {
+	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
+}
+
+// renderError renders the error template.
+func renderError(c *gin.Context, code int, err error) {
+	c.HTML(code, "/public/html/error.gohtml", gin.H{
+		"Code":  code,
+		"Error": formatError(err),
+	})
 }
 
 // formatError formats a go error for browser display.
