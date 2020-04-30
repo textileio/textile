@@ -61,10 +61,12 @@
     "@textile/hub-grpc": "0.1.0-rc1",
     "@textile/threads-client": "^0.2.10",
     "@textile/threads-id": "0.0.2",
+    "@textile/users-grpc": "0.1.0-rc1",
     "@types/google-protobuf": "^3.7.2",
     "axios": "^0.19.2",
     "cids": "^0.8.0",
     "delay": "^4.3.0",
+    "fast-sha256": "^1.3.0",
     "google-protobuf": "^3.10.0",
     "isomorphic-ws": "^4.0.1",
     "queueable": "^4.1.4"

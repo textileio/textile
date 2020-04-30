@@ -1,6 +1,6 @@
 import log from 'loglevel'
 import * as pb from '@textile/buckets-grpc/buckets_pb'
-import { API, APIPushPath, APIPullPath } from '@textile/buckets-grpc/buckets_pb_service'
+import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'

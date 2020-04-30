@@ -23,25 +23,35 @@ export interface ContextKeys {
    * Org slug/name. Used for various org session operations.
    */
   ['x-textile-org']?: string
+
+  /**
+   * API key. Used for user authentication.
+   */
+  ['x-textile-api-key']?: string
+
+  // @todo: Add docs here
+  ['x-textile-api-sig']?: string
+  ['x-textile-api-sig-msg']?: string
+
+  /**
+   * The service host address/url. Defaults to https://hub.textile.io.
+   */
+  host?: HostString
+  /**
+   * The transport to use for gRPC calls. Defaults to web-sockets.
+   */
+  transport?: grpc.TransportFactory
+
+  /**
+   * Whether to enable debugging output during gRPC calls.
+   */
+  debug?: boolean
 }
 
 /**
  * Context provides immutable context management for gRPC credentials and config settings.
  */
 export class Context implements Config {
-  /**
-   * The service host address/url. Defaults to https://hub.textile.io.
-   */
-  public host: HostString
-  /**
-   * The transport to use for gRPC calls. Defaults to web-sockets.
-   */
-  public transport: grpc.TransportFactory
-  /**
-   * Whether to enable debugging output during gRPC calls.
-   */
-  debug?: boolean
-
   // Internal context variables
   private _context: Partial<Record<keyof ContextKeys, any>> = {}
 
@@ -53,9 +63,21 @@ export class Context implements Config {
     // For testing and debugging purposes.
     debug = false,
   ) {
-    this.host = host
-    this.transport = transport
-    this.debug = debug
+    this._context['host'] = host
+    this._context['transport'] = transport
+    this._context['debug'] = debug
+  }
+
+  get host() {
+    return this._context['host']
+  }
+
+  get transport() {
+    return this._context['transport']
+  }
+
+  get debug() {
+    return this._context['debug']
   }
 
   withSession(value?: string) {
@@ -76,6 +98,17 @@ export class Context implements Config {
   withOrg(value?: string) {
     if (value === undefined) return this
     return Context.fromJSON({ ...this._context, ['x-textile-org']: value })
+  }
+
+  withAPIKey(value?: string) {
+    if (value === undefined) return this
+    return Context.fromJSON({ ...this._context, ['x-textile-api-key']: value })
+  }
+
+  withAPISig(value?: { sig: string; msg: string }) {
+    if (value === undefined) return this
+    const { sig, msg } = value
+    return Context.fromJSON({ ...this._context, ['x-textile-api-sig-msg']: msg, ['x-textile-api-sig']: sig })
   }
 
   withContext(value?: Context) {
