@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -23,7 +24,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
+	bucketCmd.AddCommand(materializeBucketCmd, initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
 	initBucketPathCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org name")
@@ -31,6 +32,12 @@ func init() {
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
 
 	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
+		cmd.Fatal(err)
+	}
+
+	materializeBucketCmd.PersistentFlags().String("org", "", "Org name")
+
+	if err := cmd.BindFlags(configViper, materializeBucketCmd, flags); err != nil {
 		cmd.Fatal(err)
 	}
 }
@@ -47,6 +54,104 @@ var bucketCmd = &cobra.Command{
 	},
 	Run: func(c *cobra.Command, args []string) {
 		lsBucketPath(args)
+	},
+}
+
+var materializeBucketCmd = &cobra.Command{
+	Use:   "materialize",
+	Short: "Sync an existing Bucket to this computer",
+	Long: `Sync an existing Bucket to this computer.
+
+A .textile directory and config file will be created in the current working directory.
+The contents of the Bucket will be pulled.
+`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+	},
+	Run: func(c *cobra.Command, args []string) {
+		root, err := os.Getwd()
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		dir := filepath.Join(root, ".textile")
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+			cmd.Fatal(err)
+		}
+		filename := filepath.Join(dir, "config.yml")
+		if _, err := os.Stat(filename); err == nil {
+			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
+		}
+
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+
+		res, err := users.ListThreads(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		var roots []*pb.Root
+		for _, reply := range res.List {
+			id, err := thread.Cast(reply.ID)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			ctx = common.NewThreadIDContext(ctx, id)
+			res, err := buckets.List(ctx)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			roots = append(roots, res.Roots...)
+		}
+
+		fmt.Printf("BUCKETS = %v", roots)
+
+		// prompt := promptui.Prompt{
+		// 	Label: "Enter a name for your bucket (optional)",
+		// }
+		// name, err := prompt.Run()
+		// if err != nil {
+		// 	cmd.End("")
+		// }
+
+		// selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
+		// 	aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
+
+		// var dbID thread.ID
+		// if selected.ID == "Create new" {
+		// 	ctx, cancel := threadCtx(cmdTimeout)
+		// 	defer cancel()
+		// 	dbID = thread.NewIDV1(thread.Raw, 32)
+		// 	if err := threads.NewDB(ctx, dbID); err != nil {
+		// 		cmd.Fatal(err)
+		// 	}
+		// } else {
+		// 	var err error
+		// 	dbID, err = thread.Decode(selected.ID)
+		// 	if err != nil {
+		// 		cmd.Fatal(err)
+		// 	}
+		// }
+		// configViper.Set("thread", dbID.String())
+
+		// ctx, cancel := threadCtx(cmdTimeout)
+		// defer cancel()
+		// buck, err := buckets.Init(ctx, name)
+		// if err != nil {
+		// 	cmd.Fatal(err)
+		// }
+		// configViper.Set("key", buck.Root.Key)
+
+		// if err := configViper.WriteConfigAs(filename); err != nil {
+		// 	cmd.Fatal(err)
+		// }
+		// cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		// cmd.Message("Your bucket links:")
+		// cmd.Message("%s Thread link", aurora.White(buck.URL).Bold())
+		// if buck.WWW != "" {
+		// 	cmd.Message("%s Bucket website", aurora.White(buck.WWW).Bold())
+		// }
+		// cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
 	},
 }
 
