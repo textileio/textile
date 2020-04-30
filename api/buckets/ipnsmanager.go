@@ -11,6 +11,10 @@ import (
 	c "github.com/textileio/textile/collections"
 )
 
+const (
+	maxCancelPublishTries = 10
+)
+
 // IPNSManager handles bucket name publishing to IPNS.
 type IPNSManager struct {
 	keys     *c.IPNSKeys
@@ -42,37 +46,46 @@ func (m *IPNSManager) Cancel() {
 
 func (m *IPNSManager) publish(pth path.Path, keyID string) {
 	ptl := m.getSemaphore(keyID)
-	select {
-	case ptl <- struct{}{}:
-		pctx, cancel := context.WithCancel(context.Background())
-		m.ctxsLock.Lock()
-		m.ctxs[keyID] = cancel
-		m.ctxsLock.Unlock()
-		err := m.publishUnsafe(pctx, pth, keyID)
-		if err != nil {
-			if !errors.Is(err, context.Canceled) {
-				// Logging as a warning because this often fails with "context deadline exceeded",
-				// even if the entry can be found on the network (not fully saturated).
-				// The publish deadline seems to be fixed at one minute. ¯\_(ツ)_/¯
-				log.Warnf("error publishing path %s: %v", pth, err)
+	try := 0
+	for {
+		select {
+		case ptl <- struct{}{}:
+			pctx, cancel := context.WithCancel(context.Background())
+			m.ctxsLock.Lock()
+			m.ctxs[keyID] = cancel
+			m.ctxsLock.Unlock()
+			if err := m.publishUnsafe(pctx, pth, keyID); err != nil {
+				if !errors.Is(err, context.Canceled) {
+					// Logging as a warning because this often fails with "context deadline exceeded",
+					// even if the entry can be found on the network (not fully saturated).
+					// The publish deadline seems to be fixed at one minute. ¯\_(ツ)_/¯
+					log.Warnf("error publishing path %s: %v", pth, err)
+				} else {
+					log.Debugf("publishing path %s was cancelled: %v", pth, err)
+				}
+			}
+			cancel()
+			m.ctxsLock.Lock()
+			delete(m.ctxs, keyID)
+			m.ctxsLock.Unlock()
+			<-ptl
+			return
+		default:
+			m.ctxsLock.Lock()
+			cancel, ok := m.ctxs[keyID]
+			m.ctxsLock.Unlock()
+			if ok {
+				cancel()
 			} else {
-				log.Debugf("publishing path %s was cancelled: %v", pth, err)
+				try++
+				if try > maxCancelPublishTries {
+					log.Warnf("failed to publish path %s: max tries exceeded", pth)
+					return
+				} else {
+					log.Debugf("failed to cancel publish (%v tries remaining)", maxCancelPublishTries-try)
+				}
 			}
 		}
-		cancel()
-		m.ctxsLock.Lock()
-		delete(m.ctxs, keyID)
-		m.ctxsLock.Unlock()
-		<-ptl
-	default:
-		m.ctxsLock.Lock()
-		cancel, ok := m.ctxs[keyID]
-		if !ok {
-			return
-		}
-		m.ctxsLock.Unlock()
-		cancel()
-		m.publish(pth, keyID)
 	}
 }
 
