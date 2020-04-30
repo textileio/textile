@@ -211,9 +211,9 @@ File structure is mirrored in the bucket. For example, given the directory:
 These 'push' commands result in the following bucket structures.
 
 'tt buckets push foo/ .':
-    mybuck/one.txt
-    mybuck/bar/two.txt
-    mybuck/bar/baz/three.txt
+    one.txt
+    bar/two.txt
+    bar/baz/three.txt
 		
 'tt buckets push foo mybuck':
     mybuck/foo/one.txt
