@@ -1,5 +1,35 @@
 package gateway
 
+/*
+https://github.com/jessevdk/go-assets/blob/master/LICENSE:
+	Copyright (c) 2013 Jesse van den Kieboom. All rights reserved.
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions are
+	met:
+
+	   * Redistributions of source code must retain the above copyright
+		 notice, this list of conditions and the following disclaimer.
+	   * Redistributions in binary form must reproduce the above
+		 copyright notice, this list of conditions and the following disclaimer
+		 in the documentation and/or other materials provided with the
+		 distribution.
+	   * Neither the name of Google Inc. nor the names of its
+		 contributors may be used to endorse or promote products derived from
+		 this software without specific prior written permission.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+	"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+	LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+	OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+	LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+	DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 import (
 	"context"
 	"errors"
@@ -17,10 +47,10 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log"
-	assets "github.com/jessevdk/go-assets"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
+	assets "github.com/textileio/go-assets"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
@@ -116,7 +146,7 @@ func (g *Gateway) Start() {
 	}
 	router := gin.Default()
 
-	temp, err := g.loadTemplate()
+	temp, err := loadTemplate()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -461,10 +491,21 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 	})
 }
 
+// render404 renders the 404 template.
+func render404(c *gin.Context) {
+	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
+}
+
+// renderError renders the error template.
+func renderError(c *gin.Context, code int, err error) {
+	c.HTML(code, "/public/html/error.gohtml", gin.H{
+		"Code":  code,
+		"Error": formatError(err),
+	})
+}
+
 // loadTemplate loads HTML templates.
-func (g *Gateway) loadTemplate() (*template.Template, error) {
-	g.Lock()
-	defer g.Unlock()
+func loadTemplate() (*template.Template, error) {
 	t := template.New("")
 	for name, file := range Assets.Files {
 		if file.IsDir() || !strings.HasSuffix(name, ".gohtml") {
@@ -480,19 +521,6 @@ func (g *Gateway) loadTemplate() (*template.Template, error) {
 		}
 	}
 	return t, nil
-}
-
-// render404 renders the 404 template.
-func render404(c *gin.Context) {
-	c.HTML(http.StatusNotFound, "/public/html/404.gohtml", nil)
-}
-
-// renderError renders the error template.
-func renderError(c *gin.Context, code int, err error) {
-	c.HTML(code, "/public/html/error.gohtml", gin.H{
-		"Code":  code,
-		"Error": formatError(err),
-	})
 }
 
 // formatError formats a go error for browser display.
