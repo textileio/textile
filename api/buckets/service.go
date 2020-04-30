@@ -65,6 +65,15 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	if err != nil {
 		return nil, err
 	}
+
+	url := fmt.Sprintf("%s/thread/%s/buckets/%s", s.GatewayUrl, dbID, buck.Key)
+	var www string
+	if s.DNSManager != nil && s.DNSManager.Domain != "" {
+		scheme := strings.Split(s.GatewayUrl, "://")[0]
+		www = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
+	}
+	ipns := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
+
 	return &pb.InitReply{
 		Root: &pb.Root{
 			Key:       buck.Key,
@@ -73,6 +82,9 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
+		URL:  url,
+		WWW:  www,
+		IPNS: ipns,
 	}, nil
 }
 

@@ -116,6 +116,12 @@ Existing configs will not be overwritten.
 			cmd.Fatal(err)
 		}
 		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		cmd.Message("Your bucket links:")
+		cmd.Message("%s Thread link", aurora.White(buck.URL).Bold())
+		if buck.WWW != "" {
+			cmd.Message("%s Bucket website", aurora.White(buck.WWW).Bold())
+		}
+		cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
 	},
 }
 

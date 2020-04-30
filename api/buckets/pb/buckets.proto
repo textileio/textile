@@ -12,6 +12,9 @@ message InitRequest {
 
 message InitReply {
     Root root = 1;
+    string URL = 2;
+    string WWW = 3;
+    string IPNS = 4;
 }
 
 message Root {

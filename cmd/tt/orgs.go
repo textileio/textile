@@ -52,7 +52,8 @@ var createOrgsCmd = &cobra.Command{
 		url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
 
 		cmd.Message("The name of your account on Textile will be %s", aurora.White(name).Bold())
-		cmd.Message("Your URL will be %s", aurora.White(url).Bold())
+		// @todo: Uncomment when dashboard's are live
+		//cmd.Message("Your URL will be %s", aurora.White(url).Bold())
 
 		prompt2 := promptui.Prompt{
 			Label:     "Please confirm",

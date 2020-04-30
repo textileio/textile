@@ -12,12 +12,13 @@ var (
 	log = logging.Logger("dns")
 )
 
-const ipfsGateway = "www.cloudflare-ipfs.com"
+const IPFSGateway = "cloudflare-ipfs.com"
 
 // Manager wraps a CloudflareClient client.
 type Manager struct {
+	Domain string
+
 	api    *cf.API
-	domain string
 	zoneID string
 	debug  bool
 }
@@ -37,7 +38,7 @@ func NewManager(domain string, zoneID string, token string, debug bool) (*Manage
 		return nil, err
 	}
 	return &Manager{
-		domain: domain,
+		Domain: domain,
 		debug:  debug,
 		api:    api,
 		zoneID: zoneID,
@@ -75,7 +76,7 @@ func (m *Manager) NewTXT(name string, content string) (*cf.DNSRecord, error) {
 
 // NewDNSLink enters a two dns records to enable DNS link.
 func (m *Manager) NewDNSLink(subdomain string, hash string) ([]*cf.DNSRecord, error) {
-	cname, err := m.NewCNAME(subdomain, ipfsGateway)
+	cname, err := m.NewCNAME(subdomain, IPFSGateway)
 	if err != nil {
 		return nil, err
 	}
