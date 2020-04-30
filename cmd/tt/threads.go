@@ -15,6 +15,10 @@ func init() {
 	threadsCmd.AddCommand(lsThreadsCmd)
 
 	threadsCmd.PersistentFlags().String("org", "", "Org name")
+
+	if err := cmd.BindFlags(configViper, threadsCmd, flags); err != nil {
+		cmd.Fatal(err)
+	}
 }
 
 var threadsCmd = &cobra.Command{
