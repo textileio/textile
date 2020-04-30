@@ -103,7 +103,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		return nil, err
 	}
 
-	key, err := s.IPFSClient.Key().Generate(ctx, util.MakeToken(keyLen), opt.Key.Type(options.Ed25519Key))
+	key, err := s.IPFSClient.Key().Generate(ctx, util.MakeToken(keyLen), opt.Key.Type(options.RSAKey))
 	if err != nil {
 		return nil, err
 	}
