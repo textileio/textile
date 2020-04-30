@@ -26,7 +26,8 @@ describe('Users...', () => {
     let ctx: Context = new Context(addrApiurl, undefined)
     const client = new Users(ctx)
     let dev: SignupReply.AsObject
-    before(async () => {
+    before(async function () {
+      this.timeout(3000)
       const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
       if (user) dev = user
     })
@@ -121,7 +122,8 @@ describe('Users...', () => {
     let ctx: Context = new Context(addrApiurl, undefined)
     const client = new Users(ctx)
     let dev: SignupReply.AsObject
-    before(async () => {
+    before(async function () {
+      this.timeout(3000)
       const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
       if (user) dev = user
     })
@@ -203,9 +205,9 @@ describe('Users...', () => {
   })
 
   describe('Buckets and accounts', () => {
-    let ctx: Context = new Context(addrApiurl, undefined)
-    let dev: SignupReply.AsObject
     context('a developer', () => {
+      let ctx: Context = new Context(addrApiurl, undefined)
+      let dev: SignupReply.AsObject
       it('should sign-up, create an API key, and sign it for the requests', async () => {
         // @note This should be done using the cli
         const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
@@ -216,7 +218,7 @@ describe('Users...', () => {
         const sig = await createAPISig(key.secret) // Defaults to 1 minute from now
         ctx = ctx.withAPIKey(key.key).withAPISig(sig)
         expect(ctx.toJSON()).to.have.ownProperty('x-textile-api-sig')
-      })
+      }).timeout(3000)
       it('should then create a db for the bucket', async () => {
         const db = new Client(ctx)
         ctx = ctx.withThreadName('my-buckets')
@@ -244,6 +246,58 @@ describe('Users...', () => {
         const users = new Users(ctx)
         const res = await users.getThread('my-buckets', ctx)
         expect(res.id).to.deep.equal(ctx.toJSON()['x-textile-thread'])
+      })
+    })
+    context('a developer with a user', () => {
+      let ctx: Context = new Context(addrApiurl, undefined)
+      let dev: SignupReply.AsObject
+      it('should sign-up, create an API key, and sign it for the requests', async () => {
+        // @note This should be done using the cli
+        const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
+        if (user) dev = user
+        ctx = ctx.withSession(dev.session)
+        // @note This should be done using the cli
+        // This time they create a user key
+        const key = await createKey(ctx, 'USER')
+        const sig = await createAPISig(key.secret) // Defaults to 1 minute from now
+        ctx = ctx.withAPIKey(key.key).withAPISig(sig)
+        expect(ctx.toJSON()).to.have.ownProperty('x-textile-api-sig')
+      }).timeout(3000)
+      it('should then generate a user identity and get a token for it', async () => {
+        const identity = await Libp2pCryptoIdentity.fromRandom()
+        const db = new Client(ctx)
+        const tok = await db.getToken(identity)
+        ctx = ctx.withToken(tok)
+      })
+      it('should then create a db for the bucket', async () => {
+        ctx = ctx.withThreadName('my-buckets')
+        const id = ThreadID.fromRandom()
+        const db = new Client(ctx)
+        await db.newDB(id.toBytes())
+        ctx = ctx.withThread(id)
+        expect(ctx.toJSON()).to.have.ownProperty('x-textile-thread-name')
+      })
+      it('should then initialize a new bucket in the db and push to it', async function () {
+        if (isBrowser) return this.skip()
+        // Initialize a new bucket in the db
+        const buckets = new Buckets(ctx)
+        const buck = await buckets.init('mybuck', ctx)
+        expect(buck.root?.name).to.equal('mybuck')
+
+        // Finally, push a file to the bucket.
+        const pth = path.join(__dirname, '..', 'testdata')
+        const stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
+        const rootKey = buck.root?.key || ''
+        const { root } = await buckets.pushPath(rootKey, 'dir1/file1.jpg', stream, ctx)
+        expect(root).to.not.be.undefined
+
+        // We should have a thread named "my-buckets"
+        const users = new Users(ctx)
+        const res = await users.getThread('my-buckets', ctx)
+        expect(res.id).to.deep.equal(ctx.toJSON()['x-textile-thread'])
+
+        // The dev should see that the key was used to create one thread
+        // @todo: Use the cli to list keys
       })
     })
   })
