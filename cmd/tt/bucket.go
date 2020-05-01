@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -29,6 +30,7 @@ func init() {
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
+	initBucketPathCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote Bucket")
 
 	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
 		cmd.Fatal(err)
@@ -74,6 +76,65 @@ Existing configs will not be overwritten.
 		filename := filepath.Join(dir, "config.yml")
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
+		}
+
+		existing, err := c.Flags().GetBool("existing")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+
+		if existing {
+			ctx, cancel := authCtx(cmdTimeout)
+			defer cancel()
+
+			res, err := users.ListThreads(ctx)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+
+			type bucketInfo struct {
+				ID   thread.ID
+				Name string
+				Key  string
+			}
+			var bucketInfos []bucketInfo
+			for _, reply := range res.List {
+				id, err := thread.Cast(reply.ID)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				ctx = common.NewThreadIDContext(ctx, id)
+				res, err := buckets.List(ctx)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				for _, root := range res.Roots {
+					name := "unnamed"
+					if root.Name != "" {
+						name = root.Name
+					}
+					bucketInfos = append(bucketInfos, bucketInfo{ID: id, Name: name, Key: root.Key})
+				}
+			}
+
+			prompt := promptui.Select{
+				Label: "Which exiting Bucket do you want to init from?",
+				Items: bucketInfos,
+				Templates: &promptui.SelectTemplates{
+					Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Key | faint | bold }}`, promptui.IconSelect),
+					Inactive: `{{ .Name | faint }} {{ .Key | faint | bold }}`,
+					Selected: aurora.Sprintf(aurora.BrightBlack("> Selected Bucket {{ .Name | white | bold }}")),
+				},
+			}
+			index, _, err := prompt.Run()
+			if err != nil {
+				cmd.Fatal(err)
+			}
+
+			selected := bucketInfos[index]
+
+			configViper.Set("thread", selected.ID.String())
+			configViper.Set("key", selected.Key)
 		}
 
 		var dbID thread.ID
@@ -147,7 +208,13 @@ Existing configs will not be overwritten.
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		if existing {
+			key := configViper.GetString("key")
+			count := getPath(key, ".", filepath.Dir("."), ".")
+			cmd.Success("Initialized from remote and pulled %d files to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
+		} else {
+			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		}
 	},
 }
 
