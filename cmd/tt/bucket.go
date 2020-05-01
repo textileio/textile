@@ -502,7 +502,10 @@ func getPath(key, pth, dir, dest string) (count int) {
 			count += getPath(key, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
 		}
 	} else {
-		name := filepath.Join(dest, strings.TrimPrefix(pth, dir))
+		if dir != "." {
+			pth = strings.TrimPrefix(pth, dir)
+		}
+		name := filepath.Join(dest, pth)
 		getFile(key, pth, name, rep.Item.Size)
 		count++
 	}
