@@ -58,6 +58,10 @@ var (
 			Key:      "thread",
 			DefValue: "",
 		},
+		"existing": {
+			Key:      "existing",
+			DefValue: false,
+		},
 	}
 
 	hub     *hc.Client
