@@ -4,19 +4,8 @@ MAINTAINER Textile <contact@textile.io>
 # This is (in large part) copied (with love) from
 # https://hub.docker.com/r/ipfs/go-ipfs/dockerfile
 
-# Get source
-ENV SRC_DIR /textile
-
-# Download packages first so they can be cached.
-COPY go.mod go.sum $SRC_DIR/
-RUN cd $SRC_DIR \
-  && go mod download
-
-COPY . $SRC_DIR
-
-# Install the daemon
-RUN cd $SRC_DIR \
-  && go install github.com/textileio/textile/cmd/textiled
+# Get the TLS CA certificates, they're not provided by busybox.
+RUN apt-get update && apt-get install -y ca-certificates
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -32,8 +21,19 @@ RUN set -x \
   && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
   && chmod +x tini
 
-# Get the TLS CA certificates, they're not provided by busybox.
-RUN apt-get update && apt-get install -y ca-certificates
+# Get source
+ENV SRC_DIR /textile
+
+# Download packages first so they can be cached.
+COPY go.mod go.sum $SRC_DIR/
+RUN cd $SRC_DIR \
+  && go mod download
+
+COPY . $SRC_DIR
+
+# Install the daemon
+RUN cd $SRC_DIR \
+  && CGO_ENABLED=0 GOOS=linux go build -o textiled cmd/textiled/main.go
 
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1.31.0-glibc
@@ -41,7 +41,7 @@ LABEL maintainer="Textile <contact@textile.io>"
 
 # Get the textile binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /textile
-COPY --from=0 /go/bin/textiled /usr/local/bin/textiled
+COPY --from=0 /textile/textiled /usr/local/bin/textiled
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
