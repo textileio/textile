@@ -90,7 +90,7 @@ func (k *APIKeys) Get(ctx context.Context, key string) (*APIKey, error) {
 	if err := res.Decode(&raw); err != nil {
 		return nil, err
 	}
-	return decodeKey(raw)
+	return decodeAPIKey(raw)
 }
 
 func (k *APIKeys) List(ctx context.Context, owner crypto.PubKey) ([]APIKey, error) {
@@ -108,7 +108,7 @@ func (k *APIKeys) List(ctx context.Context, owner crypto.PubKey) ([]APIKey, erro
 		if err := cursor.Decode(&raw); err != nil {
 			return nil, err
 		}
-		doc, err := decodeKey(raw)
+		doc, err := decodeAPIKey(raw)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,16 @@ func (k *APIKeys) Invalidate(ctx context.Context, key string) error {
 	return nil
 }
 
-func decodeKey(raw bson.M) (*APIKey, error) {
+func (k *APIKeys) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
+	ownerID, err := crypto.MarshalPublicKey(owner)
+	if err != nil {
+		return err
+	}
+	_, err = k.col.DeleteMany(ctx, bson.M{"owner_id": ownerID})
+	return err
+}
+
+func decodeAPIKey(raw bson.M) (*APIKey, error) {
 	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err

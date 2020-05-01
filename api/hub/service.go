@@ -7,14 +7,22 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	threads "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
+	net "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/db"
+	netclient "github.com/textileio/go-threads/net/api/client"
+	"github.com/textileio/textile/api/buckets"
 	"github.com/textileio/textile/api/common"
 	pb "github.com/textileio/textile/api/hub/pb"
 	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
+	"github.com/textileio/textile/ipns"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
@@ -31,13 +39,18 @@ var (
 type Service struct {
 	Collections *c.Collections
 	Threads     *threads.Client
+	ThreadsNet  *netclient.Client
 
+	IPFSClient  iface.CoreAPI
 	EmailClient *email.Client
 
 	GatewayUrl string
 
 	SessionBus    *broadcast.Broadcaster
 	SessionSecret string
+
+	DNSManager  *dns.Manager
+	IPNSManager *ipns.Manager
 }
 
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
@@ -344,7 +357,6 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 	return &pb.ListOrgsReply{List: list}, nil
 }
 
-// @todo: Delete org objects.
 func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgReply, error) {
 	log.Debugf("received remove org request")
 
@@ -361,7 +373,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 		return nil, status.Error(codes.PermissionDenied, "User must be an org owner")
 	}
 
-	if err = s.Collections.Accounts.Delete(ctx, org.Key); err != nil {
+	if err = s.destroyAccount(ctx, org); err != nil {
 		return nil, err
 	}
 	return &pb.RemoveOrgReply{}, nil
@@ -403,6 +415,9 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if err := s.Collections.Accounts.RemoveMember(ctx, org.Username, dev.Key); err != nil {
 		return nil, err
 	}
+	if err := s.Collections.Invites.DeleteByFromAndOrg(ctx, dev.Key, org.Username); err != nil {
+		return nil, err
+	}
 	return &pb.LeaveOrgReply{}, nil
 }
 
@@ -435,4 +450,62 @@ func ownerFromContext(ctx context.Context) crypto.PubKey {
 		return dev.Key
 	}
 	return org.Key
+}
+
+func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
+	ts, err := s.Collections.Threads.List(ctx, a.Key)
+	if err != nil {
+		return err
+	}
+	for _, t := range ts {
+		if t.IsDB {
+			// Clean up bucket pins, keys, and dns records.
+			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &buckets.Bucket{}, db.WithTxnToken(a.Token))
+			if err != nil {
+				return err
+			}
+			for _, b := range bres.([]*buckets.Bucket) {
+				if err = s.IPFSClient.Pin().Rm(ctx, path.New(b.Path)); err != nil {
+					return err
+				}
+				if err = s.IPNSManager.RemoveKey(ctx, b.Key); err != nil {
+					return err
+				}
+				if b.DNSRecord != "" && s.DNSManager != nil {
+					if err = s.DNSManager.DeleteRecord(b.DNSRecord); err != nil {
+						return err
+					}
+				}
+			}
+			// Delete the entire DB.
+			if err := s.Threads.DeleteDB(ctx, t.ID, db.WithManagedDBToken(a.Token)); err != nil {
+				return err
+			}
+		} else {
+			// Delete the entire thread.
+			if err := s.ThreadsNet.DeleteThread(ctx, t.ID, net.WithThreadToken(a.Token)); err != nil {
+				return err
+			}
+		}
+	}
+	// Stop tracking the deleted threads.
+	if err = s.Collections.Threads.DeleteByOwner(ctx, a.Key); err != nil {
+		return err
+	}
+
+	// Clean up other associated objects.
+	if err = s.Collections.APIKeys.DeleteByOwner(ctx, a.Key); err != nil {
+		return err
+	}
+	if err = s.Collections.Sessions.DeleteByOwner(ctx, a.Key); err != nil {
+		return err
+	}
+	if a.Type == c.Org {
+		if err = s.Collections.Invites.DeleteByOrg(ctx, a.Username); err != nil {
+			return err
+		}
+	}
+
+	// Finally, delete the account.
+	return s.Collections.Accounts.Delete(ctx, a.Key)
 }

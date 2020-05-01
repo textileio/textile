@@ -78,3 +78,19 @@ func TestAPIKeys_Invalidate(t *testing.T) {
 	require.Nil(t, err)
 	require.False(t, got.Valid)
 }
+
+func TestAPIKeys_DeleteByOwner(t *testing.T) {
+	db := newDB(t)
+	col, err := NewAPIKeys(context.Background(), db)
+	require.Nil(t, err)
+
+	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), owner, UserKey)
+	require.Nil(t, err)
+
+	err = col.DeleteByOwner(context.Background(), owner)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.Key)
+	require.NotNil(t, err)
+}

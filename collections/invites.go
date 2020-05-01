@@ -127,6 +127,29 @@ func (i *Invites) Delete(ctx context.Context, token string) error {
 	return nil
 }
 
+func (i *Invites) DeleteByFrom(ctx context.Context, from crypto.PubKey) error {
+	fromID, err := crypto.MarshalPublicKey(from)
+	if err != nil {
+		return err
+	}
+	_, err = i.col.DeleteMany(ctx, bson.M{"from_id": fromID})
+	return err
+}
+
+func (i *Invites) DeleteByOrg(ctx context.Context, org string) error {
+	_, err := i.col.DeleteMany(ctx, bson.M{"org": org})
+	return err
+}
+
+func (i *Invites) DeleteByFromAndOrg(ctx context.Context, from crypto.PubKey, org string) error {
+	fromID, err := crypto.MarshalPublicKey(from)
+	if err != nil {
+		return err
+	}
+	_, err = i.col.DeleteMany(ctx, bson.M{"from_id": fromID, "org": org})
+	return err
+}
+
 func decodeInvite(raw bson.M) (*Invite, error) {
 	from, err := crypto.UnmarshalPublicKey(raw["from_id"].(primitive.Binary).Data)
 	if err != nil {

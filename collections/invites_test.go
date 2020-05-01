@@ -92,3 +92,51 @@ func TestInvites_Delete(t *testing.T) {
 	_, err = col.Get(context.Background(), created.Token)
 	require.NotNil(t, err)
 }
+
+func TestInvites_DeleteByFrom(t *testing.T) {
+	db := newDB(t)
+	col, err := NewInvites(context.Background(), db)
+	require.Nil(t, err)
+
+	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	require.Nil(t, err)
+
+	err = col.DeleteByFrom(context.Background(), created.From)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.Token)
+	require.NotNil(t, err)
+}
+
+func TestInvites_DeleteByOrg(t *testing.T) {
+	db := newDB(t)
+	col, err := NewInvites(context.Background(), db)
+	require.Nil(t, err)
+
+	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	require.Nil(t, err)
+
+	err = col.DeleteByOrg(context.Background(), created.Org)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.Token)
+	require.NotNil(t, err)
+}
+
+func TestInvites_DeleteByFromAndOrg(t *testing.T) {
+	db := newDB(t)
+	col, err := NewInvites(context.Background(), db)
+	require.Nil(t, err)
+
+	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	require.Nil(t, err)
+
+	err = col.DeleteByFromAndOrg(context.Background(), from, created.Org)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.Token)
+	require.NotNil(t, err)
+}

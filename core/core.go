@@ -24,6 +24,7 @@ import (
 	tc "github.com/textileio/go-threads/common"
 	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/net/api"
+	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/buckets"
@@ -37,6 +38,7 @@ import (
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
+	"github.com/textileio/textile/ipns"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
@@ -57,10 +59,13 @@ var (
 type Textile struct {
 	co *c.Collections
 
-	ts tc.NetBoostrapper
-	th *threads.Client
+	ts  tc.NetBoostrapper
+	th  *threads.Client
+	thn *netclient.Client
+	fc  *filc.Client
 
-	fc *filc.Client
+	ipnsm *ipns.Manager
+	dnsm  *dns.Manager
 
 	server *grpc.Server
 	proxy  *http.Server
@@ -121,9 +126,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	var dnsm *dns.Manager
 	if conf.DNSToken != "" {
-		dnsm, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
+		t.dnsm, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
 		if err != nil {
 			return nil, err
 		}
@@ -133,6 +137,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	t.co, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
+	if err != nil {
+		return nil, err
+	}
+	t.ipnsm, err = ipns.NewManager(t.co.IPNSKeys, ic.Key(), ic.Name(), conf.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -160,10 +168,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.sessionBus = broadcast.NewBroadcaster(0)
 	hs := &hub.Service{
 		Collections:   t.co,
+		IPFSClient:    ic,
 		EmailClient:   ec,
 		GatewayUrl:    conf.AddrGatewayUrl,
 		SessionBus:    t.sessionBus,
 		SessionSecret: conf.SessionSecret,
+		DNSManager:    t.dnsm,
+		IPNSManager:   t.ipnsm,
 	}
 	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
@@ -172,8 +183,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPFSClient:     ic,
 		FilecoinClient: t.fc,
 		GatewayUrl:     conf.AddrGatewayUrl,
-		DNSManager:     dnsm,
-		IPNSManager:    buckets.NewIPNSManager(t.co.IPNSKeys, ic.Name()),
+		DNSManager:     t.dnsm,
+		IPNSManager:    t.ipnsm,
 	}
 	us := &users.Service{
 		Collections: t.co,
@@ -201,12 +212,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		hpb.RegisterAPIServer(t.server, hs)
 		bpb.RegisterAPIServer(t.server, bs)
 		upb.RegisterAPIServer(t.server, us)
-		if err := t.server.Serve(listener); err != nil {
-			if errors.Is(err, grpc.ErrServerStopped) {
-				bs.IPNSManager.Cancel()
-			} else {
-				log.Fatalf("serve error: %v", err)
-			}
+		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			log.Fatalf("serve error: %v", err)
 		}
 	}()
 	webrpc := grpcweb.WrapServer(
@@ -234,13 +241,18 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}()
 
-	// Start threads client
+	// Start threads clients
 	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	if err != nil {
 		return nil, err
 	}
 	bucks.Threads = t.th
 	hs.Threads = t.th
+	t.thn, err = netclient.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	if err != nil {
+		return nil, err
+	}
+	hs.ThreadsNet = t.thn
 
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)
@@ -284,6 +296,7 @@ func (t *Textile) Close() error {
 	if err := t.co.Close(); err != nil {
 		return err
 	}
+	t.ipnsm.Cancel()
 	return nil
 }
 
@@ -439,6 +452,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		key, _ := c.APIKeyFromContext(ctx)
 
 		var newID thread.ID
+		var isDB bool
 		var err error
 		switch method {
 		case "/threads.pb.API/NewDB":
@@ -446,6 +460,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
+			isDB = true
 		case "/threads.pb.API/NewDBFromAddr":
 			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
 			if err != nil {
@@ -455,6 +470,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
+			isDB = true
 		case "/threads.net.pb.API/CreateThread":
 			newID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
 			if err != nil {
@@ -510,7 +526,29 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.
 		if newID.Defined() {
-			if _, err := t.co.Threads.Create(ctx, newID, owner); err != nil {
+			if _, err := t.co.Threads.Create(ctx, newID, owner, isDB); err != nil {
+				return nil, err
+			}
+		}
+
+		// Track the thread ID marked for deletion.
+		var deleteID thread.ID
+		switch method {
+		case "/threads.pb.API/DeleteDB":
+			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
+			if err != nil {
+				return nil, err
+			}
+			keys, err := t.co.IPNSKeys.List(ctx, deleteID)
+			if err != nil {
+				return nil, err
+			}
+			if len(keys) != 0 {
+				return nil, status.Error(codes.FailedPrecondition, "DB not empty. Delete buckets first.")
+			}
+		case "/threads.net.pb.API/DeleteThread":
+			deleteID, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
+			if err != nil {
 				return nil, err
 			}
 		}
@@ -528,21 +566,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		// Clean up the tracked thread if it was deleted.
-		var deleteID thread.ID
-		switch method {
-		case "/threads.pb.API/DeleteDB":
-			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
-			if err != nil {
-				return res, err
-			}
-		case "/threads.net.pb.API/DeleteThread":
-			deleteID, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
-			if err != nil {
-				return res, err
-			}
-		default:
-			return res, nil
-		}
 		if deleteID.Defined() {
 			if err := t.co.Threads.Delete(ctx, deleteID, owner); err != nil {
 				return nil, err

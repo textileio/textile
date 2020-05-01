@@ -30,6 +30,7 @@ type Thread struct {
 	Owner     crypto.PubKey
 	Name      string
 	Key       string
+	IsDB      bool
 	CreatedAt time.Time
 }
 
@@ -56,7 +57,7 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 	return t, err
 }
 
-func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey) (*Thread, error) {
+func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey, isDB bool) (*Thread, error) {
 	name, _ := common.ThreadNameFromContext(ctx)
 	if name != "" && !threadNameRx.MatchString(name) {
 		return nil, ErrInvalidThreadName
@@ -67,6 +68,7 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey)
 		Owner:     owner,
 		Name:      name,
 		Key:       key,
+		IsDB:      isDB,
 		CreatedAt: time.Now(),
 	}
 	ownerID, err := crypto.MarshalPublicKey(owner)
@@ -76,6 +78,7 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey)
 	raw := bson.M{
 		"_id":        bson.D{{"owner", ownerID}, {"thread", id.Bytes()}},
 		"key_id":     doc.Key,
+		"is_db":      doc.IsDB,
 		"created_at": doc.CreatedAt,
 	}
 	if doc.Name != "" {
@@ -184,6 +187,15 @@ func (t *Threads) Delete(ctx context.Context, id thread.ID, owner crypto.PubKey)
 	return nil
 }
 
+func (t *Threads) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
+	ownerID, err := crypto.MarshalPublicKey(owner)
+	if err != nil {
+		return err
+	}
+	_, err = t.col.DeleteMany(ctx, bson.M{"_id.owner": ownerID})
+	return err
+}
+
 func decodeThread(raw bson.M) (*Thread, error) {
 	rid := raw["_id"].(bson.M)
 	owner, err := crypto.UnmarshalPublicKey(rid["owner"].(primitive.Binary).Data)
@@ -202,6 +214,12 @@ func decodeThread(raw bson.M) (*Thread, error) {
 	if raw["key_id"] != nil {
 		key = raw["key_id"].(string)
 	}
+	var isDB bool
+	if v, ok := raw["is_db"]; ok {
+		isDB = v.(bool)
+	} else {
+		isDB = true
+	}
 	var created time.Time
 	if v, ok := raw["created_at"]; ok {
 		created = v.(primitive.DateTime).Time()
@@ -211,6 +229,7 @@ func decodeThread(raw bson.M) (*Thread, error) {
 		Owner:     owner,
 		Name:      name,
 		Key:       key,
+		IsDB:      isDB,
 		CreatedAt: created,
 	}, nil
 }

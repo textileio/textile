@@ -37,6 +37,7 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 	return &pb.GetThreadReply{
 		ID:   thrd.ID.Bytes(),
 		Name: thrd.Name,
+		IsDB: thrd.IsDB,
 	}, nil
 }
 
@@ -58,6 +59,7 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 		reply.List[i] = &pb.GetThreadReply{
 			ID:   t.ID.Bytes(),
 			Name: t.Name,
+			IsDB: t.IsDB,
 		}
 	}
 	return reply, nil
