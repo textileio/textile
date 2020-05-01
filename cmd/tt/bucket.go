@@ -30,7 +30,7 @@ func init() {
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketPathCmd.PersistentFlags().Bool("existing", false, "If set, initalizes from an existing remote Bucket")
+	initBucketPathCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote Bucket")
 
 	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
 		cmd.Fatal(err)
@@ -78,7 +78,10 @@ Existing configs will not be overwritten.
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
 
-		existing := configViper.GetBool("existing")
+		existing, err := c.Flags().GetBool("existing")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 
 		if existing {
 			ctx, cancel := authCtx(cmdTimeout)
