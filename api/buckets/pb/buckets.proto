@@ -12,9 +12,17 @@ message InitRequest {
 
 message InitReply {
     Root root = 1;
-    string URL = 2;
-    string WWW = 3;
-    string IPNS = 4;
+    LinksReply links = 2;
+}
+
+message LinksRequest {
+    string key = 1;
+}
+
+message LinksReply {
+    string URL = 1;
+    string WWW = 2;
+    string IPNS = 3;
 }
 
 message Root {
@@ -100,6 +108,7 @@ message RemovePathReply {}
 
 service API {
     rpc Init(InitRequest) returns (InitReply) {}
+    rpc Links(LinksRequest) returns (LinksReply) {}
     rpc List(ListRequest) returns (ListReply) {}
     rpc ListPath(ListPathRequest) returns (ListPathReply) {}
     rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}

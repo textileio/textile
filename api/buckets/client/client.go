@@ -47,6 +47,12 @@ func (c *Client) Init(ctx context.Context, name string) (*pb.InitReply, error) {
 	})
 }
 
+func (c *Client) Links(ctx context.Context, key string) (*pb.LinksReply, error) {
+	return c.c.Links(ctx, &pb.LinksRequest{
+		Key: key,
+	})
+}
+
 // List returns a list of all bucket roots.
 func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
 	return c.c.List(ctx, &pb.ListRequest{})

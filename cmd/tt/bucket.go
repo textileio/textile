@@ -24,7 +24,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketPathCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
+	bucketCmd.AddCommand(initBucketPathCmd, linksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
 
 	initBucketPathCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
@@ -197,12 +197,7 @@ Existing configs will not be overwritten.
 			}
 			configViper.Set("key", buck.Root.Key)
 
-			cmd.Message("Your bucket links:")
-			cmd.Message("%s Thread link", aurora.White(buck.URL).Bold())
-			if buck.WWW != "" {
-				cmd.Message("%s Bucket website", aurora.White(buck.WWW).Bold())
-			}
-			cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(buck.IPNS).Bold())
+			printLinks(buck.Links)
 		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
@@ -215,6 +210,37 @@ Existing configs will not be overwritten.
 		} else {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 		}
+	},
+}
+
+func printLinks(reply *pb.LinksReply) {
+	cmd.Message("Your bucket links:")
+	cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
+	if reply.WWW != "" {
+		cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
+	}
+	cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(reply.IPNS).Bold())
+}
+
+var linksCmd = &cobra.Command{
+	Use:   "links",
+	Short: "Print links to where this Bucket can be accessed",
+	Long:  `Print links to where this Bucket can be accessed.`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		reply, err := buckets.Links(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		printLinks(reply)
 	},
 }
 
