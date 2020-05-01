@@ -137,7 +137,6 @@ func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
 		WWW:  www,
 		IPNS: ipns,
 	}
-	log.Warnf("WTF %v", reply)
 	return reply
 }
 
