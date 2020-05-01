@@ -66,14 +66,6 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/thread/%s/buckets/%s", s.GatewayUrl, dbID, buck.Key)
-	var www string
-	if s.DNSManager != nil && s.DNSManager.Domain != "" {
-		scheme := strings.Split(s.GatewayUrl, "://")[0]
-		www = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
-	}
-	ipns := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
-
 	return &pb.InitReply{
 		Root: &pb.Root{
 			Key:       buck.Key,
@@ -82,9 +74,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
-		URL:  url,
-		WWW:  www,
-		IPNS: ipns,
+		Links: s.createLinks(dbID, buck),
 	}, nil
 }
 
@@ -132,6 +122,36 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	}
 	go s.IPNSManager.publish(pth, buck.Key)
 	return buck, nil
+}
+
+func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
+	url := fmt.Sprintf("%s/thread/%s/buckets/%s", s.GatewayUrl, dbID, buck.Key)
+	var www string
+	if s.DNSManager != nil && s.DNSManager.Domain != "" {
+		scheme := strings.Split(s.GatewayUrl, "://")[0]
+		www = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
+	}
+	ipns := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
+	reply := &pb.LinksReply{
+		URL:  url,
+		WWW:  www,
+		IPNS: ipns,
+	}
+	return reply
+}
+
+func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksReply, error) {
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	return s.createLinks(dbID, buck), nil
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
