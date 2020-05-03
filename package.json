@@ -2,8 +2,8 @@
   "name": "@textile/textile",
   "version": "0.0.0",
   "description": "JS lib for interacting with Textile APIs.",
-  "main": "dist/src/API.js",
-  "types": "dist/src/API.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test:node": "mocha --exit --require ts-node/register --require source-map-support/register --recursive src/**.spec.ts",
