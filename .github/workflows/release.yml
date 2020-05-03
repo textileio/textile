@@ -33,7 +33,7 @@ jobs:
       - name: Compile
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
-          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="textile-{{.OS}}-{{.Arch}}" ./cmd/textile
+          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="tt-{{.OS}}-{{.Arch}}" ./cmd/tt
       - name: Collect artifacts
         run: |
           VERSION=${GITHUB_REF##*/}
@@ -49,13 +49,13 @@ jobs:
           do
               OSARCH=${i%.*}
               EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-              cp ../textile-${i} textile${EXT}
+              cp ../tt-${i} tt${EXT}
               if [ "${EXT}" == ".exe" ]; then
-                  zip textile_${VERSION}_${OSARCH}.zip LICENSE README.md textile${EXT}
-                  mv textile_${VERSION}_${OSARCH}.zip ../${OUT}/
+                  zip tt_${VERSION}_${OSARCH}.zip LICENSE README.md tt${EXT}
+                  mv tt_${VERSION}_${OSARCH}.zip ../${OUT}/
               else
-                  tar -czvf textile_${VERSION}_${OSARCH}.tar.gz LICENSE README.md install textile
-                  mv textile_${VERSION}_${OSARCH}.tar.gz ../${OUT}/
+                  tar -czvf tt_${VERSION}_${OSARCH}.tar.gz LICENSE README.md install tt
+                  mv tt_${VERSION}_${OSARCH}.tar.gz ../${OUT}/
               fi
           done
           cd .. && rm -rf tmp
@@ -63,5 +63,5 @@ jobs:
       - name: Upload multiple assets to release
         uses: AButler/upload-release-assets@v2.0
         with:
-          files: 'release/cli/textile_*'
+          files: 'release/cli/tt_*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
