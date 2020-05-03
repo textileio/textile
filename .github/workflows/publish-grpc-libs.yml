@@ -1,7 +1,11 @@
-name: Publish gRPC Libs
+name: Mock publish gRPC Libs
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
 
   publish_grpc_libs:
@@ -48,13 +52,6 @@ jobs:
         run: |
           make clean && make
         working-directory: ./api/hub/pb
-      - name: Publish Hub gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/hub/pb/javascript
       - name: Get Buckets gRPC dependencies
         run: |
           npm install
@@ -64,13 +61,6 @@ jobs:
         run: |
           make clean && make
         working-directory: ./api/buckets/pb
-      - name: Publish Buckets gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/buckets/pb/javascript
       - name: Get Users gRPC dependencies
         run: |
           npm install
@@ -80,10 +70,3 @@ jobs:
         run: |
           make clean && make
         working-directory: ./api/users/pb
-      - name: Publish Users gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/users/pb/javascript
