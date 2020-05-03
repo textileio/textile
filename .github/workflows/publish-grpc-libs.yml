@@ -10,7 +10,7 @@ jobs:
 
   publish_grpc_libs:
     name: Mock publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Check out code
         uses: actions/checkout@v1
