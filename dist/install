@@ -8,7 +8,7 @@ set -Eeuo pipefail
 
 INSTALL_DIR="$(dirname "$0")"
 
-textile="$INSTALL_DIR/textile"
+tt="$INSTALL_DIR/tt"
 binpaths="/usr/local/bin /usr/bin"
 
 # This variable contains a nonzero length string in case the script fails
@@ -16,8 +16,8 @@ binpaths="/usr/local/bin /usr/bin"
 is_write_perm_missing=""
 
 for binpath in $binpaths; do
-	if mv "$textile" "$binpath/$textile" 2>/dev/null; then
-		echo "Moved $textile to $binpath"
+	if mv "$tt" "$binpath/$tt" 2>/dev/null; then
+		echo "Moved $tt to $binpath"
 		exit 0
 	else
 		if test -d "$binpath" && ! test -w "$binpath"; then
@@ -26,7 +26,7 @@ for binpath in $binpaths; do
 	fi
 done
 
-echo "We cannot install $textile in one of the directories $binpaths"
+echo "We cannot install $tt in one of the directories $binpaths"
 
 if test -n "$is_write_perm_missing"; then
 	echo "It seems that we do not have the necessary write permissions."
