@@ -72,7 +72,7 @@ func TestThreads_GetByName(t *testing.T) {
 	assert.Equal(t, created.ID, got.ID)
 }
 
-func TestThreads_List(t *testing.T) {
+func TestThreads_ListByOwner(t *testing.T) {
 	db := newDB(t)
 	ctx := context.Background()
 	col, err := NewThreads(ctx, db)
@@ -85,13 +85,13 @@ func TestThreads_List(t *testing.T) {
 	_, err = col.Create(ctx, thread.NewIDV1(thread.Raw, 32), owner1, true)
 	require.Nil(t, err)
 
-	list1, err := col.List(ctx, owner1)
+	list1, err := col.ListByOwner(ctx, owner1)
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(list1))
 
 	_, owner2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	list2, err := col.List(ctx, owner2)
+	list2, err := col.ListByOwner(ctx, owner2)
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(list2))
 }
@@ -118,7 +118,7 @@ func TestThreads_ListByKey(t *testing.T) {
 
 	_, owner3, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	list2, err := col.List(ctx, owner3)
+	list2, err := col.ListByOwner(ctx, owner3)
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(list2))
 }

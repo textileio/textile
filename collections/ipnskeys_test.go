@@ -49,7 +49,7 @@ func TestIPNSKeys_GetByCid(t *testing.T) {
 	assert.Equal(t, threadID, got.ThreadID)
 }
 
-func TestIPNSKeys_List(t *testing.T) {
+func TestIPNSKeys_ListByThreadID(t *testing.T) {
 	db := newDB(t)
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.Nil(t, err)
@@ -60,11 +60,11 @@ func TestIPNSKeys_List(t *testing.T) {
 	err = col.Create(context.Background(), "foo2", "cid2", threadID)
 	require.Nil(t, err)
 
-	list1, err := col.List(context.Background(), threadID)
+	list1, err := col.ListByThreadID(context.Background(), threadID)
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(list1))
 
-	list2, err := col.List(context.Background(), thread.NewIDV1(thread.Raw, 32))
+	list2, err := col.ListByThreadID(context.Background(), thread.NewIDV1(thread.Raw, 32))
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(list2))
 }

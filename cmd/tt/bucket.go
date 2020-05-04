@@ -403,10 +403,8 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		prompt := promptui.Prompt{
-			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(names)),
-			Validate: func(in string) error {
-				return nil
-			},
+			Label:     fmt.Sprintf("Push %d files?", len(names)),
+			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
 			cmd.End("")

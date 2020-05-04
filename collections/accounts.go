@@ -299,7 +299,7 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 	return nil
 }
 
-func (a *Accounts) List(ctx context.Context, member crypto.PubKey) ([]Account, error) {
+func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Account, error) {
 	mid, err := crypto.MarshalPublicKey(member)
 	if err != nil {
 		return nil, err

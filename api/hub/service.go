@@ -91,7 +91,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 
 	// Check for pending invites
-	invites, err := s.Collections.Invites.List(ctx, dev.Email)
+	invites, err := s.Collections.Invites.ListByEmail(ctx, dev.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 	log.Debugf("received list keys request")
 
 	owner := ownerFromContext(ctx)
-	keys, err := s.Collections.APIKeys.List(ctx, owner)
+	keys, err := s.Collections.APIKeys.ListByOwner(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 	log.Debugf("received list orgs request")
 
 	dev, _ := c.DevFromContext(ctx)
-	orgs, err := s.Collections.Accounts.List(ctx, dev.Key)
+	orgs, err := s.Collections.Accounts.ListByMember(ctx, dev.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -443,6 +443,16 @@ func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvail
 	}, nil
 }
 
+func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountRequest) (*pb.DestroyAccountReply, error) {
+	log.Debugf("received destroy account request")
+
+	dev, _ := c.DevFromContext(ctx)
+	if err := s.destroyAccount(ctx, dev); err != nil {
+		return nil, err
+	}
+	return &pb.DestroyAccountReply{}, nil
+}
+
 func ownerFromContext(ctx context.Context) crypto.PubKey {
 	org, ok := c.OrgFromContext(ctx)
 	if !ok {
@@ -453,10 +463,23 @@ func ownerFromContext(ctx context.Context) crypto.PubKey {
 }
 
 func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
-	ts, err := s.Collections.Threads.List(ctx, a.Key)
+	// Collect threads owned directly or via an API key
+	ts, err := s.Collections.Threads.ListByOwner(ctx, a.Key)
 	if err != nil {
 		return err
 	}
+	keys, err := s.Collections.APIKeys.ListByOwner(ctx, a.Key)
+	if err != nil {
+		return err
+	}
+	for _, k := range keys {
+		kts, err := s.Collections.Threads.ListByKey(ctx, k.Key)
+		if err != nil {
+			return err
+		}
+		ts = append(ts, kts...)
+	}
+
 	for _, t := range ts {
 		if t.IsDB {
 			// Clean up bucket pins, keys, and dns records.

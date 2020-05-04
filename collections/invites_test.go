@@ -39,12 +39,12 @@ func TestInvites_Get(t *testing.T) {
 	assert.Equal(t, created.Token, got.Token)
 }
 
-func TestInvites_List(t *testing.T) {
+func TestInvites_ListByEmail(t *testing.T) {
 	db := newDB(t)
 	col, err := NewInvites(context.Background(), db)
 	require.Nil(t, err)
 
-	list, err := col.List(context.Background(), "jane@doe.com")
+	list, err := col.ListByEmail(context.Background(), "jane@doe.com")
 	require.Nil(t, err)
 	require.Empty(t, list)
 
@@ -53,7 +53,7 @@ func TestInvites_List(t *testing.T) {
 	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
 	require.Nil(t, err)
 
-	list, err = col.List(context.Background(), "jane@doe.com")
+	list, err = col.ListByEmail(context.Background(), "jane@doe.com")
 	require.Nil(t, err)
 	require.Equal(t, 1, len(list))
 	require.Equal(t, created.Token, list[0].Token)

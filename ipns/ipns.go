@@ -29,11 +29,12 @@ const (
 
 // Manager handles bucket name publishing to IPNS.
 type Manager struct {
-	keys     *c.IPNSKeys
-	keyAPI   iface.KeyAPI
-	nameAPI  iface.NameAPI
-	lock     sync.Mutex
-	locks    map[string]chan struct{}
+	keys    *c.IPNSKeys
+	keyAPI  iface.KeyAPI
+	nameAPI iface.NameAPI
+
+	sync.Mutex
+	keyLocks map[string]chan struct{}
 	ctxsLock sync.Mutex
 	ctxs     map[string]context.CancelFunc
 }
@@ -48,11 +49,11 @@ func NewManager(keys *c.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, de
 		}
 	}
 	return &Manager{
-		keys:    keys,
-		keyAPI:  keyAPI,
-		nameAPI: nameAPI,
-		ctxs:    make(map[string]context.CancelFunc),
-		locks:   make(map[string]chan struct{}),
+		keys:     keys,
+		keyAPI:   keyAPI,
+		nameAPI:  nameAPI,
+		ctxs:     make(map[string]context.CancelFunc),
+		keyLocks: make(map[string]chan struct{}),
 	}, nil
 }
 
@@ -134,8 +135,8 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 
 // Cancel all pending publishes.
 func (m *Manager) Cancel() {
-	m.lock.Unlock()
-	defer m.lock.Unlock()
+	m.Lock()
+	defer m.Unlock()
 	for _, cancel := range m.ctxs {
 		cancel()
 	}
@@ -157,11 +158,11 @@ func (m *Manager) publishUnsafe(ctx context.Context, pth path.Path, keyID string
 func (m *Manager) getSemaphore(key string) chan struct{} {
 	var ptl chan struct{}
 	var ok bool
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	if ptl, ok = m.locks[key]; !ok {
+	m.Lock()
+	defer m.Unlock()
+	if ptl, ok = m.keyLocks[key]; !ok {
 		ptl = make(chan struct{}, 1)
-		m.locks[key] = ptl
+		m.keyLocks[key] = ptl
 	}
 	return ptl
 }

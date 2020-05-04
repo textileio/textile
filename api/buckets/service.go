@@ -120,11 +120,11 @@ func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
 		scheme := strings.Split(s.GatewayUrl, "://")[0]
 		www = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
 	}
-	ipns := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
+	ipnswww := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
 	reply := &pb.LinksReply{
 		URL:  url,
 		WWW:  www,
-		IPNS: ipns,
+		IPNS: ipnswww,
 	}
 	return reply
 }

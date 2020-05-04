@@ -20,7 +20,7 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-var sessionSecret = NewUsername()
+var SessionSecret = NewUsername()
 
 func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
@@ -50,7 +50,7 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailApiKey: "",
 
-		SessionSecret: sessionSecret,
+		SessionSecret: SessionSecret,
 
 		Debug: true,
 	}
@@ -84,9 +84,7 @@ func Signup(t *testing.T, client *client.Client, conf core.Config, username, ema
 		res, err = client.Signup(context.Background(), username, email)
 		require.Nil(t, err)
 	}()
-
-	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
-
+	ConfirmEmail(t, conf.AddrGatewayUrl, SessionSecret)
 	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
@@ -103,16 +101,14 @@ func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEma
 		res, err = client.Signin(context.Background(), usernameOrEmail)
 		require.Nil(t, err)
 	}()
-
-	confirmEmail(t, conf.AddrGatewayUrl, sessionSecret)
-
+	ConfirmEmail(t, conf.AddrGatewayUrl, SessionSecret)
 	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
 	return res
 }
 
-func confirmEmail(t *testing.T, gurl string, secret string) {
+func ConfirmEmail(t *testing.T, gurl string, secret string) {
 	time.Sleep(time.Second)
 	url := fmt.Sprintf("%s/confirm/%s", gurl, secret)
 	_, err := http.Get(url)

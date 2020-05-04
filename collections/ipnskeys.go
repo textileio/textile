@@ -68,7 +68,7 @@ func (k *IPNSKeys) GetByCid(ctx context.Context, cid string) (*IPNSKey, error) {
 	return decodeIPNSKey(raw)
 }
 
-func (k *IPNSKeys) List(ctx context.Context, threadID thread.ID) ([]IPNSKey, error) {
+func (k *IPNSKeys) ListByThreadID(ctx context.Context, threadID thread.ID) ([]IPNSKey, error) {
 	cursor, err := k.col.Find(ctx, bson.M{"thread_id": threadID.Bytes()})
 	if err != nil {
 		return nil, err

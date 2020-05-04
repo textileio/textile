@@ -82,7 +82,7 @@ func (i *Invites) Get(ctx context.Context, token string) (*Invite, error) {
 	return decodeInvite(raw)
 }
 
-func (i *Invites) List(ctx context.Context, email string) ([]Invite, error) {
+func (i *Invites) ListByEmail(ctx context.Context, email string) ([]Invite, error) {
 	cursor, err := i.col.Find(ctx, bson.M{"email_to": email})
 	if err != nil {
 		return nil, err

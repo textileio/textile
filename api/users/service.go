@@ -48,7 +48,7 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	if !ok {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
-	list, err := s.Collections.Threads.List(ctx, user.Key)
+	list, err := s.Collections.Threads.ListByOwner(ctx, user.Key)
 	if err != nil {
 		return nil, err
 	}

@@ -539,7 +539,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
-			keys, err := t.co.IPNSKeys.List(ctx, deleteID)
+			keys, err := t.co.IPNSKeys.ListByThreadID(ctx, deleteID)
 			if err != nil {
 				return nil, err
 			}

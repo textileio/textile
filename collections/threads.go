@@ -122,7 +122,7 @@ func (t *Threads) GetByName(ctx context.Context, name string, owner crypto.PubKe
 	return decodeThread(raw)
 }
 
-func (t *Threads) List(ctx context.Context, owner crypto.PubKey) ([]Thread, error) {
+func (t *Threads) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]Thread, error) {
 	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err

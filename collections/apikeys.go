@@ -93,7 +93,7 @@ func (k *APIKeys) Get(ctx context.Context, key string) (*APIKey, error) {
 	return decodeAPIKey(raw)
 }
 
-func (k *APIKeys) List(ctx context.Context, owner crypto.PubKey) ([]APIKey, error) {
+func (k *APIKeys) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]APIKey, error) {
 	ownerID, err := crypto.MarshalPublicKey(owner)
 	if err != nil {
 		return nil, err

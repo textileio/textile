@@ -124,6 +124,10 @@ message IsOrgNameAvailableReply {
     string host = 2;
 }
 
+message DestroyAccountRequest {}
+
+message DestroyAccountReply {}
+
 service API {
     rpc Signup(SignupRequest) returns (SignupReply) {}
     rpc Signin(SigninRequest) returns (SigninReply) {}
@@ -144,4 +148,6 @@ service API {
 
     rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableReply) {}
     rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableReply) {}
+
+    rpc DestroyAccount(DestroyAccountRequest) returns (DestroyAccountReply) {}
 }
