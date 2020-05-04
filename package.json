@@ -61,7 +61,7 @@
     "@textile/hub-grpc": "1.0.1",
     "@textile/threads-client": "^0.3.0-rc.0",
     "@textile/threads-id": "0.0.2",
-    "@textile/users-grpc": "0.1.0-rc1",
+    "@textile/users-grpc": "1.0.1",
     "@types/google-protobuf": "^3.7.2",
     "axios": "^0.19.2",
     "cids": "^0.8.0",
