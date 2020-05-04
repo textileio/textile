@@ -57,7 +57,7 @@
   "license": "MIT",
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.12.0",
-    "@textile/buckets-grpc": "0.1.0-rc1",
+    "@textile/buckets-grpc": "1.0.1",
     "@textile/hub-grpc": "1.0.1",
     "@textile/threads-client": "^0.3.0-rc.0",
     "@textile/threads-id": "0.0.2",
