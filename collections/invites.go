@@ -82,11 +82,12 @@ func (i *Invites) Get(ctx context.Context, token string) (*Invite, error) {
 	return decodeInvite(raw)
 }
 
-func (i *Invites) List(ctx context.Context, email string) ([]Invite, error) {
+func (i *Invites) ListByEmail(ctx context.Context, email string) ([]Invite, error) {
 	cursor, err := i.col.Find(ctx, bson.M{"email_to": email})
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Invite
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -125,6 +126,29 @@ func (i *Invites) Delete(ctx context.Context, token string) error {
 		return mongo.ErrNoDocuments
 	}
 	return nil
+}
+
+func (i *Invites) DeleteByFrom(ctx context.Context, from crypto.PubKey) error {
+	fromID, err := crypto.MarshalPublicKey(from)
+	if err != nil {
+		return err
+	}
+	_, err = i.col.DeleteMany(ctx, bson.M{"from_id": fromID})
+	return err
+}
+
+func (i *Invites) DeleteByOrg(ctx context.Context, org string) error {
+	_, err := i.col.DeleteMany(ctx, bson.M{"org": org})
+	return err
+}
+
+func (i *Invites) DeleteByFromAndOrg(ctx context.Context, from crypto.PubKey, org string) error {
+	fromID, err := crypto.MarshalPublicKey(from)
+	if err != nil {
+		return err
+	}
+	_, err = i.col.DeleteMany(ctx, bson.M{"from_id": fromID, "org": org})
+	return err
 }
 
 func decodeInvite(raw bson.M) (*Invite, error) {

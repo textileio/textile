@@ -75,6 +75,7 @@ func TestClient_GetThread(t *testing.T) {
 		res, err := client.GetThread(ctx, "foo")
 		require.Nil(t, err)
 		assert.Equal(t, "foo", res.Name)
+		assert.True(t, res.IsDB)
 	})
 
 	t.Run("users keys", func(t *testing.T) {
@@ -106,6 +107,7 @@ func TestClient_GetThread(t *testing.T) {
 		res, err := client.GetThread(ctx, "foo")
 		require.Nil(t, err)
 		assert.Equal(t, "foo", res.Name)
+		assert.True(t, res.IsDB)
 	})
 }
 
@@ -157,6 +159,7 @@ func TestClient_ListThreads(t *testing.T) {
 		res, err = client.ListThreads(ctx)
 		require.Nil(t, err)
 		assert.Equal(t, 1, len(res.List))
+		assert.False(t, res.List[0].IsDB)
 	})
 
 	t.Run("users keys", func(t *testing.T) {
@@ -189,6 +192,7 @@ func TestClient_ListThreads(t *testing.T) {
 		require.Nil(t, err)
 		assert.Equal(t, 1, len(res.List))
 		assert.Equal(t, "foo", res.List[0].Name)
+		assert.True(t, res.List[0].IsDB)
 	})
 }
 

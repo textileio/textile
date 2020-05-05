@@ -99,6 +99,15 @@ func (s *Sessions) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *Sessions) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
+	ownerID, err := crypto.MarshalPublicKey(owner)
+	if err != nil {
+		return err
+	}
+	_, err = s.col.DeleteMany(ctx, bson.M{"owner_id": ownerID})
+	return err
+}
+
 func decodeSession(raw bson.M) (*Session, error) {
 	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {

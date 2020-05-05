@@ -31,11 +31,11 @@ var orgsCmd = &cobra.Command{
 
 var createOrgsCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create an Org",
+	Short: "Create an org",
 	Long:  `Create a new organization (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
-			Label: "Choose an Org name",
+			Label: "Choose an org name",
 			Templates: &promptui.PromptTemplates{
 				Valid: fmt.Sprintf("%s {{ . | bold }}%s ", bold(promptui.IconInitial), bold(":")),
 			},
@@ -80,7 +80,7 @@ var lsOrgsCmd = &cobra.Command{
 	Aliases: []string{
 		"list",
 	},
-	Short: "List Orgs you're a member of",
+	Short: "List orgs you're a member of",
 	Long:  `List all the organizations that you're a member of.`,
 	Run: func(c *cobra.Command, args []string) {
 		lsOrgs()
@@ -111,7 +111,7 @@ func lsOrgs() {
 
 var membersOrgsCmd = &cobra.Command{
 	Use:   "members",
-	Short: "List Org members",
+	Short: "List org members",
 	Long:  `List current organization members (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
@@ -146,25 +146,33 @@ var rmOrgsCmd = &cobra.Command{
 	Aliases: []string{
 		"remove",
 	},
-	Short: "Remove an Org",
-	Long:  `Remove an organization (interactive). You must be the Org owner.`,
+	Short: "Remove an org",
+	Long:  `Remove an organization (interactive). You must be the org owner.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Remove org", aurora.Sprintf(
 			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
 		configViper.Set("org", selected.Slug)
+
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf("Delete org and all associated data?"),
+			IsConfirm: true,
+		}
+		if _, err := prompt.Run(); err != nil {
+			cmd.End("")
+		}
 
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
 		if err := hub.RemoveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Removed org %s", aurora.White(selected.Name).Bold())
+		cmd.Success("Removed org %s and all associated data", aurora.White(selected.Name).Bold())
 	},
 }
 
 var inviteOrgsCmd = &cobra.Command{
 	Use:   "invite",
-	Short: "Invite members to an Org",
+	Short: "Invite members to an org",
 	Long:  `Invite a new member to an organization.`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
@@ -195,7 +203,7 @@ var inviteOrgsCmd = &cobra.Command{
 
 var leaveOrgsCmd = &cobra.Command{
 	Use:   "leave",
-	Short: "Leave an Org",
+	Short: "Leave an org",
 	Long:  `Leave an organization (interactive).`,
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(

@@ -55,9 +55,12 @@ func lsThreads() {
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			data[i] = []string{id.String(), t.Name}
+			if t.Name == "" {
+				t.Name = "unnamed"
+			}
+			data[i] = []string{id.String(), t.Name, getThreadType(t.IsDB)}
 		}
-		cmd.RenderTable([]string{"id", "name"}, data)
+		cmd.RenderTable([]string{"id", "name", "type"}, data)
 	}
 	cmd.Message("Found %d threads", aurora.White(len(list.List)).Bold())
 }
@@ -65,9 +68,10 @@ func lsThreads() {
 type threadItem struct {
 	ID   string
 	Name string
+	Type string
 }
 
-func selectThread(label, successMsg string) *threadItem {
+func selectThread(label, successMsg string, dbsOnly bool) *threadItem {
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
 	list, err := users.ListThreads(ctx)
@@ -75,15 +79,25 @@ func selectThread(label, successMsg string) *threadItem {
 		cmd.Fatal(err)
 	}
 
-	items := make([]*threadItem, len(list.List))
-	for i, t := range list.List {
+	var items []*threadItem
+	for _, t := range list.List {
+		if dbsOnly && !t.IsDB {
+			continue
+		}
 		id, err := thread.Cast(t.ID)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		items[i] = &threadItem{ID: id.String(), Name: t.Name}
+		if t.Name == "" {
+			t.Name = "unnamed"
+		}
+		items = append(items, &threadItem{
+			ID:   id.String(),
+			Name: t.Name,
+			Type: getThreadType(t.IsDB),
+		})
 	}
-	items = append(items, &threadItem{ID: "Create new"})
+	items = append(items, &threadItem{ID: "Create new", Type: "db"})
 
 	prompt := promptui.Select{
 		Label: label,
@@ -91,6 +105,7 @@ func selectThread(label, successMsg string) *threadItem {
 		Templates: &promptui.SelectTemplates{
 			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
 			Inactive: `{{ .ID | faint }} {{ .Name | faint | bold }}`,
+			Details:  `{{ "(Type:" | faint }} {{ .Type | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,
 		},
 	}
@@ -99,4 +114,12 @@ func selectThread(label, successMsg string) *threadItem {
 		cmd.End("")
 	}
 	return items[index]
+}
+
+func getThreadType(isDB bool) string {
+	if isDB {
+		return "db"
+	} else {
+		return "log"
+	}
 }

@@ -30,7 +30,7 @@ func init() {
 	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
 	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketPathCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote Bucket")
+	initBucketPathCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote bucket")
 
 	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
 		cmd.Fatal(err)
@@ -82,11 +82,9 @@ Existing configs will not be overwritten.
 		if err != nil {
 			cmd.Fatal(err)
 		}
-
 		if existing {
 			ctx, cancel := authCtx(cmdTimeout)
 			defer cancel()
-
 			res, err := users.ListThreads(ctx)
 			if err != nil {
 				cmd.Fatal(err)
@@ -97,7 +95,7 @@ Existing configs will not be overwritten.
 				Name string
 				Key  string
 			}
-			var bucketInfos []bucketInfo
+			bucketInfos := make([]bucketInfo, 0)
 			for _, reply := range res.List {
 				id, err := thread.Cast(reply.ID)
 				if err != nil {
@@ -118,12 +116,12 @@ Existing configs will not be overwritten.
 			}
 
 			prompt := promptui.Select{
-				Label: "Which exiting Bucket do you want to init from?",
+				Label: "Which exiting bucket do you want to init from?",
 				Items: bucketInfos,
 				Templates: &promptui.SelectTemplates{
 					Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Key | faint | bold }}`, promptui.IconSelect),
 					Inactive: `{{ .Name | faint }} {{ .Key | faint | bold }}`,
-					Selected: aurora.Sprintf(aurora.BrightBlack("> Selected Bucket {{ .Name | white | bold }}")),
+					Selected: aurora.Sprintf(aurora.BrightBlack("> Selected bucket {{ .Name | white | bold }}")),
 				},
 			}
 			index, _, err := prompt.Run()
@@ -132,7 +130,6 @@ Existing configs will not be overwritten.
 			}
 
 			selected := bucketInfos[index]
-
 			configViper.Set("thread", selected.ID.String())
 			configViper.Set("key", selected.Key)
 		}
@@ -169,8 +166,8 @@ Existing configs will not be overwritten.
 		}
 
 		if !dbID.Defined() {
-			selected := selectThread("Buckets are written to a thread. Select an existing thread or create a new one", aurora.Sprintf(
-				aurora.BrightBlack("> Selected thread {{ .ID | white | bold }}")))
+			selected := selectThread("Buckets are written to a threadDB. Select or create a new one", aurora.Sprintf(
+				aurora.BrightBlack("> Selected threadDB {{ .ID | white | bold }}")), true)
 			if selected.ID == "Create new" {
 				ctx, cancel := threadCtx(cmdTimeout)
 				defer cancel()
@@ -224,8 +221,8 @@ func printLinks(reply *pb.LinksReply) {
 
 var linksCmd = &cobra.Command{
 	Use:   "links",
-	Short: "Print links to where this Bucket can be accessed",
-	Long:  `Print links to where this Bucket can be accessed.`,
+	Short: "Print links to where this bucket can be accessed",
+	Long:  `Print links to where this bucket can be accessed.`,
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -406,10 +403,8 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		prompt := promptui.Prompt{
-			Label: fmt.Sprintf("Add %d files? Press ENTER to confirm", len(names)),
-			Validate: func(in string) error {
-				return nil
-			},
+			Label:     fmt.Sprintf("Push %d files?", len(names)),
+			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
 			cmd.End("")

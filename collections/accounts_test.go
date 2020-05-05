@@ -240,7 +240,7 @@ func TestAccounts_IsNameAvailable(t *testing.T) {
 	assert.Equal(t, created.Username, name)
 }
 
-func TestAccounts_List(t *testing.T) {
+func TestAccounts_ListByMember(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
@@ -254,7 +254,7 @@ func TestAccounts_List(t *testing.T) {
 	}})
 	require.Nil(t, err)
 
-	list, err := col.List(context.Background(), mem)
+	list, err := col.ListByMember(context.Background(), mem)
 	require.Nil(t, err)
 	assert.Equal(t, 1, len(list))
 	assert.Equal(t, created.Name, list[0].Name)
@@ -386,7 +386,7 @@ func TestAccounts_RemoveMember(t *testing.T) {
 
 	err = col.RemoveMember(context.Background(), created.Name, mem2)
 	require.Nil(t, err)
-	list, err := col.List(context.Background(), mem2)
+	list, err := col.ListByMember(context.Background(), mem2)
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(list))
 }

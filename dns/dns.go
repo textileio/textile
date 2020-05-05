@@ -20,7 +20,6 @@ type Manager struct {
 
 	api    *cf.API
 	zoneID string
-	debug  bool
 }
 
 // NewManager return a cloudflare-backed dns updating client.
@@ -39,7 +38,6 @@ func NewManager(domain string, zoneID string, token string, debug bool) (*Manage
 	}
 	return &Manager{
 		Domain: domain,
-		debug:  debug,
 		api:    api,
 		zoneID: zoneID,
 	}, nil

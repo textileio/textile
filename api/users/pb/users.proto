@@ -19,6 +19,7 @@ message GetThreadRequest {
 message GetThreadReply {
     bytes ID = 1;
     string name = 2;
+    bool isDB = 3;
 }
 
 service API {

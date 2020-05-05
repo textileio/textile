@@ -37,6 +37,7 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 	return &pb.GetThreadReply{
 		ID:   thrd.ID.Bytes(),
 		Name: thrd.Name,
+		IsDB: thrd.IsDB,
 	}, nil
 }
 
@@ -47,7 +48,7 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	if !ok {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
-	list, err := s.Collections.Threads.List(ctx, user.Key)
+	list, err := s.Collections.Threads.ListByOwner(ctx, user.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +59,7 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 		reply.List[i] = &pb.GetThreadReply{
 			ID:   t.ID.Bytes(),
 			Name: t.Name,
+			IsDB: t.IsDB,
 		}
 	}
 	return reply, nil

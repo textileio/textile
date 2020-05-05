@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -368,6 +369,29 @@ func TestClient_IsOrgNameAvailable(t *testing.T) {
 	require.Equal(t, res.Slug, org.Slug)
 
 	res, err = client.IsOrgNameAvailable(ctx, name)
+	require.NotNil(t, err)
+}
+
+func TestClient_DestroyAccount(t *testing.T) {
+	t.Parallel()
+	conf, client, _, done := setup(t)
+	defer done()
+
+	username := apitest.NewUsername()
+	user := apitest.Signup(t, client, conf, username, apitest.NewEmail())
+	ctx := common.NewSessionContext(context.Background(), user.Session)
+
+	err := client.DestroyAccount(ctx)
+	require.Nil(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err = client.Signin(context.Background(), username)
+	}()
+	apitest.ConfirmEmail(t, conf.AddrGatewayUrl, apitest.SessionSecret)
+	wg.Wait()
 	require.NotNil(t, err)
 }
 

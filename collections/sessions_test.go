@@ -72,3 +72,19 @@ func TestSessions_Delete(t *testing.T) {
 	_, err = col.Get(context.Background(), created.ID)
 	require.NotNil(t, err)
 }
+
+func TestSessions_DeleteByOwner(t *testing.T) {
+	db := newDB(t)
+	col, err := NewSessions(context.Background(), db)
+	require.Nil(t, err)
+
+	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), owner)
+	require.Nil(t, err)
+
+	err = col.DeleteByOwner(context.Background(), created.Owner)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.ID)
+	require.NotNil(t, err)
+}

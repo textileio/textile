@@ -27,6 +27,9 @@ func NewIPNSKeys(ctx context.Context, db *mongo.Database) (*IPNSKeys, error) {
 		{
 			Keys: bson.D{{"cid", 1}},
 		},
+		{
+			Keys: bson.D{{"thread_id", 1}},
+		},
 	})
 	return k, err
 }
@@ -63,6 +66,30 @@ func (k *IPNSKeys) GetByCid(ctx context.Context, cid string) (*IPNSKey, error) {
 		return nil, err
 	}
 	return decodeIPNSKey(raw)
+}
+
+func (k *IPNSKeys) ListByThreadID(ctx context.Context, threadID thread.ID) ([]IPNSKey, error) {
+	cursor, err := k.col.Find(ctx, bson.M{"thread_id": threadID.Bytes()})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var docs []IPNSKey
+	for cursor.Next(ctx) {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
+			return nil, err
+		}
+		doc, err := decodeIPNSKey(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
 }
 
 func (k *IPNSKeys) Delete(ctx context.Context, name string) error {

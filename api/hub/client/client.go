@@ -125,3 +125,9 @@ func (c *Client) IsOrgNameAvailable(ctx context.Context, name string) (*pb.IsOrg
 		Name: name,
 	})
 }
+
+// DestroyAccount completely deletes an account and all associated data.
+func (c *Client) DestroyAccount(ctx context.Context) error {
+	_, err := c.c.DestroyAccount(ctx, &pb.DestroyAccountRequest{})
+	return err
+}

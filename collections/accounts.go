@@ -299,7 +299,7 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 	return nil
 }
 
-func (a *Accounts) List(ctx context.Context, member crypto.PubKey) ([]Account, error) {
+func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Account, error) {
 	mid, err := crypto.MarshalPublicKey(member)
 	if err != nil {
 		return nil, err
@@ -309,6 +309,7 @@ func (a *Accounts) List(ctx context.Context, member crypto.PubKey) ([]Account, e
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Account
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -340,6 +341,7 @@ func (a *Accounts) ListMembers(ctx context.Context, members []Member) ([]Account
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Account
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -428,6 +430,7 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member cry
 		if err != nil {
 			return err
 		}
+		defer cursor.Close(ctx)
 		type res struct {
 			Owners int `bson:"members"`
 		}

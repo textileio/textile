@@ -39,7 +39,7 @@ func TestAPIKeys_Get(t *testing.T) {
 	assert.Equal(t, created.Key, got.Key)
 }
 
-func TestAPIKeys_List(t *testing.T) {
+func TestAPIKeys_ListByOwner(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAPIKeys(context.Background(), db)
 	require.Nil(t, err)
@@ -51,13 +51,13 @@ func TestAPIKeys_List(t *testing.T) {
 	_, err = col.Create(context.Background(), owner1, UserKey)
 	require.Nil(t, err)
 
-	list1, err := col.List(context.Background(), owner1)
+	list1, err := col.ListByOwner(context.Background(), owner1)
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(list1))
 
 	_, owner2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	list2, err := col.List(context.Background(), owner2)
+	list2, err := col.ListByOwner(context.Background(), owner2)
 	require.Nil(t, err)
 	assert.Equal(t, 0, len(list2))
 }
@@ -77,4 +77,20 @@ func TestAPIKeys_Invalidate(t *testing.T) {
 	got, err := col.Get(context.Background(), created.Key)
 	require.Nil(t, err)
 	require.False(t, got.Valid)
+}
+
+func TestAPIKeys_DeleteByOwner(t *testing.T) {
+	db := newDB(t)
+	col, err := NewAPIKeys(context.Background(), db)
+	require.Nil(t, err)
+
+	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.Create(context.Background(), owner, UserKey)
+	require.Nil(t, err)
+
+	err = col.DeleteByOwner(context.Background(), owner)
+	require.Nil(t, err)
+	_, err = col.Get(context.Background(), created.Key)
+	require.NotNil(t, err)
 }

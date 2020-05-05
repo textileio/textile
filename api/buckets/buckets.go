@@ -12,7 +12,7 @@ import (
 	db "github.com/textileio/go-threads/db"
 )
 
-const cname = "buckets"
+const CollectionName = "buckets"
 
 var (
 	schema  *jsonschema.Schema
@@ -51,7 +51,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	ids, err := b.Threads.Create(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
+	ids, err := b.Threads.Create(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
@@ -71,7 +71,7 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...O
 		opt(args)
 	}
 	buck := &Bucket{}
-	if err := b.Threads.FindByID(ctx, dbID, cname, key, buck, db.WithTxnToken(args.Token)); err != nil {
+	if err := b.Threads.FindByID(ctx, dbID, CollectionName, key, buck, db.WithTxnToken(args.Token)); err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
@@ -88,7 +88,7 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*
 	for _, opt := range opts {
 		opt(args)
 	}
-	res, err := b.Threads.Find(ctx, dbID, cname, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
+	res, err := b.Threads.Find(ctx, dbID, CollectionName, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
 		if isCollNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
@@ -106,7 +106,7 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 	for _, opt := range opts {
 		opt(args)
 	}
-	return b.Threads.Save(ctx, dbID, cname, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
+	return b.Threads.Save(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 }
 
 func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts ...Option) error {
@@ -114,7 +114,7 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 	for _, opt := range opts {
 		opt(args)
 	}
-	return b.Threads.Delete(ctx, dbID, cname, []string{key}, db.WithTxnToken(args.Token))
+	return b.Threads.Delete(ctx, dbID, CollectionName, []string{key}, db.WithTxnToken(args.Token))
 }
 
 func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {
@@ -123,7 +123,7 @@ func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Opt
 		opt(args)
 	}
 	return b.Threads.NewCollection(ctx, dbID, db.CollectionConfig{
-		Name:    cname,
+		Name:    CollectionName,
 		Schema:  schema,
 		Indexes: indexes,
 	}, db.WithManagedDBToken(args.Token))
