@@ -154,7 +154,7 @@ var rmOrgsCmd = &cobra.Command{
 		configViper.Set("org", selected.Slug)
 
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Delete the entire org and all associated data?"),
+			Label:     fmt.Sprintf("Delete org and all associated data?"),
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
@@ -166,7 +166,7 @@ var rmOrgsCmd = &cobra.Command{
 		if err := hub.RemoveOrg(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Removed org %s", aurora.White(selected.Name).Bold())
+		cmd.Success("Removed org %s and all associated data", aurora.White(selected.Name).Bold())
 	},
 }
 

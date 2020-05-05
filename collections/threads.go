@@ -131,6 +131,7 @@ func (t *Threads) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]Threa
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Thread
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -154,6 +155,7 @@ func (t *Threads) ListByKey(ctx context.Context, key string) ([]Thread, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Thread
 	for cursor.Next(ctx) {
 		var raw bson.M

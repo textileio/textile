@@ -87,6 +87,7 @@ func (i *Invites) ListByEmail(ctx context.Context, email string) ([]Invite, erro
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Invite
 	for cursor.Next(ctx) {
 		var raw bson.M

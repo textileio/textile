@@ -73,6 +73,7 @@ func (k *IPNSKeys) ListByThreadID(ctx context.Context, threadID thread.ID) ([]IP
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []IPNSKey
 	for cursor.Next(ctx) {
 		var raw bson.M

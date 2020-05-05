@@ -102,6 +102,7 @@ func (k *APIKeys) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]APIKe
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []APIKey
 	for cursor.Next(ctx) {
 		var raw bson.M

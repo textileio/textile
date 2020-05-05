@@ -19,7 +19,7 @@ var destroyCmd = &cobra.Command{
 	Long:  `Destroy your account and all associated data.`,
 	Run: func(c *cobra.Command, args []string) {
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Delete your entire account and all associated data?"),
+			Label:     fmt.Sprintf("Delete account and all associated data?"),
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
@@ -32,6 +32,6 @@ var destroyCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		_ = os.RemoveAll(authViper.ConfigFileUsed())
-		cmd.Success("Your account and all associated data has been completely destroyed")
+		cmd.Success("Your account and all associated data has been removed")
 	},
 }

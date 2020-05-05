@@ -309,6 +309,7 @@ func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Ac
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Account
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -340,6 +341,7 @@ func (a *Accounts) ListMembers(ctx context.Context, members []Member) ([]Account
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
 	var docs []Account
 	for cursor.Next(ctx) {
 		var raw bson.M
@@ -428,6 +430,7 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member cry
 		if err != nil {
 			return err
 		}
+		defer cursor.Close(ctx)
 		type res struct {
 			Owners int `bson:"members"`
 		}
