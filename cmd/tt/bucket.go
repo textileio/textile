@@ -221,8 +221,8 @@ func printLinks(reply *pb.LinksReply) {
 
 var linksCmd = &cobra.Command{
 	Use:   "links",
-	Short: "Print links to where this Bucket can be accessed",
-	Long:  `Print links to where this Bucket can be accessed.`,
+	Short: "Print links to where this bucket can be accessed",
+	Long:  `Print links to where this bucket can be accessed.`,
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
