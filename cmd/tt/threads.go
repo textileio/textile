@@ -105,7 +105,11 @@ func selectThread(label, successMsg string, dbsOnly bool) *threadItem {
 			Type: getThreadType(t.IsDB),
 		})
 	}
-	items = append(items, &threadItem{ID: "Create new", Type: "db"})
+	var name string
+	if len(items) == 0 {
+		name = "default"
+	}
+	items = append(items, &threadItem{ID: "Create new", Name: name, Type: "db"})
 
 	prompt := promptui.Select{
 		Label: label,

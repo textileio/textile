@@ -169,9 +169,20 @@ Existing configs will not be overwritten.
 			selected := selectThread("Buckets are written to a threadDB. Select or create a new one", aurora.Sprintf(
 				aurora.BrightBlack("> Selected threadDB {{ .ID | white | bold }}")), true)
 			if selected.ID == "Create new" {
+				if selected.Name == "" {
+					prompt := promptui.Prompt{
+						Label: "Enter a name for your new threadDB (optional)",
+					}
+					var err error
+					selected.Name, err = prompt.Run()
+					if err != nil {
+						cmd.End("")
+					}
+				}
 				ctx, cancel := threadCtx(cmdTimeout)
 				defer cancel()
 				dbID = thread.NewIDV1(thread.Raw, 32)
+				ctx = common.NewThreadNameContext(ctx, selected.Name)
 				if err := threads.NewDB(ctx, dbID); err != nil {
 					cmd.Fatal(err)
 				}
