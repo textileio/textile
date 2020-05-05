@@ -24,15 +24,15 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketPathCmd, linksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd)
+	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd)
 
-	initBucketPathCmd.PersistentFlags().String("key", "", "Bucket key")
-	initBucketPathCmd.PersistentFlags().String("org", "", "Org username")
-	initBucketPathCmd.PersistentFlags().Bool("public", false, "Allow public access")
-	initBucketPathCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketPathCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote bucket")
+	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
+	initBucketCmd.PersistentFlags().String("org", "", "Org username")
+	initBucketCmd.PersistentFlags().Bool("public", false, "Allow public access")
+	initBucketCmd.PersistentFlags().String("thread", "", "Thread ID")
+	initBucketCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote bucket")
 
-	if err := cmd.BindFlags(configViper, initBucketPathCmd, flags); err != nil {
+	if err := cmd.BindFlags(configViper, initBucketCmd, flags); err != nil {
 		cmd.Fatal(err)
 	}
 }
@@ -52,7 +52,7 @@ var bucketCmd = &cobra.Command{
 	},
 }
 
-var initBucketPathCmd = &cobra.Command{
+var initBucketCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create an empty bucket",
 	Long: `Create an empty bucket.
@@ -219,7 +219,7 @@ func printLinks(reply *pb.LinksReply) {
 	cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(reply.IPNS).Bold())
 }
 
-var linksCmd = &cobra.Command{
+var bucketPathLinksCmd = &cobra.Command{
 	Use:   "links",
 	Short: "Print links to where this bucket can be accessed",
 	Long:  `Print links to where this bucket can be accessed.`,
@@ -283,29 +283,31 @@ func lsBucketPath(args []string) {
 	}
 
 	var data [][]string
-	if len(items) > 0 {
-		data = make([][]string, len(items))
-		for i, item := range items {
+	if len(items) > 0 && !strings.HasPrefix(pth, ".textile") {
+		for _, item := range items {
+			if item.Name == ".textile" {
+				continue
+			}
 			var links string
 			if item.IsDir {
 				links = strconv.Itoa(len(item.Items))
 			} else {
 				links = "n/a"
 			}
-			data[i] = []string{
+			data = append(data, []string{
 				item.Name,
 				strconv.Itoa(int(item.Size)),
 				strconv.FormatBool(item.IsDir),
 				links,
 				item.Path,
-			}
+			})
 		}
 	}
 
 	if len(data) > 0 {
 		cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
 	}
-	cmd.Message("Found %d items", aurora.White(len(items)).Bold())
+	cmd.Message("Found %d items", aurora.White(len(data)).Bold())
 }
 
 var pushBucketPathCmd = &cobra.Command{
@@ -608,5 +610,36 @@ var rmBucketPathCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		cmd.Success("Removed %s", aurora.White(args[0]).Bold())
+	},
+}
+
+var destroyBucketCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy bucket",
+	Long:  `Destroy bucket and all associated data.`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		cmd.Message("This action cannot be undone. The bucket and all associated data will be permanently deleted.")
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf("Are you absolutely sure"),
+			IsConfirm: true,
+		}
+		if _, err := prompt.Run(); err != nil {
+			cmd.End("")
+		}
+
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		if err := buckets.Remove(ctx, key); err != nil {
+			cmd.Fatal(err)
+		}
+		_ = os.RemoveAll(configViper.ConfigFileUsed())
+		cmd.Success("Your bucket has been deleted")
 	},
 }

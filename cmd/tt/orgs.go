@@ -14,7 +14,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(orgsCmd)
-	orgsCmd.AddCommand(createOrgsCmd, lsOrgsCmd, membersOrgsCmd, rmOrgsCmd, inviteOrgsCmd, leaveOrgsCmd)
+	orgsCmd.AddCommand(createOrgsCmd, lsOrgsCmd, membersOrgsCmd, inviteOrgsCmd, leaveOrgsCmd, destroyOrgsCmd)
 }
 
 var orgsCmd = &cobra.Command{
@@ -46,11 +46,11 @@ var createOrgsCmd = &cobra.Command{
 		}
 		ctx, cancel := authCtx(cmdTimeout)
 		defer cancel()
-		res, err := hub.IsOrgNameAvailable(ctx, name)
+		_, err = hub.IsOrgNameAvailable(ctx, name)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
+		//url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
 
 		cmd.Message("The name of your account on Textile will be %s", aurora.White(name).Bold())
 		// @todo: Uncomment when dashboard's are live
@@ -70,8 +70,10 @@ var createOrgsCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		url = fmt.Sprintf("%s/%s", org.Host, org.Slug)
-		cmd.Success("Created new org %s with URL %s", aurora.White(org.Name).Bold(), aurora.Underline(url))
+		//url = fmt.Sprintf("%s/%s", org.Host, org.Slug)
+		// @todo: Uncomment when dashboard's are live
+		//cmd.Success("Created new org %s with URL %s", aurora.White(org.Name).Bold(), aurora.Underline(url))
+		cmd.Success("Created new org %s", aurora.White(org.Name).Bold())
 	},
 }
 
@@ -138,35 +140,6 @@ var membersOrgsCmd = &cobra.Command{
 			cmd.RenderTable([]string{"username", "key"}, data)
 		}
 		cmd.Message("Found %d members", aurora.White(len(org.Members)).Bold())
-	},
-}
-
-var rmOrgsCmd = &cobra.Command{
-	Use: "rm",
-	Aliases: []string{
-		"remove",
-	},
-	Short: "Remove an org",
-	Long:  `Remove an organization (interactive). You must be the org owner.`,
-	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Remove org", aurora.Sprintf(
-			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
-		configViper.Set("org", selected.Slug)
-
-		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Delete org and all associated data?"),
-			IsConfirm: true,
-		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
-		}
-
-		ctx, cancel := authCtx(cmdTimeout)
-		defer cancel()
-		if err := hub.RemoveOrg(ctx); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Removed org %s and all associated data", aurora.White(selected.Name).Bold())
 	},
 }
 
@@ -256,4 +229,36 @@ func selectOrg(label, successMsg string) *orgItem {
 		cmd.End("")
 	}
 	return items[index]
+}
+
+var destroyOrgsCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy an org",
+	Long:  `Destroy an organization and all associated data (interactive). You must be the org owner.`,
+	Run: func(c *cobra.Command, args []string) {
+		selected := selectOrg("Remove org", aurora.Sprintf(
+			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
+		configViper.Set("org", selected.Slug)
+
+		cmd.Message("Are you absolutely sure? This action cannot be undone. The org and all associated data will be permanently deleted.")
+		prompt := promptui.Prompt{
+			Label: fmt.Sprintf("Please type '%s' to confirm", selected.Name),
+			Validate: func(s string) error {
+				if s != selected.Name {
+					return fmt.Errorf("")
+				}
+				return nil
+			},
+		}
+		if _, err := prompt.Run(); err != nil {
+			cmd.End("")
+		}
+
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		if err := hub.RemoveOrg(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Success("Org %s has been deleted", aurora.White(selected.Name).Bold())
+	},
 }
