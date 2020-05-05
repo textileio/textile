@@ -26,7 +26,7 @@ var keysCmd = &cobra.Command{
 	Short: "Key management",
 	Long:  `Manage your keys.`,
 	Run: func(c *cobra.Command, args []string) {
-		lsKeys()
+		lsKeys(c)
 	},
 }
 
@@ -44,6 +44,14 @@ There are two types of API keys:
 API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
 	Run: func(c *cobra.Command, args []string) {
+		org, err := c.Flags().GetString("org")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if org != "" {
+			configViper.Set("org", org)
+		}
+
 		prompt := promptui.Select{
 			Label: "Select API key type",
 			Items: []string{"account", "user"},
@@ -74,6 +82,14 @@ var invalidateKeysCmd = &cobra.Command{
 	Short: "Invalidate a key",
 	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
 	Run: func(c *cobra.Command, args []string) {
+		org, err := c.Flags().GetString("org")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if org != "" {
+			configViper.Set("org", org)
+		}
+
 		selected := selectKey("Invalidate key", aurora.Sprintf(
 			aurora.BrightBlack("> Invalidating key {{ .Key | white | bold }}")))
 
@@ -94,11 +110,19 @@ var lsKeysCmd = &cobra.Command{
 	Short: "List your keys",
 	Long:  `List all of your keys.`,
 	Run: func(c *cobra.Command, args []string) {
-		lsKeys()
+		lsKeys(c)
 	},
 }
 
-func lsKeys() {
+func lsKeys(c *cobra.Command) {
+	org, err := c.Flags().GetString("org")
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	if org != "" {
+		configViper.Set("org", org)
+	}
+
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
 	list, err := hub.ListKeys(ctx)

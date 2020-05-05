@@ -25,7 +25,7 @@ var threadsCmd = &cobra.Command{
 	Short: "Thread management",
 	Long:  `Manage your threads.`,
 	Run: func(c *cobra.Command, args []string) {
-		lsThreads()
+		lsThreads(c)
 	},
 }
 
@@ -37,11 +37,19 @@ var lsThreadsCmd = &cobra.Command{
 	Short: "List your threads",
 	Long:  `List all of your threads.`,
 	Run: func(c *cobra.Command, args []string) {
-		lsThreads()
+		lsThreads(c)
 	},
 }
 
-func lsThreads() {
+func lsThreads(c *cobra.Command) {
+	org, err := c.Flags().GetString("org")
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	if org != "" {
+		configViper.Set("org", org)
+	}
+
 	ctx, cancel := authCtx(cmdTimeout)
 	defer cancel()
 	list, err := users.ListThreads(ctx)
@@ -97,7 +105,11 @@ func selectThread(label, successMsg string, dbsOnly bool) *threadItem {
 			Type: getThreadType(t.IsDB),
 		})
 	}
-	items = append(items, &threadItem{ID: "Create new", Type: "db"})
+	var name string
+	if len(items) == 0 {
+		name = "default"
+	}
+	items = append(items, &threadItem{ID: "Create new", Name: name, Type: "db"})
 
 	prompt := promptui.Select{
 		Label: label,

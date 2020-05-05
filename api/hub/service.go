@@ -463,6 +463,17 @@ func ownerFromContext(ctx context.Context) crypto.PubKey {
 }
 
 func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
+	// First, ensure that the account does not own any orgs
+	if a.Type == c.Dev {
+		orgs, err := s.Collections.Accounts.ListByOwner(ctx, a.Key)
+		if err != nil {
+			return err
+		}
+		if len(orgs) > 0 {
+			return status.Error(codes.FailedPrecondition, "Account not empty (delete orgs first)")
+		}
+	}
+
 	// Collect threads owned directly or via an API key
 	ts, err := s.Collections.Threads.ListByOwner(ctx, a.Key)
 	if err != nil {
@@ -525,6 +536,10 @@ func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
 	}
 	if a.Type == c.Org {
 		if err = s.Collections.Invites.DeleteByOrg(ctx, a.Username); err != nil {
+			return err
+		}
+	} else {
+		if err = s.Collections.Invites.DeleteByFrom(ctx, a.Key); err != nil {
 			return err
 		}
 	}

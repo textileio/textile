@@ -544,7 +544,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return nil, err
 			}
 			if len(keys) != 0 {
-				return nil, status.Error(codes.FailedPrecondition, "DB not empty. Delete buckets first.")
+				return nil, status.Error(codes.FailedPrecondition, "DB not empty (delete buckets first)")
 			}
 		case "/threads.net.pb.API/DeleteThread":
 			deleteID, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
