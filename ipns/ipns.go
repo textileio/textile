@@ -137,6 +137,8 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 func (m *Manager) Cancel() {
 	m.Lock()
 	defer m.Unlock()
+	m.ctxsLock.Lock()
+	defer m.ctxsLock.Unlock()
 	for _, cancel := range m.ctxs {
 		cancel()
 	}
