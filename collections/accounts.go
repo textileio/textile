@@ -328,6 +328,35 @@ func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Ac
 	return docs, nil
 }
 
+func (a *Accounts) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]Account, error) {
+	oid, err := crypto.MarshalPublicKey(owner)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"members": bson.M{"$elemMatch": bson.M{"_id": oid, "role": OrgOwner}}}
+	cursor, err := a.col.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var docs []Account
+	for cursor.Next(ctx) {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
+			return nil, err
+		}
+		doc, err := decodeAccount(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
 func (a *Accounts) ListMembers(ctx context.Context, members []Member) ([]Account, error) {
 	keys := make([][]byte, len(members))
 	var err error

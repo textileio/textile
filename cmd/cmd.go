@@ -94,6 +94,13 @@ func Message(format string, args ...interface{}) {
 	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
 }
 
+func Warn(format string, args ...interface{}) {
+	if format == "" {
+		return
+	}
+	fmt.Println(aurora.Sprintf(aurora.Yellow("! "+format), args...))
+}
+
 func Success(format string, args ...interface{}) {
 	fmt.Println(aurora.Sprintf(aurora.Cyan("> Success! %s"),
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))

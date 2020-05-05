@@ -405,7 +405,7 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Push %d files?", len(names)),
+			Label:     fmt.Sprintf("Push %d files", len(names)),
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
@@ -624,7 +624,7 @@ var destroyBucketCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		cmd.Message("This action cannot be undone. The bucket and all associated data will be permanently deleted.")
+		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label:     fmt.Sprintf("Are you absolutely sure"),
 			IsConfirm: true,

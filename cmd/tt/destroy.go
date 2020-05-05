@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
@@ -25,7 +26,7 @@ var destroyCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Message("Are you absolutely sure? This action cannot be undone. Your account and all associated data will be permanently deleted.")
+		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone. Your account and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label: fmt.Sprintf("Please type '%s' to confirm", who.Username),
 			Validate: func(s string) error {

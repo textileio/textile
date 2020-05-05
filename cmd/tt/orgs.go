@@ -236,11 +236,11 @@ var destroyOrgsCmd = &cobra.Command{
 	Short: "Destroy an org",
 	Long:  `Destroy an organization and all associated data (interactive). You must be the org owner.`,
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Remove org", aurora.Sprintf(
-			aurora.BrightBlack("> Removing org {{ .Name | white | bold }}")))
+		selected := selectOrg("Destroy org", aurora.Sprintf(
+			aurora.BrightBlack("> Destroying org {{ .Name | white | bold }}")))
 		configViper.Set("org", selected.Slug)
 
-		cmd.Message("Are you absolutely sure? This action cannot be undone. The org and all associated data will be permanently deleted.")
+		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone. The org and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label: fmt.Sprintf("Please type '%s' to confirm", selected.Name),
 			Validate: func(s string) error {

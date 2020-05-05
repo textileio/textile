@@ -212,7 +212,7 @@ func TestAccounts_GetByUsername(t *testing.T) {
 	}})
 	require.Nil(t, err)
 
-	got, err := col.GetByUsername(context.Background(), created.Name)
+	got, err := col.GetByUsername(context.Background(), created.Username)
 	require.Nil(t, err)
 	assert.Equal(t, created.Key, got.Key)
 }
@@ -260,6 +260,38 @@ func TestAccounts_ListByMember(t *testing.T) {
 	assert.Equal(t, created.Name, list[0].Name)
 }
 
+func TestAccounts_ListByOwner(t *testing.T) {
+	db := newDB(t)
+	col, err := NewAccounts(context.Background(), db)
+	require.Nil(t, err)
+
+	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	created, err := col.CreateOrg(context.Background(), "test", []Member{{
+		Key:      mem1,
+		Username: "test",
+		Role:     OrgOwner,
+	}})
+	require.Nil(t, err)
+
+	list, err := col.ListByOwner(context.Background(), mem1)
+	require.Nil(t, err)
+	assert.Equal(t, 1, len(list))
+	assert.Equal(t, created.Name, list[0].Name)
+
+	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	err = col.AddMember(context.Background(), created.Username, Member{
+		Key:      mem2,
+		Username: "member",
+		Role:     OrgMember,
+	})
+	require.Nil(t, err)
+	list, err = col.ListByOwner(context.Background(), mem2)
+	require.Nil(t, err)
+	assert.Equal(t, 0, len(list))
+}
+
 func TestAccounts_IsOwner(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
@@ -276,17 +308,17 @@ func TestAccounts_IsOwner(t *testing.T) {
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.Name, Member{
+	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.Nil(t, err)
 
-	is, err := col.IsOwner(context.Background(), created.Name, mem1)
+	is, err := col.IsOwner(context.Background(), created.Username, mem1)
 	require.Nil(t, err)
 	assert.True(t, is)
-	is, err = col.IsOwner(context.Background(), created.Name, mem2)
+	is, err = col.IsOwner(context.Background(), created.Username, mem2)
 	require.Nil(t, err)
 	assert.False(t, is)
 }
@@ -307,19 +339,19 @@ func TestAccounts_IsMember(t *testing.T) {
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.Name, Member{
+	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.Nil(t, err)
 
-	is, err := col.IsMember(context.Background(), created.Name, mem2)
+	is, err := col.IsMember(context.Background(), created.Username, mem2)
 	require.Nil(t, err)
 	assert.True(t, is)
-	err = col.RemoveMember(context.Background(), created.Name, mem2)
+	err = col.RemoveMember(context.Background(), created.Username, mem2)
 	require.Nil(t, err)
-	is, err = col.IsMember(context.Background(), created.Name, mem2)
+	is, err = col.IsMember(context.Background(), created.Username, mem2)
 	require.Nil(t, err)
 	assert.False(t, is)
 }
@@ -340,20 +372,20 @@ func TestAccounts_AddMember(t *testing.T) {
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.Name, Member{
+	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.Name, Member{ // Add again should not duplicate entry
+	err = col.AddMember(context.Background(), created.Username, Member{ // Add again should not duplicate entry
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.Nil(t, err)
 
-	got, err := col.GetByUsername(context.Background(), created.Name)
+	got, err := col.GetByUsername(context.Background(), created.Username)
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(got.Members))
 }
@@ -372,19 +404,19 @@ func TestAccounts_RemoveMember(t *testing.T) {
 	}})
 	require.Nil(t, err)
 
-	err = col.RemoveMember(context.Background(), created.Name, mem1)
+	err = col.RemoveMember(context.Background(), created.Username, mem1)
 	require.NotNil(t, err) // Can't remove the sole owner
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.AddMember(context.Background(), created.Name, Member{
+	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.Nil(t, err)
 
-	err = col.RemoveMember(context.Background(), created.Name, mem2)
+	err = col.RemoveMember(context.Background(), created.Username, mem2)
 	require.Nil(t, err)
 	list, err := col.ListByMember(context.Background(), mem2)
 	require.Nil(t, err)
