@@ -30,7 +30,7 @@ func init() {
 	initBucketCmd.PersistentFlags().String("org", "", "Org username")
 	initBucketCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	initBucketCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketCmd.Flags().Bool("existing", false, "If set, initalizes from an existing remote bucket")
+	initBucketCmd.Flags().Bool("existing", false, "If set, initializes from an existing remote bucket")
 
 	if err := cmd.BindFlags(configViper, initBucketCmd, flags); err != nil {
 		cmd.Fatal(err)
