@@ -2,8 +2,12 @@ import { grpc } from '@improbable-eng/grpc-web'
 import { ThreadID } from '@textile/threads-id'
 import { Config } from '@textile/threads-client'
 
-type HostString = 'https://hub.textile.io:443' | 'https://hub.staging.textile.io:443' | 'http://127.0.0.1:3007' | string
-export const defaultHost: HostString = 'https://hub.textile.io:443'
+type HostString =
+  | 'https://api.textile.io:3447'
+  | 'https://api.staging.textile.io:3447'
+  | 'http://127.0.0.1:3007'
+  | string
+export const defaultHost: HostString = 'https://api.textile.io:3447'
 
 export interface ContextKeys {
   /**
