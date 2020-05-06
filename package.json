@@ -92,7 +92,7 @@
     "prettier": "^2.0.4",
     "prettier-eslint": "^9.0.0",
     "source-map-support": "^0.5.16",
-    "ts-loader": "^6.2.1",
+    "ts-loader": "^7.0.2",
     "ts-mocha": "^7.0.0",
     "ts-node": "^8.2.0",
     "tsconfig-paths": "^3.8.0",
