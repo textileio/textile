@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
@@ -23,6 +24,8 @@ var log = logging.Logger("ipns")
 const (
 	// nameLen is the length of the random IPNS key name.
 	nameLen = 16
+	// publishTimeout
+	publishTimeout = time.Minute * 2
 	// maxCancelPublishTries is the number of time cancelling a publish is allowed to fail.
 	maxCancelPublishTries = 10
 )
@@ -94,7 +97,7 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 	for {
 		select {
 		case ptl <- struct{}{}:
-			pctx, cancel := context.WithCancel(context.Background())
+			pctx, cancel := context.WithTimeout(context.Background(), publishTimeout)
 			m.ctxsLock.Lock()
 			m.ctxs[keyID] = cancel
 			m.ctxsLock.Unlock()
@@ -102,7 +105,6 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 				if !errors.Is(err, context.Canceled) {
 					// Logging as a warning because this often fails with "context deadline exceeded",
 					// even if the entry can be found on the network (not fully saturated).
-					// The publish deadline seems to be fixed at one minute. ¯\_(ツ)_/¯
 					log.Warnf("error publishing path %s: %v", pth, err)
 				} else {
 					log.Debugf("publishing path %s was cancelled: %v", pth, err)
