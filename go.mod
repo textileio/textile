@@ -25,7 +25,9 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200427093856-67f034a36a62
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf // indirect
 	github.com/ipfs/go-log v1.0.4
+	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
+	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.2
 	github.com/libp2p/go-libp2p-pubsub v0.2.6 // indirect

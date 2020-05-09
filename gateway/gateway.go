@@ -1,35 +1,5 @@
 package gateway
 
-/*
-https://github.com/jessevdk/go-assets/blob/master/LICENSE:
-	Copyright (c) 2013 Jesse van den Kieboom. All rights reserved.
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted provided that the following conditions are
-	met:
-
-	   * Redistributions of source code must retain the above copyright
-		 notice, this list of conditions and the following disclaimer.
-	   * Redistributions in binary form must reproduce the above
-		 copyright notice, this list of conditions and the following disclaimer
-		 in the documentation and/or other materials provided with the
-		 distribution.
-	   * Neither the name of Google Inc. nor the names of its
-		 contributors may be used to endorse or promote products derived from
-		 this software without specific prior written permission.
-
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-	"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-	LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-	OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-	LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-	DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 import (
 	"context"
 	"errors"
@@ -37,26 +7,24 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-	"path"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
-	assets "github.com/textileio/go-assets"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
-	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/buckets"
 	bucketsclient "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/collections"
@@ -72,38 +40,49 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 }
 
-// fileSystem extends the binary asset file system with Exists,
-// enabling its use with the static middleware.
-type fileSystem struct {
-	*assets.FileSystem
-}
-
-// Exists returns whether or not the path exists in the binary assets.
-func (f *fileSystem) Exists(prefix, path string) bool {
-	pth := strings.TrimPrefix(path, prefix)
-	if pth == "/" {
-		return false
-	}
-	_, ok := f.Files[pth]
-	return ok
+// link is used for Unixfs directory templates.
+type link struct {
+	Name  string
+	Path  string
+	Size  string
+	Links string
 }
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
 	sync.Mutex
-	addr         ma.Multiaddr
-	bucketDomain string
-	server       *http.Server
-	collections  *collections.Collections
-	buckets      *bucketsclient.Client
-	threads      *threadsclient.Client
-	session      string
-	sessionBus   *broadcast.Broadcaster
+
+	server        *http.Server
+	addr          ma.Multiaddr
+	url           string
+	bucketsDomain string
+
+	collections *collections.Collections
+	apiSession  string
+	threads     *threadsclient.Client
+	buckets     *bucketsclient.Client
+
+	ipfs iface.CoreAPI
+
+	sessionBus *broadcast.Broadcaster
+}
+
+// Config defines the gateway configuration.
+type Config struct {
+	Addr          ma.Multiaddr
+	URL           string
+	BucketsDomain string
+	ApiAddr       ma.Multiaddr
+	ApiSession    string
+	Collections   *collections.Collections
+	IPFSClient    iface.CoreAPI
+	SessionBus    *broadcast.Broadcaster
+	Debug         bool
 }
 
 // NewGateway returns a new gateway.
-func NewGateway(addr, apiAddr ma.Multiaddr, session, bucketDomain string, collections *collections.Collections, sessionBus *broadcast.Broadcaster, debug bool) (*Gateway, error) {
-	if debug {
+func NewGateway(conf Config) (*Gateway, error) {
+	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"gateway": logging.LevelDebug,
 		}); err != nil {
@@ -111,7 +90,7 @@ func NewGateway(addr, apiAddr ma.Multiaddr, session, bucketDomain string, collec
 		}
 	}
 
-	apiTarget, err := tutil.TCPAddrFromMultiAddr(apiAddr)
+	apiTarget, err := tutil.TCPAddrFromMultiAddr(conf.ApiAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -128,13 +107,15 @@ func NewGateway(addr, apiAddr ma.Multiaddr, session, bucketDomain string, collec
 		return nil, err
 	}
 	return &Gateway{
-		addr:         addr,
-		bucketDomain: bucketDomain,
-		collections:  collections,
-		threads:      tc,
-		buckets:      bc,
-		session:      session,
-		sessionBus:   sessionBus,
+		addr:          conf.Addr,
+		url:           conf.URL,
+		bucketsDomain: conf.BucketsDomain,
+		collections:   conf.Collections,
+		apiSession:    conf.ApiSession,
+		threads:       tc,
+		buckets:       bc,
+		ipfs:          conf.IPFSClient,
+		sessionBus:    conf.SessionBus,
 	}, nil
 }
 
@@ -154,11 +135,11 @@ func (g *Gateway) Start() {
 
 	router.Use(location.Default())
 	router.Use(static.Serve("", &fileSystem{Assets}))
-	router.Use(serveBucket(&bucketFileSystem{
+	router.Use(serveBucket(&bucketFS{
 		client:  g.buckets,
 		keys:    g.collections.IPNSKeys,
-		session: g.session,
-		host:    g.bucketDomain,
+		session: g.apiSession,
+		host:    g.bucketsDomain,
 	}))
 	router.Use(gincors.New(cors.Options{}))
 
@@ -166,23 +147,29 @@ func (g *Gateway) Start() {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("", g.renderBucketHandler)
 	router.GET("/thread/:thread/:collection", g.collectionHandler)
 	router.GET("/thread/:thread/:collection/:id", g.instanceHandler)
 	router.GET("/thread/:thread/:collection/:id/*path", g.instanceHandler)
-	router.GET("/dashboard/:name", g.dashboardHandler)
+
+	router.GET("/ipfs/:root", g.ipfsNamespaceHandler)
+	router.GET("/ipfs/:root/*path", g.ipfsNamespaceHandler)
+	router.GET("/ipns/:root", g.ipfsNamespaceHandler)
+	router.GET("/ipns/:root/*path", g.ipfsNamespaceHandler)
+	router.GET("/p2p/:root", g.ipfsNamespaceHandler)
+	router.GET("/p2p/:root/*path", g.ipfsNamespaceHandler)
+	router.GET("/ipld/:root", g.ipfsNamespaceHandler)
+	router.GET("/ipld/:root/*path", g.ipfsNamespaceHandler)
+
+	router.GET("/dashboard/:username", g.dashboardHandler)
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	router.NoRoute(func(c *gin.Context) {
-		render404(c)
-	})
+	router.NoRoute(g.routeSubdomains)
 
 	g.server = &http.Server{
 		Addr:    addr,
 		Handler: router,
 	}
-
 	go func() {
 		if err := g.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("gateway error: %s", err)
@@ -190,6 +177,25 @@ func (g *Gateway) Start() {
 		log.Info("gateway was shutdown")
 	}()
 	log.Infof("gateway listening at %s", g.server.Addr)
+}
+
+// loadTemplate loads HTML templates.
+func loadTemplate() (*template.Template, error) {
+	t := template.New("")
+	for name, file := range Assets.Files {
+		if file.IsDir() || !strings.HasSuffix(name, ".gohtml") {
+			continue
+		}
+		h, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		t, err = t.New(name).Parse(string(h))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return t, nil
 }
 
 // Addr returns the gateway's address.
@@ -213,206 +219,9 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// renderBucketHandler renders a bucket as a website.
-func (g *Gateway) renderBucketHandler(c *gin.Context) {
-	bkey, err := bucketFromHost(c.Request.Host, g.bucketDomain)
-	if err != nil {
-		render404(c)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
-	defer cancel()
-	key, err := g.collections.IPNSKeys.GetByCid(ctx, bkey)
-	if err != nil {
-		render404(c)
-		return
-	}
-	ctx = common.NewThreadIDContext(ctx, key.ThreadID)
-	token := thread.Token(c.Query("token"))
-	if token.Defined() {
-		ctx = thread.NewTokenContext(ctx, token)
-	}
-
-	buck := &buckets.Bucket{}
-	if err := g.threads.FindByID(ctx, key.ThreadID, "buckets", bkey, &buck, db.WithTxnToken(token)); err != nil {
-		render404(c)
-		return
-	}
-	rep, err := g.buckets.ListPath(ctx, buck.Key, "")
-	if err != nil {
-		renderError(c, http.StatusInternalServerError, err)
-		return
-	}
-	for _, item := range rep.Item.Items {
-		if item.Name == "index.html" {
-			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Header().Set("Content-Type", "text/html")
-			if err := g.buckets.PullPath(ctx, buck.Key, item.Name, c.Writer); err != nil {
-				renderError(c, http.StatusInternalServerError, err)
-			}
-			return
-		}
-	}
-	renderError(c, http.StatusNotFound, fmt.Errorf("an index.html file was not found in this bucket"))
-}
-
-type link struct {
-	Name  string
-	Path  string
-	Size  string
-	Links string
-}
-
 // dashboardHandler renders a dev or org dashboard.
 func (g *Gateway) dashboardHandler(c *gin.Context) {
 	render404(c)
-}
-
-// collectionHandler renders all instances in a collection.
-func (g *Gateway) collectionHandler(c *gin.Context) {
-	collection := c.Param("collection")
-
-	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
-	defer cancel()
-	threadID, err := thread.Decode(c.Param("thread"))
-	if err != nil {
-		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
-		return
-	}
-	ctx = common.NewThreadIDContext(ctx, threadID)
-	token := thread.Token(c.Query("token"))
-	if token.Defined() {
-		ctx = thread.NewTokenContext(ctx, token)
-	}
-
-	json := c.Query("json") == "true"
-	if collection == "buckets" && !json {
-		rep, err := g.buckets.List(ctx)
-		if err != nil {
-			renderError(c, http.StatusBadRequest, err)
-			return
-		}
-		links := make([]link, len(rep.Roots))
-		for i, r := range rep.Roots {
-			var name string
-			if r.Name != "" {
-				name = r.Name
-			} else {
-				name = r.Key
-			}
-			links[i] = link{
-				Name:  name,
-				Path:  path.Join("thread", threadID.String(), "buckets", r.Key),
-				Size:  "",
-				Links: "",
-			}
-		}
-		c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-			"Root":    "",
-			"Path":    "",
-			"Updated": "",
-			"Back":    "",
-			"Links":   links,
-		})
-	} else {
-		var dummy interface{}
-		res, err := g.threads.Find(ctx, threadID, collection, &db.Query{}, &dummy, db.WithTxnToken(token))
-		if err != nil {
-			renderError(c, http.StatusInternalServerError, err)
-			return
-		}
-		c.JSON(http.StatusOK, res)
-	}
-}
-
-// instanceHandler renders an instance in a collection.
-// If the collection is bucket, the built-in buckets UI in rendered instead.
-// This can be overridden with the query param json=true.
-func (g *Gateway) instanceHandler(c *gin.Context) {
-	collection := c.Param("collection")
-	json := c.Query("json") == "true"
-	if (collection != "buckets" || json) && c.Param("path") != "" {
-		render404(c)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.session), handlerTimeout)
-	defer cancel()
-	threadID, err := thread.Decode(c.Param("thread"))
-	if err != nil {
-		renderError(c, http.StatusBadRequest, fmt.Errorf("thread is not valid"))
-		return
-	}
-	ctx = common.NewThreadIDContext(ctx, threadID)
-	token := thread.Token(c.Query("token"))
-	if token.Defined() {
-		ctx = thread.NewTokenContext(ctx, token)
-	}
-
-	if collection == "buckets" && !json {
-		var buck buckets.Bucket
-		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &buck, db.WithTxnToken(token)); err != nil {
-			render404(c)
-			return
-		}
-		bpth := c.Param("path")
-		if strings.HasSuffix(bpth, ".textile/config.yml") {
-			render404(c)
-			return
-		}
-		rep, err := g.buckets.ListPath(ctx, buck.Key, bpth)
-		if err != nil {
-			render404(c)
-			return
-		}
-		if !rep.Item.IsDir {
-			if err := g.buckets.PullPath(ctx, buck.Key, bpth, c.Writer); err != nil {
-				renderError(c, http.StatusInternalServerError, err)
-			}
-		} else {
-			if rep.Item.Name == ".textile" {
-				render404(c)
-				return
-			}
-			base := path.Join("thread", threadID.String(), "buckets")
-			var links []link
-			for _, item := range rep.Item.Items {
-				if item.Name == ".textile" {
-					continue
-				}
-				pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
-				links = append(links, link{
-					Name:  item.Name,
-					Path:  path.Join(base, pth),
-					Size:  byteCountDecimal(item.Size),
-					Links: strconv.Itoa(len(item.Items)),
-				})
-			}
-			var name string
-			if rep.Root.Name != "" {
-				name = rep.Root.Name
-			} else {
-				name = rep.Root.Key
-			}
-			root := strings.Replace(rep.Item.Path, rep.Root.Path, name, 1)
-			back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
-			c.HTML(http.StatusOK, "/public/html/buckets.gohtml", gin.H{
-				"Root":    root,
-				"Path":    rep.Item.Path,
-				"Updated": time.Unix(0, rep.Root.UpdatedAt).String(),
-				"Back":    back,
-				"Links":   links,
-			})
-		}
-	} else {
-		var res interface{}
-		if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &res, db.WithTxnToken(token)); err != nil {
-			render404(c)
-			return
-		}
-		c.JSON(http.StatusOK, res)
-	}
 }
 
 // confirmEmail verifies an emailed secret.
@@ -429,7 +238,6 @@ func (g *Gateway) confirmEmail(c *gin.Context) {
 func (g *Gateway) consentInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
-
 	invite, err := g.collections.Invites.Get(ctx, c.Param("invite"))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -448,7 +256,6 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			}
 			return
 		}
-
 		dev, err := g.collections.Accounts.GetByUsernameOrEmail(ctx, invite.EmailTo)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
@@ -484,7 +291,6 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			}
 		}
 	}
-
 	c.HTML(http.StatusOK, "/public/html/consent.gohtml", gin.H{
 		"Org":   invite.Org,
 		"Email": invite.EmailTo,
@@ -504,25 +310,6 @@ func renderError(c *gin.Context, code int, err error) {
 	})
 }
 
-// loadTemplate loads HTML templates.
-func loadTemplate() (*template.Template, error) {
-	t := template.New("")
-	for name, file := range Assets.Files {
-		if file.IsDir() || !strings.HasSuffix(name, ".gohtml") {
-			continue
-		}
-		h, err := ioutil.ReadAll(file)
-		if err != nil {
-			return nil, err
-		}
-		t, err = t.New(name).Parse(string(h))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return t, nil
-}
-
 // formatError formats a go error for browser display.
 func formatError(err error) string {
 	words := strings.SplitN(err.Error(), " ", 2)
@@ -530,16 +317,59 @@ func formatError(err error) string {
 	return strings.Join(words, " ") + "."
 }
 
-// byteCountDecimal formats bytes
-func byteCountDecimal(b int64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
+// routeSubdomains handles the request with the matching subdomain renderer.
+func (g *Gateway) routeSubdomains(c *gin.Context) {
+	host := strings.SplitN(c.Request.Host, ":", 2)[0]
+	parts := strings.Split(host, ".")
+	key := parts[0]
+
+	// Render buckets if the domain matches
+	if strings.HasSuffix(host, g.bucketsDomain) {
+		g.renderWWWBucket(c, key)
+		return
 	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
+
+	if len(parts) < 3 {
+		render404(c)
+		return
 	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
+	ns := parts[1]
+	if !isSubdomainNamespace(ns) {
+		render404(c)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+	switch ns {
+	case "ipfs":
+		g.renderIPFSPath(c, ctx, path.New(key+c.Request.URL.Path))
+	case "ipns":
+		pth, err := g.ipfs.Name().Resolve(ctx, key)
+		if err != nil {
+			renderError(c, http.StatusNotFound, err)
+			return
+		}
+		g.renderIPFSPath(c, ctx, path.New(pth.String()+c.Request.URL.Path))
+	case "p2p":
+		pid, err := peer.Decode(key)
+		if err != nil {
+			renderError(c, http.StatusBadRequest, err)
+			return
+		}
+		info, err := g.ipfs.Dht().FindPeer(ctx, pid)
+		if err != nil {
+			renderError(c, http.StatusNotFound, err)
+			return
+		}
+		c.JSON(http.StatusOK, info)
+	case "ipld":
+		node, err := g.ipfs.Object().Get(ctx, path.New(key+c.Request.URL.Path))
+		if err != nil {
+			renderError(c, http.StatusNotFound, err)
+			return
+		}
+		c.JSON(http.StatusOK, node)
+	default:
+		render404(c)
+	}
 }
