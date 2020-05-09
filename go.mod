@@ -56,7 +56,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.16
+	github.com/textileio/go-threads v0.1.17
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e // indirect
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
