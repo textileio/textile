@@ -21,20 +21,6 @@ import (
 	mbase "github.com/multiformats/go-multibase"
 )
 
-// ipfsNamespaceHandler redirects IPFS namespaces to their subdomain equivalents.
-func (g *Gateway) ipfsNamespaceHandler(c *gin.Context) {
-	loc, ok := g.toSubdomainURL(c.Request)
-	if !ok {
-		render404(c)
-		return
-	}
-
-	// See security note https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L105
-	c.Request.Header.Set("Clear-Site-Data", "\"cookies\", \"storage\"")
-
-	c.Redirect(http.StatusPermanentRedirect, loc)
-}
-
 func (g *Gateway) renderIPFSPath(c *gin.Context, ctx context.Context, pth path.Path) {
 	data, err := g.openPath(ctx, pth)
 	if err != nil {
@@ -103,10 +89,10 @@ func (g *Gateway) openPath(ctx context.Context, pth path.Path) ([]byte, error) {
 	return ioutil.ReadAll(file)
 }
 
-// Copied from https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L251
+// Modified from https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L251
 func isSubdomainNamespace(ns string) bool {
 	switch ns {
-	case "ipfs", "ipns", "p2p", "ipld":
+	case "ipfs", "ipns", "p2p", "ipld", "thread":
 		return true
 	default:
 		return false

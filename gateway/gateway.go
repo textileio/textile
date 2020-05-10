@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -146,18 +148,18 @@ func (g *Gateway) Start() {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("/thread/:thread/:collection", g.collectionHandler)
-	router.GET("/thread/:thread/:collection/:id", g.instanceHandler)
-	router.GET("/thread/:thread/:collection/:id/*path", g.instanceHandler)
+	router.GET("/thread/:thread/:collection", g.namespaceHandler)
+	router.GET("/thread/:thread/:collection/:id", g.namespaceHandler)
+	router.GET("/thread/:thread/:collection/:id/*path", g.namespaceHandler)
 
-	router.GET("/ipfs/:root", g.ipfsNamespaceHandler)
-	router.GET("/ipfs/:root/*path", g.ipfsNamespaceHandler)
-	router.GET("/ipns/:root", g.ipfsNamespaceHandler)
-	router.GET("/ipns/:root/*path", g.ipfsNamespaceHandler)
-	router.GET("/p2p/:root", g.ipfsNamespaceHandler)
-	router.GET("/p2p/:root/*path", g.ipfsNamespaceHandler)
-	router.GET("/ipld/:root", g.ipfsNamespaceHandler)
-	router.GET("/ipld/:root/*path", g.ipfsNamespaceHandler)
+	router.GET("/ipfs/:root", g.namespaceHandler)
+	router.GET("/ipfs/:root/*path", g.namespaceHandler)
+	router.GET("/ipns/:root", g.namespaceHandler)
+	router.GET("/ipns/:root/*path", g.namespaceHandler)
+	router.GET("/p2p/:root", g.namespaceHandler)
+	router.GET("/p2p/:root/*path", g.namespaceHandler)
+	router.GET("/ipld/:root", g.namespaceHandler)
+	router.GET("/ipld/:root/*path", g.namespaceHandler)
 
 	router.GET("/dashboard/:username", g.dashboardHandler)
 	router.GET("/confirm/:secret", g.confirmEmail)
@@ -216,6 +218,20 @@ func (g *Gateway) Stop() error {
 		return err
 	}
 	return nil
+}
+
+// namespaceHandler redirects IPFS namespaces to their subdomain equivalents.
+func (g *Gateway) namespaceHandler(c *gin.Context) {
+	loc, ok := g.toSubdomainURL(c.Request)
+	if !ok {
+		render404(c)
+		return
+	}
+
+	// See security note https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L105
+	c.Request.Header.Set("Clear-Site-Data", "\"cookies\", \"storage\"")
+
+	c.Redirect(http.StatusPermanentRedirect, loc)
 }
 
 // dashboardHandler renders a dev or org dashboard.
@@ -368,6 +384,31 @@ func (g *Gateway) routeSubdomains(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, node)
+	case "thread":
+		threadID, err := thread.Decode(key)
+		if err != nil {
+			renderError(c, http.StatusBadRequest, fmt.Errorf("invalid thread ID"))
+			return
+		}
+
+		parts := strings.SplitN(strings.TrimSuffix(c.Request.URL.Path, "/"), "/", 4)
+		switch len(parts) {
+		case 1:
+			// @todo: Render something at the thread root
+			render404(c)
+		case 2:
+			if parts[1] != "" {
+				g.collectionHandler(c, threadID, parts[1])
+			} else {
+				render404(c)
+			}
+		case 3:
+			g.instanceHandler(c, threadID, parts[1], parts[2], "")
+		case 4:
+			g.instanceHandler(c, threadID, parts[1], parts[2], parts[3])
+		default:
+			render404(c)
+		}
 	default:
 		render404(c)
 	}

@@ -66,24 +66,23 @@ func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thr
 	})
 }
 
-func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID thread.ID, collection string, token thread.Token) {
+func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID thread.ID, collection, id, pth string, token thread.Token) {
 	var buck buckets.Bucket
-	if err := g.threads.FindByID(ctx, threadID, collection, c.Param("id"), &buck, db.WithTxnToken(token)); err != nil {
+	if err := g.threads.FindByID(ctx, threadID, collection, id, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
 	}
-	bpth := c.Param("path")
-	if strings.HasSuffix(bpth, ".textile/config.yml") {
+	if strings.HasSuffix(pth, ".textile/config.yml") {
 		render404(c)
 		return
 	}
-	rep, err := g.buckets.ListPath(ctx, buck.Key, bpth)
+	rep, err := g.buckets.ListPath(ctx, buck.Key, pth)
 	if err != nil {
 		render404(c)
 		return
 	}
 	if !rep.Item.IsDir {
-		if err := g.buckets.PullPath(ctx, buck.Key, bpth, c.Writer); err != nil {
+		if err := g.buckets.PullPath(ctx, buck.Key, pth, c.Writer); err != nil {
 			renderError(c, http.StatusInternalServerError, err)
 		}
 	} else {
@@ -91,7 +90,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 			render404(c)
 			return
 		}
-		base := path.Join("thread", threadID.String(), buckets.CollectionName)
+		base := buckets.CollectionName
 		var links []link
 		for _, item := range rep.Item.Items {
 			if item.Name == ".textile" {
