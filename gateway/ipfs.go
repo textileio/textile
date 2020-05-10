@@ -191,9 +191,12 @@ func (g *Gateway) toSubdomainURL(r *http.Request) (redirURL string, ok bool) {
 		}
 	}
 
-	urlp := strings.Split(g.url, "://")
-	scheme := urlp[0]
-	host := urlp[1]
+	urlparts := strings.Split(g.url, "://")
+	if len(urlparts) < 2 {
+		return "", false
+	}
+	scheme := urlparts[0]
+	host := urlparts[1]
 	return safeRedirectURL(fmt.Sprintf("%s://%s.%s.%s/%s%s", scheme, rootID, ns, host, rest, query))
 }
 

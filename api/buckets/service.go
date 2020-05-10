@@ -114,19 +114,25 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 }
 
 func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
-	url := fmt.Sprintf("%s/thread/%s/buckets/%s", s.GatewayUrl, dbID, buck.Key)
-	var www string
+	var threadLink, wwwLink, ipnsLink string
+
+	parts := strings.Split(s.GatewayUrl, "://")
+	if len(parts) < 2 {
+		return nil
+	}
+	scheme := parts[0]
+	host := parts[1]
+
+	threadLink = fmt.Sprintf("%s://%s.thread.%s/%s/%s", scheme, dbID, host, CollectionName, buck.Key)
 	if s.DNSManager != nil && s.DNSManager.Domain != "" {
-		scheme := strings.Split(s.GatewayUrl, "://")[0]
-		www = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
+		wwwLink = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
 	}
-	ipnswww := fmt.Sprintf("https://%s.ipns.%s", buck.Key, dns.IPFSGateway)
-	reply := &pb.LinksReply{
-		URL:  url,
-		WWW:  www,
-		IPNS: ipnswww,
+	ipnsLink = fmt.Sprintf("%s://%s.ipns.%s", scheme, buck.Key, host)
+	return &pb.LinksReply{
+		URL:  threadLink,
+		WWW:  wwwLink,
+		IPNS: ipnsLink,
 	}
-	return reply
 }
 
 func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksReply, error) {
