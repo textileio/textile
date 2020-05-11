@@ -73,8 +73,8 @@ type Config struct {
 	Addr          ma.Multiaddr
 	URL           string
 	BucketsDomain string
-	ApiAddr       ma.Multiaddr
-	ApiSession    string
+	APIAddr       ma.Multiaddr
+	APISession    string
 	Collections   *collections.Collections
 	IPFSClient    iface.CoreAPI
 	SessionBus    *broadcast.Broadcaster
@@ -91,7 +91,7 @@ func NewGateway(conf Config) (*Gateway, error) {
 		}
 	}
 
-	apiTarget, err := tutil.TCPAddrFromMultiAddr(conf.ApiAddr)
+	apiTarget, err := tutil.TCPAddrFromMultiAddr(conf.APIAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func NewGateway(conf Config) (*Gateway, error) {
 		url:           conf.URL,
 		bucketsDomain: conf.BucketsDomain,
 		collections:   conf.Collections,
-		apiSession:    conf.ApiSession,
+		apiSession:    conf.APISession,
 		threads:       tc,
 		buckets:       bc,
 		ipfs:          conf.IPFSClient,

@@ -44,7 +44,7 @@ type Service struct {
 	IPFSClient  iface.CoreAPI
 	EmailClient *email.Client
 
-	GatewayUrl string
+	GatewayURL string
 
 	SessionBus    *broadcast.Broadcaster
 	SessionSecret string
@@ -66,7 +66,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	secret := getSessionSecret(s.SessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayUrl, secret); err != nil {
+	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -142,7 +142,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	secret := getSessionSecret(s.SessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayUrl, secret); err != nil {
+	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -333,7 +333,7 @@ func (s *Service) orgToPbOrg(org *c.Account) (*pb.GetOrgReply, error) {
 		Key:       key,
 		Name:      org.Name,
 		Slug:      org.Username,
-		Host:      s.GatewayUrl,
+		Host:      s.GatewayURL,
 		Members:   members,
 		CreatedAt: org.CreatedAt.Unix(),
 	}, nil
@@ -398,7 +398,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.InviteAddress(
-		ectx, org.Name, dev.Email, req.Email, s.GatewayUrl, invite.Token); err != nil {
+		ectx, org.Name, dev.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
 	return &pb.InviteToOrgReply{Token: invite.Token}, nil
@@ -439,7 +439,7 @@ func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvail
 	}
 	return &pb.IsOrgNameAvailableReply{
 		Slug: slug,
-		Host: s.GatewayUrl,
+		Host: s.GatewayURL,
 	}, nil
 }
 

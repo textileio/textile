@@ -42,7 +42,7 @@ type Service struct {
 	IPFSClient     iface.CoreAPI
 	FilecoinClient *fc.Client
 
-	GatewayUrl string
+	GatewayURL string
 
 	DNSManager  *dns.Manager
 	IPNSManager *ipns.Manager
@@ -116,7 +116,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
 	var threadLink, wwwLink, ipnsLink string
 
-	parts := strings.Split(s.GatewayUrl, "://")
+	parts := strings.Split(s.GatewayURL, "://")
 	if len(parts) < 2 {
 		return nil
 	}
@@ -552,7 +552,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 }
 
 func (s *Service) getGatewayHost() (host string, ok bool) {
-	parts := strings.SplitN(s.GatewayUrl, "//", 2)
+	parts := strings.SplitN(s.GatewayURL, "//", 2)
 	if len(parts) > 1 {
 		return parts[1], true
 	}

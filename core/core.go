@@ -78,14 +78,14 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrApi         ma.Multiaddr
-	AddrApiProxy    ma.Multiaddr
+	AddrAPI         ma.Multiaddr
+	AddrAPIProxy    ma.Multiaddr
 	AddrThreadsHost ma.Multiaddr
-	AddrIpfsApi     ma.Multiaddr
+	AddrIPFSAPI     ma.Multiaddr
 	AddrGatewayHost ma.Multiaddr
-	AddrGatewayUrl  string
-	AddrFilecoinApi ma.Multiaddr
-	AddrMongoUri    string
+	AddrGatewayURL  string
+	AddrFilecoinAPI ma.Multiaddr
+	AddrMongoURI    string
 
 	MongoName string
 
@@ -95,7 +95,7 @@ type Config struct {
 
 	EmailFrom   string
 	EmailDomain string
-	EmailApiKey string
+	EmailAPIKey string
 
 	SessionSecret string
 
@@ -116,12 +116,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t := &Textile{}
 
 	// Configure clients
-	ic, err := httpapi.NewApi(conf.AddrIpfsApi)
+	ic, err := httpapi.NewApi(conf.AddrIPFSAPI)
 	if err != nil {
 		return nil, err
 	}
-	if conf.AddrFilecoinApi != nil {
-		t.fc, err = filc.NewClient(conf.AddrFilecoinApi)
+	if conf.AddrFilecoinAPI != nil {
+		t.fc, err = filc.NewClient(conf.AddrFilecoinAPI)
 		if err != nil {
 			return nil, err
 		}
@@ -132,11 +132,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
+	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
-	t.collections, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
+	t.collections, err = c.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:   t.collections,
 		IPFSClient:    ic,
 		EmailClient:   ec,
-		GatewayUrl:    conf.AddrGatewayUrl,
+		GatewayURL:    conf.AddrGatewayURL,
 		SessionBus:    t.sessionBus,
 		SessionSecret: conf.SessionSecret,
 		DNSManager:    t.dnsm,
@@ -182,7 +182,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Buckets:        bucks,
 		IPFSClient:     ic,
 		FilecoinClient: t.fc,
-		GatewayUrl:     conf.AddrGatewayUrl,
+		GatewayURL:     conf.AddrGatewayURL,
 		DNSManager:     t.dnsm,
 		IPNSManager:    t.ipnsm,
 	}
@@ -191,11 +191,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC server
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	if err != nil {
 		return nil, err
 	}
-	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrApiProxy)
+	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -258,10 +258,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(gateway.Config{
 		Addr:          conf.AddrGatewayHost,
-		URL:           conf.AddrGatewayUrl,
+		URL:           conf.AddrGatewayURL,
 		BucketsDomain: conf.DNSDomain,
-		ApiAddr:       conf.AddrApi,
-		ApiSession:    t.gatewaySession,
+		APIAddr:       conf.AddrAPI,
+		APISession:    t.gatewaySession,
 		Collections:   t.collections,
 		IPFSClient:    ic,
 		SessionBus:    t.sessionBus,
