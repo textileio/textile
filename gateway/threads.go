@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,8 +12,18 @@ import (
 	"github.com/textileio/textile/api/common"
 )
 
-// collectionHandler renders all instances in a collection.
-func (g *Gateway) collectionHandler(c *gin.Context, threadID thread.ID, collection string) {
+// collectionHandler handles collection requests.
+func (g *Gateway) collectionHandler(c *gin.Context) {
+	threadID, err := thread.Decode(c.Param("thread"))
+	if err != nil {
+		renderError(c, http.StatusBadRequest, fmt.Errorf("invalid thread ID"))
+		return
+	}
+	g.renderCollection(c, threadID, c.Param("collection"))
+}
+
+// renderCollection renders all instances in a collection.
+func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collection string) {
 	ctx, cancel := context.WithTimeout(common.NewSessionContext(context.Background(), g.apiSession), handlerTimeout)
 	defer cancel()
 	ctx = common.NewThreadIDContext(ctx, threadID)
@@ -36,10 +47,20 @@ func (g *Gateway) collectionHandler(c *gin.Context, threadID thread.ID, collecti
 	}
 }
 
-// instanceHandler renders an instance in a collection.
+// instanceHandler handles collection instance requests.
+func (g *Gateway) instanceHandler(c *gin.Context) {
+	threadID, err := thread.Decode(c.Param("thread"))
+	if err != nil {
+		renderError(c, http.StatusBadRequest, fmt.Errorf("invalid thread ID"))
+		return
+	}
+	g.renderInstance(c, threadID, c.Param("collection"), c.Param("id"), c.Param("path"))
+}
+
+// renderInstance renders an instance in a collection.
 // If the collection is buckets, the built-in buckets UI in rendered instead.
 // This can be overridden with the query param json=true.
-func (g *Gateway) instanceHandler(c *gin.Context, threadID thread.ID, collection, id, pth string) {
+func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection, id, pth string) {
 	json := c.Query("json") == "true"
 	if (collection != buckets.CollectionName || json) && pth != "" {
 		render404(c)

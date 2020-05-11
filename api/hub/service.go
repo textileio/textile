@@ -37,20 +37,16 @@ var (
 )
 
 type Service struct {
-	Collections *c.Collections
-	Threads     *threads.Client
-	ThreadsNet  *netclient.Client
-
-	IPFSClient  iface.CoreAPI
-	EmailClient *email.Client
-
-	GatewayURL string
-
-	SessionBus    *broadcast.Broadcaster
-	SessionSecret string
-
-	DNSManager  *dns.Manager
-	IPNSManager *ipns.Manager
+	Collections        *c.Collections
+	Threads            *threads.Client
+	ThreadsNet         *netclient.Client
+	GatewayURL         string
+	EmailClient        *email.Client
+	EmailSessionBus    *broadcast.Broadcaster
+	EmailSessionSecret string
+	IPFSClient         iface.CoreAPI
+	IPNSManager        *ipns.Manager
+	DNSManager         *dns.Manager
 }
 
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
@@ -63,7 +59,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	secret := getSessionSecret(s.SessionSecret)
+	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayURL, secret); err != nil {
@@ -139,7 +135,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
-	secret := getSessionSecret(s.SessionSecret)
+	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayURL, secret); err != nil {
@@ -166,7 +162,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 
 // awaitVerification waits for a dev to verify their email via a sent email.
 func (s *Service) awaitVerification(secret string) bool {
-	listen := s.SessionBus.Listen()
+	listen := s.EmailSessionBus.Listen()
 	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {

@@ -50,7 +50,7 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 		EmailDomain: "email.textile.io",
 		EmailAPIKey: "",
 
-		SessionSecret: SessionSecret,
+		EmailSessionSecret: SessionSecret,
 
 		Debug: true,
 	}

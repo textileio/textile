@@ -90,7 +90,12 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 			render404(c)
 			return
 		}
-		base := buckets.CollectionName
+		var base string
+		if g.subdomains {
+			base = buckets.CollectionName
+		} else {
+			base = path.Join("thread", threadID.String(), buckets.CollectionName)
+		}
 		var links []link
 		for _, item := range rep.Item.Items {
 			if item.Name == ".textile" {

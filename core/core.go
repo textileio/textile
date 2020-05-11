@@ -70,9 +70,9 @@ type Textile struct {
 	server *grpc.Server
 	proxy  *http.Server
 
-	gateway        *gateway.Gateway
-	gatewaySession string
-	sessionBus     *broadcast.Broadcaster
+	gateway         *gateway.Gateway
+	gatewaySession  string
+	emailSessionBus *broadcast.Broadcaster
 }
 
 type Config struct {
@@ -87,17 +87,18 @@ type Config struct {
 	AddrFilecoinAPI ma.Multiaddr
 	AddrMongoURI    string
 
+	UseSubdomains bool
+
 	MongoName string
 
 	DNSDomain string
 	DNSZoneID string
 	DNSToken  string
 
-	EmailFrom   string
-	EmailDomain string
-	EmailAPIKey string
-
-	SessionSecret string
+	EmailFrom          string
+	EmailDomain        string
+	EmailAPIKey        string
+	EmailSessionSecret string
 
 	Debug bool
 }
@@ -165,26 +166,26 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.sessionBus = broadcast.NewBroadcaster(0)
+	t.emailSessionBus = broadcast.NewBroadcaster(0)
 	hs := &hub.Service{
-		Collections:   t.collections,
-		IPFSClient:    ic,
-		EmailClient:   ec,
-		GatewayURL:    conf.AddrGatewayURL,
-		SessionBus:    t.sessionBus,
-		SessionSecret: conf.SessionSecret,
-		DNSManager:    t.dnsm,
-		IPNSManager:   t.ipnsm,
+		Collections:        t.collections,
+		GatewayURL:         conf.AddrGatewayURL,
+		EmailClient:        ec,
+		EmailSessionBus:    t.emailSessionBus,
+		EmailSessionSecret: conf.EmailSessionSecret,
+		IPFSClient:         ic,
+		IPNSManager:        t.ipnsm,
+		DNSManager:         t.dnsm,
 	}
 	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
 		Collections:    t.collections,
 		Buckets:        bucks,
-		IPFSClient:     ic,
-		FilecoinClient: t.fc,
 		GatewayURL:     conf.AddrGatewayURL,
-		DNSManager:     t.dnsm,
+		FilecoinClient: t.fc,
+		IPFSClient:     ic,
 		IPNSManager:    t.ipnsm,
+		DNSManager:     t.dnsm,
 	}
 	us := &users.Service{
 		Collections: t.collections,
@@ -257,15 +258,16 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(gateway.Config{
-		Addr:          conf.AddrGatewayHost,
-		URL:           conf.AddrGatewayURL,
-		BucketsDomain: conf.DNSDomain,
-		APIAddr:       conf.AddrAPI,
-		APISession:    t.gatewaySession,
-		Collections:   t.collections,
-		IPFSClient:    ic,
-		SessionBus:    t.sessionBus,
-		Debug:         conf.Debug,
+		Addr:            conf.AddrGatewayHost,
+		URL:             conf.AddrGatewayURL,
+		Subdomains:      conf.UseSubdomains,
+		BucketsDomain:   conf.DNSDomain,
+		APIAddr:         conf.AddrAPI,
+		APISession:      t.gatewaySession,
+		Collections:     t.collections,
+		IPFSClient:      ic,
+		EmailSessionBus: t.emailSessionBus,
+		Debug:           conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -282,7 +284,7 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
-	t.sessionBus.Discard()
+	t.emailSessionBus.Discard()
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}

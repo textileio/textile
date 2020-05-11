@@ -36,16 +36,13 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections *c.Collections
-	Buckets     *Buckets
-
-	IPFSClient     iface.CoreAPI
+	Collections    *c.Collections
+	Buckets        *Buckets
+	GatewayURL     string
 	FilecoinClient *fc.Client
-
-	GatewayURL string
-
-	DNSManager  *dns.Manager
-	IPNSManager *ipns.Manager
+	IPFSClient     iface.CoreAPI
+	IPNSManager    *ipns.Manager
+	DNSManager     *dns.Manager
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
