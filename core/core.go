@@ -57,7 +57,7 @@ var (
 )
 
 type Textile struct {
-	co *c.Collections
+	collections *c.Collections
 
 	ts  tc.NetBoostrapper
 	th  *threads.Client
@@ -136,11 +136,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.co, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
+	t.collections, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
 	if err != nil {
 		return nil, err
 	}
-	t.ipnsm, err = ipns.NewManager(t.co.IPNSKeys, ic.Key(), ic.Name(), conf.Debug)
+	t.ipnsm, err = ipns.NewManager(t.collections.IPNSKeys, ic.Key(), ic.Name(), conf.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	t.sessionBus = broadcast.NewBroadcaster(0)
 	hs := &hub.Service{
-		Collections:   t.co,
+		Collections:   t.collections,
 		IPFSClient:    ic,
 		EmailClient:   ec,
 		GatewayUrl:    conf.AddrGatewayUrl,
@@ -178,7 +178,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
-		Collections:    t.co,
+		Collections:    t.collections,
 		Buckets:        bucks,
 		IPFSClient:     ic,
 		FilecoinClient: t.fc,
@@ -187,7 +187,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager:    t.ipnsm,
 	}
 	us := &users.Service{
-		Collections: t.co,
+		Collections: t.collections,
 	}
 
 	// Configure gRPC server
@@ -256,7 +256,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)
-	t.gateway, err = gateway.NewGateway(conf.AddrGatewayHost, conf.AddrApi, t.gatewaySession, conf.DNSDomain, t.co, t.sessionBus, conf.Debug)
+	t.gateway, err = gateway.NewGateway(gateway.Config{
+		Addr:          conf.AddrGatewayHost,
+		URL:           conf.AddrGatewayUrl,
+		BucketsDomain: conf.DNSDomain,
+		ApiAddr:       conf.AddrApi,
+		ApiSession:    t.gatewaySession,
+		Collections:   t.collections,
+		IPFSClient:    ic,
+		SessionBus:    t.sessionBus,
+		Debug:         conf.Debug,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +303,7 @@ func (t *Textile) Close() error {
 			return err
 		}
 	}
-	if err := t.co.Close(); err != nil {
+	if err := t.collections.Close(); err != nil {
 		return err
 	}
 	t.ipnsm.Cancel()
@@ -330,19 +340,19 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		if sid == t.gatewaySession {
 			return ctx, nil
 		}
-		session, err := t.co.Sessions.Get(ctx, sid)
+		session, err := t.collections.Sessions.Get(ctx, sid)
 		if err != nil {
 			return nil, status.Error(codes.Unauthenticated, "Invalid session")
 		}
 		if time.Now().After(session.ExpiresAt) {
 			return nil, status.Error(codes.Unauthenticated, "Expired session")
 		}
-		if err := t.co.Sessions.Touch(ctx, session.ID); err != nil {
+		if err := t.collections.Sessions.Touch(ctx, session.ID); err != nil {
 			return nil, err
 		}
 		ctx = c.NewSessionContext(ctx, session)
 
-		dev, err := t.co.Accounts.Get(ctx, session.Owner)
+		dev, err := t.collections.Accounts.Get(ctx, session.Owner)
 		if err != nil {
 			return nil, status.Error(codes.NotFound, "User not found")
 		}
@@ -350,14 +360,14 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 
 		orgSlug, ok := common.OrgSlugFromMD(ctx)
 		if ok {
-			isMember, err := t.co.Accounts.IsMember(ctx, orgSlug, dev.Key)
+			isMember, err := t.collections.Accounts.IsMember(ctx, orgSlug, dev.Key)
 			if err != nil {
 				return nil, err
 			}
 			if !isMember {
 				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
 			} else {
-				org, err := t.co.Accounts.GetByUsername(ctx, orgSlug)
+				org, err := t.collections.Accounts.GetByUsername(ctx, orgSlug)
 				if err != nil {
 					return nil, status.Error(codes.NotFound, "Org not found")
 				}
@@ -375,7 +385,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, status.Error(codes.Unauthenticated, "API key signature required")
 		}
 		ctx = common.NewAPISigContext(ctx, msg, sig)
-		key, err := t.co.APIKeys.Get(ctx, k)
+		key, err := t.collections.APIKeys.Get(ctx, k)
 		if err != nil || !key.Valid {
 			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
 		}
@@ -384,7 +394,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 		switch key.Type {
 		case c.AccountKey:
-			acc, err := t.co.Accounts.Get(ctx, key.Owner)
+			acc, err := t.collections.Accounts.Get(ctx, key.Owner)
 			if err != nil {
 				return nil, status.Error(codes.NotFound, "Account not found")
 			}
@@ -406,7 +416,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				if err = ukey.UnmarshalString(claims.Subject); err != nil {
 					return nil, err
 				}
-				user, err := t.co.Users.Get(ctx, ukey.PubKey)
+				user, err := t.collections.Users.Get(ctx, ukey.PubKey)
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 					return nil, err
 				}
@@ -490,7 +500,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			// owns the thread directly or via an API key.
 			threadID, ok := common.ThreadIDFromContext(ctx)
 			if ok {
-				th, err := t.co.Threads.Get(ctx, threadID, owner)
+				th, err := t.collections.Threads.Get(ctx, threadID, owner)
 				if err != nil {
 					if errors.Is(err, mongo.ErrNoDocuments) {
 						return nil, status.Error(codes.NotFound, "Thread not found")
@@ -513,7 +523,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := c.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			if err := t.co.Users.Create(ctx, owner); err != nil {
+			if err := t.collections.Users.Create(ctx, owner); err != nil {
 				return nil, err
 			}
 		}
@@ -526,7 +536,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.
 		if newID.Defined() {
-			if _, err := t.co.Threads.Create(ctx, newID, owner, isDB); err != nil {
+			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {
 				return nil, err
 			}
 		}
@@ -539,7 +549,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
-			keys, err := t.co.IPNSKeys.ListByThreadID(ctx, deleteID)
+			keys, err := t.collections.IPNSKeys.ListByThreadID(ctx, deleteID)
 			if err != nil {
 				return nil, err
 			}
@@ -558,7 +568,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		if err != nil {
 			// Clean up the new thread if there was an error.
 			if newID.Defined() {
-				if err := t.co.Threads.Delete(ctx, newID, owner); err != nil {
+				if err := t.collections.Threads.Delete(ctx, newID, owner); err != nil {
 					log.Errorf("error deleting thread %s: %v", newID, err)
 				}
 			}
@@ -567,7 +577,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 
 		// Clean up the tracked thread if it was deleted.
 		if deleteID.Defined() {
-			if err := t.co.Threads.Delete(ctx, deleteID, owner); err != nil {
+			if err := t.collections.Threads.Delete(ctx, deleteID, owner); err != nil {
 				return nil, err
 			}
 		}

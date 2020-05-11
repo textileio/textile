@@ -25,7 +25,9 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200427093856-67f034a36a62
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf // indirect
 	github.com/ipfs/go-log v1.0.4
+	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
+	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.2
 	github.com/libp2p/go-libp2p-pubsub v0.2.6 // indirect
@@ -54,7 +56,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.16
+	github.com/textileio/go-threads v0.1.17
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e // indirect
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
