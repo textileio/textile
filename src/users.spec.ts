@@ -235,38 +235,37 @@ describe('Users...', () => {
         expect(res.id).to.deep.equal(ctx.toJSON()['x-textile-thread'])
       })
     })
-    context('a developer with a user', () => {
+    context('a developer with a user', function () {
       const ctx: Context = new Context(addrApiurl, undefined)
       let dev: SignupReply.AsObject
-      const userContext = new Context(addrApiurl)
-      it('should sign-up, create an API key, and sign it for the requests', async () => {
+      let users: Users
+      it('should sign-up, create an API key, and a new user', async function () {
         // @note This should be done using the cli
         const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
         if (user) dev = user
-        ctx.withSession(dev.session)
         // @note This should be done using the cli
         // This time they create a user key
-        const key = await createKey(ctx, 'USER')
-        // Update user context
-        await userContext.withAPIKey(key.key).withUserKey(key)
-        expect(userContext.toJSON()).to.have.ownProperty('x-textile-api-sig')
-      }).timeout(3000)
-      it('should then generate a user identity and get a token for it', async () => {
+        const key = await createKey(ctx.withSession(dev.session), 'USER')
+
+        // This should automatically generate a user identity and validate keys, though we use a random ident
+        // for demo purposes here to show that it can also use custom identities
         const identity = await Libp2pCryptoIdentity.fromRandom()
-        const db = new Client(userContext)
-        await db.getToken(identity)
+        // We also explicitly specify a custom context here, which could be omitted as it uses reasonable defaults
+        const userContext = new Context(addrApiurl)
+        // In the app, we simply create a new user from the provided user key, signing is done automatically
+        users = await Users.fromKey(key, identity, userContext)
+        expect(users.context.toJSON()).to.have.ownProperty('x-textile-api-sig')
+      }).timeout(3000)
+
+      it('should then create a db for the bucket', async function () {
+        await users.createThread('my-buckets')
+        expect(users.context.toJSON()).to.have.ownProperty('x-textile-thread-name')
       })
-      it('should then create a db for the bucket', async () => {
-        const id = ThreadID.fromRandom()
-        // Just for the test, recrete the client here
-        const db = new Client(userContext)
-        await db.newDB(id, userContext.withThreadName('my-buckets'))
-        expect(userContext.toJSON()).to.have.ownProperty('x-textile-thread-name')
-      })
+
       it('should then initialize a new bucket in the db and push to it', async function () {
         if (isBrowser) return this.skip()
         // Initialize a new bucket in the db
-        const buckets = new Buckets(userContext)
+        const buckets = Buckets.fromUser(users)
         const buck = await buckets.init('mybuck')
         expect(buck.root?.name).to.equal('mybuck')
 
@@ -278,9 +277,8 @@ describe('Users...', () => {
         expect(root).to.not.be.undefined
 
         // We should have a thread named "my-buckets"
-        const users = new Users(userContext)
         const res = await users.getThread('my-buckets')
-        expect(res.id).to.deep.equal(userContext.toJSON()['x-textile-thread'])
+        expect(res.id).to.deep.equal(users.context.toJSON()['x-textile-thread'])
 
         // The dev should see that the key was used to create one thread
         // @todo: Use the cli to list keys

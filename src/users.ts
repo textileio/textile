@@ -1,9 +1,12 @@
 import log from 'loglevel'
 import * as pb from '@textile/users-grpc/users_pb'
+import { GetKeyReply } from '@textile/hub-grpc/hub_pb'
 import { APIClient } from '@textile/users-grpc/users_pb_service'
 import { ServiceError } from '@textile/hub-grpc/hub_pb_service'
 import { Context } from '@textile/context'
 import { ThreadID } from '@textile/threads-id'
+import { Client } from '@textile/threads-client'
+import { Identity, Libp2pCryptoIdentity } from '@textile/threads-core'
 
 const logger = log.getLogger('users')
 
@@ -22,6 +25,15 @@ export class Users {
       transport: context.transport,
       debug: context.debug,
     })
+  }
+
+  static async fromKey(key: GetKeyReply.AsObject, identity?: Identity, ctx?: Context) {
+    const users = new Users(ctx)
+    await users.context.withAPIKey(key.key).withUserKey(key)
+    const id = identity ?? (await Libp2pCryptoIdentity.fromRandom())
+    const client = new Client(users.context)
+    await client.getToken(id)
+    return users
   }
 
   /**
@@ -48,6 +60,19 @@ export class Users {
         },
       )
     })
+  }
+
+  /**
+   * Create a new Thread with name.
+   * @param name The name of the Thread.
+   * @param ctx Context containing gRPC headers and settings.
+   * These will be merged with any internal credentials.
+   */
+  async createThread(name: string, ctx?: Context) {
+    logger.debug('create thread request')
+    const id = ThreadID.fromRandom()
+    const db = new Client(this.context.withContext(ctx).withThreadName(name))
+    return db.newDB(id, this.context.withThread(id))
   }
 
   /**

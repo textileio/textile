@@ -6,6 +6,7 @@ import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
 import { Context } from '@textile/context'
 import { normaliseInput, File } from './normalize'
+import { Users } from './users'
 
 const logger = log.getLogger('buckets')
 
@@ -35,6 +36,10 @@ export class Buckets {
       transport: context.transport,
       debug: context.debug,
     }
+  }
+
+  static fromUser(user: Users) {
+    return new Buckets(user.context)
   }
 
   /**
