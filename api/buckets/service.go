@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
@@ -564,11 +565,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if err != nil {
 		return nil, err
 	}
-	cv1, err := util.PathToCidV1(buck.Path)
+	splitted := strings.Split(buck.Path, "/")
+	c, err := cid.Decode(splitted[2])
 	if err != nil {
-		return nil, fmt.Errorf("transforming bucket path to cidv1: %s", err)
+		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
-	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), cv1, WithToken(dbToken)); err != nil {
+	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), c, WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("archiving bucket %s: %s", req.GetKey(), err)
 	}
 	log.Debug("archived bucket")
