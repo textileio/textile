@@ -297,7 +297,7 @@ Loop:
 	}
 
 	if err := b.updateArchiveStatus(ctx, key, jid.String(), job, aborted, abortMsg); err != nil {
-		log.Errorf("updating achive status: %s", err)
+		log.Errorf("updating archive status: %s", err)
 	}
 
 	// Step 2: On success, save Deal data in the underlying Bucket thread. On

@@ -133,7 +133,7 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 			return true
 		case buckets_pb.ArchiveStatusReply_Executing:
 		default:
-			t.Fatalf("unkown archive status")
+			t.Fatalf("unknown archive status")
 		}
 		return false
 	}

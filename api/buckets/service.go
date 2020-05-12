@@ -595,7 +595,7 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	case ffs.Canceled:
 		status = pb.ArchiveStatusReply_Canceled
 	default:
-		return nil, fmt.Errorf("unkown job status %d", jstatus)
+		return nil, fmt.Errorf("unknown job status %d", jstatus)
 	}
 
 	log.Debug("finished archive status")
