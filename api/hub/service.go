@@ -37,20 +37,16 @@ var (
 )
 
 type Service struct {
-	Collections *c.Collections
-	Threads     *threads.Client
-	ThreadsNet  *netclient.Client
-
-	IPFSClient  iface.CoreAPI
-	EmailClient *email.Client
-
-	GatewayUrl string
-
-	SessionBus    *broadcast.Broadcaster
-	SessionSecret string
-
-	DNSManager  *dns.Manager
-	IPNSManager *ipns.Manager
+	Collections        *c.Collections
+	Threads            *threads.Client
+	ThreadsNet         *netclient.Client
+	GatewayURL         string
+	EmailClient        *email.Client
+	EmailSessionBus    *broadcast.Broadcaster
+	EmailSessionSecret string
+	IPFSClient         iface.CoreAPI
+	IPNSManager        *ipns.Manager
+	DNSManager         *dns.Manager
 }
 
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
@@ -63,10 +59,10 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
 
-	secret := getSessionSecret(s.SessionSecret)
+	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayUrl, secret); err != nil {
+	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -139,10 +135,10 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
-	secret := getSessionSecret(s.SessionSecret)
+	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayUrl, secret); err != nil {
+	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -166,7 +162,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 
 // awaitVerification waits for a dev to verify their email via a sent email.
 func (s *Service) awaitVerification(secret string) bool {
-	listen := s.SessionBus.Listen()
+	listen := s.EmailSessionBus.Listen()
 	ch := make(chan struct{})
 	timer := time.NewTimer(loginTimeout)
 	go func() {
@@ -333,7 +329,7 @@ func (s *Service) orgToPbOrg(org *c.Account) (*pb.GetOrgReply, error) {
 		Key:       key,
 		Name:      org.Name,
 		Slug:      org.Username,
-		Host:      s.GatewayUrl,
+		Host:      s.GatewayURL,
 		Members:   members,
 		CreatedAt: org.CreatedAt.Unix(),
 	}, nil
@@ -398,7 +394,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.InviteAddress(
-		ectx, org.Name, dev.Email, req.Email, s.GatewayUrl, invite.Token); err != nil {
+		ectx, org.Name, dev.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
 	return &pb.InviteToOrgReply{Token: invite.Token}, nil
@@ -439,7 +435,7 @@ func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvail
 	}
 	return &pb.IsOrgNameAvailableReply{
 		Slug: slug,
-		Host: s.GatewayUrl,
+		Host: s.GatewayURL,
 	}, nil
 }
 

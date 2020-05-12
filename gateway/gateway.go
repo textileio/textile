@@ -7,24 +7,26 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/gin-contrib/location"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
-	"github.com/ipfs/interface-go-ipfs-core/path"
+	isd "github.com/jbenet/go-is-domain"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	mbase "github.com/multiformats/go-multibase"
 	"github.com/rs/cors"
 	gincors "github.com/rs/cors/wrapper/gin"
 	threadsclient "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
+	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	bucketsclient "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
@@ -56,6 +58,7 @@ type Gateway struct {
 	server        *http.Server
 	addr          ma.Multiaddr
 	url           string
+	subdomains    bool
 	bucketsDomain string
 
 	collections *collections.Collections
@@ -65,20 +68,21 @@ type Gateway struct {
 
 	ipfs iface.CoreAPI
 
-	sessionBus *broadcast.Broadcaster
+	emailSessionBus *broadcast.Broadcaster
 }
 
 // Config defines the gateway configuration.
 type Config struct {
-	Addr          ma.Multiaddr
-	URL           string
-	BucketsDomain string
-	ApiAddr       ma.Multiaddr
-	ApiSession    string
-	Collections   *collections.Collections
-	IPFSClient    iface.CoreAPI
-	SessionBus    *broadcast.Broadcaster
-	Debug         bool
+	Addr            ma.Multiaddr
+	URL             string
+	Subdomains      bool
+	BucketsDomain   string
+	APIAddr         ma.Multiaddr
+	APISession      string
+	Collections     *collections.Collections
+	IPFSClient      iface.CoreAPI
+	EmailSessionBus *broadcast.Broadcaster
+	Debug           bool
 }
 
 // NewGateway returns a new gateway.
@@ -91,7 +95,7 @@ func NewGateway(conf Config) (*Gateway, error) {
 		}
 	}
 
-	apiTarget, err := tutil.TCPAddrFromMultiAddr(conf.ApiAddr)
+	apiTarget, err := tutil.TCPAddrFromMultiAddr(conf.APIAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -108,15 +112,16 @@ func NewGateway(conf Config) (*Gateway, error) {
 		return nil, err
 	}
 	return &Gateway{
-		addr:          conf.Addr,
-		url:           conf.URL,
-		bucketsDomain: conf.BucketsDomain,
-		collections:   conf.Collections,
-		apiSession:    conf.ApiSession,
-		threads:       tc,
-		buckets:       bc,
-		ipfs:          conf.IPFSClient,
-		sessionBus:    conf.SessionBus,
+		addr:            conf.Addr,
+		url:             conf.URL,
+		subdomains:      conf.Subdomains,
+		bucketsDomain:   conf.BucketsDomain,
+		collections:     conf.Collections,
+		apiSession:      conf.APISession,
+		threads:         tc,
+		buckets:         bc,
+		ipfs:            conf.IPFSClient,
+		emailSessionBus: conf.EmailSessionBus,
 	}, nil
 }
 
@@ -148,24 +153,23 @@ func (g *Gateway) Start() {
 		c.Writer.WriteHeader(http.StatusNoContent)
 	})
 
-	router.GET("/thread/:thread/:collection", g.namespaceHandler)
-	router.GET("/thread/:thread/:collection/:id", g.namespaceHandler)
-	router.GET("/thread/:thread/:collection/:id/*path", g.namespaceHandler)
+	router.GET("/thread/:thread/:collection", g.subdomainOptionHandler, g.collectionHandler)
+	router.GET("/thread/:thread/:collection/:id", g.subdomainOptionHandler, g.instanceHandler)
+	router.GET("/thread/:thread/:collection/:id/*path", g.subdomainOptionHandler, g.instanceHandler)
 
-	router.GET("/ipfs/:root", g.namespaceHandler)
-	router.GET("/ipfs/:root/*path", g.namespaceHandler)
-	router.GET("/ipns/:root", g.namespaceHandler)
-	router.GET("/ipns/:root/*path", g.namespaceHandler)
-	router.GET("/p2p/:root", g.namespaceHandler)
-	router.GET("/p2p/:root/*path", g.namespaceHandler)
-	router.GET("/ipld/:root", g.namespaceHandler)
-	router.GET("/ipld/:root/*path", g.namespaceHandler)
+	router.GET("/ipfs/:root", g.subdomainOptionHandler, g.ipfsHandler)
+	router.GET("/ipfs/:root/*path", g.subdomainOptionHandler, g.ipfsHandler)
+	router.GET("/ipns/:key", g.subdomainOptionHandler, g.ipnsHandler)
+	router.GET("/ipns/:key/*path", g.subdomainOptionHandler, g.ipnsHandler)
+	router.GET("/p2p/:key", g.subdomainOptionHandler, g.p2pHandler)
+	router.GET("/ipld/:root", g.subdomainOptionHandler, g.ipldHandler)
+	router.GET("/ipld/:root/*path", g.subdomainOptionHandler, g.ipldHandler)
 
 	router.GET("/dashboard/:username", g.dashboardHandler)
 	router.GET("/confirm/:secret", g.confirmEmail)
 	router.GET("/consent/:invite", g.consentInvite)
 
-	router.NoRoute(g.routeSubdomains)
+	router.NoRoute(g.subdomainHandler)
 
 	g.server = &http.Server{
 		Addr:    addr,
@@ -220,8 +224,11 @@ func (g *Gateway) Stop() error {
 	return nil
 }
 
-// namespaceHandler redirects IPFS namespaces to their subdomain equivalents.
-func (g *Gateway) namespaceHandler(c *gin.Context) {
+// subdomainOptionHandler redirects valid namespaces to subdomains if the option is enabled.
+func (g *Gateway) subdomainOptionHandler(c *gin.Context) {
+	if !g.subdomains {
+		return
+	}
 	loc, ok := g.toSubdomainURL(c.Request)
 	if !ok {
 		render404(c)
@@ -241,7 +248,7 @@ func (g *Gateway) dashboardHandler(c *gin.Context) {
 
 // confirmEmail verifies an emailed secret.
 func (g *Gateway) confirmEmail(c *gin.Context) {
-	if err := g.sessionBus.Send(c.Param("secret")); err != nil {
+	if err := g.emailSessionBus.Send(c.Param("secret")); err != nil {
 		renderError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -332,8 +339,8 @@ func formatError(err error) string {
 	return strings.Join(words, " ") + "."
 }
 
-// routeSubdomains handles the request with the matching subdomain renderer.
-func (g *Gateway) routeSubdomains(c *gin.Context) {
+// subdomainHandler handles requests by parsing the request subdomain.
+func (g *Gateway) subdomainHandler(c *gin.Context) {
 	host := strings.SplitN(c.Request.Host, ":", 2)[0]
 	parts := strings.Split(host, ".")
 	key := parts[0]
@@ -353,44 +360,21 @@ func (g *Gateway) routeSubdomains(c *gin.Context) {
 		render404(c)
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
-	defer cancel()
 	switch ns {
 	case "ipfs":
-		g.renderIPFSPath(c, ctx, path.New(key+c.Request.URL.Path))
+		g.renderIPFSPath(c, "ipfs/"+key, "/ipfs/"+key+c.Request.URL.Path)
 	case "ipns":
-		pth, err := g.ipfs.Name().Resolve(ctx, key)
-		if err != nil {
-			renderError(c, http.StatusNotFound, err)
-			return
-		}
-		g.renderIPFSPath(c, ctx, path.New(pth.String()+c.Request.URL.Path))
+		g.renderIPNSKey(c, key, c.Request.URL.Path)
 	case "p2p":
-		pid, err := peer.Decode(key)
-		if err != nil {
-			renderError(c, http.StatusBadRequest, err)
-			return
-		}
-		info, err := g.ipfs.Dht().FindPeer(ctx, pid)
-		if err != nil {
-			renderError(c, http.StatusNotFound, err)
-			return
-		}
-		c.JSON(http.StatusOK, info)
+		g.renderP2PKey(c, key)
 	case "ipld":
-		node, err := g.ipfs.Object().Get(ctx, path.New(key+c.Request.URL.Path))
-		if err != nil {
-			renderError(c, http.StatusNotFound, err)
-			return
-		}
-		c.JSON(http.StatusOK, node)
+		g.renderIPLDPath(c, key+c.Request.URL.Path)
 	case "thread":
 		threadID, err := thread.Decode(key)
 		if err != nil {
 			renderError(c, http.StatusBadRequest, fmt.Errorf("invalid thread ID"))
 			return
 		}
-
 		parts := strings.SplitN(strings.TrimSuffix(c.Request.URL.Path, "/"), "/", 4)
 		switch len(parts) {
 		case 1:
@@ -398,18 +382,128 @@ func (g *Gateway) routeSubdomains(c *gin.Context) {
 			render404(c)
 		case 2:
 			if parts[1] != "" {
-				g.collectionHandler(c, threadID, parts[1])
+				g.renderCollection(c, threadID, parts[1])
 			} else {
 				render404(c)
 			}
 		case 3:
-			g.instanceHandler(c, threadID, parts[1], parts[2], "")
+			g.renderInstance(c, threadID, parts[1], parts[2], "")
 		case 4:
-			g.instanceHandler(c, threadID, parts[1], parts[2], parts[3])
+			g.renderInstance(c, threadID, parts[1], parts[2], parts[3])
 		default:
 			render404(c)
 		}
 	default:
 		render404(c)
 	}
+}
+
+// Modified from https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L251
+func isSubdomainNamespace(ns string) bool {
+	switch ns {
+	case "ipfs", "ipns", "p2p", "ipld", "thread":
+		return true
+	default:
+		return false
+	}
+}
+
+// Copied from https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L260
+func isPeerIDNamespace(ns string) bool {
+	switch ns {
+	case "ipns", "p2p":
+		return true
+	default:
+		return false
+	}
+}
+
+// Converts a hostname/path to a subdomain-based URL, if applicable.
+// Modified from https://github.com/ipfs/go-ipfs/blob/dbfa7bf2b216bad9bec1ff66b1f3814f4faac31e/core/corehttp/hostname.go#L270
+func (g *Gateway) toSubdomainURL(r *http.Request) (redirURL string, ok bool) {
+	var ns, rootID, rest string
+
+	query := r.URL.RawQuery
+	parts := strings.SplitN(r.URL.Path, "/", 4)
+	safeRedirectURL := func(in string) (out string, ok bool) {
+		safeURI, err := url.ParseRequestURI(in)
+		if err != nil {
+			return "", false
+		}
+		return safeURI.String(), true
+	}
+
+	switch len(parts) {
+	case 4:
+		rest = parts[3]
+		fallthrough
+	case 3:
+		ns = parts[1]
+		rootID = parts[2]
+	default:
+		return "", false
+	}
+
+	if !isSubdomainNamespace(ns) {
+		return "", false
+	}
+
+	// add prefix if query is present
+	if query != "" {
+		query = "?" + query
+	}
+
+	// Normalize problematic PeerIDs (eg. ed25519+identity) to CID representation
+	if isPeerIDNamespace(ns) && !isd.IsDomain(rootID) {
+		peerID, err := peer.Decode(rootID)
+		// Note: PeerID CIDv1 with protobuf multicodec will fail, but we fix it
+		// in the next block
+		if err == nil {
+			rootID = peer.ToCid(peerID).String()
+		}
+	}
+
+	// If rootID is a CID, ensure it uses DNS-friendly text representation
+	if rootCid, err := cid.Decode(rootID); err == nil {
+		multicodec := rootCid.Type()
+
+		// PeerIDs represented as CIDv1 are expected to have libp2p-key
+		// multicodec (https://github.com/libp2p/specs/pull/209).
+		// We ease the transition by fixing multicodec on the fly:
+		// https://github.com/ipfs/go-ipfs/issues/5287#issuecomment-492163929
+		if isPeerIDNamespace(ns) && multicodec != cid.Libp2pKey {
+			multicodec = cid.Libp2pKey
+		}
+
+		// if object turns out to be a valid CID,
+		// ensure text representation used in subdomain is CIDv1 in Base32
+		// https://github.com/ipfs/in-web-browsers/issues/89
+		rootID, err = cid.NewCidV1(multicodec, rootCid.Hash()).StringOfBase(mbase.Base32)
+		if err != nil {
+			// should not error, but if it does, its clealy not possible to
+			// produce a subdomain URL
+			return "", false
+		}
+	}
+
+	urlparts := strings.Split(g.url, "://")
+	if len(urlparts) < 2 {
+		return "", false
+	}
+	scheme := urlparts[0]
+	host := urlparts[1]
+	return safeRedirectURL(fmt.Sprintf("%s://%s.%s.%s/%s%s", scheme, rootID, ns, host, rest, query))
+}
+
+func byteCountDecimal(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

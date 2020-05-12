@@ -248,7 +248,7 @@ func TestClose(t *testing.T) {
 	t.Parallel()
 	conf, shutdown := apitest.MakeTextile(t)
 	defer shutdown()
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	require.Nil(t, err)
@@ -261,7 +261,7 @@ func TestClose(t *testing.T) {
 
 func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	conf, shutdown := apitest.MakeTextile(t)
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)

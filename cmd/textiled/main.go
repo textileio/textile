@@ -65,6 +65,10 @@ var (
 			Key:      "addr.mongo_uri",
 			DefValue: "mongodb://127.0.0.1:27017",
 		},
+		"gatewaySubdomains": {
+			Key:      "gateway.subdomains",
+			DefValue: false,
+		},
 		"dnsDomain": {
 			Key:      "dns.domain",
 			DefValue: "",
@@ -89,7 +93,7 @@ var (
 			Key:      "email.api_key",
 			DefValue: "",
 		},
-		"sessionSecret": {
+		"emailSessionSecret": {
 			Key:      "email.session_secret",
 			DefValue: "",
 		},
@@ -164,6 +168,12 @@ func init() {
 		flags["addrMongoUri"].DefValue.(string),
 		"MongoDB connection URI")
 
+	// Gateway settings
+	rootCmd.PersistentFlags().Bool(
+		"gatewaySubdomains",
+		flags["gatewaySubdomains"].DefValue.(bool),
+		"Enable gateway namespace redirects to subdomains")
+
 	// Cloudflare settings
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
@@ -197,8 +207,8 @@ func init() {
 		"Mailgun API key for sending emails")
 
 	rootCmd.PersistentFlags().String(
-		"sessionSecret",
-		flags["sessionSecret"].DefValue.(string),
+		"emailSessionSecret",
+		flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
 
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
@@ -257,7 +267,7 @@ var rootCmd = &cobra.Command{
 		emailFrom := configViper.GetString("email.from")
 		emailDomain := configViper.GetString("email.domain")
 		emailApiKey := configViper.GetString("email.api_key")
-		sessionSecret := configViper.GetString("email.session_secret")
+		emailSessionSecret := configViper.GetString("email.session_secret")
 
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
@@ -266,26 +276,26 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:        configViper.GetString("repo"),
-			AddrApi:         addrApi,
-			AddrApiProxy:    addrApiProxy,
-			AddrThreadsHost: addrThreadsHost,
-			AddrIpfsApi:     addrIpfsApi,
-			AddrGatewayHost: addrGatewayHost,
-			AddrGatewayUrl:  addrGatewayUrl,
-			AddrFilecoinApi: addrFilecoinApi,
-			AddrMongoUri:    addrMongoUri,
-			MongoName:       "textile",
-			DNSDomain:       dnsDomain,
-			DNSZoneID:       dnsZoneID,
-			DNSToken:        dnsToken,
-			EmailFrom:       emailFrom,
-			EmailDomain:     emailDomain,
-			EmailApiKey:     emailApiKey,
-			Debug:           configViper.GetBool("log.debug"),
-			SessionSecret:   sessionSecret,
+			RepoPath:           configViper.GetString("repo"),
+			AddrAPI:            addrApi,
+			AddrAPIProxy:       addrApiProxy,
+			AddrThreadsHost:    addrThreadsHost,
+			AddrIPFSAPI:        addrIpfsApi,
+			AddrGatewayHost:    addrGatewayHost,
+			AddrGatewayURL:     addrGatewayUrl,
+			AddrFilecoinAPI:    addrFilecoinApi,
+			AddrMongoURI:       addrMongoUri,
+			UseSubdomains:      configViper.GetBool("gateway.subdomains"),
+			MongoName:          "textile",
+			DNSDomain:          dnsDomain,
+			DNSZoneID:          dnsZoneID,
+			DNSToken:           dnsToken,
+			EmailFrom:          emailFrom,
+			EmailDomain:        emailDomain,
+			EmailAPIKey:        emailApiKey,
+			EmailSessionSecret: emailSessionSecret,
+			Debug:              configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)

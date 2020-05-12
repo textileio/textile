@@ -1,6 +1,6 @@
 {{template "header" .Title}}
 <div class="title">
-    {{ if ne .Root "" }}<span class="yellow">{{.Root}}</span>: {{ end }}{{.Path}}
+    {{ if ne .Root "" }}<span class="yellow">{{.Root}}:</span> {{ end }}{{.Path}}
     {{ if ne .Updated "" }}
         <span class="right">Updated {{.Updated}}</span>
     {{ end }}

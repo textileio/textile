@@ -70,22 +70,24 @@ type Textile struct {
 	server *grpc.Server
 	proxy  *http.Server
 
-	gateway        *gateway.Gateway
-	gatewaySession string
-	sessionBus     *broadcast.Broadcaster
+	gateway         *gateway.Gateway
+	gatewaySession  string
+	emailSessionBus *broadcast.Broadcaster
 }
 
 type Config struct {
 	RepoPath string
 
-	AddrApi         ma.Multiaddr
-	AddrApiProxy    ma.Multiaddr
+	AddrAPI         ma.Multiaddr
+	AddrAPIProxy    ma.Multiaddr
 	AddrThreadsHost ma.Multiaddr
-	AddrIpfsApi     ma.Multiaddr
+	AddrIPFSAPI     ma.Multiaddr
 	AddrGatewayHost ma.Multiaddr
-	AddrGatewayUrl  string
-	AddrFilecoinApi ma.Multiaddr
-	AddrMongoUri    string
+	AddrGatewayURL  string
+	AddrFilecoinAPI ma.Multiaddr
+	AddrMongoURI    string
+
+	UseSubdomains bool
 
 	MongoName string
 
@@ -93,11 +95,10 @@ type Config struct {
 	DNSZoneID string
 	DNSToken  string
 
-	EmailFrom   string
-	EmailDomain string
-	EmailApiKey string
-
-	SessionSecret string
+	EmailFrom          string
+	EmailDomain        string
+	EmailAPIKey        string
+	EmailSessionSecret string
 
 	Debug bool
 }
@@ -116,12 +117,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t := &Textile{}
 
 	// Configure clients
-	ic, err := httpapi.NewApi(conf.AddrIpfsApi)
+	ic, err := httpapi.NewApi(conf.AddrIPFSAPI)
 	if err != nil {
 		return nil, err
 	}
-	if conf.AddrFilecoinApi != nil {
-		t.fc, err = filc.NewClient(conf.AddrFilecoinApi)
+	if conf.AddrFilecoinAPI != nil {
+		t.fc, err = filc.NewClient(conf.AddrFilecoinAPI)
 		if err != nil {
 			return nil, err
 		}
@@ -132,11 +133,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailApiKey, conf.Debug)
+	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
-	t.collections, err = c.NewCollections(ctx, conf.AddrMongoUri, conf.MongoName)
+	t.collections, err = c.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName)
 	if err != nil {
 		return nil, err
 	}
@@ -165,37 +166,37 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.sessionBus = broadcast.NewBroadcaster(0)
+	t.emailSessionBus = broadcast.NewBroadcaster(0)
 	hs := &hub.Service{
-		Collections:   t.collections,
-		IPFSClient:    ic,
-		EmailClient:   ec,
-		GatewayUrl:    conf.AddrGatewayUrl,
-		SessionBus:    t.sessionBus,
-		SessionSecret: conf.SessionSecret,
-		DNSManager:    t.dnsm,
-		IPNSManager:   t.ipnsm,
+		Collections:        t.collections,
+		GatewayURL:         conf.AddrGatewayURL,
+		EmailClient:        ec,
+		EmailSessionBus:    t.emailSessionBus,
+		EmailSessionSecret: conf.EmailSessionSecret,
+		IPFSClient:         ic,
+		IPNSManager:        t.ipnsm,
+		DNSManager:         t.dnsm,
 	}
 	bucks := &buckets.Buckets{}
 	bs := &buckets.Service{
 		Collections:    t.collections,
 		Buckets:        bucks,
-		IPFSClient:     ic,
+		GatewayURL:     conf.AddrGatewayURL,
 		FilecoinClient: t.fc,
-		GatewayUrl:     conf.AddrGatewayUrl,
-		DNSManager:     t.dnsm,
+		IPFSClient:     ic,
 		IPNSManager:    t.ipnsm,
+		DNSManager:     t.dnsm,
 	}
 	us := &users.Service{
 		Collections: t.collections,
 	}
 
 	// Configure gRPC server
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	if err != nil {
 		return nil, err
 	}
-	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrApiProxy)
+	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -257,15 +258,16 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(gateway.Config{
-		Addr:          conf.AddrGatewayHost,
-		URL:           conf.AddrGatewayUrl,
-		BucketsDomain: conf.DNSDomain,
-		ApiAddr:       conf.AddrApi,
-		ApiSession:    t.gatewaySession,
-		Collections:   t.collections,
-		IPFSClient:    ic,
-		SessionBus:    t.sessionBus,
-		Debug:         conf.Debug,
+		Addr:            conf.AddrGatewayHost,
+		URL:             conf.AddrGatewayURL,
+		Subdomains:      conf.UseSubdomains,
+		BucketsDomain:   conf.DNSDomain,
+		APIAddr:         conf.AddrAPI,
+		APISession:      t.gatewaySession,
+		Collections:     t.collections,
+		IPFSClient:      ic,
+		EmailSessionBus: t.emailSessionBus,
+		Debug:           conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -282,7 +284,7 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
-	t.sessionBus.Discard()
+	t.emailSessionBus.Discard()
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}

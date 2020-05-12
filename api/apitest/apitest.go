@@ -36,21 +36,21 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	conf = core.Config{
 		RepoPath: dir,
 
-		AddrApi:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrApiProxy:    util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrAPI:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		AddrAPIProxy:    util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
 		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrIpfsApi:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
+		AddrIPFSAPI:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayUrl:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		AddrMongoUri:    "mongodb://127.0.0.1:27017",
+		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		AddrMongoURI:    "mongodb://127.0.0.1:27017",
 
 		MongoName: util.MakeToken(12),
 
 		EmailFrom:   "test@email.textile.io",
 		EmailDomain: "email.textile.io",
-		EmailApiKey: "",
+		EmailAPIKey: "",
 
-		SessionSecret: SessionSecret,
+		EmailSessionSecret: SessionSecret,
 
 		Debug: true,
 	}
@@ -84,7 +84,7 @@ func Signup(t *testing.T, client *client.Client, conf core.Config, username, ema
 		res, err = client.Signup(context.Background(), username, email)
 		require.Nil(t, err)
 	}()
-	ConfirmEmail(t, conf.AddrGatewayUrl, SessionSecret)
+	ConfirmEmail(t, conf.AddrGatewayURL, SessionSecret)
 	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)
@@ -101,7 +101,7 @@ func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEma
 		res, err = client.Signin(context.Background(), usernameOrEmail)
 		require.Nil(t, err)
 	}()
-	ConfirmEmail(t, conf.AddrGatewayUrl, SessionSecret)
+	ConfirmEmail(t, conf.AddrGatewayURL, SessionSecret)
 	wg.Wait()
 	require.NotNil(t, res)
 	require.NotEmpty(t, res.Session)

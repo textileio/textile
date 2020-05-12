@@ -327,7 +327,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 	invite, err := client.InviteToOrg(ctx, user2Email)
 	require.Nil(t, err)
-	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayUrl, invite.Token))
+	_, err = http.Get(fmt.Sprintf("%s/consent/%s", conf.AddrGatewayURL, invite.Token))
 	require.Nil(t, err)
 
 	t.Run("as member", func(t *testing.T) {
@@ -390,7 +390,7 @@ func TestClient_DestroyAccount(t *testing.T) {
 		defer wg.Done()
 		_, err = client.Signin(context.Background(), username)
 	}()
-	apitest.ConfirmEmail(t, conf.AddrGatewayUrl, apitest.SessionSecret)
+	apitest.ConfirmEmail(t, conf.AddrGatewayURL, apitest.SessionSecret)
 	wg.Wait()
 	require.NotNil(t, err)
 }
@@ -399,7 +399,7 @@ func TestClose(t *testing.T) {
 	t.Parallel()
 	conf, shutdown := apitest.MakeTextile(t)
 	defer shutdown()
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	require.Nil(t, err)
@@ -410,7 +410,7 @@ func TestClose(t *testing.T) {
 
 func setup(t *testing.T) (core.Config, *c.Client, *tc.Client, func()) {
 	conf, shutdown := apitest.MakeTextile(t)
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrApi)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)

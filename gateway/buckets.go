@@ -57,7 +57,7 @@ func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thr
 		}
 	}
 	c.HTML(http.StatusOK, "/public/html/unixfs.gohtml", gin.H{
-		"Title":   "Buckets",
+		"Title":   "Index of " + path.Join("/thread", threadID.String(), buckets.CollectionName),
 		"Root":    "/",
 		"Path":    "",
 		"Updated": "",
@@ -90,7 +90,12 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 			render404(c)
 			return
 		}
-		base := buckets.CollectionName
+		var base string
+		if g.subdomains {
+			base = buckets.CollectionName
+		} else {
+			base = path.Join("thread", threadID.String(), buckets.CollectionName)
+		}
 		var links []link
 		for _, item := range rep.Item.Items {
 			if item.Name == ".textile" {
@@ -113,7 +118,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		root := strings.Replace(rep.Item.Path, rep.Root.Path, name, 1)
 		back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
 		c.HTML(http.StatusOK, "/public/html/unixfs.gohtml", gin.H{
-			"Title":   name,
+			"Title":   "Index of /" + root,
 			"Root":    "/" + root,
 			"Path":    rep.Item.Path,
 			"Updated": time.Unix(0, rep.Root.UpdatedAt).String(),
