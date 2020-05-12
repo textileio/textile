@@ -50,7 +50,7 @@ func MustParseAddr(str string) ma.Multiaddr {
 	return addr
 }
 
-func Base32Path(p string) string {
+func ToCidV1Path(p string) string {
 	parts := strings.Split(p, "/")
 	if len(parts) < 3 {
 		return p
@@ -59,9 +59,6 @@ func Base32Path(p string) string {
 	if err != nil {
 		return p
 	}
-	parts[2], err = cid.NewCidV1(id.Type(), id.Hash()).StringOfBase(mbase.Base32)
-	if err != nil {
-		return p
-	}
+	parts[2] = cid.NewCidV1(id.Type(), id.Hash()).String()
 	return strings.Join(parts, "/")
 }

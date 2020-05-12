@@ -65,8 +65,8 @@ var (
 	threads *tc.Client
 	users   *uc.Client
 
-	cmdTimeout     = time.Second * 10
-	confirmTimeout = time.Minute * 3
+	cmdTimeout     = time.Minute
+	confirmTimeout = time.Hour
 	addFileTimeout = time.Hour * 24
 	getFileTimeout = time.Hour * 24
 
