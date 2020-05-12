@@ -586,13 +586,9 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	switch jstatus {
 	case ffs.Success:
 		status = pb.ArchiveStatusReply_Done
-	case ffs.Queued:
-		status = pb.ArchiveStatusReply_InProgress
-	case ffs.InProgress:
-		status = pb.ArchiveStatusReply_InProgress
-	case ffs.Canceled:
-		status = pb.ArchiveStatusReply_Failed
-	case ffs.Failed:
+	case ffs.Queued, ffs.Executing:
+		status = pb.ArchiveStatusReply_Executing
+	case ffs.Canceled, ffs.Failed:
 		status = pb.ArchiveStatusReply_Failed
 	default:
 		return nil, fmt.Errorf("unkown job status %d", jstatus)

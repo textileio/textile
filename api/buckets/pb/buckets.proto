@@ -122,7 +122,7 @@ message ArchiveStatusReply {
      Status status = 2;
 
      enum Status {
-	InProgress = 0;
+	Executing = 0;
 	Failed = 1;
 	Done = 2;
      }

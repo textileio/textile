@@ -105,7 +105,7 @@ func archiveFinished(ctx context.Context, t *testing.T, client *c.Client, bucket
 		switch as.GetStatus() {
 		case buckets_pb.ArchiveStatusReply_Failed:
 			t.Fatal("archive status failed")
-		case buckets_pb.ArchiveStatusReply_InProgress:
+		case buckets_pb.ArchiveStatusReply_Executing:
 		case buckets_pb.ArchiveStatusReply_Done:
 			return true
 		default:

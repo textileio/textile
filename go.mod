@@ -48,7 +48,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.17
-	github.com/textileio/powergate v0.0.0-20200507122357-5c2ec40f3483
+	github.com/textileio/powergate v0.0.0-20200512141340-6d8d2692c54f
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
@@ -61,4 +61,4 @@ require (
 
 replace github.com/ipfs/go-filestore => github.com/ipfs/go-filestore v1.0.0
 
-replace github.com/textileio/powergate => ../powergate
+//replace github.com/textileio/powergate => ../powergate
