@@ -106,6 +106,49 @@ message RemovePathRequest {
 
 message RemovePathReply {}
 
+message ArchiveRequest {
+    string key = 1;
+}
+
+message ArchiveReply {
+}
+
+message ArchiveStatusRequest {
+     string key = 1;
+}
+
+message ArchiveStatusReply {
+     string key = 1;
+     Status status = 2;
+
+     enum Status {
+	InProgress = 0;
+	Failed = 1;
+	Done = 2;
+     }
+}
+
+message ArchiveInfoRequest {
+     string key = 1;
+}
+
+message ArchiveInfoReply {
+     string key = 1;
+     Archive archive = 2;
+
+     message Archive {
+         string cid = 1;
+	 repeated Deal deals = 2;
+
+	 message Deal {
+		 string ProposalCid = 1;
+		 string miner = 2;
+	 }
+     }
+}
+
+
+
 service API {
     rpc Init(InitRequest) returns (InitReply) {}
     rpc Links(LinksRequest) returns (LinksReply) {}
@@ -115,4 +158,9 @@ service API {
     rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
     rpc Remove(RemoveRequest) returns (RemoveReply) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
+    
+    // Archive
+    rpc Archive(ArchiveRequest) returns (ArchiveReply) {}
+    rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusReply) {}
+    rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoReply) {}
 }

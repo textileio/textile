@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	fc "github.com/textileio/filecoin/api/client"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/powergate/ffs"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	c "github.com/textileio/textile/collections"
@@ -36,13 +37,12 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections    *c.Collections
-	Buckets        *Buckets
-	GatewayURL     string
-	FilecoinClient *fc.Client
-	IPFSClient     iface.CoreAPI
-	IPNSManager    *ipns.Manager
-	DNSManager     *dns.Manager
+	Collections *c.Collections
+	Buckets     *Buckets
+	GatewayURL  string
+	IPFSClient  iface.CoreAPI
+	IPNSManager *ipns.Manager
+	DNSManager  *dns.Manager
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
@@ -550,6 +550,98 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
 	return &pb.RemovePathReply{}, nil
+}
+
+func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveReply, error) {
+	log.Debug("received archive request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	splitted := strings.Split(buck.Path, "/")
+	c, err := cid.Decode(splitted[2])
+	if err != nil {
+		return nil, fmt.Errorf("parsing cid path: %s", err)
+	}
+
+	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), c, WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("archiving bucket %s: %s", req.GetKey(), err)
+	}
+	log.Debug("archived bucket")
+	return &pb.ArchiveReply{}, nil
+}
+
+func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusReply, error) {
+	log.Debug("received archive status")
+
+	jstatus, err := s.Buckets.ArchiveStatus(ctx, req.Key)
+	if err != nil {
+		return nil, fmt.Errorf("getting status from last archive: %s", err)
+	}
+	var status pb.ArchiveStatusReply_Status
+	switch jstatus {
+	case ffs.Success:
+		status = pb.ArchiveStatusReply_Done
+	case ffs.Queued:
+		status = pb.ArchiveStatusReply_InProgress
+	case ffs.InProgress:
+		status = pb.ArchiveStatusReply_InProgress
+	case ffs.Canceled:
+		status = pb.ArchiveStatusReply_Failed
+	case ffs.Failed:
+		status = pb.ArchiveStatusReply_Failed
+	default:
+		return nil, fmt.Errorf("unkown job status %d", jstatus)
+	}
+
+	log.Debug("finished archive status")
+	return &pb.ArchiveStatusReply{
+		Key:    req.Key,
+		Status: status,
+	}, nil
+
+}
+
+func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoReply, error) {
+	log.Debug("received archive info")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	currentArchive := buck.Archives.Current
+	if currentArchive.Cid == "" {
+		return nil, ErrNoCurrentArchive
+	}
+
+	deals := make([]*pb.ArchiveInfoReply_Archive_Deal, len(currentArchive.Deals))
+	for i, d := range currentArchive.Deals {
+		deals[i] = &pb.ArchiveInfoReply_Archive_Deal{
+			ProposalCid: d.ProposalCid,
+			Miner:       d.Miner,
+		}
+	}
+	log.Debug("finished archive info")
+	return &pb.ArchiveInfoReply{
+		Key: req.Key,
+		Archive: &pb.ArchiveInfoReply_Archive{
+			Cid:   currentArchive.Cid,
+			Deals: deals,
+		},
+	}, nil
 }
 
 func (s *Service) getGatewayHost() (host string, ok bool) {

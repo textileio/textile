@@ -253,9 +253,9 @@ var rootCmd = &cobra.Command{
 		addrGatewayHost := cmd.AddrFromStr(configViper.GetString("addr.gateway.host"))
 		addrGatewayUrl := configViper.GetString("addr.gateway.url")
 
-		var addrFilecoinApi ma.Multiaddr
-		if str := configViper.GetString("addr.filecoin.api"); str != "" {
-			addrFilecoinApi = cmd.AddrFromStr(str)
+		var addrPowergateApi ma.Multiaddr
+		if str := configViper.GetString("addr.powergate.api"); str != "" {
+			addrPowergateApi = cmd.AddrFromStr(str)
 		}
 
 		addrMongoUri := configViper.GetString("addr.mongo_uri")
@@ -284,7 +284,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:        addrIpfsApi,
 			AddrGatewayHost:    addrGatewayHost,
 			AddrGatewayURL:     addrGatewayUrl,
-			AddrFilecoinAPI:    addrFilecoinApi,
+			AddrPowergateApi:   addrPowergateApi,
 			AddrMongoURI:       addrMongoUri,
 			UseSubdomains:      configViper.GetBool("gateway.subdomains"),
 			MongoName:          "textile",

@@ -67,6 +67,24 @@ func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathRep
 	})
 }
 
+func (c *Client) Archive(ctx context.Context, key string) (*pb.ArchiveReply, error) {
+	return c.c.Archive(ctx, &pb.ArchiveRequest{
+		Key: key,
+	})
+}
+
+func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusReply, error) {
+	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
+		Key: key,
+	})
+}
+
+func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoReply, error) {
+	return c.c.ArchiveInfo(ctx, &pb.ArchiveInfoRequest{
+		Key: key,
+	})
+}
+
 type pushPathResult struct {
 	path path.Resolved
 	root path.Path
