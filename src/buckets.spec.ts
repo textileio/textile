@@ -19,25 +19,23 @@ const wrongError = new Error('wrong error!')
 const sessionSecret = 'textilesession'
 
 describe('Buckets...', () => {
-  let ctx: Context = new Context(addrApiurl, undefined)
+  const ctx: Context = new Context(addrApiurl, undefined)
   const client = new Buckets(ctx)
   let buck: InitReply.AsObject
   let fileSize: number
   before(async () => {
     const user = await signUp(ctx, addrGatewayUrl, sessionSecret)
-    ctx = ctx.withSession(user.user?.session).withThreadName('buckets')
     const id = ThreadID.fromRandom()
-    const db = new Client(ctx)
-    await db.newDB(id)
-    ctx = ctx.withThread(id)
+    const db = new Client(ctx.withSession(user.user?.session).withThreadName('buckets'))
+    await db.newDB(id, ctx.withThread(id))
   })
 
   it('should init a new bucket', async () => {
     // Check that we're empty
-    const list = await client.list(ctx)
+    const list = await client.list()
     expect(list).to.have.length(0)
     // Now initialize a bucket
-    buck = await client.init('mybuck', ctx)
+    buck = await client.init('mybuck')
     expect(buck).to.have.ownProperty('root')
     expect(buck.root).to.have.ownProperty('key')
     expect(buck.root).to.have.ownProperty('path')
@@ -46,7 +44,7 @@ describe('Buckets...', () => {
   })
 
   it('should list buckets', async () => {
-    const roots = await client.list(ctx)
+    const roots = await client.list()
     expect(roots).to.have.length(1)
     const root = roots[0]
     expect(root).to.have.ownProperty('key', buck.root?.key)
@@ -57,7 +55,7 @@ describe('Buckets...', () => {
 
   it('should list empty bucket content at path', async () => {
     // Mostly empty
-    const res = await client.listPath(buck.root?.key || '', '', ctx)
+    const res = await client.listPath(buck.root?.key || '', '')
     expect(res).to.have.ownProperty('root')
     expect(res.root).to.not.be.undefined
     expect(res.item?.isdir).to.be.true
@@ -74,7 +72,7 @@ describe('Buckets...', () => {
     let length = 0
 
     // Bucket path
-    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', stream, ctx, {
+    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', stream, undefined, {
       progress: (num) => (length = num || 0),
     })
     expect(length).to.equal(fileSize)
@@ -83,11 +81,11 @@ describe('Buckets...', () => {
 
     // Nested bucket path
     stream = fs.createReadStream(path.join(pth, 'file2.jpg'))
-    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', stream, ctx)
+    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', stream)
     expect(root).to.not.be.undefined
 
     // Root dir
-    const rep = await client.listPath(rootKey, '', ctx)
+    const rep = await client.listPath(rootKey, '')
     expect(rep.item?.isdir).to.be.true
     expect(rep.item?.itemsList).to.have.length(2)
   })
@@ -105,7 +103,7 @@ describe('Buckets...', () => {
     let length = 0
 
     // Bucket path
-    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', file, ctx, {
+    const res = await client.pushPath(rootKey, 'dir1/file1.jpg', file, undefined, {
       progress: (num) => (length = num || 0),
     })
     expect(length).to.equal(54)
@@ -114,11 +112,11 @@ describe('Buckets...', () => {
 
     // Nested bucket path
     // @note: We're reusing file here...
-    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', file, ctx)
+    const { root } = await client.pushPath(rootKey, 'path/to/file2.jpg', file)
     expect(root).to.not.be.undefined
 
     // Root dir
-    const rep = await client.listPath(rootKey, '', ctx)
+    const rep = await client.listPath(rootKey, '')
     expect(rep.item?.isdir).to.be.true
     expect(rep.item?.itemsList).to.have.length(2)
   })
@@ -127,12 +125,12 @@ describe('Buckets...', () => {
     const rootKey = buck.root?.key || ''
 
     // Nested dir
-    let rep = await client.listPath(rootKey, 'dir1', ctx)
+    let rep = await client.listPath(rootKey, 'dir1')
     expect(rep.item?.isdir).to.be.true
     expect(rep.item?.itemsList).to.have.length(1)
 
     // File
-    rep = await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+    rep = await client.listPath(rootKey, 'dir1/file1.jpg')
     expect(rep.item?.path.endsWith('file1.jpg')).to.be.true
     expect(rep.item?.isdir).to.be.false
   })
@@ -144,7 +142,7 @@ describe('Buckets...', () => {
     let length = 0
 
     // Bucket path
-    const chunks = client.pullPath(rootKey, 'dir1/file1.jpg', ctx, {
+    const chunks = client.pullPath(rootKey, 'dir1/file1.jpg', undefined, {
       progress: (num) => (length = num || 0),
     })
     const pth = path.join(__dirname, '..', 'testdata')
@@ -162,33 +160,33 @@ describe('Buckets...', () => {
 
   it('should remove files by path', async () => {
     const rootKey = buck.root?.key || ''
-    await client.removePath(rootKey, 'path/to/file2.jpg', ctx)
+    await client.removePath(rootKey, 'path/to/file2.jpg')
     try {
-      await client.listPath(rootKey, 'path/to/file2.jpg', ctx)
+      await client.listPath(rootKey, 'path/to/file2.jpg')
       throw wrongError
     } catch (err) {
       expect(err).to.not.equal(wrongError)
     }
-    let list = await client.listPath(rootKey, '', ctx)
+    let list = await client.listPath(rootKey, '')
     expect(list.item?.itemsList).to.have.length(2)
-    await client.removePath(rootKey, 'path', ctx)
+    await client.removePath(rootKey, 'path')
     try {
-      await client.listPath(rootKey, 'path', ctx)
+      await client.listPath(rootKey, 'path')
       throw wrongError
     } catch (err) {
       expect(err).to.not.equal(wrongError)
     }
-    list = await client.listPath(rootKey, '', ctx)
+    list = await client.listPath(rootKey, '')
     expect(list.item?.itemsList).to.have.length(1)
   })
 
   it('should remove an entire bucket', async () => {
     const rootKey = buck.root?.key || ''
-    const rep = await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+    const rep = await client.listPath(rootKey, 'dir1/file1.jpg')
     expect(rep).to.not.be.undefined
-    await client.remove(rootKey, ctx)
+    await client.remove(rootKey)
     try {
-      await client.listPath(rootKey, 'dir1/file1.jpg', ctx)
+      await client.listPath(rootKey, 'dir1/file1.jpg')
       throw wrongError
     } catch (err) {
       expect(err).to.not.equal(wrongError)
