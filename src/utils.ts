@@ -4,7 +4,7 @@ import { HMAC } from 'fast-sha256'
 import multibase from 'multibase'
 import * as pb from '@textile/hub-grpc/hub_pb'
 import { APIClient, ServiceError } from '@textile/hub-grpc/hub_pb_service'
-import { Context } from './context'
+import { Context } from '@textile/context'
 
 export const createUsername = (size = 12) => {
   return Array(size)

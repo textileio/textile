@@ -8,7 +8,7 @@ import { ThreadID } from '@textile/threads-id'
 import { expect } from 'chai'
 import { Client } from '@textile/threads-client'
 import { InitReply } from '@textile/buckets-grpc/buckets_pb'
-import { Context } from './context'
+import { Context } from '@textile/context'
 import { Buckets } from './buckets'
 import { signUp } from './utils'
 
@@ -28,7 +28,7 @@ describe('Buckets...', () => {
     ctx = ctx.withSession(user.user?.session).withThreadName('buckets')
     const id = ThreadID.fromRandom()
     const db = new Client(ctx)
-    await db.newDB(id.toBytes())
+    await db.newDB(id)
     ctx = ctx.withThread(id)
   })
 

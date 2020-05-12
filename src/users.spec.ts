@@ -9,8 +9,8 @@ import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { expect } from 'chai'
 import { Client } from '@textile/threads-client'
 import { Libp2pCryptoIdentity } from '@textile/threads-core'
+import { Context } from '@textile/context'
 import { isBrowser } from 'browser-or-node'
-import { Context } from './context'
 import { Users } from './users'
 import { signUp, createKey, createAPISig } from './utils'
 import { Buckets } from './buckets'
@@ -74,10 +74,9 @@ describe('Users...', () => {
         expect(err.code).to.equal(grpc.Code.NotFound)
       }
       // All good
-      ctx = ctx.withThreadName('foo')
       const id = ThreadID.fromRandom()
       const db = new Client(ctx)
-      await db.newDB(id.toBytes())
+      await db.newDB(id, ctx.withThreadName('foo'))
       const res = await client.getThread('foo', ctx)
       expect(res.name).to.equal('foo')
     })
@@ -107,12 +106,8 @@ describe('Users...', () => {
         expect(err.code).to.equal(grpc.Code.NotFound)
       }
       // All good
-      ctx = ctx.withThreadName('foo')
       const id = ThreadID.fromRandom()
-      // Update existing db config directly as it doesn't yet directly support Context API on method calls
-      db.config = ctx
-      // @todo: In the near future, this should be `await db.newDB(id, ctx)`
-      await db.newDB(id.toBytes())
+      await db.newDB(id, ctx.withThreadName('foo'))
       const res = await client.getThread('foo', ctx)
       expect(res.name).to.equal('foo')
     })
@@ -167,7 +162,7 @@ describe('Users...', () => {
       // Got one
       const id = ThreadID.fromRandom()
       const db = new Client(ctx)
-      await db.newDB(id.toBytes())
+      await db.newDB(id)
       res = await client.listThreads(ctx)
       expect(res.listList).to.have.length(1)
     })
@@ -192,12 +187,8 @@ describe('Users...', () => {
       let res = await client.listThreads(ctx)
       expect(res.listList).to.have.length(0)
       // Got one
-      ctx = ctx.withThreadName('foo')
       const id = ThreadID.fromRandom()
-      // Update existing db config directly as it doesn't yet directly support Context API on method calls
-      db.config = ctx
-      // @todo: In the near future, this should be `await db.newDB(id, ctx)`
-      await db.newDB(id.toBytes())
+      await db.newDB(id, ctx.withThreadName('foo'))
       res = await client.listThreads(ctx)
       expect(res.listList).to.have.length(1)
       expect(res.listList[0].name).to.equal('foo')
@@ -221,11 +212,8 @@ describe('Users...', () => {
       }).timeout(3000)
       it('should then create a db for the bucket', async () => {
         const db = new Client(ctx)
-        ctx = ctx.withThreadName('my-buckets')
         const id = ThreadID.fromRandom()
-        db.config = ctx
-        await db.newDB(id.toBytes())
-        ctx = ctx.withThread(id)
+        await db.newDB(id, ctx.withThreadName('my-buckets'))
         expect(ctx.toJSON()).to.have.ownProperty('x-textile-thread-name')
       })
       it('should then initialize a new bucket in the db and push to it', async function () {
@@ -270,11 +258,9 @@ describe('Users...', () => {
         ctx = ctx.withToken(tok)
       })
       it('should then create a db for the bucket', async () => {
-        ctx = ctx.withThreadName('my-buckets')
         const id = ThreadID.fromRandom()
         const db = new Client(ctx)
-        await db.newDB(id.toBytes())
-        ctx = ctx.withThread(id)
+        await db.newDB(id, ctx.withThreadName('my-buckets'))
         expect(ctx.toJSON()).to.have.ownProperty('x-textile-thread-name')
       })
       it('should then initialize a new bucket in the db and push to it', async function () {
