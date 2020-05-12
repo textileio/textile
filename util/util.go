@@ -2,10 +2,8 @@ package util
 
 import (
 	"crypto/rand"
-	"strings"
 
 	"github.com/gosimple/slug"
-	"github.com/ipfs/go-cid"
 	ma "github.com/multiformats/go-multiaddr"
 	mbase "github.com/multiformats/go-multibase"
 )
@@ -48,17 +46,4 @@ func MustParseAddr(str string) ma.Multiaddr {
 		panic(err)
 	}
 	return addr
-}
-
-func ToCidV1Path(p string) string {
-	parts := strings.Split(p, "/")
-	if len(parts) < 3 {
-		return p
-	}
-	id, err := cid.Decode(parts[2])
-	if err != nil {
-		return p
-	}
-	parts[2] = cid.NewCidV1(id.Type(), id.Hash()).String()
-	return strings.Join(parts, "/")
 }

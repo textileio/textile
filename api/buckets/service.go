@@ -21,7 +21,6 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
-	"github.com/textileio/textile/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -82,12 +81,9 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
 			seedName: ipfsfiles.NewBytesFile(seed),
 		}),
-		options.Unixfs.Pin(false))
+		options.Unixfs.CidVersion(1),
+		options.Unixfs.Pin(true))
 	if err != nil {
-		return nil, err
-	}
-	pthv1 := path.New(util.ToCidV1Path(pth.String()))
-	if err = s.IPFSClient.Pin().Add(ctx, pthv1); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +91,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	if err != nil {
 		return nil, err
 	}
-	buck, err := s.Buckets.Create(ctx, dbID, bkey, name, pthv1, WithToken(dbToken))
+	buck, err := s.Buckets.Create(ctx, dbID, bkey, name, pth, WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +107,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 			}
 		}
 	}
-	go s.IPNSManager.Publish(pthv1, buck.Key)
+	go s.IPNSManager.Publish(pth, buck.Key)
 	return buck, nil
 }
 
@@ -213,7 +209,7 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 	}
 	item := &pb.ListPathReply_Item{
 		Name: filepath.Base(pth),
-		Path: util.ToCidV1Path(pth),
+		Path: pth,
 		Size: size,
 	}
 	switch node := node.(type) {
@@ -394,6 +390,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	pth, err := s.IPFSClient.Unixfs().Add(
 		server.Context(),
 		ipfsfiles.NewReaderFile(reader),
+		options.Unixfs.CidVersion(1),
 		options.Unixfs.Pin(false),
 		options.Unixfs.Progress(true),
 		options.Unixfs.Events(eventCh))
