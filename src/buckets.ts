@@ -4,7 +4,7 @@ import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
-import { Context } from './context'
+import { Context } from '@textile/context'
 import { normaliseInput, File } from './normalize'
 
 const logger = log.getLogger('buckets')

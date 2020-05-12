@@ -2,7 +2,7 @@ import log from 'loglevel'
 import * as pb from '@textile/users-grpc/users_pb'
 import { APIClient } from '@textile/users-grpc/users_pb_service'
 import { ServiceError } from '@textile/hub-grpc/hub_pb_service'
-import { Context } from './context'
+import { Context } from '@textile/context'
 import { ThreadID } from '@textile/threads-id'
 
 const logger = log.getLogger('users')
