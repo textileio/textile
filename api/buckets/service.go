@@ -21,6 +21,7 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
+	"github.com/textileio/textile/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -63,7 +64,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      buck.Path,
+			Path:      util.Base32Path(buck.Path),
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
@@ -112,19 +113,16 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 
 func (s *Service) createLinks(dbID thread.ID, buck *Bucket) *pb.LinksReply {
 	var threadLink, wwwLink, ipnsLink string
-
-	parts := strings.Split(s.GatewayURL, "://")
-	if len(parts) < 2 {
-		return nil
-	}
-	scheme := parts[0]
-	host := parts[1]
-
-	threadLink = fmt.Sprintf("%s://%s.thread.%s/%s/%s", scheme, dbID, host, CollectionName, buck.Key)
+	threadLink = fmt.Sprintf("%s/thread/%s/%s/%s", s.GatewayURL, dbID, CollectionName, buck.Key)
 	if s.DNSManager != nil && s.DNSManager.Domain != "" {
+		parts := strings.Split(s.GatewayURL, "://")
+		if len(parts) < 2 {
+			return nil
+		}
+		scheme := parts[0]
 		wwwLink = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
 	}
-	ipnsLink = fmt.Sprintf("%s://%s.ipns.%s", scheme, buck.Key, host)
+	ipnsLink = fmt.Sprintf("%s/ipns/%s", s.GatewayURL, buck.Key)
 	return &pb.LinksReply{
 		URL:  threadLink,
 		WWW:  wwwLink,
@@ -164,7 +162,7 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 		roots[i] = &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      buck.Path,
+			Path:      util.Base32Path(buck.Path),
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		}
@@ -211,7 +209,7 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 	}
 	item := &pb.ListPathReply_Item{
 		Name: filepath.Base(pth),
-		Path: pth,
+		Path: util.Base32Path(pth),
 		Size: size,
 	}
 	switch node := node.(type) {
@@ -284,7 +282,7 @@ func (s *Service) pathToPb(ctx context.Context, buck *Bucket, pth path.Path, fol
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      buck.Path,
+			Path:      util.Base32Path(buck.Path),
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
@@ -417,12 +415,12 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 
 	size := <-chSize
 	if err = sendEvent(&pb.PushPathReply_Event{
-		Path: pth.String(),
+		Path: util.Base32Path(pth.String()),
 		Size: size,
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      buck.Path,
+			Path:      util.Base32Path(buck.Path),
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
