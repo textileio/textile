@@ -48,7 +48,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.17
-	github.com/textileio/powergate v0.0.0-20200512141340-6d8d2692c54f
+	github.com/textileio/powergate v0.0.0-20200512173123-a4f401e4fdcf
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect

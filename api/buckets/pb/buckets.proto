@@ -120,11 +120,13 @@ message ArchiveStatusRequest {
 message ArchiveStatusReply {
      string key = 1;
      Status status = 2;
+     string failedMsg = 3;
 
      enum Status {
 	Executing = 0;
 	Failed = 1;
 	Done = 2;
+	Canceled = 3;
      }
 }
 

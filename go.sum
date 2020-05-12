@@ -1370,8 +1370,8 @@ github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7 h1:J7+UXJT/Ku8
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7/go.mod h1:j7aKMh8sbbtvttp7V7yCOkHW/pfRtIM/6h+8qEDsLyI=
 github.com/textileio/go-threads v0.1.17 h1:80pHBw57jdViKH15RDsypski1rf07CGcwCyI51gMYVI=
 github.com/textileio/go-threads v0.1.17/go.mod h1:lpSnvxq8qz1uCCClDk3g5cnZusHsLeMmY7Xr64v7LIw=
-github.com/textileio/powergate v0.0.0-20200512141340-6d8d2692c54f h1:gXDuBrSylNU2+VFxbMJdPJhh9NKofPhMBQtuYlxDxTw=
-github.com/textileio/powergate v0.0.0-20200512141340-6d8d2692c54f/go.mod h1:R1ein9/TZTORHQE/6/S2TQOpGxSa7Vk2RB5m0U4Bnds=
+github.com/textileio/powergate v0.0.0-20200512173123-a4f401e4fdcf h1:u1NQ/B+9Q8klId47/iKtlPlOt+08PDiVM/dMykpWIw0=
+github.com/textileio/powergate v0.0.0-20200512173123-a4f401e4fdcf/go.mod h1:R1ein9/TZTORHQE/6/S2TQOpGxSa7Vk2RB5m0U4Bnds=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=

@@ -58,7 +58,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the archive to finish.
-	require.Eventually(t, archiveFinished(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
 
 	// Verify that the current archive status is Done.
 	as, err := client.ArchiveStatus(ctx, b.Root.Key)
@@ -83,7 +83,10 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	// Archive again.
 	_, err = client.Archive(ctx, b.Root.Key)
 	require.NoError(t, err)
-	require.Eventually(t, archiveFinished(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	as, err = client.ArchiveStatus(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Equal(t, buckets_pb.ArchiveStatusReply_Done, as.GetStatus())
 
 	ai, err = client.ArchiveInfo(ctx, b.Root.Key)
 	require.NoError(t, err)
@@ -97,17 +100,38 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 }
 
-func archiveFinished(ctx context.Context, t *testing.T, client *c.Client, bucketKey string) func() bool {
+func TestFailingArchive(t *testing.T) {
+	_ = spinup(t)
+	ctx, client := setup(t)
+
+	b, err := client.Init(ctx, "bucky")
+	require.Nil(t, err)
+	time.Sleep(4 * time.Second)
+	// Store a file that is bigger than the sector size, this
+	// should lead to an error on the PG side.
+	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data3.txt")
+
+	_, err = client.Archive(ctx, b.Root.Key)
+	require.NoError(t, err)
+
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	as, err := client.ArchiveStatus(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Equal(t, buckets_pb.ArchiveStatusReply_Failed, as.GetStatus())
+	require.NotEmpty(t, as.GetFailedMsg())
+}
+
+func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, bucketKey string) func() bool {
 	return func() bool {
 		as, err := client.ArchiveStatus(ctx, bucketKey)
 		require.NoError(t, err)
 
 		switch as.GetStatus() {
-		case buckets_pb.ArchiveStatusReply_Failed:
-			t.Fatal("archive status failed")
-		case buckets_pb.ArchiveStatusReply_Executing:
-		case buckets_pb.ArchiveStatusReply_Done:
+		case buckets_pb.ArchiveStatusReply_Failed,
+			buckets_pb.ArchiveStatusReply_Done,
+			buckets_pb.ArchiveStatusReply_Canceled:
 			return true
+		case buckets_pb.ArchiveStatusReply_Executing:
 		default:
 			t.Fatalf("unkown archive status")
 		}
@@ -178,8 +202,8 @@ func spinup(t *testing.T) *client.Client {
 	}
 
 	cmd = exec.Command("docker-compose", "up", "-V")
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("running docker-compose: %s", err)
 	}

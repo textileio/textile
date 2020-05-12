@@ -578,7 +578,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusReply, error) {
 	log.Debug("received archive status")
 
-	jstatus, err := s.Buckets.ArchiveStatus(ctx, req.Key)
+	jstatus, failedMsg, err := s.Buckets.ArchiveStatus(ctx, req.Key)
 	if err != nil {
 		return nil, fmt.Errorf("getting status from last archive: %s", err)
 	}
@@ -588,16 +588,19 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 		status = pb.ArchiveStatusReply_Done
 	case ffs.Queued, ffs.Executing:
 		status = pb.ArchiveStatusReply_Executing
-	case ffs.Canceled, ffs.Failed:
+	case ffs.Failed:
 		status = pb.ArchiveStatusReply_Failed
+	case ffs.Canceled:
+		status = pb.ArchiveStatusReply_Canceled
 	default:
 		return nil, fmt.Errorf("unkown job status %d", jstatus)
 	}
 
 	log.Debug("finished archive status")
 	return &pb.ArchiveStatusReply{
-		Key:    req.Key,
-		Status: status,
+		Key:       req.Key,
+		Status:    status,
+		FailedMsg: failedMsg,
 	}, nil
 
 }

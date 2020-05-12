@@ -229,16 +229,22 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	return nil
 }
 
-func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus, error) {
+// ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,
+// an extra string with the error message is provided.
+func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus, string, error) {
 	ffsi, err := b.ffsCol.Get(ctx, key)
 	if err != nil {
-		return ffs.Failed, fmt.Errorf("getting ffs instance data: %s", err)
+		return ffs.Failed, "", fmt.Errorf("getting ffs instance data: %s", err)
 	}
 
 	if ffsi.Archives.Current.JobID == "" {
-		return ffs.Failed, ErrNoCurrentArchive
+		return ffs.Failed, "", ErrNoCurrentArchive
 	}
-	return ffs.JobStatus(ffsi.Archives.Current.JobStatus), nil
+	current := ffsi.Archives.Current
+	if current.Aborted {
+		return ffs.Failed, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
+	}
+	return ffs.JobStatus(current.JobStatus), current.FailureMsg, nil
 }
 
 func (b *Buckets) Close() error {
@@ -259,7 +265,10 @@ func (b *Buckets) trackArchiveProgress(ctx context.Context, dbID thread.ID, key 
 		log.Errorf("watching current job %s for bucket %s: %s", jid, key, err)
 		return
 	}
-	var currStatus ffs.JobStatus
+
+	var aborted bool
+	var abortMsg string
+	var job ffs.Job
 Loop:
 	for {
 		select {
@@ -269,25 +278,31 @@ Loop:
 		case s, ok := <-ch:
 			if !ok {
 				log.Errorf("getting job %s status stream closed", jid)
+				aborted = true
+				abortMsg = "server closed communication channel"
+				break Loop
 			}
 			if s.Err != nil {
 				log.Errorf("job %s update: %s", jid, s.Err)
+				aborted = true
+				abortMsg = s.Err.Error()
+				break Loop
 			}
-			if s.Job.Status != currStatus {
-				if err := b.updateArchiveStatus(ctx, key, jid.String(), s.Job.Status); err != nil {
-					log.Errorf("updating achive status: %s", err)
-				}
-				currStatus = s.Job.Status
-				if jobStatusIsFinal(s.Job.Status) {
-					log.Infof("archive job for bucket %s reached final state %s", key, ffs.JobStatusStr[s.Job.Status])
-					break Loop
-				}
+			if isJobStatusFinal(s.Job.Status) {
+				job = s.Job
+				log.Infof("archive job for bucket %s reached final state %s", key, ffs.JobStatusStr[s.Job.Status])
+				break Loop
 			}
 		}
 	}
 
-	// Step 2: Save Deal data in the underlying Bucket thread.
-	if currStatus == ffs.Success {
+	if err := b.updateArchiveStatus(ctx, key, jid.String(), job, aborted, abortMsg); err != nil {
+		log.Errorf("updating achive status: %s", err)
+	}
+
+	// Step 2: On success, save Deal data in the underlying Bucket thread. On
+	// failure save the error message.
+	if job.Status == ffs.Success {
 		if err := b.saveDealsInArchive(ctx, key, dbID, ffsToken, c, opts...); err != nil {
 			log.Errorf("saving deal data in archive: %s", err)
 		}
@@ -329,7 +344,16 @@ func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID threa
 	return nil
 }
 
-func (b *Buckets) updateArchiveStatus(ctx context.Context, key string, jid string, newJobStatus ffs.JobStatus) error {
+// updateArchiveStatus save the last known job status. It also receives an
+// _abort_ flag which indicates that the provided newJobStatus might not be
+// final. For example, if tracking the Job status changes errored by some network
+// condition, we have only the last known Job status. Powergate would continue doing
+// its work until a final status is reached; it only means we aren't sure how this
+// archive really finished.
+// To track for this situation, we use the _aborted_ and _abortMsg_ parameters.
+// An archive with _aborted_ true should eventually be re-queried to understand
+// how it finished (if wanted).
+func (b *Buckets) updateArchiveStatus(ctx context.Context, key string, jid string, job ffs.Job, aborted bool, abortMsg string) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	ffsi, err := b.ffsCol.Get(ctx, key)
@@ -346,7 +370,10 @@ func (b *Buckets) updateArchiveStatus(ctx context.Context, key string, jid strin
 			}
 		}
 	}
-	archive.JobStatus = int(newJobStatus)
+	archive.JobStatus = int(job.Status)
+	archive.Aborted = aborted
+	archive.AbortedMsg = abortMsg
+	archive.FailureMsg = prepareFailureMsg(job)
 	if err := b.ffsCol.Replace(ctx, ffsi); err != nil {
 		return fmt.Errorf("updating ffs status update instance data: %s", err)
 	}
@@ -381,8 +408,20 @@ func isCollNotFoundErr(err error) bool {
 	return strings.Contains(err.Error(), "collection not found")
 }
 
-func jobStatusIsFinal(js ffs.JobStatus) bool {
+func isJobStatusFinal(js ffs.JobStatus) bool {
 	return js == ffs.Success ||
 		js == ffs.Canceled ||
 		js == ffs.Failed
+}
+
+func prepareFailureMsg(job ffs.Job) string {
+	if job.ErrCause == "" {
+		return ""
+	}
+	var b strings.Builder
+	_, _ = b.WriteString(job.ErrCause)
+	for i, de := range job.DealErrors {
+		_, _ = b.WriteString(fmt.Sprintf("\nDeal error %d: Proposal %s with miner %s, %s", i, de.ProposalCid, de.Miner, de.Message))
+	}
+	return b.String()
 }

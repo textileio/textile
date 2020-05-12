@@ -19,10 +19,13 @@ type Archives struct {
 }
 
 type Archive struct {
-	Cid       string
-	JobID     string
-	JobStatus int
-	CreatedAt int64
+	Cid        string
+	JobID      string
+	JobStatus  int
+	Aborted    bool
+	AbortedMsg string
+	FailureMsg string
+	CreatedAt  int64
 }
 
 type FFSInstances struct {
