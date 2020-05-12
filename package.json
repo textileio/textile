@@ -58,10 +58,10 @@
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.12.0",
     "@textile/buckets-grpc": "1.0.2",
-    "@textile/context": "^0.1.0",
+    "@textile/context": "0.2.0",
     "@textile/hub-grpc": "1.0.2",
-    "@textile/threads-client": "v0.3.0",
-    "@textile/threads-id": "0.0.4",
+    "@textile/threads-client": "0.3.1",
+    "@textile/threads-id": "0.0.5",
     "@textile/users-grpc": "1.0.2",
     "@types/google-protobuf": "^3.7.2",
     "axios": "^0.19.2",
