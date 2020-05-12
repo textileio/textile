@@ -14,7 +14,6 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/textileio/textile/util"
 )
 
 func (g *Gateway) ipfsHandler(c *gin.Context) {
@@ -26,7 +25,7 @@ func (g *Gateway) ipfsHandler(c *gin.Context) {
 func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
-	pth = util.Base32Path(strings.TrimSuffix(pth, "/"))
+	pth = strings.TrimSuffix(pth, "/")
 	data, err := g.openPath(ctx, path.New(pth))
 	if err != nil {
 		if err == iface.ErrIsDir {
@@ -66,6 +65,9 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 				index = gopath.Join("/", base, dir)
 			} else {
 				index = gopath.Join(root, dir)
+			}
+			if !g.subdomains {
+				dir = strings.TrimPrefix(strings.Replace(dir, base, "", 1), "/")
 			}
 			params := gin.H{
 				"Title":   "Index of " + index,

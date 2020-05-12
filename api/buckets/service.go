@@ -21,7 +21,6 @@ import (
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
-	"github.com/textileio/textile/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -64,7 +63,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      util.Base32Path(buck.Path),
+			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
@@ -82,6 +81,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
 			seedName: ipfsfiles.NewBytesFile(seed),
 		}),
+		options.Unixfs.CidVersion(1),
 		options.Unixfs.Pin(true))
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 		roots[i] = &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      util.Base32Path(buck.Path),
+			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		}
@@ -209,7 +209,7 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 	}
 	item := &pb.ListPathReply_Item{
 		Name: filepath.Base(pth),
-		Path: util.Base32Path(pth),
+		Path: pth,
 		Size: size,
 	}
 	switch node := node.(type) {
@@ -282,7 +282,7 @@ func (s *Service) pathToPb(ctx context.Context, buck *Bucket, pth path.Path, fol
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      util.Base32Path(buck.Path),
+			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
@@ -390,6 +390,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	pth, err := s.IPFSClient.Unixfs().Add(
 		server.Context(),
 		ipfsfiles.NewReaderFile(reader),
+		options.Unixfs.CidVersion(1),
 		options.Unixfs.Pin(false),
 		options.Unixfs.Progress(true),
 		options.Unixfs.Events(eventCh))
@@ -398,13 +399,18 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	}
 
 	buckPath := path.New(buck.Path)
-	dirpth, err := s.IPFSClient.Object().
-		AddLink(server.Context(), buckPath, filePath, pth, options.Object.Create(true))
+	dirpth, err := s.IPFSClient.Object().AddLink(server.Context(), buckPath, filePath, pth, options.Object.Create(true))
 	if err != nil {
 		return err
 	}
 	if err = s.IPFSClient.Pin().Update(server.Context(), buckPath, dirpth); err != nil {
-		return err
+		if err.Error() == "'from' cid was not recursively pinned already" {
+			if err = s.IPFSClient.Pin().Add(server.Context(), dirpth); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	buck.Path = dirpth.String()
@@ -415,12 +421,12 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 
 	size := <-chSize
 	if err = sendEvent(&pb.PushPathReply_Event{
-		Path: util.Base32Path(pth.String()),
+		Path: pth.String(),
 		Size: size,
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
-			Path:      util.Base32Path(buck.Path),
+			Path:      buck.Path,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
