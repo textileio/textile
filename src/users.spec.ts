@@ -7,13 +7,12 @@ import { ThreadID } from '@textile/threads-id'
 import { grpc } from '@improbable-eng/grpc-web'
 import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { expect } from 'chai'
-import { Client } from '@textile/threads-client'
 import { Libp2pCryptoIdentity } from '@textile/threads-core'
 import { Context } from '@textile/context'
 import { isBrowser } from 'browser-or-node'
-import { Users } from './users'
 import { signUp, createKey, createAPISig } from './utils'
 import { Buckets } from './buckets'
+import { Client } from './users'
 
 // Settings for localhost development and testing
 const addrApiurl = 'http://127.0.0.1:3007'
@@ -24,7 +23,7 @@ const sessionSecret = 'textilesession'
 describe('Users...', () => {
   describe('getThread', () => {
     const ctx: Context = new Context(addrApiurl, undefined)
-    const client = new Users(ctx)
+    const client = new Client(ctx)
     let dev: SignupReply.AsObject
     before(async function () {
       this.timeout(3000)
@@ -115,7 +114,7 @@ describe('Users...', () => {
 
   describe('listThreads', () => {
     const ctx: Context = new Context(addrApiurl, undefined)
-    const client = new Users(ctx)
+    const client = new Client(ctx)
     let dev: SignupReply.AsObject
     before(async function () {
       this.timeout(3000)
@@ -230,7 +229,7 @@ describe('Users...', () => {
         expect(root).to.not.be.undefined
 
         // We should have a thread named "my-buckets"
-        const users = new Users(ctx)
+        const users = new Client(ctx)
         const res = await users.getThread('my-buckets')
         expect(res.id).to.deep.equal(ctx.toJSON()['x-textile-thread'])
       })
@@ -238,7 +237,7 @@ describe('Users...', () => {
     context('a developer with a user', function () {
       const ctx: Context = new Context(addrApiurl, undefined)
       let dev: SignupReply.AsObject
-      let users: Users
+      let users: Client
       it('should sign-up, create an API key, and a new user', async function () {
         // @note This should be done using the cli
         const { user } = await signUp(ctx, addrGatewayUrl, sessionSecret)
@@ -251,21 +250,22 @@ describe('Users...', () => {
         // for demo purposes here to show that it can also use custom identities
         const identity = await Libp2pCryptoIdentity.fromRandom()
         // We also explicitly specify a custom context here, which could be omitted as it uses reasonable defaults
-        const userContext = new Context(addrApiurl)
+        const userContext = await new Context(addrApiurl).withUserKey(key)
         // In the app, we simply create a new user from the provided user key, signing is done automatically
-        users = await Users.fromKey(key, identity, userContext)
+        users = new Client(userContext)
+        await users.getToken(identity)
         expect(users.context.toJSON()).to.have.ownProperty('x-textile-api-sig')
       }).timeout(3000)
 
       it('should then create a db for the bucket', async function () {
-        await users.createThread('my-buckets')
+        await users.newDB(undefined, users.context.withThreadName('my-buckets'))
         expect(users.context.toJSON()).to.have.ownProperty('x-textile-thread-name')
       })
 
       it('should then initialize a new bucket in the db and push to it', async function () {
         if (isBrowser) return this.skip()
-        // Initialize a new bucket in the db
-        const buckets = Buckets.fromUser(users)
+        // Initialize a new bucket in the db from the user context
+        const buckets = new Buckets(users.context)
         const buck = await buckets.init('mybuck')
         expect(buck.root?.name).to.equal('mybuck')
 
