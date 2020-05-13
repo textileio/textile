@@ -555,7 +555,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveReply, error) {
 	log.Debug("received archive request")
 
-	if s.Buckets.IsArchivingEnabled() {
+	if !s.Buckets.IsArchivingEnabled() {
 		return nil, fmt.Errorf("Archive feature not enabled")
 	}
 
@@ -584,7 +584,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusReply, error) {
 	log.Debug("received archive status")
 
-	if s.Buckets.IsArchivingEnabled() {
+	if !s.Buckets.IsArchivingEnabled() {
 		return nil, fmt.Errorf("Archive feature not enabled")
 	}
 
@@ -618,7 +618,7 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoReply, error) {
 	log.Debug("received archive info")
 
-	if s.Buckets.IsArchivingEnabled() {
+	if !s.Buckets.IsArchivingEnabled() {
 		return nil, fmt.Errorf("Archive feature not enabled")
 	}
 
