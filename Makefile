@@ -9,3 +9,7 @@ local-stop:
 
 local-clean:
 	docker-compose down -v
+
+pow-up:
+	docker-compose -f docker-compose-pow.yml up --build
+
