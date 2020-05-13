@@ -39,7 +39,7 @@ services:
       - 27027:27017
 
   lotus:
-    image: textile/lotus-devnet:sha-8978142
+    image: textile/lotus-devnet:sha-0853126
     environment:
       - TEXLOTUSDEVNET_SPEED=500
     volumes:

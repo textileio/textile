@@ -599,6 +599,27 @@ var catBucketPathCmd = &cobra.Command{
 	},
 }
 
+var archiveBucketPathCmd = &cobra.Command{
+	Use:   "archive",
+	Short: "Archive to Powergate.",
+	Long:  "Archive pushes the latest Bucket state living on Textile.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		if _, err := buckets.Archive(ctx, key); err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Success("Archive scheduled successfully")
+	},
+}
+
 var rmBucketPathCmd = &cobra.Command{
 	Use: "rm [path]",
 	Aliases: []string{
