@@ -673,9 +673,12 @@ var archiveBucketInfoCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		cmd.Message("Archive of Cid %s has %d deals:\n", r.Archive.Cid, len(r.Archive.Deals))
+		var data [][]string
 		for _, d := range r.Archive.GetDeals() {
-			cmd.Message("\tProposal %s with miner %s", d.ProposalCid, d.Miner)
+			data = append(data, []string{d.ProposalCid, d.Miner})
 		}
+		cmd.RenderTable([]string{"ProposalCid", "Miner"}, data)
+
 	},
 }
 
