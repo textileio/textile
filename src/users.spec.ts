@@ -258,7 +258,7 @@ describe('Users...', () => {
       }).timeout(3000)
 
       it('should then create a db for the bucket', async function () {
-        await users.newDB(undefined, users.context.withThreadName('my-buckets'))
+        await users.newDB(ThreadID.fromRandom(), users.context.withThreadName('my-buckets'))
         expect(users.context.toJSON()).to.have.ownProperty('x-textile-thread-name')
       })
 
