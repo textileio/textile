@@ -13,6 +13,7 @@ message InitRequest {
 message InitReply {
     Root root = 1;
     LinksReply links = 2;
+    bytes seed = 3;
 }
 
 message LinksRequest {
@@ -49,6 +50,7 @@ message ListPathReply {
     Root root = 2;
 
     message Item {
+        string cid = 1;
         string name = 2;
         string path = 3;
         int64 size = 4;
@@ -66,6 +68,7 @@ message PushPathRequest {
     message Header {
         string key = 1;
         string path = 2;
+        string root = 3;
     }
 }
 
@@ -102,9 +105,12 @@ message RemoveReply {}
 message RemovePathRequest {
     string key = 1;
     string path = 2;
+    string root = 3;
 }
 
-message RemovePathReply {}
+message RemovePathReply {
+    Root root = 1;
+}
 
 message ArchiveRequest {
     string key = 1;

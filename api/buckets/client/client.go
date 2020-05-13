@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -109,13 +110,13 @@ func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoRe
 
 type pushPathResult struct {
 	path path.Resolved
-	root path.Path
+	root path.Resolved
 	err  error
 }
 
 // PushPath pushes a file to a bucket path.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Path, err error) {
+func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Resolved, err error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -128,11 +129,16 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 	if err != nil {
 		return nil, nil, err
 	}
+	var xr string
+	if args.root != nil {
+		xr = args.root.String()
+	}
 	if err = stream.Send(&pb.PushPathRequest{
 		Payload: &pb.PushPathRequest_Header_{
 			Header: &pb.PushPathRequest_Header{
 				Key:  key,
 				Path: pth,
+				Root: xr,
 			},
 		},
 	}); err != nil {
@@ -158,9 +164,14 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 						waitCh <- pushPathResult{err: err}
 						return
 					}
+					r, err := util.NewResolvedPath(payload.Event.Root.Path)
+					if err != nil {
+						waitCh <- pushPathResult{err: err}
+						return
+					}
 					waitCh <- pushPathResult{
 						path: path.IpfsPath(id),
-						root: path.New(payload.Event.Root.Path),
+						root: r,
 					}
 				} else if args.progress != nil {
 					args.progress <- payload.Event.Bytes
@@ -254,10 +265,22 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 
 // RemovePath removes the file or directory at path.
 // Files and directories will be unpinned.
-func (c *Client) RemovePath(ctx context.Context, key, pth string) error {
-	_, err := c.c.RemovePath(ctx, &pb.RemovePathRequest{
+func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option) (path.Resolved, error) {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	var xr string
+	if args.root != nil {
+		xr = args.root.String()
+	}
+	res, err := c.c.RemovePath(ctx, &pb.RemovePathRequest{
 		Key:  key,
 		Path: pth,
+		Root: xr,
 	})
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return util.NewResolvedPath(res.Root.Path)
 }

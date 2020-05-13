@@ -31,6 +31,8 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, buck.Root.Path)
 	assert.NotEmpty(t, buck.Root.CreatedAt)
 	assert.NotEmpty(t, buck.Root.UpdatedAt)
+	assert.NotEmpty(t, buck.Links)
+	assert.NotEmpty(t, buck.Seed)
 }
 
 func TestClient_List(t *testing.T) {
@@ -227,15 +229,16 @@ func TestClient_RemovePath(t *testing.T) {
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
 	require.Nil(t, err)
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.Nil(t, err)
+	assert.NotEmpty(t, pth)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.NotNil(t, err)
 	rep, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(rep.Item.Items))
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again")
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.Nil(t, err)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again")
 	require.NotNil(t, err)

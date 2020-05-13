@@ -1,9 +1,6 @@
 {{template "header" .Title}}
 <div class="title">
     {{ if ne .Root "" }}<span class="yellow">{{.Root}}:</span> {{ end }}{{.Path}}
-    {{ if ne .Updated "" }}
-        <span class="right">Updated {{.Updated}}</span>
-    {{ end }}
 </div>
 <ul>
     {{ if ne .Back "" }}
@@ -13,4 +10,7 @@
         <li><a href="/{{.Path}}">{{.Name}}<span class="right">{{.Size}}</span></a></li>
     {{end}}
 </ul>
+{{ if ne .Updated "" }}
+    <div class="updated">Updated {{.Updated}}</div>
+{{ end }}
 {{template "footer"}}

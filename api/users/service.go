@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	log = logging.Logger("users")
+	log = logging.Logger("usersapi")
 )
 
 type Service struct {

@@ -2,8 +2,12 @@ package util
 
 import (
 	"crypto/rand"
+	"fmt"
+	"strings"
 
 	"github.com/gosimple/slug"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 	mbase "github.com/multiformats/go-multibase"
 )
@@ -46,4 +50,16 @@ func MustParseAddr(str string) ma.Multiaddr {
 		panic(err)
 	}
 	return addr
+}
+
+func NewResolvedPath(s string) (path.Resolved, error) {
+	parts := strings.SplitN(s, "/", 3)
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("invalid path")
+	}
+	c, err := cid.Decode(parts[2])
+	if err != nil {
+		return nil, err
+	}
+	return path.IpfsPath(c), nil
 }

@@ -3,12 +3,11 @@ module github.com/textileio/textile
 go 1.14
 
 require (
-	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
+	cloud.google.com/go v0.37.0 // indirect
+	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/caarlos0/spin v1.1.0
-	github.com/cheggaaa/pb/v3 v3.0.4
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/fatih/color v1.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/location v0.0.1
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
@@ -18,14 +17,29 @@ require (
 	github.com/golang/protobuf v1.4.0
 	github.com/gosimple/slug v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
+	github.com/hsanjuan/ipfs-lite v1.1.12 // indirect
 	github.com/improbable-eng/grpc-web v0.12.0
+	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00
+	github.com/ipfs/go-datastore v0.4.4
+	github.com/ipfs/go-ipfs-blockstore v1.0.0
+	github.com/ipfs/go-ipfs-chunker v0.0.5
+	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200427093856-67f034a36a62
+	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
+	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
+	github.com/ipfs/go-merkledag v0.3.2
+	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
+	github.com/ipld/go-car v0.1.1-0.20200430185908-8ff2e52a4c88
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/libp2p/go-libp2p-core v0.5.3
+	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.7.11 // indirect
+	github.com/libp2p/go-libp2p-pubsub v0.2.7 // indirect
+	github.com/libp2p/go-sockaddr v0.1.0 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mailgun/mailgun-go/v3 v3.6.4
@@ -50,14 +64,13 @@ require (
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.17
 	github.com/textileio/powergate v0.0.0-20200514225351-a5277093ec3e
+	github.com/textileio/uiprogress v0.0.3
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
-	golang.org/x/sys v0.0.0-20200428200454-593003d681fa // indirect
+	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/genproto v0.0.0-20200428115010-c45acf45369a // indirect
 	google.golang.org/grpc v1.29.1
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
-
-//replace github.com/textileio/powergate => ../powergate

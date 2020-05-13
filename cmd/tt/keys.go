@@ -13,7 +13,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(keysCmd)
-	keysCmd.AddCommand(createKeysCmd, invalidateKeysCmd, lsKeysCmd)
+	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 
 	keysCmd.PersistentFlags().String("org", "", "Org username")
 }
@@ -23,17 +23,15 @@ var keysCmd = &cobra.Command{
 	Aliases: []string{
 		"key",
 	},
-	Short: "Key management",
-	Long:  `Manage your keys.`,
-	Run: func(c *cobra.Command, args []string) {
-		lsKeys(c)
-	},
+	Short: "API key management",
+	Long:  `Manages your API keys.`,
+	Args:  cobra.ExactArgs(0),
 }
 
-var createKeysCmd = &cobra.Command{
+var keysCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an API key and secret",
-	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
+	Long: `Creates a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
 
 Using the '--org' flag will create a new key under the Organization's account.
 
@@ -43,6 +41,7 @@ There are two types of API keys:
 
 API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
+	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")
 		if err != nil {
@@ -77,10 +76,11 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 	},
 }
 
-var invalidateKeysCmd = &cobra.Command{
+var keysInvalidateCmd = &cobra.Command{
 	Use:   "invalidate",
-	Short: "Invalidate a key",
-	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
+	Short: "Invalidate an API key",
+	Long:  `Invalidates an API key. Invalidated keys cannot be used to create new threads.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")
 		if err != nil {
@@ -102,41 +102,38 @@ var invalidateKeysCmd = &cobra.Command{
 	},
 }
 
-var lsKeysCmd = &cobra.Command{
+var keysLsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
 	},
-	Short: "List your keys",
-	Long:  `List all of your keys.`,
+	Short: "List your API keys",
+	Long:  `Lists all of your API keys.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		lsKeys(c)
-	},
-}
-
-func lsKeys(c *cobra.Command) {
-	org, err := c.Flags().GetString("org")
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if org != "" {
-		configViper.Set("org", org)
-	}
-
-	ctx, cancel := authCtx(cmdTimeout)
-	defer cancel()
-	list, err := hub.ListKeys(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if len(list.List) > 0 {
-		data := make([][]string, len(list.List))
-		for i, k := range list.List {
-			data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+		org, err := c.Flags().GetString("org")
+		if err != nil {
+			cmd.Fatal(err)
 		}
-		cmd.RenderTable([]string{"key", "secret", "type", "valid", "threads"}, data)
-	}
-	cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
+		if org != "" {
+			configViper.Set("org", org)
+		}
+
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		list, err := hub.ListKeys(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if len(list.List) > 0 {
+			data := make([][]string, len(list.List))
+			for i, k := range list.List {
+				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+			}
+			cmd.RenderTable([]string{"key", "secret", "type", "valid", "threads"}, data)
+		}
+		cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
+	},
 }
 
 type keyItem struct {

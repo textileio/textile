@@ -22,7 +22,8 @@ func init() {
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize account",
-	Long:  `Initialize a new Textile account (interactive).`,
+	Long:  `Initializes a new Hub account.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
 			Label: "Choose a username",
@@ -76,7 +77,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		dir := filepath.Join(home, ".textile")
+		dir := filepath.Join(home, authDir)
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
