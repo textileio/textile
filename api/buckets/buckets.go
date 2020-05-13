@@ -121,6 +121,10 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 	return bucket, nil
 }
 
+func (b *Buckets) IsArchivingEnabled() bool {
+	return b.pgClient != nil
+}
+
 func createFFSInstance(ctx context.Context, col *collections.FFSInstances, c *powc.Client, bucketKey string) error {
 	// If the Powergate client isn't configured, don't do anything.
 	if c == nil {
