@@ -34,6 +34,7 @@ import (
 	hpb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/api/users"
 	upb "github.com/textileio/textile/api/users/pb"
+	bucks "github.com/textileio/textile/buckets"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -177,10 +178,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager:        t.ipnsm,
 		DNSManager:         t.dnsm,
 	}
-	bucks := &buckets.Buckets{}
+	bk := &bucks.Buckets{}
 	bs := &buckets.Service{
 		Collections:    t.collections,
-		Buckets:        bucks,
+		Buckets:        bk,
 		GatewayURL:     conf.AddrGatewayURL,
 		FilecoinClient: t.fc,
 		IPFSClient:     ic,
@@ -247,7 +248,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	bucks.Threads = t.th
+	bk.Threads = t.th
 	hs.Threads = t.th
 	t.thn, err = netclient.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	if err != nil {

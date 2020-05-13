@@ -21,6 +21,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/improbable-eng/grpc-web v0.12.0
 	github.com/ipfs/go-cid v0.0.5
+	github.com/ipfs/go-ipfs v0.5.1 // indirect
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipfs-http-client v0.0.6-0.20200427093856-67f034a36a62
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf // indirect
@@ -29,8 +30,7 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
-	github.com/libp2p/go-libp2p-core v0.5.2
-	github.com/libp2p/go-libp2p-pubsub v0.2.6 // indirect
+	github.com/libp2p/go-libp2p-core v0.5.3
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mailgun/mailgun-go/v3 v3.6.4
