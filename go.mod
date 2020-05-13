@@ -59,6 +59,4 @@ require (
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
 
-replace github.com/ipfs/go-filestore => github.com/ipfs/go-filestore v1.0.0
-
 //replace github.com/textileio/powergate => ../powergate
