@@ -24,7 +24,8 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd)
+	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd, archiveBucketCmd)
+	archiveBucketCmd.AddCommand(archiveBucketStatusCmd, archiveBucketInfoCmd)
 
 	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketCmd.PersistentFlags().String("org", "", "Org username")
@@ -599,7 +600,7 @@ var catBucketPathCmd = &cobra.Command{
 	},
 }
 
-var archiveBucketPathCmd = &cobra.Command{
+var archiveBucketCmd = &cobra.Command{
 	Use:   "archive",
 	Short: "Archive to Powergate.",
 	Long:  "Archive pushes the latest Bucket state living on Textile.",
@@ -616,7 +617,65 @@ var archiveBucketPathCmd = &cobra.Command{
 		if _, err := buckets.Archive(ctx, key); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("Archive scheduled successfully")
+		cmd.Success("Archive queued successfully")
+	},
+}
+
+var archiveBucketStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Reports the status of the last archive.",
+	Long:  "Archive status reports the status of the last archive done for the current Bucket.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		r, err := buckets.ArchiveStatus(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		switch r.GetStatus() {
+		case pb.ArchiveStatusReply_Failed:
+			cmd.Warn("Archive failed with message: %s", r.GetFailedMsg())
+		case pb.ArchiveStatusReply_Canceled:
+			cmd.Warn("Archive was superseded by a new executing archive")
+		case pb.ArchiveStatusReply_Executing:
+			cmd.Message("Archie is currently executing, grab a coffee and be patient...")
+		case pb.ArchiveStatusReply_Done:
+			cmd.Success("Archive executed successfully!")
+		default:
+			cmd.Warn("Archive status unknown")
+		}
+	},
+}
+
+var archiveBucketInfoCmd = &cobra.Command{
+	Use:   "info",
+	Short: "Provides information about the current  archive.",
+	Long:  "Provides information about the current archive.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		r, err := buckets.ArchiveInfo(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("Archive of Cid %s has %d deals:\n", r.Archive.Cid, len(r.Archive.Deals))
+		for _, d := range r.Archive.GetDeals() {
+			cmd.Message("\tProposal %s with miner %s", d.ProposalCid, d.Miner)
+		}
 	},
 }
 
