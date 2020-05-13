@@ -645,7 +645,7 @@ var archiveBucketStatusCmd = &cobra.Command{
 		case pb.ArchiveStatusReply_Canceled:
 			cmd.Warn("Archive was superseded by a new executing archive")
 		case pb.ArchiveStatusReply_Executing:
-			cmd.Message("Archie is currently executing, grab a coffee and be patient...")
+			cmd.Message("Archive is currently executing, grab a coffee and be patient...")
 		case pb.ArchiveStatusReply_Done:
 			cmd.Success("Archive executed successfully!")
 		default:
