@@ -3,6 +3,7 @@ package buckets
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -26,7 +27,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var log = logging.Logger("buckets")
+var (
+	log                         = logging.Logger("buckets")
+	ErrArchivingFeatureDisabled = errors.New("Archiving feature is disabled")
+)
 
 const (
 	// seedName is the name of the seed file used to ensure buckets are unique
@@ -556,7 +560,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	log.Debug("received archive request")
 
 	if !s.Buckets.IsArchivingEnabled() {
-		return nil, fmt.Errorf("Archive feature not enabled")
+		return nil, ErrArchivingFeatureDisabled
 	}
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -581,11 +585,37 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	return &pb.ArchiveReply{}, nil
 }
 
+func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_ArchiveWatchServer) error {
+	log.Debug("received archive watch")
+
+	if !s.Buckets.IsArchivingEnabled() {
+		return ErrArchivingFeatureDisabled
+	}
+
+	var err error
+	ctx, cancel := context.WithCancel(server.Context())
+	defer cancel()
+	ch := make(chan string)
+	go func() {
+		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), ch)
+		close(ch)
+	}()
+	for s := range ch {
+		if err := server.Send(&pb.ArchiveWatchReply{Msg: s}); err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("watching cid logs: %s", err)
+	}
+	return nil
+}
+
 func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusReply, error) {
 	log.Debug("received archive status")
 
 	if !s.Buckets.IsArchivingEnabled() {
-		return nil, fmt.Errorf("Archive feature not enabled")
+		return nil, ErrArchivingFeatureDisabled
 	}
 
 	jstatus, failedMsg, err := s.Buckets.ArchiveStatus(ctx, req.Key)
@@ -619,7 +649,7 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 	log.Debug("received archive info")
 
 	if !s.Buckets.IsArchivingEnabled() {
-		return nil, fmt.Errorf("Archive feature not enabled")
+		return nil, ErrArchivingFeatureDisabled
 	}
 
 	dbID, ok := common.ThreadIDFromContext(ctx)

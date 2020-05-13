@@ -14,6 +14,7 @@ import (
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
+	"github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/textile/collections"
@@ -249,6 +250,40 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus,
 		return ffs.Failed, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
 	return ffs.JobStatus(current.JobStatus), current.FailureMsg, nil
+}
+
+func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
+	ffsi, err := b.ffsCol.Get(ctx, key)
+	if err != nil {
+		return fmt.Errorf("getting ffs instance data: %s", err)
+	}
+
+	if ffsi.Archives.Current.JobID == "" {
+		return ErrNoCurrentArchive
+	}
+	current := ffsi.Archives.Current
+	if current.Aborted {
+		return fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
+	}
+	c, err := cid.Decode(current.Cid)
+	if err != nil {
+		return fmt.Errorf("parsing current archive cid: %s", err)
+	}
+	ctx = context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ffsCh := make(chan client.LogEvent)
+	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, client.WithJidFilter(ffs.JobID(current.JobID))); err != nil {
+		return fmt.Errorf("watching log events in Powergate: %s", err)
+	}
+	for le := range ffsCh {
+		if le.Err != nil {
+			return le.Err
+		}
+		ch <- le.LogEntry.Msg
+	}
+	return nil
+
 }
 
 func (b *Buckets) Close() error {

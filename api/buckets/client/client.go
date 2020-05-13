@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -77,6 +79,26 @@ func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStat
 	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
 		Key: key,
 	})
+}
+
+func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.c.ArchiveWatch(ctx, &pb.ArchiveWatchRequest{Key: key})
+	if err != nil {
+		return err
+	}
+	for {
+		reply, err := stream.Recv()
+		if err == io.EOF || status.Code(err) == codes.Canceled {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		ch <- reply.Msg
+	}
+	return nil
 }
 
 func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoReply, error) {

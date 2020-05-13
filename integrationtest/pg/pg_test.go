@@ -100,6 +100,37 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 }
 
+func TestArchiveWatch(t *testing.T) {
+	_ = spinup(t)
+	ctx, client := setup(t)
+
+	b, err := client.Init(ctx, "bucky")
+	require.Nil(t, err)
+	time.Sleep(4 * time.Second)
+	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+
+	_, err = client.Archive(ctx, b.Root.Key)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ch := make(chan string, 100)
+	go func() {
+		err = client.ArchiveWatch(ctx, b.Root.Key, ch)
+		close(ch)
+	}()
+	count := 0
+	for s := range ch {
+		require.NotEmpty(t, s)
+		count++
+		if count > 4 {
+			cancel()
+		}
+	}
+	require.NoError(t, err)
+	require.Greater(t, count, 3)
+}
+
 func TestFailingArchive(t *testing.T) {
 	_ = spinup(t)
 	ctx, client := setup(t)
@@ -202,8 +233,8 @@ func spinup(t *testing.T) *client.Client {
 	}
 
 	cmd = exec.Command("docker-compose", "up", "-V")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("running docker-compose: %s", err)
 	}

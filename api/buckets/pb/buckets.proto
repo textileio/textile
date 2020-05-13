@@ -149,6 +149,13 @@ message ArchiveInfoReply {
      }
 }
 
+message ArchiveWatchRequest {
+	string key = 1;
+}
+
+message ArchiveWatchReply {
+	string msg = 1;
+}
 
 
 service API {
@@ -165,4 +172,5 @@ service API {
     rpc Archive(ArchiveRequest) returns (ArchiveReply) {}
     rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusReply) {}
     rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoReply) {}
+    rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchReply) {}
 }
