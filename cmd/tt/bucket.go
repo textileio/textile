@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,6 +27,8 @@ func init() {
 	rootCmd.AddCommand(bucketCmd)
 	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd, archiveBucketCmd)
 	archiveBucketCmd.AddCommand(archiveBucketStatusCmd, archiveBucketInfoCmd)
+
+	archiveBucketStatusCmd.Flags().BoolP("watch", "w", false, "Watched executiong log of the archive")
 
 	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketCmd.PersistentFlags().String("org", "", "Org username")
@@ -651,7 +654,47 @@ var archiveBucketStatusCmd = &cobra.Command{
 		default:
 			cmd.Warn("Archive status unknown")
 		}
+		watch, err := c.Flags().GetBool("watch")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if watch {
+			fmt.Printf("\n")
+			cmd.Message("Cid logs:")
+			ch := make(chan string)
+			wCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err = buckets.ArchiveWatch(wCtx, key, ch)
+				close(ch)
+			}()
+			for msg := range ch {
+				cmd.Message("\t %s", msg)
+				r, err := buckets.ArchiveStatus(ctx, key)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				if isJobStatusFinal(r.GetStatus()) {
+					cancel()
+				}
+			}
+			if err != nil {
+				cmd.Fatal(err)
+			}
+		}
 	},
+}
+
+func isJobStatusFinal(status pb.ArchiveStatusReply_Status) bool {
+	switch status {
+	case pb.ArchiveStatusReply_Failed, pb.ArchiveStatusReply_Canceled, pb.ArchiveStatusReply_Done:
+		return true
+	case pb.ArchiveStatusReply_Executing:
+		return false
+	}
+	cmd.Fatal(fmt.Errorf("Unknown job status"))
+	return true
+
 }
 
 var archiveBucketInfoCmd = &cobra.Command{
