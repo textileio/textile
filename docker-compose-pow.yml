@@ -26,7 +26,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:sha-b60c272
+    image: textile/powergate:sha-5df757d
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -51,6 +51,6 @@ services:
   lotus:
     image: textile/lotus-devnet:sha-0853126
     environment:
-      - TEXLOTUSDEVNET_SPEED=500
+      - TEXLOTUSDEVNET_SPEED=1500
     volumes:
      - pow-embed-shared:/tmp/powergate

@@ -273,7 +273,7 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ffsCh := make(chan client.LogEvent)
-	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, client.WithJidFilter(ffs.JobID(current.JobID))); err != nil {
+	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, client.WithJidFilter(ffs.JobID(current.JobID)), client.WithHistory(true)); err != nil {
 		return fmt.Errorf("watching log events in Powergate: %s", err)
 	}
 	for le := range ffsCh {
