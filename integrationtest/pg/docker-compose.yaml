@@ -6,7 +6,7 @@ volumes:
 services:
   
   powergate:
-    image: textile/powergate:sha-a527709
+    image: textile/powergate:sha-77c885e
     ports:
       - 8889:8889
       - 8888:8888
