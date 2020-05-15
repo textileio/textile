@@ -51,6 +51,6 @@ services:
   lotus:
     image: textile/lotus-devnet:sha-0853126
     environment:
-      - TEXLOTUSDEVNET_SPEED=1500
+      - TEXLOTUSDEVNET_SPEED=500
     volumes:
      - pow-embed-shared:/tmp/powergate

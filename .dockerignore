@@ -1,6 +1,5 @@
 docker-compose.yml
 docker-compose-dev.yml
-docker-compose-pow.yml
 Makefile
 integrationtest/**
 cmd/tt
