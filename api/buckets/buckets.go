@@ -204,15 +204,18 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
 	var jid ffs.JobID
 	if ffsi.Archives.Current.JobID != "" {
-		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
 		oldCid, err := cid.Decode(ffsi.Archives.Current.Cid)
 		if err != nil {
 			return fmt.Errorf("parsing old Cid archive: %s", err)
+		}
+		if oldCid.Equals(c) {
+			return nil
 		}
 		jid, err = b.pgClient.FFS.Replace(ctxFFS, oldCid, c)
 		if err != nil {
 			return fmt.Errorf("replacing cid: %s", err)
 		}
+		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
 	} else {
 		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, c)
 		if err != nil {
