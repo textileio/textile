@@ -6,7 +6,7 @@ volumes:
 services:
   
   powergate:
-    image: textile/powergate:sha-5df757d
+    image: textile/powergate:sha-a527709
     ports:
       - 8889:8889
       - 8888:8888
@@ -39,7 +39,7 @@ services:
       - 27027:27017
 
   lotus:
-    image: textile/lotus-devnet:sha-0853126
+    image: textile/lotus-devnet:sha-7ed2544
     environment:
       - TEXLOTUSDEVNET_SPEED=500
     volumes:

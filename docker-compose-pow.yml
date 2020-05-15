@@ -26,7 +26,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:sha-5df757d
+    image: textile/powergate:sha-a527709
     depends_on:
       - ipfs
       - ipfsbuckets
