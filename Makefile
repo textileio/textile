@@ -10,8 +10,4 @@ local-stop:
 local-clean:
 	docker-compose down -v --remove-orphans
 
-pow-up: local-clean
-	rm -rf ~/.textile
-	rm -rf .textile
-	docker-compose -f docker-compose-pow.yml up --build
 

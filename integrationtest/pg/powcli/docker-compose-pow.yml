@@ -5,7 +5,7 @@ volumes:
 
 services:
   textile:
-    build: .
+    build: ../../..
     environment:
       - TXTL_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - TXTL_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
