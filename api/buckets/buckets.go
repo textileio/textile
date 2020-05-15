@@ -193,6 +193,9 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 	return b.threads.Delete(ctx, dbID, CollectionName, []string{key}, db.WithTxnToken(args.Token))
 }
 
+// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
+// If it's not the first archive, we leverage the Replace() API to more efficient pinning.
+// The operation is async, so it will return as soon as the archiving is scheduled in Powergate.
 func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid.Cid, opts ...Option) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -255,6 +258,9 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus,
 	return ffs.JobStatus(current.JobStatus), current.FailureMsg, nil
 }
 
+// ArchiveWatch allows to have the last log execution for the last archive, plus realtime
+// human-friendly log output of how the current archive is executing.
+// If the last archive is already done, it will simply return the log history and close the channel.
 func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
 	ffsi, err := b.ffsCol.Get(ctx, key)
 	if err != nil {
