@@ -285,3 +285,19 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 		require.Nil(t, err)
 	}
 }
+
+// litesetup is the same as setup but won't create a hub account.
+func litesetup(t *testing.T) (*c.Client, func()) {
+	conf, shutdown := apitest.MakeTextile(t)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
+	require.Nil(t, err)
+	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
+	client, err := c.NewClient(target, opts...)
+	require.Nil(t, err)
+
+	return client, func() {
+		shutdown()
+		err := client.Close()
+		require.Nil(t, err)
+	}
+}
