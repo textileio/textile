@@ -1,4 +1,4 @@
-package dagger
+package local
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	"github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipfs/go-unixfs/importer/trickle"
+	options "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/multiformats/go-multihash"
 	tutil "github.com/textileio/go-threads/util"
 )
@@ -35,25 +36,25 @@ func init() {
 	ipld.Register(cid.DagCBOR, cbor.DecodeBlock)
 }
 
-var log = logging.Logger("dagger")
+var log = logging.Logger("local")
 
 const (
 	// repoName is the name used for the blockstore repo directory.
 	repoName = ".textile/repo"
 )
 
-// dagger wraps an offline and a null dag service for local operations.
-type dagger struct {
-	mem     ipld.DAGService
-	offline ipld.DAGService
-	store   ds.Batching
+// bucket wraps an local and a null dag service for local operations.
+type bucket struct {
+	tmp   ipld.DAGService
+	local ipld.DAGService
+	store ds.Batching
 }
 
-// NewDagger creates a new dagger with the given repo path.
-func NewDagger(root string, debug bool) (*dagger, error) {
+// NewBucket creates a new bucket with the given repo path.
+func NewBucket(root string, debug bool) (*bucket, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"dagger": logging.LevelDebug,
+			"local": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -70,42 +71,34 @@ func NewDagger(root string, debug bool) (*dagger, error) {
 	}
 	bs := bstore.NewBlockstore(syncds.MutexWrap(ds.NewMapDatastore()))
 	bsrv := bserv.New(bs, offline.Exchange(bs))
-	return &dagger{
-		mem:     mem,
-		offline: md.NewDAGService(bsrv),
-		store:   store,
+	return &bucket{
+		tmp:   mem,
+		local: md.NewDAGService(bsrv),
+		store: store,
 	}, nil
 }
 
-// Close closes the offline blockstore.
-func (d *dagger) Close() error {
+// Close closes the local bucket.
+func (d *bucket) Close() error {
 	return d.store.Close()
 }
 
-// Layout indicates which type of DAG to layout.
-type Layout int
-
-const (
-	// Trickle DAG layout
-	Trickle Layout = iota
-	// Balanced DAG layout
-	Balanced
-)
-
-// SaveDir chunks files under the directory path and saves the node structure to the offline dag service.
+// Save chunks files under the directory path and saves the node structure to the local dag service.
 // The file nodes are not saved.
 // This is useful for tracking directory state without duplicating file bytes.
-func (d *dagger) SaveDir(ctx context.Context, pth string, layout Layout) (ipld.Node, error) {
+func (d *bucket) Save(ctx context.Context, pth string, layout options.Layout) (ipld.Node, error) {
+	root := unixfs.EmptyDirNode()
+	prefix, err := getCidBuilder()
+	if err != nil {
+		return nil, err
+	}
+	root.SetCidBuilder(prefix)
+	editor := dagutils.NewDagEditor(root, d.local)
+
 	abs, err := filepath.Abs(pth)
 	if err != nil {
 		return nil, err
 	}
-
-	root := unixfs.EmptyDirNode()
-	prefix, err := getCidBuilder()
-	root.SetCidBuilder(prefix)
-	editor := dagutils.NewDagEditor(root, nil)
-
 	if err := filepath.Walk(abs, func(n string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -119,7 +112,7 @@ func (d *dagger) SaveDir(ctx context.Context, pth string, layout Layout) (ipld.N
 				return err
 			}
 			defer file.Close()
-			nd, err := d.HashFile(file, layout)
+			nd, err := addFile(d.tmp, file, layout)
 			if err != nil {
 				return err
 			}
@@ -134,22 +127,17 @@ func (d *dagger) SaveDir(ctx context.Context, pth string, layout Layout) (ipld.N
 	}); err != nil {
 		return nil, err
 	}
-	return editor.Finalize(ctx, d.offline)
+	return editor.Finalize(ctx, d.local)
 }
 
-// GetDir returns a saved node from the offline dag service.
-func (d *dagger) GetDir(ctx context.Context, c cid.Cid) (ipld.Node, error) {
-	return d.offline.Get(ctx, c)
+// Get returns a saved node from the local dag service.
+func (d *bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
+	return d.local.Get(ctx, c)
 }
 
-// HashFile chunks reader with the given layout.
+// addFile chunks reader with layout and adds blocks to the dag service.
 // SHA2-256 is used as the hash function and CidV1 as the cid version.
-func (d *dagger) HashFile(r io.Reader, layout Layout) (ipld.Node, error) {
-	return addFile(d.mem, r, layout)
-}
-
-// addFile chunks reader and adds the blocks to the provided dag service.
-func addFile(dag ipld.DAGService, r io.Reader, layout Layout) (ipld.Node, error) {
+func addFile(dag ipld.DAGService, r io.Reader, layout options.Layout) (ipld.Node, error) {
 	prefix, err := getCidBuilder()
 	if err != nil {
 		return nil, err
@@ -174,9 +162,9 @@ func addFile(dag ipld.DAGService, r io.Reader, layout Layout) (ipld.Node, error)
 
 	var n ipld.Node
 	switch layout {
-	case Trickle:
+	case options.TrickleLayout:
 		n, err = trickle.Layout(dbh)
-	case Balanced:
+	case options.BalancedLayout:
 		n, err = balanced.Layout(dbh)
 	default:
 		return nil, fmt.Errorf("invalid layout")
