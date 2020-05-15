@@ -39,6 +39,7 @@ require (
 	github.com/ipfs/go-path v0.0.7 // indirect
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
+	github.com/ipld/go-car v0.1.0
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.3

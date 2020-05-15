@@ -26,6 +26,7 @@ import (
 	"github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipfs/go-unixfs/importer/trickle"
 	options "github.com/ipfs/interface-go-ipfs-core/options"
+	car "github.com/ipld/go-car"
 	"github.com/multiformats/go-multihash"
 	tutil "github.com/textileio/go-threads/util"
 )
@@ -113,6 +114,33 @@ func (b *bucket) Diff(ctx context.Context, c cid.Cid, pth string) ([]*dagutils.C
 	return dagutils.Diff(ctx, b.tmp, an, bn)
 }
 
+// Write writes a car archive of cid to a file at name.
+func (b *bucket) Write(ctx context.Context, c cid.Cid, w io.Writer) error {
+	return car.WriteCarWithWalker(ctx, b.local, []cid.Cid{c}, w, func(n ipld.Node) ([]*ipld.Link, error) {
+		var links []*ipld.Link
+		for _, l := range n.Links() {
+			if l.Name != "" {
+				links = append(links, l)
+			}
+		}
+		return links, nil
+	})
+}
+
+// Load a car archive into the local blockstore.
+func (b *bucket) Load(r io.Reader) (cid.Cid, error) {
+	h, err := car.LoadCar(bstore.NewBlockstore(b.store), r)
+	if err != nil {
+		return cid.Undef, err
+	}
+	if len(h.Roots) > 0 {
+		c := h.Roots[0]
+		log.Debugf("loaded node: %s ", c)
+		return c, nil
+	}
+	return cid.Undef, nil
+}
+
 // walkPath walks the path and adds files to the dag service.
 func (b *bucket) walkPath(ctx context.Context, dag ipld.DAGService, pth string) (ipld.Node, error) {
 	root := unixfs.EmptyDirNode()
@@ -140,13 +168,11 @@ func (b *bucket) walkPath(ctx context.Context, dag ipld.DAGService, pth string) 
 				return err
 			}
 			defer file.Close()
-			nd, err := addFile(b.tmp, file, b.layout)
+			nd, err := addFile(b.tmp, b.layout, file)
 			if err != nil {
 				return err
 			}
 			n = strings.TrimPrefix(n, abs+"/")
-
-			log.Debugf("adding node %s with link %s", nd, n)
 			if err = editor.InsertNodeAtPath(ctx, n, nd, unixfs.EmptyDirNode); err != nil {
 				return err
 			}
@@ -155,17 +181,21 @@ func (b *bucket) walkPath(ctx context.Context, dag ipld.DAGService, pth string) 
 	}); err != nil {
 		return nil, err
 	}
-	return editor.Finalize(ctx, dag)
+	n, err := editor.Finalize(ctx, dag)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("finalized node: %s ", n.Cid())
+	return n, nil
 }
 
 // addFile chunks reader with layout and adds blocks to the dag service.
 // SHA2-256 is used as the hash function and CidV1 as the cid version.
-func addFile(dag ipld.DAGService, r io.Reader, layout options.Layout) (ipld.Node, error) {
+func addFile(dag ipld.DAGService, layout options.Layout, r io.Reader) (ipld.Node, error) {
 	prefix, err := getCidBuilder()
 	if err != nil {
 		return nil, err
 	}
-
 	dbp := helpers.DagBuilderParams{
 		Dagserv:    dag,
 		RawLeaves:  false,
@@ -173,7 +203,6 @@ func addFile(dag ipld.DAGService, r io.Reader, layout options.Layout) (ipld.Node
 		NoCopy:     false,
 		CidBuilder: prefix,
 	}
-
 	chnk, err := chunker.FromString(r, "default")
 	if err != nil {
 		return nil, err
@@ -195,6 +224,7 @@ func addFile(dag ipld.DAGService, r io.Reader, layout options.Layout) (ipld.Node
 	return n, err
 }
 
+// getCidBuilder returns a cid prefix with version 1 for use when working with new dirs.
 func getCidBuilder() (*cid.Prefix, error) {
 	prefix, err := md.PrefixForCidVersion(1)
 	if err != nil {

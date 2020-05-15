@@ -1,6 +1,7 @@
 package local
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"testing"
@@ -82,6 +83,36 @@ func TestBucket_Diff(t *testing.T) {
 		assert.Equal(t, changes[i].Path, c.Path)
 		assert.Equal(t, changes[i].Type, c.Type)
 	}
+}
+
+func TestBucket_Write(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, options.BalancedLayout)
+	defer buck.Close()
+
+	saved, err := buck.Save(context.Background(), "testdata/a")
+	require.Nil(t, err)
+
+	buf := new(bytes.Buffer)
+	err = buck.Write(context.Background(), saved.Cid(), buf)
+	require.Nil(t, err)
+}
+
+func TestBucket_Load(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, options.BalancedLayout)
+	defer buck.Close()
+
+	saved, err := buck.Save(context.Background(), "testdata/c")
+	require.Nil(t, err)
+
+	buf := new(bytes.Buffer)
+	err = buck.Write(context.Background(), saved.Cid(), buf)
+	require.Nil(t, err)
+
+	loaded, err := buck.Load(buf)
+	require.Nil(t, err)
+	require.Equal(t, saved.Cid(), loaded)
 }
 
 func TestBucket_Close(t *testing.T) {
