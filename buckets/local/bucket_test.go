@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/ipfs/go-merkledag/dagutils"
+
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/stretchr/testify/assert"
@@ -12,20 +14,18 @@ import (
 )
 
 func TestNewBucket(t *testing.T) {
-	buck := makeBucket(t)
+	buck := makeBucket(t, options.BalancedLayout)
 	defer buck.Close()
 }
 
 func TestBucket_Save(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t)
+	buck := makeBucket(t, options.BalancedLayout)
 	defer buck.Close()
 
-	saved, err := buck.Save(context.Background(), "testdata", options.BalancedLayout)
+	saved, err := buck.Save(context.Background(), "testdata/a")
 	require.Nil(t, err)
 	assert.True(t, saved.Cid().Defined())
-	t.Logf("Saved dir with cid: %s", saved.Cid())
-
 	checkLinks(t, buck, saved)
 }
 
@@ -43,28 +43,57 @@ func checkLinks(t *testing.T, buck *bucket, n ipld.Node) {
 
 func TestBucket_Get(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t)
+	buck := makeBucket(t, options.BalancedLayout)
 	defer buck.Close()
 
-	saved, err := buck.Save(context.Background(), "testdata", options.BalancedLayout)
+	saved, err := buck.Save(context.Background(), "testdata/a")
 	require.Nil(t, err)
-	assert.True(t, saved.Cid().Defined())
-
 	got, err := buck.Get(context.Background(), saved.Cid())
 	require.Nil(t, err)
 	assert.Equal(t, got.Cid(), saved.Cid())
 }
 
+func TestBucket_Diff(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, options.BalancedLayout)
+	defer buck.Close()
+
+	a, err := buck.Save(context.Background(), "testdata/a")
+	require.Nil(t, err)
+
+	diffa, err := buck.Diff(context.Background(), a.Cid(), "testdata/a")
+	require.Nil(t, err)
+	assert.Empty(t, diffa)
+
+	diffb, err := buck.Diff(context.Background(), a.Cid(), "testdata/b")
+	require.Nil(t, err)
+	assert.NotEmpty(t, diffb)
+	assert.Equal(t, 6, len(diffb))
+
+	changes := []*dagutils.Change{
+		{Path: "foo.txt", Type: dagutils.Mod},
+		{Path: "one/two/boo.txt", Type: dagutils.Remove},
+		{Path: "one/buz.txt", Type: dagutils.Remove},
+		{Path: "one/muz.txt", Type: dagutils.Add},
+		{Path: "one/three", Type: dagutils.Add},
+		{Path: "bar.txt", Type: dagutils.Remove},
+	}
+	for i, c := range diffb {
+		assert.Equal(t, changes[i].Path, c.Path)
+		assert.Equal(t, changes[i].Type, c.Type)
+	}
+}
+
 func TestBucket_Close(t *testing.T) {
-	buck := makeBucket(t)
+	buck := makeBucket(t, options.BalancedLayout)
 	err := buck.Close()
 	require.Nil(t, err)
 }
 
-func makeBucket(t *testing.T) *bucket {
+func makeBucket(t *testing.T, layout options.Layout) *bucket {
 	dir, err := ioutil.TempDir("", "")
 	require.Nil(t, err)
-	buck, err := NewBucket(dir, true)
+	buck, err := NewBucket(dir, layout, true)
 	require.Nil(t, err)
 	return buck
 }

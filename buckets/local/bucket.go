@@ -45,13 +45,14 @@ const (
 
 // bucket wraps an local and a null dag service for local operations.
 type bucket struct {
-	tmp   ipld.DAGService
-	local ipld.DAGService
-	store ds.Batching
+	layout options.Layout
+	tmp    ipld.DAGService
+	local  ipld.DAGService
+	store  ds.Batching
 }
 
 // NewBucket creates a new bucket with the given repo path.
-func NewBucket(root string, debug bool) (*bucket, error) {
+func NewBucket(root string, layout options.Layout, debug bool) (*bucket, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"local": logging.LevelDebug,
@@ -72,28 +73,55 @@ func NewBucket(root string, debug bool) (*bucket, error) {
 	bs := bstore.NewBlockstore(syncds.MutexWrap(ds.NewMapDatastore()))
 	bsrv := bserv.New(bs, offline.Exchange(bs))
 	return &bucket{
-		tmp:   mem,
-		local: md.NewDAGService(bsrv),
-		store: store,
+		layout: layout,
+		tmp:    mem,
+		local:  md.NewDAGService(bsrv),
+		store:  store,
 	}, nil
 }
 
 // Close closes the local bucket.
-func (d *bucket) Close() error {
-	return d.store.Close()
+func (b *bucket) Close() error {
+	return b.store.Close()
 }
 
 // Save chunks files under the directory path and saves the node structure to the local dag service.
 // The file nodes are not saved.
 // This is useful for tracking directory state without duplicating file bytes.
-func (d *bucket) Save(ctx context.Context, pth string, layout options.Layout) (ipld.Node, error) {
+func (b *bucket) Save(ctx context.Context, pth string) (ipld.Node, error) {
+	return b.walkPath(ctx, b.local, pth)
+}
+
+// Get returns a saved node from the local dag service.
+func (b *bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
+	return b.local.Get(ctx, c)
+}
+
+// Diff returns a list of changes that are present in pth compared to the node at cid.
+func (b *bucket) Diff(ctx context.Context, c cid.Cid, pth string) ([]*dagutils.Change, error) {
+	an, err := b.local.Get(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	bn, err := b.walkPath(ctx, b.tmp, pth)
+	if err != nil {
+		return nil, err
+	}
+	if err := copyDag(ctx, an, b.local, b.tmp); err != nil {
+		return nil, err
+	}
+	return dagutils.Diff(ctx, b.tmp, an, bn)
+}
+
+// walkPath walks the path and adds files to the dag service.
+func (b *bucket) walkPath(ctx context.Context, dag ipld.DAGService, pth string) (ipld.Node, error) {
 	root := unixfs.EmptyDirNode()
 	prefix, err := getCidBuilder()
 	if err != nil {
 		return nil, err
 	}
 	root.SetCidBuilder(prefix)
-	editor := dagutils.NewDagEditor(root, d.local)
+	editor := dagutils.NewDagEditor(root, dag)
 
 	abs, err := filepath.Abs(pth)
 	if err != nil {
@@ -112,7 +140,7 @@ func (d *bucket) Save(ctx context.Context, pth string, layout options.Layout) (i
 				return err
 			}
 			defer file.Close()
-			nd, err := addFile(d.tmp, file, layout)
+			nd, err := addFile(b.tmp, file, b.layout)
 			if err != nil {
 				return err
 			}
@@ -127,12 +155,7 @@ func (d *bucket) Save(ctx context.Context, pth string, layout options.Layout) (i
 	}); err != nil {
 		return nil, err
 	}
-	return editor.Finalize(ctx, d.local)
-}
-
-// Get returns a saved node from the local dag service.
-func (d *bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
-	return d.local.Get(ctx, c)
+	return editor.Finalize(ctx, dag)
 }
 
 // addFile chunks reader with layout and adds blocks to the dag service.
@@ -181,4 +204,30 @@ func getCidBuilder() (*cid.Prefix, error) {
 	prefix.MhType = hashFunCode
 	prefix.MhLength = -1
 	return &prefix, nil
+}
+
+// Copied from https://github.com/ipfs/go-merkledag/blob/master/dagutils/utils.go#L210
+func copyDag(ctx context.Context, nd ipld.Node, from, to ipld.DAGService) error {
+	err := to.Add(ctx, nd)
+	if err != nil {
+		return err
+	}
+
+	for _, lnk := range nd.Links() {
+		child, err := lnk.GetNode(ctx, from)
+		if err != nil {
+			if err == ipld.ErrNotFound {
+				// not found means we didnt modify it, and it should
+				// already be in the target datastore
+				continue
+			}
+			return err
+		}
+
+		err = copyDag(ctx, child, from, to)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

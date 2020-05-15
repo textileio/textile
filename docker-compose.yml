@@ -13,6 +13,7 @@ services:
       - TXTL_ADDR_GATEWAY_URL
       - TXTL_ADDR_MONGO_URI
       - TXTL_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
+      - TXTL_GATEWAY_SUBDOMAINS
       - TXTL_EMAIL_API_KEY
       - TXTL_DNS_DOMAIN
       - TXTL_DNS_ZONE_ID
