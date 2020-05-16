@@ -58,10 +58,10 @@
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.12.0",
     "@textile/buckets-grpc": "1.0.3",
-    "@textile/context": "0.2.1",
+    "@textile/context": "^0.2.2",
     "@textile/hub-grpc": "1.0.3",
-    "@textile/threads-client": "0.3.2",
-    "@textile/threads-id": "0.0.6",
+    "@textile/threads-client": "^0.3.2",
+    "@textile/threads-id": "^0.0.7",
     "@textile/users-grpc": "1.0.3",
     "@types/google-protobuf": "^3.7.2",
     "axios": "^0.19.2",
@@ -73,7 +73,7 @@
     "queueable": "^4.1.4"
   },
   "devDependencies": {
-    "@textile/threads-core": "^0.1.8",
+    "@textile/threads-core": "^0.1.9",
     "@types/browser-or-node": "^1.2.0",
     "@types/chai": "^4.2.5",
     "@types/mocha": "^7.0.1",
