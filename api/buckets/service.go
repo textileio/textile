@@ -29,8 +29,6 @@ import (
 var log = logging.Logger("buckets")
 
 const (
-	// seedName is the name of the seed file used to ensure buckets are unique
-	seedName = ".textilebucketseed"
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32
 )
@@ -55,7 +53,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.createBucket(ctx, dbID, dbToken, req.Name)
+	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -69,47 +67,48 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 			UpdatedAt: buck.UpdatedAt,
 		},
 		Links: s.createLinks(dbID, buck),
+		Seed:  seed,
 	}, nil
 }
 
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*bucks.Bucket, error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*bucks.Bucket, []byte, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pth, err := s.IPFSClient.Unixfs().Add(
 		ctx,
 		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			seedName: ipfsfiles.NewBytesFile(seed),
+			bucks.SeedName: ipfsfiles.NewBytesFile(seed),
 		}),
 		options.Unixfs.CidVersion(1),
 		options.Unixfs.Pin(true))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	bkey, err := s.IPNSManager.CreateKey(ctx, dbID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	buck, err := s.Buckets.Create(ctx, dbID, bkey, name, pth, bucks.WithToken(dbToken))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if s.DNSManager != nil {
 		if host, ok := s.getGatewayHost(); ok {
 			rec, err := s.DNSManager.NewCNAME(buck.Key, host)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			buck.DNSRecord = rec.ID
 			if err = s.Buckets.Save(ctx, dbID, buck, bucks.WithToken(dbToken)); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 	go s.IPNSManager.Publish(pth, buck.Key)
-	return buck, nil
+	return buck, seed, nil
 }
 
 func (s *Service) createLinks(dbID thread.ID, buck *bucks.Bucket) *pb.LinksReply {
@@ -218,7 +217,7 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			if entries.Name() == seedName {
+			if entries.Name() == bucks.SeedName {
 				continue
 			}
 			i := &pb.ListPathReply_Item{}
@@ -241,8 +240,8 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 }
 
 func parsePath(pth string) (fpth string, err error) {
-	if strings.Contains(pth, seedName) {
-		err = fmt.Errorf("paths containing %s are not allowed", seedName)
+	if strings.Contains(pth, bucks.SeedName) {
+		err = fmt.Errorf("paths containing %s are not allowed", bucks.SeedName)
 		return
 	}
 	fpth = strings.TrimPrefix(pth, "/")

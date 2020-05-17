@@ -13,7 +13,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(keysCmd)
-	keysCmd.AddCommand(createKeysCmd, invalidateKeysCmd, lsKeysCmd)
+	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 
 	keysCmd.PersistentFlags().String("org", "", "Org username")
 }
@@ -30,7 +30,7 @@ var keysCmd = &cobra.Command{
 	},
 }
 
-var createKeysCmd = &cobra.Command{
+var keysCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an API key and secret",
 	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
@@ -77,7 +77,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 	},
 }
 
-var invalidateKeysCmd = &cobra.Command{
+var keysInvalidateCmd = &cobra.Command{
 	Use:   "invalidate",
 	Short: "Invalidate a key",
 	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
@@ -102,7 +102,7 @@ var invalidateKeysCmd = &cobra.Command{
 	},
 }
 
-var lsKeysCmd = &cobra.Command{
+var keysLsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",

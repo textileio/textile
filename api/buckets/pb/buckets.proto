@@ -13,6 +13,7 @@ message InitRequest {
 message InitReply {
     Root root = 1;
     LinksReply links = 2;
+    bytes seed = 3;
 }
 
 message LinksRequest {

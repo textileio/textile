@@ -12,7 +12,10 @@ import (
 	db "github.com/textileio/go-threads/db"
 )
 
-const CollectionName = "buckets"
+const (
+	CollectionName = "buckets"
+	SeedName       = ".textilebucketseed"
+)
 
 var (
 	schema  *jsonschema.Schema

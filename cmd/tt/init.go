@@ -76,7 +76,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		dir := filepath.Join(home, ".textile")
+		dir := filepath.Join(home, authDir)
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}

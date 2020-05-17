@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,8 @@ import (
 	"strings"
 
 	pbar "github.com/cheggaaa/pb/v3"
+	"github.com/ipfs/go-merkledag/dagutils"
+	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -15,24 +18,30 @@ import (
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
+	bucks "github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
 )
 
 var (
 	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
+
+	ignoredFilenames = []string{
+		".DS_Store",
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd)
+	bucketCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketRmCmd, bucketDestroyCmd)
 
-	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
-	initBucketCmd.PersistentFlags().String("org", "", "Org username")
-	initBucketCmd.PersistentFlags().Bool("public", false, "Allow public access")
-	initBucketCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketCmd.Flags().Bool("existing", false, "If set, initializes from an existing remote bucket")
+	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
+	bucketInitCmd.PersistentFlags().String("org", "", "Org username")
+	bucketInitCmd.PersistentFlags().Bool("public", false, "Allow public access")
+	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
+	bucketInitCmd.Flags().Bool("existing", false, "If set, initializes from an existing remote bucket")
 
-	if err := cmd.BindFlags(configViper, initBucketCmd, flags); err != nil {
+	if err := cmd.BindFlags(configViper, bucketInitCmd, flags); err != nil {
 		cmd.Fatal(err)
 	}
 }
@@ -41,18 +50,9 @@ var bucketCmd = &cobra.Command{
 	Use:   "bucket",
 	Short: "Manage a bucket",
 	Long:  `Init a bucket and push and pull files and folders.`,
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		lsBucketPath(args)
-	},
 }
 
-var initBucketCmd = &cobra.Command{
+var bucketInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create an empty bucket",
 	Long: `Create an empty bucket.
@@ -68,8 +68,7 @@ Existing configs will not be overwritten.
 		if err != nil {
 			cmd.Fatal(err)
 		}
-
-		dir := filepath.Join(root, ".textile")
+		dir := filepath.Join(root, configDir)
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
@@ -199,13 +198,35 @@ Existing configs will not be overwritten.
 		if initRemote {
 			ctx, cancel := threadCtx(cmdTimeout)
 			defer cancel()
-			buck, err := buckets.Init(ctx, name)
+			rep, err := buckets.Init(ctx, name)
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			configViper.Set("key", buck.Root.Key)
+			configViper.Set("key", rep.Root.Key)
 
-			printLinks(buck.Links)
+			file, err := os.Create(filepath.Join(root, bucks.SeedName))
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			defer file.Close()
+			_, err = file.Write(rep.Seed)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if _, err = file.Seek(0, 0); err != nil {
+				cmd.Fatal(err)
+			}
+			buck, err := local.NewBucket(root, options.BalancedLayout)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			actx, acancel := context.WithTimeout(context.Background(), cmdTimeout)
+			defer acancel()
+			if _, err = buck.ArchiveFile(actx, file, bucks.SeedName); err != nil {
+				cmd.Fatal(err)
+			}
+
+			printLinks(rep.Links)
 		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
@@ -230,7 +251,7 @@ func printLinks(reply *pb.LinksReply) {
 	cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(reply.IPNS).Bold())
 }
 
-var bucketPathLinksCmd = &cobra.Command{
+var bucketLinksCmd = &cobra.Command{
 	Use:   "links",
 	Short: "Print links to where this bucket can be accessed",
 	Long:  `Print links to where this bucket can be accessed.`,
@@ -252,7 +273,64 @@ var bucketPathLinksCmd = &cobra.Command{
 	},
 }
 
-var lsBucketPathCmd = &cobra.Command{
+var bucketStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show bucket tree status",
+	Long:  `Displays paths that have been added to and paths that have been removed or differ from the current bucket root.`,
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+	},
+	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+
+		buck, err := local.NewBucket(root, options.BalancedLayout)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		diff, err := buck.Diff(ctx, root)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		for _, c := range diff {
+			cf := changeColor(c.Type)
+			cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Path))
+		}
+	},
+}
+
+func changeType(t dagutils.ChangeType) string {
+	switch t {
+	case dagutils.Mod:
+		return "modified:"
+	case dagutils.Add:
+		return "added:   "
+	case dagutils.Remove:
+		return "removed: "
+	default:
+		return ""
+	}
+}
+
+func changeColor(t dagutils.ChangeType) func(arg interface{}) aurora.Value {
+	switch t {
+	case dagutils.Mod:
+		return aurora.Yellow
+	case dagutils.Add:
+		return aurora.Green
+	case dagutils.Remove:
+		return aurora.Red
+	default:
+		return nil
+	}
+}
+
+var bucketLsCmd = &cobra.Command{
 	Use: "ls [path]",
 	Aliases: []string{
 		"list",
@@ -266,62 +344,58 @@ var lsBucketPathCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		lsBucketPath(args)
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+
+		var pth string
+		if len(args) > 0 {
+			pth = args[0]
+		}
+		if pth == "." || pth == "/" || pth == "./" {
+			pth = ""
+		}
+		key := configViper.GetString("key")
+		rep, err := buckets.ListPath(ctx, key, pth)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		var items []*pb.ListPathReply_Item
+		if len(rep.Item.Items) > 0 {
+			items = rep.Item.Items
+		} else if !rep.Item.IsDir {
+			items = append(items, rep.Item)
+		}
+
+		var data [][]string
+		if len(items) > 0 && !strings.HasPrefix(pth, configDir) {
+			for _, item := range items {
+				if item.Name == configDir {
+					continue
+				}
+				var links string
+				if item.IsDir {
+					links = strconv.Itoa(len(item.Items))
+				} else {
+					links = "n/a"
+				}
+				data = append(data, []string{
+					item.Name,
+					strconv.Itoa(int(item.Size)),
+					strconv.FormatBool(item.IsDir),
+					links,
+					item.Path,
+				})
+			}
+		}
+
+		if len(data) > 0 {
+			cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
+		}
+		cmd.Message("Found %d items", aurora.White(len(data)).Bold())
 	},
 }
 
-func lsBucketPath(args []string) {
-	ctx, cancel := threadCtx(cmdTimeout)
-	defer cancel()
-
-	var pth string
-	if len(args) > 0 {
-		pth = args[0]
-	}
-	if pth == "." || pth == "/" || pth == "./" {
-		pth = ""
-	}
-	key := configViper.GetString("key")
-	rep, err := buckets.ListPath(ctx, key, pth)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	var items []*pb.ListPathReply_Item
-	if len(rep.Item.Items) > 0 {
-		items = rep.Item.Items
-	} else if !rep.Item.IsDir {
-		items = append(items, rep.Item)
-	}
-
-	var data [][]string
-	if len(items) > 0 && !strings.HasPrefix(pth, ".textile") {
-		for _, item := range items {
-			if item.Name == ".textile" {
-				continue
-			}
-			var links string
-			if item.IsDir {
-				links = strconv.Itoa(len(item.Items))
-			} else {
-				links = "n/a"
-			}
-			data = append(data, []string{
-				item.Name,
-				strconv.Itoa(int(item.Size)),
-				strconv.FormatBool(item.IsDir),
-				links,
-				item.Path,
-			})
-		}
-	}
-
-	if len(data) > 0 {
-		cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
-	}
-	cmd.Message("Found %d items", aurora.White(len(data)).Bold())
-}
-
-var pushBucketPathCmd = &cobra.Command{
+var bucketPushCmd = &cobra.Command{
 	Use:   "push [target] [path]",
 	Short: "Push to a bucket path (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
@@ -355,7 +429,7 @@ These 'push' commands result in the following bucket structures.
 'tt bucket push foo/bar/baz/three.txt mybuck':
     mybuck/three.txt
 `,
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -373,43 +447,25 @@ These 'push' commands result in the following bucket structures.
 
 		var names []string
 		var paths []string
-		bucketPath, args := args[len(args)-1], args[:len(args)-1]
-		for _, a := range args {
-			abs, err := filepath.Abs(a)
+		if err := filepath.Walk(root, func(n string, info os.FileInfo, err error) error {
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			if !strings.HasPrefix(abs, root) {
-				cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
-			}
-
-			dir := filepath.Dir(a)
-			if err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
-				if err != nil {
-					cmd.Fatal(err)
+			if !info.IsDir() {
+				if ignored(n) {
+					return nil
 				}
-				if !info.IsDir() {
-					if strings.HasSuffix(n, ".DS_Store") {
-						return nil
-					}
-					names = append(names, n)
-					var p string
-					if n == a { // This is a file given as an arg
-						// In this case, the bucket path should not include the directory
-						p = filepath.Join(bucketPath, info.Name())
-					} else { // This is a directory given as an arg, or one of its sub directories
-						// The bucket path should maintain directory structure
-						if dir != "." {
-							n = strings.TrimPrefix(n, dir)
-						}
-						p = filepath.Join(bucketPath, n)
-					}
-					paths = append(paths, p)
+				p := n
+				n = strings.TrimPrefix(n, root+"/")
+				if strings.HasPrefix(n, configDir) {
+					return nil
 				}
-				return nil
-			}); err != nil {
-				cmd.Fatal(err)
+				names = append(names, n)
+				paths = append(paths, p)
 			}
+			return nil
+		}); err != nil {
+			cmd.Fatal(err)
 		}
 		if len(names) == 0 {
 			cmd.End("No files found")
@@ -427,8 +483,17 @@ These 'push' commands result in the following bucket structures.
 		for i := range names {
 			addFile(key, names[i], paths[i])
 		}
-		cmd.Success("Pushed %d files to %s", aurora.White(len(names)).Bold(), aurora.White(bucketPath).Bold())
+		cmd.Success("Pushed %d files", aurora.White(len(names)).Bold())
 	},
+}
+
+func ignored(pth string) bool {
+	for _, n := range ignoredFilenames {
+		if strings.HasSuffix(pth, n) {
+			return true
+		}
+	}
+	return false
 }
 
 func addFile(key, name, filePath string) {
@@ -464,7 +529,7 @@ func addFile(key, name, filePath string) {
 	bar.Finish()
 }
 
-var pullBucketPathCmd = &cobra.Command{
+var bucketPullCmd = &cobra.Command{
 	Use:   "pull [path] [destination]",
 	Short: "Pull a bucket path",
 	Long: `Pull files and directories from a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
@@ -578,7 +643,7 @@ func getFile(key, filePath, name string, size int64) {
 	bar.Finish()
 }
 
-var catBucketPathCmd = &cobra.Command{
+var bucketCatCmd = &cobra.Command{
 	Use:   "cat [path]",
 	Short: "Cat a bucket path file",
 	Long:  `Cat a file at a bucket path.`,
@@ -599,7 +664,7 @@ var catBucketPathCmd = &cobra.Command{
 	},
 }
 
-var rmBucketPathCmd = &cobra.Command{
+var bucketRmCmd = &cobra.Command{
 	Use: "rm [path]",
 	Aliases: []string{
 		"remove",
@@ -624,7 +689,7 @@ var rmBucketPathCmd = &cobra.Command{
 	},
 }
 
-var destroyBucketCmd = &cobra.Command{
+var bucketDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy bucket",
 	Long:  `Destroy bucket and all associated data.`,

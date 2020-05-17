@@ -1,33 +1,50 @@
 package local
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
-	"github.com/ipfs/go-merkledag/dagutils"
-
 	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewBucket(t *testing.T) {
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
+	makeBucket(t, "testdata/a", options.BalancedLayout)
 }
 
-func TestBucket_Save(t *testing.T) {
+func TestBucket_Archive(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
 
-	saved, err := buck.Save(context.Background(), "testdata/a")
+	c, err := buck.Archive(context.Background())
 	require.Nil(t, err)
-	assert.True(t, saved.Cid().Defined())
-	checkLinks(t, buck, saved)
+	assert.NotEmpty(t, c)
+
+	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
+	n, err := buck2.Get(context.Background(), c)
+	require.Nil(t, err)
+	checkLinks(t, buck2, n)
+}
+
+func TestBucket_ArchiveFile(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
+
+	file, err := os.Open("testdata/c/one.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	c, err := buck.ArchiveFile(context.Background(), file, "one.jpg")
+	require.Nil(t, err)
+	assert.NotEmpty(t, c)
+
+	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
+	n, err := buck2.Get(context.Background(), c)
+	require.Nil(t, err)
+	checkLinks(t, buck2, n)
 }
 
 func checkLinks(t *testing.T, buck *bucket, n ipld.Node) {
@@ -44,29 +61,29 @@ func checkLinks(t *testing.T, buck *bucket, n ipld.Node) {
 
 func TestBucket_Get(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
 
-	saved, err := buck.Save(context.Background(), "testdata/a")
+	c, err := buck.Archive(context.Background())
 	require.Nil(t, err)
-	got, err := buck.Get(context.Background(), saved.Cid())
+	assert.NotEmpty(t, c)
+
+	n, err := buck.Get(context.Background(), c)
 	require.Nil(t, err)
-	assert.Equal(t, got.Cid(), saved.Cid())
+	assert.Equal(t, c, n.Cid())
 }
 
 func TestBucket_Diff(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
 
-	a, err := buck.Save(context.Background(), "testdata/a")
+	_, err := buck.Archive(context.Background())
 	require.Nil(t, err)
 
-	diffa, err := buck.Diff(context.Background(), a.Cid(), "testdata/a")
+	diffa, err := buck.Diff(context.Background(), "testdata/a")
 	require.Nil(t, err)
 	assert.Empty(t, diffa)
 
-	diffb, err := buck.Diff(context.Background(), a.Cid(), "testdata/b")
+	diffb, err := buck.Diff(context.Background(), "testdata/b")
 	require.Nil(t, err)
 	assert.NotEmpty(t, diffb)
 	assert.Equal(t, 6, len(diffb))
@@ -85,46 +102,8 @@ func TestBucket_Diff(t *testing.T) {
 	}
 }
 
-func TestBucket_Write(t *testing.T) {
-	t.Parallel()
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
-
-	saved, err := buck.Save(context.Background(), "testdata/a")
-	require.Nil(t, err)
-
-	buf := new(bytes.Buffer)
-	err = buck.Write(context.Background(), saved.Cid(), buf)
-	require.Nil(t, err)
-}
-
-func TestBucket_Load(t *testing.T) {
-	t.Parallel()
-	buck := makeBucket(t, options.BalancedLayout)
-	defer buck.Close()
-
-	saved, err := buck.Save(context.Background(), "testdata/c")
-	require.Nil(t, err)
-
-	buf := new(bytes.Buffer)
-	err = buck.Write(context.Background(), saved.Cid(), buf)
-	require.Nil(t, err)
-
-	loaded, err := buck.Load(buf)
-	require.Nil(t, err)
-	require.Equal(t, saved.Cid(), loaded)
-}
-
-func TestBucket_Close(t *testing.T) {
-	buck := makeBucket(t, options.BalancedLayout)
-	err := buck.Close()
-	require.Nil(t, err)
-}
-
-func makeBucket(t *testing.T, layout options.Layout) *bucket {
-	dir, err := ioutil.TempDir("", "")
-	require.Nil(t, err)
-	buck, err := NewBucket(dir, layout, true)
+func makeBucket(t *testing.T, root string, layout options.Layout) *bucket {
+	buck, err := NewBucket(root, layout)
 	require.Nil(t, err)
 	return buck
 }

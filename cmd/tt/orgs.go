@@ -14,7 +14,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(orgsCmd)
-	orgsCmd.AddCommand(createOrgsCmd, lsOrgsCmd, membersOrgsCmd, inviteOrgsCmd, leaveOrgsCmd, destroyOrgsCmd)
+	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 }
 
 var orgsCmd = &cobra.Command{
@@ -29,7 +29,7 @@ var orgsCmd = &cobra.Command{
 	},
 }
 
-var createOrgsCmd = &cobra.Command{
+var orgsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an org",
 	Long:  `Create a new organization (interactive).`,
@@ -77,7 +77,7 @@ var createOrgsCmd = &cobra.Command{
 	},
 }
 
-var lsOrgsCmd = &cobra.Command{
+var orgsLsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
@@ -111,7 +111,7 @@ func lsOrgs() {
 	cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
 }
 
-var membersOrgsCmd = &cobra.Command{
+var orgsMembersCmd = &cobra.Command{
 	Use:   "members",
 	Short: "List org members",
 	Long:  `List current organization members (interactive).`,
@@ -143,7 +143,7 @@ var membersOrgsCmd = &cobra.Command{
 	},
 }
 
-var inviteOrgsCmd = &cobra.Command{
+var orgsInviteCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members to an org",
 	Long:  `Invite a new member to an organization.`,
@@ -174,7 +174,7 @@ var inviteOrgsCmd = &cobra.Command{
 	},
 }
 
-var leaveOrgsCmd = &cobra.Command{
+var orgsLeaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave an org",
 	Long:  `Leave an organization (interactive).`,
@@ -231,7 +231,7 @@ func selectOrg(label, successMsg string) *orgItem {
 	return items[index]
 }
 
-var destroyOrgsCmd = &cobra.Command{
+var orgsDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy an org",
 	Long:  `Destroy an organization and all associated data (interactive). You must be the org owner.`,

@@ -12,7 +12,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(threadsCmd)
-	threadsCmd.AddCommand(lsThreadsCmd)
+	threadsCmd.AddCommand(threadsLsCmd)
 
 	threadsCmd.PersistentFlags().String("org", "", "Org username")
 }
@@ -29,7 +29,7 @@ var threadsCmd = &cobra.Command{
 	},
 }
 
-var lsThreadsCmd = &cobra.Command{
+var threadsLsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
