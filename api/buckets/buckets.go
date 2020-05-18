@@ -207,7 +207,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
 	var jid ffs.JobID
 	if ffsi.Archives.Current.JobID != "" {
-		oldCid, err := cid.Decode(ffsi.Archives.Current.Cid)
+		oldCid, err := cid.Cast(ffsi.Archives.Current.Cid)
 		if err != nil {
 			return fmt.Errorf("parsing old Cid archive: %s", err)
 		}
@@ -227,7 +227,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	}
 
 	ffsi.Archives.Current = collections.Archive{
-		Cid:       c.String(),
+		Cid:       c.Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid.String(),
 		JobStatus: int(ffs.Queued),
@@ -274,7 +274,7 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 	if current.Aborted {
 		return fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
-	c, err := cid.Decode(current.Cid)
+	c, err := cid.Cast(current.Cid)
 	if err != nil {
 		return fmt.Errorf("parsing current archive cid: %s", err)
 	}

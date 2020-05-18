@@ -19,7 +19,7 @@ type Archives struct {
 }
 
 type Archive struct {
-	Cid        string
+	Cid        []byte
 	JobID      string
 	JobStatus  int
 	Aborted    bool
