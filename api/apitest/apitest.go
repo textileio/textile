@@ -25,6 +25,11 @@ var SessionSecret = NewUsername()
 func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 
+	conf = DefaultTextileConfig(t)
+	return conf, MakeTextileCustom(t, conf)
+}
+
+func DefaultTextileConfig(t *testing.T) core.Config {
 	dir, err := ioutil.TempDir("", "")
 	require.Nil(t, err)
 
@@ -33,7 +38,7 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	gatewayPort, err := freeport.GetFreePort()
 	require.Nil(t, err)
 
-	conf = core.Config{
+	return core.Config{
 		RepoPath: dir,
 
 		AddrAPI:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
@@ -54,16 +59,20 @@ func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 
 		Debug: true,
 	}
+}
+
+func MakeTextileCustom(t *testing.T, conf core.Config) func() {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.Nil(t, err)
 	textile.Bootstrap()
 
-	return conf, func() {
+	return func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work
 		err := textile.Close()
 		require.Nil(t, err)
-		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(conf.RepoPath)
 	}
+
 }
 
 func NewUsername() string {

@@ -1,0 +1,56 @@
+version: '3.7'
+
+volumes:
+   pow-embed-shared:
+
+services:
+  textile:
+    build: ../../..
+    environment:
+      - TXTL_ADDR_API=/ip4/0.0.0.0/tcp/3006
+      - TXTL_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
+      - TXTL_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
+      - TXTL_ADDR_MONGO_URI=mongodb://mongo:27017
+      - TXTL_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
+      - TXTL_EMAIL_SESSION_SECRET=textilesession
+      - TXTL_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
+    ports:
+      - "127.0.0.1:3006:3006"
+      - "3007:3007"
+      - "4006:4006"
+      - "127.0.0.1:8006:8006"
+    depends_on:
+      - ipfsbuckets
+      - mongo
+      - powergate
+
+  powergate:
+    image: textile/powergate:sha-77c885e
+    depends_on:
+      - ipfs
+      - ipfsbuckets
+      - lotus
+    environment:
+      - POWD_EMBEDDED=true
+      - POWD_LOTUSHOST=/dns4/lotus/tcp/7777
+      - POWD_IPFSAPIADDR=/dns4/ipfs/tcp/5001
+    volumes:
+      - pow-embed-shared:/tmp/powergate
+    restart: unless-stopped
+
+  ipfs:
+    image: ipfs/go-ipfs:v0.5.1
+
+  ipfsbuckets:
+    image: ipfs/go-ipfs:v0.5.1
+
+  mongo:
+    image: mongo:latest
+
+  lotus:
+    image: textile/lotus-devnet:sha-0853126
+    environment:
+      - TEXLOTUSDEVNET_SPEED=500
+    volumes:
+     - pow-embed-shared:/tmp/powergate

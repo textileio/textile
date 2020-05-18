@@ -24,6 +24,37 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type ArchiveStatusReply_Status int32
+
+const (
+	ArchiveStatusReply_Executing ArchiveStatusReply_Status = 0
+	ArchiveStatusReply_Failed    ArchiveStatusReply_Status = 1
+	ArchiveStatusReply_Done      ArchiveStatusReply_Status = 2
+	ArchiveStatusReply_Canceled  ArchiveStatusReply_Status = 3
+)
+
+var ArchiveStatusReply_Status_name = map[int32]string{
+	0: "Executing",
+	1: "Failed",
+	2: "Done",
+	3: "Canceled",
+}
+
+var ArchiveStatusReply_Status_value = map[string]int32{
+	"Executing": 0,
+	"Failed":    1,
+	"Done":      2,
+	"Canceled":  3,
+}
+
+func (x ArchiveStatusReply_Status) String() string {
+	return proto.EnumName(ArchiveStatusReply_Status_name, int32(x))
+}
+
+func (ArchiveStatusReply_Status) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{20, 0}
+}
+
 type InitRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -1022,7 +1053,430 @@ func (m *RemovePathReply) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RemovePathReply proto.InternalMessageInfo
 
+type ArchiveRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveRequest) Reset()         { *m = ArchiveRequest{} }
+func (m *ArchiveRequest) String() string { return proto.CompactTextString(m) }
+func (*ArchiveRequest) ProtoMessage()    {}
+func (*ArchiveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{17}
+}
+
+func (m *ArchiveRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveRequest.Unmarshal(m, b)
+}
+func (m *ArchiveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveRequest.Marshal(b, m, deterministic)
+}
+func (m *ArchiveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveRequest.Merge(m, src)
+}
+func (m *ArchiveRequest) XXX_Size() int {
+	return xxx_messageInfo_ArchiveRequest.Size(m)
+}
+func (m *ArchiveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveRequest proto.InternalMessageInfo
+
+func (m *ArchiveRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type ArchiveReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveReply) Reset()         { *m = ArchiveReply{} }
+func (m *ArchiveReply) String() string { return proto.CompactTextString(m) }
+func (*ArchiveReply) ProtoMessage()    {}
+func (*ArchiveReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{18}
+}
+
+func (m *ArchiveReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveReply.Unmarshal(m, b)
+}
+func (m *ArchiveReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveReply.Marshal(b, m, deterministic)
+}
+func (m *ArchiveReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveReply.Merge(m, src)
+}
+func (m *ArchiveReply) XXX_Size() int {
+	return xxx_messageInfo_ArchiveReply.Size(m)
+}
+func (m *ArchiveReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveReply proto.InternalMessageInfo
+
+type ArchiveStatusRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveStatusRequest) Reset()         { *m = ArchiveStatusRequest{} }
+func (m *ArchiveStatusRequest) String() string { return proto.CompactTextString(m) }
+func (*ArchiveStatusRequest) ProtoMessage()    {}
+func (*ArchiveStatusRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{19}
+}
+
+func (m *ArchiveStatusRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveStatusRequest.Unmarshal(m, b)
+}
+func (m *ArchiveStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveStatusRequest.Marshal(b, m, deterministic)
+}
+func (m *ArchiveStatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveStatusRequest.Merge(m, src)
+}
+func (m *ArchiveStatusRequest) XXX_Size() int {
+	return xxx_messageInfo_ArchiveStatusRequest.Size(m)
+}
+func (m *ArchiveStatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveStatusRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveStatusRequest proto.InternalMessageInfo
+
+func (m *ArchiveStatusRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type ArchiveStatusReply struct {
+	Key                  string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Status               ArchiveStatusReply_Status `protobuf:"varint,2,opt,name=status,proto3,enum=buckets.pb.ArchiveStatusReply_Status" json:"status,omitempty"`
+	FailedMsg            string                    `protobuf:"bytes,3,opt,name=failedMsg,proto3" json:"failedMsg,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *ArchiveStatusReply) Reset()         { *m = ArchiveStatusReply{} }
+func (m *ArchiveStatusReply) String() string { return proto.CompactTextString(m) }
+func (*ArchiveStatusReply) ProtoMessage()    {}
+func (*ArchiveStatusReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{20}
+}
+
+func (m *ArchiveStatusReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveStatusReply.Unmarshal(m, b)
+}
+func (m *ArchiveStatusReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveStatusReply.Marshal(b, m, deterministic)
+}
+func (m *ArchiveStatusReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveStatusReply.Merge(m, src)
+}
+func (m *ArchiveStatusReply) XXX_Size() int {
+	return xxx_messageInfo_ArchiveStatusReply.Size(m)
+}
+func (m *ArchiveStatusReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveStatusReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveStatusReply proto.InternalMessageInfo
+
+func (m *ArchiveStatusReply) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *ArchiveStatusReply) GetStatus() ArchiveStatusReply_Status {
+	if m != nil {
+		return m.Status
+	}
+	return ArchiveStatusReply_Executing
+}
+
+func (m *ArchiveStatusReply) GetFailedMsg() string {
+	if m != nil {
+		return m.FailedMsg
+	}
+	return ""
+}
+
+type ArchiveInfoRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveInfoRequest) Reset()         { *m = ArchiveInfoRequest{} }
+func (m *ArchiveInfoRequest) String() string { return proto.CompactTextString(m) }
+func (*ArchiveInfoRequest) ProtoMessage()    {}
+func (*ArchiveInfoRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{21}
+}
+
+func (m *ArchiveInfoRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveInfoRequest.Unmarshal(m, b)
+}
+func (m *ArchiveInfoRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveInfoRequest.Marshal(b, m, deterministic)
+}
+func (m *ArchiveInfoRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveInfoRequest.Merge(m, src)
+}
+func (m *ArchiveInfoRequest) XXX_Size() int {
+	return xxx_messageInfo_ArchiveInfoRequest.Size(m)
+}
+func (m *ArchiveInfoRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveInfoRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveInfoRequest proto.InternalMessageInfo
+
+func (m *ArchiveInfoRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type ArchiveInfoReply struct {
+	Key                  string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Archive              *ArchiveInfoReply_Archive `protobuf:"bytes,2,opt,name=archive,proto3" json:"archive,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *ArchiveInfoReply) Reset()         { *m = ArchiveInfoReply{} }
+func (m *ArchiveInfoReply) String() string { return proto.CompactTextString(m) }
+func (*ArchiveInfoReply) ProtoMessage()    {}
+func (*ArchiveInfoReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{22}
+}
+
+func (m *ArchiveInfoReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveInfoReply.Unmarshal(m, b)
+}
+func (m *ArchiveInfoReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveInfoReply.Marshal(b, m, deterministic)
+}
+func (m *ArchiveInfoReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveInfoReply.Merge(m, src)
+}
+func (m *ArchiveInfoReply) XXX_Size() int {
+	return xxx_messageInfo_ArchiveInfoReply.Size(m)
+}
+func (m *ArchiveInfoReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveInfoReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveInfoReply proto.InternalMessageInfo
+
+func (m *ArchiveInfoReply) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *ArchiveInfoReply) GetArchive() *ArchiveInfoReply_Archive {
+	if m != nil {
+		return m.Archive
+	}
+	return nil
+}
+
+type ArchiveInfoReply_Archive struct {
+	Cid                  string                           `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
+	Deals                []*ArchiveInfoReply_Archive_Deal `protobuf:"bytes,2,rep,name=deals,proto3" json:"deals,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
+	XXX_unrecognized     []byte                           `json:"-"`
+	XXX_sizecache        int32                            `json:"-"`
+}
+
+func (m *ArchiveInfoReply_Archive) Reset()         { *m = ArchiveInfoReply_Archive{} }
+func (m *ArchiveInfoReply_Archive) String() string { return proto.CompactTextString(m) }
+func (*ArchiveInfoReply_Archive) ProtoMessage()    {}
+func (*ArchiveInfoReply_Archive) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{22, 0}
+}
+
+func (m *ArchiveInfoReply_Archive) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveInfoReply_Archive.Unmarshal(m, b)
+}
+func (m *ArchiveInfoReply_Archive) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveInfoReply_Archive.Marshal(b, m, deterministic)
+}
+func (m *ArchiveInfoReply_Archive) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveInfoReply_Archive.Merge(m, src)
+}
+func (m *ArchiveInfoReply_Archive) XXX_Size() int {
+	return xxx_messageInfo_ArchiveInfoReply_Archive.Size(m)
+}
+func (m *ArchiveInfoReply_Archive) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveInfoReply_Archive.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveInfoReply_Archive proto.InternalMessageInfo
+
+func (m *ArchiveInfoReply_Archive) GetCid() string {
+	if m != nil {
+		return m.Cid
+	}
+	return ""
+}
+
+func (m *ArchiveInfoReply_Archive) GetDeals() []*ArchiveInfoReply_Archive_Deal {
+	if m != nil {
+		return m.Deals
+	}
+	return nil
+}
+
+type ArchiveInfoReply_Archive_Deal struct {
+	ProposalCid          string   `protobuf:"bytes,1,opt,name=ProposalCid,proto3" json:"ProposalCid,omitempty"`
+	Miner                string   `protobuf:"bytes,2,opt,name=miner,proto3" json:"miner,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveInfoReply_Archive_Deal) Reset()         { *m = ArchiveInfoReply_Archive_Deal{} }
+func (m *ArchiveInfoReply_Archive_Deal) String() string { return proto.CompactTextString(m) }
+func (*ArchiveInfoReply_Archive_Deal) ProtoMessage()    {}
+func (*ArchiveInfoReply_Archive_Deal) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{22, 0, 0}
+}
+
+func (m *ArchiveInfoReply_Archive_Deal) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveInfoReply_Archive_Deal.Unmarshal(m, b)
+}
+func (m *ArchiveInfoReply_Archive_Deal) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveInfoReply_Archive_Deal.Marshal(b, m, deterministic)
+}
+func (m *ArchiveInfoReply_Archive_Deal) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveInfoReply_Archive_Deal.Merge(m, src)
+}
+func (m *ArchiveInfoReply_Archive_Deal) XXX_Size() int {
+	return xxx_messageInfo_ArchiveInfoReply_Archive_Deal.Size(m)
+}
+func (m *ArchiveInfoReply_Archive_Deal) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveInfoReply_Archive_Deal.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveInfoReply_Archive_Deal proto.InternalMessageInfo
+
+func (m *ArchiveInfoReply_Archive_Deal) GetProposalCid() string {
+	if m != nil {
+		return m.ProposalCid
+	}
+	return ""
+}
+
+func (m *ArchiveInfoReply_Archive_Deal) GetMiner() string {
+	if m != nil {
+		return m.Miner
+	}
+	return ""
+}
+
+type ArchiveWatchRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveWatchRequest) Reset()         { *m = ArchiveWatchRequest{} }
+func (m *ArchiveWatchRequest) String() string { return proto.CompactTextString(m) }
+func (*ArchiveWatchRequest) ProtoMessage()    {}
+func (*ArchiveWatchRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{23}
+}
+
+func (m *ArchiveWatchRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveWatchRequest.Unmarshal(m, b)
+}
+func (m *ArchiveWatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveWatchRequest.Marshal(b, m, deterministic)
+}
+func (m *ArchiveWatchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveWatchRequest.Merge(m, src)
+}
+func (m *ArchiveWatchRequest) XXX_Size() int {
+	return xxx_messageInfo_ArchiveWatchRequest.Size(m)
+}
+func (m *ArchiveWatchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveWatchRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveWatchRequest proto.InternalMessageInfo
+
+func (m *ArchiveWatchRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type ArchiveWatchReply struct {
+	Msg                  string   `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ArchiveWatchReply) Reset()         { *m = ArchiveWatchReply{} }
+func (m *ArchiveWatchReply) String() string { return proto.CompactTextString(m) }
+func (*ArchiveWatchReply) ProtoMessage()    {}
+func (*ArchiveWatchReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_95035767e889ecda, []int{24}
+}
+
+func (m *ArchiveWatchReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ArchiveWatchReply.Unmarshal(m, b)
+}
+func (m *ArchiveWatchReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ArchiveWatchReply.Marshal(b, m, deterministic)
+}
+func (m *ArchiveWatchReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveWatchReply.Merge(m, src)
+}
+func (m *ArchiveWatchReply) XXX_Size() int {
+	return xxx_messageInfo_ArchiveWatchReply.Size(m)
+}
+func (m *ArchiveWatchReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ArchiveWatchReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ArchiveWatchReply proto.InternalMessageInfo
+
+func (m *ArchiveWatchReply) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
 func init() {
+	proto.RegisterEnum("buckets.pb.ArchiveStatusReply_Status", ArchiveStatusReply_Status_name, ArchiveStatusReply_Status_value)
 	proto.RegisterType((*InitRequest)(nil), "buckets.pb.InitRequest")
 	proto.RegisterType((*InitReply)(nil), "buckets.pb.InitReply")
 	proto.RegisterType((*LinksRequest)(nil), "buckets.pb.LinksRequest")
@@ -1043,69 +1497,100 @@ func init() {
 	proto.RegisterType((*RemoveReply)(nil), "buckets.pb.RemoveReply")
 	proto.RegisterType((*RemovePathRequest)(nil), "buckets.pb.RemovePathRequest")
 	proto.RegisterType((*RemovePathReply)(nil), "buckets.pb.RemovePathReply")
+	proto.RegisterType((*ArchiveRequest)(nil), "buckets.pb.ArchiveRequest")
+	proto.RegisterType((*ArchiveReply)(nil), "buckets.pb.ArchiveReply")
+	proto.RegisterType((*ArchiveStatusRequest)(nil), "buckets.pb.ArchiveStatusRequest")
+	proto.RegisterType((*ArchiveStatusReply)(nil), "buckets.pb.ArchiveStatusReply")
+	proto.RegisterType((*ArchiveInfoRequest)(nil), "buckets.pb.ArchiveInfoRequest")
+	proto.RegisterType((*ArchiveInfoReply)(nil), "buckets.pb.ArchiveInfoReply")
+	proto.RegisterType((*ArchiveInfoReply_Archive)(nil), "buckets.pb.ArchiveInfoReply.Archive")
+	proto.RegisterType((*ArchiveInfoReply_Archive_Deal)(nil), "buckets.pb.ArchiveInfoReply.Archive.Deal")
+	proto.RegisterType((*ArchiveWatchRequest)(nil), "buckets.pb.ArchiveWatchRequest")
+	proto.RegisterType((*ArchiveWatchReply)(nil), "buckets.pb.ArchiveWatchReply")
 }
 
-func init() { proto.RegisterFile("buckets.proto", fileDescriptor_95035767e889ecda) }
+func init() {
+	proto.RegisterFile("buckets.proto", fileDescriptor_95035767e889ecda)
+}
 
 var fileDescriptor_95035767e889ecda = []byte{
-	// 760 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xdd, 0x6e, 0xd3, 0x4a,
-	0x10, 0xb6, 0x13, 0x3b, 0xa7, 0x99, 0x24, 0xa7, 0xed, 0xaa, 0xa7, 0xcd, 0x49, 0xcf, 0x81, 0x74,
-	0x05, 0xa8, 0x17, 0x28, 0xaa, 0x5a, 0xa4, 0xf2, 0x27, 0xa4, 0x86, 0x16, 0x25, 0x10, 0xa1, 0x68,
-	0x9b, 0xaa, 0xdc, 0x55, 0xf9, 0x59, 0x11, 0x2b, 0x4e, 0x6c, 0xec, 0x4d, 0x45, 0x10, 0x12, 0x6f,
-	0xc0, 0x03, 0x70, 0xd9, 0xe7, 0xe3, 0x09, 0xb8, 0x42, 0xb3, 0x6b, 0xc7, 0x76, 0xea, 0x94, 0xf6,
-	0xce, 0x3b, 0xf3, 0xcd, 0xec, 0x37, 0xf3, 0xcd, 0x8e, 0xa1, 0xd4, 0x9b, 0xf6, 0x47, 0x5c, 0xf8,
-	0x35, 0xd7, 0x73, 0x84, 0x43, 0x60, 0x7e, 0xec, 0xd1, 0x1d, 0x28, 0x34, 0x27, 0x96, 0x60, 0xfc,
-	0xd3, 0x94, 0xfb, 0x82, 0x10, 0x30, 0x26, 0xdd, 0x31, 0x2f, 0xeb, 0x55, 0x7d, 0x37, 0xcf, 0xe4,
-	0x37, 0xbd, 0x80, 0xbc, 0x82, 0xb8, 0xf6, 0x8c, 0x3c, 0x00, 0xc3, 0x73, 0x1c, 0x21, 0x01, 0x85,
-	0xfd, 0xb5, 0x5a, 0x94, 0xaa, 0xc6, 0x1c, 0x47, 0x30, 0xe9, 0x25, 0x8f, 0xc1, 0xb4, 0xad, 0xc9,
-	0xc8, 0x2f, 0x67, 0x24, 0x6c, 0x33, 0x0e, 0x6b, 0xa1, 0x43, 0x26, 0x63, 0x0a, 0x44, 0xab, 0x50,
-	0x0c, 0x8c, 0x8a, 0xc4, 0x1a, 0x64, 0x47, 0x7c, 0x16, 0x70, 0xc0, 0x4f, 0x7a, 0x0c, 0x10, 0x85,
-	0xa1, 0xff, 0x8c, 0xb5, 0x42, 0xff, 0x19, 0x6b, 0xa1, 0xe5, 0xfc, 0xfc, 0x5c, 0xde, 0x96, 0x67,
-	0xf8, 0x89, 0x85, 0x34, 0xdb, 0xef, 0x4f, 0xcb, 0x59, 0x55, 0x08, 0x7e, 0xd3, 0xaf, 0x60, 0x20,
-	0xc7, 0xeb, 0xf9, 0xe7, 0x65, 0x67, 0xa2, 0xb2, 0xd1, 0xe6, 0x76, 0xc5, 0x30, 0xcc, 0x80, 0xdf,
-	0xe4, 0x3f, 0xc8, 0xf7, 0x3d, 0xde, 0x15, 0x7c, 0x70, 0x24, 0xca, 0x46, 0x55, 0xdf, 0xcd, 0xb2,
-	0xc8, 0x80, 0xde, 0xa9, 0x3b, 0x08, 0xbc, 0xa6, 0xf2, 0xce, 0x0d, 0xb4, 0x04, 0x85, 0x96, 0xe5,
-	0x87, 0x9d, 0xa6, 0x07, 0x90, 0x57, 0x47, 0xac, 0xe8, 0x11, 0x98, 0xd8, 0x37, 0xbf, 0xac, 0x57,
-	0xb3, 0xa9, 0x6d, 0x55, 0x6e, 0x7a, 0x08, 0xab, 0x18, 0xd4, 0xee, 0x8a, 0xe1, 0xd2, 0x66, 0xcd,
-	0x89, 0x67, 0x22, 0xe2, 0xf4, 0x97, 0x0e, 0xa5, 0x28, 0x12, 0xaf, 0xdc, 0x07, 0xc3, 0x12, 0x7c,
-	0x1c, 0x08, 0x79, 0x2f, 0xa9, 0x50, 0x0c, 0x58, 0x6b, 0x0a, 0x3e, 0x66, 0x12, 0x3b, 0x17, 0x3f,
-	0x73, 0x93, 0xf8, 0x95, 0xef, 0x3a, 0x18, 0x18, 0x74, 0xeb, 0xae, 0x12, 0x30, 0x7c, 0xeb, 0x0b,
-	0x0f, 0x1a, 0x2a, 0xbf, 0xc9, 0x06, 0x98, 0x96, 0x7f, 0x6c, 0x79, 0xb2, 0x8f, 0x2b, 0x4c, 0x1d,
-	0xc8, 0x13, 0x30, 0x91, 0x88, 0x5f, 0xce, 0xc9, 0x3e, 0xfd, 0x89, 0xb5, 0x02, 0xd3, 0x2b, 0x1d,
-	0x56, 0xdb, 0x53, 0x7f, 0x18, 0x6f, 0xdb, 0x4b, 0xc8, 0x0d, 0x79, 0x77, 0xc0, 0xbd, 0xa0, 0x01,
-	0x34, 0x9e, 0x6a, 0x01, 0x5c, 0x6b, 0x48, 0x64, 0x43, 0x63, 0x41, 0x0c, 0xd9, 0x04, 0xb3, 0x3f,
-	0x9c, 0x4e, 0x46, 0xb2, 0xb4, 0x62, 0x43, 0x63, 0xea, 0x58, 0xa9, 0x41, 0x4e, 0x61, 0x6f, 0x27,
-	0x4b, 0x3d, 0x0f, 0x7f, 0xb9, 0xdd, 0x99, 0xed, 0x74, 0x07, 0xf4, 0xa7, 0x0e, 0xa5, 0xe8, 0x5e,
-	0x54, 0xe8, 0x10, 0x4c, 0x7e, 0xc9, 0x27, 0xe1, 0x5b, 0xbb, 0x9f, 0xce, 0x10, 0x8b, 0x3d, 0x41,
-	0x18, 0xb2, 0x90, 0x78, 0x64, 0xc7, 0x3d, 0xcf, 0xf1, 0xd4, 0x55, 0xd2, 0x8e, 0xc7, 0xca, 0x37,
-	0x30, 0x25, 0x32, 0xed, 0x95, 0xa7, 0xd1, 0x43, 0x11, 0x7a, 0x33, 0xc1, 0x7d, 0xa9, 0x56, 0x96,
-	0xa9, 0x43, 0x42, 0xae, 0x7c, 0x20, 0x57, 0x38, 0x19, 0xe6, 0x4d, 0x93, 0x11, 0x2f, 0xf7, 0x10,
-	0x25, 0xb1, 0xed, 0xbb, 0x4f, 0xf2, 0x43, 0x6c, 0x53, 0x18, 0x88, 0x6d, 0xda, 0x08, 0xb5, 0xc0,
-	0xc0, 0x62, 0xa0, 0x04, 0xdd, 0x81, 0x12, 0xe3, 0x63, 0xe7, 0x92, 0x2f, 0x5f, 0x2a, 0x25, 0x28,
-	0x84, 0x10, 0xd7, 0x9e, 0xd1, 0x67, 0xb0, 0xae, 0x8e, 0x77, 0xe7, 0xb4, 0x0e, 0xab, 0xf1, 0x50,
-	0xd7, 0x9e, 0xed, 0xff, 0x30, 0x20, 0x7b, 0xd4, 0x6e, 0x92, 0xa7, 0x60, 0xe0, 0xf2, 0x24, 0x5b,
-	0xf1, 0x96, 0xc4, 0x36, 0x6e, 0xe5, 0x9f, 0xeb, 0x0e, 0x64, 0xa3, 0x91, 0x17, 0x60, 0xca, 0x9d,
-	0x47, 0xca, 0x29, 0xdb, 0x53, 0xc5, 0x2e, 0xd9, 0xab, 0x54, 0xc3, 0x6b, 0xf1, 0x3d, 0x24, 0xaf,
-	0x8d, 0xad, 0x9f, 0xe4, 0xb5, 0xf3, 0x45, 0x44, 0x35, 0x72, 0x0c, 0x2b, 0xe1, 0x4b, 0x22, 0xdb,
-	0xe9, 0xef, 0x4b, 0x65, 0xf8, 0x77, 0xe9, 0xe3, 0xa3, 0x1a, 0x69, 0xc0, 0x4a, 0x38, 0xa2, 0xc9,
-	0x2c, 0x0b, 0x4f, 0x2b, 0x99, 0x25, 0x31, 0xd5, 0x54, 0xdb, 0xd5, 0xf7, 0x74, 0xf2, 0x06, 0x33,
-	0x29, 0xbd, 0x17, 0x33, 0x25, 0xc6, 0x67, 0x31, 0x53, 0x6c, 0x44, 0xa8, 0xb6, 0xa7, 0x93, 0x57,
-	0x90, 0x53, 0x1a, 0x91, 0x04, 0x30, 0x31, 0x24, 0x95, 0xad, 0x34, 0x97, 0xaa, 0xe8, 0x2d, 0x40,
-	0xa4, 0x31, 0xf9, 0xff, 0x3a, 0x30, 0xce, 0x65, 0x7b, 0x99, 0x5b, 0xe6, 0xaa, 0x3f, 0x87, 0x2d,
-	0xcb, 0xa9, 0x09, 0xfe, 0x59, 0x58, 0x36, 0x0f, 0xa1, 0x17, 0x1f, 0x3d, 0xb7, 0x5f, 0xff, 0xbb,
-	0xa3, 0xac, 0x75, 0x65, 0x6c, 0xeb, 0x57, 0x99, 0x62, 0xe7, 0x43, 0xa7, 0x75, 0x51, 0x3f, 0x7b,
-	0xfd, 0xee, 0xa4, 0x73, 0xda, 0xcb, 0xc9, 0x7f, 0xf8, 0xc1, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0xed, 0x29, 0x23, 0xfc, 0xd4, 0x07, 0x00, 0x00,
+	// 1063 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xdd, 0x6e, 0x1b, 0x45,
+	0x14, 0xde, 0xb5, 0x77, 0xdd, 0xf8, 0xd8, 0x4e, 0x9c, 0x21, 0x34, 0xc6, 0x6d, 0x53, 0x77, 0xd4,
+	0x94, 0x20, 0x21, 0xab, 0x4a, 0x91, 0x02, 0x14, 0x82, 0xe2, 0x38, 0x55, 0x0c, 0x2e, 0xb2, 0x36,
+	0x89, 0xc2, 0x5d, 0xb4, 0x59, 0x4f, 0xed, 0x55, 0xd6, 0xbb, 0x66, 0x77, 0x5d, 0xd5, 0x08, 0x89,
+	0x0b, 0xee, 0x79, 0x02, 0xae, 0xfa, 0x24, 0xbc, 0x04, 0x6f, 0xc1, 0x13, 0x70, 0x85, 0xce, 0xcc,
+	0xec, 0x9f, 0xb3, 0x36, 0xe9, 0xdd, 0xce, 0x39, 0xdf, 0xf9, 0xe6, 0xfc, 0xcc, 0x7c, 0xb3, 0x50,
+	0xbb, 0x9e, 0x59, 0x37, 0x2c, 0x0c, 0xda, 0x53, 0xdf, 0x0b, 0x3d, 0x02, 0xf1, 0xf2, 0x9a, 0x3e,
+	0x81, 0x4a, 0xcf, 0xb5, 0x43, 0x83, 0xfd, 0x3c, 0x63, 0x41, 0x48, 0x08, 0x68, 0xae, 0x39, 0x61,
+	0x0d, 0xb5, 0xa5, 0xee, 0x95, 0x0d, 0xfe, 0x4d, 0xaf, 0xa0, 0x2c, 0x20, 0x53, 0x67, 0x4e, 0x9e,
+	0x82, 0xe6, 0x7b, 0x5e, 0xc8, 0x01, 0x95, 0xfd, 0x7a, 0x3b, 0xa1, 0x6a, 0x1b, 0x9e, 0x17, 0x1a,
+	0xdc, 0x4b, 0x3e, 0x07, 0xdd, 0xb1, 0xdd, 0x9b, 0xa0, 0x51, 0xe0, 0xb0, 0xfb, 0x69, 0x58, 0x1f,
+	0x1d, 0x9c, 0xcc, 0x10, 0x20, 0xda, 0x82, 0xaa, 0x34, 0x8a, 0x24, 0xea, 0x50, 0xbc, 0x61, 0x73,
+	0x99, 0x03, 0x7e, 0xd2, 0x2e, 0x40, 0x12, 0x86, 0xfe, 0x0b, 0xa3, 0x1f, 0xf9, 0x2f, 0x8c, 0x3e,
+	0x5a, 0x2e, 0x2f, 0x2f, 0xf9, 0x6e, 0x65, 0x03, 0x3f, 0xb1, 0x90, 0xde, 0xe0, 0xc7, 0xb3, 0x46,
+	0x51, 0x14, 0x82, 0xdf, 0xf4, 0x57, 0xd0, 0x30, 0xc7, 0xdb, 0xfc, 0x71, 0xd9, 0x85, 0xa4, 0x6c,
+	0xb4, 0x4d, 0xcd, 0x70, 0x1c, 0x31, 0xe0, 0x37, 0x79, 0x08, 0x65, 0xcb, 0x67, 0x66, 0xc8, 0x86,
+	0x47, 0x61, 0x43, 0x6b, 0xa9, 0x7b, 0x45, 0x23, 0x31, 0xa0, 0x77, 0x36, 0x1d, 0x4a, 0xaf, 0x2e,
+	0xbc, 0xb1, 0x81, 0xd6, 0xa0, 0xd2, 0xb7, 0x83, 0xa8, 0xd3, 0xf4, 0x05, 0x94, 0xc5, 0x12, 0x2b,
+	0x7a, 0x06, 0x3a, 0xf6, 0x2d, 0x68, 0xa8, 0xad, 0x62, 0x6e, 0x5b, 0x85, 0x9b, 0x1e, 0xc0, 0x06,
+	0x06, 0x0d, 0xcc, 0x70, 0xbc, 0xb4, 0x59, 0x71, 0xe2, 0x85, 0x24, 0x71, 0xfa, 0xaf, 0x0a, 0xb5,
+	0x24, 0x12, 0xb7, 0xdc, 0x07, 0xcd, 0x0e, 0xd9, 0x44, 0x0e, 0x72, 0x27, 0x3b, 0xa1, 0x14, 0xb0,
+	0xdd, 0x0b, 0xd9, 0xc4, 0xe0, 0xd8, 0x78, 0xf8, 0x85, 0x55, 0xc3, 0x6f, 0xfe, 0xa1, 0x82, 0x86,
+	0x41, 0x77, 0xee, 0x2a, 0x01, 0x2d, 0xb0, 0x7f, 0x61, 0xb2, 0xa1, 0xfc, 0x9b, 0x6c, 0x81, 0x6e,
+	0x07, 0x5d, 0xdb, 0xe7, 0x7d, 0x5c, 0x33, 0xc4, 0x82, 0x7c, 0x01, 0x3a, 0x26, 0x12, 0x34, 0x4a,
+	0xbc, 0x4f, 0xff, 0x97, 0xb5, 0x00, 0xd3, 0xf7, 0x2a, 0x6c, 0x0c, 0x66, 0xc1, 0x38, 0xdd, 0xb6,
+	0x6f, 0xa0, 0x34, 0x66, 0xe6, 0x90, 0xf9, 0xb2, 0x01, 0x34, 0x4d, 0xb5, 0x00, 0x6e, 0x9f, 0x72,
+	0xe4, 0xa9, 0x62, 0xc8, 0x18, 0x72, 0x1f, 0x74, 0x6b, 0x3c, 0x73, 0x6f, 0x78, 0x69, 0xd5, 0x53,
+	0xc5, 0x10, 0xcb, 0x66, 0x1b, 0x4a, 0x02, 0x7b, 0xb7, 0xb1, 0x74, 0xca, 0x70, 0x6f, 0x6a, 0xce,
+	0x1d, 0xcf, 0x1c, 0xd2, 0x7f, 0x54, 0xa8, 0x25, 0xfb, 0xe2, 0x84, 0x0e, 0x40, 0x67, 0x6f, 0x99,
+	0x1b, 0xdd, 0xb5, 0xc7, 0xf9, 0x19, 0x62, 0xb1, 0x27, 0x08, 0xc3, 0x2c, 0x38, 0x1e, 0xb3, 0x63,
+	0xbe, 0xef, 0xf9, 0x62, 0x2b, 0x6e, 0xc7, 0x65, 0xf3, 0x37, 0xd0, 0x39, 0x32, 0xef, 0x96, 0xe7,
+	0xa5, 0x87, 0x43, 0xb8, 0x9e, 0x87, 0x2c, 0xe0, 0xd3, 0x2a, 0x1a, 0x62, 0x91, 0x19, 0x57, 0x59,
+	0x8e, 0x2b, 0x3a, 0x19, 0xfa, 0xaa, 0x93, 0x91, 0x2e, 0xf7, 0x00, 0x47, 0xe2, 0x38, 0x1f, 0x7e,
+	0x92, 0x77, 0xb1, 0x4d, 0x51, 0x20, 0xb6, 0x69, 0x2b, 0x9a, 0x05, 0x06, 0x56, 0xe5, 0x24, 0xe8,
+	0x13, 0xa8, 0x19, 0x6c, 0xe2, 0xbd, 0x65, 0xcb, 0x45, 0xa5, 0x06, 0x95, 0x08, 0x32, 0x75, 0xe6,
+	0xf4, 0x2b, 0xd8, 0x14, 0xcb, 0x0f, 0xcf, 0x69, 0x13, 0x36, 0xd2, 0xa1, 0xc8, 0x46, 0x61, 0xfd,
+	0xc8, 0xb7, 0xc6, 0xf6, 0xaa, 0x04, 0xd6, 0xa1, 0x1a, 0x63, 0x30, 0x66, 0x0f, 0xb6, 0xe4, 0xfa,
+	0x2c, 0x34, 0xc3, 0xd9, 0x0a, 0x3d, 0xfc, 0x4b, 0x05, 0xb2, 0x00, 0x95, 0xc2, 0xb8, 0x90, 0xed,
+	0xb7, 0x50, 0x0a, 0x38, 0x80, 0xe7, 0xbb, 0xbe, 0xbf, 0x9b, 0x9e, 0xcc, 0x6d, 0x86, 0xb6, 0xfc,
+	0x96, 0x41, 0xa8, 0x68, 0x6f, 0x4c, 0xdb, 0x61, 0xc3, 0xd7, 0xc1, 0x48, 0x5e, 0xd9, 0xc4, 0x40,
+	0x5f, 0x42, 0x49, 0xe0, 0x49, 0x0d, 0xca, 0x27, 0xef, 0x98, 0x35, 0x0b, 0x6d, 0x77, 0x54, 0x57,
+	0x08, 0x40, 0xe9, 0x15, 0x47, 0xd5, 0x55, 0xb2, 0x06, 0x5a, 0xd7, 0x73, 0x59, 0xbd, 0x40, 0xaa,
+	0xb0, 0x76, 0x6c, 0xba, 0x16, 0x43, 0x7b, 0x91, 0x3e, 0x8b, 0x2b, 0xe8, 0xb9, 0x6f, 0xbc, 0xe5,
+	0xa5, 0xfe, 0x5e, 0x80, 0x7a, 0x06, 0x98, 0x5f, 0xe8, 0x21, 0xdc, 0x33, 0x05, 0x4a, 0xaa, 0xd3,
+	0xd3, 0x9c, 0x4a, 0x63, 0x82, 0xc8, 0x60, 0x44, 0x41, 0xcd, 0x3f, 0x55, 0xb8, 0x27, 0x8d, 0xc8,
+	0x6e, 0xd9, 0xc3, 0x88, 0xdd, 0xb2, 0x87, 0xe4, 0x3b, 0xd0, 0x87, 0xcc, 0x74, 0xb0, 0x8b, 0xa8,
+	0x3b, 0x9f, 0xdd, 0x85, 0xbb, 0xdd, 0x65, 0xa6, 0x63, 0x88, 0xb8, 0xe6, 0x21, 0x68, 0xb8, 0x24,
+	0x2d, 0xa8, 0x0c, 0x7c, 0x6f, 0xea, 0x05, 0xa6, 0x73, 0x1c, 0x6f, 0x91, 0x36, 0xe1, 0x71, 0x9e,
+	0xd8, 0x2e, 0x93, 0x97, 0xd7, 0x10, 0x0b, 0xfa, 0x29, 0x7c, 0x24, 0x69, 0x2f, 0xcd, 0xd0, 0x5a,
+	0x7e, 0x3c, 0xe9, 0x2e, 0x6c, 0x66, 0x81, 0xb2, 0x5d, 0x93, 0x60, 0x14, 0xc1, 0x26, 0xc1, 0x68,
+	0xff, 0xef, 0x12, 0x14, 0x8f, 0x06, 0x3d, 0xf2, 0x25, 0x68, 0xf8, 0xb6, 0x93, 0xed, 0x74, 0x45,
+	0xa9, 0x1f, 0x82, 0xe6, 0xc7, 0xb7, 0x1d, 0x78, 0x54, 0x15, 0xf2, 0x12, 0x74, 0xfe, 0x24, 0x93,
+	0x46, 0xce, 0xe3, 0x2e, 0x62, 0x97, 0x3c, 0xfb, 0x54, 0xc1, 0x6d, 0x51, 0xae, 0xb3, 0xdb, 0xa6,
+	0x5e, 0xc7, 0xec, 0xb6, 0xf1, 0x3b, 0x49, 0x15, 0xd2, 0x85, 0xb5, 0x48, 0xe8, 0xc9, 0x83, 0x7c,
+	0xf9, 0x17, 0x0c, 0x9f, 0x2c, 0x7d, 0x1b, 0xa8, 0x42, 0x4e, 0x61, 0x2d, 0x52, 0xd0, 0x2c, 0xcb,
+	0x82, 0xf2, 0x67, 0x59, 0x32, 0xa2, 0x4b, 0x95, 0x3d, 0xf5, 0xb9, 0x4a, 0x5e, 0x21, 0x93, 0x90,
+	0xa3, 0x45, 0xa6, 0x8c, 0xba, 0x2d, 0x32, 0xa5, 0x14, 0x8c, 0x2a, 0xcf, 0x55, 0x72, 0x08, 0x25,
+	0x21, 0x21, 0x24, 0x03, 0xcc, 0x68, 0x58, 0x73, 0x3b, 0xcf, 0x25, 0x2a, 0xfa, 0x1e, 0x20, 0x91,
+	0x20, 0xf2, 0xe8, 0x36, 0x30, 0x9d, 0xcb, 0x83, 0x65, 0x6e, 0xc1, 0x75, 0x94, 0x5c, 0x85, 0x66,
+	0xce, 0x49, 0x8f, 0x58, 0x1a, 0xb9, 0x3e, 0x41, 0x71, 0x06, 0xb5, 0x8c, 0xba, 0x90, 0xd6, 0x0a,
+	0xe1, 0x11, 0x74, 0x3b, 0xab, 0xa5, 0x89, 0x2a, 0xe4, 0x35, 0x54, 0x52, 0x97, 0x8d, 0xec, 0x2c,
+	0xbd, 0x85, 0x82, 0xf0, 0xe1, 0xaa, 0x5b, 0x4a, 0x15, 0x62, 0xc4, 0xf2, 0xcb, 0xaf, 0x0a, 0x79,
+	0x9c, 0x83, 0x4f, 0xdf, 0xb6, 0xe6, 0xa3, 0xe5, 0x00, 0x39, 0xc6, 0xce, 0xd7, 0xb0, 0x6d, 0x7b,
+	0xed, 0x90, 0xbd, 0x0b, 0x6d, 0x87, 0x45, 0xf0, 0xab, 0x91, 0x3f, 0xb5, 0x3a, 0xeb, 0xe7, 0xc2,
+	0xda, 0x11, 0xc6, 0x81, 0xfa, 0xbe, 0x50, 0x3d, 0xff, 0xe9, 0xbc, 0x7f, 0xd5, 0xb9, 0x38, 0xfe,
+	0xe1, 0xe4, 0xfc, 0xec, 0xba, 0xc4, 0xff, 0xce, 0x5f, 0xfc, 0x17, 0x00, 0x00, 0xff, 0xff, 0xc0,
+	0x6d, 0x2a, 0xdb, 0xae, 0x0b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc.ClientConnInterface
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
+const _ = grpc.SupportPackageIsVersion6
 
 // APIClient is the client API for API service.
 //
@@ -1119,13 +1604,18 @@ type APIClient interface {
 	PullPath(ctx context.Context, in *PullPathRequest, opts ...grpc.CallOption) (API_PullPathClient, error)
 	Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveReply, error)
 	RemovePath(ctx context.Context, in *RemovePathRequest, opts ...grpc.CallOption) (*RemovePathReply, error)
+	// Archive
+	Archive(ctx context.Context, in *ArchiveRequest, opts ...grpc.CallOption) (*ArchiveReply, error)
+	ArchiveStatus(ctx context.Context, in *ArchiveStatusRequest, opts ...grpc.CallOption) (*ArchiveStatusReply, error)
+	ArchiveInfo(ctx context.Context, in *ArchiveInfoRequest, opts ...grpc.CallOption) (*ArchiveInfoReply, error)
+	ArchiveWatch(ctx context.Context, in *ArchiveWatchRequest, opts ...grpc.CallOption) (API_ArchiveWatchClient, error)
 }
 
 type aPIClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewAPIClient(cc *grpc.ClientConn) APIClient {
+func NewAPIClient(cc grpc.ClientConnInterface) APIClient {
 	return &aPIClient{cc}
 }
 
@@ -1246,6 +1736,65 @@ func (c *aPIClient) RemovePath(ctx context.Context, in *RemovePathRequest, opts 
 	return out, nil
 }
 
+func (c *aPIClient) Archive(ctx context.Context, in *ArchiveRequest, opts ...grpc.CallOption) (*ArchiveReply, error) {
+	out := new(ArchiveReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/Archive", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ArchiveStatus(ctx context.Context, in *ArchiveStatusRequest, opts ...grpc.CallOption) (*ArchiveStatusReply, error) {
+	out := new(ArchiveStatusReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/ArchiveStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ArchiveInfo(ctx context.Context, in *ArchiveInfoRequest, opts ...grpc.CallOption) (*ArchiveInfoReply, error) {
+	out := new(ArchiveInfoReply)
+	err := c.cc.Invoke(ctx, "/buckets.pb.API/ArchiveInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ArchiveWatch(ctx context.Context, in *ArchiveWatchRequest, opts ...grpc.CallOption) (API_ArchiveWatchClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_API_serviceDesc.Streams[2], "/buckets.pb.API/ArchiveWatch", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &aPIArchiveWatchClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type API_ArchiveWatchClient interface {
+	Recv() (*ArchiveWatchReply, error)
+	grpc.ClientStream
+}
+
+type aPIArchiveWatchClient struct {
+	grpc.ClientStream
+}
+
+func (x *aPIArchiveWatchClient) Recv() (*ArchiveWatchReply, error) {
+	m := new(ArchiveWatchReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // APIServer is the server API for API service.
 type APIServer interface {
 	Init(context.Context, *InitRequest) (*InitReply, error)
@@ -1256,6 +1805,11 @@ type APIServer interface {
 	PullPath(*PullPathRequest, API_PullPathServer) error
 	Remove(context.Context, *RemoveRequest) (*RemoveReply, error)
 	RemovePath(context.Context, *RemovePathRequest) (*RemovePathReply, error)
+	// Archive
+	Archive(context.Context, *ArchiveRequest) (*ArchiveReply, error)
+	ArchiveStatus(context.Context, *ArchiveStatusRequest) (*ArchiveStatusReply, error)
+	ArchiveInfo(context.Context, *ArchiveInfoRequest) (*ArchiveInfoReply, error)
+	ArchiveWatch(*ArchiveWatchRequest, API_ArchiveWatchServer) error
 }
 
 // UnimplementedAPIServer can be embedded to have forward compatible implementations.
@@ -1285,6 +1839,18 @@ func (*UnimplementedAPIServer) Remove(ctx context.Context, req *RemoveRequest) (
 }
 func (*UnimplementedAPIServer) RemovePath(ctx context.Context, req *RemovePathRequest) (*RemovePathReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePath not implemented")
+}
+func (*UnimplementedAPIServer) Archive(ctx context.Context, req *ArchiveRequest) (*ArchiveReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Archive not implemented")
+}
+func (*UnimplementedAPIServer) ArchiveStatus(ctx context.Context, req *ArchiveStatusRequest) (*ArchiveStatusReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ArchiveStatus not implemented")
+}
+func (*UnimplementedAPIServer) ArchiveInfo(ctx context.Context, req *ArchiveInfoRequest) (*ArchiveInfoReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ArchiveInfo not implemented")
+}
+func (*UnimplementedAPIServer) ArchiveWatch(req *ArchiveWatchRequest, srv API_ArchiveWatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method ArchiveWatch not implemented")
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
@@ -1446,6 +2012,81 @@ func _API_RemovePath_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _API_Archive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).Archive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/Archive",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).Archive(ctx, req.(*ArchiveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ArchiveStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ArchiveStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/ArchiveStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ArchiveStatus(ctx, req.(*ArchiveStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ArchiveInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ArchiveInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/buckets.pb.API/ArchiveInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ArchiveInfo(ctx, req.(*ArchiveInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ArchiveWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ArchiveWatchRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(APIServer).ArchiveWatch(m, &aPIArchiveWatchServer{stream})
+}
+
+type API_ArchiveWatchServer interface {
+	Send(*ArchiveWatchReply) error
+	grpc.ServerStream
+}
+
+type aPIArchiveWatchServer struct {
+	grpc.ServerStream
+}
+
+func (x *aPIArchiveWatchServer) Send(m *ArchiveWatchReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _API_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "buckets.pb.API",
 	HandlerType: (*APIServer)(nil),
@@ -1474,6 +2115,18 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			MethodName: "RemovePath",
 			Handler:    _API_RemovePath_Handler,
 		},
+		{
+			MethodName: "Archive",
+			Handler:    _API_Archive_Handler,
+		},
+		{
+			MethodName: "ArchiveStatus",
+			Handler:    _API_ArchiveStatus_Handler,
+		},
+		{
+			MethodName: "ArchiveInfo",
+			Handler:    _API_ArchiveInfo_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -1485,6 +2138,11 @@ var _API_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "PullPath",
 			Handler:       _API_PullPath_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ArchiveWatch",
+			Handler:       _API_ArchiveWatch_Handler,
 			ServerStreams: true,
 		},
 	},

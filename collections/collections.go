@@ -19,9 +19,10 @@ type Collections struct {
 	Accounts *Accounts
 	Invites  *Invites
 
-	Threads  *Threads
-	APIKeys  *APIKeys
-	IPNSKeys *IPNSKeys
+	Threads      *Threads
+	APIKeys      *APIKeys
+	IPNSKeys     *IPNSKeys
+	FFSInstances *FFSInstances
 
 	Users *Users
 }
@@ -62,6 +63,10 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 	if err != nil {
 		return nil, err
 	}
+	ffsInstances, err := NewFFSInstances(ctx, db)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Collections{
 		m: m,
@@ -70,9 +75,10 @@ func NewCollections(ctx context.Context, uri, dbName string) (*Collections, erro
 		Accounts: accounts,
 		Invites:  invites,
 
-		Threads:  threads,
-		APIKeys:  apikeys,
-		IPNSKeys: ipnskeys,
+		Threads:      threads,
+		APIKeys:      apikeys,
+		IPNSKeys:     ipnskeys,
+		FFSInstances: ffsInstances,
 
 		Users: users,
 	}, nil

@@ -8,4 +8,6 @@ local-stop:
 	docker-compose stop
 
 local-clean:
-	docker-compose down -v
+	docker-compose down -v --remove-orphans
+
+

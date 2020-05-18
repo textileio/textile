@@ -16,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	filc "github.com/textileio/filecoin/api/client"
 	dbapi "github.com/textileio/go-threads/api"
 	threads "github.com/textileio/go-threads/api/client"
 	dbpb "github.com/textileio/go-threads/api/pb"
@@ -27,6 +26,7 @@ import (
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
+	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -59,13 +59,13 @@ var (
 type Textile struct {
 	collections *c.Collections
 
-	ts  tc.NetBoostrapper
-	th  *threads.Client
-	thn *netclient.Client
-	fc  *filc.Client
-
+	ts    tc.NetBoostrapper
+	th    *threads.Client
+	thn   *netclient.Client
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
+	powc  *powc.Client
+	bucks *buckets.Buckets
 
 	server *grpc.Server
 	proxy  *http.Server
@@ -78,14 +78,14 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrAPI         ma.Multiaddr
-	AddrAPIProxy    ma.Multiaddr
-	AddrThreadsHost ma.Multiaddr
-	AddrIPFSAPI     ma.Multiaddr
-	AddrGatewayHost ma.Multiaddr
-	AddrGatewayURL  string
-	AddrFilecoinAPI ma.Multiaddr
-	AddrMongoURI    string
+	AddrAPI          ma.Multiaddr
+	AddrAPIProxy     ma.Multiaddr
+	AddrThreadsHost  ma.Multiaddr
+	AddrIPFSAPI      ma.Multiaddr
+	AddrGatewayHost  ma.Multiaddr
+	AddrGatewayURL   string
+	AddrPowergateAPI ma.Multiaddr
+	AddrMongoURI     string
 
 	UseSubdomains bool
 
@@ -121,8 +121,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if conf.AddrFilecoinAPI != nil {
-		t.fc, err = filc.NewClient(conf.AddrFilecoinAPI)
+	if conf.AddrPowergateAPI != nil {
+		t.powc, err = powc.NewClient(conf.AddrPowergateAPI, grpc.WithInsecure(), grpc.WithPerRPCCredentials(powc.TokenAuth{}))
 		if err != nil {
 			return nil, err
 		}
@@ -177,25 +177,30 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager:        t.ipnsm,
 		DNSManager:         t.dnsm,
 	}
-	bucks := &buckets.Buckets{}
-	bs := &buckets.Service{
-		Collections:    t.collections,
-		Buckets:        bucks,
-		GatewayURL:     conf.AddrGatewayURL,
-		FilecoinClient: t.fc,
-		IPFSClient:     ic,
-		IPNSManager:    t.ipnsm,
-		DNSManager:     t.dnsm,
-	}
-	us := &users.Service{
-		Collections: t.collections,
-	}
-
 	// Configure gRPC server
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	if err != nil {
 		return nil, err
 	}
+	// Start threads clients
+	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	if err != nil {
+		return nil, err
+	}
+	bucks := buckets.New(t.th, t.powc, t.collections.FFSInstances)
+	t.bucks = bucks
+	bs := &buckets.Service{
+		Collections: t.collections,
+		Buckets:     bucks,
+		GatewayURL:  conf.AddrGatewayURL,
+		IPFSClient:  ic,
+		IPNSManager: t.ipnsm,
+		DNSManager:  t.dnsm,
+	}
+	us := &users.Service{
+		Collections: t.collections,
+	}
+
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
@@ -242,12 +247,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}()
 
-	// Start threads clients
-	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
-	if err != nil {
-		return nil, err
-	}
-	bucks.Threads = t.th
 	hs.Threads = t.th
 	t.thn, err = netclient.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
 	if err != nil {
@@ -294,14 +293,17 @@ func (t *Textile) Close() error {
 		return err
 	}
 	t.server.GracefulStop()
+	if err := t.bucks.Close(); err != nil {
+		return err
+	}
 	if err := t.th.Close(); err != nil {
 		return err
 	}
 	if err := t.ts.Close(); err != nil {
 		return err
 	}
-	if t.fc != nil {
-		if err := t.fc.Close(); err != nil {
+	if t.powc != nil {
+		if err := t.powc.Close(); err != nil {
 			return err
 		}
 	}

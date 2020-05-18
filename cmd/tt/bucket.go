@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,10 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd)
+	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd, archiveBucketCmd)
+	archiveBucketCmd.AddCommand(archiveBucketStatusCmd, archiveBucketInfoCmd)
+
+	archiveBucketStatusCmd.Flags().BoolP("watch", "w", false, "Watched executiong log of the archive")
 
 	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
 	initBucketCmd.PersistentFlags().String("org", "", "Org username")
@@ -596,6 +600,128 @@ var catBucketPathCmd = &cobra.Command{
 		if err := buckets.PullPath(ctx, key, args[0], os.Stdout); err != nil {
 			cmd.Fatal(err)
 		}
+	},
+}
+
+var archiveBucketCmd = &cobra.Command{
+	Use:   "archive",
+	Short: "Archive to Powergate.",
+	Long:  "Archive pushes the latest Bucket state living on Textile.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		if _, err := buckets.Archive(ctx, key); err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Success("Archive queued successfully")
+	},
+}
+
+var archiveBucketStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Reports the status of the last archive.",
+	Long:  "Archive status reports the status of the last archive done for the current Bucket.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		r, err := buckets.ArchiveStatus(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		switch r.GetStatus() {
+		case pb.ArchiveStatusReply_Failed:
+			cmd.Warn("Archive failed with message: %s", r.GetFailedMsg())
+		case pb.ArchiveStatusReply_Canceled:
+			cmd.Warn("Archive was superseded by a new executing archive")
+		case pb.ArchiveStatusReply_Executing:
+			cmd.Message("Archive is currently executing, grab a coffee and be patient...")
+		case pb.ArchiveStatusReply_Done:
+			cmd.Success("Archive executed successfully!")
+		default:
+			cmd.Warn("Archive status unknown")
+		}
+		watch, err := c.Flags().GetBool("watch")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if watch {
+			fmt.Printf("\n")
+			cmd.Message("Cid logs:")
+			ch := make(chan string)
+			wCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err = buckets.ArchiveWatch(wCtx, key, ch)
+				close(ch)
+			}()
+			for msg := range ch {
+				cmd.Message("\t %s", msg)
+				r, err := buckets.ArchiveStatus(ctx, key)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				if isJobStatusFinal(r.GetStatus()) {
+					cancel()
+				}
+			}
+			if err != nil {
+				cmd.Fatal(err)
+			}
+		}
+	},
+}
+
+func isJobStatusFinal(status pb.ArchiveStatusReply_Status) bool {
+	switch status {
+	case pb.ArchiveStatusReply_Failed, pb.ArchiveStatusReply_Canceled, pb.ArchiveStatusReply_Done:
+		return true
+	case pb.ArchiveStatusReply_Executing:
+		return false
+	}
+	cmd.Fatal(fmt.Errorf("Unknown job status"))
+	return true
+
+}
+
+var archiveBucketInfoCmd = &cobra.Command{
+	Use:   "info",
+	Short: "Provides information about the current  archive.",
+	Long:  "Provides information about the current archive.",
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+		if configViper.ConfigFileUsed() == "" {
+			cmd.Fatal(errNotABucket)
+		}
+	},
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		r, err := buckets.ArchiveInfo(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("Archive of Cid %s has %d deals:\n", r.Archive.Cid, len(r.Archive.Deals))
+		var data [][]string
+		for _, d := range r.Archive.GetDeals() {
+			data = append(data, []string{d.ProposalCid, d.Miner})
+		}
+		cmd.RenderTable([]string{"ProposalCid", "Miner"}, data)
+
 	},
 }
 
