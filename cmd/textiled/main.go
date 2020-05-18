@@ -284,7 +284,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:        addrIpfsApi,
 			AddrGatewayHost:    addrGatewayHost,
 			AddrGatewayURL:     addrGatewayUrl,
-			AddrPowergateApi:   addrPowergateApi,
+			AddrPowergateAPI:   addrPowergateApi,
 			AddrMongoURI:       addrMongoUri,
 			UseSubdomains:      configViper.GetBool("gateway.subdomains"),
 			MongoName:          "textile",

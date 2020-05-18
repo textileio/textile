@@ -84,7 +84,7 @@ type Config struct {
 	AddrIPFSAPI      ma.Multiaddr
 	AddrGatewayHost  ma.Multiaddr
 	AddrGatewayURL   string
-	AddrPowergateApi ma.Multiaddr
+	AddrPowergateAPI ma.Multiaddr
 	AddrMongoURI     string
 
 	UseSubdomains bool
@@ -121,8 +121,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if conf.AddrPowergateApi != nil {
-		t.powc, err = powc.NewClient(conf.AddrPowergateApi, grpc.WithInsecure(), grpc.WithPerRPCCredentials(powc.TokenAuth{}))
+	if conf.AddrPowergateAPI != nil {
+		t.powc, err = powc.NewClient(conf.AddrPowergateAPI, grpc.WithInsecure(), grpc.WithPerRPCCredentials(powc.TokenAuth{}))
 		if err != nil {
 			return nil, err
 		}

@@ -187,7 +187,7 @@ func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bu
 
 func setup(t *testing.T) (context.Context, *c.Client) {
 	conf := apitest.DefaultTextileConfig(t)
-	conf.AddrPowergateApi = powMultiaddr
+	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
 	shutdown := apitest.MakeTextileCustom(t, conf)
