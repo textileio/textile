@@ -57,7 +57,7 @@ type Archive struct {
 }
 
 type Deal struct {
-	ProposalCid string `json:"proposalCid"`
+	ProposalCid string `json:"proposal_cid"`
 	Miner       string `json:"miner"`
 }
 
