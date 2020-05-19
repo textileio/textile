@@ -180,6 +180,14 @@ describe('Buckets...', () => {
     expect(list.item?.itemsList).to.have.length(1)
   })
 
+  it('should list bucket links', async () => {
+    const rootKey = buck.root?.key || ''
+
+    const rep = await client.links(rootKey)
+    expect(rep.url).to.not.equal('')
+    expect(rep.ipns).to.not.equal('')
+  })
+
   it('should remove an entire bucket', async () => {
     const rootKey = buck.root?.key || ''
     const rep = await client.listPath(rootKey, 'dir1/file1.jpg')
