@@ -25,10 +25,6 @@ import (
 
 var (
 	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
-
-	ignoredFilenames = []string{
-		".DS_Store",
-	}
 )
 
 func init() {
@@ -222,7 +218,7 @@ Existing configs will not be overwritten.
 			}
 			actx, acancel := context.WithTimeout(context.Background(), cmdTimeout)
 			defer acancel()
-			if _, err = buck.ArchiveFile(actx, file, bucks.SeedName); err != nil {
+			if err = buck.ArchiveFile(actx, file, bucks.SeedName); err != nil {
 				cmd.Fatal(err)
 			}
 
@@ -291,12 +287,7 @@ var bucketStatusCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-		defer cancel()
-		diff, err := buck.Diff(ctx, root)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		diff := getDiff(buck, root)
 		for _, c := range diff {
 			cf := changeColor(c.Type)
 			cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Path))
@@ -304,14 +295,38 @@ var bucketStatusCmd = &cobra.Command{
 	},
 }
 
+func getDiff(buck *local.Bucket, root string) []*dagutils.Change {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	diff, err := buck.Diff(ctx, root)
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	if len(diff) == 0 {
+		cmd.End("Everything up-to-date")
+	}
+	var all []*dagutils.Change
+	for _, c := range diff {
+		names := walkPath(c.Path)
+		if len(names) > 0 {
+			for _, n := range names {
+				all = append(all, &dagutils.Change{Type: c.Type, Path: n})
+			}
+		} else {
+			all = append(all, c)
+		}
+	}
+	return all
+}
+
 func changeType(t dagutils.ChangeType) string {
 	switch t {
 	case dagutils.Mod:
 		return "modified:"
 	case dagutils.Add:
-		return "added:   "
+		return "new file:"
 	case dagutils.Remove:
-		return "removed: "
+		return "deleted: "
 	default:
 		return ""
 	}
@@ -396,8 +411,8 @@ var bucketLsCmd = &cobra.Command{
 }
 
 var bucketPushCmd = &cobra.Command{
-	Use:   "push [target] [path]",
-	Short: "Push to a bucket path (interactive)",
+	Use:   "push",
+	Short: "Push local bucket changes (interactive)",
 	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
 
 Using the '--org' flag will create a new bucket under the organization's account.
@@ -445,34 +460,19 @@ These 'push' commands result in the following bucket structures.
 			cmd.Fatal(fmt.Errorf("thread is not defined"))
 		}
 
-		var names []string
-		var paths []string
-		if err := filepath.Walk(root, func(n string, info os.FileInfo, err error) error {
-			if err != nil {
-				cmd.Fatal(err)
-			}
-			if !info.IsDir() {
-				if ignored(n) {
-					return nil
-				}
-				p := n
-				n = strings.TrimPrefix(n, root+"/")
-				if strings.HasPrefix(n, configDir) {
-					return nil
-				}
-				names = append(names, n)
-				paths = append(paths, p)
-			}
-			return nil
-		}); err != nil {
+		buck, err := local.NewBucket(root, options.BalancedLayout)
+		if err != nil {
 			cmd.Fatal(err)
 		}
-		if len(names) == 0 {
-			cmd.End("No files found")
-		}
+		diff := getDiff(buck, root)
 
+		cmd.Message("Changes to be pushed:")
+		for _, c := range diff {
+			cf := changeColor(c.Type)
+			cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Path))
+		}
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Push %d files", len(names)),
+			Label:     fmt.Sprintf("Push %d changes", len(diff)),
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
@@ -480,20 +480,37 @@ These 'push' commands result in the following bucket structures.
 		}
 
 		key := configViper.GetString("key")
-		for i := range names {
-			addFile(key, names[i], paths[i])
+		for _, c := range diff {
+			addFile(key, filepath.Join(root, c.Path), c.Path)
 		}
-		cmd.Success("Pushed %d files", aurora.White(len(names)).Bold())
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err = buck.Archive(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+
+		cmd.Message("New root: %s", buck.Root())
+		cmd.Success("Pushed %d changes", aurora.White(len(diff)).Bold())
 	},
 }
 
-func ignored(pth string) bool {
-	for _, n := range ignoredFilenames {
-		if strings.HasSuffix(pth, n) {
-			return true
+func walkPath(pth string) (names []string) {
+	if err := filepath.Walk(pth, func(n string, info os.FileInfo, err error) error {
+		if err != nil {
+			cmd.Fatal(err)
 		}
+		if !info.IsDir() {
+			if local.Ignore(n) || strings.HasPrefix(n, configDir) {
+				return nil
+			}
+			names = append(names, n)
+		}
+		return nil
+	}); err != nil {
+		cmd.Fatal(err)
 	}
-	return false
+	return names
 }
 
 func addFile(key, name, filePath string) {

@@ -16,16 +16,37 @@ func TestNewBucket(t *testing.T) {
 	makeBucket(t, "testdata/a", options.BalancedLayout)
 }
 
+func TestBucket_Root(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+
+	err := buck.Archive(context.Background())
+	require.Nil(t, err)
+	assert.NotEmpty(t, buck.Root())
+}
+
+func TestBucket_Get(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+
+	err := buck.Archive(context.Background())
+	require.Nil(t, err)
+
+	n, err := buck.Get(context.Background(), buck.Root())
+	require.Nil(t, err)
+	assert.Equal(t, buck.Root(), n.Cid())
+}
+
 func TestBucket_Archive(t *testing.T) {
 	t.Parallel()
 	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
 
-	c, err := buck.Archive(context.Background())
+	err := buck.Archive(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, c)
+	assert.NotEmpty(t, buck.Root())
 
 	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
-	n, err := buck2.Get(context.Background(), c)
+	n, err := buck2.Get(context.Background(), buck.Root())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 }
@@ -37,17 +58,17 @@ func TestBucket_ArchiveFile(t *testing.T) {
 	file, err := os.Open("testdata/c/one.jpg")
 	require.Nil(t, err)
 	defer file.Close()
-	c, err := buck.ArchiveFile(context.Background(), file, "one.jpg")
+	err = buck.ArchiveFile(context.Background(), file, "one.jpg")
 	require.Nil(t, err)
-	assert.NotEmpty(t, c)
+	assert.NotEmpty(t, buck.Root())
 
 	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
-	n, err := buck2.Get(context.Background(), c)
+	n, err := buck2.Get(context.Background(), buck.Root())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 }
 
-func checkLinks(t *testing.T, buck *bucket, n ipld.Node) {
+func checkLinks(t *testing.T, buck *Bucket, n ipld.Node) {
 	for _, l := range n.Links() {
 		ln, err := buck.Get(context.Background(), l.Cid)
 		if l.Name == "" { // Data node should not have been saved
@@ -59,24 +80,11 @@ func checkLinks(t *testing.T, buck *bucket, n ipld.Node) {
 	}
 }
 
-func TestBucket_Get(t *testing.T) {
-	t.Parallel()
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-
-	c, err := buck.Archive(context.Background())
-	require.Nil(t, err)
-	assert.NotEmpty(t, c)
-
-	n, err := buck.Get(context.Background(), c)
-	require.Nil(t, err)
-	assert.Equal(t, c, n.Cid())
-}
-
 func TestBucket_Diff(t *testing.T) {
 	t.Parallel()
 	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
 
-	_, err := buck.Archive(context.Background())
+	err := buck.Archive(context.Background())
 	require.Nil(t, err)
 
 	diffa, err := buck.Diff(context.Background(), "testdata/a")
@@ -102,7 +110,7 @@ func TestBucket_Diff(t *testing.T) {
 	}
 }
 
-func makeBucket(t *testing.T, root string, layout options.Layout) *bucket {
+func makeBucket(t *testing.T, root string, layout options.Layout) *Bucket {
 	buck, err := NewBucket(root, layout)
 	require.Nil(t, err)
 	return buck

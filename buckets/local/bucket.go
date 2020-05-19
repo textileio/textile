@@ -46,8 +46,8 @@ const (
 	archiveName = ".textile/buck.car"
 )
 
-// bucket tracks a local bucket tree structure.
-type bucket struct {
+// Bucket tracks a local bucket tree structure.
+type Bucket struct {
 	path   string
 	root   cid.Cid
 	tmp    ipld.DAGService
@@ -56,53 +56,62 @@ type bucket struct {
 }
 
 // NewBucket creates a new bucket with the given path.
-func NewBucket(pth string, layout options.Layout) (*bucket, error) {
+func NewBucket(pth string, layout options.Layout) (*Bucket, error) {
 	bs := bstore.NewBlockstore(syncds.MutexWrap(ds.NewMapDatastore()))
 	bsrv := bserv.New(bs, offline.Exchange(bs))
-	b := &bucket{
+	b := &Bucket{
 		path:   pth,
 		tmp:    md.NewDAGService(bsrv),
 		store:  bs,
 		layout: layout,
 	}
-	c, _ := b.load()
-	b.root = c
+	_ = b.load()
 	return b, nil
 }
 
 // load the car archive into the tmp blockstore.
-func (b *bucket) load() (cid.Cid, error) {
+func (b *Bucket) load() error {
 	file, err := os.Open(filepath.Join(b.path, archiveName))
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	defer file.Close()
 	h, err := car.LoadCar(b.store, file)
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	if len(h.Roots) > 0 {
-		c := h.Roots[0]
-		return c, nil
+		b.root = h.Roots[0]
 	}
-	return cid.Undef, nil
+	return nil
+}
+
+// Root returns the current archive's root cid.
+func (b *Bucket) Root() cid.Cid {
+	return b.root
+}
+
+// Get returns the node at cid from the current archive.
+func (b *Bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
+	return b.tmp.Get(ctx, c)
 }
 
 // Archive creates an archive describing the current path.
-func (b *bucket) Archive(ctx context.Context) (cid.Cid, error) {
+func (b *Bucket) Archive(ctx context.Context) error {
 	n, err := b.walkPath(ctx, b.path)
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	file, err := b.createArchive()
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	defer file.Close()
 	if err = car.WriteCarWithWalker(ctx, b.tmp, []cid.Cid{n.Cid()}, file, carWalker); err != nil {
-		return cid.Undef, err
+		return err
 	}
-	return n.Cid(), nil
+	b.root = n.Cid()
+	return nil
 }
 
 func carWalker(n ipld.Node) ([]*ipld.Link, error) {
@@ -116,7 +125,7 @@ func carWalker(n ipld.Node) ([]*ipld.Link, error) {
 }
 
 // walkPath walks path and adds files to the dag service.
-func (b *bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
+func (b *Bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
 	root := unixfs.EmptyDirNode()
 	prefix, err := getCidBuilder()
 	if err != nil {
@@ -133,7 +142,7 @@ func (b *bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
 			return err
 		}
 		if !info.IsDir() {
-			if ignoredPath(n) {
+			if Ignore(n) {
 				return nil
 			}
 			p := n
@@ -162,7 +171,7 @@ func (b *bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
 }
 
 // createArchive creates the empty archive file under path.
-func (b *bucket) createArchive() (*os.File, error) {
+func (b *Bucket) createArchive() (*os.File, error) {
 	name := filepath.Join(b.path, archiveName)
 	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
 		return nil, err
@@ -171,43 +180,39 @@ func (b *bucket) createArchive() (*os.File, error) {
 }
 
 // ArchiveFile creates an archive describing a directory containing reader.
-func (b *bucket) ArchiveFile(ctx context.Context, r io.Reader, name string) (cid.Cid, error) {
+func (b *Bucket) ArchiveFile(ctx context.Context, r io.Reader, name string) error {
 	root := unixfs.EmptyDirNode()
 	prefix, err := getCidBuilder()
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	root.SetCidBuilder(prefix)
 	editor := dagutils.NewDagEditor(root, b.tmp)
 	f, err := addFile(b.tmp, b.layout, r)
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	if err = editor.InsertNodeAtPath(ctx, name, f, unixfs.EmptyDirNode); err != nil {
-		return cid.Undef, err
+		return err
 	}
 	n, err := editor.Finalize(ctx, b.tmp)
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	file, err := b.createArchive()
 	if err != nil {
-		return cid.Undef, err
+		return err
 	}
 	defer file.Close()
 	if err = car.WriteCarWithWalker(ctx, b.tmp, []cid.Cid{n.Cid()}, file, carWalker); err != nil {
-		return cid.Undef, err
+		return err
 	}
-	return n.Cid(), nil
-}
-
-// Get returns the node at cid from the current archive.
-func (b *bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
-	return b.tmp.Get(ctx, c)
+	b.root = n.Cid()
+	return nil
 }
 
 // Diff returns a list of changes that are present in pth compared to the current archive.
-func (b *bucket) Diff(ctx context.Context, pth string) ([]*dagutils.Change, error) {
+func (b *Bucket) Diff(ctx context.Context, pth string) ([]*dagutils.Change, error) {
 	an, err := b.tmp.Get(ctx, b.root)
 	if err != nil {
 		return nil, err
@@ -219,8 +224,8 @@ func (b *bucket) Diff(ctx context.Context, pth string) ([]*dagutils.Change, erro
 	return dagutils.Diff(ctx, b.tmp, an, bn)
 }
 
-// ignoredPath returns true if the path contains an ignored file.
-func ignoredPath(pth string) bool {
+// Ignore returns true if the path contains an ignored file.
+func Ignore(pth string) bool {
 	for _, n := range ignoredFilenames {
 		if strings.HasSuffix(pth, n) {
 			return true
