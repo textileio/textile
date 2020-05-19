@@ -225,8 +225,6 @@ export class Buckets {
     T extends grpc.ProtobufMessage,
     M extends grpc.UnaryMethodDefinition<R, T>
   >(methodDescriptor: M, req: R, context?: Context): Promise<T> {
-    // @todo: This is not totally ideal, but is cleaner for returning promises.
-    // Ideally, we'd use the generated client directly, and wrap that with a promise.
     return new Promise<T>((resolve, reject) => {
       const creds = this.context.withContext(context)
       grpc.unary(methodDescriptor, {
