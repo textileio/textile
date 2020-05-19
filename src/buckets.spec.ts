@@ -140,7 +140,6 @@ describe('Buckets...', () => {
 
     const rep = await client.links(rootKey)
     expect(rep.url).to.not.equal('')
-    expect(rep.www).to.not.equal('')
     expect(rep.ipns).to.not.equal('')
   })
 
