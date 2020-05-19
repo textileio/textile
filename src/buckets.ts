@@ -62,6 +62,19 @@ export class Buckets {
   }
 
   /**
+   * Returns a list of bucket links.
+   * @param key Unique (IPNS compatible) identifier key for a bucket.
+   * @param ctx Context object containing web-gRPC headers and settings.
+   */
+  async links(key: string, ctx?: Context) {
+    logger.debug('link request')
+    const req = new pb.LinksRequest()
+    req.setKey(key)
+    const res: pb.LinksReply = await this.unary(API.Links, req, ctx)
+    return res.toObject()
+  }
+
+  /**
    * Returns information about a bucket path.
    * @param key Unique (IPNS compatible) identifier key for a bucket.
    * @param path A file/object (sub)-path within a bucket.

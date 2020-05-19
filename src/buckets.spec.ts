@@ -135,6 +135,15 @@ describe('Buckets...', () => {
     expect(rep.item?.isdir).to.be.false
   })
 
+  it('should list bucket links', async () => {
+    const rootKey = buck.root?.key || ''
+
+    const rep = await client.links(rootKey)
+    expect(rep.url).to.not.equal('')
+    expect(rep.www).to.not.equal('')
+    expect(rep.ipns).to.not.equal('')
+  })
+
   it('should pull files by path and write to file on node', async function () {
     if (isBrowser) return this.skip()
     // Bucket path
