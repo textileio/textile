@@ -14,7 +14,7 @@ import (
 
 const (
 	CollectionName = "buckets"
-	SeedName       = ".textilebucketseed"
+	SeedName       = ".textileseed"
 )
 
 var (

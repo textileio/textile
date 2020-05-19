@@ -29,7 +29,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketRmCmd, bucketDestroyCmd)
+	bucketCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd)
 
 	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
 	bucketInitCmd.PersistentFlags().String("org", "", "Org username")
@@ -44,18 +44,22 @@ func init() {
 
 var bucketCmd = &cobra.Command{
 	Use:   "bucket",
-	Short: "Manage a bucket",
-	Long:  `Init a bucket and push and pull files and folders.`,
+	Short: "Manage a storage bucket",
+	Long:  `Manage files and folders with an object storage bucket.`,
+	Args:  cobra.ExactArgs(0),
 }
 
 var bucketInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create an empty bucket",
-	Long: `Create an empty bucket.
+	Long: `Create an empty storage bucket.
 
-A .textile directory and config file will be created in the current working directory.
+A .textile config directory and a seed file will be created in the current working directory.
 Existing configs will not be overwritten.
+
+Use the '--existing' flag to initialize from an existing remote bucket.
 `,
+	Args: cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -250,7 +254,8 @@ func printLinks(reply *pb.LinksReply) {
 var bucketLinksCmd = &cobra.Command{
 	Use:   "links",
 	Short: "Print links to where this bucket can be accessed",
-	Long:  `Print links to where this bucket can be accessed.`,
+	Long:  `Print links to where this storage bucket can be accessed.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -271,8 +276,9 @@ var bucketLinksCmd = &cobra.Command{
 
 var bucketStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show bucket tree status",
+	Short: "Show bucket object changes",
 	Long:  `Displays paths that have been added to and paths that have been removed or differ from the current bucket root.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -287,6 +293,7 @@ var bucketStatusCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		cmd.Message("Current root: %s", buck.Root())
 		diff := getDiff(buck, root)
 		for _, c := range diff {
 			cf := changeColor(c.Type)
@@ -307,12 +314,17 @@ func getDiff(buck *local.Bucket, root string) []*dagutils.Change {
 	}
 	var all []*dagutils.Change
 	for _, c := range diff {
-		names := walkPath(c.Path)
-		if len(names) > 0 {
-			for _, n := range names {
-				all = append(all, &dagutils.Change{Type: c.Type, Path: n})
+		switch c.Type {
+		case dagutils.Mod, dagutils.Add:
+			names := walkPath(c.Path)
+			if len(names) > 0 {
+				for _, n := range names {
+					all = append(all, &dagutils.Change{Type: c.Type, Path: n})
+				}
+			} else {
+				all = append(all, c)
 			}
-		} else {
+		case dagutils.Remove:
 			all = append(all, c)
 		}
 	}
@@ -350,8 +362,9 @@ var bucketLsCmd = &cobra.Command{
 	Aliases: []string{
 		"list",
 	},
-	Short: "List bucket path contents",
-	Long:  `List files and directories under a bucket path.`,
+	Short: "List objects under a bucket path",
+	Long:  `List objects under a bucket path.`,
+	Args:  cobra.MaximumNArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -404,47 +417,17 @@ var bucketLsCmd = &cobra.Command{
 		}
 
 		if len(data) > 0 {
-			cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
+			cmd.RenderTable([]string{"name", "size", "dir", "objects", "path"}, data)
 		}
-		cmd.Message("Found %d items", aurora.White(len(data)).Bold())
+		cmd.Message("Found %d objects", aurora.White(len(data)).Bold())
 	},
 }
 
 var bucketPushCmd = &cobra.Command{
 	Use:   "push",
-	Short: "Push local bucket changes (interactive)",
-	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
-
-Using the '--org' flag will create a new bucket under the organization's account.
-
-File structure is mirrored in the bucket. For example, given the directory:
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-
-These 'push' commands result in the following bucket structures.
-
-'tt bucket push foo/ .':
-    one.txt
-    bar/two.txt
-    bar/baz/three.txt
-		
-'tt bucket push foo mybuck':
-    mybuck/foo/one.txt
-    mybuck/foo/bar/two.txt
-    mybuck/foo/bar/baz/three.txt
-
-'tt bucket push foo/bar mybuck':
-    mybuck/bar/two.txt
-    mybuck/bar/baz/three.txt
-
-'tt bucket push foo/bar/baz mybuck':
-    mybuck/baz/three.txt
-
-'tt bucket push foo/bar/baz/three.txt mybuck':
-    mybuck/three.txt
-`,
-	Args: cobra.ExactArgs(0),
+	Short: "Push bucket object changes",
+	Long:  `Push bucket object changes. Directory structure is mirrored in the bucket.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -481,7 +464,12 @@ These 'push' commands result in the following bucket structures.
 
 		key := configViper.GetString("key")
 		for _, c := range diff {
-			addFile(key, filepath.Join(root, c.Path), c.Path)
+			switch c.Type {
+			case dagutils.Mod, dagutils.Add:
+				addFile(key, filepath.Join(root, c.Path), c.Path)
+			case dagutils.Remove:
+				rmFile(key, c.Path)
+			}
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -523,7 +511,6 @@ func addFile(key, name, filePath string) {
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	cmd.Message("Pushing %s to %s", aurora.White(name).Bold(), aurora.White(filePath).Bold())
 
 	bar := pbar.New(int(info.Size()))
 	bar.SetTemplate(pbar.Full)
@@ -546,39 +533,19 @@ func addFile(key, name, filePath string) {
 	bar.Finish()
 }
 
+func rmFile(key, filePath string) {
+	ctx, cancel := threadCtx(addFileTimeout)
+	defer cancel()
+	if err := buckets.RemovePath(ctx, key, filePath); err != nil {
+		cmd.Fatal(err)
+	}
+}
+
 var bucketPullCmd = &cobra.Command{
-	Use:   "pull [path] [destination]",
-	Short: "Pull a bucket path",
-	Long: `Pull files and directories from a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
-
-Bucket structure is mirrored locally. For example, given the bucket:
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-
-These 'pull' commands result in the following local structures.
-
-'tt bucket pull foo mydir':
-    mydir/foo/one.txt
-    mydir/foo/bar/two.txt
-    mydir/foo/bar/baz/three.txt
-
-'tt bucket pull foo/bar mydir':
-    mydir/bar/two.txt
-    mydir/bar/baz/three.txt
-
-'tt bucket pull foo/bar/baz mydir':
-    mydir/baz/three.txt
-
-'tt bucket pull foo/bar/baz/three.txt mydir':
-    mydir/three.txt
-
-'tt bucket pull foo .':
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-`,
-	Args: cobra.ExactArgs(2),
+	Use:   "pull",
+	Short: "Pull bucket object changes",
+	Long:  `Pull bucket object changes. Bucket structure is mirrored locally.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -637,7 +604,6 @@ func getFile(key, filePath, name string, size int64) {
 		cmd.Fatal(err)
 	}
 	defer file.Close()
-	cmd.Message("Pulling %s to %s", aurora.White(filePath).Bold(), aurora.White(name).Bold())
 
 	bar := pbar.New(int(size))
 	bar.SetTemplate(pbar.Full)
@@ -662,8 +628,8 @@ func getFile(key, filePath, name string, size int64) {
 
 var bucketCatCmd = &cobra.Command{
 	Use:   "cat [path]",
-	Short: "Cat a bucket path file",
-	Long:  `Cat a file at a bucket path.`,
+	Short: "Cat bucket object",
+	Long:  `Cat bucket object at path.`,
 	Args:  cobra.ExactArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -681,35 +647,11 @@ var bucketCatCmd = &cobra.Command{
 	},
 }
 
-var bucketRmCmd = &cobra.Command{
-	Use: "rm [path]",
-	Aliases: []string{
-		"remove",
-	},
-	Short: "Remove bucket path contents",
-	Long:  `Remove files and directories under a bucket path.`,
-	Args:  cobra.ExactArgs(1),
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		if err := buckets.RemovePath(ctx, key, args[0]); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Removed %s", aurora.White(args[0]).Bold())
-	},
-}
-
 var bucketDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy bucket",
 	Long:  `Destroy bucket and all associated data.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {

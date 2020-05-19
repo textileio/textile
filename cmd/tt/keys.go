@@ -25,9 +25,7 @@ var keysCmd = &cobra.Command{
 	},
 	Short: "Key management",
 	Long:  `Manage your keys.`,
-	Run: func(c *cobra.Command, args []string) {
-		lsKeys(c)
-	},
+	Args:  cobra.ExactArgs(0),
 }
 
 var keysCreateCmd = &cobra.Command{
@@ -43,6 +41,7 @@ There are two types of API keys:
 
 API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
+	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")
 		if err != nil {
@@ -81,6 +80,7 @@ var keysInvalidateCmd = &cobra.Command{
 	Use:   "invalidate",
 	Short: "Invalidate a key",
 	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")
 		if err != nil {
@@ -109,34 +109,31 @@ var keysLsCmd = &cobra.Command{
 	},
 	Short: "List your keys",
 	Long:  `List all of your keys.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		lsKeys(c)
-	},
-}
-
-func lsKeys(c *cobra.Command) {
-	org, err := c.Flags().GetString("org")
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if org != "" {
-		configViper.Set("org", org)
-	}
-
-	ctx, cancel := authCtx(cmdTimeout)
-	defer cancel()
-	list, err := hub.ListKeys(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if len(list.List) > 0 {
-		data := make([][]string, len(list.List))
-		for i, k := range list.List {
-			data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+		org, err := c.Flags().GetString("org")
+		if err != nil {
+			cmd.Fatal(err)
 		}
-		cmd.RenderTable([]string{"key", "secret", "type", "valid", "threads"}, data)
-	}
-	cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
+		if org != "" {
+			configViper.Set("org", org)
+		}
+
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		list, err := hub.ListKeys(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if len(list.List) > 0 {
+			data := make([][]string, len(list.List))
+			for i, k := range list.List {
+				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+			}
+			cmd.RenderTable([]string{"key", "secret", "type", "valid", "threads"}, data)
+		}
+		cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
+	},
 }
 
 type keyItem struct {

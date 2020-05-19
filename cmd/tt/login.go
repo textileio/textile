@@ -20,7 +20,8 @@ func init() {
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login",
-	Long:  `Login to Textile.`,
+	Long:  `Login to a Hub account.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		prompt := promptui.Prompt{
 			Label: "Enter your username or email",

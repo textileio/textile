@@ -24,9 +24,7 @@ var threadsCmd = &cobra.Command{
 	},
 	Short: "Thread management",
 	Long:  `Manage your threads.`,
-	Run: func(c *cobra.Command, args []string) {
-		lsThreads(c)
-	},
+	Args:  cobra.ExactArgs(0),
 }
 
 var threadsLsCmd = &cobra.Command{
@@ -36,41 +34,38 @@ var threadsLsCmd = &cobra.Command{
 	},
 	Short: "List your threads",
 	Long:  `List all of your threads.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		lsThreads(c)
-	},
-}
-
-func lsThreads(c *cobra.Command) {
-	org, err := c.Flags().GetString("org")
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if org != "" {
-		configViper.Set("org", org)
-	}
-
-	ctx, cancel := authCtx(cmdTimeout)
-	defer cancel()
-	list, err := users.ListThreads(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if len(list.List) > 0 {
-		data := make([][]string, len(list.List))
-		for i, t := range list.List {
-			id, err := thread.Cast(t.ID)
-			if err != nil {
-				cmd.Fatal(err)
-			}
-			if t.Name == "" {
-				t.Name = "unnamed"
-			}
-			data[i] = []string{id.String(), t.Name, getThreadType(t.IsDB)}
+		org, err := c.Flags().GetString("org")
+		if err != nil {
+			cmd.Fatal(err)
 		}
-		cmd.RenderTable([]string{"id", "name", "type"}, data)
-	}
-	cmd.Message("Found %d threads", aurora.White(len(list.List)).Bold())
+		if org != "" {
+			configViper.Set("org", org)
+		}
+
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		list, err := users.ListThreads(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if len(list.List) > 0 {
+			data := make([][]string, len(list.List))
+			for i, t := range list.List {
+				id, err := thread.Cast(t.ID)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				if t.Name == "" {
+					t.Name = "unnamed"
+				}
+				data[i] = []string{id.String(), t.Name, getThreadType(t.IsDB)}
+			}
+			cmd.RenderTable([]string{"id", "name", "type"}, data)
+		}
+		cmd.Message("Found %d threads", aurora.White(len(list.List)).Bold())
+	},
 }
 
 type threadItem struct {

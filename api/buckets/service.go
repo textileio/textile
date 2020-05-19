@@ -302,11 +302,12 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	var key, headerPath string
+	var key, headerPath, root string
 	switch payload := req.Payload.(type) {
 	case *pb.PushPathRequest_Header_:
 		key = payload.Header.Key
 		headerPath = payload.Header.Path
+		root = payload.Header.Root
 	default:
 		return fmt.Errorf("push bucket path header is required")
 	}
@@ -317,6 +318,9 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	buck, err := s.Buckets.Get(server.Context(), dbID, key, bucks.WithToken(dbToken))
 	if err != nil {
 		return err
+	}
+	if root != buck.Path {
+		return fmt.Errorf("pull first")
 	}
 
 	sendEvent := func(event *pb.PushPathReply_Event) error {

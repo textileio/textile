@@ -67,6 +67,7 @@ message PushPathRequest {
     message Header {
         string key = 1;
         string path = 2;
+        string root = 3;
     }
 }
 
@@ -88,6 +89,7 @@ message PushPathReply {
 message PullPathRequest {
     string key = 1;
     string path = 2;
+    string root = 3;
 }
 
 message PullPathReply {
