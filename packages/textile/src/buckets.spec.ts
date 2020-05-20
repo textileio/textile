@@ -65,7 +65,7 @@ describe('Buckets...', () => {
 
   it('should push data from filesystem on node', async function () {
     if (isBrowser) return this.skip()
-    const pth = path.join(__dirname, '..', 'testdata')
+    const pth = path.join(__dirname, '../../..', 'testdata')
     fileSize = fs.statSync(path.join(pth, 'file1.jpg')).size
     let stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
     const rootKey = buck.root?.key || ''
@@ -145,7 +145,7 @@ describe('Buckets...', () => {
     const chunks = client.pullPath(rootKey, 'dir1/file1.jpg', undefined, {
       progress: (num) => (length = num || 0),
     })
-    const pth = path.join(__dirname, '..', 'testdata')
+    const pth = path.join(__dirname, '../../..', 'testdata')
     const stream = fs.createWriteStream(path.join(pth, 'output.jpg'))
     for await (const chunk of chunks) {
       stream.write(chunk)

@@ -52,9 +52,12 @@ jobs:
     - name: Install
       run: npm install
 
+    - name: Boostrap
+      run: npm run bootstrap
+
     - name: Build Browser
       run: |
-           npm run browser
+           npm run build:browser
 
     - name: Test Node
       run: |

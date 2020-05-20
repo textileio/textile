@@ -9,24 +9,33 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.ts?$/,
-        include: path.resolve(__dirname, 'src'),
-        loader: 'ts-loader?configFile=tsconfig.webpack.json',
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
       },
     ],
   },
+  resolveLoader: {
+    modules: ['../../node_modules'],
+  },
   resolve: {
+    modules: ['./node_modules'],
     extensions,
+    symlinks: false,
+    alias: {
+      '@textile/textile': path.resolve(__dirname, 'packages/textile'),
+    },
   },
   output: {
-    filename: 'bundle.js',
-    path: path.resolve(__dirname, 'dist'),
+    filename: './[name].js',
+    path: path.resolve(process.cwd(), 'dist'),
     library: 'textile',
     libraryTarget: 'var',
   },
-  devServer: {
-    filename: 'bundle.js',
-    publicPath: '/dist/',
-    port: 8000,
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+    },
+    minimize: true,
   },
 }

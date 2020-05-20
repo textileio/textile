@@ -222,7 +222,7 @@ describe('Users...', () => {
         expect(buck.root?.name).to.equal('mybuck')
 
         // Finally, push a file to the bucket.
-        const pth = path.join(__dirname, '..', 'testdata')
+        const pth = path.join(__dirname, '../../..', 'testdata')
         const stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
         const rootKey = buck.root?.key || ''
         const { root } = await buckets.pushPath(rootKey, 'dir1/file1.jpg', stream)
@@ -270,7 +270,7 @@ describe('Users...', () => {
         expect(buck.root?.name).to.equal('mybuck')
 
         // Finally, push a file to the bucket.
-        const pth = path.join(__dirname, '..', 'testdata')
+        const pth = path.join(__dirname, '../../..', 'testdata')
         const stream = fs.createReadStream(path.join(pth, 'file1.jpg'))
         const rootKey = buck.root?.key || ''
         const { root } = await buckets.pushPath(rootKey, 'dir1/file1.jpg', stream)

@@ -266,8 +266,12 @@ function isFileObject(obj: any) {
 }
 
 function blobToAsyncGenerator(blob: Blob) {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
   if (typeof blob.stream === 'function') {
     // firefox < 69 does not support blob.stream()
+    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+    // @ts-ignore
     return browserStreamToIt(blob.stream())
   }
 
