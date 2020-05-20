@@ -22,7 +22,7 @@ func TestBucket_Root(t *testing.T) {
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Root())
+	assert.NotEmpty(t, buck.Path())
 }
 
 func TestBucket_Get(t *testing.T) {
@@ -32,9 +32,9 @@ func TestBucket_Get(t *testing.T) {
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
 
-	n, err := buck.Get(context.Background(), buck.Root())
+	n, err := buck.Get(context.Background(), buck.Path().Cid())
 	require.Nil(t, err)
-	assert.Equal(t, buck.Root(), n.Cid())
+	assert.Equal(t, buck.Path().Cid(), n.Cid())
 }
 
 func TestBucket_Archive(t *testing.T) {
@@ -43,10 +43,10 @@ func TestBucket_Archive(t *testing.T) {
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Root())
+	assert.NotEmpty(t, buck.Path())
 
 	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
-	n, err := buck2.Get(context.Background(), buck.Root())
+	n, err := buck2.Get(context.Background(), buck.Path().Cid())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 }
@@ -60,10 +60,10 @@ func TestBucket_ArchiveFile(t *testing.T) {
 	defer file.Close()
 	err = buck.ArchiveFile(context.Background(), file, "one.jpg")
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Root())
+	assert.NotEmpty(t, buck.Path())
 
 	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
-	n, err := buck2.Get(context.Background(), buck.Root())
+	n, err := buck2.Get(context.Background(), buck.Path().Cid())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 }

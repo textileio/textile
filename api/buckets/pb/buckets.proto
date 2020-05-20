@@ -50,6 +50,7 @@ message ListPathReply {
     Root root = 2;
 
     message Item {
+        string cid = 1;
         string name = 2;
         string path = 3;
         int64 size = 4;
@@ -89,7 +90,6 @@ message PushPathReply {
 message PullPathRequest {
     string key = 1;
     string path = 2;
-    string root = 3;
 }
 
 message PullPathReply {
@@ -105,9 +105,12 @@ message RemoveReply {}
 message RemovePathRequest {
     string key = 1;
     string path = 2;
+    string root = 3;
 }
 
-message RemovePathReply {}
+message RemovePathReply {
+    Root root = 1;
+}
 
 service API {
     rpc Init(InitRequest) returns (InitReply) {}

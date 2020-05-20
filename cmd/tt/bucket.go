@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	pbar "github.com/cheggaaa/pb/v3"
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -23,9 +27,9 @@ import (
 	"github.com/textileio/textile/cmd"
 )
 
-var (
-	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
-)
+const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
+
+var errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
@@ -234,7 +238,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		}
 		if existing {
 			key := configViper.GetString("key")
-			count := getPath(key, ".", filepath.Dir("."), ".")
+			count := getPath(key, ".", ".", root, nil)
 			cmd.Success("Initialized from remote and pulled %d files to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
 		} else {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
@@ -293,7 +297,7 @@ var bucketStatusCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("Current root: %s", buck.Root())
+		cmd.Message("Current root: %s", buck.Path())
 		diff := getDiff(buck, root)
 		for _, c := range diff {
 			cf := changeColor(c.Type)
@@ -362,8 +366,8 @@ var bucketLsCmd = &cobra.Command{
 	Aliases: []string{
 		"list",
 	},
-	Short: "List objects under a bucket path",
-	Long:  `List objects under a bucket path.`,
+	Short: "List bucket objects under a path",
+	Long:  `List bucket objects under a path.`,
 	Args:  cobra.MaximumNArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -463,12 +467,13 @@ var bucketPushCmd = &cobra.Command{
 		}
 
 		key := configViper.GetString("key")
+		xr := buck.Path()
 		for _, c := range diff {
 			switch c.Type {
 			case dagutils.Mod, dagutils.Add:
-				addFile(key, filepath.Join(root, c.Path), c.Path)
+				xr = addFile(key, xr, filepath.Join(root, c.Path), c.Path)
 			case dagutils.Remove:
-				rmFile(key, c.Path)
+				xr = rmFile(key, xr, c.Path)
 			}
 		}
 
@@ -478,7 +483,7 @@ var bucketPushCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		cmd.Message("New root: %s", buck.Root())
+		cmd.Message("New root: %s", buck.Path())
 		cmd.Success("Pushed %d changes", aurora.White(len(diff)).Bold())
 	},
 }
@@ -501,7 +506,7 @@ func walkPath(pth string) (names []string) {
 	return names
 }
 
-func addFile(key, name, filePath string) {
+func addFile(key string, xroot path.Resolved, name, filePath string) path.Resolved {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -518,39 +523,47 @@ func addFile(key, name, filePath string) {
 	bar.Set(pbar.SIBytesPrefix, true)
 	bar.Start()
 	progress := make(chan int64)
+	root := make(chan path.Resolved)
 
 	go func() {
 		ctx, cancel := threadCtx(addFileTimeout)
 		defer cancel()
-		if _, _, err = buckets.PushPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
-			cmd.Fatal(err)
+		_, r, err := buckets.PushPath(ctx, key, filePath, file, client.WithFastForwardOnly(xroot), client.WithProgress(progress))
+		if err != nil {
+			if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
+				cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+			} else {
+				cmd.Fatal(err)
+			}
 		}
+		root <- r
 	}()
 
 	for up := range progress {
 		bar.SetCurrent(up)
 	}
 	bar.Finish()
+
+	return <-root
 }
 
-func rmFile(key, filePath string) {
+func rmFile(key string, xroot path.Resolved, filePath string) path.Resolved {
 	ctx, cancel := threadCtx(addFileTimeout)
 	defer cancel()
-	if err := buckets.RemovePath(ctx, key, filePath); err != nil {
+	root, err := buckets.RemovePath(ctx, key, filePath, client.WithFastForwardOnly(xroot))
+	if err != nil {
 		cmd.Fatal(err)
 	}
+	return root
 }
 
 var bucketPullCmd = &cobra.Command{
-	Use:   "pull",
-	Short: "Pull bucket object changes",
-	Long:  `Pull bucket object changes. Bucket structure is mirrored locally.`,
-	Args:  cobra.ExactArgs(0),
+	Use:   "pull [path]",
+	Short: "Pull bucket object changes under path",
+	Long:  `Pull bucket object changes under path. Bucket structure is mirrored locally.`,
+	Args:  cobra.MaximumNArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
 	},
 	Run: func(c *cobra.Command, args []string) {
 		conf := configViper.ConfigFileUsed()
@@ -558,21 +571,24 @@ var bucketPullCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
-		abs, err := filepath.Abs(args[1])
+		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		if !strings.HasPrefix(abs, root) {
-			cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
+		var pth string
+		if len(args) > 0 {
+			pth = args[0]
 		}
-
+		if pth == "." || pth == "/" || pth == "./" {
+			pth = ""
+		}
 		key := configViper.GetString("key")
-		count := getPath(key, args[0], filepath.Dir(args[0]), args[1])
-		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
+		count := getPath(key, pth, filepath.Dir(pth), root, buck)
+		cmd.Success("Pulled %d changes", aurora.White(count).Bold())
 	},
 }
 
-func getPath(key, pth, dir, dest string) (count int) {
+func getPath(key, pth, dir, dest string, buck *local.Bucket) (count int) {
 	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 	rep, err := buckets.ListPath(ctx, key, pth)
@@ -582,13 +598,24 @@ func getPath(key, pth, dir, dest string) (count int) {
 
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(key, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+			count += getPath(key, filepath.Join(pth, filepath.Base(i.Path)), dir, dest, buck)
 		}
 	} else {
 		if dir != "." {
 			pth = strings.TrimPrefix(pth, dir)
 		}
 		name := filepath.Join(dest, pth)
+
+		if buck != nil {
+			c, err := cid.Decode(rep.Item.Cid)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			lc, err := buck.HashFile(name)
+			if err == nil && lc.Equals(c) { // File exists
+				return
+			}
+		}
 		getFile(key, pth, name, rep.Item.Size)
 		count++
 	}
@@ -628,7 +655,7 @@ func getFile(key, filePath, name string, size int64) {
 
 var bucketCatCmd = &cobra.Command{
 	Use:   "cat [path]",
-	Short: "Cat bucket object",
+	Short: "Cat bucket object at path",
 	Long:  `Cat bucket object at path.`,
 	Args:  cobra.ExactArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {

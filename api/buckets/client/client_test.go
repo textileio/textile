@@ -229,15 +229,16 @@ func TestClient_RemovePath(t *testing.T) {
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
 	require.Nil(t, err)
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.Nil(t, err)
+	assert.NotEmpty(t, pth)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.NotNil(t, err)
 	rep, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(rep.Item.Items))
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again")
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.Nil(t, err)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again")
 	require.NotNil(t, err)
@@ -282,22 +283,6 @@ func setup(t *testing.T) (context.Context, *c.Client, func()) {
 	ctx = common.NewThreadIDContext(ctx, id)
 
 	return ctx, client, func() {
-		shutdown()
-		err := client.Close()
-		require.Nil(t, err)
-	}
-}
-
-// litesetup is the same as setup but won't create a hub account.
-func litesetup(t *testing.T) (*c.Client, func()) {
-	conf, shutdown := apitest.MakeTextile(t)
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
-	require.Nil(t, err)
-	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
-	client, err := c.NewClient(target, opts...)
-	require.Nil(t, err)
-
-	return client, func() {
 		shutdown()
 		err := client.Close()
 		require.Nil(t, err)

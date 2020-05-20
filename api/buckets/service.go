@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
@@ -194,20 +196,25 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 }
 
 func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathReply_Item, error) {
-	node, err := s.IPFSClient.Unixfs().Get(ctx, pth)
+	rpth, err := s.IPFSClient.ResolvePath(ctx, pth)
+	if err != nil {
+		return nil, err
+	}
+	node, err := s.IPFSClient.Unixfs().Get(ctx, rpth)
 	if err != nil {
 		return nil, err
 	}
 	defer node.Close()
-	return nodeToItem(pth.String(), node, followLinks)
+	return s.nodeToItem(ctx, rpth.Cid(), pth.String(), node, followLinks)
 }
 
-func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathReply_Item, error) {
+func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathReply_Item, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
 	item := &pb.ListPathReply_Item{
+		Cid:  c.String(),
 		Name: filepath.Base(pth),
 		Path: pth,
 		Size: size,
@@ -223,7 +230,12 @@ func nodeToItem(pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPath
 			i := &pb.ListPathReply_Item{}
 			if followLinks {
 				n := entries.Node()
-				i, err = nodeToItem(filepath.Join(pth, entries.Name()), n, false)
+				p := filepath.Join(pth, entries.Name())
+				r, err := s.IPFSClient.ResolvePath(ctx, path.New(p))
+				if err != nil {
+					return nil, err
+				}
+				i, err = s.nodeToItem(ctx, r.Cid(), p, n, false)
 				if err != nil {
 					n.Close()
 					return nil, err
@@ -319,8 +331,8 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	if root != buck.Path {
-		return fmt.Errorf("pull first")
+	if root != "" && root != buck.Path {
+		return status.Error(codes.FailedPrecondition, bucks.ErrNonFastForward.Error())
 	}
 
 	sendEvent := func(event *pb.PushPathReply_Event) error {
@@ -535,6 +547,9 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	if req.Root != "" && req.Root != buck.Path {
+		return nil, status.Error(codes.FailedPrecondition, bucks.ErrNonFastForward.Error())
+	}
 
 	buckPath := path.New(buck.Path)
 	dirpth, err := s.IPFSClient.Object().RmLink(ctx, buckPath, filePath)
@@ -553,7 +568,15 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	go s.IPNSManager.Publish(dirpth, buck.Key)
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
-	return &pb.RemovePathReply{}, nil
+	return &pb.RemovePathReply{
+		Root: &pb.Root{
+			Key:       buck.Key,
+			Name:      buck.Name,
+			Path:      buck.Path,
+			CreatedAt: buck.CreatedAt,
+			UpdatedAt: buck.UpdatedAt,
+		},
+	}, nil
 }
 
 func (s *Service) getGatewayHost() (host string, ok bool) {

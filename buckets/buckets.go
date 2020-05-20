@@ -2,6 +2,7 @@ package buckets
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -18,6 +19,8 @@ const (
 )
 
 var (
+	ErrNonFastForward = fmt.Errorf("update is non-fast-forward")
+
 	schema  *jsonschema.Schema
 	indexes = []db.IndexConfig{{
 		Path: "path",
