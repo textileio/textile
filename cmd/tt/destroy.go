@@ -17,7 +17,7 @@ func init() {
 var destroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy your account",
-	Long:  `Destroy your Hub account and all associated data.`,
+	Long:  `Destroys your Hub account and all associated data.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)

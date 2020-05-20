@@ -23,14 +23,14 @@ var orgsCmd = &cobra.Command{
 		"org",
 	},
 	Short: "Org management",
-	Long:  `Manage your organizations.`,
+	Long:  `Manages your organizations.`,
 	Args:  cobra.ExactArgs(0),
 }
 
 var orgsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an org",
-	Long:  `Create a new organization.`,
+	Long:  `Creates a new organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
@@ -82,7 +82,7 @@ var orgsLsCmd = &cobra.Command{
 		"list",
 	},
 	Short: "List orgs you're a member of",
-	Long:  `List all the organizations that you're a member of.`,
+	Long:  `Lists all the organizations that you're a member of.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)
@@ -110,7 +110,7 @@ var orgsLsCmd = &cobra.Command{
 var orgsMembersCmd = &cobra.Command{
 	Use:   "members",
 	Short: "List org members",
-	Long:  `List current organization members.`,
+	Long:  `Lists current organization members.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
@@ -143,7 +143,7 @@ var orgsMembersCmd = &cobra.Command{
 var orgsInviteCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members to an org",
-	Long:  `Invite a new member to an organization.`,
+	Long:  `Invites a new member to an organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
@@ -175,7 +175,7 @@ var orgsInviteCmd = &cobra.Command{
 var orgsLeaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave an org",
-	Long:  `Leave an organization.`,
+	Long:  `Leaves an organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
@@ -233,7 +233,7 @@ func selectOrg(label, successMsg string) *orgItem {
 var orgsDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy an org",
-	Long:  `Destroy an organization and all associated data. You must be the org owner.`,
+	Long:  `Destroys an organization and all associated data. You must be the org owner.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Destroy org", aurora.Sprintf(

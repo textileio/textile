@@ -23,15 +23,15 @@ var keysCmd = &cobra.Command{
 	Aliases: []string{
 		"key",
 	},
-	Short: "Key management",
-	Long:  `Manage your keys.`,
+	Short: "API key management",
+	Long:  `Manages your API keys.`,
 	Args:  cobra.ExactArgs(0),
 }
 
 var keysCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an API key and secret",
-	Long: `Create a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
+	Long: `Creates a new API key and secret. Keys are used by apps and services that leverage buckets or threads.
 
 Using the '--org' flag will create a new key under the Organization's account.
 
@@ -78,8 +78,8 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 
 var keysInvalidateCmd = &cobra.Command{
 	Use:   "invalidate",
-	Short: "Invalidate a key",
-	Long:  `Invalidate a key. Invalidated keys cannot be used to create new threads.`,
+	Short: "Invalidate an API key",
+	Long:  `Invalidates an API key. Invalidated keys cannot be used to create new threads.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")
@@ -107,8 +107,8 @@ var keysLsCmd = &cobra.Command{
 	Aliases: []string{
 		"list",
 	},
-	Short: "List your keys",
-	Long:  `List all of your keys.`,
+	Short: "List your API keys",
+	Long:  `Lists all of your API keys.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")

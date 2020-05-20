@@ -14,7 +14,7 @@ func init() {
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Show current user",
-	Long:  `Show the user for the current session.`,
+	Long:  `Shows the user for the current session.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)

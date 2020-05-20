@@ -3,6 +3,8 @@ module github.com/textileio/textile
 go 1.14
 
 require (
+	cloud.google.com/go v0.37.0 // indirect
+	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
 	github.com/cheggaaa/pb/v3 v3.0.4
@@ -24,9 +26,6 @@ require (
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
-	github.com/ipfs/go-ds-badger v0.2.4
-	github.com/ipfs/go-filestore v1.0.0
-	github.com/ipfs/go-ipfs v0.5.1 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
@@ -36,13 +35,16 @@ require (
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-merkledag v0.3.2
-	github.com/ipfs/go-path v0.0.7 // indirect
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
 	github.com/ipld/go-car v0.1.0
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.3
+	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.7.11 // indirect
+	github.com/libp2p/go-libp2p-pubsub v0.2.7 // indirect
+	github.com/libp2p/go-sockaddr v0.1.0 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mailgun/mailgun-go/v3 v3.6.4
@@ -53,11 +55,12 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.0 // indirect
 	github.com/multiformats/go-multiaddr v0.2.1
+	github.com/multiformats/go-multiaddr-net v0.1.5 // indirect
 	github.com/multiformats/go-multibase v0.0.2
-	github.com/multiformats/go-multihash v0.0.13
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
+	github.com/prometheus/common v0.9.1 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
@@ -70,6 +73,7 @@ require (
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.17
+	github.com/textileio/uiprogress v0.0.2
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e // indirect
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect

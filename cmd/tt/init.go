@@ -22,7 +22,7 @@ func init() {
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize account",
-	Long:  `Initialize a new Hub account.`,
+	Long:  `Initializes a new Hub account.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{

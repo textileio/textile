@@ -33,8 +33,9 @@ body {
     color: #FFCE00;
 }
 
-.title span.right {
-    float: right;
+.updated {
+    font-size: 0.8em;
+    margin: 2em 0 1em;
 }
 
 a {

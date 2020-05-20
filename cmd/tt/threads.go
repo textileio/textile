@@ -23,7 +23,7 @@ var threadsCmd = &cobra.Command{
 		"thread",
 	},
 	Short: "Thread management",
-	Long:  `Manage your threads.`,
+	Long:  `Manages your threads.`,
 	Args:  cobra.ExactArgs(0),
 }
 
@@ -33,7 +33,7 @@ var threadsLsCmd = &cobra.Command{
 		"list",
 	},
 	Short: "List your threads",
-	Long:  `List all of your threads.`,
+	Long:  `Lists all of your threads.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		org, err := c.Flags().GetString("org")

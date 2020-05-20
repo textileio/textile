@@ -14,7 +14,7 @@ func init() {
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Logout",
-	Long:  `Logout of a Hub account.`,
+	Long:  `Handles logout of a Hub account.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := authCtx(cmdTimeout)

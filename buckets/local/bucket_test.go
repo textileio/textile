@@ -2,7 +2,6 @@ package local
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	ipld "github.com/ipfs/go-ipld-format"
@@ -55,10 +54,7 @@ func TestBucket_ArchiveFile(t *testing.T) {
 	t.Parallel()
 	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
 
-	file, err := os.Open("testdata/c/one.jpg")
-	require.Nil(t, err)
-	defer file.Close()
-	err = buck.ArchiveFile(context.Background(), file, "one.jpg")
+	err := buck.ArchiveFile(context.Background(), "testdata/c/one.jpg", "one.jpg")
 	require.Nil(t, err)
 	assert.NotEmpty(t, buck.Path())
 
@@ -78,6 +74,15 @@ func checkLinks(t *testing.T, buck *Bucket, n ipld.Node) {
 			checkLinks(t, buck, ln)
 		}
 	}
+}
+
+func TestBucket_HashFile(t *testing.T) {
+	t.Parallel()
+	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
+
+	c, err := buck.HashFile("testdata/c/one.jpg")
+	require.Nil(t, err)
+	assert.NotEmpty(t, c)
 }
 
 func TestBucket_Diff(t *testing.T) {

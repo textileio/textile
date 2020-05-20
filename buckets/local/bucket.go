@@ -180,7 +180,12 @@ func (b *Bucket) createArchive() (*os.File, error) {
 }
 
 // ArchiveFile creates an archive describing a directory containing reader.
-func (b *Bucket) ArchiveFile(ctx context.Context, r io.Reader, name string) error {
+func (b *Bucket) ArchiveFile(ctx context.Context, pth string, name string) error {
+	r, err := os.Open(pth)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
 	root := unixfs.EmptyDirNode()
 	prefix, err := md.PrefixForCidVersion(1)
 	if err != nil {
@@ -213,12 +218,12 @@ func (b *Bucket) ArchiveFile(ctx context.Context, r io.Reader, name string) erro
 
 // HashFile returns the cid of the file at path.
 func (b *Bucket) HashFile(pth string) (cid.Cid, error) {
-	f, err := os.Open(pth)
+	r, err := os.Open(pth)
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer f.Close()
-	n, err := addFile(b.tmp, b.layout, f)
+	defer r.Close()
+	n, err := addFile(b.tmp, b.layout, r)
 	if err != nil {
 		return cid.Undef, err
 	}
