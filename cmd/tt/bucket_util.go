@@ -94,7 +94,7 @@ func walkPath(pth string) (names []string) {
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, pth+"/")
-			if local.Ignore(n) || strings.HasPrefix(f, configDir) {
+			if local.Ignore(n) || strings.HasPrefix(f, configDir) || strings.HasSuffix(f, local.PatchExt) {
 				return nil
 			}
 			names = append(names, n)

@@ -44,6 +44,9 @@ var (
 const (
 	// archiveName is the name used for the car archive.
 	archiveName = ".textile/buck.car"
+
+	// PatchExt is used to ignore tmp files during a pull.
+	PatchExt = ".buckpatch"
 )
 
 // Bucket tracks a local bucket tree structure.
@@ -147,7 +150,7 @@ func (b *Bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
 			}
 			p := n
 			n = strings.TrimPrefix(n, abs+"/")
-			if strings.HasPrefix(n, filepath.Dir(archiveName)+"/") {
+			if strings.HasPrefix(n, filepath.Dir(archiveName)+"/") || strings.HasSuffix(n, PatchExt) {
 				return nil
 			}
 			file, err := os.Open(p)

@@ -47,7 +47,8 @@ func init() {
 	bucketPushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
-	bucketPullCmd.Flags().BoolP("force", "f", false, "Includes existing files if true")
+	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
+	bucketPullCmd.Flags().Bool("sync", false, "Pulls and prunes local changes if true")
 	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	uiprogress.Empty = ' '
@@ -602,11 +603,15 @@ var bucketPullCmd = &cobra.Command{
 		}
 		diff := getDiff(buck, root)
 
+		sync, err := c.Flags().GetBool("sync")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		yes, err := c.Flags().GetBool("yes")
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		if !yes && len(diff) > 0 {
+		if !yes && sync && len(diff) > 0 {
 			for _, c := range diff {
 				cf := changeColor(c.Type)
 				cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Rel))
@@ -617,6 +622,18 @@ var bucketPullCmd = &cobra.Command{
 			}
 			if _, err := prompt.Run(); err != nil {
 				cmd.End("")
+			}
+		}
+
+		// Tmp move local modifications and additions if not syncing
+		if !sync {
+			for _, c := range diff {
+				switch c.Type {
+				case dagutils.Mod, dagutils.Add:
+					if err := os.Rename(c.Rel, c.Rel+".buckpatch"); err != nil {
+						cmd.Fatal(err)
+					}
+				}
 			}
 		}
 
@@ -634,6 +651,22 @@ var bucketPullCmd = &cobra.Command{
 		defer cancel()
 		if err = buck.Archive(ctx); err != nil {
 			cmd.Fatal(err)
+		}
+
+		// Re-apply local changes if not syncing
+		if !sync {
+			for _, c := range diff {
+				switch c.Type {
+				case dagutils.Mod, dagutils.Add:
+					if err := os.Rename(c.Rel+".buckpatch", c.Rel); err != nil {
+						cmd.Fatal(err)
+					}
+				case dagutils.Remove:
+					if err := os.Remove(c.Rel); err != nil {
+						cmd.Fatal(err)
+					}
+				}
+			}
 		}
 		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
 	},
