@@ -4,6 +4,9 @@
   "description": "web-gRPC wrapper client for communicating with Textile Hub.",
   "main": "dist/index",
   "types": "dist/index",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "prepublishOnly": "npm run build",
     "prepare": "npm run build:node",
