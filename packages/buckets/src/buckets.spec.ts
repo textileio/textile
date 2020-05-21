@@ -10,7 +10,7 @@ import { Client } from '@textile/threads-client'
 import { InitReply } from '@textile/buckets-grpc/buckets_pb'
 import { Context } from '@textile/context'
 import { Buckets } from './buckets'
-import { signUp } from './utils'
+import { signUp } from './spec.util'
 
 // Settings for localhost development and testing
 const addrApiurl = 'http://127.0.0.1:3007'

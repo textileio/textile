@@ -4,10 +4,17 @@ import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
-import { Context } from '@textile/context'
+import { Context as Ctx } from '@textile/context'
 import { normaliseInput, File } from './normalize'
 
 const logger = log.getLogger('buckets')
+
+export interface Context {
+  host: string
+  transport: grpc.TransportFactory
+  debug: boolean
+  toJSON(): any
+}
 
 export interface PushPathResult {
   path: {
@@ -29,7 +36,7 @@ export class Buckets {
    * Creates a new gRPC client instance for accessing the Textile Buckets API.
    * @param context The context to use for interacting with the APIs. Can be modified later.
    */
-  constructor(public context: Context = new Context()) {
+  constructor(public context: Context = new Ctx()) {
     this.serviceHost = context.host
     this.rpcOptions = {
       transport: context.transport,
@@ -175,7 +182,8 @@ export class Buckets {
         head.setKey(key)
         const req = new pb.PushPathRequest()
         req.setHeader(head)
-        client.start(this.context.withContext(ctx).toJSON())
+        const metadata = { ...this.context.toJSON(), ...ctx?.toJSON() }
+        client.start(metadata)
         client.send(req)
 
         if (source.content) {
@@ -203,7 +211,7 @@ export class Buckets {
     ctx?: Context,
     opts?: { progress?: (num?: number) => void },
   ): AsyncIterableIterator<Uint8Array> {
-    const metadata = this.context.withContext(ctx).toJSON()
+    const metadata = { ...this.context.toJSON(), ...ctx?.toJSON() }
     const chan = new Channel<Uint8Array>()
     const request = new pb.PullPathRequest()
     request.setKey(key)
@@ -237,15 +245,15 @@ export class Buckets {
     R extends grpc.ProtobufMessage,
     T extends grpc.ProtobufMessage,
     M extends grpc.UnaryMethodDefinition<R, T>
-  >(methodDescriptor: M, req: R, context?: Context): Promise<T> {
+  >(methodDescriptor: M, req: R, ctx?: Context): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const creds = this.context.withContext(context)
+      const metadata = { ...this.context.toJSON(), ...ctx?.toJSON() }
       grpc.unary(methodDescriptor, {
         request: req,
         host: this.serviceHost,
         transport: this.rpcOptions.transport,
         debug: this.rpcOptions.debug,
-        metadata: creds.toJSON(),
+        metadata,
         onEnd: (res: grpc.UnaryOutput<T>) => {
           const { status, statusMessage, message } = res
           if (status === grpc.Code.OK) {

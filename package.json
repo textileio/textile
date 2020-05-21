@@ -48,7 +48,6 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "@textile/threads-core": "^0.1.9",
     "@types/browser-or-node": "^1.2.0",
     "@types/chai": "^4.2.5",
     "@types/mocha": "^7.0.1",

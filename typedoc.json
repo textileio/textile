@@ -8,7 +8,7 @@
     "dom",
     "esnext"
   ],
-  "exclude": ["**/*.spec.ts", "examples/**", "**/node_modules/**"],
+  "exclude": ["**/*.spec.ts", "**/spec.util.ts", "examples/**", "**/node_modules/**"],
   "gitRevision": "master",
   "excludePrivate": true,
   "excludeNotExported": true,

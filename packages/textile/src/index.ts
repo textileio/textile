@@ -1,3 +1,2 @@
-export { Context } from '@textile/context'
-export * from './buckets'
+export * from '@textile/buckets'
 export * from './users'

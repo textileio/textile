@@ -8,10 +8,10 @@ import { grpc } from '@improbable-eng/grpc-web'
 import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { expect } from 'chai'
 import { Libp2pCryptoIdentity } from '@textile/threads-core'
+import { Buckets } from '@textile/buckets'
 import { Context } from '@textile/context'
 import { isBrowser } from 'browser-or-node'
-import { signUp, createKey, createAPISig } from './utils'
-import { Buckets } from './buckets'
+import { signUp, createKey, createAPISig } from './spec.util'
 import { Client } from './users'
 
 // Settings for localhost development and testing
