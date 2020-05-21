@@ -224,9 +224,6 @@ func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ip
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			if entries.Name() == bucks.SeedName {
-				continue
-			}
 			i := &pb.ListPathReply_Item{}
 			if followLinks {
 				n := entries.Node()
@@ -261,10 +258,7 @@ func parsePath(pth string) (fpth string, err error) {
 }
 
 func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, key, pth string, token thread.Token) (*bucks.Bucket, path.Path, error) {
-	filePath, err := parsePath(pth)
-	if err != nil {
-		return nil, nil, err
-	}
+	filePath := strings.TrimPrefix(pth, "/")
 	buck, err := s.Buckets.Get(ctx, dbID, key, bucks.WithToken(token))
 	if err != nil {
 		return nil, nil, err

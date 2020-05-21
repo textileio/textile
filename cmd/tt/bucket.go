@@ -248,12 +248,22 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-		if existing {
-			key := configViper.GetString("key")
-			count := getPath(key, "", root, nil, true)
-			cmd.Success("Initialized from remote and pulled %d objects to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
-		} else {
+		if initRemote {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		} else {
+			key := configViper.GetString("key")
+			count := getPath(key, "", root, nil, false)
+
+			buck, err := local.NewBucket(root, options.BalancedLayout)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+			defer cancel()
+			if err = buck.Archive(ctx); err != nil {
+				cmd.Fatal(err)
+			}
+			cmd.Success("Initialized from remote and pulled %d objects to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
 		}
 	},
 }
@@ -295,8 +305,8 @@ var bucketLinksCmd = &cobra.Command{
 
 var bucketRootCmd = &cobra.Command{
 	Use:   "root",
-	Short: "Show current bucket root CID",
-	Long:  `Shows the current bucket root CID`,
+	Short: "Show local bucket root CID",
+	Long:  `Shows the local bucket root CID`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -321,7 +331,7 @@ var bucketStatusCmd = &cobra.Command{
 		"st",
 	},
 	Short: "Show bucket object changes",
-	Long:  `Displays paths that have been added to and paths that have been removed or differ from the current bucket root.`,
+	Long:  `Displays paths that have been added to and paths that have been removed or differ from the local bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -362,9 +372,6 @@ var bucketLsCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-
 		var pth string
 		if len(args) > 0 {
 			pth = args[0]
@@ -372,6 +379,9 @@ var bucketLsCmd = &cobra.Command{
 		if pth == "." || pth == "/" || pth == "./" {
 			pth = ""
 		}
+
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
 		key := configViper.GetString("key")
 		rep, err := buckets.ListPath(ctx, key, pth)
 		if err != nil {
@@ -416,7 +426,7 @@ var bucketLsCmd = &cobra.Command{
 var bucketPushCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push bucket object changes",
-	Long:  `Pushes paths that have been added to and paths that have been removed or differ from the current bucket root.`,
+	Long:  `Pushes paths that have been added to and paths that have been removed or differ from the local bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -485,16 +495,27 @@ var bucketPushCmd = &cobra.Command{
 
 		key := configViper.GetString("key")
 		xr := buck.Path()
-		startProgress()
-		for _, c := range diff {
-			switch c.Type {
-			case dagutils.Mod, dagutils.Add:
-				xr = addFile(key, xr, c.Rel, c.Path, force)
-			case dagutils.Remove:
+		var rm []change
+		if len(diff) > 0 {
+			startProgress()
+			for _, c := range diff {
+				switch c.Type {
+				case dagutils.Mod, dagutils.Add:
+					xr = addFile(key, xr, c.Rel, c.Path, force)
+				case dagutils.Remove:
+					rm = append(rm, c)
+				}
+			}
+			stopProgress()
+		}
+		if len(rm) > 0 {
+			for _, c := range rm {
 				xr = rmFile(key, xr, c.Path, force)
 			}
+			fmt.Println()
+		} else if len(diff) > 0 {
+			fmt.Println()
 		}
-		stopProgress()
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -558,20 +579,6 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 }
 
 func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
-	bar := uiprogress.AddBar(1)
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
-	})
-	pre := "- " + filePath
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return pre
-	})
-	setBarWidth(bar, pre, "0", 8)
-	bar.AppendFunc(func(b *uiprogress.Bar) string {
-		c := formatBytes(0, true)
-		return c + " / " + c
-	})
-
 	ctx, cancel := threadCtx(addFileTimeout)
 	defer cancel()
 	var opts []client.Option
@@ -586,14 +593,14 @@ func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.R
 			cmd.Fatal(err)
 		}
 	}
-	bar.Incr()
+	fmt.Println("- " + filePath)
 	return root
 }
 
 var bucketPullCmd = &cobra.Command{
 	Use:   "pull",
 	Short: "Pull bucket object changes",
-	Long:  `Pulls paths that are missing from the current bucket root. Paths that only exist locally are not removed.`,
+	Long:  `Pulls paths that have been added to and paths that have been removed or differ from the remote bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -649,22 +656,52 @@ var bucketPullCmd = &cobra.Command{
 }
 
 func getPath(key, pth, root string, buck *local.Bucket, force bool) (count int) {
-	list := listPath(key, pth, root, buck, force)
-	if len(list) == 0 {
-		return count
+	all, missing := listPath(key, pth, root, buck, force)
+	count = len(missing)
+	var rm []string
+	list := walkPath(root)
+loop:
+	for _, n := range list {
+		for _, r := range all {
+			if n == r.name {
+				continue loop
+			}
+		}
+		rm = append(rm, n)
 	}
-	var wg sync.WaitGroup
-	startProgress()
-	for _, o := range list {
-		wg.Add(1)
-		go func(o object) {
-			defer wg.Done()
-			getFile(key, o.path, o.name, o.size)
-		}(o)
+	count += len(rm)
+	if count == 0 {
+		return
 	}
-	wg.Wait()
-	stopProgress()
-	return len(list)
+
+	if len(missing) > 0 {
+		var wg sync.WaitGroup
+		startProgress()
+		for _, o := range missing {
+			wg.Add(1)
+			go func(o object) {
+				defer wg.Done()
+				getFile(key, o.path, o.name, o.size)
+			}(o)
+		}
+		wg.Wait()
+		stopProgress()
+	}
+	if len(rm) > 0 {
+		if len(missing) == 0 {
+			fmt.Println()
+		}
+		for _, r := range rm {
+			if err := os.Remove(r); err != nil {
+				cmd.Fatal(err)
+			}
+			fmt.Println("- " + strings.TrimPrefix(r, root+"/"))
+		}
+		fmt.Println()
+	} else if len(missing) > 0 {
+		fmt.Println()
+	}
+	return count
 }
 
 type object struct {
@@ -673,7 +710,7 @@ type object struct {
 	size int64
 }
 
-func listPath(key, pth, dest string, buck *local.Bucket, force bool) (list []object) {
+func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missing []object) {
 	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 	rep, err := buckets.ListPath(ctx, key, pth)
@@ -682,10 +719,14 @@ func listPath(key, pth, dest string, buck *local.Bucket, force bool) (list []obj
 	}
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			list = append(list, listPath(key, filepath.Join(pth, filepath.Base(i.Path)), dest, buck, force)...)
+			a, m := listPath(key, filepath.Join(pth, filepath.Base(i.Path)), dest, buck, force)
+			all = append(all, a...)
+			missing = append(missing, m...)
 		}
 	} else {
 		name := filepath.Join(dest, pth)
+		o := object{path: pth, name: name, size: rep.Item.Size}
+		all = append(all, o)
 		if !force && buck != nil {
 			c, err := cid.Decode(rep.Item.Cid)
 			if err != nil {
@@ -696,9 +737,9 @@ func listPath(key, pth, dest string, buck *local.Bucket, force bool) (list []obj
 				return
 			}
 		}
-		list = append(list, object{path: pth, name: name, size: rep.Item.Size})
+		missing = append(missing, o)
 	}
-	return list
+	return all, missing
 }
 
 func getFile(key, filePath, name string, size int64) {

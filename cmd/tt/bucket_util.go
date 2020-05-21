@@ -92,7 +92,8 @@ func walkPath(pth string) (names []string) {
 			cmd.Fatal(err)
 		}
 		if !info.IsDir() {
-			if local.Ignore(n) || strings.HasPrefix(n, configDir) {
+			f := strings.TrimPrefix(n, pth+"/")
+			if local.Ignore(n) || strings.HasPrefix(f, configDir) {
 				return nil
 			}
 			names = append(names, n)
@@ -111,7 +112,6 @@ func startProgress() {
 
 func stopProgress() {
 	uiprogress.Stop()
-	fmt.Println()
 }
 
 func getTermDim() (w, h int) {
