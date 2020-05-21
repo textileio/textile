@@ -106,7 +106,6 @@ func walkPath(pth string) (names []string) {
 }
 
 func startProgress() {
-	fmt.Println()
 	uiprogress.Start()
 }
 

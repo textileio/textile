@@ -512,9 +512,6 @@ var bucketPushCmd = &cobra.Command{
 			for _, c := range rm {
 				xr = rmFile(key, xr, c.Path, force)
 			}
-			fmt.Println()
-		} else if len(diff) > 0 {
-			fmt.Println()
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
@@ -522,7 +519,7 @@ var bucketPushCmd = &cobra.Command{
 		if err = buck.Archive(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("New root: %s", aurora.White(buck.Path().Cid()).Bold())
+		cmd.Message("Root: %s", buck.Path().Cid())
 	},
 }
 
@@ -651,7 +648,7 @@ var bucketPullCmd = &cobra.Command{
 		if err = buck.Archive(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Success("New root: %s", aurora.White(buck.Path().Cid()).Bold())
+		cmd.Message("Root: %s", buck.Path().Cid())
 	},
 }
 
@@ -688,18 +685,12 @@ loop:
 		stopProgress()
 	}
 	if len(rm) > 0 {
-		if len(missing) == 0 {
-			fmt.Println()
-		}
 		for _, r := range rm {
 			if err := os.Remove(r); err != nil {
 				cmd.Fatal(err)
 			}
 			fmt.Println("- " + strings.TrimPrefix(r, root+"/"))
 		}
-		fmt.Println()
-	} else if len(missing) > 0 {
-		fmt.Println()
 	}
 	return count
 }
