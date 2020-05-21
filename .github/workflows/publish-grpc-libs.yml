@@ -35,7 +35,7 @@ jobs:
       - name: Install protoc
         uses: arduino/setup-protoc@master
         with:
-          version: '3.11.2'
+          version: '3.12.1'
       - name: Install Go protoc plugins
         run: |
           export GO111MODULE=off

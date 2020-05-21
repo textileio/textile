@@ -73,7 +73,7 @@ func TestClient_ListPath(t *testing.T) {
 		require.Nil(t, err)
 		assert.NotEmpty(t, rep.Root)
 		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 0, len(rep.Item.Items))
+		assert.Equal(t, 1, len(rep.Item.Items))
 	})
 
 	file, err := os.Open("testdata/file1.jpg")
@@ -88,7 +88,7 @@ func TestClient_ListPath(t *testing.T) {
 		rep, err := client.ListPath(ctx, buck.Root.Key, "")
 		require.Nil(t, err)
 		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 2, len(rep.Item.Items))
+		assert.Equal(t, 3, len(rep.Item.Items))
 	})
 
 	t.Run("nested dir", func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestClient_PushPath(t *testing.T) {
 
 		rep, err := client.ListPath(ctx, buck.Root.Key, "")
 		require.Nil(t, err)
-		assert.Equal(t, 2, len(rep.Item.Items))
+		assert.Equal(t, 3, len(rep.Item.Items))
 	})
 }
 
@@ -236,7 +236,7 @@ func TestClient_RemovePath(t *testing.T) {
 	require.NotNil(t, err)
 	rep, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
-	assert.Equal(t, 2, len(rep.Item.Items))
+	assert.Equal(t, 3, len(rep.Item.Items))
 
 	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.Nil(t, err)
@@ -244,7 +244,7 @@ func TestClient_RemovePath(t *testing.T) {
 	require.NotNil(t, err)
 	rep, err = client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
-	assert.Equal(t, 1, len(rep.Item.Items))
+	assert.Equal(t, 2, len(rep.Item.Items))
 }
 
 func TestClose(t *testing.T) {

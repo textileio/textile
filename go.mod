@@ -2,6 +2,8 @@ module github.com/textileio/textile
 
 go 1.14
 
+replace github.com/textileio/go-threads => ../go-threads
+
 require (
 	cloud.google.com/go v0.37.0 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
@@ -63,7 +65,7 @@ require (
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.17
+	github.com/textileio/go-threads v0.1.18-0.20200521223450-64e8e327b719
 	github.com/textileio/powergate v0.0.0-20200514225351-a5277093ec3e
 	github.com/textileio/uiprogress v0.0.3
 	go.mongodb.org/mongo-driver v1.3.2
@@ -71,7 +73,6 @@ require (
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	google.golang.org/genproto v0.0.0-20200428115010-c45acf45369a // indirect
 	google.golang.org/grpc v1.29.1
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
