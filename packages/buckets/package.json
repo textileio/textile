@@ -30,7 +30,8 @@
     "@textile/context": "^0.2.2",
     "cids": "^0.8.0",
     "loglevel": "^1.6.8",
-    "queueable": "^4.1.4"
+    "queueable": "^4.1.4",
+    "rimraf": "^3.0.2"
   },
   "devDependencies": {
     "@textile/hub-grpc": "^1.0.3",
