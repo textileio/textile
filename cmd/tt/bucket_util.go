@@ -104,6 +104,16 @@ func walkPath(pth string) (names []string) {
 	return names
 }
 
+func startProgress() {
+	fmt.Println()
+	uiprogress.Start()
+}
+
+func stopProgress() {
+	uiprogress.Stop()
+	fmt.Println()
+}
+
 func getTermDim() (w, h int) {
 	c := exec.Command("stty", "size")
 	c.Stdin = os.Stdin

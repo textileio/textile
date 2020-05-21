@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag/dagutils"
@@ -24,6 +25,7 @@ import (
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/uiprogress"
+	"github.com/textileio/uiprogress/util/strutil"
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
@@ -249,7 +251,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		if existing {
 			key := configViper.GetString("key")
 			count := getPath(key, "", root, nil, true)
-			cmd.Success("Initialized from remote and pulled %d files to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
+			cmd.Success("Initialized from remote and pulled %d objects to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
 		} else {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 		}
@@ -481,23 +483,18 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		bars := make([]*uiprogress.Bar, len(diff))
-		for i := range diff {
-			bars[i] = uiprogress.AddBar(1).PrependElapsed()
-		}
-
 		key := configViper.GetString("key")
 		xr := buck.Path()
-		uiprogress.Start()
-		for i, c := range diff {
+		startProgress()
+		for _, c := range diff {
 			switch c.Type {
 			case dagutils.Mod, dagutils.Add:
-				xr = addFile(key, xr, c.Rel, c.Path, bars[i], force)
+				xr = addFile(key, xr, c.Rel, c.Path, force)
 			case dagutils.Remove:
-				xr = rmFile(key, xr, c.Path, bars[i], force)
+				xr = rmFile(key, xr, c.Path, force)
 			}
 		}
-		uiprogress.Stop()
+		stopProgress()
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -508,7 +505,7 @@ var bucketPushCmd = &cobra.Command{
 	},
 }
 
-func addFile(key string, xroot path.Resolved, name, filePath string, bar *uiprogress.Bar, force bool) path.Resolved {
+func addFile(key string, xroot path.Resolved, name, filePath string, force bool) path.Resolved {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -519,13 +516,16 @@ func addFile(key string, xroot path.Resolved, name, filePath string, bar *uiprog
 		cmd.Fatal(err)
 	}
 
-	bar.Total = int(info.Size())
+	bar := uiprogress.AddBar(int(info.Size()))
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
+	})
 	pre := "+ " + filePath
-	total := formatBytes(info.Size(), true)
-	setBarWidth(bar, pre, total, 8)
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
 		return pre
 	})
+	total := formatBytes(info.Size(), true)
+	setBarWidth(bar, pre, total, 8)
 	bar.AppendFunc(func(b *uiprogress.Bar) string {
 		c := formatBytes(int64(b.Current()), true)
 		return c + " / " + total
@@ -557,12 +557,16 @@ func addFile(key string, xroot path.Resolved, name, filePath string, bar *uiprog
 	return root
 }
 
-func rmFile(key string, xroot path.Resolved, filePath string, bar *uiprogress.Bar, force bool) path.Resolved {
+func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
+	bar := uiprogress.AddBar(1)
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
+	})
 	pre := "- " + filePath
-	setBarWidth(bar, pre, "0", 8)
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
 		return pre
 	})
+	setBarWidth(bar, pre, "0", 8)
 	bar.AppendFunc(func(b *uiprogress.Bar) string {
 		c := formatBytes(0, true)
 		return c + " / " + c
@@ -630,12 +634,10 @@ var bucketPullCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		key := configViper.GetString("key")
-		uiprogress.Start()
 		count := getPath(key, "", root, buck, force)
 		if count == 0 {
 			cmd.End("Everything up-to-date")
 		}
-		uiprogress.Stop()
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 		defer cancel()
@@ -646,17 +648,41 @@ var bucketPullCmd = &cobra.Command{
 	},
 }
 
-func getPath(key, pth, dest string, buck *local.Bucket, force bool) (count int) {
+func getPath(key, pth, root string, buck *local.Bucket, force bool) (count int) {
+	list := listPath(key, pth, root, buck, force)
+	if len(list) == 0 {
+		return count
+	}
+	var wg sync.WaitGroup
+	startProgress()
+	for _, o := range list {
+		wg.Add(1)
+		go func(o object) {
+			defer wg.Done()
+			getFile(key, o.path, o.name, o.size)
+		}(o)
+	}
+	wg.Wait()
+	stopProgress()
+	return len(list)
+}
+
+type object struct {
+	path string
+	name string
+	size int64
+}
+
+func listPath(key, pth, dest string, buck *local.Bucket, force bool) (list []object) {
 	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 	rep, err := buckets.ListPath(ctx, key, pth)
 	if err != nil {
 		cmd.Fatal(err)
 	}
-
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(key, filepath.Join(pth, filepath.Base(i.Path)), dest, buck, force)
+			list = append(list, listPath(key, filepath.Join(pth, filepath.Base(i.Path)), dest, buck, force)...)
 		}
 	} else {
 		name := filepath.Join(dest, pth)
@@ -670,10 +696,9 @@ func getPath(key, pth, dest string, buck *local.Bucket, force bool) (count int) 
 				return
 			}
 		}
-		getFile(key, pth, name, rep.Item.Size)
-		count++
+		list = append(list, object{path: pth, name: name, size: rep.Item.Size})
 	}
-	return count
+	return list
 }
 
 func getFile(key, filePath, name string, size int64) {
@@ -686,13 +711,16 @@ func getFile(key, filePath, name string, size int64) {
 	}
 	defer file.Close()
 
-	bar := uiprogress.AddBar(int(size)).PrependElapsed()
+	bar := uiprogress.AddBar(int(size))
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
+	})
 	pre := "+ " + filePath
-	total := formatBytes(size, true)
-	setBarWidth(bar, pre, total, 8)
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
 		return pre
 	})
+	total := formatBytes(size, true)
+	setBarWidth(bar, pre, total, 8)
 	bar.AppendFunc(func(b *uiprogress.Bar) string {
 		c := formatBytes(int64(b.Current()), true)
 		return c + " / " + total
