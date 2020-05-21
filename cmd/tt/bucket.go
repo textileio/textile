@@ -812,8 +812,8 @@ var bucketCatCmd = &cobra.Command{
 
 var bucketDestroyCmd = &cobra.Command{
 	Use:   "destroy",
-	Short: "Destroy bucket and all associated data",
-	Long:  `Destroys the bucket and all associated data.`,
+	Short: "Destroy bucket and all objects",
+	Long:  `Destroys the bucket and all objects.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -844,127 +844,5 @@ var bucketDestroyCmd = &cobra.Command{
 		_ = os.RemoveAll(filepath.Join(root, bucks.SeedName))
 		_ = os.RemoveAll(filepath.Join(root, configDir))
 		cmd.Success("Your bucket has been deleted")
-	},
-}
-
-var bucketArchiveCmd = &cobra.Command{
-	Use:   "archive",
-	Short: "Create a Filecoin bucket archive",
-	Long:  `Creates a Filecoin bucket archive from the remote root.`,
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		if _, err := buckets.Archive(ctx, key); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Archive queued successfully")
-	},
-}
-
-var bucketArchiveStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show the status of the last archive",
-	Long:  `Shows the status of the most recent bucket archive.`,
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		r, err := buckets.ArchiveStatus(ctx, key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		switch r.GetStatus() {
-		case pb.ArchiveStatusReply_Failed:
-			cmd.Warn("Archive failed with message: %s", r.GetFailedMsg())
-		case pb.ArchiveStatusReply_Canceled:
-			cmd.Warn("Archive was superseded by a new executing archive")
-		case pb.ArchiveStatusReply_Executing:
-			cmd.Message("Archive is currently executing, grab a coffee and be patient...")
-		case pb.ArchiveStatusReply_Done:
-			cmd.Success("Archive executed successfully!")
-		default:
-			cmd.Warn("Archive status unknown")
-		}
-		watch, err := c.Flags().GetBool("watch")
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if watch {
-			fmt.Printf("\n")
-			cmd.Message("Cid logs:")
-			ch := make(chan string)
-			wCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			go func() {
-				err = buckets.ArchiveWatch(wCtx, key, ch)
-				close(ch)
-			}()
-			for msg := range ch {
-				cmd.Message("\t %s", msg)
-				r, err := buckets.ArchiveStatus(ctx, key)
-				if err != nil {
-					cmd.Fatal(err)
-				}
-				if isJobStatusFinal(r.GetStatus()) {
-					cancel()
-				}
-			}
-			if err != nil {
-				cmd.Fatal(err)
-			}
-		}
-	},
-}
-
-func isJobStatusFinal(status pb.ArchiveStatusReply_Status) bool {
-	switch status {
-	case pb.ArchiveStatusReply_Failed, pb.ArchiveStatusReply_Canceled, pb.ArchiveStatusReply_Done:
-		return true
-	case pb.ArchiveStatusReply_Executing:
-		return false
-	}
-	cmd.Fatal(fmt.Errorf("unknown job status"))
-	return true
-
-}
-
-var bucketArchiveInfoCmd = &cobra.Command{
-	Use:   "info",
-	Short: "Show info about the current archive",
-	Long:  `Shows information about the current archive.`,
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		r, err := buckets.ArchiveInfo(ctx, key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Message("Archive of Cid %s has %d deals:\n", r.Archive.Cid, len(r.Archive.Deals))
-		var data [][]string
-		for _, d := range r.Archive.GetDeals() {
-			data = append(data, []string{d.ProposalCid, d.Miner})
-		}
-		cmd.RenderTable([]string{"ProposalCid", "Miner"}, data)
-
 	},
 }
