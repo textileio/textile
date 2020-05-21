@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/logrusorgru/aurora"
 	"github.com/textileio/textile/buckets/local"
@@ -113,6 +114,28 @@ func stopProgress() {
 	uiprogress.Stop()
 }
 
+func addBar(pth string, size int64) *uiprogress.Bar {
+	bar := uiprogress.AddBar(int(size)).AppendCompleted()
+	pre := "+ " + pth + ":"
+	total := formatBytes(size, true)
+	setBarWidth(bar, pre, total, 9)
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		c := formatBytes(int64(b.Current()), true)
+		return pre + "  " + c + " / " + total
+	})
+	return bar
+}
+
+func setBarWidth(bar *uiprogress.Bar, pre, size string, of int) {
+	tw, _ := getTermDim()
+	w := tw - len(pre) - (2*len(size) + 3) - of // Make space for overflow chars
+	if w > 0 {
+		bar.Width = w
+	} else {
+		bar.Width = 10
+	}
+}
+
 func getTermDim() (w, h int) {
 	c := exec.Command("stty", "size")
 	c.Stdin = os.Stdin
@@ -126,14 +149,8 @@ func getTermDim() (w, h int) {
 	return w, h
 }
 
-func setBarWidth(bar *uiprogress.Bar, pre, size string, of int) {
-	tw, _ := getTermDim()
-	w := tw - len(pre) - (2*len(size) + 3) - of // Make space for overflow chars
-	if w > 0 {
-		bar.Width = w
-	} else {
-		bar.Width = 10
-	}
+func finishBar(bar *uiprogress.Bar, pth string, c cid.Cid) {
+	bar.Final = "+ " + pth + ": " + c.String()
 }
 
 // Copied from https://github.com/cheggaaa/pb/blob/master/v3/util.go

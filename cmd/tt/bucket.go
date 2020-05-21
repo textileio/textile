@@ -25,7 +25,6 @@ import (
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/uiprogress"
-	"github.com/textileio/uiprogress/util/strutil"
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
@@ -519,7 +518,7 @@ var bucketPushCmd = &cobra.Command{
 		if err = buck.Archive(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("Root: %s", buck.Path().Cid())
+		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
 	},
 }
 
@@ -534,21 +533,7 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 		cmd.Fatal(err)
 	}
 
-	bar := uiprogress.AddBar(int(info.Size()))
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
-	})
-	pre := "+ " + filePath
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return pre
-	})
-	total := formatBytes(info.Size(), true)
-	setBarWidth(bar, pre, total, 8)
-	bar.AppendFunc(func(b *uiprogress.Bar) string {
-		c := formatBytes(int64(b.Current()), true)
-		return c + " / " + total
-	})
-
+	bar := addBar(filePath, info.Size())
 	progress := make(chan int64)
 	go func() {
 		for up := range progress {
@@ -564,13 +549,15 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	_, root, err := buckets.PushPath(ctx, key, filePath, file, opts...)
+	added, root, err := buckets.PushPath(ctx, key, filePath, file, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
 		} else {
 			cmd.Fatal(err)
 		}
+	} else {
+		finishBar(bar, filePath, added.Cid())
 	}
 	return root
 }
@@ -648,7 +635,7 @@ var bucketPullCmd = &cobra.Command{
 		if err = buck.Archive(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("Root: %s", buck.Path().Cid())
+		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
 	},
 }
 
@@ -678,7 +665,7 @@ loop:
 			wg.Add(1)
 			go func(o object) {
 				defer wg.Done()
-				getFile(key, o.path, o.name, o.size)
+				getFile(key, o.path, o.name, o.size, o.cid)
 			}(o)
 		}
 		wg.Wait()
@@ -698,6 +685,7 @@ loop:
 type object struct {
 	path string
 	name string
+	cid  cid.Cid
 	size int64
 }
 
@@ -716,7 +704,11 @@ func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missi
 		}
 	} else {
 		name := filepath.Join(dest, pth)
-		o := object{path: pth, name: name, size: rep.Item.Size}
+		c, err := cid.Decode(rep.Item.Cid)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		o := object{path: pth, name: name, size: rep.Item.Size, cid: c}
 		all = append(all, o)
 		if !force && buck != nil {
 			c, err := cid.Decode(rep.Item.Cid)
@@ -733,7 +725,7 @@ func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missi
 	return all, missing
 }
 
-func getFile(key, filePath, name string, size int64) {
+func getFile(key, filePath, name string, size int64, c cid.Cid) {
 	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
 		cmd.Fatal(err)
 	}
@@ -743,21 +735,7 @@ func getFile(key, filePath, name string, size int64) {
 	}
 	defer file.Close()
 
-	bar := uiprogress.AddBar(int(size))
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft(b.TimeElapsedString(), 5, ' ')
-	})
-	pre := "+ " + filePath
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return pre
-	})
-	total := formatBytes(size, true)
-	setBarWidth(bar, pre, total, 8)
-	bar.AppendFunc(func(b *uiprogress.Bar) string {
-		c := formatBytes(int64(b.Current()), true)
-		return c + " / " + total
-	})
-
+	bar := addBar(filePath, size)
 	progress := make(chan int64)
 	go func() {
 		for up := range progress {
@@ -772,6 +750,7 @@ func getFile(key, filePath, name string, size int64) {
 	if err := buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
 		cmd.Fatal(err)
 	}
+	finishBar(bar, filePath, c)
 }
 
 var bucketCatCmd = &cobra.Command{

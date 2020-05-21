@@ -231,14 +231,19 @@ func (b *Bucket) HashFile(pth string) (cid.Cid, error) {
 }
 
 // Diff returns a list of changes that are present in pth compared to the current archive.
-func (b *Bucket) Diff(ctx context.Context, pth string) ([]*dagutils.Change, error) {
-	an, err := b.tmp.Get(ctx, b.root)
-	if err != nil {
-		return nil, err
+func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change, err error) {
+	var an ipld.Node
+	if b.root.Defined() {
+		an, err = b.tmp.Get(ctx, b.root)
+		if err != nil {
+			return
+		}
+	} else {
+		an = unixfs.EmptyDirNode()
 	}
 	bn, err := b.walkPath(ctx, pth)
 	if err != nil {
-		return nil, err
+		return
 	}
 	return dagutils.Diff(ctx, b.tmp, an, bn)
 }

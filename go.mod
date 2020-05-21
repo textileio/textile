@@ -71,7 +71,7 @@ require (
 	github.com/textileio/filecoin v0.0.0-20200108152132-f1b938b219a6
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.17
-	github.com/textileio/uiprogress v0.0.2
+	github.com/textileio/uiprogress v0.0.3
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e // indirect
 	go.mongodb.org/mongo-driver v1.3.2
 	go.uber.org/zap v1.15.0 // indirect
@@ -79,7 +79,7 @@ require (
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421 // indirect
-	golang.org/x/sys v0.0.0-20200428200454-593003d681fa // indirect
+	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.0.0-20200318150045-ba25ddc85566 // indirect
 	google.golang.org/genproto v0.0.0-20200428115010-c45acf45369a // indirect
