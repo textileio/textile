@@ -499,18 +499,16 @@ var bucketPushCmd = &cobra.Command{
 		key := configViper.GetString("key")
 		xr := buck.Path()
 		var rm []change
-		if len(diff) > 0 {
-			startProgress()
-			for _, c := range diff {
-				switch c.Type {
-				case dagutils.Mod, dagutils.Add:
-					xr = addFile(key, xr, c.Rel, c.Path, force)
-				case dagutils.Remove:
-					rm = append(rm, c)
-				}
+		startProgress()
+		for _, c := range diff {
+			switch c.Type {
+			case dagutils.Mod, dagutils.Add:
+				xr = addFile(key, xr, c.Rel, c.Path, force)
+			case dagutils.Remove:
+				rm = append(rm, c)
 			}
-			stopProgress()
 		}
+		stopProgress()
 		if len(rm) > 0 {
 			for _, c := range rm {
 				xr = rmFile(key, xr, c.Path, force)

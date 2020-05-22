@@ -2,6 +2,8 @@ package local
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	ipld "github.com/ipfs/go-ipld-format"
@@ -17,7 +19,8 @@ func TestNewBucket(t *testing.T) {
 
 func TestBucket_Root(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done()
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
@@ -26,7 +29,8 @@ func TestBucket_Root(t *testing.T) {
 
 func TestBucket_Get(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done()
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
@@ -38,13 +42,15 @@ func TestBucket_Get(t *testing.T) {
 
 func TestBucket_Archive(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done()
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
 	assert.NotEmpty(t, buck.Path())
 
-	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
+	buck2, done2 := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done2()
 	n, err := buck2.Get(context.Background(), buck.Path().Cid())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
@@ -52,13 +58,15 @@ func TestBucket_Archive(t *testing.T) {
 
 func TestBucket_ArchiveFile(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/c", options.BalancedLayout)
+	defer done()
 
 	err := buck.ArchiveFile(context.Background(), "testdata/c/one.jpg", "one.jpg")
 	require.Nil(t, err)
 	assert.NotEmpty(t, buck.Path())
 
-	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
+	buck2, done2 := makeBucket(t, "testdata/c", options.BalancedLayout)
+	defer done2()
 	n, err := buck2.Get(context.Background(), buck.Path().Cid())
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
@@ -78,7 +86,8 @@ func checkLinks(t *testing.T, buck *Bucket, n ipld.Node) {
 
 func TestBucket_HashFile(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/c", options.BalancedLayout)
+	defer done()
 
 	c, err := buck.HashFile("testdata/c/one.jpg")
 	require.Nil(t, err)
@@ -87,7 +96,8 @@ func TestBucket_HashFile(t *testing.T) {
 
 func TestBucket_Diff(t *testing.T) {
 	t.Parallel()
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	buck, done := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done()
 
 	err := buck.Archive(context.Background())
 	require.Nil(t, err)
@@ -115,8 +125,11 @@ func TestBucket_Diff(t *testing.T) {
 	}
 }
 
-func makeBucket(t *testing.T, root string, layout options.Layout) *Bucket {
+func makeBucket(t *testing.T, root string, layout options.Layout) (*Bucket, func()) {
 	buck, err := NewBucket(root, layout)
 	require.Nil(t, err)
-	return buck
+	return buck, func() {
+		err := os.RemoveAll(filepath.Join(buck.path, archiveName))
+		require.Nil(t, err)
+	}
 }

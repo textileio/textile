@@ -68,7 +68,11 @@ func NewBucket(pth string, layout options.Layout) (*Bucket, error) {
 		store:  bs,
 		layout: layout,
 	}
-	_ = b.load()
+	if err := b.load(); err != nil {
+		if _, ok := err.(*os.PathError); !ok {
+			return nil, err
+		}
+	}
 	return b, nil
 }
 
@@ -101,7 +105,7 @@ func (b *Bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
 
 // Archive creates an archive describing the current path.
 func (b *Bucket) Archive(ctx context.Context) error {
-	n, err := b.walkPath(ctx, b.path)
+	n, err := b.recursiveAddPath(ctx, b.path)
 	if err != nil {
 		return err
 	}
@@ -127,8 +131,8 @@ func carWalker(n ipld.Node) ([]*ipld.Link, error) {
 	return links, nil
 }
 
-// walkPath walks path and adds files to the dag service.
-func (b *Bucket) walkPath(ctx context.Context, pth string) (ipld.Node, error) {
+// recursiveAddPath walks path and adds files to the dag service.
+func (b *Bucket) recursiveAddPath(ctx context.Context, pth string) (ipld.Node, error) {
 	root := unixfs.EmptyDirNode()
 	prefix, err := md.PrefixForCidVersion(1)
 	if err != nil {
@@ -244,7 +248,7 @@ func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change,
 	} else {
 		an = unixfs.EmptyDirNode()
 	}
-	bn, err := b.walkPath(ctx, pth)
+	bn, err := b.recursiveAddPath(ctx, pth)
 	if err != nil {
 		return
 	}
