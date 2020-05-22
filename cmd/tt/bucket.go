@@ -49,7 +49,7 @@ func init() {
 	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
-	bucketPullCmd.Flags().Bool("sync", false, "Pulls and prunes local changes if true")
+	bucketPullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")
 	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
@@ -255,7 +255,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 		} else {
 			key := configViper.GetString("key")
-			count := getPath(key, "", root, nil, false)
+			count := getPath(key, "", root, nil, nil, false)
 
 			buck, err := local.NewBucket(root, options.BalancedLayout)
 			if err != nil {
@@ -606,7 +606,7 @@ var bucketPullCmd = &cobra.Command{
 		}
 		diff := getDiff(buck, root)
 
-		sync, err := c.Flags().GetBool("sync")
+		hard, err := c.Flags().GetBool("hard")
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -614,7 +614,7 @@ var bucketPullCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		if !yes && sync && len(diff) > 0 {
+		if !yes && hard && len(diff) > 0 {
 			for _, c := range diff {
 				cf := changeColor(c.Type)
 				cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Rel))
@@ -628,8 +628,8 @@ var bucketPullCmd = &cobra.Command{
 			}
 		}
 
-		// Tmp move local modifications and additions if not syncing
-		if !sync {
+		// Tmp move local modifications and additions if not pulling hard
+		if !hard {
 			for _, c := range diff {
 				switch c.Type {
 				case dagutils.Mod, dagutils.Add:
@@ -645,7 +645,7 @@ var bucketPullCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		key := configViper.GetString("key")
-		count := getPath(key, "", root, buck, force)
+		count := getPath(key, "", root, buck, diff, force)
 		if count == 0 {
 			cmd.End("Everything up-to-date")
 		}
@@ -656,8 +656,8 @@ var bucketPullCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 
-		// Re-apply local changes if not syncing
-		if !sync {
+		// Re-apply local changes if not pulling hard
+		if !hard {
 			for _, c := range diff {
 				switch c.Type {
 				case dagutils.Mod, dagutils.Add:
@@ -665,9 +665,10 @@ var bucketPullCmd = &cobra.Command{
 						cmd.Fatal(err)
 					}
 				case dagutils.Remove:
-					if err := os.Remove(c.Rel); err != nil {
-						cmd.Fatal(err)
-					}
+					// If the file was also deleted on the remote,
+					// the local deletion will already have been handled by getPath.
+					// So, we just ignore the error here.
+					_ = os.Remove(c.Rel)
 				}
 			}
 		}
@@ -675,7 +676,7 @@ var bucketPullCmd = &cobra.Command{
 	},
 }
 
-func getPath(key, pth, root string, buck *local.Bucket, force bool) (count int) {
+func getPath(key, pth, root string, buck *local.Bucket, localdiff []change, force bool) (count int) {
 	all, missing := listPath(key, pth, root, buck, force)
 	count = len(missing)
 	var rm []string
@@ -683,11 +684,20 @@ func getPath(key, pth, root string, buck *local.Bucket, force bool) (count int) 
 loop:
 	for _, n := range list {
 		for _, r := range all {
-			if n == r.name {
+			if r.name == n {
 				continue loop
 			}
 		}
 		rm = append(rm, n)
+	}
+looop:
+	for _, l := range localdiff {
+		for _, r := range all {
+			if r.path == l.Path {
+				continue looop
+			}
+		}
+		rm = append(rm, l.Rel)
 	}
 	count += len(rm)
 	if count == 0 {
@@ -709,9 +719,9 @@ loop:
 	}
 	if len(rm) > 0 {
 		for _, r := range rm {
-			if err := os.Remove(r); err != nil {
-				cmd.Fatal(err)
-			}
+			// The file may have been modified locally, in which case it will have been moved to a patch.
+			// So, we just ignore the error here.
+			_ = os.Remove(r)
 			fmt.Println("- " + strings.TrimPrefix(r, root+"/"))
 		}
 	}
