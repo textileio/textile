@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
-	pbar "github.com/cheggaaa/pb/v3"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-merkledag/dagutils"
+	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -16,54 +21,64 @@ import (
 	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
+	bucks "github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/uiprogress"
 )
 
-var (
-	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
-)
+const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
+
+var errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	bucketCmd.AddCommand(initBucketCmd, bucketPathLinksCmd, lsBucketPathCmd, pushBucketPathCmd, pullBucketPathCmd, catBucketPathCmd, rmBucketPathCmd, destroyBucketCmd, archiveBucketCmd)
-	archiveBucketCmd.AddCommand(archiveBucketStatusCmd, archiveBucketInfoCmd)
+	bucketCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd)
+	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
 
-	archiveBucketStatusCmd.Flags().BoolP("watch", "w", false, "Watched executiong log of the archive")
-
-	initBucketCmd.PersistentFlags().String("key", "", "Bucket key")
-	initBucketCmd.PersistentFlags().String("org", "", "Org username")
-	initBucketCmd.PersistentFlags().Bool("public", false, "Allow public access")
-	initBucketCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initBucketCmd.Flags().Bool("existing", false, "If set, initializes from an existing remote bucket")
-
-	if err := cmd.BindFlags(configViper, initBucketCmd, flags); err != nil {
+	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
+	bucketInitCmd.PersistentFlags().String("org", "", "Org username")
+	bucketInitCmd.PersistentFlags().Bool("public", false, "Allow public access")
+	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
+	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
+	if err := cmd.BindFlags(configViper, bucketInitCmd, flags); err != nil {
 		cmd.Fatal(err)
 	}
+
+	bucketPushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
+	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+
+	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
+	bucketPullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")
+	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+
+	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
+
+	uiprogress.Empty = ' '
+	uiprogress.Fill = '-'
 }
 
 var bucketCmd = &cobra.Command{
-	Use:   "bucket",
-	Short: "Manage a bucket",
-	Long:  `Init a bucket and push and pull files and folders.`,
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
+	Use: "bucket",
+	Aliases: []string{
+		"buck",
 	},
-	Run: func(c *cobra.Command, args []string) {
-		lsBucketPath(args)
-	},
+	Short: "Manage an object storage bucket",
+	Long:  `Manages files and folders in an object storage bucket.`,
+	Args:  cobra.ExactArgs(0),
 }
 
-var initBucketCmd = &cobra.Command{
+var bucketInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Create an empty bucket",
-	Long: `Create an empty bucket.
+	Short: "Initialize a new or existing bucket",
+	Long: `Initializes a new or existing bucket.
 
-A .textile directory and config file will be created in the current working directory.
+A .textile config directory and a seed file will be created in the current working directory.
 Existing configs will not be overwritten.
+
+Use the '--existing' flag to initialize from an existing remote bucket.
 `,
+	Args: cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -72,8 +87,7 @@ Existing configs will not be overwritten.
 		if err != nil {
 			cmd.Fatal(err)
 		}
-
-		dir := filepath.Join(root, ".textile")
+		dir := filepath.Join(root, configDir)
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
@@ -203,24 +217,56 @@ Existing configs will not be overwritten.
 		if initRemote {
 			ctx, cancel := threadCtx(cmdTimeout)
 			defer cancel()
-			buck, err := buckets.Init(ctx, name)
+			rep, err := buckets.Init(ctx, name)
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			configViper.Set("key", buck.Root.Key)
+			configViper.Set("key", rep.Root.Key)
 
-			printLinks(buck.Links)
+			seed := filepath.Join(root, bucks.SeedName)
+			file, err := os.Create(seed)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			_, err = file.Write(rep.Seed)
+			if err != nil {
+				file.Close()
+				cmd.Fatal(err)
+			}
+			file.Close()
+
+			buck, err := local.NewBucket(root, options.BalancedLayout)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			actx, acancel := context.WithTimeout(context.Background(), cmdTimeout)
+			defer acancel()
+			if err = buck.ArchiveFile(actx, seed, bucks.SeedName); err != nil {
+				cmd.Fatal(err)
+			}
+
+			printLinks(rep.Links)
 		}
 
 		if err := configViper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
-		if existing {
-			key := configViper.GetString("key")
-			count := getPath(key, ".", filepath.Dir("."), ".")
-			cmd.Success("Initialized from remote and pulled %d files to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
-		} else {
+		if initRemote {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+		} else {
+			key := configViper.GetString("key")
+			count := getPath(key, "", root, nil, nil, false)
+
+			buck, err := local.NewBucket(root, options.BalancedLayout)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+			defer cancel()
+			if err = buck.Archive(ctx); err != nil {
+				cmd.Fatal(err)
+			}
+			cmd.Success("Initialized from remote and pulled %d objects to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
 		}
 	},
 }
@@ -228,16 +274,20 @@ Existing configs will not be overwritten.
 func printLinks(reply *pb.LinksReply) {
 	cmd.Message("Your bucket links:")
 	cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
+	cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
 	if reply.WWW != "" {
 		cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
 	}
-	cmd.Message("%s IPNS website (propagation can be slow)", aurora.White(reply.IPNS).Bold())
 }
 
-var bucketPathLinksCmd = &cobra.Command{
-	Use:   "links",
-	Short: "Print links to where this bucket can be accessed",
-	Long:  `Print links to where this bucket can be accessed.`,
+var bucketLinksCmd = &cobra.Command{
+	Use: "links",
+	Aliases: []string{
+		"link",
+	},
+	Short: "Show links to where this bucket can be accessed",
+	Long:  `Displays a thread, IPNS, and website link to this bucket.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -256,13 +306,68 @@ var bucketPathLinksCmd = &cobra.Command{
 	},
 }
 
-var lsBucketPathCmd = &cobra.Command{
+var bucketRootCmd = &cobra.Command{
+	Use:   "root",
+	Short: "Show local bucket root CID",
+	Long:  `Shows the local bucket root CID`,
+	Args:  cobra.ExactArgs(0),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+	},
+	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+		buck, err := local.NewBucket(root, options.BalancedLayout)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+	},
+}
+
+var bucketStatusCmd = &cobra.Command{
+	Use: "status",
+	Aliases: []string{
+		"st",
+	},
+	Short: "Show bucket object changes",
+	Long:  `Displays paths that have been added to and paths that have been removed or differ from the local bucket root.`,
+	Args:  cobra.ExactArgs(0),
+	PreRun: func(c *cobra.Command, args []string) {
+		cmd.ExpandConfigVars(configViper, flags)
+	},
+	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+		buck, err := local.NewBucket(root, options.BalancedLayout)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		diff := getDiff(buck, root)
+		if len(diff) == 0 {
+			cmd.End("Everything up-to-date")
+		}
+		for _, c := range diff {
+			cf := changeColor(c.Type)
+			cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Rel))
+		}
+	},
+}
+
+var bucketLsCmd = &cobra.Command{
 	Use: "ls [path]",
 	Aliases: []string{
 		"list",
 	},
-	Short: "List bucket path contents",
-	Long:  `List files and directories under a bucket path.`,
+	Short: "List top-level or nested bucket objects",
+	Long:  `Lists top-level or nested bucket objects.`,
+	Args:  cobra.MaximumNArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 		if configViper.ConfigFileUsed() == "" {
@@ -270,96 +375,62 @@ var lsBucketPathCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		lsBucketPath(args)
+		var pth string
+		if len(args) > 0 {
+			pth = args[0]
+		}
+		if pth == "." || pth == "/" || pth == "./" {
+			pth = ""
+		}
+
+		ctx, cancel := threadCtx(cmdTimeout)
+		defer cancel()
+		key := configViper.GetString("key")
+		rep, err := buckets.ListPath(ctx, key, pth)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		var items []*pb.ListPathReply_Item
+		if len(rep.Item.Items) > 0 {
+			items = rep.Item.Items
+		} else if !rep.Item.IsDir {
+			items = append(items, rep.Item)
+		}
+
+		var data [][]string
+		if len(items) > 0 && !strings.HasPrefix(pth, configDir) {
+			for _, item := range items {
+				if item.Name == configDir {
+					continue
+				}
+				var links string
+				if item.IsDir {
+					links = strconv.Itoa(len(item.Items))
+				} else {
+					links = "n/a"
+				}
+				data = append(data, []string{
+					item.Name,
+					strconv.Itoa(int(item.Size)),
+					strconv.FormatBool(item.IsDir),
+					links,
+					item.Path,
+				})
+			}
+		}
+
+		if len(data) > 0 {
+			cmd.RenderTable([]string{"name", "size", "dir", "objects", "path"}, data)
+		}
+		cmd.Message("Found %d objects", aurora.White(len(data)).Bold())
 	},
 }
 
-func lsBucketPath(args []string) {
-	ctx, cancel := threadCtx(cmdTimeout)
-	defer cancel()
-
-	var pth string
-	if len(args) > 0 {
-		pth = args[0]
-	}
-	if pth == "." || pth == "/" || pth == "./" {
-		pth = ""
-	}
-	key := configViper.GetString("key")
-	rep, err := buckets.ListPath(ctx, key, pth)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	var items []*pb.ListPathReply_Item
-	if len(rep.Item.Items) > 0 {
-		items = rep.Item.Items
-	} else if !rep.Item.IsDir {
-		items = append(items, rep.Item)
-	}
-
-	var data [][]string
-	if len(items) > 0 && !strings.HasPrefix(pth, ".textile") {
-		for _, item := range items {
-			if item.Name == ".textile" {
-				continue
-			}
-			var links string
-			if item.IsDir {
-				links = strconv.Itoa(len(item.Items))
-			} else {
-				links = "n/a"
-			}
-			data = append(data, []string{
-				item.Name,
-				strconv.Itoa(int(item.Size)),
-				strconv.FormatBool(item.IsDir),
-				links,
-				item.Path,
-			})
-		}
-	}
-
-	if len(data) > 0 {
-		cmd.RenderTable([]string{"name", "size", "dir", "items", "path"}, data)
-	}
-	cmd.Message("Found %d items", aurora.White(len(data)).Bold())
-}
-
-var pushBucketPathCmd = &cobra.Command{
-	Use:   "push [target] [path]",
-	Short: "Push to a bucket path (interactive)",
-	Long: `Push files and directories to a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
-
-Using the '--org' flag will create a new bucket under the organization's account.
-
-File structure is mirrored in the bucket. For example, given the directory:
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-
-These 'push' commands result in the following bucket structures.
-
-'tt bucket push foo/ .':
-    one.txt
-    bar/two.txt
-    bar/baz/three.txt
-		
-'tt bucket push foo mybuck':
-    mybuck/foo/one.txt
-    mybuck/foo/bar/two.txt
-    mybuck/foo/bar/baz/three.txt
-
-'tt bucket push foo/bar mybuck':
-    mybuck/bar/two.txt
-    mybuck/bar/baz/three.txt
-
-'tt bucket push foo/bar/baz mybuck':
-    mybuck/baz/three.txt
-
-'tt bucket push foo/bar/baz/three.txt mybuck':
-    mybuck/three.txt
-`,
-	Args: cobra.MinimumNArgs(2),
+var bucketPushCmd = &cobra.Command{
+	Use:   "push",
+	Short: "Push bucket object changes",
+	Long:  `Pushes paths that have been added to and paths that have been removed or differ from the local bucket root.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
 	},
@@ -375,67 +446,85 @@ These 'push' commands result in the following bucket structures.
 			cmd.Fatal(fmt.Errorf("thread is not defined"))
 		}
 
-		var names []string
-		var paths []string
-		bucketPath, args := args[len(args)-1], args[:len(args)-1]
-		for _, a := range args {
-			abs, err := filepath.Abs(a)
-			if err != nil {
+		buck, err := local.NewBucket(root, options.BalancedLayout)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		diff := getDiff(buck, root)
+		force, err := c.Flags().GetBool("force")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if force {
+			// Reset the archive to just the seed file
+			seed := filepath.Join(root, bucks.SeedName)
+			ctx, acancel := context.WithTimeout(context.Background(), cmdTimeout)
+			defer acancel()
+			if err = buck.ArchiveFile(ctx, seed, bucks.SeedName); err != nil {
 				cmd.Fatal(err)
 			}
-			if !strings.HasPrefix(abs, root) {
-				cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
-			}
-
-			dir := filepath.Dir(a)
-			if err := filepath.Walk(a, func(n string, info os.FileInfo, err error) error {
-				if err != nil {
-					cmd.Fatal(err)
-				}
-				if !info.IsDir() {
-					if strings.HasSuffix(n, ".DS_Store") {
-						return nil
+			// Add unique additions
+		loop:
+			for _, c := range getDiff(buck, root) {
+				for _, x := range diff {
+					if c.Path == x.Path {
+						continue loop
 					}
-					names = append(names, n)
-					var p string
-					if n == a { // This is a file given as an arg
-						// In this case, the bucket path should not include the directory
-						p = filepath.Join(bucketPath, info.Name())
-					} else { // This is a directory given as an arg, or one of its sub directories
-						// The bucket path should maintain directory structure
-						if dir != "." {
-							n = strings.TrimPrefix(n, dir)
-						}
-						p = filepath.Join(bucketPath, n)
-					}
-					paths = append(paths, p)
 				}
-				return nil
-			}); err != nil {
-				cmd.Fatal(err)
+				diff = append(diff, c)
 			}
 		}
-		if len(names) == 0 {
-			cmd.End("No files found")
+		if len(diff) == 0 {
+			cmd.End("Everything up-to-date")
 		}
 
-		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Push %d files", len(names)),
-			IsConfirm: true,
+		yes, err := c.Flags().GetBool("yes")
+		if err != nil {
+			cmd.Fatal(err)
 		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
+		if !yes {
+			for _, c := range diff {
+				cf := changeColor(c.Type)
+				cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Rel))
+			}
+			prompt := promptui.Prompt{
+				Label:     fmt.Sprintf("Push %d changes", len(diff)),
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
 		}
 
 		key := configViper.GetString("key")
-		for i := range names {
-			addFile(key, names[i], paths[i])
+		xr := buck.Path()
+		var rm []change
+		startProgress()
+		for _, c := range diff {
+			switch c.Type {
+			case dagutils.Mod, dagutils.Add:
+				xr = addFile(key, xr, c.Rel, c.Path, force)
+			case dagutils.Remove:
+				rm = append(rm, c)
+			}
 		}
-		cmd.Success("Pushed %d files to %s", aurora.White(len(names)).Bold(), aurora.White(bucketPath).Bold())
+		stopProgress()
+		if len(rm) > 0 {
+			for _, c := range rm {
+				xr = rmFile(key, xr, c.Path, force)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err = buck.Archive(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
 	},
 }
 
-func addFile(key, name, filePath string) {
+func addFile(key string, xroot path.Resolved, name, filePath string, force bool) path.Resolved {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -445,67 +534,62 @@ func addFile(key, name, filePath string) {
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	cmd.Message("Pushing %s to %s", aurora.White(name).Bold(), aurora.White(filePath).Bold())
 
-	bar := pbar.New(int(info.Size()))
-	bar.SetTemplate(pbar.Full)
-	bar.Set(pbar.Bytes, true)
-	bar.Set(pbar.SIBytesPrefix, true)
-	bar.Start()
+	bar := addBar(filePath, info.Size())
 	progress := make(chan int64)
-
 	go func() {
-		ctx, cancel := threadCtx(addFileTimeout)
-		defer cancel()
-		if _, _, err = buckets.PushPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
-			cmd.Fatal(err)
+		for up := range progress {
+			if err := bar.Set(int(up)); err != nil {
+				cmd.Fatal(err)
+			}
 		}
 	}()
 
-	for up := range progress {
-		bar.SetCurrent(up)
+	ctx, cancel := threadCtx(addFileTimeout)
+	defer cancel()
+	opts := []client.Option{client.WithProgress(progress)}
+	if !force {
+		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	bar.Finish()
+	added, root, err := buckets.PushPath(ctx, key, filePath, file, opts...)
+	if err != nil {
+		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+		} else {
+			cmd.Fatal(err)
+		}
+	} else {
+		finishBar(bar, filePath, added.Cid())
+	}
+	return root
 }
 
-var pullBucketPathCmd = &cobra.Command{
-	Use:   "pull [path] [destination]",
-	Short: "Pull a bucket path",
-	Long: `Pull files and directories from a bucket path. Existing paths will be overwritten. Non-existing paths will be created.
+func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
+	ctx, cancel := threadCtx(addFileTimeout)
+	defer cancel()
+	var opts []client.Option
+	if !force {
+		opts = append(opts, client.WithFastForwardOnly(xroot))
+	}
+	root, err := buckets.RemovePath(ctx, key, filePath, opts...)
+	if err != nil {
+		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+		} else if !strings.HasSuffix(err.Error(), "no link by that name") {
+			cmd.Fatal(err)
+		}
+	}
+	fmt.Println("- " + filePath)
+	return root
+}
 
-Bucket structure is mirrored locally. For example, given the bucket:
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-
-These 'pull' commands result in the following local structures.
-
-'tt bucket pull foo mydir':
-    mydir/foo/one.txt
-    mydir/foo/bar/two.txt
-    mydir/foo/bar/baz/three.txt
-
-'tt bucket pull foo/bar mydir':
-    mydir/bar/two.txt
-    mydir/bar/baz/three.txt
-
-'tt bucket pull foo/bar/baz mydir':
-    mydir/baz/three.txt
-
-'tt bucket pull foo/bar/baz/three.txt mydir':
-    mydir/three.txt
-
-'tt bucket pull foo .':
-    foo/one.txt
-    foo/bar/two.txt
-    foo/bar/baz/three.txt
-`,
-	Args: cobra.ExactArgs(2),
+var bucketPullCmd = &cobra.Command{
+	Use:   "pull",
+	Short: "Pull bucket object changes",
+	Long:  `Pulls paths that have been added to and paths that have been removed or differ from the remote bucket root.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
 	},
 	Run: func(c *cobra.Command, args []string) {
 		conf := configViper.ConfigFileUsed()
@@ -513,44 +597,179 @@ These 'pull' commands result in the following local structures.
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
-		abs, err := filepath.Abs(args[1])
+
+		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		if !strings.HasPrefix(abs, root) {
-			cmd.Fatal(fmt.Errorf("the path %s is not under the current bucket root", abs))
+		diff := getDiff(buck, root)
+
+		hard, err := c.Flags().GetBool("hard")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		yes, err := c.Flags().GetBool("yes")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if !yes && hard && len(diff) > 0 {
+			for _, c := range diff {
+				cf := changeColor(c.Type)
+				cmd.Message("%s  %s", cf(changeType(c.Type)), cf(c.Rel))
+			}
+			prompt := promptui.Prompt{
+				Label:     fmt.Sprintf("Discard %d local changes", len(diff)),
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
 		}
 
+		// Tmp move local modifications and additions if not pulling hard
+		if !hard {
+			for _, c := range diff {
+				switch c.Type {
+				case dagutils.Mod, dagutils.Add:
+					if err := os.Rename(c.Rel, c.Rel+".buckpatch"); err != nil {
+						cmd.Fatal(err)
+					}
+				}
+			}
+		}
+
+		force, err := c.Flags().GetBool("force")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		key := configViper.GetString("key")
-		count := getPath(key, args[0], filepath.Dir(args[0]), args[1])
-		cmd.Success("Pulled %d files to %s", aurora.White(count).Bold(), aurora.White(args[1]).Bold())
+		count := getPath(key, "", root, buck, diff, force)
+		if count == 0 {
+			cmd.End("Everything up-to-date")
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel()
+		if err = buck.Archive(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+
+		// Re-apply local changes if not pulling hard
+		if !hard {
+			for _, c := range diff {
+				switch c.Type {
+				case dagutils.Mod, dagutils.Add:
+					if err := os.Rename(c.Rel+".buckpatch", c.Rel); err != nil {
+						cmd.Fatal(err)
+					}
+				case dagutils.Remove:
+					// If the file was also deleted on the remote,
+					// the local deletion will already have been handled by getPath.
+					// So, we just ignore the error here.
+					_ = os.Remove(c.Rel)
+				}
+			}
+		}
+		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
 	},
 }
 
-func getPath(key, pth, dir, dest string) (count int) {
+func getPath(key, pth, root string, buck *local.Bucket, localdiff []change, force bool) (count int) {
+	all, missing := listPath(key, pth, root, buck, force)
+	count = len(missing)
+	var rm []string
+	list := walkPath(root)
+loop:
+	for _, n := range list {
+		for _, r := range all {
+			if r.name == n {
+				continue loop
+			}
+		}
+		rm = append(rm, n)
+	}
+looop:
+	for _, l := range localdiff {
+		for _, r := range all {
+			if r.path == l.Path {
+				continue looop
+			}
+		}
+		rm = append(rm, l.Rel)
+	}
+	count += len(rm)
+	if count == 0 {
+		return
+	}
+
+	if len(missing) > 0 {
+		var wg sync.WaitGroup
+		startProgress()
+		for _, o := range missing {
+			wg.Add(1)
+			go func(o object) {
+				defer wg.Done()
+				getFile(key, o.path, o.name, o.size, o.cid)
+			}(o)
+		}
+		wg.Wait()
+		stopProgress()
+	}
+	if len(rm) > 0 {
+		for _, r := range rm {
+			// The file may have been modified locally, in which case it will have been moved to a patch.
+			// So, we just ignore the error here.
+			_ = os.Remove(r)
+			fmt.Println("- " + strings.TrimPrefix(r, root+"/"))
+		}
+	}
+	return count
+}
+
+type object struct {
+	path string
+	name string
+	cid  cid.Cid
+	size int64
+}
+
+func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missing []object) {
 	ctx, cancel := threadCtx(cmdTimeout)
 	defer cancel()
 	rep, err := buckets.ListPath(ctx, key, pth)
 	if err != nil {
 		cmd.Fatal(err)
 	}
-
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			count += getPath(key, filepath.Join(pth, filepath.Base(i.Path)), dir, dest)
+			a, m := listPath(key, filepath.Join(pth, filepath.Base(i.Path)), dest, buck, force)
+			all = append(all, a...)
+			missing = append(missing, m...)
 		}
 	} else {
-		if dir != "." {
-			pth = strings.TrimPrefix(pth, dir)
-		}
 		name := filepath.Join(dest, pth)
-		getFile(key, pth, name, rep.Item.Size)
-		count++
+		c, err := cid.Decode(rep.Item.Cid)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		o := object{path: pth, name: name, size: rep.Item.Size, cid: c}
+		all = append(all, o)
+		if !force && buck != nil {
+			c, err := cid.Decode(rep.Item.Cid)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			lc, err := buck.HashFile(name)
+			if err == nil && lc.Equals(c) { // File exists, skip it
+				return
+			}
+		}
+		missing = append(missing, o)
 	}
-	return count
+	return all, missing
 }
 
-func getFile(key, filePath, name string, size int64) {
+func getFile(key, filePath, name string, size int64, c cid.Cid) {
 	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
 		cmd.Fatal(err)
 	}
@@ -559,33 +778,29 @@ func getFile(key, filePath, name string, size int64) {
 		cmd.Fatal(err)
 	}
 	defer file.Close()
-	cmd.Message("Pulling %s to %s", aurora.White(filePath).Bold(), aurora.White(name).Bold())
 
-	bar := pbar.New(int(size))
-	bar.SetTemplate(pbar.Full)
-	bar.Set(pbar.Bytes, true)
-	bar.Set(pbar.SIBytesPrefix, true)
-	bar.Start()
+	bar := addBar(filePath, size)
 	progress := make(chan int64)
-
 	go func() {
-		ctx, cancel := threadCtx(getFileTimeout)
-		defer cancel()
-		if err = buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
-			cmd.Fatal(err)
+		for up := range progress {
+			if err := bar.Set(int(up)); err != nil {
+				cmd.Fatal(err)
+			}
 		}
 	}()
 
-	for up := range progress {
-		bar.SetCurrent(up)
+	ctx, cancel := threadCtx(getFileTimeout)
+	defer cancel()
+	if err := buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
+		cmd.Fatal(err)
 	}
-	bar.Finish()
+	finishBar(bar, filePath, c)
 }
 
-var catBucketPathCmd = &cobra.Command{
+var bucketCatCmd = &cobra.Command{
 	Use:   "cat [path]",
-	Short: "Cat a bucket path file",
-	Long:  `Cat a file at a bucket path.`,
+	Short: "Cat bucket objects at path",
+	Long:  `Cats bucket objects at path.`,
 	Args:  cobra.ExactArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
@@ -603,164 +818,21 @@ var catBucketPathCmd = &cobra.Command{
 	},
 }
 
-var archiveBucketCmd = &cobra.Command{
-	Use:   "archive",
-	Short: "Archive to Powergate.",
-	Long:  "Archive pushes the latest Bucket state living on Textile.",
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		if _, err := buckets.Archive(ctx, key); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Archive queued successfully")
-	},
-}
-
-var archiveBucketStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Reports the status of the last archive.",
-	Long:  "Archive status reports the status of the last archive done for the current Bucket.",
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		r, err := buckets.ArchiveStatus(ctx, key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		switch r.GetStatus() {
-		case pb.ArchiveStatusReply_Failed:
-			cmd.Warn("Archive failed with message: %s", r.GetFailedMsg())
-		case pb.ArchiveStatusReply_Canceled:
-			cmd.Warn("Archive was superseded by a new executing archive")
-		case pb.ArchiveStatusReply_Executing:
-			cmd.Message("Archive is currently executing, grab a coffee and be patient...")
-		case pb.ArchiveStatusReply_Done:
-			cmd.Success("Archive executed successfully!")
-		default:
-			cmd.Warn("Archive status unknown")
-		}
-		watch, err := c.Flags().GetBool("watch")
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if watch {
-			fmt.Printf("\n")
-			cmd.Message("Cid logs:")
-			ch := make(chan string)
-			wCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			go func() {
-				err = buckets.ArchiveWatch(wCtx, key, ch)
-				close(ch)
-			}()
-			for msg := range ch {
-				cmd.Message("\t %s", msg)
-				r, err := buckets.ArchiveStatus(ctx, key)
-				if err != nil {
-					cmd.Fatal(err)
-				}
-				if isJobStatusFinal(r.GetStatus()) {
-					cancel()
-				}
-			}
-			if err != nil {
-				cmd.Fatal(err)
-			}
-		}
-	},
-}
-
-func isJobStatusFinal(status pb.ArchiveStatusReply_Status) bool {
-	switch status {
-	case pb.ArchiveStatusReply_Failed, pb.ArchiveStatusReply_Canceled, pb.ArchiveStatusReply_Done:
-		return true
-	case pb.ArchiveStatusReply_Executing:
-		return false
-	}
-	cmd.Fatal(fmt.Errorf("Unknown job status"))
-	return true
-
-}
-
-var archiveBucketInfoCmd = &cobra.Command{
-	Use:   "info",
-	Short: "Provides information about the current  archive.",
-	Long:  "Provides information about the current archive.",
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		r, err := buckets.ArchiveInfo(ctx, key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Message("Archive of Cid %s has %d deals:\n", r.Archive.Cid, len(r.Archive.Deals))
-		var data [][]string
-		for _, d := range r.Archive.GetDeals() {
-			data = append(data, []string{d.ProposalCid, d.Miner})
-		}
-		cmd.RenderTable([]string{"ProposalCid", "Miner"}, data)
-
-	},
-}
-
-var rmBucketPathCmd = &cobra.Command{
-	Use: "rm [path]",
-	Aliases: []string{
-		"remove",
-	},
-	Short: "Remove bucket path contents",
-	Long:  `Remove files and directories under a bucket path.`,
-	Args:  cobra.ExactArgs(1),
-	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
-	},
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := threadCtx(cmdTimeout)
-		defer cancel()
-		key := configViper.GetString("key")
-		if err := buckets.RemovePath(ctx, key, args[0]); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Removed %s", aurora.White(args[0]).Bold())
-	},
-}
-
-var destroyBucketCmd = &cobra.Command{
+var bucketDestroyCmd = &cobra.Command{
 	Use:   "destroy",
-	Short: "Destroy bucket",
-	Long:  `Destroy bucket and all associated data.`,
+	Short: "Destroy bucket and all objects",
+	Long:  `Destroys the bucket and all objects.`,
+	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(configViper, flags)
-		if configViper.ConfigFileUsed() == "" {
-			cmd.Fatal(errNotABucket)
-		}
 	},
 	Run: func(c *cobra.Command, args []string) {
+		conf := configViper.ConfigFileUsed()
+		if conf == "" {
+			cmd.Fatal(errNotABucket)
+		}
+		root := filepath.Dir(filepath.Dir(conf))
+
 		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label:     fmt.Sprintf("Are you absolutely sure"),
@@ -776,7 +848,9 @@ var destroyBucketCmd = &cobra.Command{
 		if err := buckets.Remove(ctx, key); err != nil {
 			cmd.Fatal(err)
 		}
-		_ = os.RemoveAll(configViper.ConfigFileUsed())
+
+		_ = os.RemoveAll(filepath.Join(root, bucks.SeedName))
+		_ = os.RemoveAll(filepath.Join(root, configDir))
 		cmd.Success("Your bucket has been deleted")
 	},
 }

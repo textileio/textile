@@ -31,6 +31,8 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, buck.Root.Path)
 	assert.NotEmpty(t, buck.Root.CreatedAt)
 	assert.NotEmpty(t, buck.Root.UpdatedAt)
+	assert.NotEmpty(t, buck.Links)
+	assert.NotEmpty(t, buck.Seed)
 }
 
 func TestClient_List(t *testing.T) {
@@ -71,7 +73,7 @@ func TestClient_ListPath(t *testing.T) {
 		require.Nil(t, err)
 		assert.NotEmpty(t, rep.Root)
 		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 0, len(rep.Item.Items))
+		assert.Equal(t, 1, len(rep.Item.Items))
 	})
 
 	file, err := os.Open("testdata/file1.jpg")
@@ -86,7 +88,7 @@ func TestClient_ListPath(t *testing.T) {
 		rep, err := client.ListPath(ctx, buck.Root.Key, "")
 		require.Nil(t, err)
 		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 2, len(rep.Item.Items))
+		assert.Equal(t, 3, len(rep.Item.Items))
 	})
 
 	t.Run("nested dir", func(t *testing.T) {
@@ -146,7 +148,7 @@ func TestClient_PushPath(t *testing.T) {
 
 		rep, err := client.ListPath(ctx, buck.Root.Key, "")
 		require.Nil(t, err)
-		assert.Equal(t, 2, len(rep.Item.Items))
+		assert.Equal(t, 3, len(rep.Item.Items))
 	})
 }
 
@@ -227,21 +229,22 @@ func TestClient_RemovePath(t *testing.T) {
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
 	require.Nil(t, err)
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.Nil(t, err)
+	assert.NotEmpty(t, pth)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.NotNil(t, err)
 	rep, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
-	assert.Equal(t, 2, len(rep.Item.Items))
+	assert.Equal(t, 3, len(rep.Item.Items))
 
-	err = client.RemovePath(ctx, buck.Root.Key, "again")
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.Nil(t, err)
 	_, err = client.ListPath(ctx, buck.Root.Key, "again")
 	require.NotNil(t, err)
 	rep, err = client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
-	assert.Equal(t, 1, len(rep.Item.Items))
+	assert.Equal(t, 2, len(rep.Item.Items))
 }
 
 func TestClose(t *testing.T) {

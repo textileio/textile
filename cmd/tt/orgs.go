@@ -14,7 +14,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(orgsCmd)
-	orgsCmd.AddCommand(createOrgsCmd, lsOrgsCmd, membersOrgsCmd, inviteOrgsCmd, leaveOrgsCmd, destroyOrgsCmd)
+	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 }
 
 var orgsCmd = &cobra.Command{
@@ -23,16 +23,15 @@ var orgsCmd = &cobra.Command{
 		"org",
 	},
 	Short: "Org management",
-	Long:  `Manage your organizations.`,
-	Run: func(c *cobra.Command, args []string) {
-		lsOrgs()
-	},
+	Long:  `Manages your organizations.`,
+	Args:  cobra.ExactArgs(0),
 }
 
-var createOrgsCmd = &cobra.Command{
+var orgsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create an org",
-	Long:  `Create a new organization (interactive).`,
+	Long:  `Creates a new organization.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		prompt1 := promptui.Prompt{
 			Label: "Choose an org name",
@@ -52,7 +51,7 @@ var createOrgsCmd = &cobra.Command{
 		}
 		//url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
 
-		cmd.Message("The name of your account on Textile will be %s", aurora.White(name).Bold())
+		cmd.Message("The name of your Hub account will be %s", aurora.White(name).Bold())
 		// @todo: Uncomment when dashboard's are live
 		//cmd.Message("Your URL will be %s", aurora.White(url).Bold())
 
@@ -77,44 +76,42 @@ var createOrgsCmd = &cobra.Command{
 	},
 }
 
-var lsOrgsCmd = &cobra.Command{
+var orgsLsCmd = &cobra.Command{
 	Use: "ls",
 	Aliases: []string{
 		"list",
 	},
 	Short: "List orgs you're a member of",
-	Long:  `List all the organizations that you're a member of.`,
+	Long:  `Lists all the organizations that you're a member of.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		lsOrgs()
+		ctx, cancel := authCtx(cmdTimeout)
+		defer cancel()
+		orgs, err := hub.ListOrgs(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		if len(orgs.List) > 0 {
+			data := make([][]string, len(orgs.List))
+			for i, o := range orgs.List {
+				key, err := mbase.Encode(mbase.Base32, o.Key)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				url := fmt.Sprintf("%s/%s", o.Host, o.Slug)
+				data[i] = []string{o.Name, url, key, strconv.Itoa(len(o.Members))}
+			}
+			cmd.RenderTable([]string{"name", "url", "key", "members"}, data)
+		}
+		cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
 	},
 }
 
-func lsOrgs() {
-	ctx, cancel := authCtx(cmdTimeout)
-	defer cancel()
-	orgs, err := hub.ListOrgs(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if len(orgs.List) > 0 {
-		data := make([][]string, len(orgs.List))
-		for i, o := range orgs.List {
-			key, err := mbase.Encode(mbase.Base32, o.Key)
-			if err != nil {
-				cmd.Fatal(err)
-			}
-			url := fmt.Sprintf("%s/%s", o.Host, o.Slug)
-			data[i] = []string{o.Name, url, key, strconv.Itoa(len(o.Members))}
-		}
-		cmd.RenderTable([]string{"name", "url", "key", "members"}, data)
-	}
-	cmd.Message("Found %d orgs", aurora.White(len(orgs.List)).Bold())
-}
-
-var membersOrgsCmd = &cobra.Command{
+var orgsMembersCmd = &cobra.Command{
 	Use:   "members",
 	Short: "List org members",
-	Long:  `List current organization members (interactive).`,
+	Long:  `Lists current organization members.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
@@ -143,10 +140,11 @@ var membersOrgsCmd = &cobra.Command{
 	},
 }
 
-var inviteOrgsCmd = &cobra.Command{
+var orgsInviteCmd = &cobra.Command{
 	Use:   "invite",
 	Short: "Invite members to an org",
-	Long:  `Invite a new member to an organization.`,
+	Long:  `Invites a new member to an organization.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
@@ -174,10 +172,11 @@ var inviteOrgsCmd = &cobra.Command{
 	},
 }
 
-var leaveOrgsCmd = &cobra.Command{
+var orgsLeaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave an org",
-	Long:  `Leave an organization (interactive).`,
+	Long:  `Leaves an organization.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
@@ -231,10 +230,11 @@ func selectOrg(label, successMsg string) *orgItem {
 	return items[index]
 }
 
-var destroyOrgsCmd = &cobra.Command{
+var orgsDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy an org",
-	Long:  `Destroy an organization and all associated data (interactive). You must be the org owner.`,
+	Long:  `Destroys an organization and all associated data. You must be the org owner.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Destroy org", aurora.Sprintf(
 			aurora.BrightBlack("> Destroying org {{ .Name | white | bold }}")))

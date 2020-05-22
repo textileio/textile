@@ -9,6 +9,7 @@ services:
       - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - TXTL_ADDR_MONGO_URI=mongodb://mongo:27017
       - TXTL_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
+      - TXTL_GATEWAY_SUBDOMAINS
       - TXTL_EMAIL_SESSION_SECRET=textilesession
     ports:
       - "127.0.0.1:3006:3006"

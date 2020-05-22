@@ -2,7 +2,6 @@ package buckets
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,10 +9,12 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
+	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
@@ -21,21 +22,30 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-const CollectionName = "buckets"
-
-var (
-	// ErrNoCurrentArchive is returned when not status about the last archive
-	// can be retrieved, since the bucket was never archived.
-	ErrNoCurrentArchive = errors.New("the bucket was never archived")
+const (
+	// CollectionName is the name of the threaddb collection used for buckets.
+	CollectionName = "buckets"
+	// SeedName is the file name reserved for a random bucket seed.
+	SeedName = ".textileseed"
 )
 
 var (
+	log = logging.Logger("buckets")
+
+	// ErrNonFastForward is returned when an update in non-fast-forward.
+	ErrNonFastForward = fmt.Errorf("update is non-fast-forward")
+
+	// ErrNoCurrentArchive is returned when not status about the last archive
+	// can be retrieved, since the bucket was never archived.
+	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
+
 	schema  *jsonschema.Schema
 	indexes = []db.IndexConfig{{
 		Path: "path",
 	}}
 )
 
+// Bucket represents the buckets threaddb collection schema.
 type Bucket struct {
 	Key       string   `json:"_id"`
 	Name      string   `json:"name"`
@@ -46,16 +56,19 @@ type Bucket struct {
 	UpdatedAt int64    `json:"updated_at"`
 }
 
+// Archives contains all archives for a single bucket.
 type Archives struct {
 	Current Archive   `json:"current"`
 	History []Archive `json:"history"`
 }
 
+// Archive is a single archive containing a list of deals.
 type Archive struct {
 	Cid   string `json:"cid"`
 	Deals []Deal `json:"deals"`
 }
 
+// Deal contains details about a Filecoin deal.
 type Deal struct {
 	ProposalCid string `json:"proposal_cid"`
 	Miner       string `json:"miner"`
@@ -66,6 +79,7 @@ func init() {
 	schema = reflector.Reflect(&Bucket{})
 }
 
+// Buckets is a wrapper around a threaddb collection that performs object storage on IPFS and Filecoin.
 type Buckets struct {
 	ffsCol   *collections.FFSInstances
 	threads  *dbc.Client
@@ -77,7 +91,18 @@ type Buckets struct {
 	wg     sync.WaitGroup
 }
 
-func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances) *Buckets {
+// New returns a new buckets collection mananger.
+func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug bool) (*Buckets, error) {
+	if debug {
+		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
+			"core":       logging.LevelDebug,
+			"hubapi":     logging.LevelDebug,
+			"bucketsapi": logging.LevelDebug,
+			"usersapi":   logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Buckets{
 		ffsCol:   col,
@@ -86,9 +111,10 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances) *Bucket
 
 		ctx:    ctx,
 		cancel: cancel,
-	}
+	}, nil
 }
 
+// Create a bucket instance.
 func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, pth path.Path, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
@@ -122,6 +148,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 	return bucket, nil
 }
 
+// IsArchivingEnabled returns whether or not Powergate archiving is enabled.
 func (b *Buckets) IsArchivingEnabled() bool {
 	return b.pgClient != nil
 }
@@ -141,6 +168,7 @@ func createFFSInstance(ctx context.Context, col *collections.FFSInstances, c *po
 	return nil
 }
 
+// Get a bucket instance.
 func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
@@ -159,6 +187,7 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...O
 	return buck, nil
 }
 
+// List bucket instances.
 func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
@@ -177,6 +206,7 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*
 	return res.([]*Bucket), nil
 }
 
+// Save a bucket instance.
 func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
@@ -185,6 +215,7 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 	return b.threads.Save(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 }
 
+// Delete a bucket instance.
 func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
@@ -309,7 +340,7 @@ func (b *Buckets) trackArchiveProgress(ctx context.Context, dbID thread.ID, key 
 	// we're in a final state.
 	ctx = context.WithValue(ctx, powc.AuthKey, ffsToken)
 	ch := make(chan powc.JobEvent, 1)
-	if err := b.pgClient.FFS.WatchJobs(ctx, ch, ffs.JobID(jid)); err != nil {
+	if err := b.pgClient.FFS.WatchJobs(ctx, ch, jid); err != nil {
 		log.Errorf("watching current job %s for bucket %s: %s", jid, key, err)
 		return
 	}

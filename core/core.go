@@ -34,6 +34,7 @@ import (
 	hpb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/api/users"
 	upb "github.com/textileio/textile/api/users/pb"
+	bucks "github.com/textileio/textile/buckets"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -62,10 +63,11 @@ type Textile struct {
 	ts    tc.NetBoostrapper
 	th    *threads.Client
 	thn   *netclient.Client
+	bucks *bucks.Buckets
+	powc  *powc.Client
+
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
-	powc  *powc.Client
-	bucks *buckets.Buckets
 
 	server *grpc.Server
 	proxy  *http.Server
@@ -106,10 +108,10 @@ type Config struct {
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":    logging.LevelDebug,
-			"hub":     logging.LevelDebug,
-			"buckets": logging.LevelDebug,
-			"users":   logging.LevelDebug,
+			"core":       logging.LevelDebug,
+			"hubapi":     logging.LevelDebug,
+			"bucketsapi": logging.LevelDebug,
+			"usersapi":   logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -152,6 +154,26 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	// Configure gRPC server
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start threads clients
+	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	if err != nil {
+		return nil, err
+	}
+	t.thn, err = netclient.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
+	if err != nil {
+		return nil, err
+	}
+	t.bucks, err = bucks.New(t.th, t.powc, t.collections.FFSInstances, conf.Debug)
+	if err != nil {
+		return nil, err
+	}
+
 	// Configure gRPC services
 	ts, err := dbapi.NewService(t.ts, dbapi.Config{
 		RepoPath: conf.RepoPath,
@@ -169,6 +191,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	t.emailSessionBus = broadcast.NewBroadcaster(0)
 	hs := &hub.Service{
 		Collections:        t.collections,
+		Threads:            t.th,
+		ThreadsNet:         t.thn,
 		GatewayURL:         conf.AddrGatewayURL,
 		EmailClient:        ec,
 		EmailSessionBus:    t.emailSessionBus,
@@ -177,21 +201,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager:        t.ipnsm,
 		DNSManager:         t.dnsm,
 	}
-	// Configure gRPC server
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
-	if err != nil {
-		return nil, err
-	}
-	// Start threads clients
-	t.th, err = threads.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
-	if err != nil {
-		return nil, err
-	}
-	bucks := buckets.New(t.th, t.powc, t.collections.FFSInstances)
-	t.bucks = bucks
 	bs := &buckets.Service{
 		Collections: t.collections,
-		Buckets:     bucks,
+		Buckets:     t.bucks,
 		GatewayURL:  conf.AddrGatewayURL,
 		IPFSClient:  ic,
 		IPNSManager: t.ipnsm,
@@ -201,6 +213,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections: t.collections,
 	}
 
+	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
@@ -246,13 +259,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			log.Fatalf("proxy error: %v", err)
 		}
 	}()
-
-	hs.Threads = t.th
-	t.thn, err = netclient.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
-	if err != nil {
-		return nil, err
-	}
-	hs.ThreadsNet = t.thn
 
 	// Configure gateway
 	t.gatewaySession = util.MakeToken(32)

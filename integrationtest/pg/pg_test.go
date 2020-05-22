@@ -14,11 +14,11 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/powergate/api/client"
+	pc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/health"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
-	buckets_pb "github.com/textileio/textile/api/buckets/pb"
+	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
 	"github.com/textileio/textile/util"
@@ -63,7 +63,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	// Verify that the current archive status is Done.
 	as, err := client.ArchiveStatus(ctx, b.Root.Key)
 	require.NoError(t, err)
-	require.Equal(t, buckets_pb.ArchiveStatusReply_Done, as.GetStatus())
+	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
 
 	// Get ArchiveInfo, which has all successful pushs with
 	// its data about deals.
@@ -86,7 +86,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
 	as, err = client.ArchiveStatus(ctx, b.Root.Key)
 	require.NoError(t, err)
-	require.Equal(t, buckets_pb.ArchiveStatusReply_Done, as.GetStatus())
+	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
 
 	ai, err = client.ArchiveInfo(ctx, b.Root.Key)
 	require.NoError(t, err)
@@ -148,7 +148,7 @@ func TestFailingArchive(t *testing.T) {
 	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
 	as, err := client.ArchiveStatus(ctx, b.Root.Key)
 	require.NoError(t, err)
-	require.Equal(t, buckets_pb.ArchiveStatusReply_Failed, as.GetStatus())
+	require.Equal(t, pb.ArchiveStatusReply_Failed, as.GetStatus())
 	require.NotEmpty(t, as.GetFailedMsg())
 }
 
@@ -158,11 +158,11 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 		require.NoError(t, err)
 
 		switch as.GetStatus() {
-		case buckets_pb.ArchiveStatusReply_Failed,
-			buckets_pb.ArchiveStatusReply_Done,
-			buckets_pb.ArchiveStatusReply_Canceled:
+		case pb.ArchiveStatusReply_Failed,
+			pb.ArchiveStatusReply_Done,
+			pb.ArchiveStatusReply_Canceled:
 			return true
-		case buckets_pb.ArchiveStatusReply_Executing:
+		case pb.ArchiveStatusReply_Executing:
 		default:
 			t.Fatalf("unknown archive status")
 		}
@@ -217,7 +217,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	return ctx, client
 }
 
-func spinup(t *testing.T) *client.Client {
+func spinup(t *testing.T) *pc.Client {
 	makeDown := func() {
 		if err := exec.Command("docker-compose", "down", "-v").Run(); err != nil {
 			panic(err)
@@ -240,25 +240,26 @@ func spinup(t *testing.T) *client.Client {
 	}
 	t.Cleanup(makeDown)
 
-	var c *client.Client
+	var powc *pc.Client
 	var err error
 	limit := 30
 	retries := 0
 	for retries < limit {
-		c, err = client.NewClient(powMultiaddr, grpc.WithInsecure())
+		powc, err = pc.NewClient(powMultiaddr, grpc.WithInsecure())
 		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-		s, _, err := c.Health.Check(ctx)
+		s, _, err := powc.Health.Check(ctx)
 		if err == nil {
 			require.Equal(t, health.Ok, s)
+			cancel()
 			break
 		}
 		time.Sleep(time.Second)
 		retries++
+		cancel()
 	}
 	if retries == limit {
 		t.Fatalf("trying to confirm health check: %s", err)
 	}
-	return c
+	return powc
 }

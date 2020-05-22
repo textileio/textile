@@ -16,9 +16,9 @@ import (
 	assets "github.com/textileio/go-assets"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/api/buckets"
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
+	"github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/collections"
 )
 
