@@ -37,7 +37,7 @@ Using the '--org' flag will create a new key under the Organization's account.
 
 There are two types of API keys:
 1. 'Account' keys provide direct access to developer/org account buckets and threads.
-2. 'User' keys provide existing external identities (users) access to their own buckets and threads, under the custodianship of the parent account.  
+2. 'User Group' keys provide existing non-admin identities (e.g. app users) access to their own buckets and threads, using the resources of the parent account (i.e. the developer or organization).  
 
 API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
@@ -53,7 +53,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 
 		prompt := promptui.Select{
 			Label: "Select API key type",
-			Items: []string{"account", "user"},
+			Items: []string{"account", "user group"},
 			Templates: &promptui.SelectTemplates{
 				Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ . | bold }}`, promptui.IconSelect),
 				Inactive: `{{ . | faint }}`,
@@ -182,7 +182,7 @@ func keyTypeToString(t pb.KeyType) (s string) {
 	case pb.KeyType_ACCOUNT:
 		return "account"
 	case pb.KeyType_USER:
-		return "user"
+		return "user group"
 	}
 	return
 }
