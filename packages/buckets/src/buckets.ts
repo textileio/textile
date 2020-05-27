@@ -4,17 +4,10 @@ import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
-import { Context as Ctx } from '@textile/context'
+import { Context, Provider } from '@textile/context'
 import { normaliseInput, File } from './normalize'
 
 const logger = log.getLogger('buckets')
-
-export interface Context {
-  host: string
-  transport: grpc.TransportFactory
-  debug: boolean
-  toJSON(): any
-}
 
 export interface PushPathResult {
   path: {
@@ -36,7 +29,7 @@ export class Buckets {
    * Creates a new gRPC client instance for accessing the Textile Buckets API.
    * @param context The context to use for interacting with the APIs. Can be modified later.
    */
-  constructor(public context: Context = new Ctx()) {
+  constructor(public context: Context = new Provider()) {
     this.serviceHost = context.host
     this.rpcOptions = {
       transport: context.transport,

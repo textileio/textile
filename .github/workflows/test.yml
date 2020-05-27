@@ -15,7 +15,7 @@ jobs:
 
     services:
       textile:
-        image: textile/textile:latest
+        image: textile/textile:1.0.3
         env:
           TXTL_ADDR_API: /ip4/0.0.0.0/tcp/3006
           TXTL_ADDR_API_PROXY: /ip4/0.0.0.0/tcp/3007

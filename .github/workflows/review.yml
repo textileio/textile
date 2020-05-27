@@ -51,3 +51,31 @@ jobs:
 
       - name: Run Commitsar
         uses: docker://outillage/commitsar
+
+  packages:
+     name: Versions
+     runs-on: ubuntu-latest
+     if: "!contains(github.event.head_commit.message, 'skip-ci')"
+
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v1
+       - name: Cache
+         uses: actions/cache@v1
+         with:
+           path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
+           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+           restore-keys: |
+             ${{ runner.os }}-build-${{ env.cache-name }}-
+             ${{ runner.os }}-build-
+             ${{ runner.os }}-
+       - name: Setup
+         uses: actions/setup-node@v1
+         with:
+           node-version: 12
+       - name: Install
+         run: npm install
+       - name: Display
+         run: npm run textile:check
+       - name: Check
+         run: if [ $(lerna exec -- npx ncu '/^@textile/.*$/' | grep '@textile/' | wc -l) == 0 ]; then echo 'ok'; else exit 1; fi;
