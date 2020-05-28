@@ -4,7 +4,7 @@ import { API, APIPushPath } from '@textile/buckets-grpc/buckets_pb_service'
 import CID from 'cids'
 import { Channel } from 'queueable'
 import { grpc } from '@improbable-eng/grpc-web'
-import { Context, Provider } from '@textile/context'
+import { ContextInterface, Context } from '@textile/context'
 import { normaliseInput, File } from './normalize'
 
 const logger = log.getLogger('buckets')
@@ -29,7 +29,7 @@ export class Buckets {
    * Creates a new gRPC client instance for accessing the Textile Buckets API.
    * @param context The context to use for interacting with the APIs. Can be modified later.
    */
-  constructor(public context: Context = new Provider()) {
+  constructor(public context: ContextInterface = new Context()) {
     this.serviceHost = context.host
     this.rpcOptions = {
       transport: context.transport,
@@ -42,7 +42,7 @@ export class Buckets {
    * @param name Human-readable bucket name. It is only meant to help identify a bucket in a UI and is not unique.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async init(name: string, ctx?: Context) {
+  async init(name: string, ctx?: ContextInterface) {
     logger.debug('init request')
     const req = new pb.InitRequest()
     req.setName(name)
@@ -54,7 +54,7 @@ export class Buckets {
    * Returns a list of all bucket roots.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async list(ctx?: Context) {
+  async list(ctx?: ContextInterface) {
     logger.debug('list request')
     const req = new pb.ListRequest()
     const res: pb.ListReply = await this.unary(API.List, req, ctx)
@@ -66,7 +66,7 @@ export class Buckets {
    * @param key Unique (IPNS compatible) identifier key for a bucket.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async links(key: string, ctx?: Context) {
+  async links(key: string, ctx?: ContextInterface) {
     logger.debug('link request')
     const req = new pb.LinksRequest()
     req.setKey(key)
@@ -80,7 +80,7 @@ export class Buckets {
    * @param path A file/object (sub)-path within a bucket.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async listPath(key: string, path: string, ctx?: Context) {
+  async listPath(key: string, path: string, ctx?: ContextInterface) {
     logger.debug('list path request')
     const req = new pb.ListPathRequest()
     req.setKey(key)
@@ -94,7 +94,7 @@ export class Buckets {
    * @param key Unique (IPNS compatible) identifier key for a bucket.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async remove(key: string, ctx?: Context) {
+  async remove(key: string, ctx?: ContextInterface) {
     logger.debug('remove request')
     const req = new pb.RemoveRequest()
     req.setKey(key)
@@ -108,7 +108,7 @@ export class Buckets {
    * @param path A file/object (sub)-path within a bucket.
    * @param ctx Context object containing web-gRPC headers and settings.
    */
-  async removePath(key: string, path: string, ctx?: Context) {
+  async removePath(key: string, path: string, ctx?: ContextInterface) {
     logger.debug('remove path request')
     const req = new pb.RemovePathRequest()
     req.setKey(key)
@@ -126,7 +126,13 @@ export class Buckets {
    * @param opts Options to control response stream. Currently only supports a progress function.
    * @note This will return the resolved path and the bucket's new root path.
    */
-  async pushPath(key: string, path: string, input: any, ctx?: Context, opts?: { progress?: (num?: number) => void }) {
+  async pushPath(
+    key: string,
+    path: string,
+    input: any,
+    ctx?: ContextInterface,
+    opts?: { progress?: (num?: number) => void },
+  ) {
     return new Promise<PushPathResult>(async (resolve, reject) => {
       // Only process the first  input if there are more than one
       const source: File | undefined = (await normaliseInput(input).next()).value
@@ -201,7 +207,7 @@ export class Buckets {
   pullPath(
     key: string,
     path: string,
-    ctx?: Context,
+    ctx?: ContextInterface,
     opts?: { progress?: (num?: number) => void },
   ): AsyncIterableIterator<Uint8Array> {
     const metadata = { ...this.context.toJSON(), ...ctx?.toJSON() }
@@ -238,7 +244,7 @@ export class Buckets {
     R extends grpc.ProtobufMessage,
     T extends grpc.ProtobufMessage,
     M extends grpc.UnaryMethodDefinition<R, T>
-  >(methodDescriptor: M, req: R, ctx?: Context): Promise<T> {
+  >(methodDescriptor: M, req: R, ctx?: ContextInterface): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const metadata = { ...this.context.toJSON(), ...ctx?.toJSON() }
       grpc.unary(methodDescriptor, {

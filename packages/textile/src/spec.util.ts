@@ -4,7 +4,7 @@ import { HMAC } from 'fast-sha256'
 import multibase from 'multibase'
 import * as pb from '@textile/hub-grpc/hub_pb'
 import { APIClient, ServiceError } from '@textile/hub-grpc/hub_pb_service'
-import { Context } from '@textile/context'
+import { ContextInterface } from '@textile/context'
 
 export const createUsername = (size = 12) => {
   return Array(size)
@@ -26,7 +26,7 @@ export const confirmEmail = async (gurl: string, secret: string) => {
   return true
 }
 
-export const createKey = (ctx: Context, kind: keyof pb.KeyTypeMap) => {
+export const createKey = (ctx: ContextInterface, kind: keyof pb.KeyTypeMap) => {
   return new Promise<pb.GetKeyReply.AsObject>((resolve, reject) => {
     const req = new pb.CreateKeyRequest()
     req.setType(pb.KeyType[kind])
@@ -38,7 +38,7 @@ export const createKey = (ctx: Context, kind: keyof pb.KeyTypeMap) => {
   })
 }
 
-export const signUp = (ctx: Context, addrGatewayUrl: string, sessionSecret: string) => {
+export const signUp = (ctx: ContextInterface, addrGatewayUrl: string, sessionSecret: string) => {
   const username = createUsername()
   const email = createEmail()
   return new Promise<{ user: pb.SignupReply.AsObject | undefined; username: string; email: string }>(

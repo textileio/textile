@@ -8,7 +8,7 @@ import { ThreadID } from '@textile/threads-id'
 import { expect } from 'chai'
 import { Client } from '@textile/threads-client'
 import { InitReply } from '@textile/buckets-grpc/buckets_pb'
-import { Context, Provider } from '@textile/context'
+import { Context } from '@textile/context'
 import { Buckets } from './buckets'
 import { signUp } from './spec.util'
 
@@ -19,7 +19,7 @@ const wrongError = new Error('wrong error!')
 const sessionSecret = 'textilesession'
 
 describe('Buckets...', () => {
-  const ctx: Context = new Provider(addrApiurl, undefined)
+  const ctx = new Context(addrApiurl, undefined)
   const client = new Buckets(ctx)
   let buck: InitReply.AsObject
   let fileSize: number

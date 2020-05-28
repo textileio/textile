@@ -9,7 +9,7 @@ import { SignupReply } from '@textile/hub-grpc/hub_pb'
 import { expect } from 'chai'
 import { Libp2pCryptoIdentity } from '@textile/threads-core'
 import { Buckets } from '@textile/buckets'
-import { Context, Provider, expirationError } from '@textile/context'
+import { Context, expirationError } from '@textile/context'
 import { isBrowser } from 'browser-or-node'
 import { signUp, createKey, createAPISig } from './spec.util'
 import { Client } from './users'
@@ -22,7 +22,7 @@ const sessionSecret = 'textilesession'
 
 describe('Users...', () => {
   describe('getThread', () => {
-    const ctx: Context = new Provider(addrApiurl, undefined)
+    const ctx = new Context(addrApiurl, undefined)
     const client = new Client(ctx)
     let dev: SignupReply.AsObject
     before(async function () {
@@ -40,7 +40,7 @@ describe('Users...', () => {
         expect(err.code).to.equal(grpc.Code.Unauthenticated)
       }
       // No key signature
-      const tmp = new Provider(addrApiurl).withSession(dev.session)
+      const tmp = new Context(addrApiurl).withSession(dev.session)
       const key = await createKey(tmp, 'ACCOUNT')
       try {
         await client.getThread('foo', ctx.withAPIKey(key.key))
@@ -60,7 +60,7 @@ describe('Users...', () => {
       }
     })
     it('should handle account keys', async () => {
-      const tmp = new Provider(addrApiurl).withSession(dev.session)
+      const tmp = new Context(addrApiurl).withSession(dev.session)
       const key = await createKey(tmp, 'ACCOUNT')
       await ctx.withAPIKey(key.key).withUserKey(key)
       // Not found
@@ -81,9 +81,9 @@ describe('Users...', () => {
 
     it('should handle users keys', async () => {
       // Reset client context (just for the tests)
-      const ctx = new Provider(addrApiurl)
+      const ctx = new Context(addrApiurl)
       client.context = ctx
-      const tmp = new Provider(addrApiurl).withSession(dev.session)
+      const tmp = new Context(addrApiurl).withSession(dev.session)
       const key = await createKey(tmp, 'USER')
       await ctx.withAPIKey(key.key).withUserKey(key)
       // No token
@@ -114,7 +114,7 @@ describe('Users...', () => {
   })
 
   describe('listThreads', () => {
-    const ctx: Context = new Provider(addrApiurl, undefined)
+    const ctx = new Context(addrApiurl, undefined)
     const client = new Client(ctx)
     let dev: SignupReply.AsObject
     before(async function () {
@@ -132,7 +132,7 @@ describe('Users...', () => {
         expect(err.code).to.equal(grpc.Code.Unauthenticated)
       }
       // No key signature
-      const tmp = new Provider(addrApiurl).withSession(dev.session)
+      const tmp = new Context(addrApiurl).withSession(dev.session)
       const key = await createKey(tmp, 'ACCOUNT')
       try {
         await client.listThreads(ctx.withAPIKey(key.key))
@@ -152,7 +152,7 @@ describe('Users...', () => {
       }
     })
     it('should handle account keys', async () => {
-      const tmp = new Provider(addrApiurl, undefined)
+      const tmp = new Context(addrApiurl, undefined)
       const key = await createKey(tmp.withSession(dev.session), 'ACCOUNT')
       await ctx.withAPIKey(key.key).withUserKey(key)
       // Empty
@@ -168,9 +168,9 @@ describe('Users...', () => {
 
     it('should handle users keys', async () => {
       // Reset client context (just for the tests)
-      const ctx = new Provider(addrApiurl)
+      const ctx = new Context(addrApiurl)
       client.context = ctx
-      const tmp = new Provider(addrApiurl).withSession(dev.session)
+      const tmp = new Context(addrApiurl).withSession(dev.session)
       const key = await createKey(tmp, 'USER')
       await ctx.withAPIKey(key.key).withUserKey(key)
       // No token
@@ -198,7 +198,7 @@ describe('Users...', () => {
 
   describe('Buckets and accounts', () => {
     context('a developer', () => {
-      const ctx: Context = new Provider(addrApiurl, undefined)
+      const ctx = new Context(addrApiurl, undefined)
       let dev: SignupReply.AsObject
       it('should sign-up, create an API key, and sign it for the requests', async () => {
         // @note This should be done using the cli
@@ -237,7 +237,7 @@ describe('Users...', () => {
       })
     })
     context('a developer with a user', function () {
-      const ctx: Context = new Provider(addrApiurl, undefined)
+      const ctx = new Context(addrApiurl, undefined)
       let dev: SignupReply.AsObject
       let users: Client
       it('should sign-up, create an API key, and a new user', async function () {
@@ -252,7 +252,7 @@ describe('Users...', () => {
         // for demo purposes here to show that it can also use custom identities
         const identity = await Libp2pCryptoIdentity.fromRandom()
         // We also explicitly specify a custom context here, which could be omitted as it uses reasonable defaults
-        const userContext = await new Provider(addrApiurl).withUserKey(key)
+        const userContext = await new Context(addrApiurl).withUserKey(key)
         // In the app, we simply create a new user from the provided user key, signing is done automatically
         users = new Client(userContext)
         await users.getToken(identity)
