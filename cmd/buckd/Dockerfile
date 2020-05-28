@@ -33,7 +33,7 @@ COPY . $SRC_DIR
 
 # Install the daemon
 RUN cd $SRC_DIR \
-  && CGO_ENABLED=0 GOOS=linux go build -o textiled cmd/textiled/main.go
+  && CGO_ENABLED=0 GOOS=linux go build -o buckd cmd/buckd/main.go
 
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1.31.0-glibc
@@ -41,7 +41,7 @@ LABEL maintainer="Textile <contact@textile.io>"
 
 # Get the textile binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /textile
-COPY --from=0 /textile/textiled /usr/local/bin/textiled
+COPY --from=0 /textile/buckd /usr/local/bin/buckd
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
@@ -59,21 +59,21 @@ EXPOSE 4006
 EXPOSE 8006
 
 # Create the repo directory and switch to a non-privileged user.
-ENV TEXTILE_PATH /data/textile
-RUN mkdir -p $TEXTILE_PATH \
-  && mkdir -p $TEXTILE_PATH/logstore \
-  && mkdir -p $TEXTILE_PATH/eventstore \
-  && mkdir -p $TEXTILE_PATH/ipfslite \
-  && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
-  && chown -R textile:users $TEXTILE_PATH
+ENV HUB_PATH /data/buck
+RUN mkdir -p $HUB_PATH \
+  && mkdir -p $HUB_PATH/logstore \
+  && mkdir -p $HUB_PATH/eventstore \
+  && mkdir -p $HUB_PATH/ipfslite \
+  && adduser -D -h $HUB_PATH -u 1000 -G users buck \
+  && chown -R buck:users $HUB_PATH
 
 # Switch to a non-privileged user
-USER textile
+USER buck
 
 # Expose the repo as a volume.
 # Important this happens after the USER directive so permission are correct.
-VOLUME $TEXTILE_PATH
+VOLUME $HUB_PATH
 
-ENTRYPOINT ["/sbin/tini", "--", "textiled"]
+ENTRYPOINT ["/sbin/tini", "--", "buckd"]
 
-CMD ["--repo=/data/textile"]
+CMD ["--repo=/data/buck"]

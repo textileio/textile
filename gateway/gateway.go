@@ -65,6 +65,7 @@ type Gateway struct {
 	apiSession  string
 	threads     *threadsclient.Client
 	buckets     *bucketsclient.Client
+	hub         bool
 
 	ipfs iface.CoreAPI
 
@@ -82,6 +83,7 @@ type Config struct {
 	Collections     *collections.Collections
 	IPFSClient      iface.CoreAPI
 	EmailSessionBus *broadcast.Broadcaster
+	Hub             bool
 	Debug           bool
 }
 
@@ -120,6 +122,7 @@ func NewGateway(conf Config) (*Gateway, error) {
 		apiSession:      conf.APISession,
 		threads:         tc,
 		buckets:         bc,
+		hub:             conf.Hub,
 		ipfs:            conf.IPFSClient,
 		emailSessionBus: conf.EmailSessionBus,
 	}, nil
@@ -165,9 +168,11 @@ func (g *Gateway) Start() {
 	router.GET("/ipld/:root", g.subdomainOptionHandler, g.ipldHandler)
 	router.GET("/ipld/:root/*path", g.subdomainOptionHandler, g.ipldHandler)
 
-	router.GET("/dashboard/:username", g.dashboardHandler)
-	router.GET("/confirm/:secret", g.confirmEmail)
-	router.GET("/consent/:invite", g.consentInvite)
+	if g.hub {
+		router.GET("/dashboard/:username", g.dashboardHandler)
+		router.GET("/confirm/:secret", g.confirmEmail)
+		router.GET("/consent/:invite", g.consentInvite)
+	}
 
 	router.NoRoute(g.subdomainHandler)
 

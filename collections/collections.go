@@ -28,60 +28,49 @@ type Collections struct {
 }
 
 // NewCollections gets or create store instances for active collections.
-func NewCollections(ctx context.Context, uri, dbName string) (*Collections, error) {
+func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collections, error) {
 	m, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
 	}
 	db := m.Database(dbName)
+	c := &Collections{m: m}
 
-	sessions, err := NewSessions(ctx, db)
+	if hub {
+		c.Sessions, err = NewSessions(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.Accounts, err = NewAccounts(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.Invites, err = NewInvites(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.Threads, err = NewThreads(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.APIKeys, err = NewAPIKeys(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.Users, err = NewUsers(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+	}
+	c.IPNSKeys, err = NewIPNSKeys(ctx, db)
 	if err != nil {
 		return nil, err
 	}
-	accounts, err := NewAccounts(ctx, db)
+	c.FFSInstances, err = NewFFSInstances(ctx, db)
 	if err != nil {
 		return nil, err
 	}
-	invites, err := NewInvites(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	threads, err := NewThreads(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	apikeys, err := NewAPIKeys(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	ipnskeys, err := NewIPNSKeys(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	users, err := NewUsers(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-	ffsInstances, err := NewFFSInstances(ctx, db)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Collections{
-		m: m,
-
-		Sessions: sessions,
-		Accounts: accounts,
-		Invites:  invites,
-
-		Threads:      threads,
-		APIKeys:      apikeys,
-		IPNSKeys:     ipnskeys,
-		FFSInstances: ffsInstances,
-
-		Users: users,
-	}, nil
+	return c, nil
 }
 
 func (c *Collections) Close() error {

@@ -14,16 +14,21 @@ import (
 	"github.com/textileio/textile/core"
 )
 
-var (
-	log = logging.Logger("textiled")
+const (
+	daemonName = "bucketsd"
+)
 
-	configViper = viper.New()
+var (
+	log = logging.Logger(daemonName)
+
 	configFile  string
+	configDir   = "." + daemonName
+	configViper = viper.New()
 
 	flags = map[string]cmd.Flag{
 		"repo": {
 			Key:      "repo",
-			DefValue: "${HOME}/.textiled/repo",
+			DefValue: "${HOME}/" + configDir + "/repo",
 		},
 		"debug": {
 			Key:      "log.debug",
@@ -31,7 +36,7 @@ var (
 		},
 		"logFile": {
 			Key:      "log.file",
-			DefValue: "${HOME}/.textiled/log",
+			DefValue: "${HOME}/" + configDir + "/log",
 		},
 		"addrApi": {
 			Key:      "addr.api",
@@ -81,33 +86,18 @@ var (
 			Key:      "dns.token",
 			DefValue: "",
 		},
-		"emailFrom": {
-			Key:      "email.from",
-			DefValue: "Textile <verify@email.textile.io>",
-		},
-		"emailDomain": {
-			Key:      "email.domain",
-			DefValue: "email.textile.io",
-		},
-		"emailApiKey": {
-			Key:      "email.api_key",
-			DefValue: "",
-		},
-		"emailSessionSecret": {
-			Key:      "email.session_secret",
-			DefValue: "",
-		},
 	}
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, ".textiled", "config", true))
+	cobra.OnInitialize(cmd.InitConfig(configViper, configFile, configDir, "config", true))
+	cmd.InitConfigCmd(rootCmd, configViper, configDir)
 
 	rootCmd.PersistentFlags().StringVar(
 		&configFile,
 		"config",
 		"",
-		"Config file (default ${HOME}/.textiled/config.yml)")
+		"Config file (default ${HOME}/"+configDir+"/config.yml)")
 
 	rootCmd.PersistentFlags().StringP(
 		"repo",
@@ -190,27 +180,6 @@ func init() {
 		flags["dnsDomain"].DefValue.(string),
 		"Cloudflare API Token for dnsDomain")
 
-	// Verification email settings
-	rootCmd.PersistentFlags().String(
-		"emailFrom",
-		flags["emailFrom"].DefValue.(string),
-		"Source address of system emails")
-
-	rootCmd.PersistentFlags().String(
-		"emailDomain",
-		flags["emailDomain"].DefValue.(string),
-		"Domain of system emails")
-
-	rootCmd.PersistentFlags().String(
-		"emailApiKey",
-		flags["emailApiKey"].DefValue.(string),
-		"Mailgun API key for sending emails")
-
-	rootCmd.PersistentFlags().String(
-		"emailSessionSecret",
-		flags["emailSessionSecret"].DefValue.(string),
-		"Session secret to use when testing email APIs")
-
 	if err := cmd.BindFlags(configViper, rootCmd, flags); err != nil {
 		log.Fatal(err)
 	}
@@ -223,16 +192,16 @@ func main() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "textiled",
-	Short: "Textile daemon",
-	Long:  `The Textile daemon.`,
+	Use:   daemonName,
+	Short: "Buckets daemon",
+	Long:  `The Buckets daemon.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		configViper.SetConfigType("yaml")
 		cmd.ExpandConfigVars(configViper, flags)
 
 		if configViper.GetBool("log.debug") {
 			if err := util.SetLogLevels(map[string]logging.LogLevel{
-				"textiled": logging.LevelDebug,
+				daemonName: logging.LevelDebug,
 			}); err != nil {
 				log.Fatal(err)
 			}
@@ -264,11 +233,6 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := configViper.GetString("dns.zone_id")
 		dnsToken := configViper.GetString("dns.token")
 
-		emailFrom := configViper.GetString("email.from")
-		emailDomain := configViper.GetString("email.domain")
-		emailApiKey := configViper.GetString("email.api_key")
-		emailSessionSecret := configViper.GetString("email.session_secret")
-
 		logFile := configViper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -277,25 +241,21 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:           configViper.GetString("repo"),
-			AddrAPI:            addrApi,
-			AddrAPIProxy:       addrApiProxy,
-			AddrThreadsHost:    addrThreadsHost,
-			AddrIPFSAPI:        addrIpfsApi,
-			AddrGatewayHost:    addrGatewayHost,
-			AddrGatewayURL:     addrGatewayUrl,
-			AddrPowergateAPI:   addrPowergateApi,
-			AddrMongoURI:       addrMongoUri,
-			UseSubdomains:      configViper.GetBool("gateway.subdomains"),
-			MongoName:          "textile",
-			DNSDomain:          dnsDomain,
-			DNSZoneID:          dnsZoneID,
-			DNSToken:           dnsToken,
-			EmailFrom:          emailFrom,
-			EmailDomain:        emailDomain,
-			EmailAPIKey:        emailApiKey,
-			EmailSessionSecret: emailSessionSecret,
-			Debug:              configViper.GetBool("log.debug"),
+			RepoPath:         configViper.GetString("repo"),
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrThreadsHost:  addrThreadsHost,
+			AddrIPFSAPI:      addrIpfsApi,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
+			AddrPowergateAPI: addrPowergateApi,
+			AddrMongoURI:     addrMongoUri,
+			UseSubdomains:    configViper.GetBool("gateway.subdomains"),
+			MongoName:        "buck",
+			DNSDomain:        dnsDomain,
+			DNSZoneID:        dnsZoneID,
+			DNSToken:         dnsToken,
+			Debug:            configViper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -303,7 +263,7 @@ var rootCmd = &cobra.Command{
 		defer textile.Close()
 		textile.Bootstrap()
 
-		fmt.Println("Welcome to Textile!")
+		fmt.Println("Welcome to Buckets!")
 		fmt.Println("Your peer ID is " + textile.HostID().String())
 
 		select {}

@@ -508,7 +508,7 @@ func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
 				}
 			}
 			// Delete the entire DB.
-			if err := s.Threads.DeleteDB(ctx, t.ID, db.WithManagedDBToken(a.Token)); err != nil {
+			if err := s.Threads.DeleteDB(ctx, t.ID, db.WithManagedToken(a.Token)); err != nil {
 				return err
 			}
 		} else {
