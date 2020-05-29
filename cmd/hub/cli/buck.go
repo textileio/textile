@@ -1,19 +1,13 @@
-package main
+package cli
 
 import (
 	"github.com/spf13/cobra"
-	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
-func init() {
-	rootCmd.AddCommand(bucketCmd)
-	buck.Init(bucketCmd)
-}
-
 var bucketCmd = &cobra.Command{
-	Use: "bucket",
+	Use: "buck",
 	Aliases: []string{
-		"buck",
+		"bucket",
 	},
 	Short: "Manage an object storage bucket",
 	Long:  `Manages files and folders in an object storage bucket.`,

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -14,10 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
-
-func init() {
-	rootCmd.AddCommand(initCmd)
-}
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -64,7 +60,7 @@ var initCmd = &cobra.Command{
 		s.Stop()
 		if err != nil {
 			if strings.Contains(err.Error(), "Account exists") {
-				cmd.Fatal(fmt.Errorf("an account with email %s already exists, use `%s login` instead", email, cliName))
+				cmd.Fatal(fmt.Errorf("an account with email %s already exists, use `%s login` instead", email, Name))
 			} else {
 				cmd.Fatal(err)
 			}
@@ -86,6 +82,6 @@ var initCmd = &cobra.Command{
 		}
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
-		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(cliName+" bucket init"))
+		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" bucket init"))
 	},
 }

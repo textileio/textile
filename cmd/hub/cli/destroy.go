@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -9,10 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
-
-func init() {
-	rootCmd.AddCommand(destroyCmd)
-}
 
 var destroyCmd = &cobra.Command{
 	Use:   "destroy",

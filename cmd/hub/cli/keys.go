@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -11,13 +11,6 @@ import (
 	"github.com/textileio/textile/cmd"
 	buck "github.com/textileio/textile/cmd/buck/cli"
 )
-
-func init() {
-	rootCmd.AddCommand(keysCmd)
-	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
-
-	keysCmd.PersistentFlags().String("org", "", "Org username")
-}
 
 var keysCmd = &cobra.Command{
 	Use: "keys",

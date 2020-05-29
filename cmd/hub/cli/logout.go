@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"os"
@@ -6,10 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
-
-func init() {
-	rootCmd.AddCommand(logoutCmd)
-}
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",

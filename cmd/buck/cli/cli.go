@@ -30,6 +30,8 @@ import (
 )
 
 const (
+	Name = "buck"
+
 	nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
 )
 
@@ -73,8 +75,8 @@ func init() {
 	uiprogress.Fill = '-'
 }
 
-func Init(root *cobra.Command) {
-	root.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd)
+func Init(rootCmd *cobra.Command) {
+	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd)
 	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
 
 	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
@@ -102,10 +104,6 @@ func Config() cmd.Config {
 
 func SetClients(c *cmd.Clients) {
 	clients = c
-}
-
-func CloseClients() {
-	clients.Close()
 }
 
 var bucketInitCmd = &cobra.Command{

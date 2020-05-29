@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -12,10 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
-
-func init() {
-	rootCmd.AddCommand(loginCmd)
-}
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
@@ -58,6 +54,6 @@ var loginCmd = &cobra.Command{
 		}
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
-		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan(cliName+" bucket init"))
+		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" bucket init"))
 	},
 }

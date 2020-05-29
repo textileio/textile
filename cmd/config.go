@@ -14,13 +14,13 @@ import (
 	"github.com/textileio/powergate/exe/cli/cmd"
 )
 
-func InitConfigCmd(root *cobra.Command, v *viper.Viper, dir string) {
+func InitConfigCmd(rootCmd *cobra.Command, v *viper.Viper, dir string) {
 	configCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Config utils",
 		Long:  `Config file utilities.`,
 	}
-	root.AddCommand(configCmd)
+	rootCmd.AddCommand(configCmd)
 	createCmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create config",

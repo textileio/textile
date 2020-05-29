@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"github.com/logrusorgru/aurora"
@@ -7,13 +7,6 @@ import (
 	"github.com/textileio/textile/cmd"
 	buck "github.com/textileio/textile/cmd/buck/cli"
 )
-
-func init() {
-	rootCmd.AddCommand(threadsCmd)
-	threadsCmd.AddCommand(threadsLsCmd)
-
-	threadsCmd.PersistentFlags().String("org", "", "Org username")
-}
 
 var threadsCmd = &cobra.Command{
 	Use: "threads",

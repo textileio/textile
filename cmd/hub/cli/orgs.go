@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"fmt"
@@ -12,11 +12,6 @@ import (
 	"github.com/textileio/textile/cmd"
 	buck "github.com/textileio/textile/cmd/buck/cli"
 )
-
-func init() {
-	rootCmd.AddCommand(orgsCmd)
-	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
-}
 
 var orgsCmd = &cobra.Command{
 	Use: "orgs",

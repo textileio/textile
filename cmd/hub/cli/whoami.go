@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"github.com/logrusorgru/aurora"
@@ -6,10 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
 )
-
-func init() {
-	rootCmd.AddCommand(whoamiCmd)
-}
 
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
