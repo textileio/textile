@@ -1,4 +1,4 @@
-package cmds
+package cli
 
 import (
 	"context"
@@ -34,7 +34,7 @@ const (
 )
 
 var (
-	Config = cmd.Config{
+	config = cmd.Config{
 		Viper: viper.New(),
 		Dir:   ".textile",
 		Name:  "config",
@@ -60,7 +60,7 @@ var (
 		Global: false,
 	}
 
-	Clients *cmd.Clients
+	clients *cmd.Clients
 
 	addFileTimeout = time.Hour * 24
 	getFileTimeout = time.Hour * 24
@@ -68,7 +68,12 @@ var (
 	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
 )
 
-func InitCmd(root *cobra.Command) {
+func init() {
+	uiprogress.Empty = ' '
+	uiprogress.Fill = '-'
+}
+
+func Init(root *cobra.Command) {
 	root.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd)
 	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
 
@@ -77,7 +82,7 @@ func InitCmd(root *cobra.Command) {
 	bucketInitCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
 	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
-	if err := cmd.BindFlags(Config.Viper, bucketInitCmd, Config.Flags); err != nil {
+	if err := cmd.BindFlags(config.Viper, bucketInitCmd, config.Flags); err != nil {
 		cmd.Fatal(err)
 	}
 
@@ -89,9 +94,18 @@ func InitCmd(root *cobra.Command) {
 	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
+}
 
-	uiprogress.Empty = ' '
-	uiprogress.Fill = '-'
+func Config() cmd.Config {
+	return config
+}
+
+func SetClients(c *cmd.Clients) {
+	clients = c
+}
+
+func CloseClients() {
+	clients.Close()
 }
 
 var bucketInitCmd = &cobra.Command{
@@ -106,18 +120,18 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 `,
 	Args: cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
 		root, err := os.Getwd()
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		dir := filepath.Join(root, Config.Dir)
+		dir := filepath.Join(root, config.Dir)
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			cmd.Fatal(err)
 		}
-		filename := filepath.Join(dir, Config.Name+".yml")
+		filename := filepath.Join(dir, config.Name+".yml")
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
@@ -127,12 +141,12 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			cmd.Fatal(err)
 		}
 		if existing {
-			if Clients.Users == nil {
+			if clients.Users == nil {
 				// @todo: List all threadsd threads
 			}
-			ctx, cancel := Clients.Ctx.Auth(cmd.Timeout)
+			ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
 			defer cancel()
-			res, err := Clients.Users.ListThreads(ctx)
+			res, err := clients.Users.ListThreads(ctx)
 			if err != nil {
 				cmd.Fatal(err)
 			}
@@ -149,7 +163,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 					cmd.Fatal(err)
 				}
 				ctx = common.NewThreadIDContext(ctx, id)
-				res, err := Clients.Buckets.List(ctx)
+				res, err := clients.Buckets.List(ctx)
 				if err != nil {
 					cmd.Fatal(err)
 				}
@@ -177,12 +191,12 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			}
 
 			selected := bucketInfos[index]
-			Config.Viper.Set("thread", selected.ID.String())
-			Config.Viper.Set("key", selected.Key)
+			config.Viper.Set("thread", selected.ID.String())
+			config.Viper.Set("key", selected.Key)
 		}
 
 		var dbID thread.ID
-		xthread := Config.Viper.GetString("thread")
+		xthread := config.Viper.GetString("thread")
 		if xthread != "" {
 			var err error
 			dbID, err = thread.Decode(xthread)
@@ -191,7 +205,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			}
 		}
 
-		xkey := Config.Viper.GetString("key")
+		xkey := config.Viper.GetString("key")
 		initRemote := true
 		if xkey != "" {
 			if !dbID.Defined() {
@@ -213,7 +227,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		}
 
 		if !dbID.Defined() {
-			selected := Clients.SelectThread("Buckets are written to a threadDB. Select or create a new one", aurora.Sprintf(
+			selected := clients.SelectThread("Buckets are written to a threadDB. Select or create a new one", aurora.Sprintf(
 				aurora.BrightBlack("> Selected threadDB {{ .ID | white | bold }}")), true)
 			if selected.ID == "Create new" {
 				if selected.Name == "" {
@@ -226,11 +240,11 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 						cmd.End("")
 					}
 				}
-				ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+				ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 				defer cancel()
 				dbID = thread.NewIDV1(thread.Raw, 32)
 				ctx = common.NewThreadNameContext(ctx, selected.Name)
-				if err := Clients.Threads.NewDB(ctx, dbID); err != nil {
+				if err := clients.Threads.NewDB(ctx, dbID); err != nil {
 					cmd.Fatal(err)
 				}
 			} else {
@@ -240,17 +254,17 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 					cmd.Fatal(err)
 				}
 			}
-			Config.Viper.Set("thread", dbID.String())
+			config.Viper.Set("thread", dbID.String())
 		}
 
 		if initRemote {
-			ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 			defer cancel()
-			rep, err := Clients.Buckets.Init(ctx, name)
+			rep, err := clients.Buckets.Init(ctx, name)
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			Config.Viper.Set("key", rep.Root.Key)
+			config.Viper.Set("key", rep.Root.Key)
 
 			seed := filepath.Join(root, bucks.SeedName)
 			file, err := os.Create(seed)
@@ -277,13 +291,13 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			printLinks(rep.Links)
 		}
 
-		if err := Config.Viper.WriteConfigAs(filename); err != nil {
+		if err := config.Viper.WriteConfigAs(filename); err != nil {
 			cmd.Fatal(err)
 		}
 		if initRemote {
 			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
 		} else {
-			key := Config.Viper.GetString("key")
+			key := config.Viper.GetString("key")
 			count := getPath(key, "", root, nil, nil, false)
 
 			buck, err := local.NewBucket(root, options.BalancedLayout)
@@ -318,16 +332,16 @@ var bucketLinksCmd = &cobra.Command{
 	Long:  `Displays a thread, IPNS, and website link to this bucket.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		reply, err := Clients.Buckets.Links(ctx, key)
+		key := config.Viper.GetString("key")
+		reply, err := clients.Buckets.Links(ctx, key)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -341,10 +355,10 @@ var bucketRootCmd = &cobra.Command{
 	Long:  `Shows the local bucket root CID`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		conf := Config.Viper.ConfigFileUsed()
+		conf := config.Viper.ConfigFileUsed()
 		if conf == "" {
 			cmd.Fatal(errNotABucket)
 		}
@@ -366,10 +380,10 @@ var bucketStatusCmd = &cobra.Command{
 	Long:  `Displays paths that have been added to and paths that have been removed or differ from the local bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		conf := Config.Viper.ConfigFileUsed()
+		conf := config.Viper.ConfigFileUsed()
 		if conf == "" {
 			cmd.Fatal(errNotABucket)
 		}
@@ -398,8 +412,8 @@ var bucketLsCmd = &cobra.Command{
 	Long:  `Lists top-level or nested bucket objects.`,
 	Args:  cobra.MaximumNArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
@@ -412,10 +426,10 @@ var bucketLsCmd = &cobra.Command{
 			pth = ""
 		}
 
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		rep, err := Clients.Buckets.ListPath(ctx, key, pth)
+		key := config.Viper.GetString("key")
+		rep, err := clients.Buckets.ListPath(ctx, key, pth)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -427,9 +441,9 @@ var bucketLsCmd = &cobra.Command{
 		}
 
 		var data [][]string
-		if len(items) > 0 && !strings.HasPrefix(pth, Config.Dir) {
+		if len(items) > 0 && !strings.HasPrefix(pth, config.Dir) {
 			for _, item := range items {
-				if item.Name == Config.Dir {
+				if item.Name == config.Dir {
 					continue
 				}
 				var links string
@@ -461,16 +475,16 @@ var bucketPushCmd = &cobra.Command{
 	Long:  `Pushes paths that have been added to and paths that have been removed or differ from the local bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		conf := Config.Viper.ConfigFileUsed()
+		conf := config.Viper.ConfigFileUsed()
 		if conf == "" {
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
 
-		dbID := cmd.ThreadIDFromString(Config.Viper.GetString("thread"))
+		dbID := cmd.ThreadIDFromString(config.Viper.GetString("thread"))
 		if !dbID.Defined() {
 			cmd.Fatal(fmt.Errorf("thread is not defined"))
 		}
@@ -525,7 +539,7 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		key := Config.Viper.GetString("key")
+		key := config.Viper.GetString("key")
 		xr := buck.Path()
 		var rm []change
 		startProgress()
@@ -574,13 +588,13 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 		}
 	}()
 
-	ctx, cancel := Clients.Ctx.Thread(addFileTimeout)
+	ctx, cancel := clients.Ctx.Thread(addFileTimeout)
 	defer cancel()
 	opts := []client.Option{client.WithProgress(progress)}
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	added, root, err := Clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
+	added, root, err := clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
@@ -594,13 +608,13 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 }
 
 func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
-	ctx, cancel := Clients.Ctx.Thread(addFileTimeout)
+	ctx, cancel := clients.Ctx.Thread(addFileTimeout)
 	defer cancel()
 	var opts []client.Option
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	root, err := Clients.Buckets.RemovePath(ctx, key, filePath, opts...)
+	root, err := clients.Buckets.RemovePath(ctx, key, filePath, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
@@ -618,10 +632,10 @@ var bucketPullCmd = &cobra.Command{
 	Long:  `Pulls paths that have been added to and paths that have been removed or differ from the remote bucket root.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		conf := Config.Viper.ConfigFileUsed()
+		conf := config.Viper.ConfigFileUsed()
 		if conf == "" {
 			cmd.Fatal(errNotABucket)
 		}
@@ -671,7 +685,7 @@ var bucketPullCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		key := Config.Viper.GetString("key")
+		key := config.Viper.GetString("key")
 		count := getPath(key, "", root, buck, diff, force)
 		if count == 0 {
 			cmd.End("Everything up-to-date")
@@ -763,9 +777,9 @@ type object struct {
 }
 
 func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missing []object) {
-	ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+	ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 	defer cancel()
-	rep, err := Clients.Buckets.ListPath(ctx, key, pth)
+	rep, err := clients.Buckets.ListPath(ctx, key, pth)
 	if err != nil {
 		cmd.Fatal(err)
 	}
@@ -818,9 +832,9 @@ func getFile(key, filePath, name string, size int64, c cid.Cid) {
 		}
 	}()
 
-	ctx, cancel := Clients.Ctx.Thread(getFileTimeout)
+	ctx, cancel := clients.Ctx.Thread(getFileTimeout)
 	defer cancel()
-	if err := Clients.Buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
+	if err := clients.Buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
 		cmd.Fatal(err)
 	}
 	finishBar(bar, filePath, c)
@@ -832,16 +846,16 @@ var bucketCatCmd = &cobra.Command{
 	Long:  `Cats bucket objects at path.`,
 	Args:  cobra.ExactArgs(1),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := Clients.Ctx.Thread(getFileTimeout)
+		ctx, cancel := clients.Ctx.Thread(getFileTimeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		if err := Clients.Buckets.PullPath(ctx, key, args[0], os.Stdout); err != nil {
+		key := config.Viper.GetString("key")
+		if err := clients.Buckets.PullPath(ctx, key, args[0], os.Stdout); err != nil {
 			cmd.Fatal(err)
 		}
 	},
@@ -853,10 +867,10 @@ var bucketDestroyCmd = &cobra.Command{
 	Long:  `Destroys the bucket and all objects.`,
 	Args:  cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
 	},
 	Run: func(c *cobra.Command, args []string) {
-		conf := Config.Viper.ConfigFileUsed()
+		conf := config.Viper.ConfigFileUsed()
 		if conf == "" {
 			cmd.Fatal(errNotABucket)
 		}
@@ -871,15 +885,15 @@ var bucketDestroyCmd = &cobra.Command{
 			cmd.End("")
 		}
 
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		if err := Clients.Buckets.Remove(ctx, key); err != nil {
+		key := config.Viper.GetString("key")
+		if err := clients.Buckets.Remove(ctx, key); err != nil {
 			cmd.Fatal(err)
 		}
 
 		_ = os.RemoveAll(filepath.Join(root, bucks.SeedName))
-		_ = os.RemoveAll(filepath.Join(root, Config.Dir))
+		_ = os.RemoveAll(filepath.Join(root, config.Dir))
 		cmd.Success("Your bucket has been deleted")
 	},
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/cmd/buck/cmds"
+	"github.com/textileio/textile/cmd/buck/cli"
 )
 
 const (
@@ -16,14 +16,14 @@ const (
 )
 
 func init() {
-	cobra.OnInitialize(cmd.InitConfig(cmds.Config))
-	cmds.InitCmd(rootCmd)
+	cobra.OnInitialize(cmd.InitConfig(cli.Config()))
+	cli.Init(rootCmd)
 
 	rootCmd.PersistentFlags().String("api", defaultTarget, "API target")
-	if err := cmds.Config.Viper.BindPFlag("api", rootCmd.PersistentFlags().Lookup("api")); err != nil {
+	if err := cli.Config().Viper.BindPFlag("api", rootCmd.PersistentFlags().Lookup("api")); err != nil {
 		cmd.Fatal(err)
 	}
-	cmds.Config.Viper.SetDefault("api", defaultTarget)
+	cli.Config().Viper.SetDefault("api", defaultTarget)
 }
 
 func main() {
@@ -39,16 +39,16 @@ var rootCmd = &cobra.Command{
 
 Manages files and folders in an object storage bucket.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
-		cmds.Config.Viper.SetConfigType("yaml")
+		cli.Config().Viper.SetConfigType("yaml")
 
 		target, err := c.Flags().GetString("api")
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmds.Clients = cmd.NewClients(target, false, &ctx{})
+		cli.SetClients(cmd.NewClients(target, false, &ctx{}))
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {
-		cmds.Clients.Close()
+		cli.CloseClients()
 	},
 	Args: cobra.ExactArgs(0),
 }
@@ -61,6 +61,6 @@ func (c *ctx) Auth(duration time.Duration) (context.Context, context.CancelFunc)
 
 func (c *ctx) Thread(duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := c.Auth(duration)
-	ctx = common.NewThreadIDContext(ctx, cmd.ThreadIDFromString(cmds.Config.Viper.GetString("thread")))
+	ctx = common.NewThreadIDContext(ctx, cmd.ThreadIDFromString(cli.Config().Viper.GetString("thread")))
 	return ctx, cancel
 }

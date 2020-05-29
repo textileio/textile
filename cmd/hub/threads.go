@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cmds"
+	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 func init() {
@@ -39,7 +39,7 @@ var threadsLsCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		if org != "" {
-			buck.Config.Viper.Set("org", org)
+			buck.Config().Viper.Set("org", org)
 		}
 
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)

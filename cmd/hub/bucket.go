@@ -2,12 +2,12 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	buck "github.com/textileio/textile/cmd/buck/cmds"
+	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 func init() {
 	rootCmd.AddCommand(bucketCmd)
-	buck.InitCmd(bucketCmd)
+	buck.Init(bucketCmd)
 }
 
 var bucketCmd = &cobra.Command{

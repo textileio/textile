@@ -1,4 +1,4 @@
-package cmds
+package cli
 
 import (
 	"context"
@@ -14,16 +14,16 @@ var bucketArchiveCmd = &cobra.Command{
 	Short: "Create a Filecoin archive",
 	Long:  `Creates a Filecoin archive from the remote bucket root.`,
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		if _, err := Clients.Buckets.Archive(ctx, key); err != nil {
+		key := config.Viper.GetString("key")
+		if _, err := clients.Buckets.Archive(ctx, key); err != nil {
 			cmd.Fatal(err)
 		}
 		cmd.Success("Archive queued successfully")
@@ -35,16 +35,16 @@ var bucketArchiveStatusCmd = &cobra.Command{
 	Short: "Show status of the latest archive",
 	Long:  `Shows the status of the most recent bucket archive.`,
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		r, err := Clients.Buckets.ArchiveStatus(ctx, key)
+		key := config.Viper.GetString("key")
+		r, err := clients.Buckets.ArchiveStatus(ctx, key)
 		if err != nil {
 			cmd.Fatal(err)
 		}
@@ -71,12 +71,12 @@ var bucketArchiveStatusCmd = &cobra.Command{
 			wCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				err = Clients.Buckets.ArchiveWatch(wCtx, key, ch)
+				err = clients.Buckets.ArchiveWatch(wCtx, key, ch)
 				close(ch)
 			}()
 			for msg := range ch {
 				cmd.Message("\t %s", msg)
-				r, err := Clients.Buckets.ArchiveStatus(ctx, key)
+				r, err := clients.Buckets.ArchiveStatus(ctx, key)
 				if err != nil {
 					cmd.Fatal(err)
 				}
@@ -108,16 +108,16 @@ var bucketArchiveInfoCmd = &cobra.Command{
 	Short: "Show info about the current archive",
 	Long:  `Shows information about the current archive.`,
 	PreRun: func(c *cobra.Command, args []string) {
-		cmd.ExpandConfigVars(Config.Viper, Config.Flags)
-		if Config.Viper.ConfigFileUsed() == "" {
+		cmd.ExpandConfigVars(config.Viper, config.Flags)
+		if config.Viper.ConfigFileUsed() == "" {
 			cmd.Fatal(errNotABucket)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := Clients.Ctx.Thread(cmd.Timeout)
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
-		key := Config.Viper.GetString("key")
-		r, err := Clients.Buckets.ArchiveInfo(ctx, key)
+		key := config.Viper.GetString("key")
+		r, err := clients.Buckets.ArchiveInfo(ctx, key)
 		if err != nil {
 			cmd.Fatal(err)
 		}

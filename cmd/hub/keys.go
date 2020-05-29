@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cmds"
+	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 func init() {
@@ -49,7 +49,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 			cmd.Fatal(err)
 		}
 		if org != "" {
-			buck.Config.Viper.Set("org", org)
+			buck.Config().Viper.Set("org", org)
 		}
 
 		prompt := promptui.Select{
@@ -88,7 +88,7 @@ var keysInvalidateCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		if org != "" {
-			buck.Config.Viper.Set("org", org)
+			buck.Config().Viper.Set("org", org)
 		}
 
 		selected := selectKey("Invalidate key", aurora.Sprintf(
@@ -117,7 +117,7 @@ var keysLsCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 		if org != "" {
-			buck.Config.Viper.Set("org", org)
+			buck.Config().Viper.Set("org", org)
 		}
 
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)

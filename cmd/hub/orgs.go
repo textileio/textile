@@ -10,7 +10,7 @@ import (
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cmds"
+	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 func init() {
@@ -116,7 +116,7 @@ var orgsMembersCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		buck.Config.Viper.Set("org", selected.Slug)
+		buck.Config().Viper.Set("org", selected.Slug)
 
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
 		defer cancel()
@@ -149,7 +149,7 @@ var orgsInviteCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		buck.Config.Viper.Set("org", selected.Slug)
+		buck.Config().Viper.Set("org", selected.Slug)
 
 		prompt := promptui.Prompt{
 			Label: "Enter email to invite",
@@ -181,7 +181,7 @@ var orgsLeaveCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Leave org", aurora.Sprintf(
 			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
-		buck.Config.Viper.Set("org", selected.Slug)
+		buck.Config().Viper.Set("org", selected.Slug)
 
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
 		defer cancel()
@@ -239,7 +239,7 @@ var orgsDestroyCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		selected := selectOrg("Destroy org", aurora.Sprintf(
 			aurora.BrightBlack("> Destroying org {{ .Name | white | bold }}")))
-		buck.Config.Viper.Set("org", selected.Slug)
+		buck.Config().Viper.Set("org", selected.Slug)
 
 		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone. The org and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{

@@ -1,4 +1,4 @@
-package cmds
+package cli
 
 import (
 	"context"
@@ -94,7 +94,7 @@ func walkPath(pth string) (names []string) {
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, pth+"/")
-			if local.Ignore(n) || strings.HasPrefix(f, Config.Dir) || strings.HasSuffix(f, local.PatchExt) {
+			if local.Ignore(n) || strings.HasPrefix(f, config.Dir) || strings.HasSuffix(f, local.PatchExt) {
 				return nil
 			}
 			names = append(names, n)
