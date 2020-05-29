@@ -112,62 +112,58 @@ func (c *Clients) Close() {
 	}
 }
 
-type ThreadItem struct {
-	ID   string
-	Name string
-	Type string
+type Thread struct {
+	ID    thread.ID
+	Label string
+	Name  string
+	Type  string
 }
 
-func (c *Clients) SelectThread(label, successMsg string, dbsOnly bool) *ThreadItem {
-	if c.Users == nil {
-		// @todo: List all threadsd threads
-	}
+func (c *Clients) ListThreads(dbsOnly bool) []Thread {
 	ctx, cancel := c.Ctx.Auth(Timeout)
 	defer cancel()
-	list, err := c.Users.ListThreads(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-
-	var items []*ThreadItem
-	for _, t := range list.List {
-		if dbsOnly && !t.IsDB {
-			continue
-		}
-		id, err := thread.Cast(t.ID)
+	var threads []Thread
+	if c.Users != nil {
+		list, err := c.Users.ListThreads(ctx)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		if t.Name == "" {
-			t.Name = "unnamed"
+		for _, t := range list.List {
+			if dbsOnly && !t.IsDB {
+				continue
+			}
+			id, err := thread.Cast(t.ID)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if t.Name == "" {
+				t.Name = "unnamed"
+			}
+			threads = append(threads, Thread{
+				ID:    id,
+				Label: id.String(),
+				Name:  t.Name,
+				Type:  GetThreadType(t.IsDB),
+			})
 		}
-		items = append(items, &ThreadItem{
-			ID:   id.String(),
-			Name: t.Name,
-			Type: GetThreadType(t.IsDB),
-		})
+	} else {
+		list, err := c.Threads.ListDBs(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		for id, t := range list {
+			if t.Name == "" {
+				t.Name = "unnamed"
+			}
+			threads = append(threads, Thread{
+				ID:    id,
+				Label: id.String(),
+				Name:  t.Name,
+				Type:  "db",
+			})
+		}
 	}
-	var name string
-	if len(items) == 0 {
-		name = "default"
-	}
-	items = append(items, &ThreadItem{ID: "Create new", Name: name, Type: "db"})
-
-	prompt := promptui.Select{
-		Label: label,
-		Items: items,
-		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .ID | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
-			Inactive: `{{ .ID | faint }} {{ .Name | faint | bold }}`,
-			Details:  `{{ "(Type:" | faint }} {{ .Type | faint }}{{ ")" | faint }}`,
-			Selected: successMsg,
-		},
-	}
-	index, _, err := prompt.Run()
-	if err != nil {
-		End("")
-	}
-	return items[index]
+	return threads
 }
 
 func GetThreadType(isDB bool) string {
@@ -176,4 +172,28 @@ func GetThreadType(isDB bool) string {
 	} else {
 		return "log"
 	}
+}
+
+func (c *Clients) SelectThread(label, successMsg string, dbsOnly bool) Thread {
+	threads := c.ListThreads(dbsOnly)
+	var name string
+	if len(threads) == 0 {
+		name = "default"
+	}
+	threads = append(threads, Thread{Label: "Create new", Name: name, Type: "db"})
+	prompt := promptui.Select{
+		Label: label,
+		Items: threads,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Label | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Label | faint }} {{ .Name | faint | bold }}`,
+			Details:  `{{ "(Type:" | faint }} {{ .Type | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		End("")
+	}
+	return threads[index]
 }

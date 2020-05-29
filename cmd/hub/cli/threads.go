@@ -3,7 +3,6 @@ package cli
 import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
-	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/cmd"
 	buck "github.com/textileio/textile/cmd/buck/cli"
 )
@@ -35,26 +34,14 @@ var threadsLsCmd = &cobra.Command{
 			buck.Config().Viper.Set("org", org)
 		}
 
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
-		defer cancel()
-		list, err := clients.Users.ListThreads(ctx)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if len(list.List) > 0 {
-			data := make([][]string, len(list.List))
-			for i, t := range list.List {
-				id, err := thread.Cast(t.ID)
-				if err != nil {
-					cmd.Fatal(err)
-				}
-				if t.Name == "" {
-					t.Name = "unnamed"
-				}
-				data[i] = []string{id.String(), t.Name, cmd.GetThreadType(t.IsDB)}
+		threads := clients.ListThreads(false)
+		if len(threads) > 0 {
+			data := make([][]string, len(threads))
+			for i, t := range threads {
+				data[i] = []string{t.ID.String(), t.Name, t.Type}
 			}
 			cmd.RenderTable([]string{"id", "name", "type"}, data)
 		}
-		cmd.Message("Found %d threads", aurora.White(len(list.List)).Bold())
+		cmd.Message("Found %d threads", aurora.White(len(threads)).Bold())
 	},
 }
