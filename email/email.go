@@ -74,7 +74,7 @@ func (e *Client) ConfirmAddress(ctx context.Context, to, url, secret string) err
 		return err
 	}
 
-	return e.send(ctx, to, "Textile Login Verification", tpl.String())
+	return e.send(ctx, to, "Hub Login Verification", tpl.String())
 }
 
 type inviteData struct {
@@ -94,7 +94,7 @@ func (e *Client) InviteAddress(ctx context.Context, org, from, to, url, token st
 		return err
 	}
 
-	return e.send(ctx, to, "Textile Org Invitation", tpl.String())
+	return e.send(ctx, to, "Hub Org Invitation", tpl.String())
 }
 
 // send wraps the MailGun client's send method.
