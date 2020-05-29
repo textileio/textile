@@ -57,6 +57,7 @@ func DefaultTextileConfig(t *testing.T) core.Config {
 
 		EmailSessionSecret: SessionSecret,
 
+		Hub:   true,
 		Debug: true,
 	}
 }
