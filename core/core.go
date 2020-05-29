@@ -50,10 +50,16 @@ import (
 var (
 	log = logging.Logger("core")
 
+	// ignoreMethods are not intercepted by the auth.
 	ignoreMethods = []string{
 		"/hub.pb.API/Signup",
 		"/hub.pb.API/Signin",
 		"/hub.pb.API/IsUsernameAvailable",
+	}
+
+	// blockMethods are always blocked by auth.
+	blockMethods = []string{
+		"/threads.pb.API/ListDBs",
 	}
 )
 
@@ -230,6 +236,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
+	} else {
+		opts = []grpc.ServerOption{
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
+			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
+		}
 	}
 	t.server = grpc.NewServer(opts...)
 	listener, err := net.Listen("tcp", target)
@@ -347,6 +358,11 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return ctx, nil
 		}
 	}
+	for _, block := range blockMethods {
+		if method == block {
+			return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
+		}
+	}
 
 	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
 		ctx = common.NewThreadIDContext(ctx, threadID)
@@ -462,6 +478,18 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
+	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
+		ctx = common.NewThreadIDContext(ctx, threadID)
+	}
+	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
+		return nil, err
+	} else {
+		ctx = thread.NewTokenContext(ctx, threadToken)
+	}
+	return ctx, nil
+}
+
 // threadInterceptor monitors for thread creation and deletion.
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
@@ -471,6 +499,11 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		for _, ignored := range ignoreMethods {
 			if method == ignored {
 				return handler(ctx, req)
+			}
+		}
+		for _, block := range blockMethods {
+			if method == block {
+				return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
 			}
 		}
 		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.gatewaySession {
