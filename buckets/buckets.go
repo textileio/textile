@@ -131,7 +131,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 	}
 	ids, err := b.threads.Create(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 	if err != nil {
-		if isCollNotFoundErr(err) {
+		if isColNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
@@ -176,7 +176,7 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...O
 	}
 	buck := &Bucket{}
 	if err := b.threads.FindByID(ctx, dbID, CollectionName, key, buck, db.WithTxnToken(args.Token)); err != nil {
-		if isCollNotFoundErr(err) {
+		if isColNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
@@ -195,7 +195,7 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*
 	}
 	res, err := b.threads.Find(ctx, dbID, CollectionName, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
 	if err != nil {
-		if isCollNotFoundErr(err) {
+		if isColNotFoundErr(err) {
 			if err := b.addCollection(ctx, dbID, opts...); err != nil {
 				return nil, err
 			}
@@ -212,7 +212,24 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 	for _, opt := range opts {
 		opt(args)
 	}
-	return b.threads.Save(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
+	ensureNoNulls(bucket)
+	err := b.threads.Save(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
+	if err != nil {
+		if isInvalidSchemaErr(err) {
+			if err := b.updateCollection(ctx, dbID, opts...); err != nil {
+				return err
+			}
+			return b.Save(ctx, dbID, bucket, opts...)
+		}
+		return err
+	}
+	return nil
+}
+
+func ensureNoNulls(b *Bucket) {
+	if len(b.Archives.History) == 0 {
+		b.Archives = Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}}
+	}
 }
 
 // Delete a bucket instance.
@@ -471,6 +488,18 @@ func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Opt
 	}, db.WithManagedToken(args.Token))
 }
 
+func (b *Buckets) updateCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return b.threads.UpdateCollection(ctx, dbID, db.CollectionConfig{
+		Name:    CollectionName,
+		Schema:  schema,
+		Indexes: indexes,
+	}, db.WithManagedToken(args.Token))
+}
+
 type Options struct {
 	Token thread.Token
 }
@@ -483,8 +512,12 @@ func WithToken(t thread.Token) Option {
 	}
 }
 
-func isCollNotFoundErr(err error) bool {
+func isColNotFoundErr(err error) bool {
 	return strings.Contains(err.Error(), "collection not found")
+}
+
+func isInvalidSchemaErr(err error) bool {
+	return strings.Contains(err.Error(), "instance doesn't correspond to schema: (root)")
 }
 
 func isJobStatusFinal(js ffs.JobStatus) bool {

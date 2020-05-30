@@ -553,7 +553,13 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 		return nil, err
 	}
 	if err = s.IPFSClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
-		return nil, err
+		if err.Error() == "'from' cid was not recursively pinned already" {
+			if err = s.IPFSClient.Pin().Add(ctx, dirpth); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 	buck.Path = dirpth.String()
 	buck.UpdatedAt = time.Now().UnixNano()
