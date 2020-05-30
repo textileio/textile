@@ -130,14 +130,14 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 		UpdatedAt: now,
 	}
 	ids, err := b.threads.Create(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
-	if err != nil {
-		if isColNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID, opts...); err != nil {
-				return nil, err
-			}
-			return b.Create(ctx, dbID, key, name, pth, opts...)
+	if isColNotFoundErr(err) {
+		if err := b.addCollection(ctx, dbID, opts...); err != nil {
+			return nil, err
 		}
-		return nil, err
+		return b.Create(ctx, dbID, key, name, pth, opts...)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("creating bucket in thread: %s", err)
 	}
 	bucket.Key = ids[0]
 
@@ -175,14 +175,15 @@ func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...O
 		opt(args)
 	}
 	buck := &Bucket{}
-	if err := b.threads.FindByID(ctx, dbID, CollectionName, key, buck, db.WithTxnToken(args.Token)); err != nil {
-		if isColNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID, opts...); err != nil {
-				return nil, err
-			}
-			return b.Get(ctx, dbID, key, opts...)
+	err := b.threads.FindByID(ctx, dbID, CollectionName, key, buck, db.WithTxnToken(args.Token))
+	if isColNotFoundErr(err) {
+		if err := b.addCollection(ctx, dbID, opts...); err != nil {
+			return nil, err
 		}
-		return nil, err
+		return b.Get(ctx, dbID, key, opts...)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("getting bucket in thread: %s", err)
 	}
 	return buck, nil
 }
@@ -194,14 +195,14 @@ func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*
 		opt(args)
 	}
 	res, err := b.threads.Find(ctx, dbID, CollectionName, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
-	if err != nil {
-		if isColNotFoundErr(err) {
-			if err := b.addCollection(ctx, dbID, opts...); err != nil {
-				return nil, err
-			}
-			return b.List(ctx, dbID, opts...)
+	if isColNotFoundErr(err) {
+		if err := b.addCollection(ctx, dbID, opts...); err != nil {
+			return nil, err
 		}
-		return nil, err
+		return b.List(ctx, dbID, opts...)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("listing bucket in thread: %s", err)
 	}
 	return res.([]*Bucket), nil
 }
@@ -214,16 +215,17 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 	}
 	ensureNoNulls(bucket)
 	err := b.threads.Save(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
-	if err != nil {
-		if isInvalidSchemaErr(err) {
-			if err := b.updateCollection(ctx, dbID, opts...); err != nil {
-				return err
-			}
-			return b.Save(ctx, dbID, bucket, opts...)
+	if isInvalidSchemaErr(err) {
+		if err := b.updateCollection(ctx, dbID, opts...); err != nil {
+			return err
 		}
-		return err
+		return b.Save(ctx, dbID, bucket, opts...)
+	}
+	if err != nil {
+		return fmt.Errorf("saving bucket in thread: %s", err)
 	}
 	return nil
+
 }
 
 func ensureNoNulls(b *Bucket) {
@@ -238,7 +240,11 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 	for _, opt := range opts {
 		opt(args)
 	}
-	return b.threads.Delete(ctx, dbID, CollectionName, []string{key}, db.WithTxnToken(args.Token))
+	err := b.threads.Delete(ctx, dbID, CollectionName, []string{key}, db.WithTxnToken(args.Token))
+	if err != nil {
+		return fmt.Errorf("deleting bucket in thread: %s", err)
+	}
+	return nil
 }
 
 // Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
@@ -513,10 +519,16 @@ func WithToken(t thread.Token) Option {
 }
 
 func isColNotFoundErr(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(err.Error(), "collection not found")
 }
 
 func isInvalidSchemaErr(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(err.Error(), "instance doesn't correspond to schema: (root)")
 }
 
