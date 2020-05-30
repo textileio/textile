@@ -1,18 +1,28 @@
 package cmd
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/logrusorgru/aurora"
-	"github.com/mitchellh/go-homedir"
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc/status"
+	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/powergate/exe/cli/cmd"
+	bc "github.com/textileio/textile/api/buckets/client"
+	"github.com/textileio/textile/api/common"
+	hc "github.com/textileio/textile/api/hub/client"
+	uc "github.com/textileio/textile/api/users/client"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+)
+
+var (
+	Timeout = time.Minute
+	Bold    = promptui.Styler(promptui.FGBold)
 )
 
 type Flag struct {
@@ -20,134 +30,170 @@ type Flag struct {
 	DefValue interface{}
 }
 
-const maxSearchHeight = 50
-
-func InitConfig(v *viper.Viper, file, cdir, name string, global bool) func() {
-	return func() {
-		found := false
-		pre := "."
-		h := 1
-		for h <= maxSearchHeight && !found {
-			found = initConfig(v, file, pre, cdir, name, global)
-			pre = filepath.Join("../", pre)
-			h++
-		}
-	}
+type Config struct {
+	Viper  *viper.Viper
+	File   string
+	Dir    string
+	Name   string
+	Flags  map[string]Flag
+	EnvPre string
+	Global bool
 }
 
-func initConfig(v *viper.Viper, file, pre, cdir, name string, global bool) bool {
-	if file != "" {
-		v.SetConfigFile(file)
+type ClientsCtx interface {
+	Auth(time.Duration) (context.Context, context.CancelFunc)
+	Thread(time.Duration) (context.Context, context.CancelFunc)
+}
+
+type Clients struct {
+	Buckets *bc.Client
+	Threads *tc.Client
+	Hub     *hc.Client
+	Users   *uc.Client
+
+	Ctx ClientsCtx
+}
+
+func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
+	var opts []grpc.DialOption
+	auth := common.Credentials{}
+	if strings.Contains(target, "443") {
+		creds := credentials.NewTLS(&tls.Config{})
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+		auth.Secure = true
 	} else {
-		v.AddConfigPath(filepath.Join(pre, cdir)) // local config takes priority
-		if global {
-			home, err := homedir.Dir()
-			if err != nil {
-				panic(err)
-			}
-			v.AddConfigPath(filepath.Join(home, cdir))
-		}
-		v.SetConfigName(name)
+		opts = append(opts, grpc.WithInsecure())
 	}
+	opts = append(opts, grpc.WithPerRPCCredentials(auth))
 
-	v.SetEnvPrefix("TXTL")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-	if err := v.ReadInConfig(); err != nil && strings.Contains(err.Error(), "Not Found") {
-		return false
-	}
-	return true
-}
-
-func BindFlags(v *viper.Viper, root *cobra.Command, flags map[string]Flag) error {
-	for n, f := range flags {
-		if err := v.BindPFlag(f.Key, root.PersistentFlags().Lookup(n)); err != nil {
-			return err
-		}
-		v.SetDefault(f.Key, f.DefValue)
-	}
-	return nil
-}
-
-func ExpandConfigVars(v *viper.Viper, flags map[string]Flag) {
-	for _, f := range flags {
-		if f.Key != "" {
-			if str, ok := v.Get(f.Key).(string); ok {
-				v.Set(f.Key, os.ExpandEnv(str))
-			}
-		}
-	}
-}
-
-func AddrFromStr(str string) ma.Multiaddr {
-	addr, err := ma.NewMultiaddr(str)
+	c := &Clients{Ctx: ctx}
+	var err error
+	c.Threads, err = tc.NewClient(target, opts...)
 	if err != nil {
-		Fatal(err)
+		cmd.Fatal(err)
 	}
-	return addr
-}
-
-func Message(format string, args ...interface{}) {
-	if format == "" {
-		return
+	c.Buckets, err = bc.NewClient(target, opts...)
+	if err != nil {
+		cmd.Fatal(err)
 	}
-	fmt.Println(aurora.Sprintf(aurora.BrightBlack("> "+format), args...))
-}
-
-func Warn(format string, args ...interface{}) {
-	if format == "" {
-		return
+	if hub {
+		c.Hub, err = hc.NewClient(target, opts...)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		c.Users, err = uc.NewClient(target, opts...)
+		if err != nil {
+			cmd.Fatal(err)
+		}
 	}
-	fmt.Println(aurora.Sprintf(aurora.Yellow("! "+format), args...))
+	return c
 }
 
-func Success(format string, args ...interface{}) {
-	fmt.Println(aurora.Sprintf(aurora.Cyan("> Success! %s"),
-		aurora.Sprintf(aurora.BrightBlack(format), args...)))
+func (c *Clients) Close() {
+	if c.Threads != nil {
+		if err := c.Threads.Close(); err != nil {
+			cmd.Fatal(err)
+		}
+	}
+	if c.Buckets != nil {
+		if err := c.Buckets.Close(); err != nil {
+			cmd.Fatal(err)
+		}
+	}
+	if c.Hub != nil {
+		if err := c.Hub.Close(); err != nil {
+			cmd.Fatal(err)
+		}
+	}
+	if c.Users != nil {
+		if err := c.Users.Close(); err != nil {
+			cmd.Fatal(err)
+		}
+	}
 }
 
-func End(format string, args ...interface{}) {
-	Message(format, args...)
-	os.Exit(0)
+type Thread struct {
+	ID    thread.ID
+	Label string
+	Name  string
+	Type  string
 }
 
-func Fatal(err error, args ...interface{}) {
-	var msg string
-	stat, ok := status.FromError(err)
-	if ok {
-		msg = stat.Message()
+func (c *Clients) ListThreads(dbsOnly bool) []Thread {
+	ctx, cancel := c.Ctx.Auth(Timeout)
+	defer cancel()
+	var threads []Thread
+	if c.Users != nil {
+		list, err := c.Users.ListThreads(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		for _, t := range list.List {
+			if dbsOnly && !t.IsDB {
+				continue
+			}
+			id, err := thread.Cast(t.ID)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if t.Name == "" {
+				t.Name = "unnamed"
+			}
+			threads = append(threads, Thread{
+				ID:    id,
+				Label: id.String(),
+				Name:  t.Name,
+				Type:  GetThreadType(t.IsDB),
+			})
+		}
 	} else {
-		msg = err.Error()
+		list, err := c.Threads.ListDBs(ctx)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		for id, t := range list {
+			if t.Name == "" {
+				t.Name = "unnamed"
+			}
+			threads = append(threads, Thread{
+				ID:    id,
+				Label: id.String(),
+				Name:  t.Name,
+				Type:  "db",
+			})
+		}
 	}
-	words := strings.SplitN(msg, " ", 2)
-	words[0] = strings.Title(words[0])
-	msg = strings.Join(words, " ")
-	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
-		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
-	os.Exit(1)
+	return threads
 }
 
-func RenderTable(header []string, data [][]string) {
-	fmt.Println()
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetCenterSeparator("")
-	table.SetColumnSeparator("")
-	table.SetRowSeparator("")
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("\t")
-	table.SetNoWhiteSpace(false)
-	headersColors := make([]tablewriter.Colors, len(data[0]))
-	for i := range headersColors {
-		headersColors[i] = tablewriter.Colors{tablewriter.FgHiBlackColor}
+func GetThreadType(isDB bool) string {
+	if isDB {
+		return "db"
+	} else {
+		return "log"
 	}
-	table.SetHeaderColor(headersColors...)
-	table.AppendBulk(data)
-	table.Render()
-	fmt.Println()
+}
+
+func (c *Clients) SelectThread(label, successMsg string, dbsOnly bool) Thread {
+	threads := c.ListThreads(dbsOnly)
+	var name string
+	if len(threads) == 0 {
+		name = "default"
+	}
+	threads = append(threads, Thread{Label: "Create new", Name: name, Type: "db"})
+	prompt := promptui.Select{
+		Label: label,
+		Items: threads,
+		Templates: &promptui.SelectTemplates{
+			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Label | bold }} {{ .Name | faint | bold }}`, promptui.IconSelect),
+			Inactive: `{{ .Label | faint }} {{ .Name | faint | bold }}`,
+			Details:  `{{ "(Type:" | faint }} {{ .Type | faint }}{{ ")" | faint }}`,
+			Selected: successMsg,
+		},
+	}
+	index, _, err := prompt.Run()
+	if err != nil {
+		End("")
+	}
+	return threads[index]
 }

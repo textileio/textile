@@ -63,7 +63,7 @@ require (
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.18
+	github.com/textileio/go-threads v0.1.19
 	github.com/textileio/powergate v0.0.1-beta.0.0.20200522011106-07ed24c08cc9
 	github.com/textileio/uiprogress v0.0.3
 	go.mongodb.org/mongo-driver v1.3.2

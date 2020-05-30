@@ -50,10 +50,16 @@ import (
 var (
 	log = logging.Logger("core")
 
+	// ignoreMethods are not intercepted by the auth.
 	ignoreMethods = []string{
 		"/hub.pb.API/Signup",
 		"/hub.pb.API/Signin",
 		"/hub.pb.API/IsUsernameAvailable",
+	}
+
+	// blockMethods are always blocked by auth.
+	blockMethods = []string{
+		"/threads.pb.API/ListDBs",
 	}
 )
 
@@ -102,6 +108,7 @@ type Config struct {
 	EmailAPIKey        string
 	EmailSessionSecret string
 
+	Hub   bool
 	Debug bool
 }
 
@@ -135,11 +142,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
-	if err != nil {
-		return nil, err
-	}
-	t.collections, err = c.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName)
+	t.collections, err = c.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName, conf.Hub)
 	if err != nil {
 		return nil, err
 	}
@@ -188,18 +191,30 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.emailSessionBus = broadcast.NewBroadcaster(0)
-	hs := &hub.Service{
-		Collections:        t.collections,
-		Threads:            t.th,
-		ThreadsNet:         t.thn,
-		GatewayURL:         conf.AddrGatewayURL,
-		EmailClient:        ec,
-		EmailSessionBus:    t.emailSessionBus,
-		EmailSessionSecret: conf.EmailSessionSecret,
-		IPFSClient:         ic,
-		IPNSManager:        t.ipnsm,
-		DNSManager:         t.dnsm,
+
+	var hs *hub.Service
+	var us *users.Service
+	if conf.Hub {
+		ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
+		if err != nil {
+			return nil, err
+		}
+		t.emailSessionBus = broadcast.NewBroadcaster(0)
+		hs = &hub.Service{
+			Collections:        t.collections,
+			Threads:            t.th,
+			ThreadsNet:         t.thn,
+			GatewayURL:         conf.AddrGatewayURL,
+			EmailClient:        ec,
+			EmailSessionBus:    t.emailSessionBus,
+			EmailSessionSecret: conf.EmailSessionSecret,
+			IPFSClient:         ic,
+			IPNSManager:        t.ipnsm,
+			DNSManager:         t.dnsm,
+		}
+		us = &users.Service{
+			Collections: t.collections,
+		}
 	}
 	bs := &buckets.Service{
 		Collections: t.collections,
@@ -209,18 +224,25 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager: t.ipnsm,
 		DNSManager:  t.dnsm,
 	}
-	us := &users.Service{
-		Collections: t.collections,
-	}
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
 	}
-	t.server = grpc.NewServer(
-		grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
-		grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)))
+	var opts []grpc.ServerOption
+	if conf.Hub {
+		opts = []grpc.ServerOption{
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
+			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
+		}
+	} else {
+		opts = []grpc.ServerOption{
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
+			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
+		}
+	}
+	t.server = grpc.NewServer(opts...)
 	listener, err := net.Listen("tcp", target)
 	if err != nil {
 		return nil, err
@@ -228,9 +250,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	go func() {
 		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
-		hpb.RegisterAPIServer(t.server, hs)
+		if conf.Hub {
+			hpb.RegisterAPIServer(t.server, hs)
+			upb.RegisterAPIServer(t.server, us)
+		}
 		bpb.RegisterAPIServer(t.server, bs)
-		upb.RegisterAPIServer(t.server, us)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
@@ -272,6 +296,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:     t.collections,
 		IPFSClient:      ic,
 		EmailSessionBus: t.emailSessionBus,
+		Hub:             conf.Hub,
 		Debug:           conf.Debug,
 	})
 	if err != nil {
@@ -289,7 +314,9 @@ func (t *Textile) Bootstrap() {
 }
 
 func (t *Textile) Close() error {
-	t.emailSessionBus.Discard()
+	if t.emailSessionBus != nil {
+		t.emailSessionBus.Discard()
+	}
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
@@ -329,6 +356,11 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	for _, ignored := range ignoreMethods {
 		if method == ignored {
 			return ctx, nil
+		}
+	}
+	for _, block := range blockMethods {
+		if method == block {
+			return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
 		}
 	}
 
@@ -446,6 +478,18 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
+	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
+		ctx = common.NewThreadIDContext(ctx, threadID)
+	}
+	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
+		return nil, err
+	} else {
+		ctx = thread.NewTokenContext(ctx, threadToken)
+	}
+	return ctx, nil
+}
+
 // threadInterceptor monitors for thread creation and deletion.
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
@@ -455,6 +499,11 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		for _, ignored := range ignoreMethods {
 			if method == ignored {
 				return handler(ctx, req)
+			}
+		}
+		for _, block := range blockMethods {
+			if method == block {
+				return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
 			}
 		}
 		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.gatewaySession {

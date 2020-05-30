@@ -40,7 +40,7 @@ var (
 	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
 
 	schema  *jsonschema.Schema
-	indexes = []db.IndexConfig{{
+	indexes = []db.Index{{
 		Path: "path",
 	}}
 )
@@ -468,7 +468,7 @@ func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Opt
 		Name:    CollectionName,
 		Schema:  schema,
 		Indexes: indexes,
-	}, db.WithManagedDBToken(args.Token))
+	}, db.WithManagedToken(args.Token))
 }
 
 type Options struct {

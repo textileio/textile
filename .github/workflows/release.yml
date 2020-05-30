@@ -33,7 +33,8 @@ jobs:
       - name: Compile
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
-          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="tt-{{.OS}}-{{.Arch}}" ./cmd/tt
+          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" ./cmd/hub
+          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" ./cmd/buck
       - name: Collect artifacts
         run: |
           VERSION=${GITHUB_REF##*/}
@@ -49,13 +50,18 @@ jobs:
           do
               OSARCH=${i%.*}
               EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-              cp ../tt-${i} tt${EXT}
+              cp ../hub-${i} hub${EXT}
+              cp ../buck-${i} buck${EXT}
               if [ "${EXT}" == ".exe" ]; then
-                  zip tt_${VERSION}_${OSARCH}.zip LICENSE README.md tt${EXT}
-                  mv tt_${VERSION}_${OSARCH}.zip ../${OUT}/
+                  zip hub_${VERSION}_${OSARCH}.zip LICENSE README.md hub${EXT}
+                  zip buck_${VERSION}_${OSARCH}.zip LICENSE README.md buck${EXT}
+                  mv hub_${VERSION}_${OSARCH}.zip ../${OUT}/
+                  mv buck_${VERSION}_${OSARCH}.zip ../${OUT}/
               else
-                  tar -czvf tt_${VERSION}_${OSARCH}.tar.gz LICENSE README.md install tt
-                  mv tt_${VERSION}_${OSARCH}.tar.gz ../${OUT}/
+                  tar -czvf hub_${VERSION}_${OSARCH}.tar.gz LICENSE README.md install hub
+                  tar -czvf buck_${VERSION}_${OSARCH}.tar.gz LICENSE README.md install buck
+                  mv hub_${VERSION}_${OSARCH}.tar.gz ../${OUT}/
+                  mv buck_${VERSION}_${OSARCH}.tar.gz ../${OUT}/
               fi
           done
           cd .. && rm -rf tmp
@@ -63,5 +69,5 @@ jobs:
       - name: Upload multiple assets to release
         uses: AButler/upload-release-assets@v2.0
         with:
-          files: 'release/cli/tt_*'
+          files: 'release/cli/hub_*;release/cli/buck_*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
