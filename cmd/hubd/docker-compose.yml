@@ -1,7 +1,7 @@
 version: "3"
 services:
   hub:
-    image: textile/hub:latest
+    image: textile/textile:latest
     restart: always
     volumes:
       - "${REPO_PATH}/hub:/data/hub"

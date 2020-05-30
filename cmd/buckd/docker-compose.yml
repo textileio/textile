@@ -1,7 +1,7 @@
 version: "3"
 services:
   buck:
-    image: textile/buck:latest
+    image: textile/textile:buckets
     restart: always
     volumes:
       - "${REPO_PATH}/buck:/data/buck"
