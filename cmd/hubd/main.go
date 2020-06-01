@@ -155,6 +155,11 @@ func init() {
 		config.Flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 
+	rootCmd.PersistentFlags().String(
+		"addrPowergateApi",
+		config.Flags["addrPowergateApi"].DefValue.(string),
+		"Powergate API address")
+
 	// Gateway settings
 	rootCmd.PersistentFlags().String(
 		"addrGatewayHost",
@@ -164,12 +169,6 @@ func init() {
 		"addrGatewayUrl",
 		config.Flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
-
-	// Filecoin settings
-	rootCmd.PersistentFlags().String(
-		"addrFilecoinApi",
-		config.Flags["addrFilecoinApi"].DefValue.(string),
-		"Filecoin gRPC API address")
 
 	// Mongo settings
 	rootCmd.PersistentFlags().String(
