@@ -148,7 +148,7 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 	added, root, err := clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
 		} else {
 			cmd.Fatal(err)
 		}
@@ -168,7 +168,7 @@ func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.R
 	root, err := clients.Buckets.RemovePath(ctx, key, filePath, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
 		} else if !strings.HasSuffix(err.Error(), "no link by that name") {
 			cmd.Fatal(err)
 		}
