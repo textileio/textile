@@ -59,21 +59,21 @@ EXPOSE 4006
 EXPOSE 8006
 
 # Create the repo directory and switch to a non-privileged user.
-ENV HUB_PATH /data/buck
-RUN mkdir -p $HUB_PATH \
-  && mkdir -p $HUB_PATH/logstore \
-  && mkdir -p $HUB_PATH/eventstore \
-  && mkdir -p $HUB_PATH/ipfslite \
-  && adduser -D -h $HUB_PATH -u 1000 -G users buck \
-  && chown -R buck:users $HUB_PATH
+ENV BUCKETS_PATH /data/buckets
+RUN mkdir -p $BUCKETS_PATH \
+  && mkdir -p $BUCKETS_PATH/logstore \
+  && mkdir -p $BUCKETS_PATH/eventstore \
+  && mkdir -p $BUCKETS_PATH/ipfslite \
+  && adduser -D -h $BUCKETS_PATH -u 1000 -G users buckets \
+  && chown -R buckets:users $BUCKETS_PATH
 
 # Switch to a non-privileged user
-USER buck
+USER buckets
 
 # Expose the repo as a volume.
 # Important this happens after the USER directive so permission are correct.
-VOLUME $HUB_PATH
+VOLUME $BUCKETS_PATH
 
 ENTRYPOINT ["/sbin/tini", "--", "buckd"]
 
-CMD ["--repo=/data/buck"]
+CMD ["--repo=/data/buckets"]

@@ -62,8 +62,8 @@ var (
 				Key:      "addr.ipfs.api",
 				DefValue: "/ip4/127.0.0.1/tcp/5001",
 			},
-			"addrFilecoinApi": {
-				Key:      "addr.filecoin.api",
+			"addrPowergateApi": {
+				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
 			"addrMongoUri": {
@@ -259,13 +259,13 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 
-		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
-		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
-
 		var addrPowergateApi ma.Multiaddr
 		if str := config.Viper.GetString("addr.powergate.api"); str != "" {
 			addrPowergateApi = cmd.AddrFromStr(str)
 		}
+
+		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
+		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
