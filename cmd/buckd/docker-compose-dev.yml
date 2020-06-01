@@ -1,6 +1,6 @@
 version: "3"
 services:
-  buck:
+  buckets:
     build: .
     environment:
       - BUCK_ADDR_API=/ip4/0.0.0.0/tcp/3006
@@ -9,7 +9,10 @@ services:
       - BUCK_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - BUCK_ADDR_MONGO_URI=mongodb://mongo:27017
       - BUCK_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
+      - BUCK_ADDR_POWERGATE_API
       - BUCK_GATEWAY_SUBDOMAINS
+      - BUCK_LOG_DEBUG=true
+      - BUCK_LOG_FILE
     ports:
       - "127.0.0.1:3006:3006"
       - "3007:3007"

@@ -1,6 +1,6 @@
 version: "3"
 services:
-  hub:
+  textile:
     build: .
     environment:
       - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
@@ -9,8 +9,11 @@ services:
       - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
       - HUB_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
+      - HUB_ADDR_POWERGATE_API
       - HUB_GATEWAY_SUBDOMAINS
       - HUB_EMAIL_SESSION_SECRET=hubsession
+      - HUB_LOG_DEBUG=true
+      - HUB_LOG_FILE
     ports:
       - "127.0.0.1:3006:3006"
       - "3007:3007"

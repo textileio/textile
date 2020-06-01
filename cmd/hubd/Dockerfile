@@ -59,21 +59,21 @@ EXPOSE 4006
 EXPOSE 8006
 
 # Create the repo directory and switch to a non-privileged user.
-ENV HUB_PATH /data/hub
-RUN mkdir -p $HUB_PATH \
-  && mkdir -p $HUB_PATH/logstore \
-  && mkdir -p $HUB_PATH/eventstore \
-  && mkdir -p $HUB_PATH/ipfslite \
-  && adduser -D -h $HUB_PATH -u 1000 -G users hub \
-  && chown -R hub:users $HUB_PATH
+ENV TEXTILE_PATH /data/textile
+RUN mkdir -p $TEXTILE_PATH \
+  && mkdir -p $TEXTILE_PATH/logstore \
+  && mkdir -p $TEXTILE_PATH/eventstore \
+  && mkdir -p $TEXTILE_PATH/ipfslite \
+  && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
+  && chown -R textile:users $TEXTILE_PATH
 
 # Switch to a non-privileged user
-USER hub
+USER textile
 
 # Expose the repo as a volume.
 # Important this happens after the USER directive so permission are correct.
-VOLUME $HUB_PATH
+VOLUME $TEXTILE_PATH
 
 ENTRYPOINT ["/sbin/tini", "--", "hubd"]
 
-CMD ["--repo=/data/hub"]
+CMD ["--repo=/data/textile"]
