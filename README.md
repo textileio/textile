@@ -15,19 +15,19 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
 
 ## Table of Contents
 
--   [Install](#install-tt)
+-   [Install](#install-hub)
 -   [Usage](#usage)
 -   [Contributing](#contributing)
 -   [Changelog](#changelog)
 -   [License](#license)
 
-## Install `tt`
+## Install `hub`
 
-You can find the latest `tt` CLI on the [releases page](https://github.com/textileio/textile/releases).
+You can find the latest `hub` CLI on the [releases page](https://github.com/textileio/textile/releases).
 
 ## Usage
 
-Try `tt --help`.
+Try `hub --help`.
 
 Go to https://godoc.org/github.com/textileio/textile for more.
 
