@@ -95,10 +95,7 @@ type Buckets struct {
 func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug bool) (*Buckets, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":       logging.LevelDebug,
-			"hubapi":     logging.LevelDebug,
-			"bucketsapi": logging.LevelDebug,
-			"usersapi":   logging.LevelDebug,
+			"buckets": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -236,7 +233,11 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 
 func ensureNoNulls(b *Bucket) {
 	if len(b.Archives.History) == 0 {
-		b.Archives = Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}}
+		current := b.Archives.Current
+		if len(current.Deals) == 0 {
+			b.Archives.Current = Archive{Deals: []Deal{}}
+		}
+		b.Archives = Archives{Current: current, History: []Archive{}}
 	}
 }
 
@@ -352,7 +353,6 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 		ch <- le.LogEntry.Msg
 	}
 	return nil
-
 }
 
 func (b *Buckets) Close() error {
