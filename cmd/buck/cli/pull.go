@@ -33,11 +33,13 @@ var bucketPullCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
 
 		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		setCidVersion(buck, key)
 		diff := getDiff(buck, root)
 
 		hard, err := c.Flags().GetBool("hard")
@@ -78,7 +80,6 @@ var bucketPullCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		key := config.Viper.GetString("key")
 		count := getPath(key, "", root, buck, diff, force)
 		if count == 0 {
 			cmd.End("Everything up-to-date")

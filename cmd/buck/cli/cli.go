@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/textileio/textile/buckets/local"
+	"github.com/textileio/textile/util"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -96,4 +99,21 @@ func printLinks(reply *pb.LinksReply) {
 	if reply.WWW != "" {
 		cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
 	}
+}
+
+func setCidVersion(buck *local.Bucket, key string) {
+	if !buck.Path().Root().Defined() {
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
+		defer cancel()
+		root, err := clients.Buckets.Root(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		rp, err := util.NewResolvedPath(root.Root.Path)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		buck.SetCidVersion(int(rp.Root().Version()))
+	}
+	fmt.Println(buck.Path().Root().Version())
 }

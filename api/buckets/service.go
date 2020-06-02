@@ -29,13 +29,17 @@ import (
 )
 
 var (
-	log                         = logging.Logger("bucketsapi")
+	log = logging.Logger("bucketsapi")
+
+	// ErrArchivingFeatureDisabled indicates an archive was requested with archiving disabled.
 	ErrArchivingFeatureDisabled = fmt.Errorf("archiving feature is disabled")
 )
 
 const (
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32
+	// pinNotRecursiveMsg is used to match an IPFS "recursively pinned already" error.
+	pinNotRecursiveMsg = "'from' cid was not recursively pinned already"
 )
 
 // Service is a gRPC service for buckets.
@@ -115,6 +119,46 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	return buck, seed, nil
 }
 
+func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply, error) {
+	log.Debugf("received root request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bucks.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RootReply{
+		Root: &pb.Root{
+			Key:       buck.Key,
+			Name:      buck.Name,
+			Path:      buck.Path,
+			CreatedAt: buck.CreatedAt,
+			UpdatedAt: buck.UpdatedAt,
+		},
+	}, nil
+}
+
+func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksReply, error) {
+	log.Debugf("received lists request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bucks.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	return s.createLinks(dbID, buck), nil
+}
+
 func (s *Service) createLinks(dbID thread.ID, buck *bucks.Bucket) *pb.LinksReply {
 	var threadLink, wwwLink, ipnsLink string
 	threadLink = fmt.Sprintf("%s/thread/%s/%s/%s", s.GatewayURL, dbID, bucks.CollectionName, buck.Key)
@@ -132,20 +176,6 @@ func (s *Service) createLinks(dbID thread.ID, buck *bucks.Bucket) *pb.LinksReply
 		WWW:  wwwLink,
 		IPNS: ipnsLink,
 	}
-}
-
-func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksReply, error) {
-	dbID, ok := common.ThreadIDFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("db required")
-	}
-	dbToken, _ := thread.TokenFromContext(ctx)
-
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bucks.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-	return s.createLinks(dbID, buck), nil
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
@@ -416,7 +446,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		return err
 	}
 	if err = s.IPFSClient.Pin().Update(server.Context(), buckPath, dirpth); err != nil {
-		if err.Error() == "'from' cid was not recursively pinned already" {
+		if err.Error() == pinNotRecursiveMsg {
 			if err = s.IPFSClient.Pin().Add(server.Context(), dirpth); err != nil {
 				return err
 			}
@@ -553,7 +583,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 		return nil, err
 	}
 	if err = s.IPFSClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
-		if err.Error() == "'from' cid was not recursively pinned already" {
+		if err.Error() == pinNotRecursiveMsg {
 			if err = s.IPFSClient.Pin().Add(ctx, dirpth); err != nil {
 				return nil, err
 			}

@@ -34,6 +34,7 @@ var bucketPushCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
 
 		dbID := cmd.ThreadIDFromString(config.Viper.GetString("thread"))
 		if !dbID.Defined() {
@@ -44,6 +45,7 @@ var bucketPushCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		setCidVersion(buck, key)
 		diff := getDiff(buck, root)
 		force, err := c.Flags().GetBool("force")
 		if err != nil {
@@ -55,7 +57,9 @@ var bucketPushCmd = &cobra.Command{
 			ctx, acancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer acancel()
 			if err = buck.ArchiveFile(ctx, seed, bucks.SeedName); err != nil {
-				cmd.Fatal(err)
+				if !errors.Is(err, os.ErrNotExist) {
+					cmd.Fatal(err)
+				}
 			}
 			// Add unique additions
 		loop:
@@ -90,7 +94,6 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		key := config.Viper.GetString("key")
 		xr := buck.Path()
 		var rm []change
 		startProgress()

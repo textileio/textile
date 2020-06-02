@@ -200,6 +200,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			if err != nil {
 				cmd.Fatal(err)
 			}
+			setCidVersion(buck, key)
 			ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer cancel()
 			if err = buck.Archive(ctx); err != nil {

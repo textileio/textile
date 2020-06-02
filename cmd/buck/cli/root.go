@@ -3,11 +3,13 @@ package cli
 import (
 	"path/filepath"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
 )
 
 var bucketRootCmd = &cobra.Command{
@@ -24,10 +26,26 @@ var bucketRootCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
+
 		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+		var rc cid.Cid
+		if !buck.Path().Root().Defined() {
+			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
+			defer cancel()
+			root, err := clients.Buckets.Root(ctx, key)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			rp, err := util.NewResolvedPath(root.Root.Path)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			rc = rp.Cid()
+		}
+		cmd.Message("%s", aurora.White(rc).Bold())
 	},
 }

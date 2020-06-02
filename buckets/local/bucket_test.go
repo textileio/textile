@@ -17,7 +17,29 @@ func TestNewBucket(t *testing.T) {
 	makeBucket(t, "testdata/a", options.BalancedLayout)
 }
 
-func TestBucket_Root(t *testing.T) {
+func TestBucket_SetCidVersion(t *testing.T) {
+	t.Parallel()
+
+	buck0, done0 := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done0()
+	buck0.SetCidVersion(0)
+	err := buck0.Archive(context.Background())
+	require.Nil(t, err)
+	assert.NotEmpty(t, buck0.Path())
+	assert.Equal(t, 0, buck0.cidver)
+	assert.Equal(t, 0, int(buck0.root.Version()))
+
+	buck1, done1 := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer done1()
+	buck1.SetCidVersion(1)
+	err = buck1.Archive(context.Background())
+	require.Nil(t, err)
+	assert.NotEmpty(t, buck1.Path())
+	assert.Equal(t, 1, buck1.cidver)
+	assert.Equal(t, 1, int(buck1.root.Version()))
+}
+
+func TestBucket_Path(t *testing.T) {
 	t.Parallel()
 	buck, done := makeBucket(t, "testdata/a", options.BalancedLayout)
 	defer done()
