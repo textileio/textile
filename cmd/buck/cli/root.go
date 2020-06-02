@@ -3,7 +3,6 @@ package cli
 import (
 	"path/filepath"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -32,15 +31,15 @@ var bucketRootCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		var rc cid.Cid
-		if !buck.Path().Root().Defined() {
+		rc := buck.Path().Root()
+		if !rc.Defined() {
 			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 			defer cancel()
-			root, err := clients.Buckets.Root(ctx, key)
+			rr, err := clients.Buckets.Root(ctx, key)
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			rp, err := util.NewResolvedPath(root.Root.Path)
+			rp, err := util.NewResolvedPath(rr.Root.Path)
 			if err != nil {
 				cmd.Fatal(err)
 			}

@@ -115,5 +115,4 @@ func setCidVersion(buck *local.Bucket, key string) {
 		}
 		buck.SetCidVersion(int(rp.Root().Version()))
 	}
-	fmt.Println(buck.Path().Root().Version())
 }
