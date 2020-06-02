@@ -58,7 +58,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the archive to finish.
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 
 	// Verify that the current archive status is Done.
 	as, err := client.ArchiveStatus(ctx, b.Root.Key)
@@ -97,7 +97,6 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	deal = archive.Deals[0]
 	require.NotEmpty(t, deal.GetProposalCid())
 	require.NotEmpty(t, deal.GetMiner())
-
 }
 
 func TestArchiveWatch(t *testing.T) {

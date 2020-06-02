@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/util"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
 	"github.com/textileio/uiprogress"
 )
 

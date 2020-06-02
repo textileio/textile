@@ -696,7 +696,6 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 		Status:    st,
 		FailedMsg: failedMsg,
 	}, nil
-
 }
 
 func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoReply, error) {
