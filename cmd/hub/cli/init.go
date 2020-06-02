@@ -82,6 +82,6 @@ var initCmd = &cobra.Command{
 		}
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
-		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" bucket init"))
+		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))
 	},
 }

@@ -295,7 +295,7 @@ var rootCmd = &cobra.Command{
 			AddrPowergateAPI:   addrPowergateApi,
 			AddrMongoURI:       addrMongoUri,
 			UseSubdomains:      config.Viper.GetBool("gateway.subdomains"),
-			MongoName:          "hub",
+			MongoName:          "textile",
 			DNSDomain:          dnsDomain,
 			DNSZoneID:          dnsZoneID,
 			DNSToken:           dnsToken,

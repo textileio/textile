@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
 )
 
 var bucketRootCmd = &cobra.Command{
@@ -24,10 +25,26 @@ var bucketRootCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
+
 		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+		rc := buck.Path().Root()
+		if !rc.Defined() {
+			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
+			defer cancel()
+			rr, err := clients.Buckets.Root(ctx, key)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			rp, err := util.NewResolvedPath(rr.Root.Path)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			rc = rp.Cid()
+		}
+		cmd.Message("%s", aurora.White(rc).Bold())
 	},
 }

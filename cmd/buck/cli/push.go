@@ -34,6 +34,7 @@ var bucketPushCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
 
 		dbID := cmd.ThreadIDFromString(config.Viper.GetString("thread"))
 		if !dbID.Defined() {
@@ -44,6 +45,7 @@ var bucketPushCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		setCidVersion(buck, key)
 		diff := getDiff(buck, root)
 		force, err := c.Flags().GetBool("force")
 		if err != nil {
@@ -55,7 +57,9 @@ var bucketPushCmd = &cobra.Command{
 			ctx, acancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer acancel()
 			if err = buck.ArchiveFile(ctx, seed, bucks.SeedName); err != nil {
-				cmd.Fatal(err)
+				if !errors.Is(err, os.ErrNotExist) {
+					cmd.Fatal(err)
+				}
 			}
 			// Add unique additions
 		loop:
@@ -90,7 +94,6 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		key := config.Viper.GetString("key")
 		xr := buck.Path()
 		var rm []change
 		startProgress()
@@ -148,7 +151,7 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 	added, root, err := clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
 		} else {
 			cmd.Fatal(err)
 		}
@@ -168,7 +171,7 @@ func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.R
 	root, err := clients.Buckets.RemovePath(ctx, key, filePath, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("tt bucket pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
 		} else if !strings.HasSuffix(err.Error(), "no link by that name") {
 			cmd.Fatal(err)
 		}

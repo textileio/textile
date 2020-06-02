@@ -6,6 +6,14 @@ option java_package = "io.textile.buckets_grpc";
 option java_outer_classname = "TextileBuckets";
 option objc_class_prefix = "TXTL_BUCKETS";
 
+message Root {
+    string key = 1;
+    string name = 2;
+    string path = 3;
+    int64 createdAt = 4;
+    int64 updatedAt = 5;
+}
+
 message InitRequest {
     string name = 1;
 }
@@ -16,6 +24,14 @@ message InitReply {
     bytes seed = 3;
 }
 
+message RootRequest {
+    string key = 1;
+}
+
+message RootReply {
+    Root root = 1;
+}
+
 message LinksRequest {
     string key = 1;
 }
@@ -24,14 +40,6 @@ message LinksReply {
     string URL = 1;
     string WWW = 2;
     string IPNS = 3;
-}
-
-message Root {
-    string key = 1;
-    string name = 2;
-    string path = 3;
-    int64 createdAt = 4;
-    int64 updatedAt = 5;
 }
 
 message ListRequest {}
@@ -166,6 +174,7 @@ message ArchiveWatchReply {
 
 service API {
     rpc Init(InitRequest) returns (InitReply) {}
+    rpc Root(RootRequest) returns (RootReply) {}
     rpc Links(LinksRequest) returns (LinksReply) {}
     rpc List(ListRequest) returns (ListReply) {}
     rpc ListPath(ListPathRequest) returns (ListPathReply) {}

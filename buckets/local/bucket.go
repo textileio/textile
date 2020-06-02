@@ -56,6 +56,7 @@ type Bucket struct {
 	tmp    ipld.DAGService
 	store  bstore.Blockstore
 	layout options.Layout
+	cidver int
 }
 
 // NewBucket creates a new bucket with the given path.
@@ -67,6 +68,7 @@ func NewBucket(pth string, layout options.Layout) (*Bucket, error) {
 		tmp:    md.NewDAGService(bsrv),
 		store:  bs,
 		layout: layout,
+		cidver: 1,
 	}
 	if err := b.load(); err != nil {
 		if _, ok := err.(*os.PathError); !ok {
@@ -89,8 +91,15 @@ func (b *Bucket) load() error {
 	}
 	if len(h.Roots) > 0 {
 		b.root = h.Roots[0]
+		b.cidver = int(b.root.Version())
 	}
 	return nil
+}
+
+// CidVersion returns the configured cid version (0 or 1).
+// The default is 1.
+func (b *Bucket) SetCidVersion(v int) {
+	b.cidver = v
 }
 
 // Path returns the current archive's root cid.
@@ -134,7 +143,7 @@ func carWalker(n ipld.Node) ([]*ipld.Link, error) {
 // recursiveAddPath walks path and adds files to the dag service.
 func (b *Bucket) recursiveAddPath(ctx context.Context, pth string) (ipld.Node, error) {
 	root := unixfs.EmptyDirNode()
-	prefix, err := md.PrefixForCidVersion(1)
+	prefix, err := md.PrefixForCidVersion(b.cidver)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +171,7 @@ func (b *Bucket) recursiveAddPath(ctx context.Context, pth string) (ipld.Node, e
 				return err
 			}
 			defer file.Close()
-			nd, err := addFile(b.tmp, b.layout, file)
+			nd, err := addFile(b.tmp, b.layout, prefix, file)
 			if err != nil {
 				return err
 			}
@@ -194,13 +203,13 @@ func (b *Bucket) ArchiveFile(ctx context.Context, pth string, name string) error
 	}
 	defer r.Close()
 	root := unixfs.EmptyDirNode()
-	prefix, err := md.PrefixForCidVersion(1)
+	prefix, err := md.PrefixForCidVersion(b.cidver)
 	if err != nil {
 		return err
 	}
 	root.SetCidBuilder(prefix)
 	editor := dagutils.NewDagEditor(root, b.tmp)
-	f, err := addFile(b.tmp, b.layout, r)
+	f, err := addFile(b.tmp, b.layout, prefix, r)
 	if err != nil {
 		return err
 	}
@@ -230,7 +239,11 @@ func (b *Bucket) HashFile(pth string) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	defer r.Close()
-	n, err := addFile(b.tmp, b.layout, r)
+	prefix, err := md.PrefixForCidVersion(b.cidver)
+	if err != nil {
+		return cid.Undef, err
+	}
+	n, err := addFile(b.tmp, b.layout, prefix, r)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -267,11 +280,7 @@ func Ignore(pth string) bool {
 
 // addFile chunks reader with layout and adds blocks to the dag service.
 // SHA2-256 is used as the hash function and CidV1 as the cid version.
-func addFile(dag ipld.DAGService, layout options.Layout, r io.Reader) (ipld.Node, error) {
-	prefix, err := md.PrefixForCidVersion(1)
-	if err != nil {
-		return nil, err
-	}
+func addFile(dag ipld.DAGService, layout options.Layout, prefix cid.Prefix, r io.Reader) (ipld.Node, error) {
 	dbp := helpers.DagBuilderParams{
 		Dagserv:    dag,
 		RawLeaves:  true,

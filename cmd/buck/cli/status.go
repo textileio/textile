@@ -26,10 +26,13 @@ var bucketStatusCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+		key := config.Viper.GetString("key")
+
 		buck, err := local.NewBucket(root, options.BalancedLayout)
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		setCidVersion(buck, key)
 		diff := getDiff(buck, root)
 		if len(diff) == 0 {
 			cmd.End("Everything up-to-date")

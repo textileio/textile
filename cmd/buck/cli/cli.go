@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
 	"github.com/textileio/uiprogress"
 )
 
@@ -95,5 +97,21 @@ func printLinks(reply *pb.LinksReply) {
 	cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
 	if reply.WWW != "" {
 		cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
+	}
+}
+
+func setCidVersion(buck *local.Bucket, key string) {
+	if !buck.Path().Root().Defined() {
+		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
+		defer cancel()
+		root, err := clients.Buckets.Root(ctx, key)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		rp, err := util.NewResolvedPath(root.Root.Path)
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		buck.SetCidVersion(int(rp.Root().Version()))
 	}
 }

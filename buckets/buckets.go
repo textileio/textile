@@ -95,10 +95,7 @@ type Buckets struct {
 func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug bool) (*Buckets, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":       logging.LevelDebug,
-			"hubapi":     logging.LevelDebug,
-			"bucketsapi": logging.LevelDebug,
-			"usersapi":   logging.LevelDebug,
+			"buckets": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -132,6 +129,12 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 	ids, err := b.threads.Create(ctx, dbID, CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
 	if isColNotFoundErr(err) {
 		if err := b.addCollection(ctx, dbID, opts...); err != nil {
+			return nil, err
+		}
+		return b.Create(ctx, dbID, key, name, pth, opts...)
+	}
+	if isInvalidSchemaErr(err) {
+		if err := b.updateCollection(ctx, dbID, opts...); err != nil {
 			return nil, err
 		}
 		return b.Create(ctx, dbID, key, name, pth, opts...)
@@ -230,7 +233,11 @@ func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts
 
 func ensureNoNulls(b *Bucket) {
 	if len(b.Archives.History) == 0 {
-		b.Archives = Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}}
+		current := b.Archives.Current
+		if len(current.Deals) == 0 {
+			b.Archives.Current = Archive{Deals: []Deal{}}
+		}
+		b.Archives = Archives{Current: current, History: []Archive{}}
 	}
 }
 
@@ -346,7 +353,6 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 		ch <- le.LogEntry.Msg
 	}
 	return nil
-
 }
 
 func (b *Buckets) Close() error {
@@ -412,13 +418,9 @@ Loop:
 }
 
 func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID thread.ID, ffsToken string, c cid.Cid, opts ...Option) error {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	buck := &Bucket{}
-	if err := b.threads.FindByID(ctx, dbID, CollectionName, key, buck, db.WithTxnToken(args.Token)); err != nil {
-		return fmt.Errorf("finding bucket: %s", err)
+	buck, err := b.Get(ctx, dbID, key, opts...)
+	if err != nil {
+		return fmt.Errorf("getting bucket for save deals: %s", err)
 	}
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsToken)
 	sh, err := b.pgClient.FFS.Show(ctxFFS, c)
@@ -440,7 +442,7 @@ func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID threa
 		Deals: deals,
 	}
 
-	if err = b.threads.Save(ctx, dbID, CollectionName, dbc.Instances{buck}, db.WithTxnToken(args.Token)); err != nil {
+	if err = b.Save(ctx, dbID, buck, opts...); err != nil {
 		return fmt.Errorf("saving deals in thread: %s", err)
 	}
 	return nil

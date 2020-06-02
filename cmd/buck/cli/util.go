@@ -16,38 +16,6 @@ import (
 	"github.com/textileio/uiprogress"
 )
 
-type change struct {
-	Type dagutils.ChangeType
-	Path string
-	Rel  string
-}
-
-func changeType(t dagutils.ChangeType) string {
-	switch t {
-	case dagutils.Mod:
-		return "modified:"
-	case dagutils.Add:
-		return "new file:"
-	case dagutils.Remove:
-		return "deleted: "
-	default:
-		return ""
-	}
-}
-
-func changeColor(t dagutils.ChangeType) func(arg interface{}) aurora.Value {
-	switch t {
-	case dagutils.Mod:
-		return aurora.Yellow
-	case dagutils.Add:
-		return aurora.Green
-	case dagutils.Remove:
-		return aurora.Red
-	default:
-		return nil
-	}
-}
-
 func getDiff(buck *local.Bucket, root string) []change {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -104,6 +72,38 @@ func walkPath(pth string) (names []string) {
 		cmd.Fatal(err)
 	}
 	return names
+}
+
+type change struct {
+	Type dagutils.ChangeType
+	Path string
+	Rel  string
+}
+
+func changeType(t dagutils.ChangeType) string {
+	switch t {
+	case dagutils.Mod:
+		return "modified:"
+	case dagutils.Add:
+		return "new file:"
+	case dagutils.Remove:
+		return "deleted: "
+	default:
+		return ""
+	}
+}
+
+func changeColor(t dagutils.ChangeType) func(arg interface{}) aurora.Value {
+	switch t {
+	case dagutils.Mod:
+		return aurora.Yellow
+	case dagutils.Add:
+		return aurora.Green
+	case dagutils.Remove:
+		return aurora.Red
+	default:
+		return nil
+	}
 }
 
 func startProgress() {

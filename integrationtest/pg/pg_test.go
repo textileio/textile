@@ -97,7 +97,6 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	deal = archive.Deals[0]
 	require.NotEmpty(t, deal.GetProposalCid())
 	require.NotEmpty(t, deal.GetMiner())
-
 }
 
 func TestArchiveWatch(t *testing.T) {

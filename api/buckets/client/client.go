@@ -50,7 +50,14 @@ func (c *Client) Init(ctx context.Context, name string) (*pb.InitReply, error) {
 	})
 }
 
-// Links returns a list of links that can be used to view the bucket
+// Root returns the bucket root.
+func (c *Client) Root(ctx context.Context, key string) (*pb.RootReply, error) {
+	return c.c.Root(ctx, &pb.RootRequest{
+		Key: key,
+	})
+}
+
+// Links returns a list of links that can be used to view the bucket.
 func (c *Client) Links(ctx context.Context, key string) (*pb.LinksReply, error) {
 	return c.c.Links(ctx, &pb.LinksRequest{
 		Key: key,
@@ -67,44 +74,6 @@ func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathRep
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
 		Key:  key,
 		Path: pth,
-	})
-}
-
-func (c *Client) Archive(ctx context.Context, key string) (*pb.ArchiveReply, error) {
-	return c.c.Archive(ctx, &pb.ArchiveRequest{
-		Key: key,
-	})
-}
-
-func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusReply, error) {
-	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
-		Key: key,
-	})
-}
-
-func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stream, err := c.c.ArchiveWatch(ctx, &pb.ArchiveWatchRequest{Key: key})
-	if err != nil {
-		return err
-	}
-	for {
-		reply, err := stream.Recv()
-		if err == io.EOF || status.Code(err) == codes.Canceled {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		ch <- reply.Msg
-	}
-	return nil
-}
-
-func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoReply, error) {
-	return c.c.ArchiveInfo(ctx, &pb.ArchiveInfoRequest{
-		Key: key,
 	})
 }
 
@@ -283,4 +252,46 @@ func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option
 		return nil, err
 	}
 	return util.NewResolvedPath(res.Root.Path)
+}
+
+// Archive creates a Filecoin bucket archive via Powergate.
+func (c *Client) Archive(ctx context.Context, key string) (*pb.ArchiveReply, error) {
+	return c.c.Archive(ctx, &pb.ArchiveRequest{
+		Key: key,
+	})
+}
+
+// ArchiveStatus returns the status of a Filecoin bucket archive.
+func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusReply, error) {
+	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
+		Key: key,
+	})
+}
+
+// ArchiveWatch watches status events from a Filecoin bucket archive.
+func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.c.ArchiveWatch(ctx, &pb.ArchiveWatchRequest{Key: key})
+	if err != nil {
+		return err
+	}
+	for {
+		reply, err := stream.Recv()
+		if err == io.EOF || status.Code(err) == codes.Canceled {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		ch <- reply.Msg
+	}
+	return nil
+}
+
+// ArchiveInfo returns info about a Filecoin bucket archive.
+func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoReply, error) {
+	return c.c.ArchiveInfo(ctx, &pb.ArchiveInfoRequest{
+		Key: key,
+	})
 }
