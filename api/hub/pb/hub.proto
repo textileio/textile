@@ -4,7 +4,7 @@ package hub.pb;
 option java_multiple_files = true;
 option java_package = "io.textile.hub_grpc";
 option java_outer_classname = "TextileHub";
-option objc_class_prefix = "TXTL_HUB";
+option objc_class_prefix = "TT_HUB";
 
 message SignupRequest {
     string username = 1;
@@ -39,6 +39,7 @@ message GetSessionInfoReply {
 
 message CreateKeyRequest {
     KeyType type = 1;
+    bool secure = 2;
 }
 
 enum KeyType {
@@ -52,6 +53,7 @@ message GetKeyReply {
     KeyType type = 3;
     bool valid = 4;
     int32 threads = 5;
+    bool secure = 6;
 }
 
 message InvalidateKeyRequest {

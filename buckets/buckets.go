@@ -442,6 +442,7 @@ func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID threa
 		Deals: deals,
 	}
 
+	buck.UpdatedAt = time.Now().UnixNano()
 	if err = b.Save(ctx, dbID, buck, opts...); err != nil {
 		return fmt.Errorf("saving deals in thread: %s", err)
 	}

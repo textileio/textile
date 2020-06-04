@@ -102,18 +102,19 @@ func TestClient_CreateKey(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT)
+		_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT, true)
 		require.NotNil(t, err)
 	})
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_USER)
+		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT, true)
 		require.Nil(t, err)
 		assert.NotEmpty(t, key.Key)
 		assert.NotEmpty(t, key.Secret)
-		assert.Equal(t, pb.KeyType_USER, key.Type)
+		assert.Equal(t, pb.KeyType_ACCOUNT, key.Type)
+		assert.True(t, key.Secure)
 	})
 }
 
@@ -124,7 +125,7 @@ func TestClient_InvalidateKey(t *testing.T) {
 	ctx := context.Background()
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT)
+	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT, true)
 	require.Nil(t, err)
 
 	t.Run("without session", func(t *testing.T) {
@@ -158,9 +159,9 @@ func TestClient_ListKeys(t *testing.T) {
 		assert.Empty(t, keys.List)
 	})
 
-	_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT)
+	_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT, true)
 	require.Nil(t, err)
-	_, err = client.CreateKey(ctx, pb.KeyType_USER)
+	_, err = client.CreateKey(ctx, pb.KeyType_USER, true)
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {

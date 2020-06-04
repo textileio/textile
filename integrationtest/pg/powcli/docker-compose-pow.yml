@@ -5,16 +5,16 @@ volumes:
 
 services:
   textile:
-    build: ../../..
+    build: ../../../cmd/hubd
     environment:
-      - TXTL_ADDR_API=/ip4/0.0.0.0/tcp/3006
-      - TXTL_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
-      - TXTL_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
-      - TXTL_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
-      - TXTL_ADDR_MONGO_URI=mongodb://mongo:27017
-      - TXTL_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
-      - TXTL_EMAIL_SESSION_SECRET=textilesession
-      - TXTL_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
+      - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
+      - HUB_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
+      - HUB_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
+      - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
+      - HUB_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
+      - HUB_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
+      - HUB_EMAIL_SESSION_SECRET=hubsession
     ports:
       - "127.0.0.1:3006:3006"
       - "3007:3007"

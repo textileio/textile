@@ -4,7 +4,7 @@ package buckets.pb;
 option java_multiple_files = true;
 option java_package = "io.textile.buckets_grpc";
 option java_outer_classname = "TextileBuckets";
-option objc_class_prefix = "TXTL_BUCKETS";
+option objc_class_prefix = "TT_BUCKETS";
 
 message Root {
     string key = 1;
