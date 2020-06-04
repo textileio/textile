@@ -2,9 +2,6 @@ package collections
 
 import (
 	"context"
-	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -14,21 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	domainRx *regexp.Regexp
-
-	ErrInvalidDomain = fmt.Errorf("invalid domain name")
-)
-
 const (
 	keyLen    = 16
 	secretLen = 24
 )
-
-func init() {
-	// Copied from https://regex101.com/library/SEg6KL
-	domainRx = regexp.MustCompile(`(?i)^(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9]\.)|(?:[0-9]+/[0-9]{2})\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?$`)
-}
 
 type APIKeyType int
 
@@ -42,23 +28,9 @@ type APIKey struct {
 	Secret    string
 	Owner     crypto.PubKey
 	Type      APIKeyType
-	Domains   []string
+	Secure    bool
 	Valid     bool
 	CreatedAt time.Time
-}
-
-func (k *APIKey) AllowsOrigin(origin string) bool {
-	parts := strings.SplitN(origin, "://", 2)
-	if len(parts) < 2 {
-		return false
-	}
-	domain := parts[1]
-	for _, d := range k.Domains {
-		if d == domain {
-			return true
-		}
-	}
-	return false
 }
 
 func NewAPIKeyContext(ctx context.Context, key *APIKey) context.Context {
@@ -84,20 +56,13 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 	return k, err
 }
 
-func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType, domains []string) (*APIKey, error) {
-	for i, d := range domains {
-		d = strings.TrimSpace(d)
-		if err := validateDomain(d); err != nil {
-			return nil, err
-		}
-		domains[i] = d
-	}
+func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType, secure bool) (*APIKey, error) {
 	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
 		Owner:     owner,
 		Type:      keyType,
-		Domains:   domains,
+		Secure:    secure,
 		Valid:     true,
 		CreatedAt: time.Now(),
 	}
@@ -110,7 +75,7 @@ func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKe
 		"secret":     doc.Secret,
 		"owner_id":   ownerID,
 		"type":       int32(doc.Type),
-		"domains":    doc.Domains,
+		"secure":     doc.Secure,
 		"valid":      doc.Valid,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
@@ -179,13 +144,6 @@ func (k *APIKeys) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error 
 	return err
 }
 
-func validateDomain(domain string) error {
-	if !domainRx.MatchString(domain) {
-		return ErrInvalidDomain
-	}
-	return nil
-}
-
 func decodeAPIKey(raw bson.M) (*APIKey, error) {
 	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {
@@ -195,19 +153,16 @@ func decodeAPIKey(raw bson.M) (*APIKey, error) {
 	if v, ok := raw["created_at"]; ok {
 		created = v.(primitive.DateTime).Time()
 	}
-	var domains []string
-	if v, ok := raw["domains"]; ok && v != nil {
-		list := v.(primitive.A)
-		for _, d := range list {
-			domains = append(domains, d.(string))
-		}
+	var secure bool
+	if v, ok := raw["secure"]; ok {
+		secure = v.(bool)
 	}
 	return &APIKey{
 		Key:       raw["_id"].(string),
 		Secret:    raw["secret"].(string),
 		Owner:     owner,
 		Type:      APIKeyType(raw["type"].(int32)),
-		Domains:   domains,
+		Secure:    secure,
 		Valid:     raw["valid"].(bool),
 		CreatedAt: created,
 	}, nil

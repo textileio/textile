@@ -59,10 +59,10 @@ func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoReply, e
 }
 
 // CreateKey creates a new key for the current session.
-func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType, domains []string) (*pb.GetKeyReply, error) {
+func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType, secure bool) (*pb.GetKeyReply, error) {
 	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{
-		Type:    keyType,
-		Domains: domains,
+		Type:   keyType,
+		Secure: secure,
 	})
 }
 

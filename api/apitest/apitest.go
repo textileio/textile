@@ -20,7 +20,7 @@ import (
 	"github.com/textileio/textile/util"
 )
 
-var SessionSecret = NewUsername()
+const SessionSecret = "hubsession"
 
 func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))

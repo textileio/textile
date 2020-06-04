@@ -18,15 +18,11 @@ func TestAPIKeys_Create(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-
-	_, err = col.Create(context.Background(), owner, AccountKey, []string{"-nope.com"})
-	require.NotNil(t, err)
-
-	created, err := col.Create(context.Background(), owner, AccountKey, []string{"example.com", "sub.example.com"})
+	created, err := col.Create(context.Background(), owner, AccountKey, true)
 	require.Nil(t, err)
 	assert.NotEmpty(t, created.Secret)
 	assert.Equal(t, AccountKey, created.Type)
-	assert.NotEmpty(t, created.Domains)
+	assert.True(t, created.Secure)
 }
 
 func TestAPIKeys_Get(t *testing.T) {
@@ -36,7 +32,7 @@ func TestAPIKeys_Get(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, []string{})
+	created, err := col.Create(context.Background(), owner, UserKey, false)
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
@@ -51,9 +47,9 @@ func TestAPIKeys_ListByOwner(t *testing.T) {
 
 	_, owner1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	_, err = col.Create(context.Background(), owner1, UserKey, []string{})
+	_, err = col.Create(context.Background(), owner1, UserKey, false)
 	require.Nil(t, err)
-	_, err = col.Create(context.Background(), owner1, UserKey, []string{})
+	_, err = col.Create(context.Background(), owner1, UserKey, false)
 	require.Nil(t, err)
 
 	list1, err := col.ListByOwner(context.Background(), owner1)
@@ -74,7 +70,7 @@ func TestAPIKeys_Invalidate(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, []string{})
+	created, err := col.Create(context.Background(), owner, UserKey, false)
 	require.Nil(t, err)
 
 	err = col.Invalidate(context.Background(), created.Key)
@@ -91,7 +87,7 @@ func TestAPIKeys_DeleteByOwner(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, []string{})
+	created, err := col.Create(context.Background(), owner, UserKey, false)
 	require.Nil(t, err)
 
 	err = col.DeleteByOwner(context.Background(), owner)

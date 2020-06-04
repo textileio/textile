@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -32,9 +31,11 @@ Using the '--org' flag will create a new key under the Organization's account.
 
 There are two types of API keys:
 1. 'Account' keys provide direct access to developer/org account buckets and threads.
-2. 'User Group' keys provide existing non-admin identities (e.g. app users) access to their own buckets and threads, using the resources of the parent account (i.e. the developer or organization). With this key type, you may specify multiple allowed origin domains from which the key signature is not required (useful for web applications), e.g., 'example.com, sub.example.com'.    
+2. 'User Group' keys provide existing non-admin identities (e.g. app users) access to their own buckets and threads, using the resources of the parent account (i.e. the developer or organization).
 
-API secrets should be kept safely on a backend server, not in publicly readable client code.
+API secrets are used for Signature Authentication, which is a security measure that can prevent outsiders from using your API key. API secrets should be kept safely on a backend server, not in publicly readable client code.
+
+However, for development purposes, you may opt-out of Signature Authentication during key creation. 
 `,
 	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
@@ -59,28 +60,22 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 			cmd.End("")
 		}
 
-		var domains []string
-		keyType := pb.KeyType(index)
-		if keyType == pb.KeyType_USER {
-			prompt := promptui.Prompt{
-				Label: "Enter a comma-seperated list of allowed origin domains (optional)",
-			}
-			list, err := prompt.Run()
-			if err != nil {
-				cmd.End("")
-			}
-			domains = strings.Split(list, ",")
+		var secure bool
+		promptSecure := promptui.Prompt{
+			Label:     "Require Signature Authentication (recommended)",
+			IsConfirm: true,
+		}
+		if _, err := promptSecure.Run(); err == nil {
+			secure = true
 		}
 
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
 		defer cancel()
-		k, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), domains)
+		k, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), secure)
 		if err != nil {
 			cmd.Fatal(err)
 		}
-
-		dlist := strings.Join(k.Domains, ", ")
-		cmd.RenderTable([]string{"key", "secret", "type", "domains"}, [][]string{{k.Key, k.Secret, keyTypeDesc, dlist}})
+		cmd.RenderTable([]string{"key", "secret", "type", "secure"}, [][]string{{k.Key, k.Secret, keyTypeDesc, strconv.FormatBool(secure)}})
 		cmd.Success("Created new API key and secret")
 	},
 }
@@ -137,10 +132,10 @@ var keysLsCmd = &cobra.Command{
 		if len(list.List) > 0 {
 			data := make([][]string, len(list.List))
 			for i, k := range list.List {
-				domains := strings.Join(k.Domains, ", ")
-				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), domains, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+				secure := strconv.FormatBool(k.Secure)
+				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), secure, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
 			}
-			cmd.RenderTable([]string{"key", "secret", "type", "domains", "valid", "threads"}, data)
+			cmd.RenderTable([]string{"key", "secret", "type", "secure", "valid", "threads"}, data)
 		}
 		cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
 	},

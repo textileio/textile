@@ -4,7 +4,7 @@ package users.pb;
 option java_multiple_files = true;
 option java_package = "io.textile.users_grpc";
 option java_outer_classname = "TextileUsers";
-option objc_class_prefix = "TXTL_USERS";
+option objc_class_prefix = "TT_USERS";
 
 message ListThreadsRequest {}
 

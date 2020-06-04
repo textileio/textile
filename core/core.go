@@ -427,16 +427,15 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
 		}
 		ctx = common.NewAPIKeyContext(ctx, k)
-		msg, sig, ok := common.APISigFromMD(ctx)
-		if !ok {
-			origin, ok := common.OriginFromMD(ctx)
-			if !(ok && key.AllowsOrigin(origin)) {
+		if key.Secure {
+			msg, sig, ok := common.APISigFromMD(ctx)
+			if !ok {
 				return nil, status.Error(codes.Unauthenticated, "API key signature required")
-			}
-		} else {
-			ctx = common.NewAPISigContext(ctx, msg, sig)
-			if !common.ValidateAPISigContext(ctx, key.Secret) {
-				return nil, status.Error(codes.Unauthenticated, "Bad API key signature")
+			} else {
+				ctx = common.NewAPISigContext(ctx, msg, sig)
+				if !common.ValidateAPISigContext(ctx, key.Secret) {
+					return nil, status.Error(codes.Unauthenticated, "Bad API key signature")
+				}
 			}
 		}
 		switch key.Type {

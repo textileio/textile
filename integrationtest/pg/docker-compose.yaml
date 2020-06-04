@@ -4,7 +4,6 @@ volumes:
    pow-embed-shared:
 
 services:
-  
   powergate:
     image: textile/powergate:sha-f4d9890
     ports:
