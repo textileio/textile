@@ -41,7 +41,7 @@ func TestClient_GetThread(t *testing.T) {
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// No key signature
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		_, err = client.GetThread(ctx, "foo")
@@ -57,7 +57,7 @@ func TestClient_GetThread(t *testing.T) {
 	})
 
 	t.Run("account keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -79,7 +79,7 @@ func TestClient_GetThread(t *testing.T) {
 	})
 
 	t.Run("users keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -126,7 +126,7 @@ func TestClient_ListThreads(t *testing.T) {
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// No key signature
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		_, err = client.ListThreads(ctx)
@@ -142,7 +142,7 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 
 	t.Run("account keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -163,7 +163,7 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 
 	t.Run("users keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER)
+		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER, []string{})
 		require.Nil(t, err)
 		ctx := common.NewAPIKeyContext(ctx, key.Key)
 		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -205,7 +205,7 @@ func TestAccountBuckets(t *testing.T) {
 	// Signup, create an API key, and sign it for the requests
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	devCtx := common.NewSessionContext(ctx, dev.Session)
-	key, err := hub.CreateKey(devCtx, hubpb.KeyType_ACCOUNT)
+	key, err := hub.CreateKey(devCtx, hubpb.KeyType_ACCOUNT, []string{})
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
@@ -245,7 +245,7 @@ func TestUserBuckets(t *testing.T) {
 	// Signup, create an API key, and sign it for the requests
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	devCtx := common.NewSessionContext(ctx, dev.Session)
-	key, err := hub.CreateKey(devCtx, hubpb.KeyType_USER)
+	key, err := hub.CreateKey(devCtx, hubpb.KeyType_USER, []string{})
 	require.Nil(t, err)
 	ctx = common.NewAPIKeyContext(ctx, key.Key)
 	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
