@@ -18,6 +18,10 @@ func TestAPIKeys_Create(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
+
+	_, err = col.Create(context.Background(), owner, AccountKey, []string{"-nope.com"})
+	require.NotNil(t, err)
+
 	created, err := col.Create(context.Background(), owner, AccountKey, []string{"example.com", "sub.example.com"})
 	require.Nil(t, err)
 	assert.NotEmpty(t, created.Secret)

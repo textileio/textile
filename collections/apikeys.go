@@ -2,6 +2,8 @@ package collections
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,10 +14,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+var (
+	domainRx *regexp.Regexp
+
+	ErrInvalidDomain = fmt.Errorf("invalid domain name")
+)
+
 const (
 	keyLen    = 16
 	secretLen = 24
 )
+
+func init() {
+	// Copied from https://regex101.com/library/SEg6KL
+	domainRx = regexp.MustCompile(`(?i)^(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9]\.)|(?:[0-9]+/[0-9]{2})\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?$`)
+}
 
 type APIKeyType int
 
@@ -72,7 +85,13 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 }
 
 func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType, domains []string) (*APIKey, error) {
-
+	for i, d := range domains {
+		d = strings.TrimSpace(d)
+		if err := validateDomain(d); err != nil {
+			return nil, err
+		}
+		domains[i] = d
+	}
 	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
@@ -158,6 +177,13 @@ func (k *APIKeys) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error 
 	}
 	_, err = k.col.DeleteMany(ctx, bson.M{"owner_id": ownerID})
 	return err
+}
+
+func validateDomain(domain string) error {
+	if !domainRx.MatchString(domain) {
+		return ErrInvalidDomain
+	}
+	return nil
 }
 
 func decodeAPIKey(raw bson.M) (*APIKey, error) {

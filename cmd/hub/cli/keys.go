@@ -32,7 +32,7 @@ Using the '--org' flag will create a new key under the Organization's account.
 
 There are two types of API keys:
 1. 'Account' keys provide direct access to developer/org account buckets and threads.
-2. 'User Group' keys provide existing non-admin identities (e.g. app users) access to their own buckets and threads, using the resources of the parent account (i.e. the developer or organization).  
+2. 'User Group' keys provide existing non-admin identities (e.g. app users) access to their own buckets and threads, using the resources of the parent account (i.e. the developer or organization). With this key type, you may specify multiple allowed origin domains from which the key signature is not required (useful for web applications), e.g., 'example.com, sub.example.com'.    
 
 API secrets should be kept safely on a backend server, not in publicly readable client code.
 `,
@@ -63,7 +63,7 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 		keyType := pb.KeyType(index)
 		if keyType == pb.KeyType_USER {
 			prompt := promptui.Prompt{
-				Label: "Enter a comma-seperated list of allowed web domains, e.g., example.com, sub.example.com (optional)",
+				Label: "Enter a comma-seperated list of allowed origin domains (optional)",
 			}
 			list, err := prompt.Run()
 			if err != nil {
@@ -79,8 +79,8 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 			cmd.Fatal(err)
 		}
 
-		resDomains := strings.Join(k.Domains, ", ")
-		cmd.RenderTable([]string{"key", "secret", "type", "domains"}, [][]string{{k.Key, k.Secret, keyTypeDesc, resDomains}})
+		dlist := strings.Join(k.Domains, ", ")
+		cmd.RenderTable([]string{"key", "secret", "type", "domains"}, [][]string{{k.Key, k.Secret, keyTypeDesc, dlist}})
 		cmd.Success("Created new API key and secret")
 	},
 }
