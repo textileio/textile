@@ -35,6 +35,37 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, buck.Seed)
 }
 
+func TestClient_Root(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, "mybuck")
+	require.Nil(t, err)
+
+	root, err := client.Root(ctx, buck.Root.Key)
+	require.Nil(t, err)
+	assert.NotEmpty(t, root.Root)
+	assert.NotEmpty(t, root.Root.Key)
+	assert.NotEmpty(t, root.Root.Path)
+	assert.NotEmpty(t, root.Root.CreatedAt)
+	assert.NotEmpty(t, root.Root.UpdatedAt)
+}
+
+func TestClient_Links(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, "mybuck")
+	require.Nil(t, err)
+
+	links, err := client.Links(ctx, buck.Root.Key)
+	require.Nil(t, err)
+	assert.NotEmpty(t, links.URL)
+	assert.NotEmpty(t, links.IPNS)
+}
+
 func TestClient_List(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)

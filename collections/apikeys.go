@@ -2,6 +2,7 @@ package collections
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -28,8 +29,23 @@ type APIKey struct {
 	Secret    string
 	Owner     crypto.PubKey
 	Type      APIKeyType
+	Domains   []string
 	Valid     bool
 	CreatedAt time.Time
+}
+
+func (k *APIKey) AllowsOrigin(origin string) bool {
+	parts := strings.SplitN(origin, "://", 2)
+	if len(parts) < 2 {
+		return false
+	}
+	domain := parts[1]
+	for _, d := range k.Domains {
+		if d == domain {
+			return true
+		}
+	}
+	return false
 }
 
 func NewAPIKeyContext(ctx context.Context, key *APIKey) context.Context {
@@ -55,12 +71,14 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 	return k, err
 }
 
-func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType) (*APIKey, error) {
+func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType, domains []string) (*APIKey, error) {
+
 	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
 		Owner:     owner,
 		Type:      keyType,
+		Domains:   domains,
 		Valid:     true,
 		CreatedAt: time.Now(),
 	}
@@ -73,6 +91,7 @@ func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKe
 		"secret":     doc.Secret,
 		"owner_id":   ownerID,
 		"type":       int32(doc.Type),
+		"domains":    doc.Domains,
 		"valid":      doc.Valid,
 		"created_at": doc.CreatedAt,
 	}); err != nil {
@@ -150,11 +169,19 @@ func decodeAPIKey(raw bson.M) (*APIKey, error) {
 	if v, ok := raw["created_at"]; ok {
 		created = v.(primitive.DateTime).Time()
 	}
+	var domains []string
+	if v, ok := raw["domains"]; ok && v != nil {
+		list := v.(primitive.A)
+		for _, d := range list {
+			domains = append(domains, d.(string))
+		}
+	}
 	return &APIKey{
 		Key:       raw["_id"].(string),
 		Secret:    raw["secret"].(string),
 		Owner:     owner,
 		Type:      APIKeyType(raw["type"].(int32)),
+		Domains:   domains,
 		Valid:     raw["valid"].(bool),
 		CreatedAt: created,
 	}, nil

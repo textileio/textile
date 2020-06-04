@@ -221,7 +221,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, owner, c.APIKeyType(req.Type))
+	key, err := s.Collections.APIKeys.Create(ctx, owner, c.APIKeyType(req.Type), req.Domains)
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +231,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		Type:    pb.KeyType(key.Type),
 		Valid:   true,
 		Threads: 0,
+		Domains: key.Domains,
 	}, nil
 }
 
@@ -271,6 +272,7 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 			Type:    pb.KeyType(key.Type),
 			Valid:   key.Valid,
 			Threads: int32(len(ts)),
+			Domains: key.Domains,
 		}
 	}
 	return &pb.ListKeysReply{List: list}, nil

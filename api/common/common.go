@@ -13,6 +13,15 @@ import (
 
 type ctxKey string
 
+// OriginFromMD returns the request origin from context metadata.
+func OriginFromMD(ctx context.Context) (origin string, ok bool) {
+	origin = metautils.ExtractIncoming(ctx).Get("origin")
+	if origin != "" {
+		ok = true
+	}
+	return
+}
+
 // NewSessionContext adds a session to a context.
 func NewSessionContext(ctx context.Context, session string) context.Context {
 	if session == "" {

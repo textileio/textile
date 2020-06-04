@@ -8,31 +8,31 @@ import (
 )
 
 type FFSInstance struct {
-	BucketKey string `bson:"_id"`
-	FFSToken  string
-	Archives  Archives
+	BucketKey string   `bson:"_id"`
+	FFSToken  string   `bson:"ffs_token"`
+	Archives  Archives `bson:"archives"`
 }
 
 type Archives struct {
-	Current Archive
-	History []Archive
+	Current Archive   `bson:"current"`
+	History []Archive `bson:"history"`
 }
 
 type Archive struct {
-	Cid        []byte
-	JobID      string
-	JobStatus  int
-	Aborted    bool
-	AbortedMsg string
-	FailureMsg string
-	CreatedAt  int64
+	Cid        []byte `bson:"cid"`
+	JobID      string `bson:"job_id"`
+	JobStatus  int    `bson:"job_status"`
+	Aborted    bool   `bson:"aborted"`
+	AbortedMsg string `bson:"aborted_msg"`
+	FailureMsg string `bson:"failure_msg"`
+	CreatedAt  int64  `bson:"created_at"`
 }
 
 type FFSInstances struct {
 	col *mongo.Collection
 }
 
-func NewFFSInstances(ctx context.Context, db *mongo.Database) (*FFSInstances, error) {
+func NewFFSInstances(_ context.Context, db *mongo.Database) (*FFSInstances, error) {
 	s := &FFSInstances{col: db.Collection("ffsinstances")}
 	return s, nil
 }

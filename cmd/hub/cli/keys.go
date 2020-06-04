@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -53,19 +54,33 @@ API secrets should be kept safely on a backend server, not in publicly readable 
 				Inactive: `{{ . | faint }}`,
 			},
 		}
-		index, keyType, err := prompt.Run()
+		index, keyTypeDesc, err := prompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
 
+		var domains []string
+		keyType := pb.KeyType(index)
+		if keyType == pb.KeyType_USER {
+			prompt := promptui.Prompt{
+				Label: "Enter a comma-seperated list of allowed web domains, e.g., example.com, sub.example.com (optional)",
+			}
+			list, err := prompt.Run()
+			if err != nil {
+				cmd.End("")
+			}
+			domains = strings.Split(list, ",")
+		}
+
 		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
 		defer cancel()
-		k, err := clients.Hub.CreateKey(ctx, pb.KeyType(index))
+		k, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), domains)
 		if err != nil {
 			cmd.Fatal(err)
 		}
 
-		cmd.RenderTable([]string{"key", "secret", "type"}, [][]string{{k.Key, k.Secret, keyType}})
+		resDomains := strings.Join(k.Domains, ", ")
+		cmd.RenderTable([]string{"key", "secret", "type", "domains"}, [][]string{{k.Key, k.Secret, keyTypeDesc, resDomains}})
 		cmd.Success("Created new API key and secret")
 	},
 }
@@ -122,9 +137,10 @@ var keysLsCmd = &cobra.Command{
 		if len(list.List) > 0 {
 			data := make([][]string, len(list.List))
 			for i, k := range list.List {
-				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+				domains := strings.Join(k.Domains, ", ")
+				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), domains, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
 			}
-			cmd.RenderTable([]string{"key", "secret", "type", "valid", "threads"}, data)
+			cmd.RenderTable([]string{"key", "secret", "type", "domains", "valid", "threads"}, data)
 		}
 		cmd.Message("Found %d keys", aurora.White(len(list.List)).Bold())
 	},

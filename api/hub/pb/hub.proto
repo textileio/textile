@@ -39,6 +39,7 @@ message GetSessionInfoReply {
 
 message CreateKeyRequest {
     KeyType type = 1;
+    repeated string domains = 2;
 }
 
 enum KeyType {
@@ -52,6 +53,7 @@ message GetKeyReply {
     KeyType type = 3;
     bool valid = 4;
     int32 threads = 5;
+    repeated string domains = 6;
 }
 
 message InvalidateKeyRequest {
