@@ -1,13 +1,20 @@
 textile:
 	go install ./...
 
-local-up:
-	docker-compose -f docker-compose-dev.yml up --build
+hub-up:
+	docker-compose -f cmd/hubd/docker-compose-dev.yml up --build
 
-local-stop:
-	docker-compose stop
+hub-stop:
+	docker-compose -f cmd/hubd/docker-compose-dev.yml stop
 
-local-clean:
-	docker-compose down -v --remove-orphans
+hub-clean:
+	docker-compose -f cmd/hubd/docker-compose-dev.yml down -v --remove-orphans
 
+buckets-up:
+	docker-compose -f cmd/buckd/docker-compose-dev.yml up --build
 
+buckets-stop:
+	docker-compose -f cmd/buckd/docker-compose-dev.yml stop
+
+buckets-clean:
+	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans
