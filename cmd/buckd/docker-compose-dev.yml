@@ -1,7 +1,9 @@
 version: "3"
 services:
   buckets:
-    build: .
+    build:
+      context: ../../
+      dockerfile: ./cmd/buckd/Dockerfile
     environment:
       - BUCK_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - BUCK_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007

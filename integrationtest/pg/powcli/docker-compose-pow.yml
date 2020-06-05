@@ -5,7 +5,9 @@ volumes:
 
 services:
   textile:
-    build: ../../../cmd/hubd
+    build:
+      context: ../../../
+      dockerfile: ./cmd/hubd/Dockerfile
     environment:
       - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - HUB_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
