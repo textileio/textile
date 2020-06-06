@@ -8,10 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ipfs/interface-go-ipfs-core/path"
-
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -30,15 +29,75 @@ func TestClient_Init(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx, "mybuck")
+	buck, err := client.Init(ctx, c.WithName("mybuck"))
 	require.Nil(t, err)
 	assert.NotEmpty(t, buck.Root)
 	assert.NotEmpty(t, buck.Root.Key)
+	assert.NotEmpty(t, buck.Root.Name)
 	assert.NotEmpty(t, buck.Root.Path)
 	assert.NotEmpty(t, buck.Root.CreatedAt)
 	assert.NotEmpty(t, buck.Root.UpdatedAt)
 	assert.NotEmpty(t, buck.Links)
 	assert.NotEmpty(t, buck.Seed)
+
+	pbuck, err := client.Init(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
+	require.Nil(t, err)
+	assert.NotEmpty(t, pbuck.Root)
+	assert.NotEmpty(t, pbuck.Root.Key)
+	assert.NotEmpty(t, pbuck.Root.Name)
+	assert.NotEmpty(t, pbuck.Root.Path)
+	assert.NotEmpty(t, pbuck.Root.CreatedAt)
+	assert.NotEmpty(t, pbuck.Root.UpdatedAt)
+	assert.NotEmpty(t, pbuck.Links)
+	assert.NotEmpty(t, pbuck.Seed)
+}
+
+func TestClient_InitWithCid(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	_ = client
+	defer done()
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+
+	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	require.NoError(t, err)
+	p, err := ipfs.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			"file1.jpg": ipfsfiles.NewReaderFile(file1),
+			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+				"file2.jpg": ipfsfiles.NewReaderFile(file2),
+			}),
+		}),
+	)
+	require.NoError(t, err)
+	initCid := p.Cid()
+	buck, err := client.Init(ctx, c.WithCid(initCid))
+	require.NoError(t, err)
+
+	// Assert top level bucket.
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.True(t, rep.Item.IsDir)
+	topLevelNames := make([]string, 3)
+	for i, n := range rep.Item.Items {
+		topLevelNames[i] = n.Name
+	}
+	assert.Contains(t, topLevelNames, "file1.jpg")
+	assert.Contains(t, topLevelNames, "folder1")
+
+	// Assert inner directory.
+	rep, err = client.ListPath(ctx, buck.Root.Key, "folder1")
+	require.Nil(t, err)
+	assert.True(t, rep.Item.IsDir)
+	assert.Equal(t, 1, len(rep.Item.Items))
+	assert.Equal(t, rep.Item.Items[0].Name, "file2.jpg")
 }
 
 func TestClient_Root(t *testing.T) {
@@ -46,7 +105,7 @@ func TestClient_Root(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx, "mybuck")
+	buck, err := client.Init(ctx)
 	require.Nil(t, err)
 
 	root, err := client.Root(ctx, buck.Root.Key)
@@ -63,7 +122,7 @@ func TestClient_Links(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx, "mybuck")
+	buck, err := client.Init(ctx)
 	require.Nil(t, err)
 
 	links, err := client.Links(ctx, buck.Root.Key)
@@ -83,7 +142,7 @@ func TestClient_List(t *testing.T) {
 		assert.Equal(t, 0, len(rep.Roots))
 	})
 
-	buck, err := client.Init(ctx, "mybuck")
+	buck, err := client.Init(ctx)
 	require.Nil(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -102,7 +161,7 @@ func TestClient_ListPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx, "mybuck")
+	buck, err := client.Init(ctx)
 	require.Nil(t, err)
 
 	t.Run("empty", func(t *testing.T) {
@@ -142,6 +201,150 @@ func TestClient_ListPath(t *testing.T) {
 		assert.False(t, rep.Item.IsDir)
 		assert.Equal(t, root.String(), rep.Root.Path)
 	})
+}
+
+func TestClient_ListPath_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	t.Run("empty", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "")
+		require.Nil(t, err)
+		assert.NotEmpty(t, rep.Root)
+		assert.True(t, rep.Item.IsDir)
+		assert.Equal(t, 1, len(rep.Item.Items))
+	})
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "dir1/file1.jpg", file)
+	require.Nil(t, err)
+	_, root, err := client.PushPath(ctx, buck.Root.Key, "dir2/note.txt", bytes.NewReader([]byte("Lorem ipsum dolor sit amet...")))
+	require.Nil(t, err)
+
+	t.Run("root dir", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "")
+		require.Nil(t, err)
+		assert.True(t, rep.Item.IsDir)
+		assert.Equal(t, 3, len(rep.Item.Items))
+	})
+
+	t.Run("nested dir", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1")
+		require.Nil(t, err)
+		assert.True(t, rep.Item.IsDir)
+		assert.Equal(t, 1, len(rep.Item.Items))
+	})
+
+	t.Run("file", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1/file1.jpg")
+		require.Nil(t, err)
+		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
+		assert.False(t, rep.Item.IsDir)
+		assert.Equal(t, root.String(), rep.Root.Path)
+	})
+}
+
+func TestClient_PushPath(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx)
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	progress1 := make(chan int64)
+	go func() {
+		for p := range progress1 {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1, c.WithProgress(progress1))
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	progress2 := make(chan int64)
+	go func() {
+		for p := range progress2 {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
+	require.Nil(t, err)
+
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep.Item.Items))
+}
+
+func TestClient_PushPath_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	progress1 := make(chan int64)
+	go func() {
+		for p := range progress1 {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1, c.WithProgress(progress1))
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	progress2 := make(chan int64)
+	go func() {
+		for p := range progress2 {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
+	require.Nil(t, err)
+
+	rep1, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep1.Item.Items))
+
+	// Try overwriting the path
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", strings.NewReader("seeya!"))
+	require.Nil(t, err)
+
+	rep2, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep2.Item.Items))
+
+	// Overwrite the path again, this time replacing a file link with a dir link
+	file3, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file3.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to", file3)
+	require.Nil(t, err)
+
+	rep3, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep3.Item.Items))
 }
 
 func TestClient_SetPath(t *testing.T) {
@@ -210,7 +413,7 @@ func TestClient_SetPath(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			buck, err := client.Init(ctx, "mybuck")
+			buck, err := client.Init(ctx)
 			require.NoError(t, err)
 
 			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
@@ -250,9 +453,203 @@ func TestClient_SetPath(t *testing.T) {
 			require.Nil(t, err)
 			assert.True(t, rep.Item.IsDir)
 			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelSecond)
-
 		})
 	}
+}
+
+func TestClient_PullPath(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx)
+	require.Nil(t, err)
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
+	require.Nil(t, err)
+
+	tmp, err := ioutil.TempFile("", "")
+	require.Nil(t, err)
+	defer tmp.Close()
+
+	progress := make(chan int64)
+	go func() {
+		for p := range progress {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
+	require.Nil(t, err)
+	info, err := tmp.Stat()
+	require.Nil(t, err)
+	t.Logf("wrote file with size %d", info.Size())
+}
+
+func TestClient_PullPath_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
+	require.Nil(t, err)
+
+	tmp, err := ioutil.TempFile("", "")
+	require.Nil(t, err)
+	defer tmp.Close()
+
+	progress := make(chan int64)
+	go func() {
+		for p := range progress {
+			t.Logf("progress: %d", p)
+		}
+	}()
+	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
+	require.Nil(t, err)
+	info, err := tmp.Stat()
+	require.Nil(t, err)
+	t.Logf("wrote file with size %d", info.Size())
+
+	note := "baps!"
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "one/two/note.txt", strings.NewReader(note))
+	require.Nil(t, err)
+
+	var buf bytes.Buffer
+	err = client.PullPath(ctx, buck.Root.Key, "one/two/note.txt", &buf)
+	require.Nil(t, err)
+	assert.Equal(t, note, string(buf.Bytes()))
+}
+
+func TestClient_Remove(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx)
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	require.Nil(t, err)
+
+	err = client.Remove(ctx, buck.Root.Key)
+	require.Nil(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.NotNil(t, err)
+}
+
+func TestClient_Remove_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	require.Nil(t, err)
+
+	err = client.Remove(ctx, buck.Root.Key)
+	require.Nil(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.NotNil(t, err)
+}
+
+func TestClient_RemovePath(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx)
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	require.Nil(t, err)
+
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.NotNil(t, err)
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep.Item.Items))
+
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
+	require.Nil(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again")
+	require.NotNil(t, err)
+	rep, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 2, len(rep.Item.Items))
+}
+
+func TestClient_RemovePath_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	defer done()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	require.Nil(t, err)
+
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.NotNil(t, err)
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 3, len(rep.Item.Items))
+
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
+	require.Nil(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again")
+	require.NotNil(t, err)
+	rep, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.Equal(t, 2, len(rep.Item.Items))
 }
 
 func TestClient_ListIpfsPath(t *testing.T) {
@@ -316,7 +713,7 @@ func TestClient_PullIpfsPath(t *testing.T) {
 	tmpFile, err := ioutil.TempFile("", "")
 	require.NoError(t, err)
 	defer tmpFile.Close()
-	defer func() { os.Remove(tmpFile.Name()) }()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 	tmpName := tmpFile.Name()
 
 	err = client.PullIpfsPath(ctx, path.Join(p, "folder1/file2.jpg"), tmpFile)
@@ -334,194 +731,6 @@ func TestClient_PullIpfsPath(t *testing.T) {
 	tmpBytes, err := ioutil.ReadAll(tmpFile)
 	require.NoError(t, err)
 	require.True(t, bytes.Equal(origBytes, tmpBytes))
-}
-
-func TestClient_InitWithCid(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	_ = client
-	defer done()
-
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-
-	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
-	require.NoError(t, err)
-	p, err := ipfs.Unixfs().Add(
-		ctx,
-		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			"file1.jpg": ipfsfiles.NewReaderFile(file1),
-			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-				"file2.jpg": ipfsfiles.NewReaderFile(file2),
-			}),
-		}),
-	)
-	require.NoError(t, err)
-	initCid := p.Cid()
-	buck, err := client.Init(ctx, "mybuck", c.WithCid(initCid))
-	require.NoError(t, err)
-
-	// Assert top level bucket.
-	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.True(t, rep.Item.IsDir)
-	topLevelNames := make([]string, 3)
-	for i, n := range rep.Item.Items {
-		topLevelNames[i] = n.Name
-	}
-	assert.Contains(t, topLevelNames, "file1.jpg")
-	assert.Contains(t, topLevelNames, "folder1")
-
-	// Assert inner directory.
-	rep, err = client.ListPath(ctx, buck.Root.Key, "folder1")
-	require.Nil(t, err)
-	assert.True(t, rep.Item.IsDir)
-	assert.Equal(t, 1, len(rep.Item.Items))
-	assert.Equal(t, rep.Item.Items[0].Name, "file2.jpg")
-}
-
-func TestClient_PushPath(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, "mybuck")
-	require.Nil(t, err)
-
-	t.Run("bucket path", func(t *testing.T) {
-		file, err := os.Open("testdata/file1.jpg")
-		require.Nil(t, err)
-		defer file.Close()
-		progress := make(chan int64)
-		go func() {
-			for p := range progress {
-				t.Logf("progress: %d", p)
-			}
-		}()
-		pth, root, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file, c.WithProgress(progress))
-		require.Nil(t, err)
-		assert.NotEmpty(t, pth)
-		assert.NotEmpty(t, root)
-	})
-
-	t.Run("nested bucket path", func(t *testing.T) {
-		file, err := os.Open("testdata/file2.jpg")
-		require.Nil(t, err)
-		defer file.Close()
-		progress := make(chan int64)
-		go func() {
-			for p := range progress {
-				t.Logf("progress: %d", p)
-			}
-		}()
-		pth, root, err := client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file, c.WithProgress(progress))
-		require.Nil(t, err)
-		assert.NotEmpty(t, pth)
-		assert.NotEmpty(t, root)
-
-		rep, err := client.ListPath(ctx, buck.Root.Key, "")
-		require.Nil(t, err)
-		assert.Equal(t, 3, len(rep.Item.Items))
-	})
-}
-
-func TestClient_PullPath(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, "mybuck")
-	require.Nil(t, err)
-
-	file, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-	require.Nil(t, err)
-
-	t.Run("bucket path", func(t *testing.T) {
-		file, err := ioutil.TempFile("", "")
-		require.Nil(t, err)
-		defer file.Close()
-
-		progress := make(chan int64)
-		go func() {
-			for p := range progress {
-				t.Logf("progress: %d", p)
-			}
-		}()
-		err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", file, c.WithProgress(progress))
-		require.Nil(t, err)
-		info, err := file.Stat()
-		require.Nil(t, err)
-		t.Logf("wrote file with size %d", info.Size())
-	})
-}
-
-func TestClient_Remove(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, "mybuck")
-	require.Nil(t, err)
-
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-	require.Nil(t, err)
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
-	require.Nil(t, err)
-
-	err = client.Remove(ctx, buck.Root.Key)
-	require.Nil(t, err)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.NotNil(t, err)
-}
-
-func TestClient_RemovePath(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, "mybuck")
-	require.Nil(t, err)
-
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-	require.Nil(t, err)
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
-	require.Nil(t, err)
-
-	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.Nil(t, err)
-	assert.NotEmpty(t, pth)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.NotNil(t, err)
-	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.Equal(t, 3, len(rep.Item.Items))
-
-	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
-	require.Nil(t, err)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again")
-	require.NotNil(t, err)
-	rep, err = client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.Equal(t, 2, len(rep.Item.Items))
 }
 
 func TestClose(t *testing.T) {

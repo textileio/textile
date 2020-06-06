@@ -72,7 +72,8 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		render404(c)
 		return
 	}
-	if strings.HasSuffix(pth, ".textile/config.yml") {
+	// @todo: Remove this private bucket handling when the thread ACL is done.
+	if buck.GetEncKey() != nil {
 		render404(c)
 		return
 	}
@@ -86,10 +87,6 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 			renderError(c, http.StatusInternalServerError, err)
 		}
 	} else {
-		if rep.Item.Name == ".textile" {
-			render404(c)
-			return
-		}
 		var base string
 		if g.subdomains {
 			base = buckets.CollectionName
@@ -98,9 +95,6 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		}
 		var links []link
 		for _, item := range rep.Item.Items {
-			if item.Name == ".textile" {
-				continue
-			}
 			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
 			links = append(links, link{
 				Name:  item.Name,
@@ -242,6 +236,11 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 
 	buck := &buckets.Bucket{}
 	if err := g.threads.FindByID(ctx, ipnskey.ThreadID, buckets.CollectionName, key, &buck, db.WithTxnToken(token)); err != nil {
+		render404(c)
+		return
+	}
+	// @todo: Remove this private bucket handling when the thread ACL is done.
+	if buck.GetEncKey() != nil {
 		render404(c)
 		return
 	}

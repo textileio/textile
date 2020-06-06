@@ -17,6 +17,7 @@ message Root {
 message InitRequest {
     string name = 1;
     string bootstrapCid = 2;
+    bool private = 3;
 }
 
 message InitReply {
@@ -150,53 +151,51 @@ message ArchiveRequest {
     string key = 1;
 }
 
-message ArchiveReply {
-}
+message ArchiveReply {}
 
 message ArchiveStatusRequest {
-     string key = 1;
+    string key = 1;
 }
 
 message ArchiveStatusReply {
-     string key = 1;
-     Status status = 2;
-     string failedMsg = 3;
+    string key = 1;
+    Status status = 2;
+    string failedMsg = 3;
 
-     enum Status {
-	Executing = 0;
-	Failed = 1;
-	Done = 2;
-	Canceled = 3;
-     }
+    enum Status {
+        Executing = 0;
+        Failed = 1;
+        Done = 2;
+        Canceled = 3;
+    }
 }
 
 message ArchiveInfoRequest {
-     string key = 1;
+    string key = 1;
 }
 
 message ArchiveInfoReply {
-     string key = 1;
-     Archive archive = 2;
+    string key = 1;
+    Archive archive = 2;
 
-     message Archive {
-         string cid = 1;
-	 repeated Deal deals = 2;
+    message Archive {
+        string cid = 1;
+        repeated Deal deals = 2;
 
-	 message Deal {
-		 string ProposalCid = 1;
-		 string miner = 2;
-	 }
-     }
+        message Deal {
+            string ProposalCid = 1;
+            string miner = 2;
+        }
+    }
 }
 
 message ArchiveWatchRequest {
-	string key = 1;
+    string key = 1;
 }
 
 message ArchiveWatchReply {
-	string msg = 1;
+    string msg = 1;
 }
-
 
 service API {
     rpc Init(InitRequest) returns (InitReply) {}

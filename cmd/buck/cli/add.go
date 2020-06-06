@@ -141,10 +141,10 @@ func listMergePath(ipfsBasePth path.Path, ipfsRelPath, dest string, overwriteAll
 	}
 
 	// If it's a file, add it if not exist, or ask for  a decision if wants to be overwritten.
-	path := filepath.Join(dest, ipfsRelPath)
-	if _, err := os.Stat(path); err == nil && !overwriteAll {
+	pth := filepath.Join(dest, ipfsRelPath)
+	if _, err := os.Stat(pth); err == nil && !overwriteAll {
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Overwrite  %s", path),
+			Label:     fmt.Sprintf("Overwrite  %s", pth),
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
@@ -159,7 +159,7 @@ func listMergePath(ipfsBasePth path.Path, ipfsRelPath, dest string, overwriteAll
 	if err != nil {
 		cmd.Fatal(err)
 	}
-	o := object{path: path, name: rep.Item.Name, size: rep.Item.Size, cid: c}
+	o := object{path: pth, name: rep.Item.Name, size: rep.Item.Size, cid: c}
 	return nil, []object{o}
 }
 

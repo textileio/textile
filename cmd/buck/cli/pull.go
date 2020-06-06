@@ -87,7 +87,10 @@ var bucketPullCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		if err = buck.Archive(ctx); err != nil {
+		if err = buck.Save(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+		if err := buck.SetRemote(getRemoteRoot(key)); err != nil {
 			cmd.Fatal(err)
 		}
 
@@ -107,7 +110,7 @@ var bucketPullCmd = &cobra.Command{
 				}
 			}
 		}
-		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+		cmd.Message("%s", aurora.White(buck.Remote()).Bold())
 	},
 }
 

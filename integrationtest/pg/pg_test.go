@@ -35,7 +35,7 @@ func TestCreateBucket(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, len(lst))
 
-	_, err = client.Init(ctx, "bucky")
+	_, err = client.Init(ctx, "bucky", "")
 	require.Nil(t, err)
 
 	lst, err = powc.FFS.ListAPI(ctx)
@@ -48,7 +48,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	ctx, client := setup(t)
 
 	// Create bucket with a file.
-	b, err := client.Init(ctx, "bucky")
+	b, err := client.Init(ctx, "bucky", "")
 	require.Nil(t, err)
 	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
@@ -103,7 +103,7 @@ func TestArchiveWatch(t *testing.T) {
 	_ = spinup(t)
 	ctx, client := setup(t)
 
-	b, err := client.Init(ctx, "bucky")
+	b, err := client.Init(ctx, "bucky", "")
 	require.Nil(t, err)
 	time.Sleep(4 * time.Second)
 	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
@@ -134,7 +134,7 @@ func TestFailingArchive(t *testing.T) {
 	_ = spinup(t)
 	ctx, client := setup(t)
 
-	b, err := client.Init(ctx, "bucky")
+	b, err := client.Init(ctx, "bucky", "")
 	require.Nil(t, err)
 	time.Sleep(4 * time.Second)
 	// Store a file that is bigger than the sector size, this

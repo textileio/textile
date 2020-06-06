@@ -2,8 +2,10 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/textileio/go-threads/core/thread"
@@ -32,8 +34,8 @@ func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collectio
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	json := c.Query("json") == "true"
-	if collection == buckets.CollectionName && !json {
+	jsn := c.Query("json") == "true"
+	if collection == buckets.CollectionName && !jsn {
 		g.renderBucket(c, ctx, threadID)
 		return
 	} else {
@@ -43,7 +45,21 @@ func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collectio
 			render404(c)
 			return
 		}
-		c.JSON(http.StatusOK, res)
+		// @todo: Remove this private bucket handling when the thread ACL is done.
+		data, err := json.Marshal(res)
+		if err != nil {
+			renderError(c, http.StatusInternalServerError, err)
+			return
+		}
+		var bucks, pub []buckets.Bucket
+		if err = json.Unmarshal(data, &bucks); err == nil {
+			for _, b := range bucks {
+				if b.GetEncKey() == nil {
+					pub = append(pub, b)
+				}
+			}
+		}
+		c.JSON(http.StatusOK, pub)
 	}
 }
 
@@ -61,8 +77,9 @@ func (g *Gateway) instanceHandler(c *gin.Context) {
 // If the collection is buckets, the built-in buckets UI in rendered instead.
 // This can be overridden with the query param json=true.
 func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection, id, pth string) {
-	json := c.Query("json") == "true"
-	if (collection != buckets.CollectionName || json) && pth != "" {
+	pth = strings.TrimPrefix(pth, "/")
+	jsn := c.Query("json") == "true"
+	if (collection != buckets.CollectionName || jsn) && pth != "" {
 		render404(c)
 		return
 	}
@@ -75,7 +92,7 @@ func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection,
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	if collection == buckets.CollectionName && !json {
+	if collection == buckets.CollectionName && !jsn {
 		g.renderBucketPath(c, ctx, threadID, collection, id, pth, token)
 		return
 	} else {
@@ -83,6 +100,19 @@ func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection,
 		if err := g.threads.FindByID(ctx, threadID, collection, id, &res, db.WithTxnToken(token)); err != nil {
 			render404(c)
 			return
+		}
+		// @todo: Remove this private bucket handling when the thread ACL is done.
+		data, err := json.Marshal(res)
+		if err != nil {
+			renderError(c, http.StatusInternalServerError, err)
+			return
+		}
+		var buck buckets.Bucket
+		if err = json.Unmarshal(data, &buck); err == nil {
+			if buck.GetEncKey() != nil {
+				render404(c)
+				return
+			}
 		}
 		c.JSON(http.StatusOK, res)
 	}

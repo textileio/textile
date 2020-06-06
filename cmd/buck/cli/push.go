@@ -56,7 +56,7 @@ var bucketPushCmd = &cobra.Command{
 			seed := filepath.Join(root, bucks.SeedName)
 			ctx, acancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer acancel()
-			if err = buck.ArchiveFile(ctx, seed, bucks.SeedName); err != nil {
+			if err = buck.SaveFile(ctx, seed, bucks.SeedName); err != nil {
 				if !errors.Is(err, os.ErrNotExist) {
 					cmd.Fatal(err)
 				}
@@ -94,7 +94,7 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		xr := buck.Path()
+		xr := path.IpfsPath(buck.Remote())
 		var rm []change
 		startProgress()
 		for _, c := range diff {
@@ -114,10 +114,13 @@ var bucketPushCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		if err = buck.Archive(ctx); err != nil {
+		if err = buck.Save(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+		if err := buck.SetRemote(getRemoteRoot(key)); err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("%s", aurora.White(buck.Remote()).Bold())
 	},
 }
 
@@ -136,7 +139,13 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 	progress := make(chan int64)
 	go func() {
 		for up := range progress {
-			if err := bar.Set(int(up)); err != nil {
+			var u int
+			if up > info.Size() {
+				u = int(info.Size())
+			} else {
+				u = int(up)
+			}
+			if err := bar.Set(u); err != nil {
 				cmd.Fatal(err)
 			}
 		}

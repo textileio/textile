@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -19,6 +19,7 @@ import (
 	bucks "github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/util"
 )
 
 type bucketInfo struct {
@@ -55,6 +56,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
+
 		bootCid, err := c.Flags().GetString("cid")
 		if err != nil {
 			cmd.Fatal(err)
@@ -126,15 +128,33 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			initRemote = false
 		}
 
-		var name string
+		name, err := c.Flags().GetString("name")
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		private, err := c.Flags().GetBool("private")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		if initRemote {
-			prompt := promptui.Prompt{
-				Label: "Enter a name for your new bucket (optional)",
+			if !c.Flags().Changed("name") {
+				namep := promptui.Prompt{
+					Label: "Enter a name for your new bucket (optional)",
+				}
+				var err error
+				name, err = namep.Run()
+				if err != nil {
+					cmd.End("")
+				}
 			}
-			var err error
-			name, err = prompt.Run()
-			if err != nil {
-				cmd.End("")
+			if !c.Flags().Changed("private") {
+				privp := promptui.Prompt{
+					Label:     "Encrypt bucket contents?",
+					IsConfirm: true,
+				}
+				if _, err = privp.Run(); err == nil {
+					private = true
+				}
 			}
 		}
 
@@ -168,8 +188,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		if initRemote {
 			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 			defer cancel()
-
-			var opts []client.InitOption
+			opts := []client.InitOption{client.WithName(name), client.WithPrivate(private)}
 			if bootCid != "" {
 				bCid, err := cid.Decode(bootCid)
 				if err != nil {
@@ -177,8 +196,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 				}
 				opts = append(opts, client.WithCid(bCid))
 			}
-
-			rep, err := clients.Buckets.Init(ctx, name, opts...)
+			rep, err := clients.Buckets.Init(ctx, opts...)
 			if err != nil {
 				cmd.Fatal(err)
 			}
@@ -202,13 +220,20 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			}
 			actx, acancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer acancel()
-			if err = buck.ArchiveFile(actx, seed, bucks.SeedName); err != nil {
+			if err = buck.SaveFile(actx, seed, bucks.SeedName); err != nil {
+				cmd.Fatal(err)
+			}
+			rp, err := util.NewResolvedPath(rep.Root.Path)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if err = buck.SetRemote(rp.Cid()); err != nil {
 				cmd.Fatal(err)
 			}
 
 			if bootCid != "" {
 				getPath(rep.Root.Key, ".", ".", buck, nil, false)
-				if err := buck.Archive(ctx); err != nil {
+				if err := buck.Save(ctx); err != nil {
 					cmd.Fatal(err)
 				}
 			}
@@ -233,10 +258,14 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			setCidVersion(buck, key)
+			rr := getRemoteRoot(key)
+			if err := buck.SetRemote(rr); err != nil {
+				cmd.Fatal(err)
+			}
+			buck.SetCidVersion(int(rr.Version()))
 			ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer cancel()
-			if err = buck.Archive(ctx); err != nil {
+			if err = buck.Save(ctx); err != nil {
 				cmd.Fatal(err)
 			}
 			cmd.Success("Initialized from remote and pulled %d objects to %s", aurora.White(count).Bold(), aurora.White(root).Bold())
