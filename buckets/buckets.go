@@ -15,7 +15,6 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/textile/collections"
@@ -342,8 +341,8 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 	ctx = context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ffsCh := make(chan client.LogEvent)
-	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, client.WithJidFilter(ffs.JobID(current.JobID)), client.WithHistory(true)); err != nil {
+	ffsCh := make(chan powc.LogEvent)
+	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, powc.WithJidFilter(ffs.JobID(current.JobID)), powc.WithHistory(true)); err != nil {
 		return fmt.Errorf("watching log events in Powergate: %s", err)
 	}
 	for le := range ffsCh {

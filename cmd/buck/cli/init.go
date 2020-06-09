@@ -64,7 +64,7 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		}
 
 		if bootCid != "" && existing {
-			cmd.Fatal(errors.New("Only one of --cid and --existing flags can be used at the same time."))
+			cmd.Fatal(errors.New("only one of --cid and --existing flags can be used at the same time"))
 		}
 
 		if existing {
