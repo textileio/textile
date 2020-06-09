@@ -32,6 +32,8 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, buck.Root)
 	assert.NotEmpty(t, buck.Root.Key)
 	assert.NotEmpty(t, buck.Root.Path)
+	assert.NotEmpty(t, buck.Root.CreatedAt)
+	assert.NotEmpty(t, buck.Root.UpdatedAt)
 	assert.NotEmpty(t, buck.Links)
 	assert.NotEmpty(t, buck.Seed)
 }
