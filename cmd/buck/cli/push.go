@@ -144,7 +144,7 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 
 	ctx, cancel := clients.Ctx.Thread(addFileTimeout)
 	defer cancel()
-	opts := []client.Option{client.WithProgress(progress)}
+	opts := []client.PushOption{client.WithProgress(progress)}
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
@@ -164,7 +164,7 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
 	ctx, cancel := clients.Ctx.Thread(addFileTimeout)
 	defer cancel()
-	var opts []client.Option
+	var opts []client.PushOption
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}

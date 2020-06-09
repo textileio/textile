@@ -16,6 +16,7 @@ message Root {
 
 message InitRequest {
     string name = 1;
+    string bootstrapCid = 2;
 }
 
 message InitReply {
