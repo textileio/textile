@@ -1,8 +1,5 @@
 version: '3.7'
 
-volumes:
-   pow-embed-shared:
-
 services:
   textile:
     build:
@@ -28,17 +25,15 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:sha-f4d9890
+    image: textile/powergate:sha-31e7fbf
     depends_on:
       - ipfs
       - ipfsbuckets
       - lotus
     environment:
-      - POWD_EMBEDDED=true
+      - POWD_DEVNET=true
       - POWD_LOTUSHOST=/dns4/lotus/tcp/7777
       - POWD_IPFSAPIADDR=/dns4/ipfs/tcp/5001
-    volumes:
-      - pow-embed-shared:/tmp/powergate
     restart: unless-stopped
 
   ipfs:
@@ -51,8 +46,10 @@ services:
     image: mongo:latest
 
   lotus:
-    image: textile/lotus-devnet:sha-0853126
+    image: textile/lotus-devnet:sha-a364621
     environment:
-      - TEXLOTUSDEVNET_SPEED=500
+      - TEXLOTUSDEVNET_SPEED=1500
+      - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
+      - TEXLOTUSDEVNET_BIGSECTORS=true
     volumes:
      - pow-embed-shared:/tmp/powergate
