@@ -2,16 +2,19 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
+	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	bucks "github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/buckets/local"
@@ -51,11 +54,19 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		if _, err := os.Stat(filename); err == nil {
 			cmd.Fatal(fmt.Errorf("bucket %s is already initialized", root))
 		}
-
+		bootCid, err := c.Flags().GetString("cid")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		existing, err := c.Flags().GetBool("existing")
 		if err != nil {
 			cmd.Fatal(err)
 		}
+
+		if bootCid != "" && existing {
+			cmd.Fatal(errors.New("Only one of --cid and --existing flags can be used at the same time."))
+		}
+
 		if existing {
 			threads := clients.ListThreads(true)
 			bi := make([]bucketInfo, 0)
@@ -156,7 +167,17 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 		if initRemote {
 			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 			defer cancel()
-			rep, err := clients.Buckets.Init(ctx, name)
+
+			var opts []client.InitOption
+			if bootCid != "" {
+				bCid, err := cid.Decode(bootCid)
+				if err != nil {
+					cmd.Fatal(err)
+				}
+				opts = append(opts, client.WithCid(bCid))
+			}
+
+			rep, err := clients.Buckets.Init(ctx, name, opts...)
 			if err != nil {
 				cmd.Fatal(err)
 			}
@@ -184,6 +205,13 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 				cmd.Fatal(err)
 			}
 
+			if bootCid != "" {
+				getPath(rep.Root.Key, ".", ".", buck, nil, false)
+				if err := buck.Archive(ctx); err != nil {
+					cmd.Fatal(err)
+				}
+			}
+
 			printLinks(rep.Links)
 		}
 
@@ -191,7 +219,11 @@ Use the '--existing' flag to initialize from an existing remote bucket.
 			cmd.Fatal(err)
 		}
 		if initRemote {
-			cmd.Success("Initialized an empty bucket in %s", aurora.White(root).Bold())
+			prefix := "Initialized an empty bucket in %s"
+			if bootCid != "" {
+				prefix = "Initialized a bootstrapped bucket in %s"
+			}
+			cmd.Success(prefix, aurora.White(root).Bold())
 		} else {
 			key := config.Viper.GetString("key")
 			count := getPath(key, "", root, nil, nil, false)

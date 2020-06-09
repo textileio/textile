@@ -111,11 +111,11 @@ var bucketPullCmd = &cobra.Command{
 	},
 }
 
-func getPath(key, pth, root string, buck *local.Bucket, localdiff []change, force bool) (count int) {
-	all, missing := listPath(key, pth, root, buck, force)
+func getPath(key, pth, dest string, buck *local.Bucket, localdiff []change, force bool) (count int) {
+	all, missing := listPath(key, pth, dest, buck, force)
 	count = len(missing)
 	var rm []string
-	list := walkPath(root)
+	list := walkPath(dest)
 loop:
 	for _, n := range list {
 		for _, r := range all {
@@ -157,7 +157,7 @@ looop:
 			// The file may have been modified locally, in which case it will have been moved to a patch.
 			// So, we just ignore the error here.
 			_ = os.Remove(r)
-			fmt.Println("- " + strings.TrimPrefix(r, root+"/"))
+			fmt.Println("- " + strings.TrimPrefix(r, dest+"/"))
 		}
 	}
 	return count

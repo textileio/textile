@@ -69,6 +69,7 @@ func Init(rootCmd *cobra.Command) {
 	bucketInitCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
 	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
+	bucketInitCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid availabe in the IPFS network")
 	if err := cmd.BindFlags(config.Viper, bucketInitCmd, config.Flags); err != nil {
 		cmd.Fatal(err)
 	}
