@@ -174,7 +174,7 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bucketKey string, fileName string) string {
 	t.Helper()
 	f, err := os.Open("testdata/" + fileName)
-	require.Nil(t, err, "Error opening file: ", err)
+	require.Nil(t, err)
 	t.Cleanup(func() { f.Close() })
 
 	pth, root, err := client.PushPath(ctx, bucketKey, fileName, f)
