@@ -61,7 +61,16 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name)
+	var bootCid cid.Cid
+	var err error
+	if req.BootstrapCid != "" {
+		bootCid, err = cid.Decode(req.BootstrapCid)
+		if err != nil {
+			return nil, fmt.Errorf("bootstrap cid is invalid: %s", err)
+		}
+	}
+
+	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, bootCid)
 	if err != nil {
 		return nil, err
 	}
@@ -79,20 +88,24 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}, nil
 }
 
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*bucks.Bucket, []byte, error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, bootCid cid.Cid) (*bucks.Bucket, []byte, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, nil, err
 	}
-	pth, err := s.IPFSClient.Unixfs().Add(
-		ctx,
-		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			bucks.SeedName: ipfsfiles.NewBytesFile(seed),
-		}),
-		options.Unixfs.CidVersion(1),
-		options.Unixfs.Pin(true))
-	if err != nil {
-		return nil, nil, err
+
+	var pth path.Resolved
+	var err error
+	if bootCid.Defined() {
+		pth, err = s.createBootstrappedPath(ctx, seed, bootCid)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating prepared bucket: %s", err)
+		}
+	} else {
+		pth, err = s.createPristinePath(ctx, seed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating pristine bucket: %s", err)
+		}
 	}
 
 	bkey, err := s.IPNSManager.CreateKey(ctx, dbID)
@@ -117,6 +130,40 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	}
 	go s.IPNSManager.Publish(pth, buck.Key)
 	return buck, seed, nil
+}
+
+// createPristinePath creates an IPFS path which only contains the seed file.
+// The returned path will be pinned.
+func (s *Service) createPristinePath(ctx context.Context, seed []byte) (path.Resolved, error) {
+	pth, err := s.IPFSClient.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			bucks.SeedName: ipfsfiles.NewBytesFile(seed),
+		}),
+		options.Unixfs.CidVersion(1),
+		options.Unixfs.Pin(true))
+	if err != nil {
+		return nil, err
+	}
+	return pth, nil
+}
+
+// createBootstrapedPath creates a IPFS path which is the bootCid UnixFS DAG,
+// with bucks.SeedName seed file added to the root of the DAG. The returned path will
+// be pinned.
+func (s *Service) createBootstrappedPath(ctx context.Context, seed []byte, bootCid cid.Cid) (path.Resolved, error) {
+	seedPth, err := s.IPFSClient.Unixfs().Add(ctx, ipfsfiles.NewBytesFile(seed))
+	if err != nil {
+		return nil, fmt.Errorf("creating bucket seed file: %s", err)
+	}
+	buckPath, err := s.IPFSClient.Object().AddLink(ctx, path.IpfsPath(bootCid), bucks.SeedName, seedPth)
+	if err != nil {
+		return nil, fmt.Errorf("adding seed to prepared bucket: %s", err)
+	}
+	if err = s.IPFSClient.Pin().Add(ctx, buckPath); err != nil {
+		return nil, fmt.Errorf("pinning prepared bucket: %s", err)
+	}
+	return buckPath, nil
 }
 
 func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply, error) {
