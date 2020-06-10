@@ -91,6 +91,15 @@ func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathRep
 	})
 }
 
+// SetPath set a particular path to an existing IPFS UnixFS DAG.
+func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid) (*pb.SetPathReply, error) {
+	return c.c.SetPath(ctx, &pb.SetPathRequest{
+		Key:  key,
+		Path: pth,
+		Cid:  remoteCid.String(),
+	})
+}
+
 type pushPathResult struct {
 	path path.Resolved
 	root path.Resolved

@@ -225,6 +225,64 @@ func (s *Service) createLinks(dbID thread.ID, buck *bucks.Bucket) *pb.LinksReply
 	}
 }
 
+func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetPathReply, error) {
+	log.Debugf("received set path request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bucks.WithToken(dbToken))
+	if err != nil {
+		return nil, fmt.Errorf("get bucket: %s", err)
+	}
+	buckPath := path.New(buck.Path)
+
+	remoteCid, err := cid.Decode(req.Cid)
+	if err != nil {
+		return nil, fmt.Errorf("remote cid is invalid: %s", err)
+	}
+	remotePath := path.IpfsPath(remoteCid)
+
+	var dirpth path.Path
+	if req.Path == "" {
+		links, err := s.IPFSClient.Object().Links(ctx, remotePath)
+		if err != nil {
+			return nil, fmt.Errorf("get links from remote cid: %s", err)
+		}
+		for _, l := range links {
+			dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, l.Name, path.IpfsPath(l.Cid), options.Object.Create(true))
+			if err != nil {
+				return nil, fmt.Errorf("adding folder: %s", err)
+			}
+		}
+	} else {
+		dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, req.Path, remotePath, options.Object.Create(true))
+		if err != nil {
+			return nil, fmt.Errorf("adding folder: %s", err)
+		}
+	}
+
+	if err = s.IPFSClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
+		if err.Error() == pinNotRecursiveMsg {
+			if err = s.IPFSClient.Pin().Add(ctx, dirpth); err != nil {
+				return nil, fmt.Errorf("pinning new dag: %s", err)
+			}
+		} else {
+			return nil, fmt.Errorf("updating pinned root: %s", err)
+		}
+	}
+	buck.Path = dirpth.String()
+	buck.UpdatedAt = time.Now().UnixNano()
+	if err = s.Buckets.Save(ctx, dbID, buck, bucks.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("saving new bucket state: %s", err)
+	}
+
+	return &pb.SetPathReply{}, nil
+}
+
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
 	log.Debugf("received list request")
 

@@ -122,6 +122,14 @@ message PullIpfsPathReply {
     bytes chunk = 1;
 }
 
+message SetPathRequest {
+    string key = 1;
+    string path = 2;
+    string cid = 3;
+}
+
+message SetPathReply {}
+
 message RemoveRequest {
     string key = 1;
 }
@@ -200,6 +208,7 @@ service API {
     rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}
     rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
     rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathReply) {}
+    rpc SetPath(SetPathRequest) returns (SetPathReply) {}
     rpc Remove(RemoveRequest) returns (RemoveReply) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
     

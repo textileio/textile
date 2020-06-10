@@ -144,6 +144,92 @@ func TestClient_ListPath(t *testing.T) {
 	})
 }
 
+func TestClient_SetPath(t *testing.T) {
+	t.Parallel()
+	innerPaths := []struct {
+		Name string
+		Path string
+		// How many files should be expected at the bucket root
+		// in the first SetHead.
+		NumFilesAtRootFirst int
+		// How many files should be expected at the bucket root
+		// in the second SetHead.
+		NumFilesAtRootSecond int
+	}{
+		{Name: "nested", Path: "nested", NumFilesAtRootFirst: 2, NumFilesAtRootSecond: 2},
+		{Name: "root", Path: "", NumFilesAtRootFirst: 3, NumFilesAtRootSecond: 2},
+	}
+
+	for _, innerPath := range innerPaths {
+		t.Run(innerPath.Name, func(t *testing.T) {
+			ctx, client, done := setup(t)
+			defer done()
+
+			file1, err := os.Open("testdata/file1.jpg")
+			require.Nil(t, err)
+			defer file1.Close()
+			file2, err := os.Open("testdata/file2.jpg")
+			require.Nil(t, err)
+			defer file2.Close()
+
+			ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+			require.NoError(t, err)
+			p, err := ipfs.Unixfs().Add(
+				ctx,
+				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+					"file1.jpg": ipfsfiles.NewReaderFile(file1),
+					"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+						"file2.jpg": ipfsfiles.NewReaderFile(file2),
+					}),
+				}),
+			)
+			require.NoError(t, err)
+
+			buck, err := client.Init(ctx, "mybuck")
+			require.NoError(t, err)
+
+			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
+			require.NoError(t, err)
+
+			rep, err := client.ListPath(ctx, buck.Root.Key, "")
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootFirst)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, 2)
+
+			// SetPath again in the same path, but with a different dag.
+			// Should replace what was already under that path.
+			file1, err = os.Open("testdata/file1.jpg")
+			require.Nil(t, err)
+			defer file1.Close()
+			p, err = ipfs.Unixfs().Add(
+				ctx,
+				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+					"fileVersion2.jpg": ipfsfiles.NewReaderFile(file1),
+				}),
+			)
+			require.NoError(t, err)
+			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
+			require.NoError(t, err)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, "")
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootSecond)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, 1)
+
+		})
+	}
+}
+
 func TestClient_ListIpfsPath(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
