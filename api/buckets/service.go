@@ -248,15 +248,13 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 
 	var dirpth path.Path
 	if req.Path == "" {
-		links, err := s.IPFSClient.Object().Links(ctx, remotePath)
-		if err != nil {
-			return nil, fmt.Errorf("get links from remote cid: %s", err)
+		seed := make([]byte, 32)
+		if _, err := rand.Read(seed); err != nil {
+			return nil, fmt.Errorf("generating new seed: %s", err)
 		}
-		for _, l := range links {
-			dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, l.Name, path.IpfsPath(l.Cid), options.Object.Create(true))
-			if err != nil {
-				return nil, fmt.Errorf("adding folder: %s", err)
-			}
+		dirpth, err = s.createBootstrappedPath(ctx, seed, remoteCid)
+		if err != nil {
+			return nil, fmt.Errorf("generating bucket new root: %s", err)
 		}
 	} else {
 		dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, req.Path, remotePath, options.Object.Create(true))

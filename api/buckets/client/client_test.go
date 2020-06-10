@@ -152,12 +152,37 @@ func TestClient_SetPath(t *testing.T) {
 		// How many files should be expected at the bucket root
 		// in the first SetHead.
 		NumFilesAtRootFirst int
+		// How many files should be expected at the *imported* Cid
+		// level.
+		NumFilesAtImportedLevelFirst int
 		// How many files should be expected at the bucket root
 		// in the second SetHead.
 		NumFilesAtRootSecond int
+		// How many files should be expected at the *imported* Cid
+		// level.
+		NumFilesAtImportedLevelSecond int
 	}{
-		{Name: "nested", Path: "nested", NumFilesAtRootFirst: 2, NumFilesAtRootSecond: 2},
-		{Name: "root", Path: "", NumFilesAtRootFirst: 3, NumFilesAtRootSecond: 2},
+		{Name: "nested",
+			Path: "nested",
+			// At root level, .seed and nested dir.
+			NumFilesAtRootFirst: 2,
+			// The first SetHead has one file, and one dir.
+			NumFilesAtImportedLevelFirst: 2,
+			NumFilesAtRootSecond:         2,
+			// The second SetHead only has one file.
+			NumFilesAtImportedLevelSecond: 1,
+		},
+		// Edge case, Path is empty. So "AtRoot" or "AtImportedLevel"
+		// is the same.
+		{Name: "root",
+			Path:                         "",
+			NumFilesAtRootFirst:          3,
+			NumFilesAtImportedLevelFirst: 3,
+			// In both below cases, the files are the .seed
+			// and the fileVersion2.jpg.
+			NumFilesAtRootSecond:          2,
+			NumFilesAtImportedLevelSecond: 2,
+		},
 	}
 
 	for _, innerPath := range innerPaths {
@@ -199,7 +224,7 @@ func TestClient_SetPath(t *testing.T) {
 			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
 			require.Nil(t, err)
 			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, 2)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelFirst)
 
 			// SetPath again in the same path, but with a different dag.
 			// Should replace what was already under that path.
@@ -224,7 +249,7 @@ func TestClient_SetPath(t *testing.T) {
 			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
 			require.Nil(t, err)
 			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, 1)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelSecond)
 
 		})
 	}
