@@ -79,8 +79,8 @@ func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
 }
 
 // ListIpfsPath returns inforamtion about a UnixFS path.
-func (c *Client) ListIpfsPath(ctx context.Context, pth string) (*pb.ListIpfsPathReply, error) {
-	return c.c.ListIpfsPath(ctx, &pb.ListIpfsPathRequest{Path: pth})
+func (c *Client) ListIpfsPath(ctx context.Context, pth path.Path) (*pb.ListIpfsPathReply, error) {
+	return c.c.ListIpfsPath(ctx, &pb.ListIpfsPathRequest{Path: pth.String()})
 }
 
 // ListPath returns information about a bucket path.

@@ -99,7 +99,7 @@ func listMergePath(ipfsBasePth path.Path, ipfsRelPath, dest string, overwriteAll
 	// List remote IPFS UnixFS path level
 	ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 	defer cancel()
-	rep, err := clients.Buckets.ListIpfsPath(ctx, path.Join(ipfsBasePth, ipfsRelPath).String())
+	rep, err := clients.Buckets.ListIpfsPath(ctx, path.Join(ipfsBasePth, ipfsRelPath))
 	if err != nil {
 		cmd.Fatal(err)
 	}

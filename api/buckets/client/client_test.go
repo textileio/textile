@@ -1,11 +1,14 @@
 package client_test
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/ipfs/interface-go-ipfs-core/path"
 
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -141,7 +144,89 @@ func TestClient_ListPath(t *testing.T) {
 	})
 }
 
+func TestClient_ListIpfsPath(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	_ = client
+	defer done()
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+
+	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	require.NoError(t, err)
+	p, err := ipfs.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			"file1.jpg": ipfsfiles.NewReaderFile(file1),
+			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+				"file2.jpg": ipfsfiles.NewReaderFile(file2),
+			}),
+		}),
+	)
+	require.NoError(t, err)
+
+	r, err := client.ListIpfsPath(ctx, p)
+	require.NoError(t, err)
+	require.True(t, r.Item.IsDir)
+	require.Len(t, r.Item.Items, 2)
+}
+
+func TestClient_PullIpfsPath(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	_ = client
+	defer done()
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+
+	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	require.NoError(t, err)
+	p, err := ipfs.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			"file1.jpg": ipfsfiles.NewReaderFile(file1),
+			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+				"file2.jpg": ipfsfiles.NewReaderFile(file2),
+			}),
+		}),
+	)
+	require.NoError(t, err)
+
+	tmpFile, err := ioutil.TempFile("", "")
+	require.NoError(t, err)
+	defer tmpFile.Close()
+	defer func() { os.Remove(tmpFile.Name()) }()
+	tmpName := tmpFile.Name()
+
+	err = client.PullIpfsPath(ctx, path.Join(p, "folder1/file2.jpg"), tmpFile)
+	require.NoError(t, err)
+	tmpFile.Close()
+
+	file2, err = os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	origBytes, err := ioutil.ReadAll(file2)
+	require.NoError(t, err)
+	tmpFile, err = os.Open(tmpName)
+	require.NoError(t, err)
+	defer tmpFile.Close()
+	tmpBytes, err := ioutil.ReadAll(tmpFile)
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(origBytes, tmpBytes))
+}
+
 func TestClient_InitWithCid(t *testing.T) {
+
 	t.Parallel()
 	ctx, client, done := setup(t)
 	_ = client
