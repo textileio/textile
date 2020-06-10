@@ -337,7 +337,6 @@ func TestClient_PullIpfsPath(t *testing.T) {
 }
 
 func TestClient_InitWithCid(t *testing.T) {
-
 	t.Parallel()
 	ctx, client, done := setup(t)
 	_ = client
