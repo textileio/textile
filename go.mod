@@ -70,4 +70,3 @@ require (
 // Fixes races. Keep this until this gets tagged and propagated to other deps.
 replace github.com/libp2p/go-libp2p-peerstore => github.com/libp2p/go-libp2p-peerstore v0.2.5-0.20200605182041-9827ee08601f
 
-//replace github.com/textileio/powergate => ../powergate
