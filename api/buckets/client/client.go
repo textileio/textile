@@ -108,8 +108,8 @@ type pushPathResult struct {
 
 // PushPath pushes a file to a bucket path.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...PushOption) (result path.Resolved, root path.Resolved, err error) {
-	args := &pushOptions{}
+func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Resolved, err error) {
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -209,8 +209,8 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 }
 
 // PullPath pulls the bucket path, writing it to writer if it's a file.
-func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer, opts ...PushOption) error {
-	args := &pushOptions{}
+func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer, opts ...Option) error {
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -247,8 +247,8 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 }
 
 // PullIpfsPath pulls the path from a remote UnixFS dag, writing it to writer if it's a file.
-func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writer, opts ...PushOption) error {
-	args := &pushOptions{}
+func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writer, opts ...Option) error {
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -294,8 +294,8 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 
 // RemovePath removes the file or directory at path.
 // Files and directories will be unpinned.
-func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...PushOption) (path.Resolved, error) {
-	args := &pushOptions{}
+func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option) (path.Resolved, error) {
+	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
