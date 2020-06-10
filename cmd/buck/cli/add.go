@@ -52,7 +52,6 @@ var bucketAddCmd = &cobra.Command{
 		if err := mergeIpfsPath(path.IpfsPath(targetCid), dest, yes); err != nil {
 			cmd.Fatal(err)
 		}
-
 	},
 }
 
