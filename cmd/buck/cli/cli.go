@@ -61,7 +61,7 @@ func init() {
 }
 
 func Init(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd)
+	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd, bucketAddCmd)
 	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
 
 	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
@@ -80,6 +80,8 @@ func Init(rootCmd *cobra.Command) {
 	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
 	bucketPullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")
 	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+
+	bucketAddCmd.Flags().BoolP("yes", "y", false, "Skips confirmations prompts to always overwrite content")
 
 	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
 }

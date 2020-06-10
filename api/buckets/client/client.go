@@ -78,6 +78,11 @@ func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
 	return c.c.List(ctx, &pb.ListRequest{})
 }
 
+// ListIpfsPath returns inforamtion about a UnixFS path.
+func (c *Client) ListIpfsPath(ctx context.Context, pth string) (*pb.ListIpfsPathReply, error) {
+	return c.c.ListIpfsPath(ctx, &pb.ListIpfsPathRequest{Path: pth})
+}
+
 // ListPath returns information about a bucket path.
 func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathReply, error) {
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
@@ -207,6 +212,43 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
 		Key:  key,
 		Path: pth,
+	})
+	if err != nil {
+		return err
+	}
+
+	var written int64
+	for {
+		rep, err := stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		n, err := writer.Write(rep.Chunk)
+		if err != nil {
+			return err
+		}
+		written += int64(n)
+		if args.progress != nil {
+			args.progress <- written
+		}
+	}
+	return nil
+}
+
+// PullIpfsPath pulls the path from a remote UnixFS dag, writing it to writer if it's a file.
+func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writer, opts ...PushOption) error {
+	args := &pushOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	if args.progress != nil {
+		defer close(args.progress)
+	}
+
+	stream, err := c.c.PullIpfsPath(ctx, &pb.PullIpfsPathRequest{
+		Path: pth.String(),
 	})
 	if err != nil {
 		return err

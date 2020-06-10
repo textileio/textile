@@ -40,7 +40,7 @@ var bucketLsCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		var items []*pb.ListPathReply_Item
+		var items []*pb.ListPathItem
 		if len(rep.Item.Items) > 0 {
 			items = rep.Item.Items
 		} else if !rep.Item.IsDir {

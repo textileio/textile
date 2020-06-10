@@ -55,17 +55,25 @@ message ListPathRequest {
 }
 
 message ListPathReply {
-    Item item = 1;
+    ListPathItem item = 1;
     Root root = 2;
+}
 
-    message Item {
-        string cid = 1;
-        string name = 2;
-        string path = 3;
-        int64 size = 4;
-        bool isDir = 5;
-        repeated Item items = 6;
-    }
+message ListPathItem {
+    string cid = 1;
+    string name = 2;
+    string path = 3;
+    int64 size = 4;
+    bool isDir = 5;
+    repeated ListPathItem items = 6;
+}
+
+message ListIpfsPathRequest {
+    string path = 1;
+}
+
+message ListIpfsPathReply {
+    ListPathItem item = 1;
 }
 
 message PushPathRequest {
@@ -102,6 +110,15 @@ message PullPathRequest {
 }
 
 message PullPathReply {
+    bytes chunk = 1;
+}
+
+
+message PullIpfsPathRequest {
+    string path = 1;
+}
+
+message PullIpfsPathReply {
     bytes chunk = 1;
 }
 
@@ -179,8 +196,10 @@ service API {
     rpc Links(LinksRequest) returns (LinksReply) {}
     rpc List(ListRequest) returns (ListReply) {}
     rpc ListPath(ListPathRequest) returns (ListPathReply) {}
+    rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathReply) {}
     rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}
     rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
+    rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathReply) {}
     rpc Remove(RemoveRequest) returns (RemoveReply) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
     

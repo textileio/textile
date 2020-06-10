@@ -274,7 +274,18 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	return rep, nil
 }
 
-func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathReply_Item, error) {
+func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest) (*pb.ListIpfsPathReply, error) {
+	log.Debugf("received list ipfs path request")
+
+	pth := path.New(req.Path)
+	item, err := s.pathToItem(ctx, pth, true)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ListIpfsPathReply{Item: item}, nil
+}
+
+func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathItem, error) {
 	rpth, err := s.IPFSClient.ResolvePath(ctx, pth)
 	if err != nil {
 		return nil, err
@@ -287,12 +298,12 @@ func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks boo
 	return s.nodeToItem(ctx, rpth.Cid(), pth.String(), node, followLinks)
 }
 
-func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathReply_Item, error) {
+func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathItem, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
-	item := &pb.ListPathReply_Item{
+	item := &pb.ListPathItem{
 		Cid:  c.String(),
 		Name: filepath.Base(pth),
 		Path: pth,
@@ -303,7 +314,7 @@ func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ip
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			i := &pb.ListPathReply_Item{}
+			i := &pb.ListPathItem{}
 			if followLinks {
 				n := entries.Node()
 				p := filepath.Join(pth, entries.Name())
@@ -557,6 +568,39 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 		n, err := file.Read(buf)
 		if n > 0 {
 			if err := server.Send(&pb.PullPathReply{
+				Chunk: buf[:n],
+			}); err != nil {
+				return err
+			}
+		}
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.API_PullIpfsPathServer) error {
+	log.Debugf("received ipfs pull path request")
+
+	pth := path.New(req.Path)
+	node, err := s.IPFSClient.Unixfs().Get(server.Context(), pth)
+	if err != nil {
+		return err
+	}
+	defer node.Close()
+
+	file := ipfsfiles.ToFile(node)
+	if file == nil {
+		return fmt.Errorf("node is a directory")
+	}
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if n > 0 {
+			if err := server.Send(&pb.PullIpfsPathReply{
 				Chunk: buf[:n],
 			}); err != nil {
 				return err
