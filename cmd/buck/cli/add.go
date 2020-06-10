@@ -118,7 +118,7 @@ func listMergePath(ipfsBasePth path.Path, ipfsRelPath, dest string, overwriteAll
 
 		if folderExists && !overwriteAll {
 			prompt := promptui.Select{
-				Label: fmt.Sprintf("Merge strategy for  %s", rep.Item.Name),
+				Label: fmt.Sprintf("Merge strategy for  %s", localFolderPath),
 				Items: mergeStrategySelect,
 			}
 			_, result, err := prompt.Run()
