@@ -72,7 +72,7 @@ func mergeIpfsPath(ipfsBasePth path.Path, dest string, overwriteAll bool) error 
 		startProgress()
 		for _, o := range toAdd {
 			wg.Add(1)
-			func(o object) {
+			go func(o object) {
 				defer wg.Done()
 				if err := os.Remove(o.path); err != nil && !os.IsNotExist(err) {
 					cmd.Fatal(err)
