@@ -369,7 +369,7 @@ func TestClient_IsOrgNameAvailable(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, res.Slug, org.Slug)
 
-	res, err = client.IsOrgNameAvailable(ctx, name)
+	_, err = client.IsOrgNameAvailable(ctx, name)
 	require.NotNil(t, err)
 }
 

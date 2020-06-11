@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/exe/cli/cmd"
+	"github.com/textileio/powergate/cmd/pow/cmd"
 )
 
 func InitConfigCmd(rootCmd *cobra.Command, v *viper.Viper, dir string) {

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -29,7 +28,7 @@ var bucketDestroyCmd = &cobra.Command{
 
 		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Are you absolutely sure"),
+			Label:     "Are you absolutely sure",
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {

@@ -61,7 +61,16 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name)
+	var bootCid cid.Cid
+	var err error
+	if req.BootstrapCid != "" {
+		bootCid, err = cid.Decode(req.BootstrapCid)
+		if err != nil {
+			return nil, fmt.Errorf("bootstrap cid is invalid: %s", err)
+		}
+	}
+
+	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, bootCid)
 	if err != nil {
 		return nil, err
 	}
@@ -79,20 +88,24 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}, nil
 }
 
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string) (*bucks.Bucket, []byte, error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, bootCid cid.Cid) (*bucks.Bucket, []byte, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, nil, err
 	}
-	pth, err := s.IPFSClient.Unixfs().Add(
-		ctx,
-		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			bucks.SeedName: ipfsfiles.NewBytesFile(seed),
-		}),
-		options.Unixfs.CidVersion(1),
-		options.Unixfs.Pin(true))
-	if err != nil {
-		return nil, nil, err
+
+	var pth path.Resolved
+	var err error
+	if bootCid.Defined() {
+		pth, err = s.createBootstrappedPath(ctx, seed, bootCid)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating prepared bucket: %s", err)
+		}
+	} else {
+		pth, err = s.createPristinePath(ctx, seed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating pristine bucket: %s", err)
+		}
 	}
 
 	bkey, err := s.IPNSManager.CreateKey(ctx, dbID)
@@ -117,6 +130,40 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	}
 	go s.IPNSManager.Publish(pth, buck.Key)
 	return buck, seed, nil
+}
+
+// createPristinePath creates an IPFS path which only contains the seed file.
+// The returned path will be pinned.
+func (s *Service) createPristinePath(ctx context.Context, seed []byte) (path.Resolved, error) {
+	pth, err := s.IPFSClient.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			bucks.SeedName: ipfsfiles.NewBytesFile(seed),
+		}),
+		options.Unixfs.CidVersion(1),
+		options.Unixfs.Pin(true))
+	if err != nil {
+		return nil, err
+	}
+	return pth, nil
+}
+
+// createBootstrapedPath creates a IPFS path which is the bootCid UnixFS DAG,
+// with bucks.SeedName seed file added to the root of the DAG. The returned path will
+// be pinned.
+func (s *Service) createBootstrappedPath(ctx context.Context, seed []byte, bootCid cid.Cid) (path.Resolved, error) {
+	seedPth, err := s.IPFSClient.Unixfs().Add(ctx, ipfsfiles.NewBytesFile(seed))
+	if err != nil {
+		return nil, fmt.Errorf("creating bucket seed file: %s", err)
+	}
+	buckPath, err := s.IPFSClient.Object().AddLink(ctx, path.IpfsPath(bootCid), bucks.SeedName, seedPth)
+	if err != nil {
+		return nil, fmt.Errorf("adding seed to prepared bucket: %s", err)
+	}
+	if err = s.IPFSClient.Pin().Add(ctx, buckPath); err != nil {
+		return nil, fmt.Errorf("pinning prepared bucket: %s", err)
+	}
+	return buckPath, nil
 }
 
 func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply, error) {
@@ -178,6 +225,62 @@ func (s *Service) createLinks(dbID thread.ID, buck *bucks.Bucket) *pb.LinksReply
 	}
 }
 
+func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetPathReply, error) {
+	log.Debugf("received set path request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bucks.WithToken(dbToken))
+	if err != nil {
+		return nil, fmt.Errorf("get bucket: %s", err)
+	}
+	buckPath := path.New(buck.Path)
+
+	remoteCid, err := cid.Decode(req.Cid)
+	if err != nil {
+		return nil, fmt.Errorf("remote cid is invalid: %s", err)
+	}
+	remotePath := path.IpfsPath(remoteCid)
+
+	var dirpth path.Path
+	if req.Path == "" {
+		seed := make([]byte, 32)
+		if _, err := rand.Read(seed); err != nil {
+			return nil, fmt.Errorf("generating new seed: %s", err)
+		}
+		dirpth, err = s.createBootstrappedPath(ctx, seed, remoteCid)
+		if err != nil {
+			return nil, fmt.Errorf("generating bucket new root: %s", err)
+		}
+	} else {
+		dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, req.Path, remotePath, options.Object.Create(true))
+		if err != nil {
+			return nil, fmt.Errorf("adding folder: %s", err)
+		}
+	}
+
+	if err = s.IPFSClient.Pin().Update(ctx, buckPath, dirpth); err != nil {
+		if err.Error() == pinNotRecursiveMsg {
+			if err = s.IPFSClient.Pin().Add(ctx, dirpth); err != nil {
+				return nil, fmt.Errorf("pinning new dag: %s", err)
+			}
+		} else {
+			return nil, fmt.Errorf("updating pinned root: %s", err)
+		}
+	}
+	buck.Path = dirpth.String()
+	buck.UpdatedAt = time.Now().UnixNano()
+	if err = s.Buckets.Save(ctx, dbID, buck, bucks.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("saving new bucket state: %s", err)
+	}
+
+	return &pb.SetPathReply{}, nil
+}
+
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
 	log.Debugf("received list request")
 
@@ -227,7 +330,18 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	return rep, nil
 }
 
-func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathReply_Item, error) {
+func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest) (*pb.ListIpfsPathReply, error) {
+	log.Debugf("received list ipfs path request")
+
+	pth := path.New(req.Path)
+	item, err := s.pathToItem(ctx, pth, true)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ListIpfsPathReply{Item: item}, nil
+}
+
+func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool) (*pb.ListPathItem, error) {
 	rpth, err := s.IPFSClient.ResolvePath(ctx, pth)
 	if err != nil {
 		return nil, err
@@ -240,12 +354,12 @@ func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks boo
 	return s.nodeToItem(ctx, rpth.Cid(), pth.String(), node, followLinks)
 }
 
-func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathReply_Item, error) {
+func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ipfsfiles.Node, followLinks bool) (*pb.ListPathItem, error) {
 	size, err := node.Size()
 	if err != nil {
 		return nil, err
 	}
-	item := &pb.ListPathReply_Item{
+	item := &pb.ListPathItem{
 		Cid:  c.String(),
 		Name: filepath.Base(pth),
 		Path: pth,
@@ -256,7 +370,7 @@ func (s *Service) nodeToItem(ctx context.Context, c cid.Cid, pth string, node ip
 		item.IsDir = true
 		entries := node.Entries()
 		for entries.Next() {
-			i := &pb.ListPathReply_Item{}
+			i := &pb.ListPathItem{}
 			if followLinks {
 				n := entries.Node()
 				p := filepath.Join(pth, entries.Name())
@@ -510,6 +624,39 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 		n, err := file.Read(buf)
 		if n > 0 {
 			if err := server.Send(&pb.PullPathReply{
+				Chunk: buf[:n],
+			}); err != nil {
+				return err
+			}
+		}
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.API_PullIpfsPathServer) error {
+	log.Debugf("received ipfs pull path request")
+
+	pth := path.New(req.Path)
+	node, err := s.IPFSClient.Unixfs().Get(server.Context(), pth)
+	if err != nil {
+		return err
+	}
+	defer node.Close()
+
+	file := ipfsfiles.ToFile(node)
+	if file == nil {
+		return fmt.Errorf("node is a directory")
+	}
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if n > 0 {
+			if err := server.Send(&pb.PullIpfsPathReply{
 				Chunk: buf[:n],
 			}); err != nil {
 				return err

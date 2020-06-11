@@ -58,7 +58,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the archive to finish.
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 
 	// Verify that the current archive status is Done.
 	as, err := client.ArchiveStatus(ctx, b.Root.Key)
@@ -83,7 +83,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	// Archive again.
 	_, err = client.Archive(ctx, b.Root.Key)
 	require.NoError(t, err)
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 	as, err = client.ArchiveStatus(ctx, b.Root.Key)
 	require.NoError(t, err)
 	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
@@ -172,6 +172,7 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 // addDataFileToBucket add a file from the testdata folder, and returns the
 // new stringified root Cid of the bucket.
 func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bucketKey string, fileName string) string {
+	t.Helper()
 	f, err := os.Open("testdata/" + fileName)
 	require.Nil(t, err)
 	t.Cleanup(func() { f.Close() })
@@ -258,7 +259,10 @@ func spinup(t *testing.T) *pc.Client {
 		cancel()
 	}
 	if retries == limit {
-		t.Fatalf("trying to confirm health check: %s", err)
+		if err != nil {
+			t.Fatalf("trying to confirm health check: %s", err)
+		}
+		t.Fatalf("max retries to connect with Powergate")
 	}
 	return powc
 }

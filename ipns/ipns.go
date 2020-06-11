@@ -9,7 +9,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
-	opt "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mbase "github.com/multiformats/go-multibase"
@@ -62,7 +61,7 @@ func NewManager(keys *c.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, de
 
 // CreateKey generates and saves a new IPNS key.
 func (m *Manager) CreateKey(ctx context.Context, dbID thread.ID) (keyID string, err error) {
-	key, err := m.keyAPI.Generate(ctx, util.MakeToken(nameLen), opt.Key.Type(options.RSAKey))
+	key, err := m.keyAPI.Generate(ctx, util.MakeToken(nameLen), options.Key.Type(options.RSAKey))
 	if err != nil {
 		return
 	}
@@ -151,7 +150,7 @@ func (m *Manager) publishUnsafe(ctx context.Context, pth path.Path, keyID string
 	if err != nil {
 		return err
 	}
-	entry, err := m.nameAPI.Publish(ctx, pth, opt.Name.Key(key.Name))
+	entry, err := m.nameAPI.Publish(ctx, pth, options.Name.Key(key.Name))
 	if err != nil {
 		return err
 	}

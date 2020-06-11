@@ -44,9 +44,18 @@ func (c *Client) Close() error {
 
 // Init initializes a new bucket.
 // The bucket name is only meant to help identify a bucket in a UI and is not unique.
-func (c *Client) Init(ctx context.Context, name string) (*pb.InitReply, error) {
+func (c *Client) Init(ctx context.Context, name string, opts ...InitOption) (*pb.InitReply, error) {
+	args := &initOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	var strCid string
+	if args.bootstrapCid.Defined() {
+		strCid = args.bootstrapCid.String()
+	}
 	return c.c.Init(ctx, &pb.InitRequest{
-		Name: name,
+		Name:         name,
+		BootstrapCid: strCid,
 	})
 }
 
@@ -69,11 +78,25 @@ func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
 	return c.c.List(ctx, &pb.ListRequest{})
 }
 
+// ListIpfsPath returns items at a particular path in a UnixFS path living in the IPFS network.
+func (c *Client) ListIpfsPath(ctx context.Context, pth path.Path) (*pb.ListIpfsPathReply, error) {
+	return c.c.ListIpfsPath(ctx, &pb.ListIpfsPathRequest{Path: pth.String()})
+}
+
 // ListPath returns information about a bucket path.
 func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathReply, error) {
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
 		Key:  key,
 		Path: pth,
+	})
+}
+
+// SetPath set a particular path to an existing IPFS UnixFS DAG.
+func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid) (*pb.SetPathReply, error) {
+	return c.c.SetPath(ctx, &pb.SetPathRequest{
+		Key:  key,
+		Path: pth,
+		Cid:  remoteCid.String(),
 	})
 }
 
@@ -198,6 +221,43 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
 		Key:  key,
 		Path: pth,
+	})
+	if err != nil {
+		return err
+	}
+
+	var written int64
+	for {
+		rep, err := stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		n, err := writer.Write(rep.Chunk)
+		if err != nil {
+			return err
+		}
+		written += int64(n)
+		if args.progress != nil {
+			args.progress <- written
+		}
+	}
+	return nil
+}
+
+// PullIpfsPath pulls the path from a remote UnixFS dag, writing it to writer if it's a file.
+func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writer, opts ...Option) error {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	if args.progress != nil {
+		defer close(args.progress)
+	}
+
+	stream, err := c.c.PullIpfsPath(ctx, &pb.PullIpfsPathRequest{
+		Path: pth.String(),
 	})
 	if err != nil {
 		return err

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/exe/cli/cmd"
+	"github.com/textileio/powergate/cmd/pow/cmd"
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
