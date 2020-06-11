@@ -36,6 +36,7 @@ A .textile config directory and a seed file will be created in the current worki
 Existing configs will not be overwritten.
 
 Use the '--existing' flag to initialize from an existing remote bucket.
+Use the '--cid' flag to initialize from an existing UnixFS DAG.
 `,
 	Args: cobra.ExactArgs(0),
 	PreRun: func(c *cobra.Command, args []string) {
