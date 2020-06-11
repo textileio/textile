@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	promptIgnore  = "Ignore"
+	promptSkip    = "Skip"
 	promptMerge   = "Merge"
 	promptReplace = "Replace"
 )
 
-var mergeStrategySelect = []string{promptIgnore, promptMerge, promptReplace}
+var mergeStrategySelect = []string{promptSkip, promptMerge, promptReplace}
 
 var bucketAddCmd = &cobra.Command{
 	Use:   "add",
@@ -124,7 +124,7 @@ func listMergePath(ipfsBasePth path.Path, ipfsRelPath, dest string, overwriteAll
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			if result == promptIgnore {
+			if result == promptSkip {
 				return nil, nil
 			}
 			if result == promptReplace {
