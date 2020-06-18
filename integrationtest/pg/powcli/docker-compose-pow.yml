@@ -4,16 +4,16 @@ services:
   textile:
     build:
       context: ../../../
-      dockerfile: ./cmd/hubd/Dockerfile
+      dockerfile: ./cmd/buckd/Dockerfile
     environment:
-      - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
-      - HUB_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
-      - HUB_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
-      - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
-      - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
-      - HUB_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
-      - HUB_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
-      - HUB_EMAIL_SESSION_SECRET=hubsession
+      - BUCK_ADDR_API=/ip4/0.0.0.0/tcp/3006
+      - BUCK_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
+      - BUCK_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - BUCK_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
+      - BUCK_ADDR_MONGO_URI=mongodb://mongo:27017
+      - BUCK_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
+      - BUCK_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
+      - BUCK_LOG_DEBUG=true
     ports:
       - "127.0.0.1:3006:3006"
       - "3007:3007"
@@ -25,7 +25,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:sha-31e7fbf
+    image: textile/powergate:sha-4852f30
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -46,10 +46,10 @@ services:
     image: mongo:latest
 
   lotus:
-    image: textile/lotus-devnet:sha-a364621
+    image: textile/lotus-devnet:sha-4653001
     environment:
       - TEXLOTUSDEVNET_SPEED=1500
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=true
-    volumes:
-     - pow-embed-shared:/tmp/powergate
+    ports:
+      - 1234:7777
