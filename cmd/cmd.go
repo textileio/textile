@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	Timeout = time.Minute
-	Bold    = promptui.Styler(promptui.FGBold)
+	Timeout              = time.Minute
+	TimeoutArchiveStatus = time.Second * 5
+	Bold                 = promptui.Styler(promptui.FGBold)
 )
 
 type Flag struct {
