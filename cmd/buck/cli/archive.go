@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	pb "github.com/textileio/textile/api/buckets/pb"
@@ -68,7 +69,7 @@ var bucketArchiveStatusCmd = &cobra.Command{
 			fmt.Printf("\n")
 			cmd.Message("Cid logs:")
 			ch := make(chan string)
-			wCtx, cancel := context.WithCancel(ctx)
+			wCtx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			go func() {
 				err = clients.Buckets.ArchiveWatch(wCtx, key, ch)
@@ -76,10 +77,12 @@ var bucketArchiveStatusCmd = &cobra.Command{
 			}()
 			for msg := range ch {
 				cmd.Message("\t %s", msg)
-				r, err := clients.Buckets.ArchiveStatus(ctx, key)
+				sctx, scancel := context.WithTimeout(context.Background(), time.Second*3)
+				r, err := clients.Buckets.ArchiveStatus(sctx, key)
 				if err != nil {
 					cmd.Fatal(err)
 				}
+				scancel()
 				if isJobStatusFinal(r.GetStatus()) {
 					cancel()
 				}
