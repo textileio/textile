@@ -31,11 +31,9 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.1.1 // indirect
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
-	github.com/ipld/go-car v0.1.1-0.20200526133713-1c7508d55aae
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/libp2p/go-libp2p-core v0.5.7
 	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
@@ -65,9 +63,6 @@ require (
 	github.com/textileio/powergate v0.0.1-beta.8.0.20200608231834-31e7fbfbfd68
 	github.com/textileio/uiprogress v0.0.3
 	go.mongodb.org/mongo-driver v1.3.2
-	go.uber.org/zap v1.15.0 // indirect
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/grpc v1.29.1
 	gopkg.in/ini.v1 v1.55.0 // indirect
