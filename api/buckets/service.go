@@ -193,38 +193,27 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 
 	// Encrypt seed if password is set (treating the seed differently here would complicate bucket reading)
 	if key != nil {
-		r, err := dcrypto.NewEncrypter(bytes.NewReader(seed), key)
-		if err != nil {
-			return nil, nil, err
-		}
-		seed, err = ioutil.ReadAll(r)
+		var err error
+		seed, err = encryptData(seed, key)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
+	// Here we can manually wrap seed (it's small enough that no file splitting is needed)
+	sn := dag.NewRawNode(seed)
 
 	var root cid.Cid
 	if bootCid.Defined() {
-		seedPth, err := s.IPFSClient.Unixfs().Add(
-			ctx,
-			ipfsfiles.NewBytesFile(seed),
-			options.Unixfs.CidVersion(1),
-			options.Unixfs.Pin(false))
+		// Here we have to walk and possibly encrypt the boot path dag
+		n, nodes, err := s.newDirWithNodeFromExistingPath(ctx, sn, path.IpfsPath(bootCid), key)
 		if err != nil {
 			return nil, nil, err
 		}
-		pth, err := s.IPFSClient.Object().AddLink(ctx, path.IpfsPath(bootCid), bucks.SeedName, seedPth)
-		if err != nil {
+		if err := s.addAndPinNodes(ctx, nodes); err != nil {
 			return nil, nil, err
 		}
-		if err = s.IPFSClient.Pin().Add(ctx, pth); err != nil {
-			return nil, nil, err
-		}
-		root = pth.Cid()
+		root = n.Cid()
 	} else {
-		// Here we can manually wrap seed (it's small enough that no file splitting is needed)
-		sn := dag.NewRawNode(seed)
-
 		// Create the initial bucket directory
 		n, err := newDirWithNode(sn, bucks.SeedName, key)
 		if err != nil {
@@ -268,6 +257,14 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	return buck, seed, nil
 }
 
+func encryptData(data, key []byte) ([]byte, error) {
+	r, err := dcrypto.NewEncrypter(bytes.NewReader(data), key)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(r)
+}
+
 func newDirWithNode(n ipld.Node, name string, key []byte) (*dag.ProtoNode, error) {
 	dir := unixfs.EmptyDirNode()
 	dir.SetCidBuilder(dag.V1CidPrefix())
@@ -281,11 +278,7 @@ func encryptNode(n *dag.ProtoNode, key []byte) (*dag.ProtoNode, error) {
 	if key == nil {
 		return n, nil
 	}
-	r, err := dcrypto.NewEncrypter(bytes.NewReader(n.RawData()), key)
-	if err != nil {
-		return nil, err
-	}
-	cipher, err := ioutil.ReadAll(r)
+	cipher, err := encryptData(n.RawData(), key)
 	if err != nil {
 		return nil, err
 	}
@@ -294,34 +287,151 @@ func encryptNode(n *dag.ProtoNode, key []byte) (*dag.ProtoNode, error) {
 	return en, nil
 }
 
-func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key []byte) (*dag.ProtoNode, error) {
+type treeNode struct {
+	name   string
+	node   ipld.Node
+	isLeaf bool
+}
+
+func (s *Service) newDirWithNodeFromExistingPath(ctx context.Context, n ipld.Node, pth path.Path, key []byte) (*dag.ProtoNode, []ipld.Node, error) {
 	rn, err := s.IPFSClient.ResolveNode(ctx, pth)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	pn, ok := rn.(*dag.ProtoNode)
+	top, ok := rn.(*dag.ProtoNode)
 	if !ok {
-		return nil, dag.ErrNotProtobuf
+		return nil, nil, dag.ErrNotProtobuf
 	}
 	if key == nil {
-		return pn, nil
+		if err := top.AddNodeLink(bucks.SeedName, n); err != nil {
+			return nil, nil, err
+		}
+		return top, []ipld.Node{top, n}, nil
 	}
 
-	for _, l := range pn.Links() {
-		ln, err := l.GetNode(ctx, s.IPFSClient.Dag())
+	tree := make(map[cid.Cid]*treeNode)
+	if err = s.encryptTree(ctx, tree, top, "", cid.Undef, key); err != nil {
+		return nil, nil, err
+	}
+
+	// The dag structure is defined, now we need to walk it again and encrypt the dir nodes
+	var root *dag.ProtoNode
+	nodes := make([]ipld.Node, len(tree)+1)
+	nodes[0] = n
+	i := 1
+	for id, tn := range tree {
+		if tn.isLeaf {
+			nodes[i] = tn.node
+		} else {
+			pn := tn.node.(*dag.ProtoNode)
+			if id.Equals(top.Cid()) {
+				if err := pn.AddNodeLink(bucks.SeedName, n); err != nil {
+					return nil, nil, err
+				}
+			}
+			cn, err := encryptNode(pn, key)
+			if err != nil {
+				return nil, nil, err
+			}
+			nodes[i] = cn
+			if id.Equals(top.Cid()) {
+				root = cn
+			}
+		}
+		i++
+	}
+	return root, nodes, nil
+}
+
+func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, n ipld.Node, name string, parent cid.Cid, key []byte) error {
+	switch n.(type) {
+	case *dag.RawNode:
+		// Encrypt and add the raw node
+		data, err := encryptData(n.RawData(), key)
 		if err != nil {
-			return nil, err
+			return err
+		}
+		tree[n.Cid()] = &treeNode{
+			name:   name,
+			node:   dag.NewRawNode(data),
+			isLeaf: true,
+		}
+	case *dag.ProtoNode:
+		if len(n.Links()) == 0 {
+			return nil
+		}
+		var isLeaf bool
+	loop:
+		for _, l := range n.Links() {
+			if l.Name == "" {
+				isLeaf = true
+				break loop // We have discovered a raw node wrapper
+			}
+			ln, err := l.GetNode(ctx, s.IPFSClient.Dag())
+			if err != nil {
+				return err
+			}
+			return s.encryptTree(ctx, tree, ln, l.Name, n.Cid(), key)
+		}
+		if !isLeaf {
+			dir := unixfs.EmptyDirNode() // New dir that will link to the encrypted nodes
+			dir.SetCidBuilder(dag.V1CidPrefix())
+			tree[n.Cid()] = &treeNode{
+				name: name,
+				node: dir,
+			}
+			return nil
 		}
 
+		// Encrypt and add the file node
+		fn, err := s.IPFSClient.Unixfs().Get(ctx, path.IpfsPath(n.Cid()))
+		if err != nil {
+			return err
+		}
+		defer fn.Close()
+		file := ipfsfiles.ToFile(fn)
+		if file == nil {
+			return fmt.Errorf("node is a directory")
+		}
+		r, err := dcrypto.NewEncrypter(file, key)
+		if err != nil {
+			return err
+		}
+		pth, err := s.IPFSClient.Unixfs().Add(
+			ctx,
+			ipfsfiles.NewReaderFile(r),
+			options.Unixfs.CidVersion(1),
+			options.Unixfs.Pin(false))
+		if err != nil {
+			return err
+		}
+		cn, err := s.IPFSClient.ResolveNode(ctx, pth)
+		if err != nil {
+			return err
+		}
+		tree[n.Cid()] = &treeNode{
+			name:   name,
+			node:   cn,
+			isLeaf: true,
+		}
+	default:
+		return fmt.Errorf("cannot get node with unhandled type")
 	}
 
-	dir := unixfs.EmptyDirNode()
-	dir.SetCidBuilder(dag.V1CidPrefix())
-
-	//if err := dir.AddNodeLink(name, n); err != nil {
-	//	return nil, err
-	//}
-	//return encryptNode(dir, key)
+	// Walk back up to the tree root, updating links
+	if parent.Defined() {
+		pn, ok := tree[parent]
+		if !ok {
+			return fmt.Errorf("parent node not found")
+		}
+		dir, ok := pn.node.(*dag.ProtoNode)
+		if !ok {
+			return dag.ErrNotProtobuf
+		}
+		child := tree[n.Cid()]
+		return dir.AddNodeLink(child.name, child.node)
+	}
+	return nil
 }
 
 func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
@@ -499,7 +609,7 @@ func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest)
 	log.Debugf("received list ipfs path request")
 
 	pth := path.New(req.Path)
-	item, err := s.pathToItem(ctx, pth, true)
+	item, err := s.pathToItem(ctx, pth, true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -541,12 +651,7 @@ func (s *Service) getNodeAtPath(ctx context.Context, pth path.Resolved, key []by
 		if fn.Data() == nil {
 			return cn, nil // This node is a raw file wrapper
 		}
-		r, err := dcrypto.NewDecrypter(bytes.NewReader(fn.Data()), key)
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		plain, err := ioutil.ReadAll(r)
+		plain, err := decryptData(fn.Data(), key)
 		if err != nil {
 			return nil, err
 		}
@@ -559,6 +664,15 @@ func (s *Service) getNodeAtPath(ctx context.Context, pth path.Resolved, key []by
 	default:
 		return nil, fmt.Errorf("cannot get node with unhandled type")
 	}
+}
+
+func decryptData(data, key []byte) ([]byte, error) {
+	r, err := dcrypto.NewDecrypter(bytes.NewReader(data), key)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return ioutil.ReadAll(r)
 }
 
 func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, followLinks bool) (*pb.ListPathItem, error) {
@@ -1023,7 +1137,6 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 		return err
 	}
 	defer node.Close()
-
 	file := ipfsfiles.ToFile(node)
 	if file == nil {
 		return fmt.Errorf("node is a directory")
