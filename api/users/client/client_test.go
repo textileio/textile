@@ -253,7 +253,7 @@ func TestAccountBuckets(t *testing.T) {
 
 	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
-	buck, err := buckets.Init(ctx, "mybuck")
+	buck, err := buckets.Init(ctx)
 	require.Nil(t, err)
 
 	// Finally, push a file to the bucket.
@@ -300,7 +300,7 @@ func TestUserBuckets(t *testing.T) {
 
 	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
-	buck, err := buckets.Init(ctx, "mybuck")
+	buck, err := buckets.Init(ctx)
 	require.Nil(t, err)
 
 	// Finally, push a file to the bucket.
