@@ -235,9 +235,8 @@ func encryptNode(n *dag.ProtoNode, key []byte) (*dag.ProtoNode, error) {
 }
 
 type treeNode struct {
-	name   string
-	node   ipld.Node
-	isLeaf bool
+	name string
+	node ipld.Node
 }
 
 // newDirFromExistingPath returns a new dir based on path.
@@ -301,13 +300,13 @@ func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, r
 			return nil, err
 		}
 		tn = &treeNode{
-			name:   name,
-			node:   dag.NewRawNode(data),
-			isLeaf: true,
+			name: name,
+			node: dag.NewRawNode(data),
 		}
 	case *dag.ProtoNode:
 		var isLeaf bool
 		var leaves []*treeNode
+		// Follow each link, wrapping up and encrypting files and dirs
 	loop:
 		for _, l := range root.Links() {
 			if l.Name == "" {
@@ -337,6 +336,7 @@ func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, r
 				if err := dir.AddNodeLink(add.name, add.node); err != nil {
 					return nil, err
 				}
+				tree[add.node.Cid()] = add
 			}
 			cn, err := encryptNode(dir, key)
 			if err != nil {
@@ -376,9 +376,8 @@ func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, r
 			return nil, err
 		}
 		tn = &treeNode{
-			name:   name,
-			node:   cn,
-			isLeaf: true,
+			name: name,
+			node: cn,
 		}
 	default:
 		return nil, fmt.Errorf("cannot get node with unhandled type")

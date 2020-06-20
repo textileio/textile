@@ -100,6 +100,54 @@ func TestClient_InitWithCid(t *testing.T) {
 	assert.Equal(t, rep.Item.Items[0].Name, "file2.jpg")
 }
 
+func TestClient_InitWithCid_Private(t *testing.T) {
+	t.Parallel()
+	ctx, client, done := setup(t)
+	_ = client
+	defer done()
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.Nil(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+
+	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	require.NoError(t, err)
+	p, err := ipfs.Unixfs().Add(
+		ctx,
+		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+			"file1.jpg": ipfsfiles.NewReaderFile(file1),
+			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+				"file2.jpg": ipfsfiles.NewReaderFile(file2),
+			}),
+		}),
+	)
+	require.NoError(t, err)
+	initCid := p.Cid()
+	buck, err := client.Init(ctx, c.WithCid(initCid), c.WithPrivate(true))
+	require.NoError(t, err)
+
+	// Assert top level bucket.
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.Nil(t, err)
+	assert.True(t, rep.Item.IsDir)
+	topLevelNames := make([]string, 3)
+	for i, n := range rep.Item.Items {
+		topLevelNames[i] = n.Name
+	}
+	assert.Contains(t, topLevelNames, "file1.jpg")
+	assert.Contains(t, topLevelNames, "folder1")
+
+	// Assert inner directory.
+	rep, err = client.ListPath(ctx, buck.Root.Key, "folder1")
+	require.Nil(t, err)
+	assert.True(t, rep.Item.IsDir)
+	assert.Equal(t, 1, len(rep.Item.Items))
+	assert.Equal(t, rep.Item.Items[0].Name, "file2.jpg")
+}
+
 func TestClient_Root(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
@@ -414,6 +462,116 @@ func TestClient_SetPath(t *testing.T) {
 			require.NoError(t, err)
 
 			buck, err := client.Init(ctx)
+			require.NoError(t, err)
+
+			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
+			require.NoError(t, err)
+
+			rep, err := client.ListPath(ctx, buck.Root.Key, "")
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootFirst)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelFirst)
+
+			// SetPath again in the same path, but with a different dag.
+			// Should replace what was already under that path.
+			file1, err = os.Open("testdata/file1.jpg")
+			require.Nil(t, err)
+			defer file1.Close()
+			p, err = ipfs.Unixfs().Add(
+				ctx,
+				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+					"fileVersion2.jpg": ipfsfiles.NewReaderFile(file1),
+				}),
+			)
+			require.NoError(t, err)
+			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
+			require.NoError(t, err)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, "")
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootSecond)
+
+			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
+			require.Nil(t, err)
+			assert.True(t, rep.Item.IsDir)
+			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelSecond)
+		})
+	}
+}
+
+func TestClient_SetPath_Private(t *testing.T) {
+	t.Parallel()
+	innerPaths := []struct {
+		Name string
+		Path string
+		// How many files should be expected at the bucket root
+		// in the first SetHead.
+		NumFilesAtRootFirst int
+		// How many files should be expected at the *imported* Cid
+		// level.
+		NumFilesAtImportedLevelFirst int
+		// How many files should be expected at the bucket root
+		// in the second SetHead.
+		NumFilesAtRootSecond int
+		// How many files should be expected at the *imported* Cid
+		// level.
+		NumFilesAtImportedLevelSecond int
+	}{
+		{Name: "nested",
+			Path: "nested",
+			// At root level, .seed and nested dir.
+			NumFilesAtRootFirst: 2,
+			// The first SetHead has one file, and one dir.
+			NumFilesAtImportedLevelFirst: 2,
+			NumFilesAtRootSecond:         2,
+			// The second SetHead only has one file.
+			NumFilesAtImportedLevelSecond: 1,
+		},
+		// Edge case, Path is empty. So "AtRoot" or "AtImportedLevel"
+		// is the same.
+		{Name: "root",
+			Path:                         "",
+			NumFilesAtRootFirst:          3,
+			NumFilesAtImportedLevelFirst: 3,
+			// In both below cases, the files are the .seed
+			// and the fileVersion2.jpg.
+			NumFilesAtRootSecond:          2,
+			NumFilesAtImportedLevelSecond: 2,
+		},
+	}
+
+	for _, innerPath := range innerPaths {
+		t.Run(innerPath.Name, func(t *testing.T) {
+			ctx, client, done := setup(t)
+			defer done()
+
+			file1, err := os.Open("testdata/file1.jpg")
+			require.Nil(t, err)
+			defer file1.Close()
+			file2, err := os.Open("testdata/file2.jpg")
+			require.Nil(t, err)
+			defer file2.Close()
+
+			ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+			require.NoError(t, err)
+			p, err := ipfs.Unixfs().Add(
+				ctx,
+				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+					"file1.jpg": ipfsfiles.NewReaderFile(file1),
+					"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
+						"file2.jpg": ipfsfiles.NewReaderFile(file2),
+					}),
+				}),
+			)
+			require.NoError(t, err)
+
+			buck, err := client.Init(ctx, c.WithPrivate(true))
 			require.NoError(t, err)
 
 			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
