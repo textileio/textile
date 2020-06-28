@@ -44,7 +44,7 @@ func (c *Client) Close() error {
 
 // Init initializes a new bucket.
 // The bucket name is only meant to help identify a bucket in a UI and is not unique.
-func (c *Client) Init(ctx context.Context, name string, opts ...InitOption) (*pb.InitReply, error) {
+func (c *Client) Init(ctx context.Context, opts ...InitOption) (*pb.InitReply, error) {
 	args := &initOptions{}
 	for _, opt := range opts {
 		opt(args)
@@ -54,7 +54,8 @@ func (c *Client) Init(ctx context.Context, name string, opts ...InitOption) (*pb
 		strCid = args.bootstrapCid.String()
 	}
 	return c.c.Init(ctx, &pb.InitRequest{
-		Name:         name,
+		Name:         args.name,
+		Private:      args.private,
 		BootstrapCid: strCid,
 	})
 }

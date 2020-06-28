@@ -10,7 +10,6 @@ import (
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/util"
 	"github.com/textileio/uiprogress"
 )
 
@@ -33,10 +32,6 @@ var (
 			"org": {
 				Key:      "org",
 				DefValue: "",
-			},
-			"public": {
-				Key:      "public",
-				DefValue: true,
 			},
 			"thread": {
 				Key:      "thread",
@@ -61,18 +56,19 @@ func init() {
 }
 
 func Init(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketCatCmd, bucketDestroyCmd, bucketArchiveCmd, bucketAddCmd)
+	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketAddCmd, bucketCatCmd, bucketDestroyCmd, bucketEncryptCmd, bucketDecryptCmd, bucketArchiveCmd)
 	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
 
 	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
 	bucketInitCmd.PersistentFlags().String("org", "", "Org username")
-	bucketInitCmd.PersistentFlags().Bool("public", false, "Allow public access")
 	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
-	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
-	bucketInitCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid available in the IPFS network")
 	if err := cmd.BindFlags(config.Viper, bucketInitCmd, config.Flags); err != nil {
 		cmd.Fatal(err)
 	}
+	bucketInitCmd.Flags().StringP("name", "n", "", "Bucket name")
+	bucketInitCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
+	bucketInitCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid from the IPFS network")
+	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
 
 	bucketPushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
@@ -82,6 +78,9 @@ func Init(rootCmd *cobra.Command) {
 	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	bucketAddCmd.Flags().BoolP("yes", "y", false, "Skips confirmations prompts to always overwrite files and merge folders")
+
+	bucketEncryptCmd.Flags().StringP("password", "p", "", "Encryption password")
+	bucketDecryptCmd.Flags().StringP("password", "p", "", "Decryption password")
 
 	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
 }
@@ -104,17 +103,11 @@ func printLinks(reply *pb.LinksReply) {
 }
 
 func setCidVersion(buck *local.Bucket, key string) {
-	if !buck.Path().Root().Defined() {
-		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
-		defer cancel()
-		root, err := clients.Buckets.Root(ctx, key)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		rp, err := util.NewResolvedPath(root.Root.Path)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		buck.SetCidVersion(int(rp.Root().Version()))
+	_, rc, err := buck.Root()
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	if !rc.Defined() {
+		buck.SetCidVersion(int(getRemoteRoot(key).Version()))
 	}
 }

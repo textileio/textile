@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
@@ -87,7 +89,10 @@ var bucketPullCmd = &cobra.Command{
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		if err = buck.Archive(ctx); err != nil {
+		if err = buck.Save(ctx); err != nil {
+			cmd.Fatal(err)
+		}
+		if err = buck.SetRemotePath("", getRemoteRoot(key)); err != nil {
 			cmd.Fatal(err)
 		}
 
@@ -107,7 +112,11 @@ var bucketPullCmd = &cobra.Command{
 				}
 			}
 		}
-		cmd.Message("%s", aurora.White(buck.Path().Cid()).Bold())
+		_, rc, err := buck.Root()
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("%s", aurora.White(rc).Bold())
 	},
 }
 
@@ -147,6 +156,11 @@ looop:
 			go func(o object) {
 				defer wg.Done()
 				getFile(key, o.path, o.name, o.size, o.cid)
+				if buck != nil {
+					if err := buck.SetRemotePath(o.path, o.cid); err != nil {
+						cmd.Fatal(err)
+					}
+				}
 			}(o)
 		}
 		wg.Wait()
@@ -199,6 +213,15 @@ func listPath(key, pth, dest string, buck *local.Bucket, force bool) (all, missi
 			lc, err := buck.HashFile(name)
 			if err == nil && lc.Equals(c) { // File exists, skip it
 				return
+			} else {
+				match, err := buck.MatchPath(pth, lc, c)
+				if err != nil {
+					if !errors.Is(err, ds.ErrNotFound) {
+						cmd.Fatal(err)
+					}
+				} else if match { // File exists, skip it
+					return
+				}
 			}
 		}
 		missing = append(missing, o)
@@ -219,16 +242,18 @@ func getFile(key, filePath, name string, size int64, c cid.Cid) {
 	bar := addBar(filePath, size)
 	progress := make(chan int64)
 	go func() {
-		for up := range progress {
-			if err := bar.Set(int(up)); err != nil {
-				cmd.Fatal(err)
-			}
+		ctx, cancel := clients.Ctx.Thread(getFileTimeout)
+		defer cancel()
+		if err := clients.Buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
+			cmd.Fatal(err)
 		}
 	}()
-
-	ctx, cancel := clients.Ctx.Thread(getFileTimeout)
-	defer cancel()
-	if err := clients.Buckets.PullPath(ctx, key, filePath, file, client.WithProgress(progress)); err != nil {
+	for up := range progress {
+		if err := bar.Set(int(up)); err != nil {
+			cmd.Fatal(err)
+		}
+	}
+	if err := bar.Set(int(size)); err != nil {
 		cmd.Fatal(err)
 	}
 	finishBar(bar, filePath, c)

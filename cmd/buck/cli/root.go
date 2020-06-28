@@ -3,6 +3,7 @@ package cli
 import (
 	"path/filepath"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -31,20 +32,28 @@ var bucketRootCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		rc := buck.Path().Root()
-		if !rc.Defined() {
-			ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
-			defer cancel()
-			rr, err := clients.Buckets.Root(ctx, key)
-			if err != nil {
-				cmd.Fatal(err)
-			}
-			rp, err := util.NewResolvedPath(rr.Root.Path)
-			if err != nil {
-				cmd.Fatal(err)
-			}
-			rc = rp.Cid()
+		lc, rc, err := buck.Root()
+		if err != nil {
+			cmd.Fatal(err)
 		}
-		cmd.Message("%s", aurora.White(rc).Bold())
+		if !rc.Defined() {
+			rc = getRemoteRoot(key)
+		}
+		cmd.Message("%s (local)", aurora.White(lc).Bold())
+		cmd.Message("%s (remote)", aurora.White(rc).Bold())
 	},
+}
+
+func getRemoteRoot(key string) cid.Cid {
+	ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
+	defer cancel()
+	rr, err := clients.Buckets.Root(ctx, key)
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	rp, err := util.NewResolvedPath(rr.Root.Path)
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	return rp.Cid()
 }

@@ -55,11 +55,27 @@ func MustParseAddr(str string) ma.Multiaddr {
 func NewResolvedPath(s string) (path.Resolved, error) {
 	parts := strings.SplitN(s, "/", 3)
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid path")
+		return nil, fmt.Errorf("path is not resolvable")
 	}
 	c, err := cid.Decode(parts[2])
 	if err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(c), nil
+}
+
+func ParsePath(p path.Path) (resolved path.Resolved, fpath string, err error) {
+	parts := strings.SplitN(p.String(), "/", 4)
+	if len(parts) < 3 {
+		err = fmt.Errorf("path does not contain a resolvable segment")
+		return
+	}
+	c, err := cid.Decode(parts[2])
+	if err != nil {
+		return
+	}
+	if len(parts) > 3 {
+		fpath = parts[3]
+	}
+	return path.IpfsPath(c), fpath, nil
 }

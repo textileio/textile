@@ -2,6 +2,7 @@ package buckets
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"sync"
@@ -49,10 +50,20 @@ type Bucket struct {
 	Key       string   `json:"_id"`
 	Name      string   `json:"name"`
 	Path      string   `json:"path"`
+	EncKey    string   `json:"key,omitempty"`
 	DNSRecord string   `json:"dns_record,omitempty"`
 	Archives  Archives `json:"archives"`
 	CreatedAt int64    `json:"created_at"`
 	UpdatedAt int64    `json:"updated_at"`
+}
+
+// GetEncKey returns the encryption key as bytes if present.
+func (b *Bucket) GetEncKey() []byte {
+	if b.EncKey == "" {
+		return nil
+	}
+	key, _ := base64.StdEncoding.DecodeString(b.EncKey)
+	return key
 }
 
 // Archives contains all archives for a single bucket.
@@ -111,16 +122,21 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug b
 }
 
 // Create a bucket instance.
-func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, pth path.Path, opts ...Option) (*Bucket, error) {
+func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth path.Path, opts ...Option) (*Bucket, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
 	}
+	var encKey string
+	if args.Key != nil {
+		encKey = base64.StdEncoding.EncodeToString(args.Key)
+	}
 	now := time.Now().UnixNano()
 	bucket := &Bucket{
 		Key:       key,
-		Name:      name,
+		Name:      args.Name,
 		Path:      pth.String(),
+		EncKey:    encKey,
 		Archives:  Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}},
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -130,13 +146,13 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key, name string, 
 		if err := b.addCollection(ctx, dbID, opts...); err != nil {
 			return nil, err
 		}
-		return b.Create(ctx, dbID, key, name, pth, opts...)
+		return b.Create(ctx, dbID, key, pth, opts...)
 	}
 	if isInvalidSchemaErr(err) {
 		if err := b.updateCollection(ctx, dbID, opts...); err != nil {
 			return nil, err
 		}
-		return b.Create(ctx, dbID, key, name, pth, opts...)
+		return b.Create(ctx, dbID, key, pth, opts...)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("creating bucket in thread: %s", err)
@@ -509,10 +525,24 @@ func (b *Buckets) updateCollection(ctx context.Context, dbID thread.ID, opts ...
 }
 
 type Options struct {
+	Name  string
+	Key   []byte
 	Token thread.Token
 }
 
 type Option func(*Options)
+
+func WithName(n string) Option {
+	return func(args *Options) {
+		args.Name = n
+	}
+}
+
+func WithKey(k []byte) Option {
+	return func(args *Options) {
+		args.Key = k
+	}
+}
 
 func WithToken(t thread.Token) Option {
 	return func(args *Options) {
