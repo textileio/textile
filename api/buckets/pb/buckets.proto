@@ -24,6 +24,7 @@ message InitReply {
     Root root = 1;
     LinksReply links = 2;
     bytes seed = 3;
+    string seedCid = 4;
 }
 
 message RootRequest {
@@ -183,7 +184,7 @@ message ArchiveInfoReply {
         repeated Deal deals = 2;
 
         message Deal {
-            string ProposalCid = 1;
+            string proposalCid = 1;
             string miner = 2;
         }
     }

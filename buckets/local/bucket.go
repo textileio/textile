@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +17,7 @@ import (
 	"github.com/ipfs/go-ds-flatfs"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -27,6 +28,7 @@ import (
 	"github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipfs/go-unixfs/importer/trickle"
 	options "github.com/ipfs/interface-go-ipfs-core/options"
+	mh "github.com/multiformats/go-multihash"
 )
 
 func init() {
@@ -47,20 +49,20 @@ var (
 const (
 	// repoPath is the path to the local bucket repository.
 	repoPath = ".textile/repo"
-	// localRootName is the file that stores the bucket's local root.
-	localRootName = "LOCAL"
-	// remoteRootName is the file that stores the bucket's remote root.
-	remoteRootName = "REMOTE"
 
 	// PatchExt is used to ignore tmp files during a pull.
 	PatchExt = ".buckpatch"
 )
 
+// pathMap hold details about a local path map.
+type pathMap struct {
+	Local  cid.Cid
+	Remote cid.Cid
+}
+
 // Bucket tracks a local bucket tree structure.
 type Bucket struct {
 	path   string
-	local  cid.Cid
-	remote cid.Cid
 	ds     ds.Batching
 	bsrv   bserv.BlockService
 	dag    ipld.DAGService
@@ -80,113 +82,113 @@ func NewBucket(pth string, layout options.Layout) (*Bucket, error) {
 	}
 	bs := bstore.NewBlockstore(bd)
 	bsrv := bserv.New(bs, offline.Exchange(bs))
-	b := &Bucket{
+	return &Bucket{
 		path:   pth,
 		ds:     bd,
 		bsrv:   bsrv,
 		dag:    md.NewDAGService(bsrv),
 		layout: layout,
 		cidver: 1,
-	}
-	if err := b.loadRoots(); err != nil {
-		if _, ok := err.(*os.PathError); !ok {
-			return nil, err
-		}
-	}
-	return b, nil
-}
-
-// loadRoots reads the local and remote roots from file.
-func (b *Bucket) loadRoots() error {
-	dir := filepath.Dir(repoPath)
-	local, err := ioutil.ReadFile(filepath.Join(b.path, dir, localRootName))
-	if err != nil {
-		return err
-	}
-	if len(local) > 0 {
-		c, err := cid.Cast(local)
-		if err != nil {
-			return err
-		}
-		b.local = c
-	}
-	remote, err := ioutil.ReadFile(filepath.Join(b.path, dir, remoteRootName))
-	if err != nil {
-		return err
-	}
-	if len(remote) > 0 {
-		c, err := cid.Cast(remote)
-		if err != nil {
-			return err
-		}
-		b.remote = c
-	}
-	return nil
+	}, nil
 }
 
 // CidVersion returns the configured cid version (0 or 1).
-// The default is 1.
+// The default version is 1.
 func (b *Bucket) SetCidVersion(v int) {
 	b.cidver = v
 }
 
-// Local returns the bucket's local root cid.
-func (b *Bucket) Local() cid.Cid {
-	return b.local
-}
-
-// Remote returns the bucket's remote root cid.
-// If the bucket is encrypted, this will return a different value than Root().
-func (b *Bucket) Remote() cid.Cid {
-	return b.remote
-}
-
-// SetRemote sets the bucket's remote root cid.
-func (b *Bucket) SetRemote(c cid.Cid) error {
-	dir := filepath.Dir(repoPath)
-	if err := ioutil.WriteFile(filepath.Join(b.path, dir, remoteRootName), c.Bytes(), 0644); err != nil {
-		return err
+// Root returns the local and remote root cids.
+func (b *Bucket) Root() (local, remote cid.Cid, err error) {
+	k, err := getPathKey("")
+	if err != nil {
+		return
 	}
-	b.remote = c
-	return nil
+	pm, err := b.getPathMap(k)
+	if err != nil {
+		return
+	}
+	return pm.Local, pm.Remote, nil
 }
 
-// Get returns the node at cid from the bucket.
-func (b *Bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
-	return b.dag.Get(ctx, c)
+// getPathKey returns a flatfs safe hash of a file path.
+func getPathKey(pth string) (key ds.Key, err error) {
+	hash, err := mh.Encode([]byte(filepath.Clean(pth)), mh.SHA2_256)
+	if err != nil {
+		return
+	}
+	return dshelp.MultihashToDsKey(hash), nil
+}
+
+// getPathMap returns details about a local path by key.
+func (b *Bucket) getPathMap(k ds.Key) (m pathMap, err error) {
+	v, err := b.ds.Get(k)
+	if err != nil {
+		return
+	}
+	dec := gob.NewDecoder(bytes.NewReader(v))
+	var pm pathMap
+	if err = dec.Decode(&pm); err != nil {
+		return
+	}
+	return pm, nil
 }
 
 // Save saves the bucket as a node describing the file tree at the current path.
 func (b *Bucket) Save(ctx context.Context) error {
-	n, err := b.recursiveAddPath(ctx, b.path, b.dag)
+	_, maps, err := b.recursiveAddPath(ctx, b.path, b.dag)
 	if err != nil {
 		return err
 	}
-	return b.saveLocalRoot(n.Cid())
-}
-
-// saveLocalRoot writes the local root to file.
-func (b *Bucket) saveLocalRoot(c cid.Cid) error {
-	dir := filepath.Dir(repoPath)
-	if err := ioutil.WriteFile(filepath.Join(b.path, dir, localRootName), c.Bytes(), 0644); err != nil {
-		return err
+	for p, c := range maps {
+		if err := b.setLocalPath(p, c); err != nil {
+			return err
+		}
 	}
-	b.local = c
 	return nil
 }
 
+// setLocalPath sets the local cid for an existing path map.
+func (b *Bucket) setLocalPath(pth string, local cid.Cid) error {
+	k, err := getPathKey(pth)
+	if err != nil {
+		return err
+	}
+	xm, err := b.getPathMap(k)
+	if errors.Is(err, ds.ErrNotFound) {
+		return b.putPathMap(k, pathMap{Local: local})
+	}
+	if err != nil {
+		return err
+	}
+	xm.Local = local
+	return b.putPathMap(k, xm)
+}
+
+// putPathMap saves a path map under key.
+func (b *Bucket) putPathMap(k ds.Key, pm pathMap) error {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(pm); err != nil {
+		return err
+	}
+	return b.ds.Put(k, buf.Bytes())
+}
+
 // recursiveAddPath walks path and adds files to the dag service.
-func (b *Bucket) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGService) (ipld.Node, error) {
+// This method returns the resulting root node and a list of path maps.
+func (b *Bucket) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGService) (ipld.Node, map[string]cid.Cid, error) {
 	root := unixfs.EmptyDirNode()
 	prefix, err := md.PrefixForCidVersion(b.cidver)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	root.SetCidBuilder(prefix)
 	editor := dagutils.NewDagEditor(root, dag)
+	maps := make(map[string]cid.Cid)
 	abs, err := filepath.Abs(pth)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err = filepath.Walk(abs, func(n string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -213,16 +215,18 @@ func (b *Bucket) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGS
 			if err = editor.InsertNodeAtPath(ctx, n, nd, unixfs.EmptyDirNode); err != nil {
 				return err
 			}
+			maps[strings.TrimPrefix(p, abs+"/")] = nd.Cid()
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	en := editor.GetNode()
 	if err := copyLinks(ctx, en, editor.GetDagService(), dag); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return en, nil
+	maps[strings.TrimPrefix(pth, b.path)] = en.Cid()
+	return en, maps, nil
 }
 
 // copyLinks recursively adds all link nodes in node to the dag service.
@@ -279,7 +283,10 @@ func (b *Bucket) SaveFile(ctx context.Context, pth string, name string) error {
 	if err := copyLinks(ctx, n, editor.GetDagService(), b.dag); err != nil {
 		return err
 	}
-	return b.saveLocalRoot(n.Cid())
+	if err := b.setLocalPath(pth, n.Cid()); err != nil {
+		return err
+	}
+	return b.setLocalPath("", n.Cid())
 }
 
 // HashFile returns the cid of the file at path.
@@ -301,12 +308,21 @@ func (b *Bucket) HashFile(pth string) (cid.Cid, error) {
 	return n.Cid(), nil
 }
 
+// Get returns the node at cid from the bucket.
+func (b *Bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
+	return b.dag.Get(ctx, c)
+}
+
 // Diff returns a list of changes that are present in path compared to the bucket.
 func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change, err error) {
 	tmp := dagutils.NewMemoryDagService()
 	var an ipld.Node
-	if b.local.Defined() {
-		an, err = b.dag.Get(ctx, b.local)
+	lc, _, err := b.Root()
+	if err != nil {
+		return
+	}
+	if lc.Defined() {
+		an, err = b.dag.Get(ctx, lc)
 		if err != nil {
 			return
 		}
@@ -319,52 +335,65 @@ func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change,
 	if err = tmp.Add(ctx, an); err != nil {
 		return
 	}
-	bn, err := b.recursiveAddPath(ctx, pth, tmp)
+	bn, _, err := b.recursiveAddPath(ctx, pth, tmp)
 	if err != nil {
 		return
 	}
 	return dagutils.Diff(ctx, tmp, an, bn)
 }
 
-// pathMap hold details about a local path map.
-type pathMap struct {
-	Remote    string
-	LocalCid  cid.Cid
-	RemoteCid cid.Cid
-}
-
-// AddPathMap adds a local path map to the store.
-func (b *Bucket) AddPathMap(lp, rp string, lc, rc cid.Cid) error {
-	pm := pathMap{
-		Remote:    rp,
-		LocalCid:  lc,
-		RemoteCid: rc,
-	}
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(pm); err != nil {
+// SetRemotePath sets or creates a mapping from a local path to a remote cid.
+func (b *Bucket) SetRemotePath(pth string, remote cid.Cid) error {
+	k, err := getPathKey(pth)
+	if err != nil {
 		return err
 	}
-	return b.ds.Put(ds.NewKey(lp), buf.Bytes())
-}
-
-// GetPathMap returns details about a local path.
-func (b *Bucket) GetPathMap(lp string) (rp string, lc, rc cid.Cid, err error) {
-	v, err := b.ds.Get(ds.NewKey(lp))
+	xm, err := b.getPathMap(k)
+	if errors.Is(err, ds.ErrNotFound) {
+		return b.putPathMap(k, pathMap{Remote: remote})
+	}
 	if err != nil {
-		return
+		return err
 	}
-	dec := gob.NewDecoder(bytes.NewReader(v))
-	var pm pathMap
-	if err = dec.Decode(&pm); err != nil {
-		return
-	}
-	return pm.Remote, pm.LocalCid, pm.RemoteCid, nil
+	xm.Remote = remote
+	return b.putPathMap(k, xm)
 }
 
-// RemovePathMap removes a local path map from the store.
-func (b *Bucket) RemovePathMap(lp string) error {
-	return b.ds.Delete(ds.NewKey(lp))
+// MatchPath returns whether or not the path exists and has matching local and remote cids.
+func (b *Bucket) MatchPath(pth string, local, remote cid.Cid) (bool, error) {
+	k, err := getPathKey(pth)
+	if err != nil {
+		return false, err
+	}
+	m, err := b.getPathMap(k)
+	if err != nil {
+		return false, err
+	}
+	if m.Local.Defined() && m.Local.Equals(local) && m.Remote.Equals(remote) {
+		return true, nil
+	}
+	return false, nil
+}
+
+// RemovePath removes a local path map from the store.
+func (b *Bucket) RemovePath(ctx context.Context, pth string) error {
+	k, err := getPathKey(pth)
+	if err != nil {
+		return err
+	}
+	pm, err := b.getPathMap(k)
+	if errors.Is(err, ds.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := b.dag.Remove(ctx, pm.Local); err != nil {
+		if !errors.Is(err, ipld.ErrNotFound) {
+			return err
+		}
+	}
+	return b.ds.Delete(k)
 }
 
 // Close closes the store and blocks service.

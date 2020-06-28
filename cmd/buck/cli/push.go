@@ -94,13 +94,21 @@ var bucketPushCmd = &cobra.Command{
 			}
 		}
 
-		xr := path.IpfsPath(buck.Remote())
+		_, rc, err := buck.Root()
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		xr := path.IpfsPath(rc)
 		var rm []change
 		startProgress()
 		for _, c := range diff {
 			switch c.Type {
 			case dagutils.Mod, dagutils.Add:
-				xr = addFile(key, xr, c.Rel, c.Path, force)
+				var added path.Resolved
+				added, xr = addFile(key, xr, c.Rel, c.Path, force)
+				if err := buck.SetRemotePath(c.Rel, added.Cid()); err != nil {
+					cmd.Fatal(err)
+				}
 			case dagutils.Remove:
 				rm = append(rm, c)
 			}
@@ -109,6 +117,11 @@ var bucketPushCmd = &cobra.Command{
 		if len(rm) > 0 {
 			for _, c := range rm {
 				xr = rmFile(key, xr, c.Path, force)
+				ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+				if err := buck.RemovePath(ctx, c.Rel); err != nil {
+					cmd.Fatal(err)
+				}
+				cancel()
 			}
 		}
 
@@ -117,14 +130,18 @@ var bucketPushCmd = &cobra.Command{
 		if err = buck.Save(ctx); err != nil {
 			cmd.Fatal(err)
 		}
-		if err := buck.SetRemote(getRemoteRoot(key)); err != nil {
+		if err := buck.SetRemotePath("", getRemoteRoot(key)); err != nil {
 			cmd.Fatal(err)
 		}
-		cmd.Message("%s", aurora.White(buck.Remote()).Bold())
+		_, rc, err = buck.Root()
+		if err != nil {
+			cmd.Fatal(err)
+		}
+		cmd.Message("%s", aurora.White(rc).Bold())
 	},
 }
 
-func addFile(key string, xroot path.Resolved, name, filePath string, force bool) path.Resolved {
+func addFile(key string, xroot path.Resolved, name, filePath string, force bool) (added path.Resolved, root path.Resolved) {
 	file, err := os.Open(name)
 	if err != nil {
 		cmd.Fatal(err)
@@ -157,17 +174,17 @@ func addFile(key string, xroot path.Resolved, name, filePath string, force bool)
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	added, root, err := clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
+	added, root, err = clients.Buckets.PushPath(ctx, key, filePath, file, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("buck pull"))
 		} else {
 			cmd.Fatal(err)
 		}
 	} else {
 		finishBar(bar, filePath, added.Cid())
 	}
-	return root
+	return added, root
 }
 
 func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.Resolved {
@@ -180,7 +197,7 @@ func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.R
 	root, err := clients.Buckets.RemovePath(ctx, key, filePath, opts...)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), bucks.ErrNonFastForward.Error()) {
-			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("hub buck pull"))
+			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("buck pull"))
 		} else if !strings.HasSuffix(err.Error(), "no link by that name") {
 			cmd.Fatal(err)
 		}

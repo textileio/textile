@@ -88,6 +88,15 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	if err != nil {
 		return nil, err
 	}
+	var seedData []byte
+	if key != nil {
+		seedData, err = decryptData(seed.RawData(), key)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		seedData = seed.RawData()
+	}
 
 	return &pb.InitReply{
 		Root: &pb.Root{
@@ -97,8 +106,9 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
-		Links: s.createLinks(dbID, buck),
-		Seed:  seed.RawData(),
+		Links:   s.createLinks(dbID, buck),
+		Seed:    seedData,
+		SeedCid: seed.Cid().String(),
 	}, nil
 }
 

@@ -103,7 +103,11 @@ func printLinks(reply *pb.LinksReply) {
 }
 
 func setCidVersion(buck *local.Bucket, key string) {
-	if !buck.Remote().Defined() {
+	_, rc, err := buck.Root()
+	if err != nil {
+		cmd.Fatal(err)
+	}
+	if !rc.Defined() {
 		buck.SetCidVersion(int(getRemoteRoot(key).Version()))
 	}
 }

@@ -32,11 +32,15 @@ var bucketRootCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
-		rc := buck.Remote()
+		lc, rc, err := buck.Root()
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		if !rc.Defined() {
 			rc = getRemoteRoot(key)
 		}
-		cmd.Message("%s", aurora.White(rc).Bold())
+		cmd.Message("%s (local)", aurora.White(lc).Bold())
+		cmd.Message("%s (remote)", aurora.White(rc).Bold())
 	},
 }
 

@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/textile/cmd"
@@ -44,29 +43,4 @@ var bucketEncryptCmd = &cobra.Command{
 			cmd.Fatal(err)
 		}
 	},
-}
-
-func getPassword(c *cobra.Command, label string) string {
-	pass, err := c.Flags().GetString("password")
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if pass == "" {
-		namep := promptui.Prompt{
-			Label: label,
-			Mask:  '*',
-			Validate: func(s string) error {
-				if len(s) == 0 {
-					return fmt.Errorf("invalid password")
-				}
-				return nil
-			},
-		}
-		var err error
-		pass, err = namep.Run()
-		if err != nil {
-			cmd.End("")
-		}
-	}
-	return pass
 }

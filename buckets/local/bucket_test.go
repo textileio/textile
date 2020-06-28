@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/options"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +24,11 @@ func TestBucket_SetCidVersion(t *testing.T) {
 	buck0.SetCidVersion(0)
 	err := buck0.Save(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck0.Local())
+	lc0, _, err := buck0.Root()
+	require.Nil(t, err)
+	assert.True(t, lc0.Defined())
 	assert.Equal(t, 0, buck0.cidver)
-	assert.Equal(t, 0, int(buck0.local.Version()))
+	assert.Equal(t, 0, int(lc0.Version()))
 	buck0.Close()
 
 	buck1 := makeBucket(t, "testdata/a", options.BalancedLayout)
@@ -32,50 +36,11 @@ func TestBucket_SetCidVersion(t *testing.T) {
 	buck1.SetCidVersion(1)
 	err = buck1.Save(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck1.Local())
+	lc1, _, err := buck1.Root()
+	require.Nil(t, err)
+	assert.True(t, lc1.Defined())
 	assert.Equal(t, 1, buck1.cidver)
-	assert.Equal(t, 1, int(buck1.local.Version()))
-}
-
-func TestBucket_Local(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Local())
-}
-
-func TestBucket_Remote(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
-	assert.Empty(t, buck.Remote())
-}
-
-func TestBucket_SetRemote(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
-	err = buck.SetRemote(buck.local)
-	require.Nil(t, err)
-	require.Equal(t, buck.local, buck.remote)
-}
-
-func TestBucket_Get(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
-
-	n, err := buck.Get(context.Background(), buck.Local())
-	require.Nil(t, err)
-	assert.Equal(t, buck.Local(), n.Cid())
+	assert.Equal(t, 1, int(lc1.Version()))
 }
 
 func TestBucket_Save(t *testing.T) {
@@ -83,12 +48,14 @@ func TestBucket_Save(t *testing.T) {
 
 	err := buck.Save(context.Background())
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Local())
+	lc, _, err := buck.Root()
+	require.Nil(t, err)
+	assert.True(t, lc.Defined())
 	buck.Close()
 
 	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
 	defer buck2.Close()
-	n, err := buck2.Get(context.Background(), buck.Local())
+	n, err := buck2.Get(context.Background(), lc)
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 
@@ -102,12 +69,14 @@ func TestBucket_SaveFile(t *testing.T) {
 
 	err := buck.SaveFile(context.Background(), "testdata/c/one.jpg", "one.jpg")
 	require.Nil(t, err)
-	assert.NotEmpty(t, buck.Local())
+	lc, _, err := buck.Root()
+	require.Nil(t, err)
+	assert.True(t, lc.Defined())
 	buck.Close()
 
 	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
 	defer buck2.Close()
-	n, err := buck2.Get(context.Background(), buck.Local())
+	n, err := buck2.Get(context.Background(), lc)
 	require.Nil(t, err)
 	checkLinks(t, buck2, n)
 
@@ -167,6 +136,72 @@ func TestBucket_Diff(t *testing.T) {
 	}
 }
 
+func TestBucket_Get(t *testing.T) {
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer buck.Close()
+
+	err := buck.Save(context.Background())
+	require.Nil(t, err)
+
+	lc, _, err := buck.Root()
+	require.Nil(t, err)
+	assert.True(t, lc.Defined())
+	n, err := buck.Get(context.Background(), lc)
+	require.Nil(t, err)
+	assert.Equal(t, lc, n.Cid())
+}
+
+func TestBucket_SetRemotePath(t *testing.T) {
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer buck.Close()
+
+	err := buck.Save(context.Background())
+	require.Nil(t, err)
+	lc, _, err := buck.Root()
+	require.Nil(t, err)
+	assert.True(t, lc.Defined())
+
+	err = buck.SetRemotePath("", lc)
+	require.Nil(t, err)
+}
+
+func TestBucket_MatchPath(t *testing.T) {
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer buck.Close()
+
+	err := buck.Save(context.Background())
+	require.Nil(t, err)
+	lc, _, err := buck.Root()
+	require.Nil(t, err)
+	assert.True(t, lc.Defined())
+
+	rc := makeCid(t, "remote")
+	err = buck.SetRemotePath("", rc)
+	require.Nil(t, err)
+
+	match, err := buck.MatchPath("", lc, rc)
+	require.Nil(t, err)
+	assert.True(t, match)
+}
+
+func TestBucket_RemovePath(t *testing.T) {
+	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+	defer buck.Close()
+
+	k, err := getPathKey("path/to/file")
+	require.Nil(t, err)
+	err = buck.putPathMap(k, pathMap{
+		Local:  makeCid(t, "local"),
+		Remote: makeCid(t, "remote"),
+	})
+	require.Nil(t, err)
+	err = buck.RemovePath(context.Background(), "path/to/file")
+	require.Nil(t, err)
+
+	_, err = buck.getPathMap(k)
+	require.NotNil(t, err)
+}
+
 func makeBucket(t *testing.T, root string, layout options.Layout) *Bucket {
 	buck, err := NewBucket(root, layout)
 	require.Nil(t, err)
@@ -176,4 +211,12 @@ func makeBucket(t *testing.T, root string, layout options.Layout) *Bucket {
 		require.Nil(t, err)
 	})
 	return buck
+}
+
+func makeCid(t *testing.T, s string) cid.Cid {
+	h1, err := mh.Sum([]byte(s), mh.SHA2_256, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cid.NewCidV1(0x55, h1)
 }

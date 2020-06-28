@@ -223,11 +223,18 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			if err = buck.SaveFile(actx, seed, bucks.SeedName); err != nil {
 				cmd.Fatal(err)
 			}
+			sc, err := cid.Decode(rep.SeedCid)
+			if err != nil {
+				cmd.Fatal(err)
+			}
+			if err = buck.SetRemotePath(bucks.SeedName, sc); err != nil {
+				cmd.Fatal(err)
+			}
 			rp, err := util.NewResolvedPath(rep.Root.Path)
 			if err != nil {
 				cmd.Fatal(err)
 			}
-			if err = buck.SetRemote(rp.Cid()); err != nil {
+			if err = buck.SetRemotePath("", rp.Cid()); err != nil {
 				cmd.Fatal(err)
 			}
 
@@ -259,7 +266,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 				cmd.Fatal(err)
 			}
 			rr := getRemoteRoot(key)
-			if err := buck.SetRemote(rr); err != nil {
+			if err := buck.SetRemotePath("", rr); err != nil {
 				cmd.Fatal(err)
 			}
 			buck.SetCidVersion(int(rr.Version()))
