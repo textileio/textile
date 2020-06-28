@@ -198,7 +198,14 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 	if err != nil {
 		return nil, err
 	}
-	if err := s.addAndPinNodes(ctx, []ipld.Node{n, seed}); err != nil {
+	if err = s.IPFSClient.Dag().AddMany(ctx, []ipld.Node{n, seed}); err != nil {
+		return nil, err
+	}
+	pins := []ipld.Node{n}
+	if key != nil {
+		pins = append(pins, seed)
+	}
+	if err = s.IPFSClient.Dag().Pinning().AddMany(ctx, pins); err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(n.Cid()), nil
@@ -213,7 +220,16 @@ func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bo
 	if err != nil {
 		return nil, err
 	}
-	if err := s.addAndPinNodes(ctx, nodes); err != nil {
+	if err = s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
+		return nil, err
+	}
+	var pins []ipld.Node
+	if key != nil {
+		pins = nodes
+	} else {
+		pins = []ipld.Node{n}
+	}
+	if err = s.IPFSClient.Dag().Pinning().AddMany(ctx, pins); err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(n.Cid()), nil
@@ -230,7 +246,7 @@ func newDirWithNode(n ipld.Node, name string, key []byte) (ipld.Node, error) {
 	return encryptNode(dir, key)
 }
 
-// encryptNode returns the encrypted versoin of node if key is not nil.
+// encryptNode returns the encrypted version of node if key is not nil.
 func encryptNode(n *dag.ProtoNode, key []byte) (*dag.ProtoNode, error) {
 	if key == nil {
 		return n, nil
@@ -282,7 +298,7 @@ func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key
 			node: add,
 		}
 	}
-	root, err := s.encryptTree(ctx, tree, top, "", key, addNode)
+	root, err := s.encryptTree(ctx, s.IPFSClient.Dag(), tree, top, "", key, addNode)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -299,8 +315,8 @@ func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key
 
 // encryptTree walks all nodes in n, encrypting nodes and re-creating the dag structure.
 // add will be added to the encrypted root node if not nil.
-// tree will contain a map of all new nodes.
-func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, root ipld.Node, name string, key []byte, add *treeNode) (*treeNode, error) {
+// tree will be augmented with all new nodes.
+func (s *Service) encryptTree(ctx context.Context, ds ipld.DAGService, tree map[cid.Cid]*treeNode, root ipld.Node, name string, key []byte, add *treeNode) (*treeNode, error) {
 	var tn *treeNode
 	switch root.(type) {
 	case *dag.RawNode:
@@ -323,11 +339,11 @@ func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, r
 				isLeaf = true
 				break loop // We have discovered a raw node wrapper
 			}
-			ln, err := l.GetNode(ctx, s.IPFSClient.Dag())
+			ln, err := l.GetNode(ctx, ds)
 			if err != nil {
 				return nil, err
 			}
-			ltn, err := s.encryptTree(ctx, tree, ln, l.Name, key, nil)
+			ltn, err := s.encryptTree(ctx, ds, tree, ln, l.Name, key, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -394,13 +410,6 @@ func (s *Service) encryptTree(ctx context.Context, tree map[cid.Cid]*treeNode, r
 	}
 	tree[root.Cid()] = tn
 	return tn, nil
-}
-
-func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
-	if err := s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
-		return err
-	}
-	return s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes)
 }
 
 func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply, error) {
@@ -476,7 +485,6 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 		return nil, fmt.Errorf("get bucket: %s", err)
 	}
 	buckPath := path.New(buck.Path)
-	encKey := buck.GetEncKey()
 
 	remoteCid, err := cid.Decode(req.Cid)
 	if err != nil {
@@ -484,6 +492,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	remotePath := path.IpfsPath(remoteCid)
 
+	encKey := buck.GetEncKey()
 	var dirpth path.Resolved
 	if req.Path == "" {
 		sn, err := makeSeed(encKey)
@@ -534,6 +543,13 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 
 	return &pb.SetPathReply{}, nil
+}
+
+func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
+	if err := s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
+		return err
+	}
+	return s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes)
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
@@ -598,7 +614,7 @@ func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest)
 
 // pathToItem returns items at path, optionally including one level down of links.
 // If key is not nil, the items will be decrypted.
-func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks bool, key []byte) (*pb.ListPathItem, error) {
+func (s *Service) pathToItem(ctx context.Context, pth path.Path, includeNextLevel bool, key []byte) (*pb.ListPathItem, error) {
 	rp, fp, err := util.ParsePath(pth)
 	if err != nil {
 		return nil, err
@@ -611,7 +627,7 @@ func (s *Service) pathToItem(ctx context.Context, pth path.Path, followLinks boo
 		return nil, fmt.Errorf("could not resolve path: %s", pth)
 	}
 	n := np[len(np)-1]
-	return s.nodeToItem(ctx, n.new, pth.String(), followLinks)
+	return s.nodeToItem(ctx, n.new, pth.String(), includeNextLevel)
 }
 
 // getNodeAtPath returns the decrypted node at path.
@@ -658,7 +674,7 @@ func decryptData(data, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, followLinks bool) (*pb.ListPathItem, error) {
+func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, includeNextLevel bool) (*pb.ListPathItem, error) {
 	stat, err := node.Stat()
 	if err != nil {
 		return nil, err
@@ -675,7 +691,7 @@ func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, fo
 		}
 		item.IsDir = true
 		i := &pb.ListPathItem{}
-		if followLinks {
+		if includeNextLevel {
 			p := filepath.Join(pth, l.Name)
 			n, err := l.GetNode(ctx, s.IPFSClient.Dag())
 			if err != nil {
@@ -721,8 +737,8 @@ func inflateFilePath(buck *bucks.Bucket, filePath string) (path.Path, error) {
 	return npth, nil
 }
 
-func (s *Service) pathToPb(ctx context.Context, buck *bucks.Bucket, pth path.Path, followLinks bool) (*pb.ListPathReply, error) {
-	item, err := s.pathToItem(ctx, pth, followLinks, buck.GetEncKey())
+func (s *Service) pathToPb(ctx context.Context, buck *bucks.Bucket, pth path.Path, includeNextLevel bool) (*pb.ListPathReply, error) {
+	item, err := s.pathToItem(ctx, pth, includeNextLevel, buck.GetEncKey())
 	if err != nil {
 		return nil, err
 	}
@@ -771,7 +787,6 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if root != "" && root != buck.Path {
 		return status.Error(codes.FailedPrecondition, bucks.ErrNonFastForward.Error())
 	}
-	encKey := buck.GetEncKey()
 
 	sendEvent := func(event *pb.PushPathReply_Event) error {
 		return server.Send(&pb.PushPathReply{
@@ -842,6 +857,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	}()
 
 	var r io.Reader
+	encKey := buck.GetEncKey()
 	if encKey != nil {
 		r, err = dcrypto.NewEncrypter(reader, encKey)
 		if err != nil {
@@ -940,7 +956,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 		news[i-1] = cn
 		cn = n
 	}
-	np = append(np, childNode{new: cn, name: parts[0], isLeaf: true})
+	np = append(np, childNode{new: cn, name: parts[0], isJoint: true})
 
 	// Now, we have a full list of nodes to the insert location,
 	// but the existing nodes need to be updated and re-encrypted.
@@ -952,7 +968,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 			if !ok {
 				return nil, dag.ErrNotProtobuf
 			}
-			if np[i].isLeaf {
+			if np[i].isJoint {
 				xn, err := p.GetLinkedNode(ctx, s.IPFSClient.Dag(), np[i].name)
 				if err != nil && !errors.Is(err, dag.ErrLinkNotFound) {
 					return nil, err
@@ -984,7 +1000,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 		}
 	}
 
-	// Add all the _new_ nodes, which is the sum of the branch new ones
+	// Add all the _new_ nodes, which is the sum of the brand new ones
 	// from the missing path segment, and the changed ones from
 	// the existing path.
 	allNews := append(news, change...)
@@ -997,7 +1013,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 	}
 	// Update changed node pins
 	for _, n := range np {
-		if n.old != nil && n.isLeaf {
+		if n.old != nil && n.isJoint {
 			if err := s.unpinBranch(ctx, n.old, key); err != nil {
 				return nil, err
 			}
@@ -1031,10 +1047,10 @@ func (s *Service) unpinBranch(ctx context.Context, p path.Resolved, key []byte) 
 }
 
 type childNode struct {
-	old    path.Resolved
-	new    ipld.Node
-	name   string
-	isLeaf bool
+	old     path.Resolved
+	new     ipld.Node
+	name    string
+	isJoint bool
 }
 
 // getNodesToPath returns a list of childNodes that point to the path,
@@ -1114,11 +1130,11 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 	if err != nil {
 		return err
 	}
-	encKey := buck.GetEncKey()
 	buckPath, err := util.NewResolvedPath(buck.Path)
 	if err != nil {
 		return err
 	}
+	encKey := buck.GetEncKey()
 	np, r, err := s.getNodesToPath(server.Context(), buckPath, req.Path, encKey)
 	if err != nil {
 		return err
@@ -1216,11 +1232,11 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	if err != nil {
 		return nil, err
 	}
-	encKey := buck.GetEncKey()
 	buckPath, err := util.NewResolvedPath(buck.Path)
 	if err != nil {
 		return nil, err
 	}
+	encKey := buck.GetEncKey()
 	if encKey != nil {
 		if err = s.unpinNodeAndBranch(ctx, buckPath, encKey); err != nil {
 			return nil, err
@@ -1274,8 +1290,8 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 		return nil, status.Error(codes.FailedPrecondition, bucks.ErrNonFastForward.Error())
 	}
 
-	encKey := buck.GetEncKey()
 	buckPath := path.New(buck.Path)
+	encKey := buck.GetEncKey()
 	var dirpth path.Resolved
 	if encKey != nil {
 		dirpth, err = s.removeNodeAtPath(ctx, path.Join(path.New(buck.Path), filePath), encKey)
@@ -1329,7 +1345,7 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	if r != "" {
 		return nil, fmt.Errorf("could not resolve path: %s", pth)
 	}
-	np[len(np)-1].isLeaf = true
+	np[len(np)-1].isJoint = true
 
 	// Now, we have a full list of nodes to the insert location,
 	// but the existing nodes need to be updated and re-encrypted.
@@ -1346,7 +1362,7 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 			if err := p.RemoveNodeLink(np[i].name); err != nil {
 				return nil, err
 			}
-			if !np[i].isLeaf {
+			if !np[i].isJoint {
 				if err := p.AddNodeLink(np[i].name, np[i].new); err != nil {
 					return nil, err
 				}
@@ -1364,7 +1380,7 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	}
 	// Update / remove node pins
 	for _, n := range np {
-		if n.isLeaf {
+		if n.isJoint {
 			if err = s.unpinNodeAndBranch(ctx, n.old, key); err != nil {
 				return nil, err
 			}

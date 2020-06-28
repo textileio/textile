@@ -413,7 +413,8 @@ func TestClient_SetPath(t *testing.T) {
 		// level.
 		NumFilesAtImportedLevelSecond int
 	}{
-		{Name: "nested",
+		{
+			Name: "nested",
 			Path: "nested",
 			// At root level, .seed and nested dir.
 			NumFilesAtRootFirst: 2,
@@ -425,7 +426,8 @@ func TestClient_SetPath(t *testing.T) {
 		},
 		// Edge case, Path is empty. So "AtRoot" or "AtImportedLevel"
 		// is the same.
-		{Name: "root",
+		{
+			Name:                         "root",
 			Path:                         "",
 			NumFilesAtRootFirst:          3,
 			NumFilesAtImportedLevelFirst: 3,
@@ -523,7 +525,8 @@ func TestClient_SetPath_Private(t *testing.T) {
 		// level.
 		NumFilesAtImportedLevelSecond int
 	}{
-		{Name: "nested",
+		{
+			Name: "nested",
 			Path: "nested",
 			// At root level, .seed and nested dir.
 			NumFilesAtRootFirst: 2,
@@ -535,7 +538,8 @@ func TestClient_SetPath_Private(t *testing.T) {
 		},
 		// Edge case, Path is empty. So "AtRoot" or "AtImportedLevel"
 		// is the same.
-		{Name: "root",
+		{
+			Name:                         "root",
 			Path:                         "",
 			NumFilesAtRootFirst:          3,
 			NumFilesAtImportedLevelFirst: 3,
