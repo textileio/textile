@@ -13,7 +13,7 @@ import (
 var bucketEncryptCmd = &cobra.Command{
 	Use:   "encrypt [file] [password]",
 	Short: "Encrypt file with a password",
-	Long:  `Encrypts file with a password.`,
+	Long:  `Encrypts file with a password (WARNING: Password is not recoverable).`,
 	Args:  cobra.ExactArgs(2),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(config.Viper, config.Flags)

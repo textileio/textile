@@ -20,7 +20,7 @@ func WithName(name string) InitOption {
 	}
 }
 
-// WithPrivate sets an encryption password for the bucket.
+// WithPrivate specifies that an encryption password will be used for the bucket.
 func WithPrivate(private bool) InitOption {
 	return func(args *initOptions) {
 		args.private = private

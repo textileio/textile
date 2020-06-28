@@ -55,57 +55,18 @@ func TestClient_Init(t *testing.T) {
 func TestClient_InitWithCid(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
-	_ = client
 	defer done()
 
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
+	t.Run("public", func(t *testing.T) {
+		initWithCid(t, ctx, client, false)
+	})
 
-	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
-	require.NoError(t, err)
-	p, err := ipfs.Unixfs().Add(
-		ctx,
-		ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-			"file1.jpg": ipfsfiles.NewReaderFile(file1),
-			"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-				"file2.jpg": ipfsfiles.NewReaderFile(file2),
-			}),
-		}),
-	)
-	require.NoError(t, err)
-	initCid := p.Cid()
-	buck, err := client.Init(ctx, c.WithCid(initCid))
-	require.NoError(t, err)
-
-	// Assert top level bucket.
-	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.True(t, rep.Item.IsDir)
-	topLevelNames := make([]string, 3)
-	for i, n := range rep.Item.Items {
-		topLevelNames[i] = n.Name
-	}
-	assert.Contains(t, topLevelNames, "file1.jpg")
-	assert.Contains(t, topLevelNames, "folder1")
-
-	// Assert inner directory.
-	rep, err = client.ListPath(ctx, buck.Root.Key, "folder1")
-	require.Nil(t, err)
-	assert.True(t, rep.Item.IsDir)
-	assert.Equal(t, 1, len(rep.Item.Items))
-	assert.Equal(t, rep.Item.Items[0].Name, "file2.jpg")
+	t.Run("private", func(t *testing.T) {
+		initWithCid(t, ctx, client, true)
+	})
 }
 
-func TestClient_InitWithCid_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	_ = client
-	defer done()
-
+func initWithCid(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	file1, err := os.Open("testdata/file1.jpg")
 	require.Nil(t, err)
 	defer file1.Close()
@@ -126,7 +87,7 @@ func TestClient_InitWithCid_Private(t *testing.T) {
 	)
 	require.NoError(t, err)
 	initCid := p.Cid()
-	buck, err := client.Init(ctx, c.WithCid(initCid), c.WithPrivate(true))
+	buck, err := client.Init(ctx, c.WithCid(initCid), c.WithPrivate(private))
 	require.NoError(t, err)
 
 	// Assert top level bucket.
@@ -209,7 +170,17 @@ func TestClient_ListPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
+	t.Run("public", func(t *testing.T) {
+		listPath(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		listPath(t, ctx, client, true)
+	})
+}
+
+func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
 
 	t.Run("empty", func(t *testing.T) {
@@ -251,98 +222,22 @@ func TestClient_ListPath(t *testing.T) {
 	})
 }
 
-func TestClient_ListPath_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, c.WithPrivate(true))
-	require.Nil(t, err)
-
-	t.Run("empty", func(t *testing.T) {
-		rep, err := client.ListPath(ctx, buck.Root.Key, "")
-		require.Nil(t, err)
-		assert.NotEmpty(t, rep.Root)
-		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 1, len(rep.Item.Items))
-	})
-
-	file, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "dir1/file1.jpg", file)
-	require.Nil(t, err)
-	_, root, err := client.PushPath(ctx, buck.Root.Key, "dir2/note.txt", bytes.NewReader([]byte("Lorem ipsum dolor sit amet...")))
-	require.Nil(t, err)
-
-	t.Run("root dir", func(t *testing.T) {
-		rep, err := client.ListPath(ctx, buck.Root.Key, "")
-		require.Nil(t, err)
-		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 3, len(rep.Item.Items))
-	})
-
-	t.Run("nested dir", func(t *testing.T) {
-		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1")
-		require.Nil(t, err)
-		assert.True(t, rep.Item.IsDir)
-		assert.Equal(t, 1, len(rep.Item.Items))
-	})
-
-	t.Run("file", func(t *testing.T) {
-		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1/file1.jpg")
-		require.Nil(t, err)
-		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
-		assert.False(t, rep.Item.IsDir)
-		assert.Equal(t, root.String(), rep.Root.Path)
-	})
-}
-
 func TestClient_PushPath(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
-	require.Nil(t, err)
+	t.Run("public", func(t *testing.T) {
+		pushPath(t, ctx, client, false)
+	})
 
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	progress1 := make(chan int64)
-	go func() {
-		for p := range progress1 {
-			t.Logf("progress: %d", p)
-		}
-	}()
-	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1, c.WithProgress(progress1))
-	require.Nil(t, err)
-	assert.NotEmpty(t, pth1)
-	assert.NotEmpty(t, root1)
-
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-	progress2 := make(chan int64)
-	go func() {
-		for p := range progress2 {
-			t.Logf("progress: %d", p)
-		}
-	}()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
-	require.Nil(t, err)
-
-	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.Equal(t, 3, len(rep.Item.Items))
+	t.Run("private", func(t *testing.T) {
+		pushPath(t, ctx, client, true)
+	})
 }
 
-func TestClient_PushPath_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, c.WithPrivate(true))
+func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -397,118 +292,17 @@ func TestClient_PushPath_Private(t *testing.T) {
 
 func TestClient_SetPath(t *testing.T) {
 	t.Parallel()
-	innerPaths := []struct {
-		Name string
-		Path string
-		// How many files should be expected at the bucket root
-		// in the first SetHead.
-		NumFilesAtRootFirst int
-		// How many files should be expected at the *imported* Cid
-		// level.
-		NumFilesAtImportedLevelFirst int
-		// How many files should be expected at the bucket root
-		// in the second SetHead.
-		NumFilesAtRootSecond int
-		// How many files should be expected at the *imported* Cid
-		// level.
-		NumFilesAtImportedLevelSecond int
-	}{
-		{
-			Name: "nested",
-			Path: "nested",
-			// At root level, .seed and nested dir.
-			NumFilesAtRootFirst: 2,
-			// The first SetHead has one file, and one dir.
-			NumFilesAtImportedLevelFirst: 2,
-			NumFilesAtRootSecond:         2,
-			// The second SetHead only has one file.
-			NumFilesAtImportedLevelSecond: 1,
-		},
-		// Edge case, Path is empty. So "AtRoot" or "AtImportedLevel"
-		// is the same.
-		{
-			Name:                         "root",
-			Path:                         "",
-			NumFilesAtRootFirst:          3,
-			NumFilesAtImportedLevelFirst: 3,
-			// In both below cases, the files are the .seed
-			// and the fileVersion2.jpg.
-			NumFilesAtRootSecond:          2,
-			NumFilesAtImportedLevelSecond: 2,
-		},
-	}
 
-	for _, innerPath := range innerPaths {
-		t.Run(innerPath.Name, func(t *testing.T) {
-			ctx, client, done := setup(t)
-			defer done()
+	t.Run("public", func(t *testing.T) {
+		setPath(t, false)
+	})
 
-			file1, err := os.Open("testdata/file1.jpg")
-			require.Nil(t, err)
-			defer file1.Close()
-			file2, err := os.Open("testdata/file2.jpg")
-			require.Nil(t, err)
-			defer file2.Close()
-
-			ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
-			require.NoError(t, err)
-			p, err := ipfs.Unixfs().Add(
-				ctx,
-				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-					"file1.jpg": ipfsfiles.NewReaderFile(file1),
-					"folder1": ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-						"file2.jpg": ipfsfiles.NewReaderFile(file2),
-					}),
-				}),
-			)
-			require.NoError(t, err)
-
-			buck, err := client.Init(ctx)
-			require.NoError(t, err)
-
-			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
-			require.NoError(t, err)
-
-			rep, err := client.ListPath(ctx, buck.Root.Key, "")
-			require.Nil(t, err)
-			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootFirst)
-
-			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
-			require.Nil(t, err)
-			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelFirst)
-
-			// SetPath again in the same path, but with a different dag.
-			// Should replace what was already under that path.
-			file1, err = os.Open("testdata/file1.jpg")
-			require.Nil(t, err)
-			defer file1.Close()
-			p, err = ipfs.Unixfs().Add(
-				ctx,
-				ipfsfiles.NewMapDirectory(map[string]ipfsfiles.Node{
-					"fileVersion2.jpg": ipfsfiles.NewReaderFile(file1),
-				}),
-			)
-			require.NoError(t, err)
-			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
-			require.NoError(t, err)
-
-			rep, err = client.ListPath(ctx, buck.Root.Key, "")
-			require.Nil(t, err)
-			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtRootSecond)
-
-			rep, err = client.ListPath(ctx, buck.Root.Key, innerPath.Path)
-			require.Nil(t, err)
-			assert.True(t, rep.Item.IsDir)
-			assert.Len(t, rep.Item.Items, innerPath.NumFilesAtImportedLevelSecond)
-		})
-	}
+	t.Run("private", func(t *testing.T) {
+		setPath(t, true)
+	})
 }
 
-func TestClient_SetPath_Private(t *testing.T) {
-	t.Parallel()
+func setPath(t *testing.T, private bool) {
 	innerPaths := []struct {
 		Name string
 		Path string
@@ -575,7 +369,7 @@ func TestClient_SetPath_Private(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			buck, err := client.Init(ctx, c.WithPrivate(true))
+			buck, err := client.Init(ctx, c.WithPrivate(private))
 			require.NoError(t, err)
 
 			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
@@ -624,38 +418,17 @@ func TestClient_PullPath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
-	require.Nil(t, err)
+	t.Run("public", func(t *testing.T) {
+		pullPath(t, ctx, client, false)
+	})
 
-	file, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-	require.Nil(t, err)
-
-	tmp, err := ioutil.TempFile("", "")
-	require.Nil(t, err)
-	defer tmp.Close()
-
-	progress := make(chan int64)
-	go func() {
-		for p := range progress {
-			t.Logf("progress: %d", p)
-		}
-	}()
-	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
-	require.Nil(t, err)
-	info, err := tmp.Stat()
-	require.Nil(t, err)
-	t.Logf("wrote file with size %d", info.Size())
+	t.Run("private", func(t *testing.T) {
+		pullPath(t, ctx, client, true)
+	})
 }
 
-func TestClient_PullPath_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, c.WithPrivate(true))
+func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
 
 	file, err := os.Open("testdata/file1.jpg")
@@ -695,32 +468,17 @@ func TestClient_Remove(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
-	require.Nil(t, err)
+	t.Run("public", func(t *testing.T) {
+		remove(t, ctx, client, false)
+	})
 
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-	require.Nil(t, err)
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
-	require.Nil(t, err)
-
-	err = client.Remove(ctx, buck.Root.Key)
-	require.Nil(t, err)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.NotNil(t, err)
+	t.Run("private", func(t *testing.T) {
+		remove(t, ctx, client, true)
+	})
 }
 
-func TestClient_Remove_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, c.WithPrivate(true))
+func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -745,44 +503,17 @@ func TestClient_RemovePath(t *testing.T) {
 	ctx, client, done := setup(t)
 	defer done()
 
-	buck, err := client.Init(ctx)
-	require.Nil(t, err)
+	t.Run("public", func(t *testing.T) {
+		removePath(t, ctx, client, false)
+	})
 
-	file1, err := os.Open("testdata/file1.jpg")
-	require.Nil(t, err)
-	defer file1.Close()
-	file2, err := os.Open("testdata/file2.jpg")
-	require.Nil(t, err)
-	defer file2.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-	require.Nil(t, err)
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
-	require.Nil(t, err)
-
-	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.Nil(t, err)
-	assert.NotEmpty(t, pth)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.NotNil(t, err)
-	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.Equal(t, 3, len(rep.Item.Items))
-
-	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
-	require.Nil(t, err)
-	_, err = client.ListPath(ctx, buck.Root.Key, "again")
-	require.NotNil(t, err)
-	rep, err = client.ListPath(ctx, buck.Root.Key, "")
-	require.Nil(t, err)
-	assert.Equal(t, 2, len(rep.Item.Items))
+	t.Run("private", func(t *testing.T) {
+		removePath(t, ctx, client, true)
+	})
 }
 
-func TestClient_RemovePath_Private(t *testing.T) {
-	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
-
-	buck, err := client.Init(ctx, c.WithPrivate(true))
+func removePath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -817,7 +548,6 @@ func TestClient_RemovePath_Private(t *testing.T) {
 func TestClient_ListIpfsPath(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
-	_ = client
 	defer done()
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -849,7 +579,6 @@ func TestClient_ListIpfsPath(t *testing.T) {
 func TestClient_PullIpfsPath(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
-	_ = client
 	defer done()
 
 	file1, err := os.Open("testdata/file1.jpg")

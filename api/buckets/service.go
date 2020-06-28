@@ -615,19 +615,31 @@ func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest)
 // pathToItem returns items at path, optionally including one level down of links.
 // If key is not nil, the items will be decrypted.
 func (s *Service) pathToItem(ctx context.Context, pth path.Path, includeNextLevel bool, key []byte) (*pb.ListPathItem, error) {
-	rp, fp, err := util.ParsePath(pth)
-	if err != nil {
-		return nil, err
+	var n ipld.Node
+	if key != nil {
+		rp, fp, err := util.ParsePath(pth)
+		if err != nil {
+			return nil, err
+		}
+		np, r, err := s.getNodesToPath(ctx, rp, fp, key)
+		if err != nil {
+			return nil, err
+		}
+		if r != "" {
+			return nil, fmt.Errorf("could not resolve path: %s", pth)
+		}
+		n = np[len(np)-1].new
+	} else {
+		rp, err := s.IPFSClient.ResolvePath(ctx, pth)
+		if err != nil {
+			return nil, err
+		}
+		n, err = s.IPFSClient.Dag().Get(ctx, rp.Cid())
+		if err != nil {
+			return nil, err
+		}
 	}
-	np, r, err := s.getNodesToPath(ctx, rp, fp, key)
-	if err != nil {
-		return nil, err
-	}
-	if r != "" {
-		return nil, fmt.Errorf("could not resolve path: %s", pth)
-	}
-	n := np[len(np)-1]
-	return s.nodeToItem(ctx, n.new, pth.String(), includeNextLevel)
+	return s.nodeToItem(ctx, n, pth.String(), includeNextLevel)
 }
 
 // getNodeAtPath returns the decrypted node at path.
@@ -1075,16 +1087,12 @@ func (s *Service) getNodesToPath(ctx context.Context, base path.Resolved, pth st
 				return
 			}
 			nodes = append(nodes, childNode{old: p, new: top, name: parts[i]})
-			if i == len(parts)-1 {
-				remainder = ""
-			} else {
-				remainder = strings.Join(parts[i+1:], "/")
-			}
 		} else {
+			remainder = strings.Join(parts[i:], "/")
 			return nodes, remainder, nil
 		}
 	}
-	return
+	return nodes, "", nil
 }
 
 func getLink(lnks []*ipld.Link, name string) *ipld.Link {

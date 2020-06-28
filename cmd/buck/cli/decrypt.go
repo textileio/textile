@@ -12,7 +12,7 @@ import (
 var bucketDecryptCmd = &cobra.Command{
 	Use:   "decrypt [path] [password]",
 	Short: "Decrypt bucket objects at path with password",
-	Long:  `Decrypts bucket objects at path with the given password.`,
+	Long:  `Decrypts bucket objects at path with the given password and writes to stdout.`,
 	Args:  cobra.ExactArgs(2),
 	PreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(config.Viper, config.Flags)
