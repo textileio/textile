@@ -61,7 +61,7 @@ require (
 	github.com/stretchr/testify v1.6.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.20
+	github.com/textileio/go-threads v0.1.21
 	github.com/textileio/powergate v0.0.1-beta.8.0.20200608231834-31e7fbfbfd68
 	github.com/textileio/uiprogress v0.0.3
 	go.mongodb.org/mongo-driver v1.3.2
