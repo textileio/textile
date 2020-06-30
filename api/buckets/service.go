@@ -1138,20 +1138,29 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 	if err != nil {
 		return err
 	}
-	buckPath, err := util.NewResolvedPath(buck.Path)
-	if err != nil {
-		return err
-	}
+
+	var fpth path.Resolved
 	encKey := buck.GetEncKey()
-	np, r, err := s.getNodesToPath(server.Context(), buckPath, req.Path, encKey)
-	if err != nil {
-		return err
+	if encKey != nil {
+		buckPath, err := util.NewResolvedPath(buck.Path)
+		if err != nil {
+			return err
+		}
+		np, r, err := s.getNodesToPath(server.Context(), buckPath, req.Path, encKey)
+		if err != nil {
+			return err
+		}
+		if r != "" {
+			return fmt.Errorf("could not resolve path: %s", pth)
+		}
+		fn := np[len(np)-1]
+		fpth = path.IpfsPath(fn.new.Cid())
+	} else {
+		fpth, err = s.IPFSClient.ResolvePath(server.Context(), pth)
+		if err != nil {
+			return err
+		}
 	}
-	if r != "" {
-		return fmt.Errorf("could not resolve path: %s", pth)
-	}
-	fn := np[len(np)-1]
-	fpth := path.IpfsPath(fn.new.Cid())
 
 	node, err := s.IPFSClient.Unixfs().Get(server.Context(), fpth)
 	if err != nil {
