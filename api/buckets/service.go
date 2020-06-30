@@ -296,24 +296,47 @@ func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key
 			node: add,
 		}
 	}
-	tree, err := s.encryptDag(ctx, s.IPFSClient.Dag(), top, key, addNode)
+	nmap, err := s.encryptDag(ctx, s.IPFSClient.Dag(), top, key, addNode)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Collect new nodes
-	nodes := make([]ipld.Node, len(tree))
+	nodes := make([]ipld.Node, len(nmap))
 	i := 0
-	for _, tn := range tree {
+	for _, tn := range nmap {
 		nodes[i] = tn.node
 		i++
 	}
-	return tree[top.Cid()].node, nodes, nil
+	return nmap[top.Cid()].node, nodes, nil
 }
 
 type namedNode struct {
 	name string
 	node ipld.Node
+}
+
+type namedNodes struct {
+	sync.RWMutex
+	m map[cid.Cid]*namedNode
+}
+
+func newNamedNodes() *namedNodes {
+	return &namedNodes{
+		m: make(map[cid.Cid]*namedNode),
+	}
+}
+
+func (nn *namedNodes) Get(c cid.Cid) *namedNode {
+	nn.RLock()
+	defer nn.RUnlock()
+	return nn.m[c]
+}
+
+func (nn *namedNodes) Store(c cid.Cid, n *namedNode) {
+	nn.Lock()
+	defer nn.Unlock()
+	nn.m[c] = n
 }
 
 // encryptDag creates an encrypted version of root that includes all child nodes.
@@ -355,7 +378,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 	}
 
 	// Step 2: Encrypt all leaf nodes in parallel
-	nmap := make(map[cid.Cid]*namedNode)
+	nmap := newNamedNodes()
 	var wg sync.WaitGroup
 	errs := make(chan error)
 	wgDone := make(chan bool)
@@ -380,10 +403,10 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 					return
 				}
 			}
-			nmap[l.node.Cid()] = &namedNode{ // todo: sync access
+			nmap.Store(l.node.Cid(), &namedNode{
 				name: l.name,
 				node: cn,
-			}
+			})
 		}(l)
 	}
 	go func() {
@@ -405,7 +428,10 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 		dir := unixfs.EmptyDirNode()
 		dir.SetCidBuilder(dag.V1CidPrefix())
 		for _, l := range jn.Links() {
-			ln := nmap[l.Cid]
+			ln := nmap.Get(l.Cid)
+			if ln == nil {
+				return nil, fmt.Errorf("link node not found")
+			}
 			if err := dir.AddNodeLink(ln.name, ln.node); err != nil {
 				return nil, err
 			}
@@ -414,18 +440,18 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 			if err := dir.AddNodeLink(add.name, add.node); err != nil {
 				return nil, err
 			}
-			nmap[add.node.Cid()] = add
+			nmap.Store(add.node.Cid(), add)
 		}
 		cn, err := encryptNode(dir, key)
 		if err != nil {
 			return nil, err
 		}
-		nmap[jn.Cid()] = &namedNode{
+		nmap.Store(jn.Cid(), &namedNode{
 			name: j.name,
 			node: cn,
-		}
+		})
 	}
-	return nmap, nil
+	return nmap.m, nil
 }
 
 func (s *Service) encryptFileNode(ctx context.Context, n ipld.Node, key []byte) (ipld.Node, error) {
