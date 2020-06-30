@@ -322,7 +322,7 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 // Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
 // The behaviour changes depending on different cases, depending on a previous archive.
 // 0. No previous archive: simply pushes the Cid to the FFS instance.
-// 1. Last archive exist with the same Cid:
+// 1. Last archive exists with the same Cid:
 //   a. Last archive Successful: fails, there's nothing to do.
 //   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
 //   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
