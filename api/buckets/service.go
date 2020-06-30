@@ -32,6 +32,7 @@ import (
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
 	"github.com/textileio/textile/util"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -379,45 +380,36 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 
 	// Step 2: Encrypt all leaf nodes in parallel
 	nmap := newNamedNodes()
-	var wg sync.WaitGroup
-	errs := make(chan error)
-	wgDone := make(chan bool)
+	eg, gctx := errgroup.WithContext(ctx)
 	for _, l := range leaves {
-		wg.Add(1)
-		go func(l *namedNode) {
-			defer wg.Done()
+		l := l
+		eg.Go(func() error {
+			if gctx.Err() != nil {
+				return nil
+			}
 			var cn ipld.Node
 			switch l.node.(type) {
 			case *dag.RawNode:
 				data, err := encryptData(l.node.RawData(), key)
 				if err != nil {
-					errs <- err
-					return
+					return err
 				}
 				cn = dag.NewRawNode(data)
 			case *dag.ProtoNode:
 				var err error
-				cn, err = s.encryptFileNode(ctx, l.node, key)
+				cn, err = s.encryptFileNode(gctx, l.node, key)
 				if err != nil {
-					errs <- err
-					return
+					return err
 				}
 			}
 			nmap.Store(l.node.Cid(), &namedNode{
 				name: l.name,
 				node: cn,
 			})
-		}(l)
+			return nil
+		})
 	}
-	go func() {
-		wg.Wait()
-		close(wgDone)
-	}()
-	select {
-	case <-wgDone:
-		break
-	case err := <-errs:
-		close(errs)
+	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
 
