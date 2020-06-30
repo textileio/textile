@@ -15,6 +15,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	pc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/powergate/health"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
@@ -190,6 +191,19 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
+	conf.FFSDefaultConfig = &ffs.DefaultConfig{
+		Hot: ffs.HotConfig{
+			Enabled: true,
+			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
+		},
+		Cold: ffs.ColdConfig{
+			Enabled: true,
+			Filecoin: ffs.FilConfig{
+				RepFactor:       1,
+				DealMinDuration: 1000,
+			},
+		},
+	}
 	shutdown := apitest.MakeTextileCustom(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)

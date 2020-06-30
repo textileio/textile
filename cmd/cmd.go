@@ -23,6 +23,7 @@ import (
 var (
 	Timeout              = time.Minute
 	TimeoutArchiveStatus = time.Second * 5
+	TimeoutArchiveWatch  = time.Hour * 12
 	Bold                 = promptui.Styler(promptui.FGBold)
 )
 

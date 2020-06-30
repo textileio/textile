@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -68,7 +67,7 @@ var bucketArchiveStatusCmd = &cobra.Command{
 			fmt.Printf("\n")
 			cmd.Message("Cid logs:")
 			ch := make(chan string)
-			wCtx, cancel := context.WithCancel(context.Background())
+			wCtx, cancel := clients.Ctx.Auth(cmd.TimeoutArchiveWatch)
 			defer cancel()
 			go func() {
 				err = clients.Buckets.ArchiveWatch(wCtx, key, ch)
@@ -76,7 +75,7 @@ var bucketArchiveStatusCmd = &cobra.Command{
 			}()
 			for msg := range ch {
 				cmd.Message("\t %s", msg)
-				sctx, scancel := context.WithTimeout(context.Background(), cmd.TimeoutArchiveStatus)
+				sctx, scancel := clients.Ctx.Auth(cmd.TimeoutArchiveStatus)
 				r, err := clients.Buckets.ArchiveStatus(sctx, key)
 				if err != nil {
 					cmd.Fatal(err)
