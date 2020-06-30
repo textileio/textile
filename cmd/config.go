@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/cmd/pow/cmd"
 )
 
 func InitConfigCmd(rootCmd *cobra.Command, v *viper.Viper, dir string) {
@@ -92,10 +91,10 @@ func WriteConfig(c *cobra.Command, v *viper.Viper, name string) {
 
 	filename := filepath.Join(dir, "config.yml")
 	if _, err := os.Stat(filename); err == nil {
-		cmd.Fatal(fmt.Errorf("%s already exists", filename))
+		Fatal(fmt.Errorf("%s already exists", filename))
 	}
 	if err := v.WriteConfigAs(filename); err != nil {
-		cmd.Fatal(err)
+		Fatal(err)
 	}
 }
 
@@ -133,7 +132,7 @@ func ThreadIDFromString(str string) thread.ID {
 	}
 	id, err := thread.Decode(str)
 	if err != nil {
-		cmd.Fatal(err)
+		Fatal(err)
 	}
 	return id
 }

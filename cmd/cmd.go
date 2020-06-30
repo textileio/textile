@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/cmd/pow/cmd"
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
@@ -72,20 +71,20 @@ func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
 	var err error
 	c.Threads, err = tc.NewClient(target, opts...)
 	if err != nil {
-		cmd.Fatal(err)
+		Fatal(err)
 	}
 	c.Buckets, err = bc.NewClient(target, opts...)
 	if err != nil {
-		cmd.Fatal(err)
+		Fatal(err)
 	}
 	if hub {
 		c.Hub, err = hc.NewClient(target, opts...)
 		if err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 		c.Users, err = uc.NewClient(target, opts...)
 		if err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 	}
 	return c
@@ -94,22 +93,22 @@ func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
 func (c *Clients) Close() {
 	if c.Threads != nil {
 		if err := c.Threads.Close(); err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 	}
 	if c.Buckets != nil {
 		if err := c.Buckets.Close(); err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 	}
 	if c.Hub != nil {
 		if err := c.Hub.Close(); err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 	}
 	if c.Users != nil {
 		if err := c.Users.Close(); err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 	}
 }
@@ -128,7 +127,7 @@ func (c *Clients) ListThreads(dbsOnly bool) []Thread {
 	if c.Users != nil {
 		list, err := c.Users.ListThreads(ctx)
 		if err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 		for _, t := range list.List {
 			if dbsOnly && !t.IsDB {
@@ -136,7 +135,7 @@ func (c *Clients) ListThreads(dbsOnly bool) []Thread {
 			}
 			id, err := thread.Cast(t.ID)
 			if err != nil {
-				cmd.Fatal(err)
+				Fatal(err)
 			}
 			if t.Name == "" {
 				t.Name = "unnamed"
@@ -151,7 +150,7 @@ func (c *Clients) ListThreads(dbsOnly bool) []Thread {
 	} else {
 		list, err := c.Threads.ListDBs(ctx)
 		if err != nil {
-			cmd.Fatal(err)
+			Fatal(err)
 		}
 		for id, t := range list {
 			if t.Name == "" {
