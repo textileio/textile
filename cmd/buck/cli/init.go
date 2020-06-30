@@ -149,7 +149,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			}
 			if !c.Flags().Changed("private") {
 				privp := promptui.Prompt{
-					Label:     "Encrypt bucket contents?",
+					Label:     "Encrypt bucket contents",
 					IsConfirm: true,
 				}
 				if _, err = privp.Run(); err == nil {
