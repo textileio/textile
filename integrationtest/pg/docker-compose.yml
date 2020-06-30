@@ -15,12 +15,13 @@ services:
       - lotus
     environment:
       - POWD_DEVNET=true
+      - POWD_BIGSECTORS=false
       - POWD_LOTUSHOST=/dns4/lotus/tcp/7777
       - POWD_IPFSAPIADDR=/dns4/ipfs/tcp/5001
     restart: unless-stopped
 
   lotus:
-    image: textile/lotus-devnet:sha-03a015d
+    image: textile/lotus-devnet:v0.4.0
     environment:
       - TEXLOTUSDEVNET_SPEED=500
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
