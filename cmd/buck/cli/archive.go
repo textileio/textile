@@ -22,7 +22,7 @@ var bucketArchiveCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		cmd.Warn("Warning! Archiving is based on an experimental testnet. Your data may be lost at any time.")
 		prompt := promptui.Prompt{
-			Label:     "Proceed?",
+			Label:     "Proceed",
 			IsConfirm: true,
 		}
 		if _, err := prompt.Run(); err != nil {
