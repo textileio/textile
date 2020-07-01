@@ -321,7 +321,7 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 
 // Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
 // The behaviour changes depending on different cases, depending on a previous archive.
-// 0. No previous archive: simply pushes the Cid to the FFS instance.
+// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
 // 1. Last archive exists with the same Cid:
 //   a. Last archive Successful: fails, there's nothing to do.
 //   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
@@ -348,10 +348,10 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 
 	var jid ffs.JobID
 	firstTimeArchive := ffsi.Archives.Current.JobID == ""
-	if firstTimeArchive {
+	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid)
+		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid, powc.WithOverride(true))
 		if err != nil {
 			return fmt.Errorf("pushing config: %s", err)
 		}
@@ -361,8 +361,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 			return fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
-		// Case 1
-		if oldCid.Equals(newCid) {
+		if oldCid.Equals(newCid) { // Case 1.
 			switch ffs.JobStatus(ffsi.Archives.Current.JobStatus) {
 			// Case 1.a.
 			case ffs.Success:
@@ -377,9 +376,9 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 					return fmt.Errorf("pushing config: %s", err)
 				}
 			default:
-				return fmt.Errorf("unexpected current archive status")
+				return fmt.Errorf("unexpected current archive status: %d", ffsi.Archives.Current.JobStatus)
 			}
-		} else {
+		} else { // Case 2.
 			jid, err = b.pgClient.FFS.Replace(ctxFFS, oldCid, newCid)
 			if err != nil {
 				return fmt.Errorf("replacing cid: %s", err)
