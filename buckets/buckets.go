@@ -42,7 +42,7 @@ var (
 
 	// ErrBalance is returned when archiving a bucket which
 	// underlying FFS instance balance is zero.
-	ErrZeroBalance = errors.New("bucket FIL balance is zero")
+	ErrZeroBalance = errors.New("bucket FIL balance is zero, if recently created wait 30s")
 
 	schema  *jsonschema.Schema
 	indexes = []db.Index{{
