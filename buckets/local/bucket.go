@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,7 +23,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	md "github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/go-unixfs"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	"github.com/ipfs/go-unixfs/importer/helpers"
@@ -184,7 +185,7 @@ func (b *Bucket) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGS
 		return nil, nil, err
 	}
 	root.SetCidBuilder(prefix)
-	editor := dagutils.NewDagEditor(root, dag)
+	editor := du.NewDagEditor(root, dag)
 	maps := make(map[string]cid.Cid)
 	abs, err := filepath.Abs(pth)
 	if err != nil {
@@ -271,7 +272,7 @@ func (b *Bucket) SaveFile(ctx context.Context, pth string, name string) error {
 		return err
 	}
 	root.SetCidBuilder(prefix)
-	editor := dagutils.NewDagEditor(root, b.dag)
+	editor := du.NewDagEditor(root, b.dag)
 	f, err := addFile(editor.GetDagService(), b.layout, prefix, r)
 	if err != nil {
 		return err
@@ -301,7 +302,7 @@ func (b *Bucket) HashFile(pth string) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
-	n, err := addFile(dagutils.NewMemoryDagService(), b.layout, prefix, r)
+	n, err := addFile(du.NewMemoryDagService(), b.layout, prefix, r)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -314,8 +315,8 @@ func (b *Bucket) Get(ctx context.Context, c cid.Cid) (ipld.Node, error) {
 }
 
 // Diff returns a list of changes that are present in path compared to the bucket.
-func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change, err error) {
-	tmp := dagutils.NewMemoryDagService()
+func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*du.Change, err error) {
+	tmp := du.NewMemoryDagService()
 	var an ipld.Node
 	lc, _, err := b.Root()
 	if err != nil {
@@ -339,7 +340,7 @@ func (b *Bucket) Diff(ctx context.Context, pth string) (diff []*dagutils.Change,
 	if err != nil {
 		return
 	}
-	return dagutils.Diff(ctx, tmp, an, bn)
+	return Diff(ctx, tmp, an, bn)
 }
 
 // SetRemotePath sets or creates a mapping from a local path to a remote cid.
@@ -446,4 +447,108 @@ func addFile(dag ipld.DAGService, layout options.Layout, prefix cid.Prefix, r io
 		return nil, fmt.Errorf("invalid layout")
 	}
 	return n, err
+}
+
+// Diff returns a set of changes that transform node 'a' into node 'b'.
+// Modified from https://github.com/ipfs/go-merkledag/blob/master/dagutils/diff.go#L104
+// It only traverses links in the following cases:
+// 1. two node's links number are greater than 0.
+// 2. both of two nodes are ProtoNode.
+// 3. neither of the nodes is a file node, which contains only unnamed raw blocks
+// Otherwise, it compares the cid and emits a Mod change object.
+func Diff(ctx context.Context, ds ipld.DAGService, a, b ipld.Node) ([]*du.Change, error) {
+	// Base case where both nodes are leaves, just compare
+	// their CIDs.
+	if len(a.Links()) == 0 && len(b.Links()) == 0 {
+		return getChange(a, b)
+	}
+
+	var out []*du.Change
+	cleanA, okA := a.Copy().(*md.ProtoNode)
+	cleanB, okB := b.Copy().(*md.ProtoNode)
+	if !okA || !okB {
+		return getChange(a, b)
+	}
+
+	if isFileNode(cleanA) || isFileNode(cleanB) {
+		return []*du.Change{
+			{
+				Type:   du.Mod,
+				Before: a.Cid(),
+				After:  b.Cid(),
+			},
+		}, nil
+	}
+
+	// strip out unchanged stuff
+	for _, lnk := range a.Links() {
+		l, _, err := b.ResolveLink([]string{lnk.Name})
+		if err == nil {
+			if l.Cid.Equals(lnk.Cid) {
+				// no change... ignore it
+			} else {
+				anode, err := lnk.GetNode(ctx, ds)
+				if err != nil {
+					return nil, err
+				}
+
+				bnode, err := l.GetNode(ctx, ds)
+				if err != nil {
+					return nil, err
+				}
+
+				sub, err := Diff(ctx, ds, anode, bnode)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, subc := range sub {
+					subc.Path = path.Join(lnk.Name, subc.Path)
+					out = append(out, subc)
+				}
+			}
+			_ = cleanA.RemoveNodeLink(l.Name)
+			_ = cleanB.RemoveNodeLink(l.Name)
+		}
+	}
+
+	for _, lnk := range cleanA.Links() {
+		out = append(out, &du.Change{
+			Type:   du.Remove,
+			Path:   lnk.Name,
+			Before: lnk.Cid,
+		})
+	}
+	for _, lnk := range cleanB.Links() {
+		out = append(out, &du.Change{
+			Type:  du.Add,
+			Path:  lnk.Name,
+			After: lnk.Cid,
+		})
+	}
+
+	return out, nil
+}
+
+// getChange copied from https://github.com/ipfs/go-merkledag/blob/master/dagutils/diff.go#L203
+func getChange(a, b ipld.Node) ([]*du.Change, error) {
+	if a.Cid().Equals(b.Cid()) {
+		return []*du.Change{}, nil
+	}
+	return []*du.Change{
+		{
+			Type:   du.Mod,
+			Before: a.Cid(),
+			After:  b.Cid(),
+		},
+	}, nil
+}
+
+func isFileNode(n ipld.Node) bool {
+	for _, l := range n.Links() {
+		if l.Name == "" {
+			return true
+		}
+	}
+	return false
 }
