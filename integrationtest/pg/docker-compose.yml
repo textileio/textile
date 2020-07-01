@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   powergate:
-    image: textile/powergate:sha-878a416
+    image: textile/powergate:sha-b46eada
     ports:
       - 8889:8889
       - 8888:8888
