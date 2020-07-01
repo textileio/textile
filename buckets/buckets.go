@@ -40,7 +40,7 @@ var (
 	// can be retrieved, since the bucket was never archived.
 	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
 
-	// ErrBalance is returned when archiving a bucket which
+	// ErrZeroBalance is returned when archiving a bucket which
 	// underlying FFS instance balance is zero.
 	ErrZeroBalance = errors.New("bucket FIL balance is zero, if recently created wait 30s")
 
