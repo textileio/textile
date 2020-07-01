@@ -28,8 +28,7 @@ import (
 
 func TestClient_Init(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	buck, err := client.Init(ctx, c.WithName("mybuck"))
 	require.Nil(t, err)
@@ -58,19 +57,18 @@ func TestClient_InitExceedLimit(t *testing.T) {
 	t.Parallel()
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketMaxNumberPerThread = 1
-	ctx, client, shutdown := setupWithConf(t, conf)
-	defer shutdown()
+	ctx, client := setupWithConf(t, conf)
 
 	_, err := client.Init(ctx, c.WithName("mybuck"))
 	require.Nil(t, err)
 	_, err = client.Init(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
+	require.NotNil(t, err)
 	require.Contains(t, err.Error(), buckets.ErrTooManyBucketsInThread.Error())
 }
 
 func TestClient_InitWithCid(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		initWithCid(t, ctx, client, false)
@@ -126,8 +124,7 @@ func initWithCid(t *testing.T, ctx context.Context, client *c.Client, private bo
 
 func TestClient_Root(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	buck, err := client.Init(ctx)
 	require.Nil(t, err)
@@ -143,8 +140,7 @@ func TestClient_Root(t *testing.T) {
 
 func TestClient_Links(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	buck, err := client.Init(ctx)
 	require.Nil(t, err)
@@ -157,8 +153,7 @@ func TestClient_Links(t *testing.T) {
 
 func TestClient_List(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("empty", func(t *testing.T) {
 		rep, err := client.List(ctx)
@@ -182,8 +177,7 @@ func TestClient_List(t *testing.T) {
 
 func TestClient_ListPath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		listPath(t, ctx, client, false)
@@ -239,8 +233,7 @@ func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 
 func TestClient_PushPath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		pushPath(t, ctx, client, false)
@@ -267,8 +260,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketMaxSize = maxBucketSize
-	ctx, client, shutdown := setupWithConf(t, conf)
-	defer shutdown()
+	ctx, client := setupWithConf(t, conf)
 
 	buck, err := client.Init(ctx)
 	require.Nil(t, err)
@@ -282,6 +274,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 	require.Nil(t, err)
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
+	require.NotNil(t, err)
 	require.Contains(t, err.Error(), buckets.ErrBucketExceedsMaxSize.Error())
 }
 
@@ -298,8 +291,7 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsTotalMaxSize = maxBucketsSize
-	ctx, client, shutdown := setupWithConf(t, conf)
-	defer shutdown()
+	ctx, client := setupWithConf(t, conf)
 
 	buck, err := client.Init(ctx)
 	require.Nil(t, err)
@@ -318,6 +310,7 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 	require.Nil(t, err)
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
+	require.NotNil(t, err)
 	require.Contains(t, err.Error(), buckets.ErrBucketsTotalSizeExceedsMaxSize.Error())
 }
 
@@ -334,8 +327,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsTotalMaxSize = maxBucketsSize
-	ctx, client, shutdown := setupWithConf(t, conf)
-	defer shutdown()
+	ctx, client := setupWithConf(t, conf)
 
 	buck, err := client.Init(ctx, c.WithPrivate(true))
 	require.Nil(t, err)
@@ -354,6 +346,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 	require.Nil(t, err)
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
+	require.NotNil(t, err)
 	require.Contains(t, err.Error(), buckets.ErrBucketsTotalSizeExceedsMaxSize.Error())
 }
 
@@ -467,8 +460,7 @@ func setPath(t *testing.T, private bool) {
 
 	for _, innerPath := range innerPaths {
 		t.Run(innerPath.Name, func(t *testing.T) {
-			ctx, client, done := setup(t)
-			defer done()
+			ctx, client := setup(t)
 
 			file1, err := os.Open("testdata/file1.jpg")
 			require.Nil(t, err)
@@ -536,8 +528,7 @@ func setPath(t *testing.T, private bool) {
 
 func TestClient_PullPath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		pullPath(t, ctx, client, false)
@@ -586,8 +577,7 @@ func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 
 func TestClient_Remove(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		remove(t, ctx, client, false)
@@ -621,8 +611,7 @@ func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 
 func TestClient_RemovePath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
 		removePath(t, ctx, client, false)
@@ -668,8 +657,7 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 
 func TestClient_ListIpfsPath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	file1, err := os.Open("testdata/file1.jpg")
 	require.Nil(t, err)
@@ -699,8 +687,7 @@ func TestClient_ListIpfsPath(t *testing.T) {
 
 func TestClient_PullIpfsPath(t *testing.T) {
 	t.Parallel()
-	ctx, client, done := setup(t)
-	defer done()
+	ctx, client := setup(t)
 
 	file1, err := os.Open("testdata/file1.jpg")
 	require.Nil(t, err)
@@ -747,8 +734,7 @@ func TestClient_PullIpfsPath(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	t.Parallel()
-	conf, shutdown := apitest.MakeTextile(t)
-	defer shutdown()
+	conf := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
@@ -760,13 +746,13 @@ func TestClose(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T) (context.Context, *c.Client, func()) {
+func setup(t *testing.T) (context.Context, *c.Client) {
 	conf := apitest.DefaultTextileConfig(t)
 	return setupWithConf(t, conf)
 }
 
-func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client, func()) {
-	shutdown := apitest.MakeTextileCustom(t, conf)
+func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client) {
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -785,9 +771,9 @@ func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client, 
 	require.Nil(t, err)
 	ctx = common.NewThreadIDContext(ctx, id)
 
-	return ctx, client, func() {
-		shutdown()
+	t.Cleanup(func() {
 		err := client.Close()
 		require.Nil(t, err)
-	}
+	})
+	return ctx, client
 }

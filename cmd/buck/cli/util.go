@@ -1,108 +1,67 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-merkledag/dagutils"
-	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/uiprogress"
 )
 
-func getDiff(buck *local.Bucket, root string) []change {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cmd.Fatal(err)
+func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
+	return func(diff []local.Change) bool {
+		if auto {
+			return true
+		}
+		for _, c := range diff {
+			cf := local.ChangeColor(c.Type)
+			cmd.Message("%s  %s", cf(local.ChangeType(c.Type)), cf(c.Rel))
+		}
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf(label, len(diff)),
+			IsConfirm: true,
+		}
+		if _, err := prompt.Run(); err != nil {
+			return false
+		}
+		return true
 	}
-	rel, err := filepath.Rel(cwd, root)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
-	defer cancel()
-	diff, err := buck.Diff(ctx, rel)
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	var all []change
-	if len(diff) == 0 {
-		return all
-	}
-	for _, c := range diff {
-		r := filepath.Join(rel, c.Path)
-		switch c.Type {
-		case dagutils.Mod, dagutils.Add:
-			names := walkPath(r)
-			if len(names) > 0 {
-				for _, n := range names {
-					p := strings.TrimPrefix(n, rel+"/")
-					all = append(all, change{Type: c.Type, Path: p, Rel: n})
+}
+
+func handleProgressBars(events chan local.PathEvent, leaveOpen bool) {
+	var started bool
+	bars := make(map[string]*uiprogress.Bar)
+	for e := range events {
+		switch e.Type {
+		case local.PathStart:
+			if started {
+				continue
+			}
+			startProgress()
+			started = true
+		case local.PathComplete:
+			if !leaveOpen {
+				stopProgress()
+			}
+		case local.FileStart:
+			bars[e.Path] = addBar(e.Path, e.Size)
+		case local.FileProgress, local.FileComplete:
+			bar, ok := bars[e.Path]
+			if ok {
+				_ = bar.Set(int(e.Progress))
+				if e.Type == local.FileComplete {
+					finishBar(bar, e.Path, e.Cid, false)
+					delete(bars, e.Path)
 				}
-			} else {
-				all = append(all, change{Type: c.Type, Path: c.Path, Rel: r})
 			}
-		case dagutils.Remove:
-			all = append(all, change{Type: c.Type, Path: c.Path, Rel: r})
+		case local.FileRemoved:
+			bar := uiprogress.AddBar(int(e.Size))
+			finishBar(bar, e.Path, e.Cid, true)
 		}
-	}
-	return all
-}
-
-func walkPath(pth string) (names []string) {
-	if err := filepath.Walk(pth, func(n string, info os.FileInfo, err error) error {
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if !info.IsDir() {
-			f := strings.TrimPrefix(n, pth+"/")
-			if local.Ignore(n) || strings.HasPrefix(f, config.Dir) || strings.HasSuffix(f, local.PatchExt) {
-				return nil
-			}
-			names = append(names, n)
-		}
-		return nil
-	}); err != nil {
-		cmd.Fatal(err)
-	}
-	return names
-}
-
-type change struct {
-	Type dagutils.ChangeType
-	Path string
-	Rel  string
-}
-
-func changeType(t dagutils.ChangeType) string {
-	switch t {
-	case dagutils.Mod:
-		return "modified:"
-	case dagutils.Add:
-		return "new file:"
-	case dagutils.Remove:
-		return "deleted: "
-	default:
-		return ""
-	}
-}
-
-func changeColor(t dagutils.ChangeType) func(arg interface{}) aurora.Value {
-	switch t {
-	case dagutils.Mod:
-		return aurora.Yellow
-	case dagutils.Add:
-		return aurora.Green
-	case dagutils.Remove:
-		return aurora.Red
-	default:
-		return nil
 	}
 }
 
@@ -140,17 +99,19 @@ func getTermDim() (w, h int) {
 	c := exec.Command("stty", "size")
 	c.Stdin = os.Stdin
 	termDim, err := c.Output()
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if _, err = fmt.Sscan(string(termDim), &h, &w); err != nil {
-		cmd.Fatal(err)
-	}
+	cmd.ErrCheck(err)
+	_, err = fmt.Sscan(string(termDim), &h, &w)
+	cmd.ErrCheck(err)
 	return w, h
 }
 
-func finishBar(bar *uiprogress.Bar, pth string, c cid.Cid) {
-	bar.Final = "+ " + pth + ": " + c.String()
+func finishBar(bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
+	if removal {
+		bar.Final = "- " + pth
+	} else {
+		bar.Final = "+ " + pth + ": " + c.String()
+	}
+	uiprogress.Print()
 }
 
 // Copied from https://github.com/cheggaaa/pb/blob/master/v3/util.go

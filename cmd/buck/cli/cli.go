@@ -1,100 +1,125 @@
 package cli
 
 import (
-	"fmt"
+	"context"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
 	"github.com/textileio/uiprogress"
 )
 
-const (
-	Name = "buck"
+const Name = "buck"
 
-	nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
-)
-
-var (
-	config = cmd.Config{
-		Viper: viper.New(),
-		Dir:   ".textile",
-		Name:  "config",
-		Flags: map[string]cmd.Flag{
-			"key": {
-				Key:      "key",
-				DefValue: "",
-			},
-			"org": {
-				Key:      "org",
-				DefValue: "",
-			},
-			"thread": {
-				Key:      "thread",
-				DefValue: "",
-			},
-		},
-		EnvPre: "BUCK",
-		Global: false,
-	}
-
-	clients *cmd.Clients
-
-	addFileTimeout = time.Hour * 24
-	getFileTimeout = time.Hour * 24
-
-	errNotABucket = fmt.Errorf("not a bucket (or any of the parent directories): .textile")
-)
+var bucks *local.Buckets
 
 func init() {
 	uiprogress.Empty = ' '
 	uiprogress.Fill = '-'
 }
 
-func Init(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(bucketInitCmd, bucketLinksCmd, bucketRootCmd, bucketStatusCmd, bucketLsCmd, bucketPushCmd, bucketPullCmd, bucketAddCmd, bucketCatCmd, bucketDestroyCmd, bucketEncryptCmd, bucketDecryptCmd, bucketArchiveCmd)
-	bucketArchiveCmd.AddCommand(bucketArchiveStatusCmd, bucketArchiveInfoCmd)
+func Init(baseCmd *cobra.Command) {
+	baseCmd.AddCommand(initCmd, linksCmd, rootCmd, statusCmd, lsCmd, pushCmd, pullCmd, addCmd, watchCmd, catCmd, destroyCmd, encryptCmd, decryptCmd, archiveCmd)
+	archiveCmd.AddCommand(archiveStatusCmd, archiveInfoCmd)
 
-	bucketInitCmd.PersistentFlags().String("key", "", "Bucket key")
-	bucketInitCmd.PersistentFlags().String("org", "", "Org username")
-	bucketInitCmd.PersistentFlags().String("thread", "", "Thread ID")
-	if err := cmd.BindFlags(config.Viper, bucketInitCmd, config.Flags); err != nil {
-		cmd.Fatal(err)
-	}
-	bucketInitCmd.Flags().StringP("name", "n", "", "Bucket name")
-	bucketInitCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
-	bucketInitCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid from the IPFS network")
-	bucketInitCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
+	initCmd.PersistentFlags().String("key", "", "Bucket key")
+	initCmd.PersistentFlags().String("thread", "", "Thread ID")
+	initCmd.PersistentFlags().String("org", "", "Org username")
 
-	bucketPushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
-	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
-	bucketPushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
+	initCmd.Flags().StringP("name", "n", "", "Bucket name")
+	initCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
+	initCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid from the IPFS network")
+	initCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
 
-	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
-	bucketPullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")
-	bucketPullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
+	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	pushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
 
-	bucketAddCmd.Flags().BoolP("yes", "y", false, "Skips confirmations prompts to always overwrite files and merge folders")
+	pullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
+	pullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")
+	pullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
-	bucketEncryptCmd.Flags().StringP("password", "p", "", "Encryption password")
-	bucketDecryptCmd.Flags().StringP("password", "p", "", "Decryption password")
+	addCmd.Flags().BoolP("yes", "y", false, "Skips confirmations prompts to always overwrite files and merge folders")
 
-	bucketArchiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
+	watchCmd.Flags().Duration("interval", time.Millisecond*100, "The interval at which local changes are synced remotely")
+
+	encryptCmd.Flags().StringP("password", "p", "", "Encryption password")
+	decryptCmd.Flags().StringP("password", "p", "", "Decryption password")
+
+	archiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
 }
 
-func Config() cmd.Config {
-	return config
+func SetBucks(b *local.Buckets) {
+	bucks = b
 }
 
-func SetClients(c *cmd.Clients) {
-	clients = c
+var statusCmd = &cobra.Command{
+	Use: "status",
+	Aliases: []string{
+		"st",
+	},
+	Short: "Show bucket object changes",
+	Long:  `Displays paths that have been added to and paths that have been removed or differ from the local bucket root.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		diff, err := buck.DiffLocal()
+		cmd.ErrCheck(err)
+		if len(diff) == 0 {
+			cmd.End("Everything up-to-date")
+		}
+		for _, c := range diff {
+			cf := local.ChangeColor(c.Type)
+			cmd.Message("%s  %s", cf(local.ChangeType(c.Type)), cf(c.Rel))
+		}
+	},
 }
 
-func printLinks(reply *pb.LinksReply) {
+var rootCmd = &cobra.Command{
+	Use:   "root",
+	Short: "Show bucket root CIDs",
+	Long:  `Shows the local and remote bucket root CIDs (these will differ if the bucket is encrypted).`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		r, err := buck.Roots(ctx)
+		cmd.ErrCheck(err)
+		cmd.Message("%s (local)", aurora.White(r.Local).Bold())
+		cmd.Message("%s (remote)", aurora.White(r.Remote).Bold())
+	},
+}
+
+var linksCmd = &cobra.Command{
+	Use: "links",
+	Aliases: []string{
+		"link",
+	},
+	Short: "Show links to where this bucket can be accessed",
+	Long:  `Displays a thread, IPNS, and website link to this bucket.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		links, err := buck.RemoteLinks(ctx)
+		cmd.ErrCheck(err)
+		printLinks(links)
+	},
+}
+
+func printLinks(reply local.Links) {
 	cmd.Message("Your bucket links:")
 	cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
 	cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
@@ -103,12 +128,115 @@ func printLinks(reply *pb.LinksReply) {
 	}
 }
 
-func setCidVersion(buck *local.Bucket, key string) {
-	_, rc, err := buck.Root()
-	if err != nil {
-		cmd.Fatal(err)
-	}
-	if !rc.Defined() {
-		buck.SetCidVersion(int(getRemoteRoot(key).Version()))
-	}
+var lsCmd = &cobra.Command{
+	Use: "ls [path]",
+	Aliases: []string{
+		"list",
+	},
+	Short: "List top-level or nested bucket objects",
+	Long:  `Lists top-level or nested bucket objects.`,
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		var pth string
+		if len(args) > 0 {
+			pth = args[0]
+		}
+		items, err := buck.ListRemotePath(ctx, pth)
+		cmd.ErrCheck(err)
+		var data [][]string
+		if len(items) > 0 {
+			for _, item := range items {
+				var links string
+				if item.IsDir {
+					links = strconv.Itoa(item.ItemsCount)
+				} else {
+					links = "n/a"
+				}
+				data = append(data, []string{
+					item.Name,
+					strconv.Itoa(int(item.Size)),
+					strconv.FormatBool(item.IsDir),
+					links,
+					item.Cid.String(),
+				})
+			}
+		}
+		if len(data) > 0 {
+			cmd.RenderTable([]string{"name", "size", "dir", "objects", "cid"}, data)
+		}
+		cmd.Message("Found %d objects", aurora.White(len(data)).Bold())
+	},
+}
+
+var catCmd = &cobra.Command{
+	Use:   "cat [path]",
+	Short: "Cat bucket objects at path",
+	Long:  `Cats bucket objects at path.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		err = buck.CatRemotePath(ctx, args[0], os.Stdout)
+		cmd.ErrCheck(err)
+	},
+}
+
+var encryptCmd = &cobra.Command{
+	Use:   "encrypt [file] [password]",
+	Short: "Encrypt file with a password",
+	Long:  `Encrypts file with a password (WARNING: Password is not recoverable).`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		err = buck.EncryptLocalPath(args[0], args[1], os.Stdout)
+		cmd.ErrCheck(err)
+	},
+}
+
+var decryptCmd = &cobra.Command{
+	Use:   "decrypt [path] [password]",
+	Short: "Decrypt bucket objects at path with password",
+	Long:  `Decrypts bucket objects at path with the given password and writes to stdout.`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		err = buck.DecryptRemotePath(ctx, args[0], args[1], os.Stdout)
+		cmd.ErrCheck(err)
+	},
+}
+
+var destroyCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy bucket and all objects",
+	Long:  `Destroys the bucket and all objects.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
+		prompt := promptui.Prompt{
+			Label:     "Are you absolutely sure",
+			IsConfirm: true,
+		}
+		if _, err = prompt.Run(); err != nil {
+			cmd.End("")
+		}
+		err = buck.Destroy(ctx)
+		cmd.ErrCheck(err)
+		cmd.Success("Your bucket has been deleted")
+	},
 }

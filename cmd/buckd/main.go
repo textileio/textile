@@ -21,7 +21,7 @@ const (
 var (
 	log = logging.Logger(daemonName)
 
-	config = cmd.Config{
+	config = &cmd.Config{
 		Viper: viper.New(),
 		Dir:   "." + daemonName,
 		Name:  "config",
@@ -183,15 +183,12 @@ func init() {
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Cloudflare API Token for dnsDomain")
 
-	if err := cmd.BindFlags(config.Viper, rootCmd, config.Flags); err != nil {
-		log.Fatal(err)
-	}
+	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
+	cmd.ErrCheck(err)
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		cmd.Fatal(err)
-	}
+	cmd.ErrCheck(rootCmd.Execute())
 }
 
 var rootCmd = &cobra.Command{
@@ -203,18 +200,15 @@ var rootCmd = &cobra.Command{
 		cmd.ExpandConfigVars(config.Viper, config.Flags)
 
 		if config.Viper.GetBool("log.debug") {
-			if err := util.SetLogLevels(map[string]logging.LogLevel{
+			err := util.SetLogLevels(map[string]logging.LogLevel{
 				daemonName: logging.LevelDebug,
-			}); err != nil {
-				log.Fatal(err)
-			}
+			})
+			cmd.ErrCheck(err)
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
 		settings, err := json.MarshalIndent(config.Viper.AllSettings(), "", "  ")
-		if err != nil {
-			log.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		log.Debugf("loaded config: %s", string(settings))
 
 		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
@@ -260,9 +254,7 @@ var rootCmd = &cobra.Command{
 			DNSToken:         dnsToken,
 			Debug:            config.Viper.GetBool("log.debug"),
 		})
-		if err != nil {
-			log.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		defer textile.Close()
 		textile.Bootstrap()
 

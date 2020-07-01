@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"context"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
 	buck "github.com/textileio/textile/cmd/buck/cli"
 )
@@ -12,7 +15,7 @@ import (
 const Name = "hub"
 
 var (
-	config = cmd.Config{
+	config = &cmd.Config{
 		Viper: viper.New(),
 		Dir:   ".textile",
 		Name:  "auth",
@@ -25,8 +28,12 @@ var (
 				Key:      "session",
 				DefValue: "",
 			},
+			"org": {
+				Key:      "org",
+				DefValue: "",
+			},
 		},
-		EnvPre: "HUB",
+		EnvPre: strings.ToUpper(Name),
 		Global: true,
 	}
 
@@ -36,6 +43,8 @@ var (
 )
 
 func Init(rootCmd *cobra.Command) {
+	config.Viper.SetConfigType("yaml")
+
 	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd)
 	rootCmd.AddCommand(orgsCmd, keysCmd, threadsCmd)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
@@ -55,18 +64,25 @@ func Init(rootCmd *cobra.Command) {
 		config.Flags["session"].DefValue.(string),
 		"User session token")
 
-	if err := cmd.BindFlags(config.Viper, rootCmd, config.Flags); err != nil {
-		cmd.Fatal(err)
-	}
+	rootCmd.PersistentFlags().StringP(
+		"org",
+		"o",
+		config.Flags["org"].DefValue.(string),
+		"Org username")
 
-	keysCmd.PersistentFlags().String("org", "", "Org username")
-	threadsCmd.PersistentFlags().String("org", "", "Org username")
+	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
+	cmd.ErrCheck(err)
 }
 
-func Config() cmd.Config {
+func Config() *cmd.Config {
 	return config
 }
 
 func SetClients(c *cmd.Clients) {
 	clients = c
+}
+
+func Auth(ctx context.Context) context.Context {
+	ctx = common.NewSessionContext(ctx, config.Viper.GetString("session"))
+	return common.NewOrgSlugContext(ctx, config.Viper.GetString("org"))
 }

@@ -20,17 +20,26 @@ import (
 )
 
 var (
-	Timeout              = time.Minute
-	TimeoutArchiveStatus = time.Second * 5
-	TimeoutArchiveWatch  = time.Hour * 12
-	Bold                 = promptui.Styler(promptui.FGBold)
+	// Timeout is the default timeout used for most commands.
+	Timeout = time.Minute * 10
+	// PushTimeout is the command timeout used when pushing bucket changes.
+	PushTimeout = time.Hour * 24
+	// PullTimeout is the command timeout used when pulling bucket changes.
+	PullTimeout = time.Hour * 24
+	// ArchiveWatchTimeout is the command timeout used when watching archive status messages.
+	ArchiveWatchTimeout = time.Hour * 12
+
+	// Bold is a styler used to make the output text bold.
+	Bold = promptui.Styler(promptui.FGBold)
 )
 
+// Flaf describes a command flag.
 type Flag struct {
 	Key      string
 	DefValue interface{}
 }
 
+// Config describes a command config params and file info.
 type Config struct {
 	Viper  *viper.Viper
 	File   string
@@ -41,21 +50,17 @@ type Config struct {
 	Global bool
 }
 
-type ClientsCtx interface {
-	Auth(time.Duration) (context.Context, context.CancelFunc)
-	Thread(time.Duration) (context.Context, context.CancelFunc)
-}
-
+// Clients wraps all the possible hubd/buckd clients.
 type Clients struct {
 	Buckets *bc.Client
 	Threads *tc.Client
 	Hub     *hc.Client
 	Users   *uc.Client
-
-	Ctx ClientsCtx
 }
 
-func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
+// NewClients returns a new clients object pointing to the target address.
+// If isHub is true, the hub's admin and user clients are also created.
+func NewClients(target string, isHub bool) *Clients {
 	var opts []grpc.DialOption
 	auth := common.Credentials{}
 	if strings.Contains(target, "443") {
@@ -67,7 +72,7 @@ func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
 	}
 	opts = append(opts, grpc.WithPerRPCCredentials(auth))
 
-	c := &Clients{Ctx: ctx}
+	c := &Clients{}
 	var err error
 	c.Threads, err = tc.NewClient(target, opts...)
 	if err != nil {
@@ -77,7 +82,7 @@ func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
 	if err != nil {
 		Fatal(err)
 	}
-	if hub {
+	if isHub {
 		c.Hub, err = hc.NewClient(target, opts...)
 		if err != nil {
 			Fatal(err)
@@ -90,6 +95,7 @@ func NewClients(target string, hub bool, ctx ClientsCtx) *Clients {
 	return c
 }
 
+// Close closes all the clients.
 func (c *Clients) Close() {
 	if c.Threads != nil {
 		if err := c.Threads.Close(); err != nil {
@@ -113,16 +119,19 @@ func (c *Clients) Close() {
 	}
 }
 
+// Thread wraps details about a thread.
 type Thread struct {
-	ID    thread.ID
-	Label string
-	Name  string
-	Type  string
+	ID    thread.ID `json:"id"`
+	Label string    `json:"label"`
+	Name  string    `json:"name"`
+	Type  string    `json:"type"`
 }
 
-func (c *Clients) ListThreads(dbsOnly bool) []Thread {
-	ctx, cancel := c.Ctx.Auth(Timeout)
-	defer cancel()
+// ListThreads returns a list of threads for the context.
+// In a hub context, this will only list threads that the context
+// has access to.
+// dbsOnly filters threads that do not belong to a database.
+func (c *Clients) ListThreads(ctx context.Context, dbsOnly bool) []Thread {
 	var threads []Thread
 	if c.Users != nil {
 		list, err := c.Users.ListThreads(ctx)
@@ -167,6 +176,7 @@ func (c *Clients) ListThreads(dbsOnly bool) []Thread {
 	return threads
 }
 
+// GetThreadType returns a string representation of the type of a thread.
 func GetThreadType(isDB bool) string {
 	if isDB {
 		return "db"
@@ -175,8 +185,9 @@ func GetThreadType(isDB bool) string {
 	}
 }
 
-func (c *Clients) SelectThread(label, successMsg string, dbsOnly bool) Thread {
-	threads := c.ListThreads(dbsOnly)
+// SelectThread presents the caller with a choice of threads.
+func (c *Clients) SelectThread(ctx context.Context, label, successMsg string, dbsOnly bool) Thread {
+	threads := c.ListThreads(ctx, dbsOnly)
 	var name string
 	if len(threads) == 0 {
 		name = "default"

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/mail"
 	"strconv"
@@ -9,8 +10,8 @@ import (
 	"github.com/manifoldco/promptui"
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
+	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 var orgsCmd = &cobra.Command{
@@ -29,42 +30,36 @@ var orgsCreateCmd = &cobra.Command{
 	Long:  `Creates a new organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		prompt1 := promptui.Prompt{
+		namePrompt := promptui.Prompt{
 			Label: "Choose an org name",
 			Templates: &promptui.PromptTemplates{
 				Valid: fmt.Sprintf("%s {{ . | bold }}%s ", cmd.Bold(promptui.IconInitial), cmd.Bold(":")),
 			},
 		}
-		name, err := prompt1.Run()
+		name, err := namePrompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 		_, err = clients.Hub.IsOrgNameAvailable(ctx, name)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		//url := fmt.Sprintf("%s/%s", res.Host, res.Slug)
 
 		cmd.Message("The name of your Hub account will be %s", aurora.White(name).Bold())
 		// @todo: Uncomment when dashboard's are live
 		//cmd.Message("Your URL will be %s", aurora.White(url).Bold())
 
-		prompt2 := promptui.Prompt{
+		confirmPrompt := promptui.Prompt{
 			Label:     "Please confirm",
 			IsConfirm: true,
 		}
-		if _, err = prompt2.Run(); err != nil {
+		if _, err = confirmPrompt.Run(); err != nil {
 			cmd.End("")
 		}
 
-		ctx, cancel = clients.Ctx.Auth(cmd.Timeout)
-		defer cancel()
 		org, err := clients.Hub.CreateOrg(ctx, name)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		//url = fmt.Sprintf("%s/%s", org.Host, org.Slug)
 		// @todo: Uncomment when dashboard's are live
 		//cmd.Success("Created new org %s with URL %s", aurora.White(org.Name).Bold(), aurora.Underline(url))
@@ -81,19 +76,16 @@ var orgsLsCmd = &cobra.Command{
 	Long:  `Lists all the organizations that you're a member of.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
+
 		orgs, err := clients.Hub.ListOrgs(ctx)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		if len(orgs.List) > 0 {
 			data := make([][]string, len(orgs.List))
 			for i, o := range orgs.List {
 				key, err := mbase.Encode(mbase.Base32, o.Key)
-				if err != nil {
-					cmd.Fatal(err)
-				}
+				cmd.ErrCheck(err)
 				url := fmt.Sprintf("%s/%s", o.Host, o.Slug)
 				data[i] = []string{o.Name, url, key, strconv.Itoa(len(o.Members))}
 			}
@@ -109,25 +101,19 @@ var orgsMembersCmd = &cobra.Command{
 	Long:  `Lists current organization members.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Select org", aurora.Sprintf(
-			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		buck.Config().Viper.Set("org", selected.Slug)
-
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
+		selected := selectOrg(ctx, "Select org", aurora.Sprintf(
+			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
+		ctx = common.NewOrgSlugContext(ctx, selected.Slug)
 
 		org, err := clients.Hub.GetOrg(ctx)
-		if err != nil {
-			cmd.Fatal(err)
-		}
-
+		cmd.ErrCheck(err)
 		if len(org.Members) > 0 {
 			data := make([][]string, len(org.Members))
 			for i, m := range org.Members {
 				key, err := mbase.Encode(mbase.Base32, m.Key)
-				if err != nil {
-					cmd.Fatal(err)
-				}
+				cmd.ErrCheck(err)
 				data[i] = []string{m.Username, key}
 			}
 			cmd.RenderTable([]string{"username", "key"}, data)
@@ -142,9 +128,11 @@ var orgsInviteCmd = &cobra.Command{
 	Long:  `Invites a new member to an organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Select org", aurora.Sprintf(
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+		selected := selectOrg(ctx, "Select org", aurora.Sprintf(
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
-		buck.Config().Viper.Set("org", selected.Slug)
+		ctx = common.NewOrgSlugContext(ctx, selected.Slug)
 
 		prompt := promptui.Prompt{
 			Label: "Enter email to invite",
@@ -158,11 +146,8 @@ var orgsInviteCmd = &cobra.Command{
 			cmd.End("")
 		}
 
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
-		defer cancel()
-		if _, err := clients.Hub.InviteToOrg(ctx, email); err != nil {
-			cmd.Fatal(err)
-		}
+		_, err = clients.Hub.InviteToOrg(ctx, email)
+		cmd.ErrCheck(err)
 		cmd.Success("We sent %s an invitation to the %s org", aurora.White(email).Bold(),
 			aurora.White(selected.Name).Bold())
 	},
@@ -174,16 +159,48 @@ var orgsLeaveCmd = &cobra.Command{
 	Long:  `Leaves an organization.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Leave org", aurora.Sprintf(
-			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
-		buck.Config().Viper.Set("org", selected.Slug)
-
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		if err := clients.Hub.LeaveOrg(ctx); err != nil {
-			cmd.Fatal(err)
-		}
+		selected := selectOrg(ctx, "Leave org", aurora.Sprintf(
+			aurora.BrightBlack("> Leaving org {{ .Name | white | bold }}")))
+		ctx = common.NewOrgSlugContext(ctx, selected.Slug)
+
+		err := clients.Hub.LeaveOrg(ctx)
+		cmd.ErrCheck(err)
 		cmd.Success("Left org %s", aurora.White(selected.Name).Bold())
+	},
+}
+
+var orgsDestroyCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy an org",
+	Long:  `Destroys an organization and all associated data. You must be the org owner.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+		selected := selectOrg(ctx, "Destroy org", aurora.Sprintf(
+			aurora.BrightBlack("> Destroying org {{ .Name | white | bold }}")))
+		ctx = common.NewOrgSlugContext(ctx, selected.Slug)
+
+		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone."))
+		cmd.Warn("%s", aurora.Red("The org and all associated data will be permanently deleted."))
+		prompt := promptui.Prompt{
+			Label: fmt.Sprintf("Please type '%s' to confirm", selected.Name),
+			Validate: func(s string) error {
+				if s != selected.Name {
+					return fmt.Errorf("")
+				}
+				return nil
+			},
+		}
+		if _, err := prompt.Run(); err != nil {
+			cmd.End("")
+		}
+
+		err := clients.Hub.RemoveOrg(ctx)
+		cmd.ErrCheck(err)
+		cmd.Success("Org %s has been deleted", aurora.White(selected.Name).Bold())
 	},
 }
 
@@ -193,13 +210,9 @@ type orgItem struct {
 	Members string
 }
 
-func selectOrg(label, successMsg string) *orgItem {
-	ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
-	defer cancel()
+func selectOrg(ctx context.Context, label, successMsg string) *orgItem {
 	orgs, err := clients.Hub.ListOrgs(ctx)
-	if err != nil {
-		cmd.Fatal(err)
-	}
+	cmd.ErrCheck(err)
 
 	items := make([]*orgItem, len(orgs.List))
 	for i, o := range orgs.List {
@@ -224,37 +237,4 @@ func selectOrg(label, successMsg string) *orgItem {
 		cmd.End("")
 	}
 	return items[index]
-}
-
-var orgsDestroyCmd = &cobra.Command{
-	Use:   "destroy",
-	Short: "Destroy an org",
-	Long:  `Destroys an organization and all associated data. You must be the org owner.`,
-	Args:  cobra.ExactArgs(0),
-	Run: func(c *cobra.Command, args []string) {
-		selected := selectOrg("Destroy org", aurora.Sprintf(
-			aurora.BrightBlack("> Destroying org {{ .Name | white | bold }}")))
-		buck.Config().Viper.Set("org", selected.Slug)
-
-		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone. The org and all associated data will be permanently deleted."))
-		prompt := promptui.Prompt{
-			Label: fmt.Sprintf("Please type '%s' to confirm", selected.Name),
-			Validate: func(s string) error {
-				if s != selected.Name {
-					return fmt.Errorf("")
-				}
-				return nil
-			},
-		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
-		}
-
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
-		defer cancel()
-		if err := clients.Hub.RemoveOrg(ctx); err != nil {
-			cmd.Fatal(err)
-		}
-		cmd.Success("Org %s has been deleted", aurora.White(selected.Name).Bold())
-	},
 }

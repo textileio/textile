@@ -36,7 +36,7 @@ import (
 	hpb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/api/users"
 	upb "github.com/textileio/textile/api/users/pb"
-	bucks "github.com/textileio/textile/buckets"
+	bc "github.com/textileio/textile/buckets/collection"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -78,7 +78,7 @@ type Textile struct {
 	ts    tc.NetBoostrapper
 	th    *threads.Client
 	thn   *netclient.Client
-	bucks *bucks.Buckets
+	bucks *bc.Buckets
 	powc  *powc.Client
 
 	ipnsm *ipns.Manager
@@ -205,7 +205,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = bucks.New(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig, conf.Debug)
+	t.bucks, err = bc.New(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig, conf.Debug)
 	if err != nil {
 		return nil, err
 	}

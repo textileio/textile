@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -13,11 +14,10 @@ var logoutCmd = &cobra.Command{
 	Long:  `Handles logout of a Hub account.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		if err := clients.Hub.Signout(ctx); err != nil {
-			cmd.Fatal(err)
-		}
+		err := clients.Hub.Signout(ctx)
+		cmd.ErrCheck(err)
 		_ = os.RemoveAll(config.Viper.ConfigFileUsed())
 		cmd.Success("Bye :)")
 	},

@@ -204,7 +204,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 			},
 		},
 	}
-	shutdown := apitest.MakeTextileCustom(t, conf)
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -223,7 +223,6 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	require.Nil(t, err)
 	ctx = common.NewThreadIDContext(ctx, id)
 	t.Cleanup(func() {
-		shutdown()
 		err := client.Close()
 		require.Nil(t, err)
 	})

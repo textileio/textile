@@ -21,8 +21,7 @@ import (
 
 func TestClient_Signup(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	assert.NotEmpty(t, user.Key)
@@ -31,8 +30,7 @@ func TestClient_Signup(t *testing.T) {
 
 func TestClient_Signin(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	username := apitest.NewUsername()
 	email := apitest.NewEmail()
@@ -54,8 +52,7 @@ func TestClient_Signin(t *testing.T) {
 
 func TestClient_Signout(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -73,8 +70,7 @@ func TestClient_Signout(t *testing.T) {
 
 func TestClient_GetSessionInfo(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -97,8 +93,7 @@ func TestClient_GetSessionInfo(t *testing.T) {
 
 func TestClient_CreateKey(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -120,8 +115,7 @@ func TestClient_CreateKey(t *testing.T) {
 
 func TestClient_InvalidateKey(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 	ctx := context.Background()
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -147,8 +141,7 @@ func TestClient_InvalidateKey(t *testing.T) {
 
 func TestClient_ListKeys(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -173,8 +166,7 @@ func TestClient_ListKeys(t *testing.T) {
 
 func TestClient_CreateOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 	ctx := context.Background()
 
 	name := apitest.NewUsername()
@@ -196,8 +188,7 @@ func TestClient_CreateOrg(t *testing.T) {
 
 func TestClient_GetOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -219,8 +210,7 @@ func TestClient_GetOrg(t *testing.T) {
 
 func TestClient_ListOrgs(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -245,8 +235,7 @@ func TestClient_ListOrgs(t *testing.T) {
 
 func TestClient_RemoveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -278,8 +267,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 
 func TestClient_InviteToOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -302,8 +290,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 
 func TestClient_LeaveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -339,8 +326,7 @@ func TestClient_LeaveOrg(t *testing.T) {
 
 func TestClient_IsUsernameAvailable(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	username := apitest.NewUsername()
 	err := client.IsUsernameAvailable(context.Background(), username)
@@ -354,8 +340,7 @@ func TestClient_IsUsernameAvailable(t *testing.T) {
 
 func TestClient_IsOrgNameAvailable(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -375,8 +360,7 @@ func TestClient_IsOrgNameAvailable(t *testing.T) {
 
 func TestClient_DestroyAccount(t *testing.T) {
 	t.Parallel()
-	conf, client, _, done := setup(t)
-	defer done()
+	conf, client, _ := setup(t)
 
 	username := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, username, apitest.NewEmail())
@@ -398,8 +382,7 @@ func TestClient_DestroyAccount(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	t.Parallel()
-	conf, shutdown := apitest.MakeTextile(t)
-	defer shutdown()
+	conf := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	client, err := c.NewClient(target, grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{}))
@@ -409,8 +392,8 @@ func TestClose(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func setup(t *testing.T) (core.Config, *c.Client, *tc.Client, func()) {
-	conf, shutdown := apitest.MakeTextile(t)
+func setup(t *testing.T) (core.Config, *c.Client, *tc.Client) {
+	conf := apitest.MakeTextile(t)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -419,11 +402,11 @@ func setup(t *testing.T) (core.Config, *c.Client, *tc.Client, func()) {
 	threadsclient, err := tc.NewClient(target, opts...)
 	require.Nil(t, err)
 
-	return conf, client, threadsclient, func() {
-		shutdown()
+	t.Cleanup(func() {
 		err := client.Close()
 		require.Nil(t, err)
 		err = threadsclient.Close()
 		require.Nil(t, err)
-	}
+	})
+	return conf, client, threadsclient
 }
