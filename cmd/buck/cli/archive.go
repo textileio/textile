@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/cmd"
@@ -19,6 +20,14 @@ var bucketArchiveCmd = &cobra.Command{
 		}
 	},
 	Run: func(c *cobra.Command, args []string) {
+		cmd.Warn("Warning! Archiving is based on an experimental testnet. Your data may be lost at any time.")
+		prompt := promptui.Prompt{
+			Label:     "Proceed?",
+			IsConfirm: true,
+		}
+		if _, err := prompt.Run(); err != nil {
+			cmd.End("")
+		}
 		ctx, cancel := clients.Ctx.Thread(cmd.Timeout)
 		defer cancel()
 		key := config.Viper.GetString("key")
