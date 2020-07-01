@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   powergate:
-    image: textile/powergate:sha-4852f30
+    image: textile/powergate:sha-b46eada
     ports:
       - 8889:8889
       - 8888:8888
@@ -20,10 +20,11 @@ services:
     restart: unless-stopped
 
   lotus:
-    image: textile/lotus-devnet:sha-4653001
+    image: textile/lotus-devnet:v0.4.0
     environment:
       - TEXLOTUSDEVNET_SPEED=500
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
+      - TEXLOTUSDEVNET_BIGSECTORS=false
 
   ipfs:
     image: ipfs/go-ipfs:v0.5.1

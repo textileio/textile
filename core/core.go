@@ -27,6 +27,7 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -110,6 +111,8 @@ type Config struct {
 
 	Hub   bool
 	Debug bool
+
+	FFSDefaultConfig *ffs.DefaultConfig
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -172,7 +175,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = bucks.New(t.th, t.powc, t.collections.FFSInstances, conf.Debug)
+	t.bucks, err = bucks.New(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig, conf.Debug)
 	if err != nil {
 		return nil, err
 	}

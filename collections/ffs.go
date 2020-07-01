@@ -8,9 +8,10 @@ import (
 )
 
 type FFSInstance struct {
-	BucketKey string   `bson:"_id"`
-	FFSToken  string   `bson:"ffs_token"`
-	Archives  Archives `bson:"archives"`
+	BucketKey  string   `bson:"_id"`
+	FFSToken   string   `bson:"ffs_token"`
+	WalletAddr string   `bson:"ffs_walletaddr"`
+	Archives   Archives `bson:"archives"`
 }
 
 type Archives struct {
@@ -37,10 +38,11 @@ func NewFFSInstances(_ context.Context, db *mongo.Database) (*FFSInstances, erro
 	return s, nil
 }
 
-func (k *FFSInstances) Create(ctx context.Context, bucketKey, ffsToken string) error {
+func (k *FFSInstances) Create(ctx context.Context, bucketKey, ffsToken, waddr string) error {
 	ffs := &FFSInstance{
-		BucketKey: bucketKey,
-		FFSToken:  ffsToken,
+		BucketKey:  bucketKey,
+		FFSToken:   ffsToken,
+		WalletAddr: waddr,
 	}
 	_, err := k.col.InsertOne(ctx, ffs)
 	return err

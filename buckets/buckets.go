@@ -3,6 +3,7 @@ package buckets
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -39,10 +40,34 @@ var (
 	// can be retrieved, since the bucket was never archived.
 	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
 
+	// ErrZeroBalance is returned when archiving a bucket which
+	// underlying FFS instance balance is zero.
+	ErrZeroBalance = errors.New("bucket FIL balance is zero, if recently created wait 30s")
+
 	schema  *jsonschema.Schema
 	indexes = []db.Index{{
 		Path: "path",
 	}}
+
+	// ffsDefaultCidConfig is a default hardcoded CidConfig to be used
+	// on newly created FFS instances as the default CidConfig of archived Cids,
+	// if none is provided in constructor.
+	ffsDefaultCidConfig = ffs.DefaultConfig{
+		Hot: ffs.HotConfig{
+			Enabled:       false,
+			AllowUnfreeze: true,
+			Ipfs: ffs.IpfsConfig{
+				AddTimeout: 60 * 2,
+			},
+		},
+		Cold: ffs.ColdConfig{
+			Enabled: true,
+			Filecoin: ffs.FilConfig{
+				RepFactor:       10,     // Aim high for testnet
+				DealMinDuration: 200000, // ~2 months
+			},
+		},
+	}
 )
 
 // Bucket represents the buckets threaddb collection schema.
@@ -95,6 +120,8 @@ type Buckets struct {
 	threads  *dbc.Client
 	pgClient *powc.Client
 
+	buckCidConfig ffs.DefaultConfig
+
 	lock   sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -102,7 +129,7 @@ type Buckets struct {
 }
 
 // New returns a new buckets collection mananger.
-func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug bool) (*Buckets, error) {
+func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, defaultCidConfig *ffs.DefaultConfig, debug bool) (*Buckets, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"buckets": logging.LevelDebug,
@@ -110,11 +137,18 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, debug b
 			return nil, err
 		}
 	}
+	buckCidConfig := ffsDefaultCidConfig
+	if defaultCidConfig != nil {
+		buckCidConfig = *defaultCidConfig
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Buckets{
 		ffsCol:   col,
 		threads:  t,
 		pgClient: pgc,
+
+		buckCidConfig: buckCidConfig,
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -159,7 +193,7 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth pa
 	}
 	bucket.Key = ids[0]
 
-	if err := createFFSInstance(ctx, b.ffsCol, b.pgClient, key); err != nil {
+	if err := b.createFFSInstance(ctx, key); err != nil {
 		return nil, fmt.Errorf("creating FFS instance for bucket: %s", err)
 	}
 
@@ -171,17 +205,33 @@ func (b *Buckets) IsArchivingEnabled() bool {
 	return b.pgClient != nil
 }
 
-func createFFSInstance(ctx context.Context, col *collections.FFSInstances, c *powc.Client, bucketKey string) error {
+func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error {
 	// If the Powergate client isn't configured, don't do anything.
-	if c == nil {
+	if b.pgClient == nil {
 		return nil
 	}
-	_, token, err := c.FFS.Create(ctx)
+	_, token, err := b.pgClient.FFS.Create(ctx)
 	if err != nil {
 		return fmt.Errorf("creating FFS instance: %s", err)
 	}
-	if err := col.Create(ctx, bucketKey, token); err != nil {
+
+	ctxFFS := context.WithValue(ctx, powc.AuthKey, token)
+	i, err := b.pgClient.FFS.Info(ctxFFS)
+	if err != nil {
+		return fmt.Errorf("getting information about created ffs instance: %s", err)
+	}
+	waddr := i.Balances[0].Addr
+	if err := b.ffsCol.Create(ctx, bucketKey, token, waddr); err != nil {
 		return fmt.Errorf("saving FFS instances data: %s", err)
+	}
+	defaultBucketCidConfig := ffs.DefaultConfig{
+		Cold:       b.buckCidConfig.Cold,
+		Hot:        b.buckCidConfig.Hot,
+		Repairable: b.buckCidConfig.Repairable,
+	}
+	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
+	if err := b.pgClient.FFS.SetDefaultConfig(ctxFFS, defaultBucketCidConfig); err != nil {
+		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
 	}
 	return nil
 }
@@ -270,9 +320,14 @@ func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts .
 }
 
 // Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
-// If it's not the first archive, we leverage the Replace() API to more efficient pinning.
-// The operation is async, so it will return as soon as the archiving is scheduled in Powergate.
-func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid.Cid, opts ...Option) error {
+// The behaviour changes depending on different cases, depending on a previous archive.
+// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
+// 1. Last archive exists with the same Cid:
+//   a. Last archive Successful: fails, there's nothing to do.
+//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
+//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
+// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
+func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCid cid.Cid, opts ...Option) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	ffsi, err := b.ffsCol.Get(ctx, key)
@@ -281,29 +336,61 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	}
 
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
+
+	// Check that FFS wallet addr balance is > 0, if not, fail fast.
+	bal, err := b.pgClient.Wallet.WalletBalance(ctx, ffsi.WalletAddr)
+	if err != nil {
+		return fmt.Errorf("getting ffs wallet address balance: %s", err)
+	}
+	if bal == 0 {
+		return ErrZeroBalance
+	}
+
 	var jid ffs.JobID
-	if ffsi.Archives.Current.JobID != "" {
+	firstTimeArchive := ffsi.Archives.Current.JobID == ""
+	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
+		// On the first archive, we simply push the Cid with
+		// the default CidConfig configured at bucket creation.
+		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid, powc.WithOverride(true))
+		if err != nil {
+			return fmt.Errorf("pushing config: %s", err)
+		}
+	} else {
 		oldCid, err := cid.Cast(ffsi.Archives.Current.Cid)
 		if err != nil {
 			return fmt.Errorf("parsing old Cid archive: %s", err)
 		}
-		if oldCid.Equals(c) {
-			return nil
-		}
-		jid, err = b.pgClient.FFS.Replace(ctxFFS, oldCid, c)
-		if err != nil {
-			return fmt.Errorf("replacing cid: %s", err)
-		}
-		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
-	} else {
-		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, c)
-		if err != nil {
-			return fmt.Errorf("pushing config: %s", err)
-		}
-	}
 
+		if oldCid.Equals(newCid) { // Case 1.
+			switch ffs.JobStatus(ffsi.Archives.Current.JobStatus) {
+			// Case 1.a.
+			case ffs.Success:
+				return fmt.Errorf("the same bucket cid is already archived successfully")
+			// Case 1.b.
+			case ffs.Executing, ffs.Queued:
+				return fmt.Errorf("there is an in progress archive")
+			// Case 1.c.
+			case ffs.Failed, ffs.Canceled:
+				jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid, powc.WithOverride(true))
+				if err != nil {
+					return fmt.Errorf("pushing config: %s", err)
+				}
+			default:
+				return fmt.Errorf("unexpected current archive status: %d", ffsi.Archives.Current.JobStatus)
+			}
+		} else { // Case 2.
+			jid, err = b.pgClient.FFS.Replace(ctxFFS, oldCid, newCid)
+			if err != nil {
+				return fmt.Errorf("replacing cid: %s", err)
+			}
+		}
+
+		// Include the existing archive in history,
+		// since we're going to set a new _current_ archive.
+		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
+	}
 	ffsi.Archives.Current = collections.Archive{
-		Cid:       c.Bytes(),
+		Cid:       newCid.Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid.String(),
 		JobStatus: int(ffs.Queued),
@@ -311,7 +398,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, c cid
 	if err := b.ffsCol.Replace(ctx, ffsi); err != nil {
 		return fmt.Errorf("updating ffs instance data: %s", err)
 	}
-	go b.trackArchiveProgress(util.NewClonedContext(ctx), dbID, key, jid, ffsi.FFSToken, c, opts...)
+	go b.trackArchiveProgress(util.NewClonedContext(ctx), dbID, key, jid, ffsi.FFSToken, newCid, opts...)
 
 	return nil
 }
