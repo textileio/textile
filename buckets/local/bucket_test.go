@@ -2,13 +2,16 @@ package local
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
@@ -107,33 +110,110 @@ func TestBucket_HashFile(t *testing.T) {
 }
 
 func TestBucket_Diff(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
+	t.Run("raw files", func(t *testing.T) {
+		buck := makeBucket(t, "testdata/a", options.BalancedLayout)
+		defer buck.Close()
 
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
+		err := buck.Save(context.Background())
+		require.Nil(t, err)
 
-	diffa, err := buck.Diff(context.Background(), "testdata/a")
-	require.Nil(t, err)
-	assert.Empty(t, diffa)
+		diffa, err := buck.Diff(context.Background(), "testdata/a")
+		require.Nil(t, err)
+		assert.Empty(t, diffa)
 
-	diffb, err := buck.Diff(context.Background(), "testdata/b")
-	require.Nil(t, err)
-	assert.NotEmpty(t, diffb)
-	assert.Equal(t, 6, len(diffb))
+		diffb, err := buck.Diff(context.Background(), "testdata/b")
+		require.Nil(t, err)
+		assert.NotEmpty(t, diffb)
+		assert.Equal(t, 6, len(diffb))
 
-	changes := []*dagutils.Change{
-		{Path: "foo.txt", Type: dagutils.Mod},
-		{Path: "one/two/boo.txt", Type: dagutils.Remove},
-		{Path: "one/buz.txt", Type: dagutils.Remove},
-		{Path: "one/muz.txt", Type: dagutils.Add},
-		{Path: "one/three", Type: dagutils.Add},
-		{Path: "bar.txt", Type: dagutils.Remove},
-	}
-	for i, c := range diffb {
-		assert.Equal(t, changes[i].Path, c.Path)
-		assert.Equal(t, changes[i].Type, c.Type)
-	}
+		changes := []*du.Change{
+			{Path: "foo.txt", Type: du.Mod},
+			{Path: "one/two/boo.txt", Type: du.Remove},
+			{Path: "one/buz.txt", Type: du.Remove},
+			{Path: "one/muz.txt", Type: du.Add},
+			{Path: "one/three", Type: du.Add},
+			{Path: "bar.txt", Type: du.Remove},
+		}
+		for i, c := range diffb {
+			assert.Equal(t, changes[i].Path, c.Path)
+			assert.Equal(t, changes[i].Type, c.Type)
+		}
+	})
+
+	t.Run("proto files", func(t *testing.T) {
+		var dirs []string
+		t.Cleanup(func() {
+			for _, d := range dirs {
+				_ = os.RemoveAll(d)
+			}
+		})
+
+		dira, err := ioutil.TempDir("", "")
+		require.Nil(t, err)
+		dirs = append(dirs, dira)
+
+		buck := makeBucket(t, dira, options.BalancedLayout)
+		defer buck.Close()
+
+		// Add a file large enough to have multiple raw node chunks
+		fa, err := os.Create(filepath.Join(dira, "file"))
+		require.Nil(t, err)
+		defer fa.Close()
+		_, err = io.CopyN(fa, rand.Reader, 1000*1024)
+		require.Nil(t, err)
+
+		err = buck.Save(context.Background())
+		require.Nil(t, err)
+
+		diffa, err := buck.Diff(context.Background(), dira)
+		require.Nil(t, err)
+		assert.Empty(t, diffa)
+
+		// Create another dir with a file of the same name.
+		// We should see the file as modified in the diff.
+		dirb, err := ioutil.TempDir("", "")
+		require.Nil(t, err)
+		dirs = append(dirs, dirb)
+		fb, err := os.Create(filepath.Join(dirb, "file"))
+		require.Nil(t, err)
+		defer fb.Close()
+		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
+		require.Nil(t, err)
+
+		diffb, err := buck.Diff(context.Background(), dirb)
+		require.Nil(t, err)
+		assert.NotEmpty(t, diffb)
+		assert.Equal(t, 1, len(diffb))
+		changes := []*du.Change{
+			{Path: filepath.Base(fa.Name()), Type: du.Mod},
+		}
+		for i, c := range diffb {
+			assert.Equal(t, changes[i].Path, c.Path)
+			assert.Equal(t, changes[i].Type, c.Type)
+		}
+
+		// Create another dir with a nested dir of the same name as the original file.
+		// We should see the file as modified in the diff.
+		dirc, err := ioutil.TempDir("", "")
+		require.Nil(t, err)
+		dirs = append(dirs, dirc)
+		err = os.MkdirAll(filepath.Join(dirc, "file"), os.ModePerm)
+		require.Nil(t, err)
+		fc, err := os.Create(filepath.Join(dirc, "file", "file"))
+		require.Nil(t, err)
+		defer fc.Close()
+		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
+		require.Nil(t, err)
+
+		diffc, err := buck.Diff(context.Background(), dirc)
+		require.Nil(t, err)
+		assert.NotEmpty(t, diffc)
+		assert.Equal(t, 1, len(diffc))
+		for i, c := range diffc {
+			assert.Equal(t, changes[i].Path, c.Path)
+			assert.Equal(t, changes[i].Type, c.Type)
+		}
+	})
 }
 
 func TestBucket_Get(t *testing.T) {
