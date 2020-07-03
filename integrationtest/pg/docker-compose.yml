@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   powergate:
-    image: textile/powergate:sha-b46eada
+    image: textile/powergate:sha-db27e80
     ports:
       - 8889:8889
       - 8888:8888
@@ -27,12 +27,12 @@ services:
       - TEXLOTUSDEVNET_BIGSECTORS=false
 
   ipfs:
-    image: ipfs/go-ipfs:v0.5.1
+    image: ipfs/go-ipfs:v0.6.0
     environment:
       - IPFS_PROFILE=local-discovery
 
   ipfsbuckets:
-    image: ipfs/go-ipfs:v0.5.1
+    image: ipfs/go-ipfs:v0.6.0
     environment:
      - IPFS_PROFILE=local-discovery
     ports:
