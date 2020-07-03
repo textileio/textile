@@ -62,7 +62,7 @@ func mergeIpfsPath(ipfsBasePth path.Path, dest string, overwriteAll bool) error 
 	// Remove all the folders that were decided to be replaced.
 	for _, fr := range folderReplace {
 		if err := os.RemoveAll(fr); err != nil {
-			cmd.Fatal(err)
+			return err
 		}
 	}
 

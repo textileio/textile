@@ -25,7 +25,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:sha-b46eada
+    image: textile/powergate:sha-db27e80
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -37,10 +37,10 @@ services:
     restart: unless-stopped
 
   ipfs:
-    image: ipfs/go-ipfs:v0.5.1
+    image: ipfs/go-ipfs:v0.6.0
 
   ipfsbuckets:
-    image: ipfs/go-ipfs:v0.5.1
+    image: ipfs/go-ipfs:v0.6.0
 
   mongo:
     image: mongo:latest
