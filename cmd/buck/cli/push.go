@@ -20,6 +20,11 @@ import (
 	"github.com/textileio/textile/cmd"
 )
 
+var (
+	buckTotalSizeLimit = MiB * 10 // 10 MiB
+	MiB                = 1024 * 1024
+)
+
 var bucketPushCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push bucket object changes",
@@ -34,6 +39,16 @@ var bucketPushCmd = &cobra.Command{
 			cmd.Fatal(errNotABucket)
 		}
 		root := filepath.Dir(filepath.Dir(conf))
+
+		// Check total bucket size limit.
+		size, err := folderSize(root)
+		if err != nil {
+			cmd.Fatal(fmt.Errorf("calculating bucket total size: %s", err))
+		}
+		if size > int64(buckTotalSizeLimit) {
+			cmd.Fatal(fmt.Errorf("The bucket size is %dMB which is bigger than accepted limit %dMB", size/int64(MiB), buckTotalSizeLimit/MiB))
+		}
+
 		key := config.Viper.GetString("key")
 
 		dbID := cmd.ThreadIDFromString(config.Viper.GetString("thread"))
@@ -204,4 +219,18 @@ func rmFile(key string, xroot path.Resolved, filePath string, force bool) path.R
 	}
 	fmt.Println("- " + filePath)
 	return root
+}
+
+func folderSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("getting fileinfo of %s: %s", path, err)
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
 }
