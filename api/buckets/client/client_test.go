@@ -460,7 +460,7 @@ func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	var buf bytes.Buffer
 	err = client.PullPath(ctx, buck.Root.Key, "one/two/note.txt", &buf)
 	require.Nil(t, err)
-	assert.Equal(t, note, string(buf.Bytes()))
+	assert.Equal(t, note, buf.String())
 }
 
 func TestClient_Remove(t *testing.T) {
