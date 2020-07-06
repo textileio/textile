@@ -56,12 +56,13 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections *c.Collections
-	Buckets     *bucks.Buckets
-	GatewayURL  string
-	IPFSClient  iface.CoreAPI
-	IPNSManager *ipns.Manager
-	DNSManager  *dns.Manager
+	Collections   *c.Collections
+	Buckets       *bucks.Buckets
+	BucketMaxSize int64
+	GatewayURL    string
+	IPFSClient    iface.CoreAPI
+	IPNSManager   *ipns.Manager
+	DNSManager    *dns.Manager
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
@@ -877,11 +878,22 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		}
 	}
 
+	buckPath := path.New(buck.Path)
+	stat, err := s.IPFSClient.Object().Stat(server.Context(), buckPath)
+	if err != nil {
+		return fmt.Errorf("get stat of current bucket: %s", err)
+	}
+	currentSize := int64(stat.CumulativeSize)
+	if err != nil {
+		return fmt.Errorf("get bucket size: %s", err)
+	}
+
 	reader, writer := io.Pipe()
 	waitCh := make(chan struct{})
 	go func() {
 		defer close(waitCh)
 		for {
+			var cummSize int64
 			req, err := server.Recv()
 			if err == io.EOF {
 				_ = writer.Close()
@@ -893,9 +905,14 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 			}
 			switch payload := req.Payload.(type) {
 			case *pb.PushPathRequest_Chunk:
-				if _, err := writer.Write(payload.Chunk); err != nil {
+				n, err := writer.Write(payload.Chunk)
+				if err != nil {
 					sendErr(fmt.Errorf("error writing chunk: %v", err))
 					return
+				}
+				cummSize += int64(n)
+				if s.BucketMaxSize > 0 && currentSize+cummSize > s.BucketMaxSize {
+					sendErr(fmt.Errorf("bucket size reached max limit size"))
 				}
 			default:
 				sendErr(fmt.Errorf("invalid request"))
@@ -953,7 +970,6 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		return err
 	}
 
-	buckPath := path.New(buck.Path)
 	var dirpth path.Resolved
 	if encKey != nil {
 		dirpth, err = s.insertNodeAtPath(server.Context(), fn, path.Join(buckPath, filePath), encKey)
@@ -1166,6 +1182,14 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
+	stat, err := s.IPFSClient.Object().Stat(ctx, to)
+	if err != nil {
+		return fmt.Errorf("get stats of pin destination: %s", err)
+	}
+	if s.BucketMaxSize > 0 && int64(stat.CumulativeSize) > s.BucketMaxSize {
+		return fmt.Errorf("bucket size is greater than max allowed size")
+	}
+
 	if from == nil {
 		if err := s.IPFSClient.Pin().Add(ctx, to); err != nil {
 			return err

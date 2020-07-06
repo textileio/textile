@@ -66,6 +66,10 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
+			"bucketMaxSize": {
+				Key:      "bucket.max_size",
+				DefValue: 0,
+			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
 				DefValue: "mongodb://127.0.0.1:27017",

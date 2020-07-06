@@ -230,6 +230,7 @@ var rootCmd = &cobra.Command{
 			addrPowergateApi = cmd.AddrFromStr(str)
 		}
 
+		bucketMaxSize := config.Viper.GetInt64("bucket.max_size")
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
 		dnsDomain := config.Viper.GetString("dns.domain")
@@ -253,6 +254,7 @@ var rootCmd = &cobra.Command{
 			AddrGatewayURL:   addrGatewayUrl,
 			AddrPowergateAPI: addrPowergateApi,
 			AddrMongoURI:     addrMongoUri,
+			BucketMaxSize:    bucketMaxSize,
 			UseSubdomains:    config.Viper.GetBool("gateway.subdomains"),
 			MongoName:        "buckets",
 			DNSDomain:        dnsDomain,
