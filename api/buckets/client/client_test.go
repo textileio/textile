@@ -17,9 +17,11 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
+	"github.com/textileio/textile/api/buckets"
 	c "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
 )
@@ -234,6 +236,40 @@ func TestClient_PushPath(t *testing.T) {
 	t.Run("private", func(t *testing.T) {
 		pushPath(t, ctx, client, true)
 	})
+}
+
+func TestClient_PushPathExceedLimit(t *testing.T) {
+	t.Parallel()
+	firstFile := "testdata/file1.jpg"
+	file1, err := os.Open(firstFile)
+	require.Nil(t, err)
+	defer file1.Close()
+	stat, err := os.Stat(firstFile)
+	require.NoError(t, err)
+
+	// Calculate a max-size which lets the first file
+	// be accepted, with a bit of margin. A second file
+	// will fail since it exceeded the bucket limit.
+	maxBucketSize := stat.Size() + 1024
+
+	conf := apitest.DefaultTextileConfig(t)
+	conf.BucketMaxSize = maxBucketSize
+	ctx, client, shutdown := setupWithConf(t, conf)
+	defer shutdown()
+
+	buck, err := client.Init(ctx)
+	require.Nil(t, err)
+
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
+	require.Contains(t, buckets.ErrBucketExceedsMaxSize.Error(), err.Error())
 }
 
 func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
@@ -640,7 +676,12 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client, func()) {
-	conf, shutdown := apitest.MakeTextile(t)
+	conf := apitest.DefaultTextileConfig(t)
+	return setupWithConf(t, conf)
+}
+
+func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client, func()) {
+	shutdown := apitest.MakeTextileCustom(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}

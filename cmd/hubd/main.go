@@ -180,6 +180,12 @@ func init() {
 		config.Flags["addrMongoUri"].DefValue.(string),
 		"MongoDB connection URI")
 
+	// Bucket settings
+	rootCmd.PersistentFlags().String(
+		"bucketMaxSize",
+		config.Flags["bucketMaxSize"].DefValue.(string),
+		"Bucket max size in bytes")
+
 	// Gateway settings
 	rootCmd.PersistentFlags().Bool(
 		"gatewaySubdomains",

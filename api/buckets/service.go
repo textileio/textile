@@ -41,10 +41,13 @@ var (
 	log = logging.Logger("bucketsapi")
 
 	// ErrArchivingFeatureDisabled indicates an archive was requested with archiving disabled.
-	ErrArchivingFeatureDisabled = fmt.Errorf("archiving feature is disabled")
+	ErrArchivingFeatureDisabled = errors.New("archiving feature is disabled")
+
+	// ErrBucketExceedsMaxSize indicates the bucket exceeds the max allowed size.
+	ErrBucketExceedsMaxSize = errors.New("bucket exceeds max size")
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
-	errInvalidNodeType = fmt.Errorf("invalid node type")
+	errInvalidNodeType = errors.New("invalid node type")
 )
 
 const (
@@ -887,7 +890,6 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if err != nil {
 		return fmt.Errorf("get bucket size: %s", err)
 	}
-
 	reader, writer := io.Pipe()
 	waitCh := make(chan struct{})
 	go func() {
@@ -912,7 +914,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 				}
 				cummSize += int64(n)
 				if s.BucketMaxSize > 0 && currentSize+cummSize > s.BucketMaxSize {
-					sendErr(fmt.Errorf("bucket size reached max limit size"))
+					sendErr(ErrBucketExceedsMaxSize)
 				}
 			default:
 				sendErr(fmt.Errorf("invalid request"))
