@@ -74,6 +74,10 @@ var (
 				Key:      "bucket.max_number_per_thread",
 				DefValue: 0,
 			},
+			"threadMaxNumberPerOwner": {
+				Key:      "thread.max_number_per_owner",
+				DefValue: 0,
+			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
 				DefValue: "mongodb://127.0.0.1:27017",
@@ -205,6 +209,12 @@ func init() {
 		"bucketMaxNumberPerThread",
 		config.Flags["bucketMaxNumberPerThread"].DefValue.(int),
 		"Max number of buckets per thread")
+
+	// Thread settings
+	rootCmd.PersistentFlags().Int(
+		"threadMaxNumberPerOwner",
+		config.Flags["threadMaxNumberPerOwner"].DefValue.(int),
+		"Max number threads per owner")
 
 	// DNS settings
 	rootCmd.PersistentFlags().String(
