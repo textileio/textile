@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
@@ -70,6 +69,10 @@ var (
 			"bucketMaxSize": {
 				Key:      "bucket.max_size",
 				DefValue: int64(0),
+			},
+			"bucketMaxNumberPerThread": {
+				Key:      "bucket.max_number_per_thread",
+				DefValue: 0,
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
@@ -181,12 +184,6 @@ func init() {
 		config.Flags["addrMongoUri"].DefValue.(string),
 		"MongoDB connection URI")
 
-	// Bucket settings
-	rootCmd.PersistentFlags().String(
-		"bucketMaxSize",
-		strconv.FormatInt(config.Flags["bucketMaxSize"].DefValue.(int64), 10),
-		"Bucket max size in bytes")
-
 	// Gateway settings
 	rootCmd.PersistentFlags().Bool(
 		"gatewaySubdomains",
@@ -199,6 +196,17 @@ func init() {
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Root domain for bucket subdomains")
 
+	// Bucket settings
+	rootCmd.PersistentFlags().Int64(
+		"bucketMaxSize",
+		config.Flags["bucketMaxSize"].DefValue.(int64),
+		"Bucket max size in bytes")
+	rootCmd.PersistentFlags().Int(
+		"bucketMaxNumberPerThread",
+		config.Flags["bucketMaxNumberPerThread"].DefValue.(int),
+		"Max number of buckets per thread")
+
+	// DNS settings
 	rootCmd.PersistentFlags().String(
 		"dnsZoneID",
 		config.Flags["dnsZoneID"].DefValue.(string),

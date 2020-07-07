@@ -54,6 +54,19 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, pbuck.Seed)
 }
 
+func TestClient_InitExceedLimit(t *testing.T) {
+	t.Parallel()
+	conf := apitest.DefaultTextileConfig(t)
+	conf.BucketMaxNumberPerThread = 1
+	ctx, client, shutdown := setupWithConf(t, conf)
+	defer shutdown()
+
+	_, err := client.Init(ctx, c.WithName("mybuck"))
+	require.Nil(t, err)
+	_, err = client.Init(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
+	require.Contains(t, err.Error(), buckets.ErrTooManyBucketsInThread.Error())
+}
+
 func TestClient_InitWithCid(t *testing.T) {
 	t.Parallel()
 	ctx, client, done := setup(t)
@@ -269,7 +282,7 @@ func TestClient_PushPathExceedLimit(t *testing.T) {
 	require.Nil(t, err)
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
-	require.Contains(t, buckets.ErrBucketExceedsMaxSize.Error(), err.Error())
+	require.Contains(t, err.Error(), buckets.ErrBucketExceedsMaxSize.Error())
 }
 
 func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {

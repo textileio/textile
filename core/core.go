@@ -100,7 +100,8 @@ type Config struct {
 	AddrPowergateAPI ma.Multiaddr
 	AddrMongoURI     string
 
-	BucketMaxSize int64
+	BucketMaxSize            int64
+	BucketMaxNumberPerThread int
 
 	UseSubdomains bool
 
@@ -238,13 +239,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	bs := &buckets.Service{
-		Collections:   t.collections,
-		Buckets:       t.bucks,
-		BucketMaxSize: conf.BucketMaxSize,
-		GatewayURL:    conf.AddrGatewayURL,
-		IPFSClient:    ic,
-		IPNSManager:   t.ipnsm,
-		DNSManager:    t.dnsm,
+		Collections:              t.collections,
+		Buckets:                  t.bucks,
+		BucketMaxSize:            conf.BucketMaxSize,
+		BucketMaxNumberPerThread: conf.BucketMaxNumberPerThread,
+		GatewayURL:               conf.AddrGatewayURL,
+		IPFSClient:               ic,
+		IPNSManager:              t.ipnsm,
+		DNSManager:               t.dnsm,
 	}
 
 	// Start serving

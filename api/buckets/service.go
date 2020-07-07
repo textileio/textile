@@ -44,7 +44,10 @@ var (
 	ErrArchivingFeatureDisabled = errors.New("archiving feature is disabled")
 
 	// ErrBucketExceedsMaxSize indicates the bucket exceeds the max allowed size.
-	ErrBucketExceedsMaxSize = errors.New("bucket exceeds max size")
+	ErrBucketExceedsMaxSize = errors.New("bucket size exceeds quota")
+
+	// ErrTooManyBucketsInThread indicates that there is the maximum number of buckets in a thread.
+	ErrTooManyBucketsInThread = errors.New("number of buckets in thread exceeds quota")
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
@@ -59,13 +62,14 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections   *c.Collections
-	Buckets       *bucks.Buckets
-	BucketMaxSize int64
-	GatewayURL    string
-	IPFSClient    iface.CoreAPI
-	IPNSManager   *ipns.Manager
-	DNSManager    *dns.Manager
+	Collections              *c.Collections
+	Buckets                  *bucks.Buckets
+	BucketMaxSize            int64
+	BucketMaxNumberPerThread int
+	GatewayURL               string
+	IPFSClient               iface.CoreAPI
+	IPNSManager              *ipns.Manager
+	DNSManager               *dns.Manager
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
@@ -77,6 +81,16 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
+	// Control if the user has reached max number of created buckets.
+	buckets, err := s.Buckets.List(ctx, dbID, bucks.WithToken(dbToken))
+	if err != nil {
+		return nil, fmt.Errorf("getting existing buckets: %s", err)
+	}
+
+	if s.BucketMaxNumberPerThread > 0 && len(buckets) == s.BucketMaxNumberPerThread {
+		return nil, ErrTooManyBucketsInThread
+	}
+
 	var key []byte
 	if req.Private {
 		var err error
@@ -86,7 +100,6 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		}
 	}
 	var bootCid cid.Cid
-	var err error
 	if req.BootstrapCid != "" {
 		bootCid, err = cid.Decode(req.BootstrapCid)
 		if err != nil {
