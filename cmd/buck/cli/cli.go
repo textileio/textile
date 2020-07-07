@@ -72,6 +72,7 @@ func Init(rootCmd *cobra.Command) {
 
 	bucketPushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	bucketPushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	bucketPushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
 
 	bucketPullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
 	bucketPullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")

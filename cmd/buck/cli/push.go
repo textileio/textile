@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	buckTotalSizeLimit = MiB * 10 // 10 MiB
-	MiB                = 1024 * 1024
+	buckMaxSizeMiB = int64(10)
+	MiB            = int64(1024 * 1024)
 )
 
 var bucketPushCmd = &cobra.Command{
@@ -40,13 +40,17 @@ var bucketPushCmd = &cobra.Command{
 		}
 		root := filepath.Dir(filepath.Dir(conf))
 
+		maxSize, err := c.Flags().GetInt64("maxsize")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		// Check total bucket size limit.
 		size, err := folderSize(root)
 		if err != nil {
 			cmd.Fatal(fmt.Errorf("calculating bucket total size: %s", err))
 		}
-		if size > int64(buckTotalSizeLimit) {
-			cmd.Fatal(fmt.Errorf("The bucket size is %dMB which is bigger than accepted limit %dMB", size/int64(MiB), buckTotalSizeLimit/MiB))
+		if size > maxSize*MiB {
+			cmd.Fatal(fmt.Errorf("The bucket size is %dMB which is bigger than accepted limit %dMB", size/int64(MiB), maxSize))
 		}
 
 		key := config.Viper.GetString("key")
