@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
@@ -68,7 +69,7 @@ var (
 			},
 			"bucketMaxSize": {
 				Key:      "bucket.max_size",
-				DefValue: 0,
+				DefValue: int64(0),
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
@@ -183,7 +184,7 @@ func init() {
 	// Bucket settings
 	rootCmd.PersistentFlags().String(
 		"bucketMaxSize",
-		config.Flags["bucketMaxSize"].DefValue.(string),
+		strconv.FormatInt(config.Flags["bucketMaxSize"].DefValue.(int64), 10),
 		"Bucket max size in bytes")
 
 	// Gateway settings

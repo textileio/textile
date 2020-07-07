@@ -12,6 +12,7 @@ services:
       - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
       - HUB_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
       - HUB_ADDR_POWERGATE_API
+      - HUB_BUCKET_MAX_SIZE
       - HUB_GATEWAY_SUBDOMAINS
       - HUB_EMAIL_SESSION_SECRET=hubsession
       - HUB_LOG_DEBUG=true
