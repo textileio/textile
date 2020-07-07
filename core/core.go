@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"net"
 	"net/http"
 	"time"
@@ -112,6 +113,8 @@ type Config struct {
 	Hub   bool
 	Debug bool
 
+	ThreadsConnManager connmgr.ConnManager
+
 	FFSDefaultConfig *ffs.DefaultConfig
 }
 
@@ -155,7 +158,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure threads
-	t.ts, err = tc.DefaultNetwork(conf.RepoPath, tc.WithNetHostAddr(conf.AddrThreadsHost), tc.WithNetDebug(conf.Debug))
+	netOptions := []tc.NetOption{
+		tc.WithNetHostAddr(conf.AddrThreadsHost),
+		tc.WithNetDebug(conf.Debug),
+	}
+	if conf.ThreadsConnManager != nil {
+		netOptions = append(netOptions, tc.WithConnectionManager(conf.ThreadsConnManager))
+	}
+	t.ts, err = tc.DefaultNetwork(
+		conf.RepoPath,
+		netOptions...,
+	)
 	if err != nil {
 		return nil, err
 	}
