@@ -65,8 +65,8 @@ var (
 		"/threads.pb.API/ListDBs",
 	}
 
-	// wsPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
-	wsPingInterval = time.Second * 5
+	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
+	WSPingInterval = time.Second * 5
 )
 
 type Textile struct {
@@ -286,7 +286,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}),
 		grpcweb.WithAllowedRequestHeaders([]string{"Origin"}),
 		grpcweb.WithWebsockets(true),
-		grpcweb.WithWebsocketPingInterval(wsPingInterval),
+		grpcweb.WithWebsocketPingInterval(WSPingInterval),
 		grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
 			return true
 		}))
