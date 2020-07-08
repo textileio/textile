@@ -230,11 +230,6 @@ var rootCmd = &cobra.Command{
 			addrPowergateApi = cmd.AddrFromStr(str)
 		}
 
-		bucketMaxSize := config.Viper.GetInt64("bucket.max_size")
-		bucketMaxNumberPerThread := config.Viper.GetInt("bucket.max_number_per_thread")
-
-		threadMaxNumberPerOwner := config.Viper.GetInt("thread.max_number_per_owner")
-
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
 		dnsDomain := config.Viper.GetString("dns.domain")
@@ -249,24 +244,21 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:                 config.Viper.GetString("repo"),
-			AddrAPI:                  addrApi,
-			AddrAPIProxy:             addrApiProxy,
-			AddrThreadsHost:          addrThreadsHost,
-			AddrIPFSAPI:              addrIpfsApi,
-			AddrGatewayHost:          addrGatewayHost,
-			AddrGatewayURL:           addrGatewayUrl,
-			AddrPowergateAPI:         addrPowergateApi,
-			AddrMongoURI:             addrMongoUri,
-			BucketMaxSize:            bucketMaxSize,
-			BucketMaxNumberPerThread: bucketMaxNumberPerThread,
-			ThreadMaxNumberPerOwner:  threadMaxNumberPerOwner,
-			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
-			MongoName:                "buckets",
-			DNSDomain:                dnsDomain,
-			DNSZoneID:                dnsZoneID,
-			DNSToken:                 dnsToken,
-			Debug:                    config.Viper.GetBool("log.debug"),
+			RepoPath:         config.Viper.GetString("repo"),
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrThreadsHost:  addrThreadsHost,
+			AddrIPFSAPI:      addrIpfsApi,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
+			AddrPowergateAPI: addrPowergateApi,
+			AddrMongoURI:     addrMongoUri,
+			UseSubdomains:    config.Viper.GetBool("gateway.subdomains"),
+			MongoName:        "buckets",
+			DNSDomain:        dnsDomain,
+			DNSZoneID:        dnsZoneID,
+			DNSToken:         dnsToken,
+			Debug:            config.Viper.GetBool("log.debug"),
 		})
 		if err != nil {
 			log.Fatal(err)

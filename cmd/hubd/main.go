@@ -297,6 +297,11 @@ var rootCmd = &cobra.Command{
 
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
+		bucketMaxSize := config.Viper.GetInt64("bucket.max_size")
+		bucketMaxNumberPerThread := config.Viper.GetInt("bucket.max_number_per_thread")
+
+		threadMaxNumberPerOwner := config.Viper.GetInt("thread.max_number_per_owner")
+
 		dnsDomain := config.Viper.GetString("dns.domain")
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
@@ -314,17 +319,21 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:           config.Viper.GetString("repo"),
-			AddrAPI:            addrApi,
-			AddrAPIProxy:       addrApiProxy,
-			AddrThreadsHost:    addrThreadsHost,
-			AddrIPFSAPI:        addrIpfsApi,
-			AddrGatewayHost:    addrGatewayHost,
-			AddrGatewayURL:     addrGatewayUrl,
-			AddrPowergateAPI:   addrPowergateApi,
-			AddrMongoURI:       addrMongoUri,
-			UseSubdomains:      config.Viper.GetBool("gateway.subdomains"),
-			MongoName:          "textile",
+			RepoPath:                 config.Viper.GetString("repo"),
+			AddrAPI:                  addrApi,
+			AddrAPIProxy:             addrApiProxy,
+			AddrThreadsHost:          addrThreadsHost,
+			AddrIPFSAPI:              addrIpfsApi,
+			AddrGatewayHost:          addrGatewayHost,
+			AddrGatewayURL:           addrGatewayUrl,
+			AddrPowergateAPI:         addrPowergateApi,
+			AddrMongoURI:             addrMongoUri,
+			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
+			MongoName:                "textile",
+			BucketMaxSize:            bucketMaxSize,
+			BucketMaxNumberPerThread: bucketMaxNumberPerThread,
+			ThreadMaxNumberPerOwner:  threadMaxNumberPerOwner,
+
 			DNSDomain:          dnsDomain,
 			DNSZoneID:          dnsZoneID,
 			DNSToken:           dnsToken,

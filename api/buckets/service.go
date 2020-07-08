@@ -87,7 +87,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		return nil, fmt.Errorf("getting existing buckets: %s", err)
 	}
 
-	if s.BucketMaxNumberPerThread > 0 && len(buckets) == s.BucketMaxNumberPerThread {
+	if s.BucketMaxNumberPerThread > 0 && len(buckets) >= s.BucketMaxNumberPerThread {
 		return nil, ErrTooManyBucketsInThread
 	}
 
