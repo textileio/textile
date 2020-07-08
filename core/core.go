@@ -3,10 +3,11 @@ package core
 import (
 	"context"
 	"errors"
-	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"net"
 	"net/http"
 	"time"
+
+	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 
 	"github.com/dgrijalva/jwt-go"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -282,6 +283,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}),
 		grpcweb.WithAllowedRequestHeaders([]string{"Origin"}),
 		grpcweb.WithWebsockets(true),
+		grpcweb.WithWebsocketPingInterval(time.Second*5),
 		grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
 			return true
 		}))
