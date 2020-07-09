@@ -1203,45 +1203,53 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
-	key := ownerFromContext(ctx)
-	a, err := s.Collections.Accounts.Get(ctx, key)
-	if err != nil {
-		return fmt.Errorf("getting account from context: %s", err)
-	}
+	key, isUser := ownerFromContext(ctx)
 
-	toSize, err := s.dagSize(ctx, to)
-	if err != nil {
-		return fmt.Errorf("getting size of destination dag: %s", err)
-	}
-	if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
-		return fmt.Errorf("bucket size is greater than max allowed size")
-	}
+	var futureSize int64
+	if !isUser {
+		a, err := s.Collections.Accounts.Get(ctx, key)
+		if err != nil {
+			return fmt.Errorf("getting account from context: %s", err)
+		}
 
-	fromSize, err := s.dagSize(ctx, from)
-	if err != nil {
-		return fmt.Errorf("getting size of current dag: %s", err)
-	}
+		toSize, err := s.dagSize(ctx, to)
+		if err != nil {
+			return fmt.Errorf("getting size of destination dag: %s", err)
+		}
+		if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
+			return fmt.Errorf("bucket size is greater than max allowed size")
+		}
 
-	// Calculate if adding or moving the pin leads to a violation of
-	// total buckets size allowed in configuration.
-	futureSize := a.BucketsTotalSize - fromSize + toSize
-	if s.BucketsTotalMaxSize > 0 && futureSize > s.BucketsTotalMaxSize {
-		return ErrBucketsTotalSizeExceedsMaxSize
+		fromSize, err := s.dagSize(ctx, from)
+		if err != nil {
+			return fmt.Errorf("getting size of current dag: %s", err)
+		}
+
+		// Calculate if adding or moving the pin leads to a violation of
+		// total buckets size allowed in configuration.
+		futureSize = a.BucketsTotalSize - fromSize + toSize
+		if s.BucketsTotalMaxSize > 0 && futureSize > s.BucketsTotalMaxSize {
+			return ErrBucketsTotalSizeExceedsMaxSize
+		}
 	}
 
 	if from == nil {
-		return s.IPFSClient.Pin().Add(ctx, to)
-	}
-
-	if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
-		if err.Error() == pinNotRecursiveMsg {
-			return s.IPFSClient.Pin().Add(ctx, to)
+		if err := s.IPFSClient.Pin().Add(ctx, to); err != nil {
+			return err
 		}
-		return err
+	} else {
+		if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
+			if err.Error() == pinNotRecursiveMsg {
+				return s.IPFSClient.Pin().Add(ctx, to)
+			}
+			return err
+		}
 	}
 
-	if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, futureSize); err != nil {
-		return fmt.Errorf("updating new buckets total size: %s", err)
+	if !isUser {
+		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, futureSize); err != nil {
+			return fmt.Errorf("updating new buckets total size: %s", err)
+		}
 	}
 
 	return nil
@@ -1679,15 +1687,17 @@ func (s *Service) getGatewayHost() (host string, ok bool) {
 	return
 }
 
-func ownerFromContext(ctx context.Context) crypto.PubKey {
-	org, ok := c.OrgFromContext(ctx)
-	if !ok {
-		dev, ok := c.DevFromContext(ctx)
-		if !ok {
-			user, _ := c.UserFromContext(ctx)
-			return user.Key
-		}
-		return dev.Key
+// ownerFromContext returns the account from the context, and
+// true if is from an user.
+func ownerFromContext(ctx context.Context) (crypto.PubKey, bool) {
+	if org, ok := c.OrgFromContext(ctx); ok {
+		return org.Key, false
 	}
-	return org.Key
+	if dev, ok := c.DevFromContext(ctx); ok {
+		return dev.Key, false
+	}
+	if user, ok := c.UserFromContext(ctx); ok {
+		return user.Key, true
+	}
+	panic("context must contain org/dev/user")
 }
