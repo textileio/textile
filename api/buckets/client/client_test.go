@@ -309,6 +309,11 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 	assert.NotEmpty(t, pth1)
 	assert.NotEmpty(t, root1)
 
+	// Create a second bucket. Since the limit is bucket-wide
+	// should fail.
+	buck, err = client.Init(ctx)
+	require.Nil(t, err)
+
 	file2, err := os.Open("testdata/file2.jpg")
 	require.Nil(t, err)
 	defer file2.Close()
