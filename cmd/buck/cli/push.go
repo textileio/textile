@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	buckMaxSizeMiB = int64(10)
+	buckMaxSizeMiB = int64(1024)
 	MiB            = int64(1024 * 1024)
 )
 

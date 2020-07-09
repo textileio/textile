@@ -71,8 +71,9 @@ var (
 				DefValue: int64(0),
 			},
 			"bucketsTotalMaxSize": {
-				Key: "bucket.total_max_size",
+				Key:      "bucket.total_max_size",
 				DefValue: int64(0),
+			},
 			"bucketMaxNumberPerThread": {
 				Key:      "bucket.max_number_per_thread",
 				DefValue: 0,
