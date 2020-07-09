@@ -302,6 +302,9 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 }
 
 func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newTotalSize int64) error {
+	if newTotalSize < 0 {
+		return fmt.Errorf("new size %d must be positive", newTotalSize)
+	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
 		return err

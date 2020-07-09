@@ -233,7 +233,7 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 	if key != nil {
 		pins = append(pins, seed)
 	}
-	if err = s.IPFSClient.Dag().Pinning().AddMany(ctx, pins); err != nil {
+	if err = s.pinBlocks(ctx, pins); err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(n.Cid()), nil
@@ -257,7 +257,7 @@ func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bo
 	} else {
 		pins = []ipld.Node{n}
 	}
-	if err = s.IPFSClient.Dag().Pinning().AddMany(ctx, pins); err != nil {
+	if err = s.pinBlocks(ctx, pins); err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(n.Cid()), nil
@@ -631,7 +631,7 @@ func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
 	if err := s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
 		return err
 	}
-	return s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes)
+	return s.pinBlocks(ctx, nodes)
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
@@ -1116,9 +1116,10 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 		return nil, err
 	}
 	// Pin brand new nodes
-	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, news); err != nil {
+	if err := s.pinBlocks(ctx, news); err != nil {
 		return nil, err
 	}
+
 	// Update changed node pins
 	for _, n := range np {
 		if n.old != nil && n.isJoint {
@@ -1144,7 +1145,7 @@ func (s *Service) unpinBranch(ctx context.Context, p path.Resolved, key []byte) 
 			continue // Data nodes will never be pinned directly
 		}
 		lp := path.IpfsPath(l.Cid)
-		if err := s.IPFSClient.Pin().Rm(ctx, lp); err != nil {
+		if err := s.unpinPath(ctx, lp); err != nil {
 			return err
 		}
 		if err = s.unpinBranch(ctx, lp, key); err != nil {
@@ -1203,34 +1204,29 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
-	key, isUser := ownerFromContext(ctx)
+	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return fmt.Errorf("getting current buckets total size: %s", err)
+	}
 
-	var futureSize int64
-	if !isUser {
-		a, err := s.Collections.Accounts.Get(ctx, key)
-		if err != nil {
-			return fmt.Errorf("getting account from context: %s", err)
-		}
+	toSize, err := s.dagSize(ctx, to)
+	if err != nil {
+		return fmt.Errorf("getting size of destination dag: %s", err)
+	}
+	if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
+		return fmt.Errorf("bucket size is greater than max allowed size")
+	}
 
-		toSize, err := s.dagSize(ctx, to)
-		if err != nil {
-			return fmt.Errorf("getting size of destination dag: %s", err)
-		}
-		if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
-			return fmt.Errorf("bucket size is greater than max allowed size")
-		}
+	fromSize, err := s.dagSize(ctx, from)
+	if err != nil {
+		return fmt.Errorf("getting size of current dag: %s", err)
+	}
 
-		fromSize, err := s.dagSize(ctx, from)
-		if err != nil {
-			return fmt.Errorf("getting size of current dag: %s", err)
-		}
-
-		// Calculate if adding or moving the pin leads to a violation of
-		// total buckets size allowed in configuration.
-		futureSize = a.BucketsTotalSize - fromSize + toSize
-		if s.BucketsTotalMaxSize > 0 && futureSize > s.BucketsTotalMaxSize {
-			return ErrBucketsTotalSizeExceedsMaxSize
-		}
+	// Calculate if adding or moving the pin leads to a violation of
+	// total buckets size allowed in configuration.
+	deltaSize := -fromSize + toSize
+	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
+		return ErrBucketsTotalSizeExceedsMaxSize
 	}
 
 	if from == nil {
@@ -1246,10 +1242,8 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 		}
 	}
 
-	if !isUser {
-		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, futureSize); err != nil {
-			return fmt.Errorf("updating new buckets total size: %s", err)
-		}
+	if err := s.sumBytesPinned(ctx, deltaSize); err != nil {
+		return fmt.Errorf("updating new buckets total size: %s", err)
 	}
 
 	return nil
@@ -1402,7 +1396,7 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 			return nil, err
 		}
 	} else {
-		if err = s.IPFSClient.Pin().Rm(ctx, buckPath); err != nil {
+		if err = s.unpinPath(ctx, buckPath); err != nil {
 			return nil, err
 		}
 	}
@@ -1426,7 +1420,7 @@ func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key
 	if err := s.unpinBranch(ctx, pth, key); err != nil {
 		return err
 	}
-	return s.IPFSClient.Pin().Rm(ctx, pth)
+	return s.unpinPath(ctx, pth)
 }
 
 func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathReply, error) {
@@ -1685,6 +1679,88 @@ func (s *Service) getGatewayHost() (host string, ok bool) {
 		return parts[1], true
 	}
 	return
+}
+
+func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
+	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
+		return err
+	}
+	node, err := s.IPFSClient.Unixfs().Get(ctx, path)
+	if err != nil {
+		return fmt.Errorf("getting node from path: %s", err)
+	}
+	size, err := node.Size()
+	if err != nil {
+		return fmt.Errorf("getting size of removed node: %s", err)
+	}
+	if err := s.sumBytesPinned(ctx, -size); err != nil {
+		return fmt.Errorf("substracting unpinned node from quota: %s", err)
+	}
+	return nil
+}
+
+// pinBlocks pin the provided blocks to the IPFS node, and accounts to the
+// account/user buckets total size quota.
+func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) error {
+	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
+		return fmt.Errorf("pinning set of nodes: %s", err)
+	}
+	var totalAddedSize int64
+	for _, n := range nodes {
+		s, err := n.Size()
+		if err != nil {
+			return fmt.Errorf("getting size of node: %s", err)
+		}
+		totalAddedSize += int64(s)
+	}
+	if err := s.sumBytesPinned(ctx, totalAddedSize); err != nil {
+		return fmt.Errorf("adding pinned size to account quota: %s", err)
+	}
+	return nil
+}
+
+// sumBytesPinned accounts the provided delta difference into the account/user
+// buckets total size quota.
+func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
+	key, isUser := ownerFromContext(ctx)
+	if !isUser {
+		a, err := s.Collections.Accounts.Get(ctx, key)
+		if err != nil {
+			return fmt.Errorf("getting account from context: %s", err)
+		}
+		newTotalSize := a.BucketsTotalSize + delta
+		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, newTotalSize); err != nil {
+			return fmt.Errorf("updating new account buckets total size: %s", err)
+		}
+		return nil
+	}
+	u, err := s.Collections.Users.Get(ctx, key)
+	if err != nil {
+		return fmt.Errorf("getting user from context: %s", err)
+	}
+	newTotalSize := u.BucketsTotalSize + delta
+	if err := s.Collections.Users.SetBucketsTotalSize(ctx, key, newTotalSize); err != nil {
+		return fmt.Errorf("updating new users buckets total size: %s", err)
+	}
+	return nil
+}
+
+// sumBytesPinned returns the current buckets total size usage of the account/user
+// logged in the context.
+func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
+	key, isUser := ownerFromContext(ctx)
+	if !isUser {
+		a, err := s.Collections.Accounts.Get(ctx, key)
+		if err != nil {
+			return 0, fmt.Errorf("getting account from context: %s", err)
+		}
+		return a.BucketsTotalSize, nil
+	}
+	u, err := s.Collections.Users.Get(ctx, key)
+	if err != nil {
+		return 0, fmt.Errorf("getting user from context: %s", err)
+	}
+	return u.BucketsTotalSize, nil
 }
 
 // ownerFromContext returns the account from the context, and

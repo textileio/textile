@@ -3,6 +3,7 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -326,6 +327,7 @@ func TestUserBuckets(t *testing.T) {
 	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
 	buck, err := buckets.Init(ctx)
+	fmt.Printf("AHHAHHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: %s\n", err)
 	require.Nil(t, err)
 
 	// Finally, push a file to the bucket.

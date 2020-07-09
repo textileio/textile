@@ -321,6 +321,42 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 	require.Contains(t, err.Error(), buckets.ErrBucketsTotalSizeExceedsMaxSize.Error())
 }
 
+func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
+	t.Parallel()
+	firstFile := "testdata/file1.jpg"
+	file1, err := os.Open(firstFile)
+	require.Nil(t, err)
+	defer file1.Close()
+	stat, err := os.Stat(firstFile)
+	require.NoError(t, err)
+
+	maxBucketsSize := stat.Size() + 1024
+
+	conf := apitest.DefaultTextileConfig(t)
+	conf.BucketsTotalMaxSize = maxBucketsSize
+	ctx, client, shutdown := setupWithConf(t, conf)
+	defer shutdown()
+
+	buck, err := client.Init(ctx, c.WithPrivate(true))
+	require.Nil(t, err)
+
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.Nil(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	// Create a second bucket. Since the limit is bucket-wide
+	// should fail.
+	buck, err = client.Init(ctx)
+	require.Nil(t, err)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.Nil(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
+	require.Contains(t, err.Error(), buckets.ErrBucketsTotalSizeExceedsMaxSize.Error())
+}
+
 func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	buck, err := client.Init(ctx, c.WithPrivate(private))
 	require.Nil(t, err)
