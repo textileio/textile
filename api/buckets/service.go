@@ -1682,7 +1682,11 @@ func (s *Service) getGatewayHost() (host string, ok bool) {
 func ownerFromContext(ctx context.Context) crypto.PubKey {
 	org, ok := c.OrgFromContext(ctx)
 	if !ok {
-		dev, _ := c.DevFromContext(ctx)
+		dev, ok := c.DevFromContext(ctx)
+		if !ok {
+			user, _ := c.UserFromContext(ctx)
+			return user.Key
+		}
 		return dev.Key
 	}
 	return org.Key
