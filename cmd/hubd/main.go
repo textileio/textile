@@ -68,19 +68,19 @@ var (
 			},
 			"bucketMaxSize": {
 				Key:      "bucket.max_size",
-				DefValue: int64(0),
+				DefValue: int64(1073741824),
 			},
 			"bucketTotalMaxSize": {
 				Key:      "bucket.total_max_size",
-				DefValue: int64(0),
+				DefValue: int64(1073741824),
 			},
 			"bucketMaxNumberPerThread": {
 				Key:      "bucket.max_number_per_thread",
-				DefValue: 0,
+				DefValue: 10000,
 			},
 			"threadMaxNumberPerOwner": {
 				Key:      "thread.max_number_per_owner",
-				DefValue: 0,
+				DefValue: 100,
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
