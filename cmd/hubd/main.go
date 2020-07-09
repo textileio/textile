@@ -70,7 +70,7 @@ var (
 				Key:      "bucket.max_size",
 				DefValue: int64(0),
 			},
-			"bucketsTotalMaxSize": {
+			"bucketTotalMaxSize": {
 				Key:      "bucket.total_max_size",
 				DefValue: int64(0),
 			},
@@ -213,6 +213,10 @@ func init() {
 		"bucketMaxNumberPerThread",
 		config.Flags["bucketMaxNumberPerThread"].DefValue.(int),
 		"Max number of buckets per thread")
+	rootCmd.PersistentFlags().Int64(
+		"bucketTotalMaxSize",
+		config.Flags["bucketTotalMaxSize"].DefValue.(int64),
+		"Total max size of buckets per account")
 
 	// Thread settings
 	rootCmd.PersistentFlags().Int(
