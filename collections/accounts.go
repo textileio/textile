@@ -143,7 +143,7 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 		"email":              doc.Email,
 		"username":           doc.Username,
 		"created_at":         doc.CreatedAt,
-		"buckets_total_size": 0,
+		"buckets_total_size": int64(0),
 	}); err != nil {
 		return nil, err
 	}
@@ -529,6 +529,10 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if v, ok := raw["email"]; ok {
 		email = v.(string)
 	}
+	var totalSize int64
+	if v, ok := raw["buckets_total_size"]; ok {
+		totalSize = v.(int64)
+	}
 	skey, err := crypto.UnmarshalPrivateKey(raw["secret"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
@@ -560,14 +564,15 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &Account{
-		Type:      AccountType(raw["type"].(int32)),
-		Key:       skey.GetPublic(),
-		Secret:    skey,
-		Name:      name,
-		Username:  raw["username"].(string),
-		Email:     email,
-		Token:     token,
-		Members:   mems,
-		CreatedAt: created,
+		Type:             AccountType(raw["type"].(int32)),
+		Key:              skey.GetPublic(),
+		Secret:           skey,
+		Name:             name,
+		Username:         raw["username"].(string),
+		Email:            email,
+		Token:            token,
+		Members:          mems,
+		BucketsTotalSize: totalSize,
+		CreatedAt:        created,
 	}, nil
 }

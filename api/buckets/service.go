@@ -49,7 +49,7 @@ var (
 
 	// ErrBucketsTotalSizeExceedsMaxSize indicates the sum of bucket sizes of the account
 	// exceeds the maximum allowed size.
-	ErrBucketsTotalSizeExceedsMaxSize = errors.New("buckets total size exceeds quota")
+	ErrBucketsTotalSizeExceedsMaxSize = errors.New("Total size of buckets exceeds quota")
 
 	// ErrTooManyBucketsInThread indicates that there is the maximum number of buckets in a thread.
 	ErrTooManyBucketsInThread = errors.New("number of buckets in thread exceeds quota")
