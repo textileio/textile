@@ -70,6 +70,9 @@ var (
 				Key:      "bucket.max_size",
 				DefValue: int64(0),
 			},
+			"bucketsTotalMaxSize": {
+				Key: "bucket.total_max_size",
+				DefValue: int64(0),
 			"bucketMaxNumberPerThread": {
 				Key:      "bucket.max_number_per_thread",
 				DefValue: 0,
@@ -298,6 +301,7 @@ var rootCmd = &cobra.Command{
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
 		bucketMaxSize := config.Viper.GetInt64("bucket.max_size")
+		bucketsTotalMaxSize := config.Viper.GetInt64("bucket.total_max_size")
 		bucketMaxNumberPerThread := config.Viper.GetInt("bucket.max_number_per_thread")
 
 		threadMaxNumberPerOwner := config.Viper.GetInt("thread.max_number_per_owner")
@@ -331,6 +335,7 @@ var rootCmd = &cobra.Command{
 			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
 			MongoName:                "textile",
 			BucketMaxSize:            bucketMaxSize,
+			BucketsTotalMaxSize:      bucketsTotalMaxSize,
 			BucketMaxNumberPerThread: bucketMaxNumberPerThread,
 			ThreadMaxNumberPerOwner:  threadMaxNumberPerOwner,
 

@@ -22,6 +22,7 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
@@ -46,6 +47,10 @@ var (
 	// ErrBucketExceedsMaxSize indicates the bucket exceeds the max allowed size.
 	ErrBucketExceedsMaxSize = errors.New("bucket size exceeds quota")
 
+	// ErrBucketsTotalSizeExceedsMaxSize indicates the sum of bucket sizes of the account
+	// exceeds the maximum allowed size.
+	ErrBucketsTotalSizeExceedsMaxSize = errors.New("buckets total size exceeds quota")
+
 	// ErrTooManyBucketsInThread indicates that there is the maximum number of buckets in a thread.
 	ErrTooManyBucketsInThread = errors.New("number of buckets in thread exceeds quota")
 
@@ -65,6 +70,7 @@ type Service struct {
 	Collections              *c.Collections
 	Buckets                  *bucks.Buckets
 	BucketMaxSize            int64
+	BucketsTotalMaxSize      int64
 	BucketMaxNumberPerThread int
 	GatewayURL               string
 	IPFSClient               iface.CoreAPI
@@ -1197,30 +1203,61 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
-	stat, err := s.IPFSClient.Object().Stat(ctx, to)
+	key := ownerFromContext(ctx)
+	a, err := s.Collections.Accounts.Get(ctx, key)
 	if err != nil {
-		return fmt.Errorf("get stats of pin destination: %s", err)
+		return fmt.Errorf("getting account from context: %s", err)
 	}
-	if s.BucketMaxSize > 0 && int64(stat.CumulativeSize) > s.BucketMaxSize {
+
+	toSize, err := s.dagSize(ctx, to)
+	if err != nil {
+		return fmt.Errorf("getting size of destination dag: %s", err)
+	}
+	if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
 		return fmt.Errorf("bucket size is greater than max allowed size")
 	}
 
-	if from == nil {
-		if err := s.IPFSClient.Pin().Add(ctx, to); err != nil {
-			return err
-		}
-	} else {
-		if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
-			if err.Error() == pinNotRecursiveMsg {
-				if err = s.IPFSClient.Pin().Add(ctx, to); err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
+	fromSize, err := s.dagSize(ctx, from)
+	if err != nil {
+		return fmt.Errorf("getting size of current dag: %s", err)
 	}
+
+	// Calculate if adding or moving the pin leads to a violation of
+	// total buckets size allowed in configuration.
+	futureSize := a.BucketsTotalSize - fromSize + toSize
+	if s.BucketsTotalMaxSize > 0 && futureSize > s.BucketsTotalMaxSize {
+		return ErrBucketsTotalSizeExceedsMaxSize
+	}
+
+	if from == nil {
+		return s.IPFSClient.Pin().Add(ctx, to)
+	}
+
+	if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
+		if err.Error() == pinNotRecursiveMsg {
+			return s.IPFSClient.Pin().Add(ctx, to)
+		}
+		return err
+	}
+
+	if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, futureSize); err != nil {
+		return fmt.Errorf("updating new buckets total size: %s", err)
+	}
+
 	return nil
+}
+
+// dagSize returns the cummulative size of root. If root is nil, it returns 0.
+func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
+	if root == nil {
+		return 0, nil
+	}
+	stat, err := s.IPFSClient.Object().Stat(ctx, root)
+	if err != nil {
+		return 0, fmt.Errorf("get stats of pin destination: %s", err)
+	}
+
+	return int64(stat.CumulativeSize), nil
 }
 
 func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer) error {
@@ -1640,4 +1677,13 @@ func (s *Service) getGatewayHost() (host string, ok bool) {
 		return parts[1], true
 	}
 	return
+}
+
+func ownerFromContext(ctx context.Context) crypto.PubKey {
+	org, ok := c.OrgFromContext(ctx)
+	if !ok {
+		dev, _ := c.DevFromContext(ctx)
+		return dev.Key
+	}
+	return org.Key
 }

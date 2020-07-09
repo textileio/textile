@@ -107,6 +107,7 @@ type Config struct {
 	AddrMongoURI     string
 
 	BucketMaxSize            int64
+	BucketsTotalMaxSize      int64
 	BucketMaxNumberPerThread int
 
 	ThreadMaxNumberPerOwner int
@@ -252,6 +253,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		Collections:              t.collections,
 		Buckets:                  t.bucks,
 		BucketMaxSize:            conf.BucketMaxSize,
+		BucketsTotalMaxSize:      conf.BucketsTotalMaxSize,
 		BucketMaxNumberPerThread: conf.BucketMaxNumberPerThread,
 		GatewayURL:               conf.AddrGatewayURL,
 		IPFSClient:               ic,

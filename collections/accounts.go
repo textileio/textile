@@ -29,15 +29,16 @@ func init() {
 }
 
 type Account struct {
-	Type      AccountType
-	Key       crypto.PubKey
-	Secret    crypto.PrivKey
-	Name      string
-	Username  string
-	Email     string
-	Token     thread.Token
-	Members   []Member
-	CreatedAt time.Time
+	Type             AccountType
+	Key              crypto.PubKey
+	Secret           crypto.PrivKey
+	Name             string
+	Username         string
+	Email            string
+	Token            thread.Token
+	Members          []Member
+	BucketsTotalSize int64
+	CreatedAt        time.Time
 }
 
 type AccountType int
@@ -136,12 +137,13 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 		return nil, err
 	}
 	if _, err := a.col.InsertOne(ctx, bson.M{
-		"_id":        id,
-		"type":       int32(doc.Type),
-		"secret":     secret,
-		"email":      doc.Email,
-		"username":   doc.Username,
-		"created_at": doc.CreatedAt,
+		"_id":                id,
+		"type":               int32(doc.Type),
+		"secret":             secret,
+		"email":              doc.Email,
+		"username":           doc.Username,
+		"created_at":         doc.CreatedAt,
+		"buckets_total_size": 0,
 	}); err != nil {
 		return nil, err
 	}
@@ -290,6 +292,21 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 		return err
 	}
 	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"token": token}})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
+}
+
+func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newTotalSize int64) error {
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return err
+	}
+	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"buckets_total_size": newTotalSize}})
 	if err != nil {
 		return err
 	}
