@@ -1516,8 +1516,8 @@ github.com/textileio/dcrypto v0.0.1 h1:ftXQKd+CAM7a0XFrw+hJqizo+ux8+g5RttKjImZRc
 github.com/textileio/dcrypto v0.0.1/go.mod h1:rDlYXuL+HQwkyrxOR230zEUouRnlTwH6O5XWoPbmfcE=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7 h1:J7+UXJT/Ku8ylMqqHH4T+CiHtOSd8woUZjynG3fEwDI=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7/go.mod h1:j7aKMh8sbbtvttp7V7yCOkHW/pfRtIM/6h+8qEDsLyI=
-github.com/textileio/go-threads v0.1.21 h1:jZHA+WRIcppq7bZIWR71MB3Je33A+qdGVQB/kxASsnE=
-github.com/textileio/go-threads v0.1.21/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
+github.com/textileio/go-threads v0.1.22-0.20200709194234-b75bad2b9536 h1:kdCIi55guaTS7H3BKmYqzBW7F3qRH/+lh7IHI9yODF8=
+github.com/textileio/go-threads v0.1.22-0.20200709194234-b75bad2b9536/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5 h1:sZxhbihpeGscOsceiLw7uokXQK0EoSmykAm+EpwgVSs=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5/go.mod h1:D3ImIiFCJSFdNdSO1m1SL+P8kQvW2Jrkc6hAZI8h7Bg=
 github.com/textileio/uiprogress v0.0.3 h1:g1seo+ObZWgHNo7hEheOM5F5gymMk1iEZiq12VxbqGs=

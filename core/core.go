@@ -13,6 +13,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -62,6 +63,9 @@ var (
 	blockMethods = []string{
 		"/threads.pb.API/ListDBs",
 	}
+
+	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
+	WSPingInterval = time.Second * 5
 )
 
 type Textile struct {
@@ -112,6 +116,8 @@ type Config struct {
 	Hub   bool
 	Debug bool
 
+	ThreadsConnManager connmgr.ConnManager
+
 	FFSDefaultConfig *ffs.DefaultConfig
 }
 
@@ -155,7 +161,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure threads
-	t.ts, err = tc.DefaultNetwork(conf.RepoPath, tc.WithNetHostAddr(conf.AddrThreadsHost), tc.WithNetDebug(conf.Debug))
+	netOptions := []tc.NetOption{
+		tc.WithNetHostAddr(conf.AddrThreadsHost),
+		tc.WithNetDebug(conf.Debug),
+	}
+	if conf.ThreadsConnManager != nil {
+		netOptions = append(netOptions, tc.WithConnectionManager(conf.ThreadsConnManager))
+	}
+	t.ts, err = tc.DefaultNetwork(
+		conf.RepoPath,
+		netOptions...,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +285,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}),
 		grpcweb.WithAllowedRequestHeaders([]string{"Origin"}),
 		grpcweb.WithWebsockets(true),
+		grpcweb.WithWebsocketPingInterval(WSPingInterval),
 		grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
 			return true
 		}))
