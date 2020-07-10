@@ -610,7 +610,7 @@ func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
 	require.Nil(t, err)
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file2)
 	require.Nil(t, err)
 
 	err = client.Remove(ctx, buck.Root.Key)

@@ -22,13 +22,13 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	bucks "github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/collections"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
@@ -243,8 +243,22 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 // with bucks.SeedName seed file added to the root of the DAG. The returned path will
 // be pinned.
 func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bootCid cid.Cid, key []byte) (path.Resolved, error) {
+	// Check early if we're about to pin some very big Cid exceeding the quota.
+	pth := path.IpfsPath(bootCid)
+	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
+	if err != nil {
+		return nil, fmt.Errorf("resolving boot cid node: %s", err)
+	}
+	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting current buckets total size: %s", err)
+	}
+	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+int64(bootStatn.CumulativeSize) > s.BucketsTotalMaxSize {
+		return nil, ErrBucketsTotalSizeExceedsMaxSize
+	}
+
 	// Here we have to walk and possibly encrypt the boot path dag
-	n, nodes, err := s.newDirFromExistingPath(ctx, path.IpfsPath(bootCid), key, seed, bucks.SeedName)
+	n, nodes, err := s.newDirFromExistingPath(ctx, pth, key, seed, bucks.SeedName)
 	if err != nil {
 		return nil, err
 	}
@@ -586,11 +600,15 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 			return nil, fmt.Errorf("generating bucket new root: %s", err)
 		}
 		if encKey != nil {
-			if err = s.unpinNodeAndBranch(ctx, dirpth, encKey); err != nil {
+			buckPathResolved, err := s.IPFSClient.ResolvePath(ctx, buckPath)
+			if err != nil {
+				return nil, fmt.Errorf("resolving path: %s", err)
+			}
+			if err = s.unpinNodeAndBranch(ctx, buckPathResolved, encKey); err != nil {
 				return nil, fmt.Errorf("unpinning pinned root: %s", err)
 			}
 		} else {
-			if err = s.updateOrAddPin(ctx, buckPath, dirpth); err != nil {
+			if err = s.unpinPath(ctx, buckPath); err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
 		}
@@ -1204,11 +1222,6 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
-	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return fmt.Errorf("getting current buckets total size: %s", err)
-	}
-
 	toSize, err := s.dagSize(ctx, to)
 	if err != nil {
 		return fmt.Errorf("getting size of destination dag: %s", err)
@@ -1224,6 +1237,10 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 
 	// Calculate if adding or moving the pin leads to a violation of
 	// total buckets size allowed in configuration.
+	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return fmt.Errorf("getting current buckets total size: %s", err)
+	}
 	deltaSize := -fromSize + toSize
 	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
 		return ErrBucketsTotalSizeExceedsMaxSize
@@ -1685,15 +1702,11 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
 	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
 		return err
 	}
-	node, err := s.IPFSClient.Unixfs().Get(ctx, path)
-	if err != nil {
-		return fmt.Errorf("getting node from path: %s", err)
-	}
-	size, err := node.Size()
+	stat, err := s.IPFSClient.Object().Stat(ctx, path)
 	if err != nil {
 		return fmt.Errorf("getting size of removed node: %s", err)
 	}
-	if err := s.sumBytesPinned(ctx, -size); err != nil {
+	if err := s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)); err != nil {
 		return fmt.Errorf("substracting unpinned node from quota: %s", err)
 	}
 	return nil
@@ -1702,78 +1715,82 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
 // pinBlocks pin the provided blocks to the IPFS node, and accounts to the
 // account/user buckets total size quota.
 func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) error {
-	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
-		return fmt.Errorf("pinning set of nodes: %s", err)
-	}
 	var totalAddedSize int64
 	for _, n := range nodes {
-		s, err := n.Size()
+		s, err := n.Stat()
 		if err != nil {
 			return fmt.Errorf("getting size of node: %s", err)
 		}
-		totalAddedSize += int64(s)
+		totalAddedSize += int64(s.CumulativeSize)
 	}
+	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return fmt.Errorf("getting current buckets total size: %s", err)
+	}
+
+	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+totalAddedSize > s.BucketsTotalMaxSize {
+		return ErrBucketsTotalSizeExceedsMaxSize
+	}
+
+	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
+		return fmt.Errorf("pinning set of nodes: %s", err)
+	}
+
 	if err := s.sumBytesPinned(ctx, totalAddedSize); err != nil {
 		return fmt.Errorf("adding pinned size to account quota: %s", err)
 	}
 	return nil
 }
 
-// sumBytesPinned accounts the provided delta difference into the account/user
-// buckets total size quota.
+// sumBytesPinned adds the provided delta to the buckets total size from
+// the account/user.
 func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
-	key, isUser := ownerFromContext(ctx)
-	if !isUser {
-		a, err := s.Collections.Accounts.Get(ctx, key)
-		if err != nil {
-			return fmt.Errorf("getting account from context: %s", err)
-		}
-		newTotalSize := a.BucketsTotalSize + delta
-		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, key, newTotalSize); err != nil {
+	a := accountFromContext(ctx)
+	if a != nil {
+		a.BucketsTotalSize = a.BucketsTotalSize + delta
+		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, a.Key, a.BucketsTotalSize); err != nil {
 			return fmt.Errorf("updating new account buckets total size: %s", err)
 		}
 		return nil
 	}
-	u, err := s.Collections.Users.Get(ctx, key)
-	if err != nil {
-		return fmt.Errorf("getting user from context: %s", err)
+	u := userFromContext(ctx)
+	if u == nil {
+		return fmt.Errorf("context must be from an org/dev/user")
 	}
-	newTotalSize := u.BucketsTotalSize + delta
-	if err := s.Collections.Users.SetBucketsTotalSize(ctx, key, newTotalSize); err != nil {
+	u.BucketsTotalSize = u.BucketsTotalSize + delta
+	if err := s.Collections.Users.SetBucketsTotalSize(ctx, u.Key, u.BucketsTotalSize); err != nil {
 		return fmt.Errorf("updating new users buckets total size: %s", err)
 	}
 	return nil
 }
 
-// sumBytesPinned returns the current buckets total size usage of the account/user
+// getBucketsTOtalSize returns the current buckets total size usage of the account/user
 // logged in the context.
 func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
-	key, isUser := ownerFromContext(ctx)
-	if !isUser {
-		a, err := s.Collections.Accounts.Get(ctx, key)
-		if err != nil {
-			return 0, fmt.Errorf("getting account from context: %s", err)
-		}
+	a := accountFromContext(ctx)
+	if a != nil {
 		return a.BucketsTotalSize, nil
 	}
-	u, err := s.Collections.Users.Get(ctx, key)
-	if err != nil {
-		return 0, fmt.Errorf("getting user from context: %s", err)
+	u := userFromContext(ctx)
+	if u == nil {
+		return 0, fmt.Errorf("the context must be from an org/dev/user")
 	}
 	return u.BucketsTotalSize, nil
 }
 
-// ownerFromContext returns the account from the context, and
-// true if is from an user.
-func ownerFromContext(ctx context.Context) (crypto.PubKey, bool) {
+func accountFromContext(ctx context.Context) *collections.Account {
 	if org, ok := c.OrgFromContext(ctx); ok {
-		return org.Key, false
+		return org
 	}
 	if dev, ok := c.DevFromContext(ctx); ok {
-		return dev.Key, false
+		return dev
 	}
+	return nil
+}
+
+func userFromContext(ctx context.Context) *collections.User {
 	if user, ok := c.UserFromContext(ctx); ok {
-		return user.Key, true
+		return user
 	}
-	panic("context must contain org/dev/user")
+	return nil
 }
