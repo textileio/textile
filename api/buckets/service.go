@@ -1764,7 +1764,7 @@ func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
 	return nil
 }
 
-// getBucketsTOtalSize returns the current buckets total size usage of the account/user
+// getBucketsTotalSize returns the current buckets total size usage of the account/user
 // logged in the context.
 func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
 	a := accountFromContext(ctx)
