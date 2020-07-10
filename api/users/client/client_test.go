@@ -126,6 +126,31 @@ func TestClient_GetThread(t *testing.T) {
 	})
 }
 
+func TestClient_CreateThreadsLimit(t *testing.T) {
+	t.Parallel()
+	conf := apitest.DefaultTextileConfig(t)
+	conf.ThreadMaxNumberPerOwner = 1
+	conf, _, hub, _, net, _, done := setupWithConf(t, conf)
+	defer done()
+
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
+
+	ctx := context.Background()
+	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+	require.Nil(t, err)
+	ctx = common.NewAPIKeyContext(ctx, key.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	require.Nil(t, err)
+
+	// First thread allowed.
+	_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
+	require.Nil(t, err)
+
+	// Second one should exceed limit.
+	_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
+	require.Contains(t, err.Error(), core.ErrTooManyThreadsPerOwner.Error())
+}
+
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, net, _, done := setup(t)
@@ -324,7 +349,12 @@ func TestUserBuckets(t *testing.T) {
 }
 
 func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
-	conf, shutdown := apitest.MakeTextile(t)
+	defConfig := apitest.DefaultTextileConfig(t)
+	return setupWithConf(t, defConfig)
+}
+
+func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
+	shutdown := apitest.MakeTextileCustom(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}

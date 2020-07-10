@@ -69,7 +69,6 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		if bootCid != "" && existing {
 			cmd.Fatal(errors.New("only one of --cid and --existing flags can be used at the same time"))
 		}
-
 		if existing {
 			threads := clients.ListThreads(true)
 			bi := make([]bucketInfo, 0)

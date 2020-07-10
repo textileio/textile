@@ -50,6 +50,10 @@ import (
 )
 
 var (
+	// ErrTooManyThreadsPerOwner indicates that the maximum amount of threads
+	// are created for an owner.
+	ErrTooManyThreadsPerOwner = errors.New("number of threads per owner exceeds quota")
+
 	log = logging.Logger("core")
 
 	// ignoreMethods are not intercepted by the auth.
@@ -86,6 +90,8 @@ type Textile struct {
 	gateway         *gateway.Gateway
 	gatewaySession  string
 	emailSessionBus *broadcast.Broadcaster
+
+	conf Config
 }
 
 type Config struct {
@@ -99,6 +105,12 @@ type Config struct {
 	AddrGatewayURL   string
 	AddrPowergateAPI ma.Multiaddr
 	AddrMongoURI     string
+
+	BucketMaxSize            int64
+	BucketsTotalMaxSize      int64
+	BucketMaxNumberPerThread int
+
+	ThreadMaxNumberPerOwner int
 
 	UseSubdomains bool
 
@@ -132,7 +144,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	t := &Textile{}
+	t := &Textile{
+		conf: conf,
+	}
 
 	// Configure clients
 	ic, err := httpapi.NewApi(conf.AddrIPFSAPI)
@@ -236,12 +250,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	bs := &buckets.Service{
-		Collections: t.collections,
-		Buckets:     t.bucks,
-		GatewayURL:  conf.AddrGatewayURL,
-		IPFSClient:  ic,
-		IPNSManager: t.ipnsm,
-		DNSManager:  t.dnsm,
+		Collections:              t.collections,
+		Buckets:                  t.bucks,
+		BucketMaxSize:            conf.BucketMaxSize,
+		BucketsTotalMaxSize:      conf.BucketsTotalMaxSize,
+		BucketMaxNumberPerThread: conf.BucketMaxNumberPerThread,
+		GatewayURL:               conf.AddrGatewayURL,
+		IPFSClient:               ic,
+		IPNSManager:              t.ipnsm,
+		DNSManager:               t.dnsm,
 	}
 
 	// Start serving
@@ -619,6 +636,14 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.
 		if newID.Defined() {
+			thds, err := t.collections.Threads.ListByOwner(ctx, owner)
+			if err != nil {
+				return nil, err
+			}
+			if t.conf.ThreadMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadMaxNumberPerOwner {
+				return nil, ErrTooManyThreadsPerOwner
+			}
+
 			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {
 				return nil, err
 			}

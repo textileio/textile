@@ -54,3 +54,21 @@ func TestUsers_Delete(t *testing.T) {
 	_, err = col.Get(context.Background(), key)
 	require.NotNil(t, err)
 }
+
+func TestUsers_BucketsTotalSize(t *testing.T) {
+	db := newDB(t)
+	col, err := NewUsers(context.Background(), db)
+	require.Nil(t, err)
+
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.Nil(t, err)
+	err = col.Create(context.Background(), key)
+	require.Nil(t, err)
+
+	err = col.SetBucketsTotalSize(context.Background(), key, 1234)
+	require.NoError(t, err)
+
+	got, err := col.Get(context.Background(), key)
+	require.Nil(t, err)
+	assert.Equal(t, int64(1234), got.BucketsTotalSize)
+}

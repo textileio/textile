@@ -29,15 +29,16 @@ func init() {
 }
 
 type Account struct {
-	Type      AccountType
-	Key       crypto.PubKey
-	Secret    crypto.PrivKey
-	Name      string
-	Username  string
-	Email     string
-	Token     thread.Token
-	Members   []Member
-	CreatedAt time.Time
+	Type             AccountType
+	Key              crypto.PubKey
+	Secret           crypto.PrivKey
+	Name             string
+	Username         string
+	Email            string
+	Token            thread.Token
+	Members          []Member
+	BucketsTotalSize int64
+	CreatedAt        time.Time
 }
 
 type AccountType int
@@ -136,12 +137,13 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 		return nil, err
 	}
 	if _, err := a.col.InsertOne(ctx, bson.M{
-		"_id":        id,
-		"type":       int32(doc.Type),
-		"secret":     secret,
-		"email":      doc.Email,
-		"username":   doc.Username,
-		"created_at": doc.CreatedAt,
+		"_id":                id,
+		"type":               int32(doc.Type),
+		"secret":             secret,
+		"email":              doc.Email,
+		"username":           doc.Username,
+		"created_at":         doc.CreatedAt,
+		"buckets_total_size": int64(0),
 	}); err != nil {
 		return nil, err
 	}
@@ -290,6 +292,24 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 		return err
 	}
 	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"token": token}})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
+}
+
+func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newTotalSize int64) error {
+	if newTotalSize < 0 {
+		return fmt.Errorf("new size %d must be positive", newTotalSize)
+	}
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return err
+	}
+	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"buckets_total_size": newTotalSize}})
 	if err != nil {
 		return err
 	}
@@ -512,6 +532,10 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if v, ok := raw["email"]; ok {
 		email = v.(string)
 	}
+	var totalSize int64
+	if v, ok := raw["buckets_total_size"]; ok {
+		totalSize = v.(int64)
+	}
 	skey, err := crypto.UnmarshalPrivateKey(raw["secret"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
@@ -543,14 +567,15 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &Account{
-		Type:      AccountType(raw["type"].(int32)),
-		Key:       skey.GetPublic(),
-		Secret:    skey,
-		Name:      name,
-		Username:  raw["username"].(string),
-		Email:     email,
-		Token:     token,
-		Members:   mems,
-		CreatedAt: created,
+		Type:             AccountType(raw["type"].(int32)),
+		Key:              skey.GetPublic(),
+		Secret:           skey,
+		Name:             name,
+		Username:         raw["username"].(string),
+		Email:            email,
+		Token:            token,
+		Members:          mems,
+		BucketsTotalSize: totalSize,
+		CreatedAt:        created,
 	}, nil
 }
