@@ -5,6 +5,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -213,6 +214,11 @@ func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 		require.Nil(t, err)
 		assert.True(t, rep.Item.IsDir)
 		assert.Equal(t, 3, len(rep.Item.Items))
+		dir1i := sort.Search(len(rep.Item.Items), func(i int) bool {
+			return rep.Item.Items[i].Name == "dir1"
+		})
+		assert.True(t, dir1i < len(rep.Item.Items))
+		assert.True(t, rep.Item.Items[dir1i].IsDir)
 	})
 
 	t.Run("nested dir", func(t *testing.T) {

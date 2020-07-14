@@ -741,7 +741,7 @@ func (s *Service) pathToItem(ctx context.Context, pth path.Path, includeNextLeve
 			return nil, err
 		}
 	}
-	return s.nodeToItem(ctx, n, pth.String(), includeNextLevel)
+	return s.nodeToItem(ctx, n, pth.String(), key, false, includeNextLevel)
 }
 
 // getNodeAtPath returns the decrypted node at path.
@@ -750,6 +750,11 @@ func (s *Service) getNodeAtPath(ctx context.Context, pth path.Resolved, key []by
 	if err != nil {
 		return nil, err
 	}
+	return decryptNode(cn, key)
+}
+
+// decryptNode returns a decrypted version of node.
+func decryptNode(cn ipld.Node, key []byte) (ipld.Node, error) {
 	switch cn.(type) {
 	case *dag.RawNode:
 		return cn, nil // All raw nodes will be leaves
@@ -788,7 +793,14 @@ func decryptData(data, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, includeNextLevel bool) (*pb.ListPathItem, error) {
+func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, key []byte, decrypt, includeNextLevel bool) (*pb.ListPathItem, error) {
+	if decrypt && key != nil {
+		var err error
+		node, err = decryptNode(node, key)
+		if err != nil {
+			return nil, err
+		}
+	}
 	stat, err := node.Stat()
 	if err != nil {
 		return nil, err
@@ -811,7 +823,7 @@ func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, in
 			if err != nil {
 				return nil, err
 			}
-			i, err = s.nodeToItem(ctx, n, p, false)
+			i, err = s.nodeToItem(ctx, n, p, key, true, false)
 			if err != nil {
 				return nil, err
 			}

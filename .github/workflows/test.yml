@@ -8,7 +8,7 @@ on:
       - master
 
 jobs:
-  test-api:
+  api-test:
     name: API Test
     runs-on: ubuntu-latest
     services:
@@ -46,7 +46,7 @@ jobs:
       - name: Test
         run: go test -timeout 20m -race ./api/... ./collections
 
-  test-buckets:
+  buckets-test:
     name: Buckets Test
     runs-on: ubuntu-latest
     services:
@@ -84,7 +84,8 @@ jobs:
       - name: Test
         run: go test -timeout 20m -race ./buckets/...
 
-  integration:
+  integration-test:
+    name: Integration Test
     runs-on: self-hosted
     steps:
       - name: Set up Go
