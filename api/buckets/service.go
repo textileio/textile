@@ -670,7 +670,6 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	if err = s.Buckets.Save(ctx, dbID, buck, bc.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("saving new bucket state: %s", err)
 	}
-
 	return &pb.SetPathReply{}, nil
 }
 
@@ -1264,7 +1263,6 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 	if err := s.sumBytesPinned(ctx, deltaSize); err != nil {
 		return fmt.Errorf("updating new buckets total size: %s", err)
 	}
-
 	return nil
 }
 
@@ -1277,7 +1275,6 @@ func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("get stats of pin destination: %s", err)
 	}
-
 	return int64(stat.CumulativeSize), nil
 }
 
@@ -1758,7 +1755,7 @@ func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
 	}
 	u := userFromContext(ctx)
 	if u == nil {
-		return fmt.Errorf("context must be from an org/dev/user")
+		return nil
 	}
 	u.BucketsTotalSize = u.BucketsTotalSize + delta
 	if err := s.Collections.Users.SetBucketsTotalSize(ctx, u.Key, u.BucketsTotalSize); err != nil {
@@ -1776,7 +1773,7 @@ func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
 	}
 	u := userFromContext(ctx)
 	if u == nil {
-		return 0, fmt.Errorf("the context must be from an org/dev/user")
+		return 0, nil
 	}
 	return u.BucketsTotalSize, nil
 }
