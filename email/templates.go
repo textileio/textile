@@ -4,7 +4,7 @@ const headerMsg = `Dear developer,
 `
 
 const footerMsg = `
-Use of the service and website is subject to our <a href="https://docs.textile.io/policies/terms/">Terms of Use</a> and <a href="https://docs.textile.io/policies/privacy/">Privacy Statement</a>.
+Use of the service and website is subject to our Terms of Use (https://docs.textile.io/policies/terms/) and Privacy Statement (https://docs.textile.io/policies/privacy/).
 
 If you have any concerns about this email, file an issue at https://github.com/textileio/textile/issues.
 
