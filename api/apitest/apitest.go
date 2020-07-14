@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -64,7 +65,7 @@ func MakeTextileWithConfig(t *testing.T, conf core.Config) {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.Nil(t, err)
 	textile.Bootstrap()
-	time.Sleep(time.Second * 3) // Give the api a chance to get ready
+	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
 
 	t.Cleanup(func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work

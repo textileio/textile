@@ -48,7 +48,7 @@ var pushCmd = &cobra.Command{
 			cmd.Fatal(fmt.Errorf("calculating bucket total size: %s", err))
 		}
 		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/int64(MiB), maxSize))
+			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/MiB, maxSize))
 		}
 
 		events := make(chan local.PathEvent)

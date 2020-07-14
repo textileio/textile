@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
@@ -306,10 +307,12 @@ type eventCollector struct {
 	fileStarts    int
 	fileCompletes int
 	fileRemoves   int
+	sync.Mutex
 }
 
 func (c *eventCollector) collect(events chan PathEvent) {
 	for e := range events {
+		c.Lock()
 		switch e.Type {
 		case PathStart:
 			c.pathStarted = true
@@ -322,12 +325,15 @@ func (c *eventCollector) collect(events chan PathEvent) {
 		case FileRemoved:
 			c.fileRemoves++
 		}
+		c.Unlock()
 	}
 	return
 }
 
 func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int) {
 	t.Helper()
+	c.Lock()
+	defer c.Unlock()
 	if numFilesAdded > 0 {
 		assert.True(t, c.pathStarted)
 		assert.True(t, c.pathCompleted)

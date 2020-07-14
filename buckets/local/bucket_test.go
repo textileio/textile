@@ -21,7 +21,7 @@ import (
 	. "github.com/textileio/textile/buckets/local"
 )
 
-func TestBuckets_Key(t *testing.T) {
+func TestBucket_Key(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -31,7 +31,7 @@ func TestBuckets_Key(t *testing.T) {
 	assert.NotEmpty(t, buck.Key())
 }
 
-func TestBuckets_Thread(t *testing.T) {
+func TestBucket_Thread(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -43,7 +43,7 @@ func TestBuckets_Thread(t *testing.T) {
 	assert.Equal(t, conf.Thread, tid)
 }
 
-func TestBuckets_Path(t *testing.T) {
+func TestBucket_Path(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -55,7 +55,7 @@ func TestBuckets_Path(t *testing.T) {
 	assert.Equal(t, conf.Path, bp)
 }
 
-func TestBuckets_Info(t *testing.T) {
+func TestBucket_Info(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -72,7 +72,7 @@ func TestBuckets_Info(t *testing.T) {
 	assert.NotEmpty(t, info.UpdatedAt)
 }
 
-func TestBuckets_Roots(t *testing.T) {
+func TestBucket_Roots(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -84,7 +84,7 @@ func TestBuckets_Roots(t *testing.T) {
 	assert.True(t, roots.Remote.Defined())
 }
 
-func TestBuckets_RemoteLinks(t *testing.T) {
+func TestBucket_RemoteLinks(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -96,7 +96,7 @@ func TestBuckets_RemoteLinks(t *testing.T) {
 	assert.NotEmpty(t, links.IPNS)
 }
 
-func TestBuckets_DBInfo(t *testing.T) {
+func TestBucket_DBInfo(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -108,7 +108,7 @@ func TestBuckets_DBInfo(t *testing.T) {
 	assert.NotEmpty(t, info.Addrs)
 }
 
-func TestBuckets_PushLocal(t *testing.T) {
+func TestBucket_PushLocal(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -130,7 +130,7 @@ func TestBuckets_PushLocal(t *testing.T) {
 	assert.True(t, errors.Is(err, ErrUpToDate))
 }
 
-func TestBuckets_ListRemotePath(t *testing.T) {
+func TestBucket_ListRemotePath(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -153,7 +153,7 @@ func TestBuckets_ListRemotePath(t *testing.T) {
 	assert.Len(t, items, 1)
 }
 
-func TestBuckets_PullRemote(t *testing.T) {
+func TestBucket_PullRemote(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -229,7 +229,7 @@ func TestBuckets_PullRemote(t *testing.T) {
 	ec.check(t, 0, 1)
 }
 
-func TestBuckets_CatRemotePath(t *testing.T) {
+func TestBucket_CatRemotePath(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -245,7 +245,7 @@ func TestBuckets_CatRemotePath(t *testing.T) {
 	assert.Equal(t, 1024, buf.Len())
 }
 
-func TestBuckets_EncryptLocalPath(t *testing.T) {
+func TestBucket_EncryptLocalPath(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -259,7 +259,7 @@ func TestBuckets_EncryptLocalPath(t *testing.T) {
 	assert.NotEmpty(t, buf)
 }
 
-func TestBuckets_DecryptLocalPath(t *testing.T) {
+func TestBucket_DecryptLocalPath(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -282,7 +282,7 @@ func TestBuckets_DecryptLocalPath(t *testing.T) {
 	assert.Equal(t, 1024, buf.Len())
 }
 
-func TestBuckets_DecryptRemotePath(t *testing.T) {
+func TestBucket_DecryptRemotePath(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
@@ -309,7 +309,7 @@ func TestBuckets_DecryptRemotePath(t *testing.T) {
 	assert.Equal(t, 1024, buf.Len())
 }
 
-func TestBuckets_AddRemoteCid(t *testing.T) {
+func TestBucket_AddRemoteCid(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -328,7 +328,7 @@ func TestBuckets_AddRemoteCid(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestBuckets_DiffLocal(t *testing.T) {
+func TestBucket_DiffLocal(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
@@ -385,7 +385,7 @@ func TestBuckets_DiffLocal(t *testing.T) {
 	assert.Len(t, diff, 0)
 }
 
-func TestBuckets_Watch(t *testing.T) {
+func TestBucket_Watch(t *testing.T) {
 	t.Parallel()
 	buckets1 := setup(t)
 	conf := getConf(t, buckets1)
@@ -466,7 +466,7 @@ func TestBuckets_Watch(t *testing.T) {
 	ec.check(t, 2, 0)
 }
 
-func TestBuckets_Destroy(t *testing.T) {
+func TestBucket_Destroy(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
 	conf := getConf(t, buckets)
