@@ -43,7 +43,7 @@ jobs:
         run: |
           go get -v -t -d ./...
       - name: Test
-        run: go test -race `go list ./... | grep -v integrationtest`
+        run: go test -timeout 30m -race `go list ./... | grep -v integrationtest`
   integration:
     needs: test
     runs-on: self-hosted
