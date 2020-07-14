@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -41,12 +39,8 @@ var pushCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		// Check total bucket size limit.
-		bp, err := buck.Path()
+		size, err := buck.LocalSize()
 		cmd.ErrCheck(err)
-		size, err := folderSize(bp)
-		if err != nil {
-			cmd.Fatal(fmt.Errorf("calculating bucket total size: %s", err))
-		}
 		if size > maxSize*MiB {
 			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/MiB, maxSize))
 		}
@@ -70,18 +64,4 @@ var pushCmd = &cobra.Command{
 		}
 		cmd.Message("%s", aurora.White(roots.Remote).Bold())
 	},
-}
-
-func folderSize(path string) (int64, error) {
-	var size int64
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("getting fileinfo of %s: %s", path, err)
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	return size, err
 }

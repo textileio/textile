@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -107,6 +108,29 @@ func (b *Bucket) Path() (string, error) {
 		return "", ErrNotABucket
 	}
 	return filepath.Dir(filepath.Dir(conf)), nil
+}
+
+// LocalSize returns the cumalative size of the bucket's local files.
+func (b *Bucket) LocalSize() (int64, error) {
+	bp, err := b.Path()
+	if err != nil {
+		return 0, err
+	}
+	var size int64
+	err = filepath.Walk(bp, func(n string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("getting fileinfo of %s: %s", n, err)
+		}
+		if !info.IsDir() {
+			f := strings.TrimPrefix(n, bp+"/")
+			if Ignore(n) || (strings.HasPrefix(f, b.conf.Dir) && f != buckets.SeedName) {
+				return nil
+			}
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
 }
 
 // BucketInfo wraps info about a bucket.

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/logrusorgru/aurora"
+	"github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/cmd"
 )
 
@@ -97,7 +98,7 @@ func (b *Bucket) walkPath(pth string) (names []string, err error) {
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, pth+"/")
-			if Ignore(n) || strings.HasPrefix(f, b.conf.Dir) || strings.HasSuffix(f, patchExt) {
+			if Ignore(n) || f == buckets.SeedName || strings.HasPrefix(f, b.conf.Dir) || strings.HasSuffix(f, patchExt) {
 				return nil
 			}
 			names = append(names, n)

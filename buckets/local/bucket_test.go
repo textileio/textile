@@ -55,6 +55,21 @@ func TestBucket_Path(t *testing.T) {
 	assert.Equal(t, conf.Path, bp)
 }
 
+func TestBucket_LocalSize(t *testing.T) {
+	t.Parallel()
+	buckets := setup(t)
+	conf := getConf(t, buckets)
+	buck, err := buckets.NewBucket(context.Background(), conf)
+	require.Nil(t, err)
+
+	addRandomFile(t, buck, "file", 256)
+	addRandomFile(t, buck, "dir/file", 256)
+
+	size, err := buck.LocalSize()
+	require.Nil(t, err)
+	assert.Equal(t, 512+32, int(size)) // Account for seed size
+}
+
 func TestBucket_Info(t *testing.T) {
 	t.Parallel()
 	buckets := setup(t)
@@ -452,7 +467,7 @@ func TestBucket_Watch(t *testing.T) {
 	require.Nil(t, err)
 
 	// Wait a sec while the remote event is handled
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 	// Watch should have handled the remote diff
 	_, err = buck1.PullRemote(context.Background())
 	require.NotNil(t, err)
