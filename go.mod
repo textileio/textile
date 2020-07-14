@@ -2,8 +2,6 @@ module github.com/textileio/textile
 
 go 1.14
 
-replace github.com/textileio/go-threads => ../go-threads
-
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
