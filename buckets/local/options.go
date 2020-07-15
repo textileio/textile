@@ -136,6 +136,8 @@ type watchOptions struct {
 type WatchOption func(*watchOptions)
 
 // WatchInterval sets the interval at which local changes are synced remotely.
+// In other words, this is the interval at which the local file watcher checks
+// for filesystem changes.
 func WithInterval(local time.Duration) WatchOption {
 	return func(args *watchOptions) {
 		args.interval = local

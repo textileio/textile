@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// Name is the name of the threaddb collection used for buckets.
+	// CollectionName is the name of the threaddb collection used for buckets.
 	CollectionName = "buckets"
 	// SeedName is the file name reserved for a random bucket seed.
 	SeedName = ".textileseed"

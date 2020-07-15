@@ -13,7 +13,8 @@ import (
 const defaultInterval = time.Millisecond * 100
 
 // Watch watches for and auto-pushes local bucket changes at an interval,
-// and listens for and auto-pulls remote changes as they arrive.
+// and listens for and auto-pulls remote changes as they arrive
+// This will watch until context is canceled.
 func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) error {
 	args := &watchOptions{
 		interval: defaultInterval,

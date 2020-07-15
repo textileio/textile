@@ -69,7 +69,7 @@ const (
 // IPNS resolution, website rendering, and Filecoin archivng.
 //
 // Private buckets are fully encrypted using AES-CTR + AES-512 HMAC (see https://github.com/textileio/dcrypto for more).
-// Both Unixfs node metadata (size, links, etc.) and node data (files) are obfunscated by encryption.
+// Both Unixfs node metadata (size, links, etc.) and node data (files) are obfuscated by encryption.
 // The AES and HMAC keys used for bucket encryption are stored in the ThreadDB collection instance.
 // This setup allows for bucket access to inherit from thread ACL rules.
 //
@@ -252,7 +252,7 @@ func (b *Bucket) CatRemotePath(ctx context.Context, pth string, w io.Writer) err
 	return b.clients.Buckets.PullPath(ctx, b.Key(), pth, w)
 }
 
-// Destroy deletes completely deletes the local and remote bucket.
+// Destroy completely deletes the local and remote bucket.
 func (b *Bucket) Destroy(ctx context.Context) error {
 	b.Lock()
 	defer b.Unlock()

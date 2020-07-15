@@ -311,6 +311,7 @@ func TestBucket_DecryptRemotePath(t *testing.T) {
 	err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
 	require.Nil(t, err)
 	err = os.RemoveAll(fpth)
+	require.Nil(t, err)
 	_, err = buck.PushLocal(context.Background())
 	require.Nil(t, err)
 
