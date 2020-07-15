@@ -27,81 +27,96 @@ func TestBucket(t *testing.T) {
 	buck, err := buckets.NewBucket(context.Background(), conf, WithName("bucky"))
 	require.Nil(t, err)
 
-	// Test Key()
-	assert.NotEmpty(t, buck.Key())
+	t.Run("Key", func(t *testing.T) {
+		assert.NotEmpty(t, buck.Key())
+	})
 
-	// Test Thread()
-	tid, err := buck.Thread()
-	require.Nil(t, err)
-	assert.Equal(t, conf.Thread, tid)
+	t.Run("Thread", func(t *testing.T) {
+		tid, err := buck.Thread()
+		require.Nil(t, err)
+		assert.Equal(t, conf.Thread, tid)
+	})
 
-	// Test Path()
-	bp, err := buck.Path()
-	require.Nil(t, err)
-	assert.Equal(t, conf.Path, bp)
+	t.Run("Path", func(t *testing.T) {
+		bp, err := buck.Path()
+		require.Nil(t, err)
+		assert.Equal(t, conf.Path, bp)
+	})
 
-	// Test LocalSize()
-	addRandomFile(t, buck, "file", 256)
-	addRandomFile(t, buck, "dir/file", 256)
-	size, err := buck.LocalSize()
-	require.Nil(t, err)
-	assert.Equal(t, 512+32, int(size)) // Account for seed size
+	t.Run("LocalSize", func(t *testing.T) {
+		addRandomFile(t, buck, "file", 256)
+		addRandomFile(t, buck, "dir/file", 256)
+		size, err := buck.LocalSize()
+		require.Nil(t, err)
+		assert.Equal(t, 512+32, int(size)) // Account for seed size
+	})
 
-	// Test Info()
-	info, err := buck.Info(context.Background())
-	require.Nil(t, err)
-	assert.NotEmpty(t, info.Key)
-	assert.Equal(t, info.Name, "bucky")
-	assert.NotEmpty(t, info.Path)
-	assert.Equal(t, info.Thread, conf.Thread)
-	assert.NotEmpty(t, info.CreatedAt)
-	assert.NotEmpty(t, info.UpdatedAt)
+	t.Run("Info", func(t *testing.T) {
+		info, err := buck.Info(context.Background())
+		require.Nil(t, err)
+		assert.NotEmpty(t, info.Key)
+		assert.Equal(t, info.Name, "bucky")
+		assert.NotEmpty(t, info.Path)
+		assert.Equal(t, info.Thread, conf.Thread)
+		assert.NotEmpty(t, info.CreatedAt)
+		assert.NotEmpty(t, info.UpdatedAt)
+	})
 
-	// Test Roots()
-	roots, err := buck.Roots(context.Background())
-	require.Nil(t, err)
-	assert.True(t, roots.Local.Defined())
-	assert.True(t, roots.Remote.Defined())
+	t.Run("Roots", func(t *testing.T) {
+		roots, err := buck.Roots(context.Background())
+		require.Nil(t, err)
+		assert.True(t, roots.Local.Defined())
+		assert.True(t, roots.Remote.Defined())
+	})
 
-	// Test RemoteLinks()
-	links, err := buck.RemoteLinks(context.Background())
-	require.Nil(t, err)
-	assert.NotEmpty(t, links.URL)
-	assert.NotEmpty(t, links.IPNS)
+	t.Run("RemoteLinks", func(t *testing.T) {
+		links, err := buck.RemoteLinks(context.Background())
+		require.Nil(t, err)
+		assert.NotEmpty(t, links.URL)
+		assert.NotEmpty(t, links.IPNS)
+	})
 
-	// Test DBInfo()
-	dbinfo, err := buck.DBInfo(context.Background())
-	require.Nil(t, err)
-	assert.True(t, dbinfo.Key.Defined())
-	assert.NotEmpty(t, dbinfo.Addrs)
+	t.Run("DBInfo", func(t *testing.T) {
+		dbinfo, err := buck.DBInfo(context.Background())
+		require.Nil(t, err)
+		assert.True(t, dbinfo.Key.Defined())
+		assert.NotEmpty(t, dbinfo.Addrs)
+	})
 
-	// Test Destroy()
-	err = buck.Destroy(context.Background())
-	require.Nil(t, err)
-	// Ensure the local bucket was removed
-	_, err = buckets.GetLocalBucket(context.Background(), conf.Path)
-	require.NotNil(t, err)
-	// Ensure the remote bucket was removed
-	list, err := buckets.RemoteBuckets(context.Background())
-	require.Nil(t, err)
-	assert.Len(t, list, 0)
+	t.Run("Destroy", func(t *testing.T) {
+		err = buck.Destroy(context.Background())
+		require.Nil(t, err)
+		// Ensure the local bucket was removed
+		_, err = buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.NotNil(t, err)
+		// Ensure the remote bucket was removed
+		list, err := buckets.RemoteBuckets(context.Background())
+		require.Nil(t, err)
+		assert.Len(t, list, 0)
+	})
 
-	// Test EncryptLocalPath()
-	fpth := addRandomFile(t, buck, "plaintext", 1024)
-	cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
-	f, err := os.Create(cipher)
-	require.Nil(t, err)
-	err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
-	require.Nil(t, err)
-	f.Close()
+	t.Run("EncryptLocalPath", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		var buf bytes.Buffer
+		err = buck.EncryptLocalPath(fpth, "shhhhh!", &buf)
+		require.Nil(t, err)
+	})
 
-	// Test DecryptLocalPath
-	var buf bytes.Buffer
-	err = buck.DecryptLocalPath(cipher, "badpass", &buf)
-	require.NotNil(t, err)
-	err = buck.DecryptLocalPath(cipher, "shhhhh!", &buf)
-	require.Nil(t, err)
-	assert.Equal(t, 1024, buf.Len())
+	t.Run("DecryptLocalPath", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+		f, err := os.Create(cipher)
+		require.Nil(t, err)
+		err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+		require.Nil(t, err)
+		f.Close()
+		var buf bytes.Buffer
+		err = buck.DecryptLocalPath(cipher, "badpass", &buf)
+		require.NotNil(t, err)
+		err = buck.DecryptLocalPath(cipher, "shhhhh!", &buf)
+		require.Nil(t, err)
+		assert.Equal(t, 1024, buf.Len())
+	})
 }
 
 func TestBucket_PushLocal(t *testing.T) {
@@ -223,48 +238,51 @@ func TestBucket_RemotePaths(t *testing.T) {
 	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
 	require.Nil(t, err)
 
-	// Test ListRemotePath
-	items, err := buck.ListRemotePath(context.Background(), "")
-	require.Nil(t, err)
-	assert.Len(t, items, 1)
+	t.Run("ListRemotePath", func(t *testing.T) {
+		items, err := buck.ListRemotePath(context.Background(), "")
+		require.Nil(t, err)
+		assert.Len(t, items, 1)
 
-	addRandomFile(t, buck, "dir/file", 1024)
-	_, err = buck.PushLocal(context.Background())
-	require.Nil(t, err)
+		addRandomFile(t, buck, "dir/file", 1024)
+		_, err = buck.PushLocal(context.Background())
+		require.Nil(t, err)
 
-	items, err = buck.ListRemotePath(context.Background(), "")
-	require.Nil(t, err)
-	assert.Len(t, items, 2)
+		items, err = buck.ListRemotePath(context.Background(), "")
+		require.Nil(t, err)
+		assert.Len(t, items, 2)
 
-	items, err = buck.ListRemotePath(context.Background(), "dir")
-	require.Nil(t, err)
-	assert.Len(t, items, 1)
+		items, err = buck.ListRemotePath(context.Background(), "dir")
+		require.Nil(t, err)
+		assert.Len(t, items, 1)
+	})
 
-	// Test CatRemotePath()
-	var buf bytes.Buffer
-	err = buck.CatRemotePath(context.Background(), "dir/file", &buf)
-	require.Nil(t, err)
-	assert.Equal(t, 1024, buf.Len())
+	t.Run("CatRemotePath", func(t *testing.T) {
+		var buf bytes.Buffer
+		err = buck.CatRemotePath(context.Background(), "dir/file", &buf)
+		require.Nil(t, err)
+		assert.Equal(t, 1024, buf.Len())
+	})
 
-	// Test DecryptRemotePath()
-	fpth := addRandomFile(t, buck, "plaintext", 1024)
-	cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
-	f, err := os.Create(cipher)
-	require.Nil(t, err)
-	defer f.Close()
-	err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
-	require.Nil(t, err)
-	err = os.RemoveAll(fpth)
-	require.Nil(t, err)
-	_, err = buck.PushLocal(context.Background())
-	require.Nil(t, err)
+	t.Run("DecryptRemotePath", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+		f, err := os.Create(cipher)
+		require.Nil(t, err)
+		defer f.Close()
+		err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+		require.Nil(t, err)
+		err = os.RemoveAll(fpth)
+		require.Nil(t, err)
+		_, err = buck.PushLocal(context.Background())
+		require.Nil(t, err)
 
-	var buf2 bytes.Buffer
-	err = buck.DecryptRemotePath(context.Background(), "ciphertext", "badpass", &buf2)
-	require.NotNil(t, err)
-	err = buck.DecryptRemotePath(context.Background(), "ciphertext", "shhhhh!", &buf2)
-	require.Nil(t, err)
-	assert.Equal(t, 1024, buf2.Len())
+		var buf2 bytes.Buffer
+		err = buck.DecryptRemotePath(context.Background(), "ciphertext", "badpass", &buf2)
+		require.NotNil(t, err)
+		err = buck.DecryptRemotePath(context.Background(), "ciphertext", "shhhhh!", &buf2)
+		require.Nil(t, err)
+		assert.Equal(t, 1024, buf2.Len())
+	})
 }
 
 func TestBucket_DiffLocal(t *testing.T) {

@@ -256,12 +256,10 @@ func setup(t *testing.T) *Buckets {
 	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
-
 	clients := cmd.NewClients(target, false)
 	t.Cleanup(func() {
 		clients.Close()
 	})
-
 	return NewBuckets(clients, DefaultConfConfig())
 }
 
