@@ -106,12 +106,6 @@ type Config struct {
 	AddrPowergateAPI ma.Multiaddr
 	AddrMongoURI     string
 
-	BucketMaxSize            int64
-	BucketsTotalMaxSize      int64
-	BucketMaxNumberPerThread int
-
-	ThreadMaxNumberPerOwner int
-
 	UseSubdomains bool
 
 	MongoName string
@@ -124,6 +118,12 @@ type Config struct {
 	EmailDomain        string
 	EmailAPIKey        string
 	EmailSessionSecret string
+
+	BucketsMaxSize            int64
+	BucketsTotalMaxSize       int64
+	BucketsMaxNumberPerThread int
+
+	ThreadsMaxNumberPerOwner int
 
 	Hub   bool
 	Debug bool
@@ -250,15 +250,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	bs := &buckets.Service{
-		Collections:              t.collections,
-		Buckets:                  t.bucks,
-		BucketMaxSize:            conf.BucketMaxSize,
-		BucketsTotalMaxSize:      conf.BucketsTotalMaxSize,
-		BucketMaxNumberPerThread: conf.BucketMaxNumberPerThread,
-		GatewayURL:               conf.AddrGatewayURL,
-		IPFSClient:               ic,
-		IPNSManager:              t.ipnsm,
-		DNSManager:               t.dnsm,
+		Collections:               t.collections,
+		Buckets:                   t.bucks,
+		BucketsMaxSize:            conf.BucketsMaxSize,
+		BucketsTotalMaxSize:       conf.BucketsTotalMaxSize,
+		BucketsMaxNumberPerThread: conf.BucketsMaxNumberPerThread,
+		GatewayURL:                conf.AddrGatewayURL,
+		IPFSClient:                ic,
+		IPNSManager:               t.ipnsm,
+		DNSManager:                t.dnsm,
 	}
 
 	// Start serving
@@ -640,7 +640,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
-			if t.conf.ThreadMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadMaxNumberPerOwner {
+			if t.conf.ThreadsMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadsMaxNumberPerOwner {
 				return nil, ErrTooManyThreadsPerOwner
 			}
 

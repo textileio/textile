@@ -57,7 +57,7 @@ func TestClient_Init(t *testing.T) {
 func TestClient_InitExceedLimit(t *testing.T) {
 	t.Parallel()
 	conf := apitest.DefaultTextileConfig(t)
-	conf.BucketMaxNumberPerThread = 1
+	conf.BucketsMaxNumberPerThread = 1
 	ctx, client := setupWithConf(t, conf)
 
 	_, err := client.Init(ctx, c.WithName("mybuck"))
@@ -265,7 +265,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 	maxBucketSize := stat.Size() + 1024
 
 	conf := apitest.DefaultTextileConfig(t)
-	conf.BucketMaxSize = maxBucketSize
+	conf.BucketsMaxSize = maxBucketSize
 	ctx, client := setupWithConf(t, conf)
 
 	buck, err := client.Init(ctx)
