@@ -422,7 +422,7 @@ func TestBucket_Watch(t *testing.T) {
 	addRandomFile(t, buck1, "file1", 512)
 
 	// Wait a sec while the watcher kicks off a watch cycle
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 	// Watch should have handled the diff
 	_, err = buck1.PushLocal(context.Background())
 	require.NotNil(t, err)
@@ -454,6 +454,8 @@ func TestBucket_Watch(t *testing.T) {
 		db.WithNewManagedBackfillBlock(true))
 	require.Nil(t, err)
 
+	// Wait a sec while the bucket is backfilled
+	time.Sleep(time.Second * 5)
 	buck2, err := buckets2.NewBucket(context.Background(), Config{
 		Path:   newDir(t),
 		Key:    buck1.Key(),

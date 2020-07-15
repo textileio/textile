@@ -24,8 +24,6 @@ type BucketItem struct {
 
 // ListRemotePath returns a list of all bucket items under path.
 func (b *Bucket) ListRemotePath(ctx context.Context, pth string) (items []BucketItem, err error) {
-	b.Lock()
-	defer b.Unlock()
 	if pth == "." || pth == "/" || pth == "./" {
 		pth = ""
 	}

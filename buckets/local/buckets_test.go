@@ -331,7 +331,6 @@ func (c *eventCollector) collect(events chan PathEvent) {
 }
 
 func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int) {
-	t.Helper()
 	c.Lock()
 	defer c.Unlock()
 	if numFilesAdded > 0 {
