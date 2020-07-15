@@ -19,6 +19,7 @@ import (
 	"github.com/textileio/textile/api/common"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/buckets"
+	bc "github.com/textileio/textile/buckets/collection"
 	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
@@ -492,11 +493,11 @@ func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
 	for _, t := range ts {
 		if t.IsDB {
 			// Clean up bucket pins, keys, and dns records.
-			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &buckets.Bucket{}, db.WithTxnToken(a.Token))
+			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &bc.Bucket{}, db.WithTxnToken(a.Token))
 			if err != nil {
 				return err
 			}
-			for _, b := range bres.([]*buckets.Bucket) {
+			for _, b := range bres.([]*bc.Bucket) {
 				if err = s.IPFSClient.Pin().Rm(ctx, path.New(b.Path)); err != nil {
 					return err
 				}

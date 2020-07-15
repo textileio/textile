@@ -50,6 +50,12 @@ func Fatal(err error, args ...interface{}) {
 	os.Exit(1)
 }
 
+func ErrCheck(err error, args ...interface{}) {
+	if err != nil {
+		Fatal(err, args...)
+	}
+}
+
 func RenderTable(header []string, data [][]string) {
 	fmt.Println()
 	table := tablewriter.NewWriter(os.Stdout)

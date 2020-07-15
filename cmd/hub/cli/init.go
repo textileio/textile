@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/mail"
 	"os"
@@ -21,30 +22,29 @@ var initCmd = &cobra.Command{
 	Long:  `Initializes a new Hub account.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		prompt1 := promptui.Prompt{
+		usernamePrompt := promptui.Prompt{
 			Label: "Choose a username",
 			Templates: &promptui.PromptTemplates{
 				Valid: fmt.Sprintf("%s {{ . | bold }}%s ", cmd.Bold(promptui.IconInitial), cmd.Bold(":")),
 			},
 		}
-		username, err := prompt1.Run()
+		username, err := usernamePrompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		if err := clients.Hub.IsUsernameAvailable(ctx, username); err != nil {
-			cmd.Fatal(err)
-		}
+		err = clients.Hub.IsUsernameAvailable(ctx, username)
+		cmd.ErrCheck(err)
 
-		prompt2 := promptui.Prompt{
+		emailPrompt := promptui.Prompt{
 			Label: "Enter your email",
 			Validate: func(email string) error {
 				_, err := mail.ParseAddress(email)
 				return err
 			},
 		}
-		email, err := prompt2.Run()
+		email, err := emailPrompt.Run()
 		if err != nil {
 			cmd.End("")
 		}
@@ -54,9 +54,9 @@ var initCmd = &cobra.Command{
 		s := spin.New("%s Waiting for your confirmation")
 		s.Start()
 
-		ctx, cancel = clients.Ctx.Auth(confirmTimeout)
-		defer cancel()
-		res, err := clients.Hub.Signup(ctx, username, email)
+		cctx, ccancel := context.WithTimeout(context.Background(), confirmTimeout)
+		defer ccancel()
+		res, err := clients.Hub.Signup(cctx, username, email)
 		s.Stop()
 		if err != nil {
 			if strings.Contains(err.Error(), "Account exists") {
@@ -69,17 +69,13 @@ var initCmd = &cobra.Command{
 		config.Viper.Set("session", res.Session)
 
 		home, err := homedir.Dir()
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 		dir := filepath.Join(home, config.Dir)
-		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-			cmd.Fatal(err)
-		}
+		err = os.MkdirAll(dir, os.ModePerm)
+		cmd.ErrCheck(err)
 		filename := filepath.Join(dir, config.Name+".yml")
-		if err = config.Viper.WriteConfigAs(filename); err != nil {
-			cmd.Fatal(err)
-		}
+		err = config.Viper.WriteConfigAs(filename)
+		cmd.ErrCheck(err)
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))

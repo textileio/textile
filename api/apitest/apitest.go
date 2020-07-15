@@ -22,11 +22,10 @@ import (
 
 const SessionSecret = "hubsession"
 
-func MakeTextile(t *testing.T) (conf core.Config, shutdown func()) {
-	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-
-	conf = DefaultTextileConfig(t)
-	return conf, MakeTextileCustom(t, conf)
+func MakeTextile(t *testing.T) core.Config {
+	conf := DefaultTextileConfig(t)
+	MakeTextileWithConfig(t, conf)
+	return conf
 }
 
 func DefaultTextileConfig(t *testing.T) core.Config {
@@ -62,18 +61,18 @@ func DefaultTextileConfig(t *testing.T) core.Config {
 	}
 }
 
-func MakeTextileCustom(t *testing.T, conf core.Config) func() {
+func MakeTextileWithConfig(t *testing.T, conf core.Config) {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.Nil(t, err)
 	textile.Bootstrap()
+	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
 
-	return func() {
+	t.Cleanup(func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work
 		err := textile.Close()
 		require.Nil(t, err)
 		_ = os.RemoveAll(conf.RepoPath)
-	}
-
+	})
 }
 
 func NewUsername() string {

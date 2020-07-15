@@ -52,6 +52,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
+	github.com/radovskyb/watcher v1.0.7
 	github.com/rs/cors v1.7.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -61,9 +62,9 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.22-0.20200709194234-b75bad2b9536
+	github.com/textileio/go-threads v0.1.22-0.20200715004950-43b77eed845f
 	github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5
-	github.com/textileio/uiprogress v0.0.3
+	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.3.2
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect

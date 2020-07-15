@@ -28,8 +28,7 @@ import (
 
 func TestClient_GetThread(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _, done := setup(t)
-	defer done()
+	conf, client, hub, threads, _, _ := setup(t)
 	ctx := context.Background()
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -130,8 +129,7 @@ func TestClient_CreateThreadsLimit(t *testing.T) {
 	t.Parallel()
 	conf := apitest.DefaultTextileConfig(t)
 	conf.ThreadMaxNumberPerOwner = 1
-	conf, _, hub, _, net, _, done := setupWithConf(t, conf)
-	defer done()
+	conf, _, hub, _, net, _ := setupWithConf(t, conf)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 
@@ -148,13 +146,13 @@ func TestClient_CreateThreadsLimit(t *testing.T) {
 
 	// Second one should exceed limit.
 	_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
+	require.NotNil(t, err)
 	require.Contains(t, err.Error(), core.ErrTooManyThreadsPerOwner.Error())
 }
 
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, net, _, done := setup(t)
-	defer done()
+	conf, client, hub, threads, net, _ := setup(t)
 	ctx := context.Background()
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -257,8 +255,7 @@ func TestClient_ListThreads(t *testing.T) {
 
 func TestAccountBuckets(t *testing.T) {
 	t.Parallel()
-	conf, users, hub, threads, _, buckets, done := setup(t)
-	defer done()
+	conf, users, hub, threads, _, buckets := setup(t)
 	ctx := context.Background()
 
 	// Signup, create an API key, and sign it for the requests
@@ -297,8 +294,7 @@ func TestAccountBuckets(t *testing.T) {
 
 func TestUserBuckets(t *testing.T) {
 	t.Parallel()
-	conf, users, hub, threads, _, buckets, done := setup(t)
-	defer done()
+	conf, users, hub, threads, _, buckets := setup(t)
 	ctx := context.Background()
 
 	// Signup, create an API key, and sign it for the requests
@@ -348,13 +344,13 @@ func TestUserBuckets(t *testing.T) {
 	assert.Equal(t, 1, int(keys.List[0].Threads))
 }
 
-func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
+func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
 	defConfig := apitest.DefaultTextileConfig(t)
 	return setupWithConf(t, defConfig)
 }
 
-func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client, func()) {
-	shutdown := apitest.MakeTextileCustom(t, conf)
+func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -369,11 +365,11 @@ func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.
 	bucketsclient, err := bc.NewClient(target, opts...)
 	require.Nil(t, err)
 
-	return conf, client, hubclient, threadsclient, threadsnetclient, bucketsclient, func() {
-		shutdown()
+	t.Cleanup(func() {
 		err := client.Close()
 		require.Nil(t, err)
 		err = threadsclient.Close()
 		require.Nil(t, err)
-	}
+	})
+	return conf, client, hubclient, threadsclient, threadsnetclient, bucketsclient
 }

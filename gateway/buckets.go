@@ -19,6 +19,7 @@ import (
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
+	bc "github.com/textileio/textile/buckets/collection"
 	"github.com/textileio/textile/collections"
 )
 
@@ -67,7 +68,7 @@ func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thr
 }
 
 func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID thread.ID, collection, id, pth string, token thread.Token) {
-	var buck buckets.Bucket
+	var buck bc.Bucket
 	if err := g.threads.FindByID(ctx, threadID, collection, id, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
@@ -234,7 +235,7 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	buck := &buckets.Bucket{}
+	buck := &bc.Bucket{}
 	if err := g.threads.FindByID(ctx, ipnskey.ThreadID, buckets.CollectionName, key, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return

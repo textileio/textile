@@ -1,302 +1,420 @@
-package local
+package local_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
+	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	du "github.com/ipfs/go-merkledag/dagutils"
-	"github.com/ipfs/interface-go-ipfs-core/options"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/alecthomas/jsonschema"
+	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/db"
+	bucks "github.com/textileio/textile/buckets"
+	. "github.com/textileio/textile/buckets/local"
 )
 
-func TestNewBucket(t *testing.T) {
-	makeBucket(t, "testdata/a", options.BalancedLayout)
-}
-
-func TestBucket_SetCidVersion(t *testing.T) {
-	buck0 := makeBucket(t, "testdata/a", options.BalancedLayout)
-	buck0.SetCidVersion(0)
-	err := buck0.Save(context.Background())
-	require.Nil(t, err)
-	lc0, _, err := buck0.Root()
-	require.Nil(t, err)
-	assert.True(t, lc0.Defined())
-	assert.Equal(t, 0, buck0.cidver)
-	assert.Equal(t, 0, int(lc0.Version()))
-	buck0.Close()
-
-	buck1 := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck1.Close()
-	buck1.SetCidVersion(1)
-	err = buck1.Save(context.Background())
-	require.Nil(t, err)
-	lc1, _, err := buck1.Root()
-	require.Nil(t, err)
-	assert.True(t, lc1.Defined())
-	assert.Equal(t, 1, buck1.cidver)
-	assert.Equal(t, 1, int(lc1.Version()))
-}
-
-func TestBucket_Save(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-
-	err := buck.Save(context.Background())
-	require.Nil(t, err)
-	lc, _, err := buck.Root()
-	require.Nil(t, err)
-	assert.True(t, lc.Defined())
-	buck.Close()
-
-	buck2 := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck2.Close()
-	n, err := buck2.Get(context.Background(), lc)
-	require.Nil(t, err)
-	checkLinks(t, buck2, n)
-
-	diff, err := buck2.Diff(context.Background(), "testdata/a")
-	require.Nil(t, err)
-	require.Empty(t, diff)
-}
-
-func TestBucket_SaveFile(t *testing.T) {
-	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
-
-	err := buck.SaveFile(context.Background(), "testdata/c/one.jpg", "one.jpg")
-	require.Nil(t, err)
-	lc, _, err := buck.Root()
-	require.Nil(t, err)
-	assert.True(t, lc.Defined())
-	buck.Close()
-
-	buck2 := makeBucket(t, "testdata/c", options.BalancedLayout)
-	defer buck2.Close()
-	n, err := buck2.Get(context.Background(), lc)
-	require.Nil(t, err)
-	checkLinks(t, buck2, n)
-
-	diff, err := buck2.Diff(context.Background(), "testdata/c")
-	require.Nil(t, err)
-	require.Equal(t, 1, len(diff))
-}
-
-func checkLinks(t *testing.T, buck *Bucket, n ipld.Node) {
-	for _, l := range n.Links() {
-		ln, err := buck.Get(context.Background(), l.Cid)
-		if l.Name == "" { // Data node should not have been saved
-			require.NotNil(t, err)
-		} else {
-			require.Nil(t, err)
-			checkLinks(t, buck, ln)
-		}
-	}
-}
-
-func TestBucket_HashFile(t *testing.T) {
-	buck := makeBucket(t, "testdata/c", options.BalancedLayout)
-	defer buck.Close()
-
-	c, err := buck.HashFile("testdata/c/one.jpg")
-	require.Nil(t, err)
-	assert.NotEmpty(t, c)
-}
-
-func TestBucket_Diff(t *testing.T) {
-	t.Run("raw files", func(t *testing.T) {
-		buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-		defer buck.Close()
-
-		err := buck.Save(context.Background())
-		require.Nil(t, err)
-
-		diffa, err := buck.Diff(context.Background(), "testdata/a")
-		require.Nil(t, err)
-		assert.Empty(t, diffa)
-
-		diffb, err := buck.Diff(context.Background(), "testdata/b")
-		require.Nil(t, err)
-		assert.NotEmpty(t, diffb)
-		assert.Equal(t, 6, len(diffb))
-
-		changes := []*du.Change{
-			{Path: "foo.txt", Type: du.Mod},
-			{Path: "one/two/boo.txt", Type: du.Remove},
-			{Path: "one/buz.txt", Type: du.Remove},
-			{Path: "one/muz.txt", Type: du.Add},
-			{Path: "one/three", Type: du.Add},
-			{Path: "bar.txt", Type: du.Remove},
-		}
-		for i, c := range diffb {
-			assert.Equal(t, changes[i].Path, c.Path)
-			assert.Equal(t, changes[i].Type, c.Type)
-		}
-	})
-
-	t.Run("proto files", func(t *testing.T) {
-		var dirs []string
-		t.Cleanup(func() {
-			for _, d := range dirs {
-				_ = os.RemoveAll(d)
-			}
-		})
-
-		dira, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
-		dirs = append(dirs, dira)
-
-		buck := makeBucket(t, dira, options.BalancedLayout)
-		defer buck.Close()
-
-		// Add a file large enough to have multiple raw node chunks
-		fa, err := os.Create(filepath.Join(dira, "file"))
-		require.Nil(t, err)
-		defer fa.Close()
-		_, err = io.CopyN(fa, rand.Reader, 1000*1024)
-		require.Nil(t, err)
-
-		err = buck.Save(context.Background())
-		require.Nil(t, err)
-
-		diffa, err := buck.Diff(context.Background(), dira)
-		require.Nil(t, err)
-		assert.Empty(t, diffa)
-
-		// Create another dir with a file of the same name.
-		// We should see the file as modified in the diff.
-		dirb, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
-		dirs = append(dirs, dirb)
-		fb, err := os.Create(filepath.Join(dirb, "file"))
-		require.Nil(t, err)
-		defer fb.Close()
-		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
-		require.Nil(t, err)
-
-		diffb, err := buck.Diff(context.Background(), dirb)
-		require.Nil(t, err)
-		assert.NotEmpty(t, diffb)
-		assert.Equal(t, 1, len(diffb))
-		changes := []*du.Change{
-			{Path: filepath.Base(fa.Name()), Type: du.Mod},
-		}
-		for i, c := range diffb {
-			assert.Equal(t, changes[i].Path, c.Path)
-			assert.Equal(t, changes[i].Type, c.Type)
-		}
-
-		// Create another dir with a nested dir of the same name as the original file.
-		// We should see the file as modified in the diff.
-		dirc, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
-		dirs = append(dirs, dirc)
-		err = os.MkdirAll(filepath.Join(dirc, "file"), os.ModePerm)
-		require.Nil(t, err)
-		fc, err := os.Create(filepath.Join(dirc, "file", "file"))
-		require.Nil(t, err)
-		defer fc.Close()
-		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
-		require.Nil(t, err)
-
-		diffc, err := buck.Diff(context.Background(), dirc)
-		require.Nil(t, err)
-		assert.NotEmpty(t, diffc)
-		assert.Equal(t, 1, len(diffc))
-		for i, c := range diffc {
-			assert.Equal(t, changes[i].Path, c.Path)
-			assert.Equal(t, changes[i].Type, c.Type)
-		}
-	})
-}
-
-func TestBucket_Get(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	err := buck.Save(context.Background())
+func TestBucket(t *testing.T) {
+	buckets := setup(t)
+	conf := getConf(t, buckets)
+	buck, err := buckets.NewBucket(context.Background(), conf, WithName("bucky"))
 	require.Nil(t, err)
 
-	lc, _, err := buck.Root()
-	require.Nil(t, err)
-	assert.True(t, lc.Defined())
-	n, err := buck.Get(context.Background(), lc)
-	require.Nil(t, err)
-	assert.Equal(t, lc, n.Cid())
-}
+	// Test Key()
+	assert.NotEmpty(t, buck.Key())
 
-func TestBucket_SetRemotePath(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
+	// Test Thread()
+	tid, err := buck.Thread()
+	require.Nil(t, err)
+	assert.Equal(t, conf.Thread, tid)
 
-	err := buck.Save(context.Background())
+	// Test Path()
+	bp, err := buck.Path()
 	require.Nil(t, err)
-	lc, _, err := buck.Root()
-	require.Nil(t, err)
-	assert.True(t, lc.Defined())
+	assert.Equal(t, conf.Path, bp)
 
-	err = buck.SetRemotePath("", lc)
+	// Test LocalSize()
+	addRandomFile(t, buck, "file", 256)
+	addRandomFile(t, buck, "dir/file", 256)
+	size, err := buck.LocalSize()
 	require.Nil(t, err)
-}
+	assert.Equal(t, 512+32, int(size)) // Account for seed size
 
-func TestBucket_MatchPath(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
+	// Test Info()
+	info, err := buck.Info(context.Background())
+	require.Nil(t, err)
+	assert.NotEmpty(t, info.Key)
+	assert.Equal(t, info.Name, "bucky")
+	assert.NotEmpty(t, info.Path)
+	assert.Equal(t, info.Thread, conf.Thread)
+	assert.NotEmpty(t, info.CreatedAt)
+	assert.NotEmpty(t, info.UpdatedAt)
 
-	err := buck.Save(context.Background())
+	// Test Roots()
+	roots, err := buck.Roots(context.Background())
 	require.Nil(t, err)
-	lc, _, err := buck.Root()
-	require.Nil(t, err)
-	assert.True(t, lc.Defined())
+	assert.True(t, roots.Local.Defined())
+	assert.True(t, roots.Remote.Defined())
 
-	rc := makeCid(t, "remote")
-	err = buck.SetRemotePath("", rc)
+	// Test RemoteLinks()
+	links, err := buck.RemoteLinks(context.Background())
 	require.Nil(t, err)
+	assert.NotEmpty(t, links.URL)
+	assert.NotEmpty(t, links.IPNS)
 
-	match, err := buck.MatchPath("", lc, rc)
+	// Test DBInfo()
+	dbinfo, err := buck.DBInfo(context.Background())
 	require.Nil(t, err)
-	assert.True(t, match)
-}
+	assert.True(t, dbinfo.Key.Defined())
+	assert.NotEmpty(t, dbinfo.Addrs)
 
-func TestBucket_RemovePath(t *testing.T) {
-	buck := makeBucket(t, "testdata/a", options.BalancedLayout)
-	defer buck.Close()
-
-	k, err := getPathKey("path/to/file")
+	// Test Destroy()
+	err = buck.Destroy(context.Background())
 	require.Nil(t, err)
-	err = buck.putPathMap(k, pathMap{
-		Local:  makeCid(t, "local"),
-		Remote: makeCid(t, "remote"),
-	})
-	require.Nil(t, err)
-	err = buck.RemovePath(context.Background(), "path/to/file")
-	require.Nil(t, err)
-
-	_, err = buck.getPathMap(k)
+	// Ensure the local bucket was removed
+	_, err = buckets.GetLocalBucket(context.Background(), conf.Path)
 	require.NotNil(t, err)
+	// Ensure the remote bucket was removed
+	list, err := buckets.RemoteBuckets(context.Background())
+	require.Nil(t, err)
+	assert.Len(t, list, 0)
+
+	// Test EncryptLocalPath()
+	fpth := addRandomFile(t, buck, "plaintext", 1024)
+	cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+	f, err := os.Create(cipher)
+	require.Nil(t, err)
+	err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+	require.Nil(t, err)
+	f.Close()
+
+	// Test DecryptLocalPath
+	var buf bytes.Buffer
+	err = buck.DecryptLocalPath(cipher, "badpass", &buf)
+	require.NotNil(t, err)
+	err = buck.DecryptLocalPath(cipher, "shhhhh!", &buf)
+	require.Nil(t, err)
+	assert.Equal(t, 1024, buf.Len())
 }
 
-func makeBucket(t *testing.T, root string, layout options.Layout) *Bucket {
-	buck, err := NewBucket(root, layout)
+func TestBucket_PushLocal(t *testing.T) {
+	buckets := setup(t)
+	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
 	require.Nil(t, err)
 
-	t.Cleanup(func() {
-		err := os.RemoveAll(filepath.Join(buck.path, filepath.Dir(repoPath)))
-		require.Nil(t, err)
-	})
-	return buck
+	_, err = buck.PushLocal(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
+
+	addRandomFile(t, buck, "file", 1024)
+
+	roots, err := buck.PushLocal(context.Background())
+	require.Nil(t, err)
+	assert.True(t, roots.Local.Defined())
+	assert.True(t, roots.Remote.Defined())
+
+	_, err = buck.PushLocal(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
 }
 
-func makeCid(t *testing.T, s string) cid.Cid {
-	h1, err := mh.Sum([]byte(s), mh.SHA2_256, -1)
-	if err != nil {
-		t.Fatal(err)
+func TestBucket_PullRemote(t *testing.T) {
+	buckets := setup(t)
+	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
+	require.Nil(t, err)
+
+	_, err = buck.PullRemote(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
+
+	fpth := addRandomFile(t, buck, "dir/file", 1024)
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	// Delete the file locally
+	err = os.RemoveAll(fpth)
+	require.Nil(t, err)
+
+	roots, err := buck.PullRemote(context.Background())
+	require.Nil(t, err)
+	assert.True(t, roots.Local.Defined())
+	assert.True(t, roots.Remote.Defined())
+
+	// The local removal should be maintained
+	diff, err := buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 1)
+	if len(diff) > 0 {
+		assert.Equal(t, diff[0].Type, dagutils.Remove)
 	}
-	return cid.NewCidV1(0x55, h1)
+
+	// Pulling hard should reset the local to the exact state of the remote
+	_, err = buck.PullRemote(context.Background(), WithHard(true))
+	require.Nil(t, err)
+
+	_, err = buck.PullRemote(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
+
+	// Create another bucket to test an edge case where,
+	// 1. A file is removed from the remote via local bucket 1
+	// 2. The same file is modified in local bucket 2
+	// 3. Local bucket 2 pulls hard on the remote
+	// 4. The bucket should only report 1 removal event, not one from the remote
+	//    and one from the removal of the local change.
+	conf2 := Config{Path: newDir(t)}
+	conf2.Key = buck.Key()
+	conf2.Thread, err = buck.Thread()
+	require.Nil(t, err)
+	_, err = buckets.NewBucket(context.Background(), conf2)
+	require.Nil(t, err)
+
+	// Use a bucket from a nested folder to test if the relative path matching is working
+	buck2, err := buckets.GetLocalBucket(context.Background(), filepath.Join(conf2.Path, "dir"))
+	require.Nil(t, err)
+
+	// Delete the file locally from the first bucket
+	err = os.RemoveAll(fpth)
+	require.Nil(t, err)
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	// Stage a modification to the same file in the second bucket
+	addRandomFile(t, buck2, "dir/file", 1024)
+
+	// Pull the remote, the local change should be cleared
+	// with only one remove event
+	events := make(chan PathEvent)
+	defer close(events)
+	ec := &eventCollector{}
+	go ec.collect(events)
+	_, err = buck2.PullRemote(context.Background(), WithHard(true), WithPathEvents(events))
+	require.Nil(t, err)
+	ec.check(t, 0, 1)
+}
+
+func TestBucket_AddRemoteCid(t *testing.T) {
+	buckets := setup(t)
+	conf := getConf(t, buckets)
+	buck, err := buckets.NewBucket(context.Background(), conf)
+	require.Nil(t, err)
+
+	pth := createIpfsFolder(t)
+	err = buck.AddRemoteCid(context.Background(), pth.Cid(), conf.Path)
+	require.Nil(t, err)
+
+	bp, err := buck.Path()
+	require.Nil(t, err)
+	_, err = os.Stat(filepath.Join(bp, "file1.txt"))
+	require.Nil(t, err)
+	_, err = os.Stat(filepath.Join(bp, "folder1", "file2.txt"))
+	require.Nil(t, err)
+}
+
+func TestBucket_RemotePaths(t *testing.T) {
+	buckets := setup(t)
+	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
+	require.Nil(t, err)
+
+	// Test ListRemotePath
+	items, err := buck.ListRemotePath(context.Background(), "")
+	require.Nil(t, err)
+	assert.Len(t, items, 1)
+
+	addRandomFile(t, buck, "dir/file", 1024)
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	items, err = buck.ListRemotePath(context.Background(), "")
+	require.Nil(t, err)
+	assert.Len(t, items, 2)
+
+	items, err = buck.ListRemotePath(context.Background(), "dir")
+	require.Nil(t, err)
+	assert.Len(t, items, 1)
+
+	// Test CatRemotePath()
+	var buf bytes.Buffer
+	err = buck.CatRemotePath(context.Background(), "dir/file", &buf)
+	require.Nil(t, err)
+	assert.Equal(t, 1024, buf.Len())
+
+	// Test DecryptRemotePath()
+	fpth := addRandomFile(t, buck, "plaintext", 1024)
+	cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+	f, err := os.Create(cipher)
+	require.Nil(t, err)
+	defer f.Close()
+	err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+	require.Nil(t, err)
+	err = os.RemoveAll(fpth)
+	require.Nil(t, err)
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	var buf2 bytes.Buffer
+	err = buck.DecryptRemotePath(context.Background(), "ciphertext", "badpass", &buf2)
+	require.NotNil(t, err)
+	err = buck.DecryptRemotePath(context.Background(), "ciphertext", "shhhhh!", &buf2)
+	require.Nil(t, err)
+	assert.Equal(t, 1024, buf2.Len())
+}
+
+func TestBucket_DiffLocal(t *testing.T) {
+	buckets := setup(t)
+	conf := getConf(t, buckets)
+	buck, err := buckets.NewBucket(context.Background(), conf)
+	require.Nil(t, err)
+
+	addRandomFile(t, buck, "file1", 256)
+	fpth := addRandomFile(t, buck, "folder/file2", 256)
+	diff, err := buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 2)
+	assert.Equal(t, diff[0].Type, dagutils.Add)
+
+	// Test diff from a nested folder
+	buck2, err := buckets.GetLocalBucket(context.Background(), filepath.Join(conf.Path, "folder"))
+	require.Nil(t, err)
+	diff, err = buck2.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 2)
+	assert.Equal(t, diff[0].Type, dagutils.Add)
+
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	diff, err = buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 0)
+
+	addRandomFile(t, buck, "file1", 256)
+	diff, err = buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 1)
+	assert.Equal(t, diff[0].Type, dagutils.Mod)
+
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	diff, err = buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 0)
+
+	err = os.RemoveAll(fpth)
+	require.Nil(t, err)
+	diff, err = buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 1)
+	assert.Equal(t, diff[0].Type, dagutils.Remove)
+
+	_, err = buck.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	diff, err = buck.DiffLocal()
+	require.Nil(t, err)
+	assert.Len(t, diff, 0)
+}
+
+func TestBucket_Watch(t *testing.T) {
+	buckets1 := setup(t)
+	conf := getConf(t, buckets1)
+	buck1, err := buckets1.NewBucket(context.Background(), conf)
+	require.Nil(t, err)
+
+	events := make(chan PathEvent)
+	defer close(events)
+	ec := &eventCollector{}
+	go ec.collect(events)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		err = buck1.Watch(ctx, WithWatchEvents(events))
+		require.Nil(t, err)
+	}()
+
+	// Add a file
+	addRandomFile(t, buck1, "file1", 512)
+
+	// Wait a sec while the watcher kicks off a watch cycle
+	time.Sleep(time.Second * 5)
+	// Watch should have handled the diff
+	_, err = buck1.PushLocal(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
+
+	// Create the same bucket from a different daemon
+	buckets2 := setup(t)
+	tid, err := buck1.Thread()
+	require.Nil(t, err)
+	dbinfo, err := buckets1.Clients().Threads.GetDBInfo(context.Background(), tid)
+	require.Nil(t, err)
+	colinfo, err := buckets1.Clients().Threads.GetCollectionInfo(context.Background(), tid, bucks.CollectionName)
+	require.Nil(t, err)
+
+	schema := &jsonschema.Schema{}
+	err = json.Unmarshal(colinfo.Schema, schema)
+	require.Nil(t, err)
+
+	err = buckets2.Clients().Threads.NewDBFromAddr(
+		context.Background(),
+		dbinfo.Addrs[0],
+		dbinfo.Key,
+		db.WithNewManagedName(dbinfo.Name),
+		db.WithNewManagedCollections(db.CollectionConfig{
+			Name:    bucks.CollectionName,
+			Schema:  schema,
+			Indexes: colinfo.Indexes,
+		}),
+		db.WithNewManagedBackfillBlock(true))
+	require.Nil(t, err)
+
+	// Wait a sec while the bucket is backfilled
+	time.Sleep(time.Second * 5)
+	buck2, err := buckets2.NewBucket(context.Background(), Config{
+		Path:   newDir(t),
+		Key:    buck1.Key(),
+		Thread: tid,
+	})
+	require.Nil(t, err)
+
+	// Add another file to the second bucket
+	addRandomFile(t, buck2, "file2", 512)
+	_, err = buck2.PushLocal(context.Background())
+	require.Nil(t, err)
+
+	// Wait a sec while the remote event is handled
+	time.Sleep(time.Second * 5)
+	// Watch should have handled the remote diff
+	_, err = buck1.PullRemote(context.Background())
+	require.NotNil(t, err)
+	assert.True(t, errors.Is(err, ErrUpToDate))
+
+	bp, err := buck1.Path()
+	require.Nil(t, err)
+	_, err = os.Stat(filepath.Join(bp, "file2"))
+	require.Nil(t, err)
+
+	ec.check(t, 2, 0)
+}
+
+func addRandomFile(t *testing.T, buck *Bucket, pth string, size int64) string {
+	bp, err := buck.Path()
+	require.Nil(t, err)
+	name := filepath.Join(bp, pth)
+	err = os.MkdirAll(filepath.Dir(name), os.ModePerm)
+	require.Nil(t, err)
+	fa, err := os.Create(filepath.Join(bp, pth))
+	require.Nil(t, err)
+	defer fa.Close()
+	_, err = io.CopyN(fa, rand.Reader, size)
+	require.Nil(t, err)
+	return name
 }

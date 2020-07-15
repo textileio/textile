@@ -50,8 +50,8 @@ func (c *Client) Init(ctx context.Context, opts ...InitOption) (*pb.InitReply, e
 		opt(args)
 	}
 	var strCid string
-	if args.bootstrapCid.Defined() {
-		strCid = args.bootstrapCid.String()
+	if args.fromCid.Defined() {
+		strCid = args.fromCid.String()
 	}
 	return c.c.Init(ctx, &pb.InitRequest{
 		Name:         args.name,

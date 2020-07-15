@@ -1388,6 +1388,8 @@ github.com/prometheus/procfs v0.0.11/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4
 github.com/prometheus/procfs v0.1.0/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4OA4YeYWdaU=
 github.com/prometheus/statsd_exporter v0.15.0/go.mod h1:Dv8HnkoLQkeEjkIE4/2ndAA7WL1zHKK7WMqFQqu72rw=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
+github.com/radovskyb/watcher v1.0.7 h1:AYePLih6dpmS32vlHfhCeli8127LzkIgwJGcwwe8tUE=
+github.com/radovskyb/watcher v1.0.7/go.mod h1:78okwvY5wPdzcb1UYnip1pvrZNIVEIh/Cm+ZuvsUYIg=
 github.com/rainycape/unidecode v0.0.0-20150907023854-cb7f23ec59be h1:ta7tUOvsPHVHGom5hKW5VXNc2xZIkfCKP8iaqOyYtUQ=
 github.com/rainycape/unidecode v0.0.0-20150907023854-cb7f23ec59be/go.mod h1:MIDFMn7db1kT65GmV94GzpX9Qdi7N/pQlwb+AN8wh+Q=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
@@ -1516,12 +1518,12 @@ github.com/textileio/dcrypto v0.0.1 h1:ftXQKd+CAM7a0XFrw+hJqizo+ux8+g5RttKjImZRc
 github.com/textileio/dcrypto v0.0.1/go.mod h1:rDlYXuL+HQwkyrxOR230zEUouRnlTwH6O5XWoPbmfcE=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7 h1:J7+UXJT/Ku8ylMqqHH4T+CiHtOSd8woUZjynG3fEwDI=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7/go.mod h1:j7aKMh8sbbtvttp7V7yCOkHW/pfRtIM/6h+8qEDsLyI=
-github.com/textileio/go-threads v0.1.22-0.20200709194234-b75bad2b9536 h1:kdCIi55guaTS7H3BKmYqzBW7F3qRH/+lh7IHI9yODF8=
-github.com/textileio/go-threads v0.1.22-0.20200709194234-b75bad2b9536/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
+github.com/textileio/go-threads v0.1.22-0.20200715004950-43b77eed845f h1:Kvw67D+VWb+y69NeU+5o9aDPMqA4VzYyFcOoI0wDFnk=
+github.com/textileio/go-threads v0.1.22-0.20200715004950-43b77eed845f/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5 h1:sZxhbihpeGscOsceiLw7uokXQK0EoSmykAm+EpwgVSs=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5/go.mod h1:D3ImIiFCJSFdNdSO1m1SL+P8kQvW2Jrkc6hAZI8h7Bg=
-github.com/textileio/uiprogress v0.0.3 h1:g1seo+ObZWgHNo7hEheOM5F5gymMk1iEZiq12VxbqGs=
-github.com/textileio/uiprogress v0.0.3/go.mod h1:ijtyLXHP6vw9MbbT4tmCKZonLPE3LN4mD9C/XRJkrgg=
+github.com/textileio/uiprogress v0.0.4 h1:7FWXEKK/h54ssNOW24q9MeJ9Eujptsr8eDPq35aPHjo=
+github.com/textileio/uiprogress v0.0.4/go.mod h1:ijtyLXHP6vw9MbbT4tmCKZonLPE3LN4mD9C/XRJkrgg=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=

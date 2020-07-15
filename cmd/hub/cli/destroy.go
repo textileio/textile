@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -16,14 +17,13 @@ var destroyCmd = &cobra.Command{
 	Long:  `Destroys your Hub account and all associated data.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := clients.Ctx.Auth(cmd.Timeout)
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 		who, err := clients.Hub.GetSessionInfo(ctx)
-		if err != nil {
-			cmd.Fatal(err)
-		}
+		cmd.ErrCheck(err)
 
-		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone. Your account and all associated data will be permanently deleted."))
+		cmd.Warn("%s", aurora.Red("Are you absolutely sure? This action cannot be undone."))
+		cmd.Warn("%s", aurora.Red("Your account and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label: fmt.Sprintf("Please type '%s' to confirm", who.Username),
 			Validate: func(s string) error {
@@ -37,11 +37,8 @@ var destroyCmd = &cobra.Command{
 			cmd.End("")
 		}
 
-		ctx2, cancel2 := clients.Ctx.Auth(cmd.Timeout)
-		defer cancel2()
-		if err := clients.Hub.DestroyAccount(ctx2); err != nil {
-			cmd.Fatal(err)
-		}
+		err = clients.Hub.DestroyAccount(ctx)
+		cmd.ErrCheck(err)
 		_ = os.RemoveAll(config.Viper.ConfigFileUsed())
 		cmd.Success("Your account has been deleted")
 	},

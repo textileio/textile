@@ -1,10 +1,11 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cli"
 )
 
 var threadsCmd = &cobra.Command{
@@ -26,15 +27,10 @@ var threadsLsCmd = &cobra.Command{
 	Long:  `Lists all of your threads.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		org, err := c.Flags().GetString("org")
-		if err != nil {
-			cmd.Fatal(err)
-		}
-		if org != "" {
-			buck.Config().Viper.Set("org", org)
-		}
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
 
-		threads := clients.ListThreads(false)
+		threads := clients.ListThreads(ctx, false)
 		if len(threads) > 0 {
 			data := make([][]string, len(threads))
 			for i, t := range threads {
