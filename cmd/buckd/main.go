@@ -14,9 +14,7 @@ import (
 	"github.com/textileio/textile/core"
 )
 
-const (
-	daemonName = "buckd"
-)
+const daemonName = "buckd"
 
 var (
 	log = logging.Logger(daemonName)
@@ -62,8 +60,8 @@ var (
 				Key:      "addr.ipfs.api",
 				DefValue: "/ip4/127.0.0.1/tcp/5001",
 			},
-			"addrFilecoinApi": {
-				Key:      "addr.filecoin.api",
+			"addrPowergateApi": {
+				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
 			"addrMongoUri": {
@@ -101,45 +99,34 @@ func init() {
 		"config",
 		"",
 		"Config file (default ${HOME}/"+config.Dir+"/"+config.Name+".yml)")
-
 	rootCmd.PersistentFlags().StringP(
 		"repo",
 		"r",
 		config.Flags["repo"].DefValue.(string),
 		"Path to repository")
-
 	rootCmd.PersistentFlags().BoolP(
 		"debug",
 		"d",
 		config.Flags["debug"].DefValue.(bool),
 		"Enable debug logging")
-
 	rootCmd.PersistentFlags().String(
 		"logFile",
 		config.Flags["logFile"].DefValue.(string),
 		"Write logs to file")
 
+	// Address settings
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
 		"Hub API listen address")
-
 	rootCmd.PersistentFlags().String(
 		"addrApiProxy",
 		config.Flags["addrApiProxy"].DefValue.(string),
 		"Hub API proxy listen address")
-
 	rootCmd.PersistentFlags().String(
 		"addrThreadsHost",
 		config.Flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
-
-	rootCmd.PersistentFlags().String(
-		"addrIpfsApi",
-		config.Flags["addrIpfsApi"].DefValue.(string),
-		"IPFS API address")
-
-	// Gateway settings
 	rootCmd.PersistentFlags().String(
 		"addrGatewayHost",
 		config.Flags["addrGatewayHost"].DefValue.(string),
@@ -148,14 +135,14 @@ func init() {
 		"addrGatewayUrl",
 		config.Flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
-
-	// Filecoin settings
 	rootCmd.PersistentFlags().String(
-		"addrFilecoinApi",
-		config.Flags["addrFilecoinApi"].DefValue.(string),
-		"Filecoin gRPC API address")
-
-	// Mongo settings
+		"addrIpfsApi",
+		config.Flags["addrIpfsApi"].DefValue.(string),
+		"IPFS API address")
+	rootCmd.PersistentFlags().String(
+		"addrPowergateApi",
+		config.Flags["addrPowergateApi"].DefValue.(string),
+		"Powergate API address")
 	rootCmd.PersistentFlags().String(
 		"addrMongoUri",
 		config.Flags["addrMongoUri"].DefValue.(string),
@@ -167,17 +154,15 @@ func init() {
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
 
-	// Cloudflare settings
+	// DNS settings
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Root domain for bucket subdomains")
-
 	rootCmd.PersistentFlags().String(
 		"dnsZoneID",
 		config.Flags["dnsZoneID"].DefValue.(string),
 		"Cloudflare ZoneID for dnsDomain")
-
 	rootCmd.PersistentFlags().String(
 		"dnsToken",
 		config.Flags["dnsDomain"].DefValue.(string),
@@ -216,13 +201,13 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 
-		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
-		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
-
 		var addrPowergateApi ma.Multiaddr
 		if str := config.Viper.GetString("addr.powergate.api"); str != "" {
 			addrPowergateApi = cmd.AddrFromStr(str)
 		}
+
+		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
+		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
@@ -238,7 +223,8 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:         config.Viper.GetString("repo"),
+			RepoPath: config.Viper.GetString("repo"),
+
 			AddrAPI:          addrApi,
 			AddrAPIProxy:     addrApiProxy,
 			AddrThreadsHost:  addrThreadsHost,
@@ -247,12 +233,16 @@ var rootCmd = &cobra.Command{
 			AddrGatewayURL:   addrGatewayUrl,
 			AddrPowergateAPI: addrPowergateApi,
 			AddrMongoURI:     addrMongoUri,
-			UseSubdomains:    config.Viper.GetBool("gateway.subdomains"),
-			MongoName:        "buckets",
-			DNSDomain:        dnsDomain,
-			DNSZoneID:        dnsZoneID,
-			DNSToken:         dnsToken,
-			Debug:            config.Viper.GetBool("log.debug"),
+
+			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
+
+			MongoName: "buckets",
+
+			DNSDomain: dnsDomain,
+			DNSZoneID: dnsZoneID,
+			DNSToken:  dnsToken,
+
+			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)
 		defer textile.Close()

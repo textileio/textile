@@ -14,9 +14,7 @@ import (
 	"github.com/textileio/textile/core"
 )
 
-const (
-	daemonName = "hubd"
-)
+const daemonName = "hubd"
 
 var (
 	log = logging.Logger(daemonName)
@@ -66,22 +64,6 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
-			"bucketMaxSize": {
-				Key:      "bucket.max_size",
-				DefValue: int64(1073741824),
-			},
-			"bucketTotalMaxSize": {
-				Key:      "bucket.total_max_size",
-				DefValue: int64(1073741824),
-			},
-			"bucketMaxNumberPerThread": {
-				Key:      "bucket.max_number_per_thread",
-				DefValue: 10000,
-			},
-			"threadMaxNumberPerOwner": {
-				Key:      "thread.max_number_per_owner",
-				DefValue: 100,
-			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
 				DefValue: "mongodb://127.0.0.1:27017",
@@ -118,6 +100,22 @@ var (
 				Key:      "email.session_secret",
 				DefValue: "",
 			},
+			"bucketsMaxSize": {
+				Key:      "buckets.max_size",
+				DefValue: int64(1073741824),
+			},
+			"bucketsTotalMaxSize": {
+				Key:      "buckets.total_max_size",
+				DefValue: int64(1073741824),
+			},
+			"bucketsMaxNumberPerThread": {
+				Key:      "buckets.max_number_per_thread",
+				DefValue: 10000,
+			},
+			"threadsMaxNumberPerOwner": {
+				Key:      "threads.max_number_per_owner",
+				DefValue: 100,
+			},
 		},
 		EnvPre: "HUB",
 		Global: true,
@@ -133,50 +131,34 @@ func init() {
 		"config",
 		"",
 		"Config file (default ${HOME}/"+config.Dir+"/"+config.Name+".yml)")
-
 	rootCmd.PersistentFlags().StringP(
 		"repo",
 		"r",
 		config.Flags["repo"].DefValue.(string),
 		"Path to repository")
-
 	rootCmd.PersistentFlags().BoolP(
 		"debug",
 		"d",
 		config.Flags["debug"].DefValue.(bool),
 		"Enable debug logging")
-
 	rootCmd.PersistentFlags().String(
 		"logFile",
 		config.Flags["logFile"].DefValue.(string),
 		"Write logs to file")
 
+	// Address settings
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
 		"Hub API listen address")
-
 	rootCmd.PersistentFlags().String(
 		"addrApiProxy",
 		config.Flags["addrApiProxy"].DefValue.(string),
 		"Hub API proxy listen address")
-
 	rootCmd.PersistentFlags().String(
 		"addrThreadsHost",
 		config.Flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
-
-	rootCmd.PersistentFlags().String(
-		"addrIpfsApi",
-		config.Flags["addrIpfsApi"].DefValue.(string),
-		"IPFS API address")
-
-	rootCmd.PersistentFlags().String(
-		"addrPowergateApi",
-		config.Flags["addrPowergateApi"].DefValue.(string),
-		"Powergate API address")
-
-	// Gateway settings
 	rootCmd.PersistentFlags().String(
 		"addrGatewayHost",
 		config.Flags["addrGatewayHost"].DefValue.(string),
@@ -185,8 +167,14 @@ func init() {
 		"addrGatewayUrl",
 		config.Flags["addrGatewayUrl"].DefValue.(string),
 		"Public gateway address")
-
-	// Mongo settings
+	rootCmd.PersistentFlags().String(
+		"addrIpfsApi",
+		config.Flags["addrIpfsApi"].DefValue.(string),
+		"IPFS API address")
+	rootCmd.PersistentFlags().String(
+		"addrPowergateApi",
+		config.Flags["addrPowergateApi"].DefValue.(string),
+		"Powergate API address")
 	rootCmd.PersistentFlags().String(
 		"addrMongoUri",
 		config.Flags["addrMongoUri"].DefValue.(string),
@@ -198,38 +186,15 @@ func init() {
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
 
-	// Cloudflare settings
+	// DNS settings
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Root domain for bucket subdomains")
-
-	// Bucket settings
-	rootCmd.PersistentFlags().Int64(
-		"bucketMaxSize",
-		config.Flags["bucketMaxSize"].DefValue.(int64),
-		"Bucket max size in bytes")
-	rootCmd.PersistentFlags().Int(
-		"bucketMaxNumberPerThread",
-		config.Flags["bucketMaxNumberPerThread"].DefValue.(int),
-		"Max number of buckets per thread")
-	rootCmd.PersistentFlags().Int64(
-		"bucketTotalMaxSize",
-		config.Flags["bucketTotalMaxSize"].DefValue.(int64),
-		"Total max size of buckets per account")
-
-	// Thread settings
-	rootCmd.PersistentFlags().Int(
-		"threadMaxNumberPerOwner",
-		config.Flags["threadMaxNumberPerOwner"].DefValue.(int),
-		"Max number threads per owner")
-
-	// DNS settings
 	rootCmd.PersistentFlags().String(
 		"dnsZoneID",
 		config.Flags["dnsZoneID"].DefValue.(string),
 		"Cloudflare ZoneID for dnsDomain")
-
 	rootCmd.PersistentFlags().String(
 		"dnsToken",
 		config.Flags["dnsDomain"].DefValue.(string),
@@ -240,21 +205,38 @@ func init() {
 		"emailFrom",
 		config.Flags["emailFrom"].DefValue.(string),
 		"Source address of system emails")
-
 	rootCmd.PersistentFlags().String(
 		"emailDomain",
 		config.Flags["emailDomain"].DefValue.(string),
 		"Domain of system emails")
-
 	rootCmd.PersistentFlags().String(
 		"emailApiKey",
 		config.Flags["emailApiKey"].DefValue.(string),
 		"Mailgun API key for sending emails")
-
 	rootCmd.PersistentFlags().String(
 		"emailSessionSecret",
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
+
+	// Bucket settings
+	rootCmd.PersistentFlags().Int64(
+		"bucketsMaxSize",
+		config.Flags["bucketsMaxSize"].DefValue.(int64),
+		"Bucket max size in bytes")
+	rootCmd.PersistentFlags().Int64(
+		"bucketsTotalMaxSize",
+		config.Flags["bucketsTotalMaxSize"].DefValue.(int64),
+		"Total max size of buckets per account")
+	rootCmd.PersistentFlags().Int(
+		"bucketsMaxNumberPerThread",
+		config.Flags["bucketsMaxNumberPerThread"].DefValue.(int),
+		"Max number of buckets per thread")
+
+	// Thread settings
+	rootCmd.PersistentFlags().Int(
+		"threadsMaxNumberPerOwner",
+		config.Flags["threadsMaxNumberPerOwner"].DefValue.(int),
+		"Max number threads per owner")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -299,12 +281,6 @@ var rootCmd = &cobra.Command{
 
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
-		bucketMaxSize := config.Viper.GetInt64("bucket.max_size")
-		bucketsTotalMaxSize := config.Viper.GetInt64("bucket.total_max_size")
-		bucketMaxNumberPerThread := config.Viper.GetInt("bucket.max_number_per_thread")
-
-		threadMaxNumberPerOwner := config.Viper.GetInt("thread.max_number_per_owner")
-
 		dnsDomain := config.Viper.GetString("dns.domain")
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
@@ -314,6 +290,12 @@ var rootCmd = &cobra.Command{
 		emailApiKey := config.Viper.GetString("email.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
+		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
+		bucketsTotalMaxSize := config.Viper.GetInt64("buckets.total_max_size")
+		bucketsMaxNumberPerThread := config.Viper.GetInt("buckets.max_number_per_thread")
+
+		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -322,31 +304,38 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath:                 config.Viper.GetString("repo"),
-			AddrAPI:                  addrApi,
-			AddrAPIProxy:             addrApiProxy,
-			AddrThreadsHost:          addrThreadsHost,
-			AddrIPFSAPI:              addrIpfsApi,
-			AddrGatewayHost:          addrGatewayHost,
-			AddrGatewayURL:           addrGatewayUrl,
-			AddrPowergateAPI:         addrPowergateApi,
-			AddrMongoURI:             addrMongoUri,
-			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
-			MongoName:                "textile",
-			BucketMaxSize:            bucketMaxSize,
-			BucketsTotalMaxSize:      bucketsTotalMaxSize,
-			BucketMaxNumberPerThread: bucketMaxNumberPerThread,
-			ThreadMaxNumberPerOwner:  threadMaxNumberPerOwner,
+			RepoPath: config.Viper.GetString("repo"),
 
-			DNSDomain:          dnsDomain,
-			DNSZoneID:          dnsZoneID,
-			DNSToken:           dnsToken,
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrThreadsHost:  addrThreadsHost,
+			AddrIPFSAPI:      addrIpfsApi,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
+			AddrPowergateAPI: addrPowergateApi,
+			AddrMongoURI:     addrMongoUri,
+
+			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
+
+			MongoName: "textile",
+
+			DNSDomain: dnsDomain,
+			DNSZoneID: dnsZoneID,
+			DNSToken:  dnsToken,
+
 			EmailFrom:          emailFrom,
 			EmailDomain:        emailDomain,
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
-			Hub:                true,
-			Debug:              config.Viper.GetBool("log.debug"),
+
+			BucketsMaxSize:            bucketsMaxSize,
+			BucketsTotalMaxSize:       bucketsTotalMaxSize,
+			BucketsMaxNumberPerThread: bucketsMaxNumberPerThread,
+
+			ThreadsMaxNumberPerOwner: threadsMaxNumberPerOwner,
+
+			Hub:   true,
+			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)
 		defer textile.Close()

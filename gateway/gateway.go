@@ -346,12 +346,14 @@ func formatError(err error) string {
 
 // subdomainHandler handles requests by parsing the request subdomain.
 func (g *Gateway) subdomainHandler(c *gin.Context) {
+	c.Status(200)
+
 	host := strings.SplitN(c.Request.Host, ":", 2)[0]
 	parts := strings.Split(host, ".")
 	key := parts[0]
 
 	// Render buckets if the domain matches
-	if strings.HasSuffix(host, g.bucketsDomain) {
+	if g.bucketsDomain != "" && strings.HasSuffix(host, g.bucketsDomain) {
 		g.renderWWWBucket(c, key)
 		return
 	}

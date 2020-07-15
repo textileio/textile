@@ -67,15 +67,15 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections              *c.Collections
-	Buckets                  *bc.Buckets
-	BucketMaxSize            int64
-	BucketsTotalMaxSize      int64
-	BucketMaxNumberPerThread int
-	GatewayURL               string
-	IPFSClient               iface.CoreAPI
-	IPNSManager              *ipns.Manager
-	DNSManager               *dns.Manager
+	Collections               *c.Collections
+	Buckets                   *bc.Buckets
+	BucketsMaxSize            int64
+	BucketsTotalMaxSize       int64
+	BucketsMaxNumberPerThread int
+	GatewayURL                string
+	IPFSClient                iface.CoreAPI
+	IPNSManager               *ipns.Manager
+	DNSManager                *dns.Manager
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
@@ -120,7 +120,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		return nil, fmt.Errorf("getting existing buckets: %s", err)
 	}
 
-	if s.BucketMaxNumberPerThread > 0 && len(bucks) >= s.BucketMaxNumberPerThread {
+	if s.BucketsMaxNumberPerThread > 0 && len(bucks) >= s.BucketsMaxNumberPerThread {
 		return nil, ErrTooManyBucketsInThread
 	}
 
@@ -962,7 +962,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 					return
 				}
 				cummSize += int64(n)
-				if s.BucketMaxSize > 0 && currentSize+cummSize > s.BucketMaxSize {
+				if s.BucketsMaxSize > 0 && currentSize+cummSize > s.BucketsMaxSize {
 					sendErr(ErrBucketExceedsMaxSize)
 				}
 			default:
@@ -1239,7 +1239,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 	if err != nil {
 		return fmt.Errorf("getting size of destination dag: %s", err)
 	}
-	if s.BucketMaxSize > 0 && toSize > s.BucketMaxSize {
+	if s.BucketsMaxSize > 0 && toSize > s.BucketsMaxSize {
 		return fmt.Errorf("bucket size is greater than max allowed size")
 	}
 

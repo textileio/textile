@@ -128,7 +128,7 @@ func TestClient_GetThread(t *testing.T) {
 func TestClient_CreateThreadsLimit(t *testing.T) {
 	t.Parallel()
 	conf := apitest.DefaultTextileConfig(t)
-	conf.ThreadMaxNumberPerOwner = 1
+	conf.ThreadsMaxNumberPerOwner = 1
 	conf, _, hub, _, net, _ := setupWithConf(t, conf)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
