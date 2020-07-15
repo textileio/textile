@@ -23,46 +23,61 @@ import (
 )
 
 func TestBuckets_NewBucket(t *testing.T) {
-	t.Parallel()
 	buckets := setup(t)
 
 	t.Run("new bucket", func(t *testing.T) {
-		buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
+		conf := getConf(t, buckets)
+		buck, err := buckets.NewBucket(context.Background(), conf)
 		require.Nil(t, err)
 		assert.NotEmpty(t, buck)
 
 		info, err := buck.Info(context.Background())
 		require.Nil(t, err)
 		assert.NotEmpty(t, info)
+
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.Nil(t, err)
+		assert.NotEmpty(t, reloaded)
 	})
 
 	t.Run("new named bucket", func(t *testing.T) {
-		buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets), WithName("bucky"))
+		conf := getConf(t, buckets)
+		buck, err := buckets.NewBucket(context.Background(), conf, WithName("bucky"))
 		require.Nil(t, err)
 		assert.NotEmpty(t, buck)
 
 		info, err := buck.Info(context.Background())
 		require.Nil(t, err)
 		assert.Equal(t, "bucky", info.Name)
+
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.Nil(t, err)
+		assert.NotEmpty(t, reloaded)
 	})
 
 	t.Run("new private bucket", func(t *testing.T) {
-		buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets), WithPrivate(true))
+		conf := getConf(t, buckets)
+		buck, err := buckets.NewBucket(context.Background(), conf, WithPrivate(true))
 		require.Nil(t, err)
 		assert.NotEmpty(t, buck)
 
 		info, err := buck.Info(context.Background())
 		require.Nil(t, err)
 		assert.NotEmpty(t, info)
+
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.Nil(t, err)
+		assert.NotEmpty(t, reloaded)
 	})
 
 	t.Run("new bootstrapped bucket", func(t *testing.T) {
+		conf := getConf(t, buckets)
 		pth := createIpfsFolder(t)
 		events := make(chan PathEvent)
 		defer close(events)
 		ec := &eventCollector{}
 		go ec.collect(events)
-		buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets), WithCid(pth.Cid()), WithExistingPathEvents(events))
+		buck, err := buckets.NewBucket(context.Background(), conf, WithCid(pth.Cid()), WithExistingPathEvents(events))
 		require.Nil(t, err)
 		assert.NotEmpty(t, buck)
 		ec.check(t, 2, 0)
@@ -81,10 +96,15 @@ func TestBuckets_NewBucket(t *testing.T) {
 		require.Nil(t, err)
 		_, err = os.Stat(filepath.Join(bp, "folder1", "file2.txt"))
 		require.Nil(t, err)
+
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.Nil(t, err)
+		assert.NotEmpty(t, reloaded)
 	})
 
 	t.Run("new bucket from existing", func(t *testing.T) {
-		buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
+		conf := getConf(t, buckets)
+		buck, err := buckets.NewBucket(context.Background(), conf)
 		require.Nil(t, err)
 		assert.NotEmpty(t, buck)
 
@@ -111,40 +131,20 @@ func TestBuckets_NewBucket(t *testing.T) {
 		require.Nil(t, err)
 		_, err = os.Stat(filepath.Join(bp, "folder", "file2"))
 		require.Nil(t, err)
+
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		require.Nil(t, err)
+		assert.NotEmpty(t, reloaded)
+	})
+
+	t.Run("list remote buckets", func(t *testing.T) {
+		list, err := buckets.RemoteBuckets(context.Background())
+		require.Nil(t, err)
+		assert.Len(t, list, 5)
 	})
 }
 
-func TestBuckets_GetLocalBucket(t *testing.T) {
-	t.Parallel()
-	buckets := setup(t)
-
-	conf := getConf(t, buckets)
-	_, err := buckets.NewBucket(context.Background(), conf)
-	require.Nil(t, err)
-
-	buck, err := buckets.GetLocalBucket(context.Background(), conf.Path)
-	require.Nil(t, err)
-	assert.NotEmpty(t, buck)
-}
-
-func TestBuckets_RemoteBuckets(t *testing.T) {
-	t.Parallel()
-	buckets := setup(t)
-
-	list, err := buckets.RemoteBuckets(context.Background())
-	require.Nil(t, err)
-	assert.Len(t, list, 0)
-
-	_, err = buckets.NewBucket(context.Background(), getConf(t, buckets))
-	assert.Nil(t, err)
-
-	list, err = buckets.RemoteBuckets(context.Background())
-	require.Nil(t, err)
-	assert.Len(t, list, 1)
-}
-
 func TestBuckets_NewConfigFromCmd(t *testing.T) {
-	t.Parallel()
 	buckets := setup(t)
 
 	t.Run("no flags", func(t *testing.T) {
