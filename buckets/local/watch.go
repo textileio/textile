@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/radovskyb/watcher"
 	"github.com/textileio/go-threads/api/client"
 	"github.com/textileio/textile/buckets"
