@@ -126,11 +126,19 @@ func WithAddEvents(ch chan<- PathEvent) AddOption {
 }
 
 type watchOptions struct {
-	events chan<- PathEvent
+	offline bool
+	events  chan<- PathEvent
 }
 
 // WatchOption is used when watching a bucket for changes.
 type WatchOption func(*watchOptions)
+
+// WithOffline will keep watching for bucket changes while the local network is offline.
+func WithOffline(offline bool) WatchOption {
+	return func(args *watchOptions) {
+		args.offline = offline
+	}
+}
 
 // WithWatchEvents allows the caller to receive path events when watching a bucket for changes.
 func WithWatchEvents(ch chan<- PathEvent) WatchOption {

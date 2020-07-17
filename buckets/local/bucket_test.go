@@ -370,7 +370,8 @@ func TestBucket_Watch(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		state := buck1.Watch(ctx, WithWatchEvents(events))
+		state, err := buck1.Watch(ctx, WithWatchEvents(events))
+		require.Nil(t, err)
 		for s := range state {
 			t.Logf("received watch state: %s", s.State)
 			switch s.State {

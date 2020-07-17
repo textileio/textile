@@ -52,15 +52,28 @@ func (cs ConnectionState) String() string {
 
 // Watch watches for and auto-pushes local bucket changes at an interval,
 // and listens for and auto-pulls remote changes as they arrive.
-// This will survive connectivity interruptions.
-// Returns a channel of watch connectivity states. Cancel context to stop watching.
-func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) <-chan WatchState {
+// Use the WithOffline option to keep watching while the local network is offline.
+// Returns a channel of watch connectivity states.
+// Cancel context to stop watching.
+func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan WatchState, error) {
+	ctx, err := b.context(ctx)
+	if err != nil {
+		return nil, err
+	}
+	args := &watchOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	if !args.offline {
+		return b.watchWhileConnected(ctx, args.events)
+	}
+
 	bc := backoff.NewConstantBackOff(reconnectInterval)
 	outerState := make(chan WatchState)
 	go func() {
 		defer close(outerState)
 		err := backoff.Retry(func() error {
-			state, err := b.WatchWhileConnected(ctx, opts...)
+			state, err := b.watchWhileConnected(ctx, args.events)
 			if err != nil {
 				outerState <- WatchState{Err: err, Fatal: true}
 				return nil // Stop retrying
@@ -81,21 +94,11 @@ func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) <-chan WatchSta
 			outerState <- WatchState{Err: err, Fatal: true}
 		}
 	}()
-	return outerState
+	return outerState, nil
 }
 
-// WatchWhileConnected watches for and auto-pushes local bucket changes at an interval,
-// and listens for and auto-pulls remote changes as they arrive.
-// This will watch until context is canceled or an error occurs.
-func (b *Bucket) WatchWhileConnected(ctx context.Context, opts ...WatchOption) (<-chan WatchState, error) {
-	ctx, err := b.context(ctx)
-	if err != nil {
-		return nil, err
-	}
-	args := &watchOptions{}
-	for _, opt := range opts {
-		opt(args)
-	}
+// watchWhileConnected will watch until context is canceled or an error occurs.
+func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEvent) (<-chan WatchState, error) {
 	id, err := b.Thread()
 	if err != nil {
 		return nil, err
@@ -130,7 +133,7 @@ func (b *Bucket) WatchWhileConnected(ctx context.Context, opts ...WatchOption) (
 			for e := range events {
 				if e.Err != nil {
 					errs <- e.Err // events will close on error
-				} else if err := b.watchPull(ctx, args.events); err != nil {
+				} else if err := b.watchPull(ctx, pevents); err != nil {
 					errs <- err
 					return
 				}
@@ -147,7 +150,7 @@ func (b *Bucket) WatchWhileConnected(ctx context.Context, opts ...WatchOption) (
 			for {
 				select {
 				case <-w.Event:
-					if err := b.watchPush(ctx, args.events); err != nil {
+					if err := b.watchPush(ctx, pevents); err != nil {
 						errs <- err
 					}
 				case err := <-w.Error:
@@ -162,7 +165,7 @@ func (b *Bucket) WatchWhileConnected(ctx context.Context, opts ...WatchOption) (
 		state <- WatchState{State: Online}
 
 		// Manually sync once on startup
-		if err := b.watchPush(ctx, args.events); err != nil {
+		if err := b.watchPush(ctx, pevents); err != nil {
 			state <- WatchState{Err: err, Fatal: !isConnectionErr(err)}
 			return
 		}

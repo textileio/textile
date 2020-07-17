@@ -27,7 +27,8 @@ var watchCmd = &cobra.Command{
 		progress := uiprogress.New()
 		progress.Start()
 		go handleProgressBars(progress, events)
-		state := buck.Watch(ctx, local.WithWatchEvents(events))
+		state, err := buck.Watch(ctx, local.WithWatchEvents(events), local.WithOffline(true))
+		cmd.ErrCheck(err)
 		for s := range state {
 			switch s.State {
 			case local.Online:
@@ -41,6 +42,5 @@ var watchCmd = &cobra.Command{
 			}
 		}
 		progress.Stop()
-		cmd.ErrCheck(err)
 	},
 }
