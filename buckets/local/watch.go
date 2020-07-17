@@ -88,6 +88,10 @@ func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) <-chan WatchSta
 // and listens for and auto-pulls remote changes as they arrive.
 // This will watch until context is canceled or an error occurs.
 func (b *Bucket) WatchWhileConnected(ctx context.Context, opts ...WatchOption) (<-chan WatchState, error) {
+	ctx, err := b.context(ctx)
+	if err != nil {
+		return nil, err
+	}
 	args := &watchOptions{}
 	for _, opt := range opts {
 		opt(args)

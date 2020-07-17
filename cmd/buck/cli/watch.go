@@ -2,8 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
@@ -31,23 +31,16 @@ var watchCmd = &cobra.Command{
 		for s := range state {
 			switch s.State {
 			case local.Online:
-				cmd.Success("Watching %s for changes...", aurora.White(bp).Bold())
-				if progress == nil {
-					progress = uiprogress.New()
-				}
-				progress.Start()
+				addInfoBar(progress, fmt.Sprintf("> Connected! Watching %s for changes...", bp))
 			case local.Offline:
-				if progress != nil {
-					progress.Stop()
-					progress = nil
-				}
 				if s.Fatal {
 					cmd.Fatal(s.Err)
 				} else {
-					cmd.Message("Not connected. Trying to connect...")
+					addInfoBar(progress, "> Not connected. Trying to connect...")
 				}
 			}
 		}
+		progress.Stop()
 		cmd.ErrCheck(err)
 	},
 }

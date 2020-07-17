@@ -365,10 +365,10 @@ func TestBucket_Watch(t *testing.T) {
 	go ec.collect(events)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var wg sync.WaitGroup
 	var onlineStateCount, offlineStateCount int
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 		state := buck1.Watch(ctx, WithWatchEvents(events))
 		for s := range state {

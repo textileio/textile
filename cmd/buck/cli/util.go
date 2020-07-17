@@ -37,9 +37,7 @@ func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
 	for e := range events {
 		switch e.Type {
 		case local.FileStart:
-			if p != nil {
-				bars[e.Path] = addBar(p, e.Path, e.Size)
-			}
+			bars[e.Path] = addBar(p, e.Path, e.Size)
 		case local.FileProgress, local.FileComplete:
 			bar, ok := bars[e.Path]
 			if ok {
@@ -50,10 +48,8 @@ func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
 				}
 			}
 		case local.FileRemoved:
-			if p != nil {
-				bar := p.AddBar(int(e.Size))
-				finishBar(p, bar, e.Path, e.Cid, true)
-			}
+			bar := p.AddBar(int(e.Size))
+			finishBar(p, bar, e.Path, e.Cid, true)
 		}
 	}
 }
@@ -68,6 +64,12 @@ func addBar(p *uiprogress.Progress, pth string, size int64) *uiprogress.Bar {
 		return pre + "  " + c + " / " + total
 	})
 	return bar
+}
+
+func addInfoBar(p *uiprogress.Progress, msg string) {
+	bar := p.AddBar(0)
+	bar.Final = msg
+	p.Print()
 }
 
 func finishBar(p *uiprogress.Progress, bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
