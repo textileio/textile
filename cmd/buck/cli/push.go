@@ -10,6 +10,7 @@ import (
 	"github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/uiprogress"
 )
 
 var (
@@ -47,12 +48,15 @@ var pushCmd = &cobra.Command{
 
 		events := make(chan local.PathEvent)
 		defer close(events)
-		go handleProgressBars(events, false)
+		progress := uiprogress.New()
+		progress.Start()
+		go handleProgressBars(progress, events)
 		roots, err := buck.PushLocal(
 			ctx,
 			local.WithConfirm(getConfirm("Push %d changes", yes)),
 			local.WithForce(force),
 			local.WithPathEvents(events))
+		progress.Stop()
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {

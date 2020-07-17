@@ -6,6 +6,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/caarlos0/spin v1.1.0
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -62,7 +63,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.23
+	github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722
 	github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.3.2

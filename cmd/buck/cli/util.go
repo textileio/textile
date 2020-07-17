@@ -32,49 +32,34 @@ func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
 	}
 }
 
-func handleProgressBars(events chan local.PathEvent, leaveOpen bool) {
-	var started bool
+func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
 	bars := make(map[string]*uiprogress.Bar)
 	for e := range events {
 		switch e.Type {
-		case local.PathStart:
-			if started {
-				continue
-			}
-			startProgress()
-			started = true
-		case local.PathComplete:
-			if !leaveOpen {
-				stopProgress()
-			}
 		case local.FileStart:
-			bars[e.Path] = addBar(e.Path, e.Size)
+			if p != nil {
+				bars[e.Path] = addBar(p, e.Path, e.Size)
+			}
 		case local.FileProgress, local.FileComplete:
 			bar, ok := bars[e.Path]
 			if ok {
 				_ = bar.Set(int(e.Progress))
 				if e.Type == local.FileComplete {
-					finishBar(bar, e.Path, e.Cid, false)
+					finishBar(p, bar, e.Path, e.Cid, false)
 					delete(bars, e.Path)
 				}
 			}
 		case local.FileRemoved:
-			bar := uiprogress.AddBar(int(e.Size))
-			finishBar(bar, e.Path, e.Cid, true)
+			if p != nil {
+				bar := p.AddBar(int(e.Size))
+				finishBar(p, bar, e.Path, e.Cid, true)
+			}
 		}
 	}
 }
 
-func startProgress() {
-	uiprogress.Start()
-}
-
-func stopProgress() {
-	uiprogress.Stop()
-}
-
-func addBar(pth string, size int64) *uiprogress.Bar {
-	bar := uiprogress.AddBar(int(size)).AppendCompleted()
+func addBar(p *uiprogress.Progress, pth string, size int64) *uiprogress.Bar {
+	bar := p.AddBar(int(size)).AppendCompleted()
 	pre := "+ " + pth + ":"
 	total := formatBytes(size, true)
 	setBarWidth(bar, pre, total, 9)
@@ -83,6 +68,15 @@ func addBar(pth string, size int64) *uiprogress.Bar {
 		return pre + "  " + c + " / " + total
 	})
 	return bar
+}
+
+func finishBar(p *uiprogress.Progress, bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
+	if removal {
+		bar.Final = "- " + pth
+	} else {
+		bar.Final = "+ " + pth + ": " + c.String()
+	}
+	p.Print()
 }
 
 func setBarWidth(bar *uiprogress.Bar, pre, size string, of int) {
@@ -103,15 +97,6 @@ func getTermDim() (w, h int) {
 	_, err = fmt.Sscan(string(termDim), &h, &w)
 	cmd.ErrCheck(err)
 	return w, h
-}
-
-func finishBar(bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
-	if removal {
-		bar.Final = "- " + pth
-	} else {
-		bar.Final = "+ " + pth + ": " + c.String()
-	}
-	uiprogress.Print()
 }
 
 // Copied from https://github.com/cheggaaa/pb/blob/master/v3/util.go

@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,8 +18,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/db"
+	tutil "github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/api/apitest"
 	bucks "github.com/textileio/textile/buckets"
 	. "github.com/textileio/textile/buckets/local"
+	"github.com/textileio/textile/cmd"
 )
 
 func TestBucket(t *testing.T) {
@@ -342,7 +346,15 @@ func TestBucket_DiffLocal(t *testing.T) {
 }
 
 func TestBucket_Watch(t *testing.T) {
-	buckets1 := setup(t)
+	tconf := apitest.DefaultTextileConfig(t)
+	tconf.Hub = false
+	stopTextile1 := apitest.MakeTextileWithConfig(t, tconf, false)
+	target, err := tutil.TCPAddrFromMultiAddr(tconf.AddrAPI)
+	require.Nil(t, err)
+	clients := cmd.NewClients(target, false)
+	buckets1 := NewBuckets(clients, DefaultConfConfig())
+	defer clients.Close()
+
 	conf := getConf(t, buckets1)
 	buck1, err := buckets1.NewBucket(context.Background(), conf)
 	require.Nil(t, err)
@@ -353,12 +365,24 @@ func TestBucket_Watch(t *testing.T) {
 	go ec.collect(events)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	var wg sync.WaitGroup
+	var onlineStateCount, offlineStateCount int
 	go func() {
-		err = buck1.Watch(ctx, WithWatchEvents(events))
-		require.Nil(t, err)
+		wg.Add(1)
+		defer wg.Done()
+		state := buck1.Watch(ctx, WithWatchEvents(events))
+		for s := range state {
+			t.Logf("received watch state: %s", s.State)
+			switch s.State {
+			case Online:
+				onlineStateCount++
+			case Offline:
+				offlineStateCount++
+			}
+		}
 	}()
 
-	// Add a file
+	// Add a file to the first bucket
 	addRandomFile(t, buck1, "file1", 512)
 
 	// Wait a sec while the watcher kicks off a watch cycle
@@ -421,6 +445,16 @@ func TestBucket_Watch(t *testing.T) {
 	require.Nil(t, err)
 
 	ec.check(t, 2, 0)
+
+	// Stop and restart the first bucket's remote
+	stopTextile1(false)
+	stopTextile1Again := apitest.MakeTextileWithConfig(t, tconf, false)
+	time.Sleep(time.Second * 5) // Wait a sec for good measure
+	stopTextile1Again(true)
+	cancel() // Stop watching
+	wg.Wait()
+	assert.Equal(t, 2, onlineStateCount)    // 1 for the initial start, 1 for the restart
+	assert.Greater(t, offlineStateCount, 0) // At least one, but could be more as watch retries
 }
 
 func addRandomFile(t *testing.T, buck *Bucket, pth string, size int64) string {

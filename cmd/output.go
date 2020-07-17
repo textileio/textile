@@ -21,7 +21,8 @@ func Warn(format string, args ...interface{}) {
 	if format == "" {
 		return
 	}
-	fmt.Println(aurora.Sprintf(aurora.Yellow("! "+format), args...))
+	fmt.Println(aurora.Sprintf(aurora.Yellow("> Warning! %s"),
+		aurora.Sprintf(aurora.BrightBlack(format), args...)))
 }
 
 func Success(format string, args ...interface{}) {

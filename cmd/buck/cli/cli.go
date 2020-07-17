@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
@@ -45,8 +44,6 @@ func Init(baseCmd *cobra.Command) {
 	pullCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	addCmd.Flags().BoolP("yes", "y", false, "Skips confirmations prompts to always overwrite files and merge folders")
-
-	watchCmd.Flags().Duration("interval", time.Millisecond*100, "The interval at which local changes are synced remotely")
 
 	encryptCmd.Flags().StringP("password", "p", "", "Encryption password")
 	decryptCmd.Flags().StringP("password", "p", "", "Decryption password")

@@ -1,8 +1,6 @@
 package local
 
 import (
-	"time"
-
 	cid "github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -128,21 +126,11 @@ func WithAddEvents(ch chan<- PathEvent) AddOption {
 }
 
 type watchOptions struct {
-	interval time.Duration
-	events   chan<- PathEvent
+	events chan<- PathEvent
 }
 
 // WatchOption is used when watching a bucket for changes.
 type WatchOption func(*watchOptions)
-
-// WatchInterval sets the interval at which local changes are synced remotely.
-// In other words, this is the interval at which the local file watcher checks
-// for filesystem changes.
-func WithInterval(local time.Duration) WatchOption {
-	return func(args *watchOptions) {
-		args.interval = local
-	}
-}
 
 // WithWatchEvents allows the caller to receive path events when watching a bucket for changes.
 func WithWatchEvents(ch chan<- PathEvent) WatchOption {
