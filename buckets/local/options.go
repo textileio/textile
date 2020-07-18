@@ -1,8 +1,6 @@
 package local
 
 import (
-	"time"
-
 	cid "github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -128,19 +126,17 @@ func WithAddEvents(ch chan<- PathEvent) AddOption {
 }
 
 type watchOptions struct {
-	interval time.Duration
-	events   chan<- PathEvent
+	offline bool
+	events  chan<- PathEvent
 }
 
 // WatchOption is used when watching a bucket for changes.
 type WatchOption func(*watchOptions)
 
-// WatchInterval sets the interval at which local changes are synced remotely.
-// In other words, this is the interval at which the local file watcher checks
-// for filesystem changes.
-func WithInterval(local time.Duration) WatchOption {
+// WithOffline will keep watching for bucket changes while the local network is offline.
+func WithOffline(offline bool) WatchOption {
 	return func(args *watchOptions) {
-		args.interval = local
+		args.offline = offline
 	}
 }
 

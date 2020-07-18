@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/uiprogress"
 )
 
 var pullCmd = &cobra.Command{
@@ -28,13 +29,16 @@ var pullCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		events := make(chan local.PathEvent)
 		defer close(events)
-		go handleProgressBars(events, false)
+		progress := uiprogress.New()
+		progress.Start()
+		go handleProgressBars(progress, events)
 		roots, err := buck.PullRemote(
 			ctx,
 			local.WithConfirm(getConfirm("Discard %d local changes", yes)),
 			local.WithForce(force),
 			local.WithHard(hard),
 			local.WithPathEvents(events))
+		progress.Stop()
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {

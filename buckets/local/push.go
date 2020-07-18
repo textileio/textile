@@ -96,12 +96,6 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			rm = append(rm, c)
 		}
 	}
-	if args.events != nil {
-		args.events <- PathEvent{
-			Path: bp,
-			Type: PathComplete,
-		}
-	}
 	if len(rm) > 0 {
 		for _, c := range rm {
 			var err error
@@ -112,6 +106,12 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err := b.repo.RemovePath(ctx, c.Name); err != nil {
 				return roots, err
 			}
+		}
+	}
+	if args.events != nil {
+		args.events <- PathEvent{
+			Path: bp,
+			Type: PathComplete,
 		}
 	}
 

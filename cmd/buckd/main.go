@@ -245,7 +245,7 @@ var rootCmd = &cobra.Command{
 			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)
-		defer textile.Close()
+		defer textile.Close(false)
 		textile.Bootstrap()
 
 		fmt.Println("Welcome to Buckets!")

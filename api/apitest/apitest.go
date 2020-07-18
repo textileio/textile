@@ -24,7 +24,7 @@ const SessionSecret = "hubsession"
 
 func MakeTextile(t *testing.T) core.Config {
 	conf := DefaultTextileConfig(t)
-	MakeTextileWithConfig(t, conf)
+	MakeTextileWithConfig(t, conf, true)
 	return conf
 }
 
@@ -61,18 +61,25 @@ func DefaultTextileConfig(t *testing.T) core.Config {
 	}
 }
 
-func MakeTextileWithConfig(t *testing.T, conf core.Config) {
+func MakeTextileWithConfig(t *testing.T, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.Nil(t, err)
 	textile.Bootstrap()
 	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
-
-	t.Cleanup(func() {
+	done := func(deleteRepo bool) {
 		time.Sleep(time.Second) // Give threads a chance to finish work
-		err := textile.Close()
+		err := textile.Close(true)
 		require.Nil(t, err)
-		_ = os.RemoveAll(conf.RepoPath)
-	})
+		if deleteRepo {
+			_ = os.RemoveAll(conf.RepoPath)
+		}
+	}
+	if autoShutdown {
+		t.Cleanup(func() {
+			done(true)
+		})
+	}
+	return done
 }
 
 func NewUsername() string {

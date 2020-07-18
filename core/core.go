@@ -294,6 +294,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
+		if err := ts.Close(); err != nil {
+			log.Fatalf("error closing thread service: %v", err)
+		}
 	}()
 	webrpc := grpcweb.WrapServer(
 		t.server,
@@ -351,7 +354,7 @@ func (t *Textile) Bootstrap() {
 	t.ts.Bootstrap(tutil.DefaultBoostrapPeers())
 }
 
-func (t *Textile) Close() error {
+func (t *Textile) Close(force bool) error {
 	if t.emailSessionBus != nil {
 		t.emailSessionBus.Discard()
 	}
@@ -363,7 +366,11 @@ func (t *Textile) Close() error {
 	if err := t.proxy.Shutdown(ctx); err != nil {
 		return err
 	}
-	t.server.GracefulStop()
+	if force {
+		t.server.Stop()
+	} else {
+		t.server.GracefulStop()
+	}
 	if err := t.bucks.Close(); err != nil {
 		return err
 	}

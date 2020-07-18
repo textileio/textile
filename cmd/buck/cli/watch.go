@@ -15,8 +15,6 @@ var watchCmd = &cobra.Command{
 	Long:  `Watch auto-pushes local changes to the remote.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		interval, err := c.Flags().GetDuration("interval")
-		cmd.ErrCheck(err)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
@@ -25,9 +23,31 @@ var watchCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		events := make(chan local.PathEvent)
 		defer close(events)
-		go handleProgressBars(events, true)
-		cmd.Message("Watching bucket in %s for changes...", aurora.White(bp).Bold())
-		err = buck.Watch(ctx, local.WithInterval(interval), local.WithWatchEvents(events))
+		go handleWatchEvents(events)
+		state, err := buck.Watch(ctx, local.WithWatchEvents(events), local.WithOffline(true))
 		cmd.ErrCheck(err)
+		for s := range state {
+			switch s.State {
+			case local.Online:
+				cmd.Success("Watching %s for changes...", aurora.White(bp).Bold())
+			case local.Offline:
+				if s.Fatal {
+					cmd.Fatal(s.Err)
+				} else {
+					cmd.Message("Not connected. Trying to connect...")
+				}
+			}
+		}
 	},
+}
+
+func handleWatchEvents(events chan local.PathEvent) {
+	for e := range events {
+		switch e.Type {
+		case local.FileComplete:
+			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, true))
+		case local.FileRemoved:
+			cmd.Message("%s", aurora.Red("- "+e.Path))
+		}
+	}
 }

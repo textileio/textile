@@ -758,7 +758,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 }
 
 func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client) {
-	apitest.MakeTextileWithConfig(t, conf)
+	apitest.MakeTextileWithConfig(t, conf, true)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}

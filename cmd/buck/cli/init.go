@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/uiprogress"
 )
 
 var initCmd = &cobra.Command{
@@ -133,7 +134,9 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		defer cancel()
 		events := make(chan local.PathEvent)
 		defer close(events)
-		go handleProgressBars(events, false)
+		progress := uiprogress.New()
+		progress.Start()
+		go handleProgressBars(progress, events)
 		buck, err := bucks.NewBucket(
 			ctx,
 			conf,
@@ -141,6 +144,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			local.WithPrivate(private),
 			local.WithCid(xcid),
 			local.WithExistingPathEvents(events))
+		progress.Stop()
 		cmd.ErrCheck(err)
 
 		links, err := buck.RemoteLinks(ctx)
@@ -149,12 +153,12 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 
 		var msg string
 		if !existing {
-			msg = "Initialized a new empty bucket in %s"
+			msg = "Initialized %s as a new empty bucket"
 			if xcid.Defined() {
-				msg = "Initialized a new bootstrapped bucket in %s"
+				msg = "Initialized %s as a new bootstrapped bucket"
 			}
 		} else {
-			msg = "Initialized from an existing bucket in %s"
+			msg = "Initialized %s from an existing bucket"
 		}
 
 		bp, err := buck.Path()

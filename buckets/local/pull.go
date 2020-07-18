@@ -153,12 +153,6 @@ looop:
 		if err := eg.Wait(); err != nil {
 			return count, err
 		}
-		if events != nil {
-			events <- PathEvent{
-				Path: pth,
-				Type: PathComplete,
-			}
-		}
 	}
 	if len(rm) > 0 {
 		for _, r := range rm {
@@ -175,6 +169,12 @@ looop:
 					Type: FileRemoved,
 				}
 			}
+		}
+	}
+	if events != nil {
+		events <- PathEvent{
+			Path: pth,
+			Type: PathComplete,
 		}
 	}
 	return count, nil
