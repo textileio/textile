@@ -66,12 +66,6 @@ func addBar(p *uiprogress.Progress, pth string, size int64) *uiprogress.Bar {
 	return bar
 }
 
-func addInfoBar(p *uiprogress.Progress, msg string) {
-	bar := p.AddBar(0)
-	bar.Final = msg
-	p.Print()
-}
-
 func finishBar(p *uiprogress.Progress, bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
 	if removal {
 		bar.Final = "- " + pth
