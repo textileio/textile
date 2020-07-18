@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/logrusorgru/aurora"
-
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/buckets/local"
 	"github.com/textileio/textile/cmd"
@@ -48,7 +47,7 @@ func handleWatchEvents(events chan local.PathEvent) {
 		case local.FileComplete:
 			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, true))
 		case local.FileRemoved:
-			cmd.Message("%s", aurora.Red("- "+e.Path).Bold())
+			cmd.Message("%s", aurora.Red("- "+e.Path))
 		}
 	}
 }

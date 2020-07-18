@@ -3,9 +3,10 @@ package local
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff"
 	"github.com/radovskyb/watcher"
 	"github.com/textileio/go-threads/api/client"
 	"github.com/textileio/textile/buckets"
@@ -161,14 +162,14 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 			}
 		}()
 
-		// If we made it here, we must be online
-		state <- WatchState{State: Online}
-
 		// Manually sync once on startup
 		if err := b.watchPush(ctx, pevents); err != nil {
 			state <- WatchState{Err: err, Fatal: !isConnectionErr(err)}
 			return
 		}
+
+		// If we made it here, we must be online
+		state <- WatchState{State: Online}
 
 		for {
 			select {
@@ -222,5 +223,5 @@ func (b *Bucket) watchPull(ctx context.Context, events chan<- PathEvent) error {
 }
 
 func isConnectionErr(err error) bool {
-	return status.Code(err) == codes.Unavailable
+	return status.Code(err) == codes.Unavailable || strings.Contains(err.Error(), "RST_STREAM")
 }
