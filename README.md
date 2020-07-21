@@ -176,7 +176,7 @@ Read more about The Hub, including how to [create an account](https://docs.texti
 
 ### Running Buckets
 
-Much like [`threadsd`](https://github.com/textileio/go-threads/tree/master/threadsd), the `buckd` daemon can be run as a server or alongside desktop apps or command-line tools. The easiest way to run `buckd` is by using the provided Docker Compose files. If you're new to Docker and/or Docker Compose, get started [here](https://docs.docker.com/compose/gettingstarted/). Once you're all setup, you should have `docker-compose` in your `PATH`.
+Much like [`threadsd`](https://github.com/textileio/go-threads/tree/master/threadsd), the `buckd` daemon can be run as a server or alongside desktop apps or command-line tools. The easiest way to run `buckd` is by using the provided Docker Compose files. If you're new to Docker and/or Docker Compose, get started [here](https://docs.docker.com/compose/gettingstarted/). Once you are setup, you should have `docker-compose` in your `PATH`.
 
 Create an `.env` file and add the following values:  
 
@@ -193,7 +193,7 @@ docker-compose -f docker-compose.yml up
 
 Congrats! You now have Buckets running locally.
 
-Notice that the compose file also starts an IPFS node. You could point `buckd` to a different (possibly remote) IPFS node by setting the `BUCK_ADDR_IPFS_API` variable to a different multiaddress.  
+The Docker Compose file starts an IPFS node, which is used to pin bucket files and folders. You could point `buckd` to a different (possibly remote) IPFS node by setting the `BUCK_ADDR_IPFS_API` variable to a different multiaddress.  
 
 By default, this approach does not start [Powergate](https://github.com/textileio/powergate). If you do, be sure to set the `BUCK_ADDR_POWERGATE_API` variable to the multiaddress of your Powergate. Buckets must be configured with Powergate to enable Filecoin archiving with `buck archive`.
 
@@ -244,7 +244,7 @@ mkdir mybucket && cd mybucket
 buck init
 ```
 
-When prompted, give your new bucket a name. You'll then be asked if you want the contents encrypted (see [Creating a private bucket](#creating-a-private-bucket) for more about bucket encryption).
+When prompted, give your bucket a name and either opt-in or decline bucket encyption (see [Creating a private bucket](#creating-a-private-bucket) for more about bucket encryption).
 
 You should now see two links for the new bucket on the locally running gateway.
 
@@ -254,17 +254,17 @@ You should now see two links for the new bucket on the locally running gateway.
 > Success! Initialized /path/to/mybucket as a new empty bucket
 ```
 
-The first URL is the ThreadDB link to the instance in the DB collection. Buckets are built on ThreadDB. Internally, a collection named `buckets` is created. Each new instance in this collection amounts to a new bucket. However, when you visit this link, you'll notice a custom file browser. This is because the gateway considers the built-in `buckets` collection a special case. You can still view the raw ThreadDB instance by appending `?json=true` to the URL.
+The first URL is the link to the ThreadDB instance. Internally, a collection named `buckets` is created. Each new instance in this collection amounts to a new bucket. However, when you visit this link, you'll notice a custom file browser. This is because the gateway considers the built-in `buckets` collection a special case. You can still view the raw ThreadDB instance by appending `?json=true` to the URL.
 
-The second URL is the bucket's unique IPNS address, which is auto-updated whenever files are added or deleted.
+The second URL is the bucket's unique IPNS address, which is auto-updated when you add, modify, or delete files.
 
-If you have configured the Buckets daemon with DNS settings, you will see a third URL that links to the bucket's WWW address, where it is rendered like as a static website / client-side application. See `buckd --help` for more info.
+If you have configured the daemon with DNS settings, you will see a third URL that links to the bucket's WWW address, where it is rendered like as a static website / client-side application. See `buckd --help` for more info.
 
-**Note**: If your bucket is private (encrypted), these links will 404 on gateway. This behavior is temporary while ThreadDB ACLs are still under development.
+**Note**: If your bucket is private (encrypted), these links will 404 on the gateway. This behavior is temporary while ThreadDB ACLs are still under development.
 
 `buck init` created a configuration folder in `mybucket` called `.textile`. This folder is somewhat like a `.git` folder, as it contains information about the bucket's remote address and local state.
 
-The value in `.textile/config.yml` will look something like,
+`.textile/config.yml` will look something like,
 
 ```
 key: bafzbeifyzfm3kosie25s5qthvvcjrr42ivd7doqhwvu5m4ks7uqv4j5lyi
@@ -277,12 +277,12 @@ Additionally, `.textile/repo` contains a repository describing the current file 
 
 ### Creating a private bucket
 
-Bucket encryption (AES-CTR + AES-512 HMAC) happens entirely within the Buckets daemon, meaning that your data is encrypted on the way in, and decrypted on the way out. This type of encryption has two goals:
+Bucket encryption (AES-CTR + AES-512 HMAC) happens entirely within the Buckets daemon, meaning your data gets encrypted on the way in, and decrypted on the way out. This type of encryption has two goals:
 
 - Obfuscate bucket data / files (the normal goal of encryption)
 - Obfuscate directory structure, which amounts to encrypting [IPLD](https://ipld.io/) nodes and their links.
 
-As a result of these goals, encrypted buckets are referred to as _private buckets_. Read more about bucket encryption [here](https://docs.textile.io/buckets/#encryption).
+As a result of these goals, we refer to encrypted buckets as _private buckets_. Read more about bucket encryption [here](https://docs.textile.io/buckets/#encryption).
 
 To create a new private bucket, use the `--private` flag with `buck` init or respond `y` when prompted.
 
@@ -292,7 +292,7 @@ In addition to bucket-level encryption, you can also [protect a file with a pass
 
 Bucket files and folders are content-addressed by Cids. Check out [the spec](https://github.com/multiformats/cid) if you're unfamiliar with Cids.
 
-New files are staged as additions:
+`buck` stages new files as additions:
 
 ```
 echo "hello world" > hello.txt
