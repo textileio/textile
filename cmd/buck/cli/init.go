@@ -33,6 +33,13 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		conf, err := bucks.NewConfigFromCmd(c, ".")
 		cmd.ErrCheck(err)
 
+		existing := conf.Thread.Defined() && conf.Key != ""
+		chooseExisting, err := c.Flags().GetBool("existing")
+		cmd.ErrCheck(err)
+		if existing && chooseExisting {
+			chooseExisting = false // Nothing left to choose
+		}
+
 		var xcid cid.Cid
 		xcids, err := c.Flags().GetString("cid")
 		cmd.ErrCheck(err)
@@ -40,16 +47,13 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			xcid, err = cid.Decode(xcids)
 			cmd.ErrCheck(err)
 		}
-
-		existing, err := c.Flags().GetBool("existing")
-		cmd.ErrCheck(err)
-		if existing && xcid.Defined() {
-			cmd.Fatal(errors.New("only one of --cid and --existing flags can be used at the same time"))
+		if (existing || chooseExisting) && xcid.Defined() {
+			cmd.Fatal(errors.New("--cid can not be used with an existing bucket"))
 		}
 
 		var name string
 		var private bool
-		if !existing {
+		if !existing && !chooseExisting {
 			if c.Flags().Changed("name") {
 				name, err = c.Flags().GetString("name")
 				cmd.ErrCheck(err)
@@ -76,10 +80,10 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			}
 		}
 
-		if existing {
+		if chooseExisting {
 			ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 			defer cancel()
-			list, err := bucks.RemoteBuckets(ctx)
+			list, err := bucks.RemoteBuckets(ctx, conf.Thread)
 			cmd.ErrCheck(err)
 			if len(list) == 0 {
 				cmd.Fatal(fmt.Errorf("no existing buckets found"))
@@ -101,6 +105,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			name = selected.Name
 			conf.Thread = selected.Thread
 			conf.Key = selected.Key
+			existing = true
 		}
 
 		if !conf.Thread.Defined() {
