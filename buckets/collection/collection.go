@@ -31,10 +31,10 @@ var (
 		Path: "path",
 	}}
 
-	// ffsDefaultCidConfig is a default hardcoded CidConfig to be used
+	// ffsDefaultStorageConfig is a default hardcoded CidConfig to be used
 	// on newly created FFS instances as the default CidConfig of archived Cids,
 	// if none is provided in constructor.
-	ffsDefaultCidConfig = ffs.DefaultConfig{
+	ffsDefaultStorageConfig = ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled:       false,
 			AllowUnfreeze: true,
@@ -102,7 +102,7 @@ type Buckets struct {
 	threads  *dbc.Client
 	pgClient *powc.Client
 
-	buckCidConfig ffs.DefaultConfig
+	buckCidConfig ffs.StorageConfig
 
 	lock   sync.Mutex
 	ctx    context.Context
@@ -111,7 +111,7 @@ type Buckets struct {
 }
 
 // New returns a new buckets collection mananger.
-func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, defaultCidConfig *ffs.DefaultConfig, debug bool) (*Buckets, error) {
+func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, defaultCidConfig *ffs.StorageConfig, debug bool) (*Buckets, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"buckets": logging.LevelDebug,
@@ -119,7 +119,7 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, default
 			return nil, err
 		}
 	}
-	buckCidConfig := ffsDefaultCidConfig
+	buckCidConfig := ffsDefaultStorageConfig
 	if defaultCidConfig != nil {
 		buckCidConfig = *defaultCidConfig
 	}
@@ -206,13 +206,13 @@ func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error
 	if err := b.ffsCol.Create(ctx, bucketKey, token, waddr); err != nil {
 		return fmt.Errorf("saving FFS instances data: %s", err)
 	}
-	defaultBucketCidConfig := ffs.DefaultConfig{
+	defaultBucketCidConfig := ffs.StorageConfig{
 		Cold:       b.buckCidConfig.Cold,
 		Hot:        b.buckCidConfig.Hot,
 		Repairable: b.buckCidConfig.Repairable,
 	}
 	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
-	if err := b.pgClient.FFS.SetDefaultConfig(ctxFFS, defaultBucketCidConfig); err != nil {
+	if err := b.pgClient.FFS.SetDefaultStorageConfig(ctxFFS, defaultBucketCidConfig); err != nil {
 		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
 	}
 	return nil
@@ -320,7 +320,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
 
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := b.pgClient.Wallet.WalletBalance(ctx, ffsi.WalletAddr)
+	bal, err := b.pgClient.Wallet.Balance(ctx, ffsi.WalletAddr)
 	if err != nil {
 		return fmt.Errorf("getting ffs wallet address balance: %s", err)
 	}
@@ -333,7 +333,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid, powc.WithOverride(true))
+		jid, err = b.pgClient.FFS.PushStorageConfig(ctxFFS, newCid, powc.WithOverride(true))
 		if err != nil {
 			return fmt.Errorf("pushing config: %s", err)
 		}
@@ -353,7 +353,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 				return fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
 			case ffs.Failed, ffs.Canceled:
-				jid, err = b.pgClient.FFS.PushConfig(ctxFFS, newCid, powc.WithOverride(true))
+				jid, err = b.pgClient.FFS.PushStorageConfig(ctxFFS, newCid, powc.WithOverride(true))
 				if err != nil {
 					return fmt.Errorf("pushing config: %s", err)
 				}

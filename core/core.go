@@ -130,7 +130,7 @@ type Config struct {
 
 	ThreadsConnManager connmgr.ConnManager
 
-	FFSDefaultConfig *ffs.DefaultConfig
+	FFSDefaultConfig *ffs.StorageConfig
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {

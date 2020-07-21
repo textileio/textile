@@ -191,7 +191,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	conf.FFSDefaultConfig = &ffs.DefaultConfig{
+	conf.FFSDefaultConfig = &ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled: true,
 			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
