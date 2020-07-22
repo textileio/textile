@@ -636,11 +636,11 @@ buck archive status -w
 > 	 Deal with miner t0117803 changed state to StorageDealWaitingForDataRequest
 > 	 Deal with miner t0101180 changed state to StorageDealWaitingForDataRequest
 > 	 Deal with miner t0119390 changed state to StorageDealWaitingForDataRequest
->    Deal with miner t01459 changed state to StorageDealProposalAccepted
+> 	 Deal with miner t01459 changed state to StorageDealProposalAccepted
 > 	 Deal with miner t01459 changed state to StorageDealSealing
 ```
 
-The output will looks something like the above. With a little luck, you will start seeing some successful storage deals.
+The output will look something like the above. With a little luck, you will start seeing some successful storage deals.
 
 Bucket archiving allows you to leverage the purely decentralized nature of Filecoin in your buckets. Check out [this video](https://www.youtube.com/watch?v=jiBUxIi1zko&feature=emb_title) from a [blog post](https://blog.textile.io/buckets-diffing-syncing-archiving/) demonstrating Filecoin bucket recovery using the [Lotus client](https://github.com/filecoin-project/lotus).
 

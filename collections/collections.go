@@ -24,7 +24,8 @@ type Collections struct {
 	IPNSKeys     *IPNSKeys
 	FFSInstances *FFSInstances
 
-	Users *Users
+	Users    *Users
+	Messages *Messages
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -58,6 +59,10 @@ func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collect
 			return nil, err
 		}
 		c.Users, err = NewUsers(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.Messages, err = NewMessages(ctx, db)
 		if err != nil {
 			return nil, err
 		}
