@@ -260,7 +260,7 @@ The second URL is the bucket's unique IPNS address, which is auto-updated when y
 
 If you have configured the daemon with DNS settings, you will see a third URL that links to the bucket's WWW address, where it is rendered like as a static website / client-side application. See `buckd --help` for more info.
 
-**Note**: If your bucket is private (encrypted), these links will 404 on the gateway. This behavior is temporary while ThreadDB ACLs are still under development.
+**Note**: If your bucket is private (encrypted), these links will 404 on the gateway. This behavior is temporary while ThreadDB ACLs are [still under development](https://github.com/textileio/go-threads/issues/295).
 
 `buck init` created a configuration folder in `mybucket` called `.textile`. This folder is somewhat like a `.git` folder, as it contains information about the bucket's remote address and local state.
 
@@ -300,9 +300,12 @@ buck status
 > new file:  hello.txt
 ```
 
+`buck status` is powered by DAG-based diffing. Much like `git`, this allows buck to only push and pull _changes_. Read more about bucket diffing [here](https://docs.textile.io/buckets/#diffing-and-synching).
+
 Use `push` to sync the change.
 
 ```
+buck push
 + hello.txt: bafkreifjjcie6lypi6ny7amxnfftagclbuxndqonfipmb64f2km2devei4
 > bafybeihm4zrnrsdroazwsvk3i65ooqzdftaugdkjiedr6ocq65u3ap4wni
 ```
@@ -329,7 +332,9 @@ The `--existing` flag allows for interactively selecting an existing bucket to i
   ▸ MyBucket bafzbeifyzfm3kosie25s5qthvvcjrr42ivd7doqhwvu5m4ks7uqv4j5lyi
 ```
 
-At this point, there's only one bucket to choose from.
+At this point, there's only one bucket to choose from. 
+
+**Note**: If `buckd` was running inside The Hub (`hubd`), you would be able to choose from buckets belonging to your Organizations and well as your individual Developer account by using the `--org` flag. Read more about Hub Accounts and Organizations [here](https://docs.textile.io/hub/accounts/).
 
 ```
 > Selected bucket MyBucket
@@ -440,13 +445,19 @@ The files behind the Cid will be pulled into the new bucket.
 > Success! Initialized /path/to/mybucket3 as a new bootstrapped bucket
 ```
 
-You can still leverage bucket encryption when creating a bucket from an existing Cid. In this case, `buckd` will recursively encrypt (without duplicating) the Cid's IPLD file and directory nodes as it's pulled into the new bucket. 
+Currently, UnixFS in `go-ipfs` uses Cid version 0, which is why we see all these old-style Cids started with `Qm`. Of course, you can also use UnixFS directories that use Cid version 1.
+
+Similar to initializing a new bucket from an existing Cid, `buck add` allows you to _add_ and/or _merge in_ an existing UnixFS directory to an _existing bucket_. Like adding new files locally, this works by pulling down the UnixFS content from the IPFS network into the local bucket. Sync the changes with `buck push` as normal.
+
+Pulling an existing UnixFS directory into a new or existing private bucket is also possible. Just opt-in to encryption during initialization as normal. `buckd` will recursively encrypt (without duplicating) the Cid's IPLD file and directory nodes as they are pulled into the new bucket.
 
 ### Exploring bucket contents
 
 Use `buck ls [path]` to explore bucket contents. Omitting `[path]` will list the top-level directory.
 
 ```
+buck ls
+
   NAME          SIZE     DIR    OBJECTS  CID
   .textileseed  32       false  n/a      bafkreiezexkrnk7yew6glm6sulhur66bbecc2aeaitf7uz4ymmp442lepu
   a             3726     true   3        QmSujVHvG8Y3Jv21AbMFNQPphjyqNamh6cvdyXSD1jAtSZ
@@ -454,9 +465,11 @@ Use `buck ls [path]` to explore bucket contents. Omitting `[path]` will list the
   c             1537626  true   2        QmcjtVAF9PQfMKTc57vcvZeBrzww3TLxPcQfUQW7cXXLJL
 ```
 
-Use `[path]` to drill into directories, e.g., `buck ls a`:
+Use `[path]` to drill into directories, e.g.,
 
 ```
+buck ls a
+
   NAME     SIZE  DIR    OBJECTS  CID
   bar.txt  517   false  n/a      QmcDkcMJXZsNnExehsE1Yh6SRWucHa9ruVT82gpL83431W
   foo.txt  557   false  n/a      QmYiUq2U6euWnKag23wFppG12hon4EBDswdoe4MwrKzDBn
@@ -467,21 +480,193 @@ Use `[path]` to drill into directories, e.g., `buck ls a`:
 
 ### Resetting bucket contents
 
+Similar to a `git reset --hard`, you can use `buck pull --hard` to discard local changes that have not been pushed.
+
+Continuing with the bucket above, add, modify, and/or delete some files. `buck status` should show your staged changes.
+
+```
+buck status
+> modified:  a/bar.txt
+> deleted:   a/one/baz.txt
+> new file:  b/one/three/car.txt
+> deleted:   b/foo.txt
+```
+
+Normally, `buck pull` will move your local changes to temporary `.buckpatch` files, apply the remote / upstream changes, then reapply your local changes. However, the `--hard` flag will prune all local changes, resetting the local bucket contents to match the remote exactly.
+
+```
+buck pull --hard
++ a/one/baz.txt: QmXrd35ja3kknnmgj5kyDM74jfG8GLJJQGtRpEQpXCLTR3
++ b/foo.txt: QmYiQAk1seXrmuQkpGE83AxJyNZDK1RNSaLyp3Z4r1zsrB
++ a/bar.txt: QmcDkcMJXZsNnExehsE1Yh6SRWucHa9ruVT82gpL83431W
+- b/one/three/car.txt
+> QmTz6HoC18QQqAEtYhfLc4Fse3LPbSCKV8vouvE88MKjFj
+```
+
+Now `buck status` will report `> Everything up-to-date`.
+
+Try `buck pull --help` for more options when pulling the remote.
+
 ### Watching a bucket for changes
+
+So far we've seen how a bucket can change locally, but the remote can also change. This could happen for a couple reasons:
+
+* Changes are pushed from a different bucket copy against the same `buckd`.
+* Changes are pushed from a different `buckd` at the ThreadDB layer. This is known as a multi-writer scenario. See [Multi-writer buckets](#multi-writer-buckets) for more.
+
+In either case, it is possible to listen for and apply the remote changes using `buck watch`. This will also watch for local changes and auto-push them to the remote. In this way, multiple copies of the same bucket can be kept in sync.
+
+`watch` will block until it's cancelled with a Ctrl-C.
+
+```
+buck watch
+> Success! Watching /path/to/mybucket for changes...
+```
+
+`watch` will survive network interruptions, reconnecting when possible.
+
+```
+> Not connected. Trying to connect...
+> Not connected. Trying to connect...
+> Not connected. Trying to connect...
+> Success! Watching /path/to/mybucket for changes...
+```
+
+While `watch` is active, file and folders dropped into the bucket will be automatically pushed.
 
 ### Protecting a file with a password
 
+Private buckets handle encryption entirely within `buckd`, but you can use an additional client-side encryption layer with `buck encrypt` to password protect files. This encryption is also AES-CTR + AES-512 HMAC, which means you can efficiently encrypt large file streams. However, unlike bucket-wide encryption in private buckets, client-side encryption is only available for files, not IPLD directory nodes.
+
+Let's create an encrypted version of the `hello.txt` file.
+
+```
+buck encrypt hello.txt supersecret > secret.txt
+```
+
+`encrypt` writes to stdout. So, here we redirect the output to a new file called `secret.txt`. [scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt?tab=doc) is used to derive the AES and HMAC keys from a password. This carries the normal tradeoff: _The encryption is only as good as the password_. Also, as with all client-side encryption, you must also store or otherwise remember the password!
+
+`encrypt` only works on local files. You'll have to use `push` to sync the new file to the remote.
+
+```
+hub buck push --yes
++ secret.txt: bafkreiayymufgaut3wrfbzfdxiacxn64mxijj54g2osyk7qnco54iftovi
+> bafybeidhffwg5ucwktn7iwyvnkhxpz7b2yrh643bo74cjvsbquzpdgpcd4
+```
+
+`decrypt`, on the other hand, works on remote files. So, after pushing `secret.txt`, we can decrypt it (if we can remember the password) and write the plaintext to stdout.
+
+```
+buck decrypt secret.txt supersecret
+hello world
+```
+
+Looks like it worked!
+
 ### Creating a Filecoin bucket archive
+
+Bucket archiving requires a Powergate to be running in `buckd`. If you're curious how to do this, take a look at [this Docker Compose file](https://github.com/textileio/textile/blob/master/integrationtest/pg/docker-compose.yml).
+
+Let's try archiving the bucket from the [Creating a bucket](#creating-a-bucket) section.
+
+```
+buck archive
+> Warning! Archives are currently saved on an experimental test network. They may be lost at any time.
+? Proceed? [y/N]
+```
+
+Please take note of the warning. Archiving should be considered experimental since Filecoin `mainnet` has not yet launched, and Powergate will either be running a `localnet` or `testnet`.
+
+You should see a success message if you proceed.
+
+```
+> Success! Archive queued successfully
+```
+
+This means that archiving has been initiated. It may take some time to complete...
+
+```
+hub buck archive status
+> Archive is currently executing, grab a coffee and be patient...
+```
+
+Use the `archive status` command with `-w` to watch the progress of your archive as it moves through the Filecoin market deal stages.
+
+```
+buck archive status -w
+> Archive is currently executing, grab a coffee and be patient...
+> 	 Pushing new configuration...
+> 	 Configuration saved successfully
+> 	 Executing job 1006707f-efa8-48c2-98af-a1b320a59780...
+> 	 Ensuring Hot-Storage satisfies the configuration...
+> 	 No actions needed in Hot Storage.
+> 	 Hot-Storage execution ran successfully.
+> 	 Ensuring Cold-Storage satisfies the configuration...
+> 	 Current replication factor is lower than desired, making 10 new deals...
+> 	 Calculating piece size...
+> 	 Estimated piece size is 256 bytes.
+> 	 Proposing deal to miner t01459 with 0 fil per epoch...
+> 	 Proposing deal to miner t0117734 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0120993 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0120642 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0121477 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0119390 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0101180 with 10000000 fil per epoch...
+> 	 Proposing deal to miner t0117803 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0121852 with 500000000 fil per epoch...
+> 	 Proposing deal to miner t0119822 with 500000000 fil per epoch...
+> 	 Watching deals unfold...
+> 	 Deal with miner t0117803 changed state to StorageDealClientFunding
+> 	 Deal with miner t0121852 changed state to StorageDealClientFunding
+> 	 Deal with miner t0121477 changed state to StorageDealClientFunding
+> 	 Deal with miner t0101180 changed state to StorageDealClientFunding
+> 	 Deal with miner t0119822 changed state to StorageDealClientFunding
+> 	 Deal with miner t0119390 changed state to StorageDealClientFunding
+> 	 Deal with miner t0120642 changed state to StorageDealClientFunding
+> 	 Deal with miner t0117734 changed state to StorageDealClientFunding
+> 	 Deal with miner t01459 changed state to StorageDealClientFunding
+> 	 Deal with miner t0120993 changed state to StorageDealClientFunding
+> 	 Deal with miner t0121477 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0119822 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0117734 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0121852 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t01459 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0120642 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0120993 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0117803 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0101180 changed state to StorageDealWaitingForDataRequest
+> 	 Deal with miner t0119390 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t01459 changed state to StorageDealProposalAccepted
+> 	 Deal with miner t01459 changed state to StorageDealSealing
+```
+
+The output will looks something like the above. With a little luck, you will start seeing some successful storage deals.
+
+To-do: Add section on recovering a bucket from an archive using the Lotus client.
 
 ### Multi-writer buckets
 
+Multi-writer buckets leverage the distributed nature of ThreadDB by allowing multiple identities to write to the same bucket hosted by different Libp2p hosts. Since buckets are ThreadDB collection _instances_, this is no different than normal ThreadDB peer collaboration.
+
+To-do: Demonstrate joining a bucket from a ThreadDB invite.
+
 ### Deleting a bucket
+
+Deleting a bucket is easy... and permanent! `buck destroy` will delete your local bucket as well as the remote, making it unrecoverable with `buck init --existing`.
 
 ### Using the Buckets Library
 
-The `buckets/local` library powers both the `buck` and `hub buck` commands.
+The `buckets/local` library powers both the `buck` and `hub buck` CLIs. Everything possible in `buck`, from bucket diffing, pushing, pulling, watching, archiving, etc., is available to you in existing projects by importing the Buckets Library:
+
+```
+go get github.com/textileio/textile/buckets/local
+```
+
+See the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for usage.
 
 ## Developing
+
+The easiest way to develop against `hubd` or `buckd` is to use the Docker Compose files found in `cmd`. The `-dev` flavored files do not persist repos via Docker Volumes, which may be desirable in some cases.
 
 ## Contributing
 
