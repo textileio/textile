@@ -10,11 +10,11 @@ hub-stop:
 hub-clean:
 	docker-compose -f cmd/hubd/docker-compose-dev.yml down -v --remove-orphans
 
-buckets-up:
+buck-up:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml up --build
 
-buckets-stop:
+buck-stop:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml stop
 
-buckets-clean:
+buck-clean:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans

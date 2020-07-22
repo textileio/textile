@@ -298,12 +298,18 @@ func (b *Buckets) GetLocalBucket(ctx context.Context, pth string) (*Bucket, erro
 	return buck, nil
 }
 
-// RemoteBuckets lists all existing remote buckets.
+// RemoteBuckets lists all existing remote buckets in the thread.
+// If id is not defined, this will return buckets from all threads.
 // In a hub context, this will only list buckets that the context
 // has access to.
-func (b *Buckets) RemoteBuckets(ctx context.Context) (list []BucketInfo, err error) {
+func (b *Buckets) RemoteBuckets(ctx context.Context, id thread.ID) (list []BucketInfo, err error) {
 	ctx = b.Context(ctx)
-	threads := b.clients.ListThreads(ctx, true)
+	var threads []cmd.Thread
+	if id.Defined() {
+		threads = []cmd.Thread{{ID: id}}
+	} else {
+		threads = b.clients.ListThreads(ctx, true)
+	}
 	for _, t := range threads {
 		ctx = common.NewThreadIDContext(ctx, t.ID)
 		res, err := b.clients.Buckets.List(ctx)

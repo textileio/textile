@@ -17,6 +17,7 @@ import (
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
@@ -94,7 +95,7 @@ func TestBucket(t *testing.T) {
 		_, err = buckets.GetLocalBucket(context.Background(), conf.Path)
 		require.NotNil(t, err)
 		// Ensure the remote bucket was removed
-		list, err := buckets.RemoteBuckets(context.Background())
+		list, err := buckets.RemoteBuckets(context.Background(), thread.Undef)
 		require.Nil(t, err)
 		assert.Len(t, list, 0)
 	})

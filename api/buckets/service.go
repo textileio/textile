@@ -412,7 +412,9 @@ func (nn *namedNodes) Store(c cid.Cid, n *namedNode) {
 // This method returns a map of all nodes keyed by their _original_ plaintext cid.
 func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.Node, key []byte, add *namedNode) (map[cid.Cid]*namedNode, error) {
 	// Step 1: Create a preordered list of joint and leaf nodes
-	var stack, joints, leaves []*namedNode
+	var stack, joints []*namedNode
+	jmap := make(map[cid.Cid]*namedNode)
+	lmap := make(map[cid.Cid]*namedNode)
 	stack = append(stack, &namedNode{node: root})
 	var cur *namedNode
 
@@ -420,15 +422,27 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 		n := len(stack) - 1
 		cur = stack[n]
 		stack = stack[:n]
+
+		if _, ok := jmap[cur.node.Cid()]; ok {
+			continue
+		}
+		if _, ok := lmap[cur.node.Cid()]; ok {
+			continue
+		}
+
 	types:
 		switch cur.node.(type) {
 		case *dag.RawNode:
-			leaves = append(leaves, cur)
+			lmap[cur.node.Cid()] = cur
 		case *dag.ProtoNode:
+			if len(cur.node.Links()) == 0 {
+				lmap[cur.node.Cid()] = cur
+				break
+			}
 			// Add links to the stack
 			for _, l := range cur.node.Links() {
 				if l.Name == "" {
-					leaves = append(leaves, cur)
+					lmap[cur.node.Cid()] = cur
 					break types // We have discovered a raw node wrapper
 				}
 				ln, err := l.GetNode(ctx, ds)
@@ -438,6 +452,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 				stack = append(stack, &namedNode{name: l.Name, node: ln})
 			}
 			joints = append(joints, cur)
+			jmap[cur.node.Cid()] = cur
 		default:
 			return nil, errInvalidNodeType
 		}
@@ -446,7 +461,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 	// Step 2: Encrypt all leaf nodes in parallel
 	nmap := newNamedNodes()
 	eg, gctx := errgroup.WithContext(ctx)
-	for _, l := range leaves {
+	for _, l := range lmap {
 		l := l
 		eg.Go(func() error {
 			if gctx.Err() != nil {

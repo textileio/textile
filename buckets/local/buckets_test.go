@@ -138,7 +138,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 	})
 
 	t.Run("list remote buckets", func(t *testing.T) {
-		list, err := buckets.RemoteBuckets(context.Background())
+		list, err := buckets.RemoteBuckets(context.Background(), thread.Undef)
 		require.Nil(t, err)
 		assert.Len(t, list, 5)
 	})
