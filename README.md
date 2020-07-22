@@ -300,7 +300,7 @@ buck status
 > new file:  hello.txt
 ```
 
-`buck status` is powered by DAG-based diffing. Much like `git`, this allows buck to only push and pull _changes_. Read more about bucket diffing [here](https://docs.textile.io/buckets/#diffing-and-synching).
+`buck status` is powered by DAG-based diffing. Much like `git`, this allows buck to only push and pull _changes_. Read more about bucket diffing in the [docs](https://docs.textile.io/buckets/#diffing-and-synching), or check out this [in-depth blog post](https://blog.textile.io/buckets-diffing-syncing-archiving/).
 
 Use `push` to sync the change.
 
@@ -642,7 +642,7 @@ buck archive status -w
 
 The output will looks something like the above. With a little luck, you will start seeing some successful storage deals.
 
-To-do: Add section on recovering a bucket from an archive using the Lotus client.
+Bucket archiving allows you to leverage the purely decentralized nature of Filecoin in your buckets. Check out [this video](https://www.youtube.com/watch?v=jiBUxIi1zko&feature=emb_title) from a [blog post](https://blog.textile.io/buckets-diffing-syncing-archiving/) demonstrating Filecoin bucket recovery using the [Lotus client](https://github.com/filecoin-project/lotus).
 
 ### Multi-writer buckets
 
