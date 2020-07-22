@@ -140,7 +140,7 @@ The Hub daemon (`hubd`), a.k.a. _The Hub_, is a hosted wrapper around other Text
 The layout of the `hub` client CLI mirrors the services wrapped by `hubd`:
 
 -   `hub threads` provides limited access to ThreadDB.
--   `hub buck` provides access to Buckets by wrapping the standalone `buck` CLI.
+-   `hub buck` provides access to Buckets (`buckd`) by wrapping the standalone `buck` CLI.
 -   `hub buck archive` provides limited access to The Hub's hosted Powergate instance, and the Filecoin network.
 
 Try `hub --help` for more usage.
@@ -195,7 +195,7 @@ Congrats! You now have Buckets running locally.
 
 The Docker Compose file starts an IPFS node, which is used to pin bucket files and folders. You could point `buckd` to a different (possibly remote) IPFS node by setting the `BUCK_ADDR_IPFS_API` variable to a different multiaddress.  
 
-By default, this approach does not start [Powergate](https://github.com/textileio/powergate). If you do, be sure to set the `BUCK_ADDR_POWERGATE_API` variable to the multiaddress of your Powergate. Buckets must be configured with Powergate to enable Filecoin archiving with `buck archive`.
+By default, this approach does not start [Powergate](https://github.com/textileio/powergate). If you do, be sure to set the `BUCK_ADDR_POWERGATE_API` variable to the multiaddress of your Powergate. `buckd` must be configured with Powergate to enable Filecoin archiving with `buck archive`.
 
 ### Creating a bucket
 
@@ -277,7 +277,7 @@ Additionally, `.textile/repo` contains a repository describing the current file 
 
 ### Creating a private bucket
 
-Bucket encryption (AES-CTR + AES-512 HMAC) happens entirely within the Buckets daemon, meaning your data gets encrypted on the way in, and decrypted on the way out. This type of encryption has two goals:
+Bucket encryption (AES-CTR + AES-512 HMAC) happens entirely within the `buckd`, meaning your data gets encrypted on the way in, and decrypted on the way out. This type of encryption has two goals:
 
 - Obfuscate bucket data / files (the normal goal of encryption)
 - Obfuscate directory structure, which amounts to encrypting [IPLD](https://ipld.io/) nodes and their links.
@@ -384,10 +384,10 @@ We can simulate this scenario by adding a local folder to IPFS and then using it
     └── two.jpg
 ```
 
-Add the entire thing to IPFS (`-r` for recursive).
+Use the recursvie flag `-r` with `ipfs add`.
 
 ```
-ipfs add -r .                                                                      10:38:53
+ipfs add -r .
 added QmcDkcMJXZsNnExehsE1Yh6SRWucHa9ruVT82gpL83431W mydir/a/bar.txt
 added QmYiUq2U6euWnKag23wFppG12hon4EBDswdoe4MwrKzDBn mydir/a/foo.txt
 added QmXrd35ja3kknnmgj5kyDM74jfG8GLJJQGtRpEQpXCLTR3 mydir/a/one/baz.txt
@@ -410,10 +410,9 @@ added QmPyMD67EgSZS1WpvgudHkxbA5zgjqmse8srPpFb9sVefT mydir/b/one
 added QmQdAtg5NkwkvLtTbka3eci58UGj3m9AehC2sbksGSbjPZ mydir/b
 added QmcjtVAF9PQfMKTc57vcvZeBrzww3TLxPcQfUQW7cXXLJL mydir/c
 added QmcvkGF2t8Z94UqhdtdFRokGoqypbGyKkzRPVF4owmjVrE mydir
- 1.47 MiB / 1.47 MiB [=========================================================================] 100.00%
 ```
 
-The root Cid of `mydir` is `QmcvkGF2t8Z94UqhdtdFRokGoqypbGyKkzRPVF4owmjVrE`. Let's create the bucket.
+After adding the entire directory, we see the root Cid is `QmcvkGF2t8Z94UqhdtdFRokGoqypbGyKkzRPVF4owmjVrE`. Let's create the bucket using this Cid.
 
 ```
 buck init --cid QmcvkGF2t8Z94UqhdtdFRokGoqypbGyKkzRPVF4owmjVrE
@@ -441,7 +440,7 @@ The files behind the Cid will be pulled into the new bucket.
 > Success! Initialized /path/to/mybucket3 as a new bootstrapped bucket
 ```
 
-Notice also that you can still leverage bucket encryption when creating a bucket from an existing Cid. In this case, Buckets will recursively encrypt the Cid's IPLD file and directory nodes as it's pulled into the new bucket.
+You can still leverage bucket encryption when creating a bucket from an existing Cid. In this case, `buckd` will recursively encrypt (without duplicating) the Cid's IPLD file and directory nodes as it's pulled into the new bucket. 
 
 ### Exploring bucket contents
 
