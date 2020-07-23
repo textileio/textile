@@ -49,7 +49,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.0 // indirect
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multibase v0.0.3
-	github.com/multiformats/go-multihash v0.0.13
+	github.com/multiformats/go-multihash v0.0.14
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
@@ -64,7 +64,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722
-	github.com/textileio/powergate v0.2.0
+	github.com/textileio/powergate v0.2.2-0.20200723133159-1077b6b868c6
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.3.2
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
