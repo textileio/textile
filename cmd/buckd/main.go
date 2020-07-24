@@ -84,6 +84,10 @@ var (
 				Key:      "dns.token",
 				DefValue: "",
 			},
+			"apiMaxRecvMsgSize": {
+				Key:      "api.max_recv_msg_size",
+				DefValue: 1024 * 1024 * 64,
+			},
 		},
 		EnvPre: "BUCK",
 		Global: true,
@@ -168,6 +172,12 @@ func init() {
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Cloudflare API Token for dnsDomain")
 
+	// API settings
+	rootCmd.PersistentFlags().Int(
+		"apiMaxRecvMsgSize",
+		config.Flags["apiMaxRecvMsgSize"].DefValue.(int),
+		"Max receive message size")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -215,6 +225,8 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
 
+		apiMaxRecvMsgSize := config.Viper.GetInt("api.max_recv_msg_size")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -241,6 +253,8 @@ var rootCmd = &cobra.Command{
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
+
+			ApiMaxRecvMsgSize: apiMaxRecvMsgSize,
 
 			Debug: config.Viper.GetBool("log.debug"),
 		})

@@ -116,6 +116,10 @@ var (
 				Key:      "threads.max_number_per_owner",
 				DefValue: 100,
 			},
+			"apiMaxRecvMsgSize": {
+				Key:      "api.max_recv_msg_size",
+				DefValue: 1024 * 1024 * 64,
+			},
 		},
 		EnvPre: "HUB",
 		Global: true,
@@ -238,6 +242,12 @@ func init() {
 		config.Flags["threadsMaxNumberPerOwner"].DefValue.(int),
 		"Max number threads per owner")
 
+	// API settings
+	rootCmd.PersistentFlags().Int(
+		"apiMaxRecvMsgSize",
+		config.Flags["apiMaxRecvMsgSize"].DefValue.(int),
+		"Max receive message size")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -296,6 +306,8 @@ var rootCmd = &cobra.Command{
 
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
 
+		apiMaxRecvMsgSize := config.Viper.GetInt("api.max_recv_msg_size")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			util.SetupDefaultLoggingConfig(logFile)
@@ -333,6 +345,8 @@ var rootCmd = &cobra.Command{
 			BucketsMaxNumberPerThread: bucketsMaxNumberPerThread,
 
 			ThreadsMaxNumberPerOwner: threadsMaxNumberPerOwner,
+
+			ApiMaxRecvMsgSize: apiMaxRecvMsgSize,
 
 			Hub:   true,
 			Debug: config.Viper.GetBool("log.debug"),

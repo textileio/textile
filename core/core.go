@@ -125,6 +125,8 @@ type Config struct {
 
 	ThreadsMaxNumberPerOwner int
 
+	ApiMaxRecvMsgSize int
+
 	Hub   bool
 	Debug bool
 
@@ -277,6 +279,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
 		}
+	}
+	if conf.ApiMaxRecvMsgSize > 0 {
+		opts = append(opts, grpc.MaxRecvMsgSize(conf.ApiMaxRecvMsgSize))
 	}
 	t.server = grpc.NewServer(opts...)
 	listener, err := net.Listen("tcp", target)
