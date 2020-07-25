@@ -1,4 +1,4 @@
-package collections_test
+package mongodb_test
 
 import (
 	"context"
@@ -8,67 +8,67 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	. "github.com/textileio/textile/collections"
+	. "github.com/textileio/textile/mongodb"
 )
 
 func TestUsers_GetOrCreate(t *testing.T) {
 	db := newDB(t)
 	col, err := NewUsers(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.Create(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.Create(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestUsers_Get(t *testing.T) {
 	db := newDB(t)
 	col, err := NewUsers(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.Create(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, key, got.Key)
 }
 
 func TestUsers_Delete(t *testing.T) {
 	db := newDB(t)
 	col, err := NewUsers(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.Create(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = col.Get(context.Background(), key)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestUsers_BucketsTotalSize(t *testing.T) {
 	db := newDB(t)
 	col, err := NewUsers(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.Create(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.SetBucketsTotalSize(context.Background(), key, 1234)
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(1234), got.BucketsTotalSize)
 }

@@ -24,6 +24,34 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type ListInboxMessagesRequest_Status int32
+
+const (
+	ListInboxMessagesRequest_ALL    ListInboxMessagesRequest_Status = 0
+	ListInboxMessagesRequest_READ   ListInboxMessagesRequest_Status = 1
+	ListInboxMessagesRequest_UNREAD ListInboxMessagesRequest_Status = 2
+)
+
+var ListInboxMessagesRequest_Status_name = map[int32]string{
+	0: "ALL",
+	1: "READ",
+	2: "UNREAD",
+}
+
+var ListInboxMessagesRequest_Status_value = map[string]int32{
+	"ALL":    0,
+	"READ":   1,
+	"UNREAD": 2,
+}
+
+func (x ListInboxMessagesRequest_Status) String() string {
+	return proto.EnumName(ListInboxMessagesRequest_Status_name, int32(x))
+}
+
+func (ListInboxMessagesRequest_Status) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{9, 0}
+}
+
 type ListThreadsRequest struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -188,34 +216,638 @@ func (m *GetThreadReply) GetIsDB() bool {
 	return false
 }
 
+type SetupMailboxesRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SetupMailboxesRequest) Reset()         { *m = SetupMailboxesRequest{} }
+func (m *SetupMailboxesRequest) String() string { return proto.CompactTextString(m) }
+func (*SetupMailboxesRequest) ProtoMessage()    {}
+func (*SetupMailboxesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{4}
+}
+
+func (m *SetupMailboxesRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SetupMailboxesRequest.Unmarshal(m, b)
+}
+func (m *SetupMailboxesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SetupMailboxesRequest.Marshal(b, m, deterministic)
+}
+func (m *SetupMailboxesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SetupMailboxesRequest.Merge(m, src)
+}
+func (m *SetupMailboxesRequest) XXX_Size() int {
+	return xxx_messageInfo_SetupMailboxesRequest.Size(m)
+}
+func (m *SetupMailboxesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SetupMailboxesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SetupMailboxesRequest proto.InternalMessageInfo
+
+type SetupMailboxesReply struct {
+	InboxID              []byte   `protobuf:"bytes,1,opt,name=inboxID,proto3" json:"inboxID,omitempty"`
+	OutboxID             []byte   `protobuf:"bytes,2,opt,name=outboxID,proto3" json:"outboxID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SetupMailboxesReply) Reset()         { *m = SetupMailboxesReply{} }
+func (m *SetupMailboxesReply) String() string { return proto.CompactTextString(m) }
+func (*SetupMailboxesReply) ProtoMessage()    {}
+func (*SetupMailboxesReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{5}
+}
+
+func (m *SetupMailboxesReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SetupMailboxesReply.Unmarshal(m, b)
+}
+func (m *SetupMailboxesReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SetupMailboxesReply.Marshal(b, m, deterministic)
+}
+func (m *SetupMailboxesReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SetupMailboxesReply.Merge(m, src)
+}
+func (m *SetupMailboxesReply) XXX_Size() int {
+	return xxx_messageInfo_SetupMailboxesReply.Size(m)
+}
+func (m *SetupMailboxesReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SetupMailboxesReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SetupMailboxesReply proto.InternalMessageInfo
+
+func (m *SetupMailboxesReply) GetInboxID() []byte {
+	if m != nil {
+		return m.InboxID
+	}
+	return nil
+}
+
+func (m *SetupMailboxesReply) GetOutboxID() []byte {
+	if m != nil {
+		return m.OutboxID
+	}
+	return nil
+}
+
+type Message struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	From                 string   `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	To                   string   `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	Body                 []byte   `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	Signature            []byte   `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	CreatedAt            int64    `protobuf:"varint,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	ReadAt               int64    `protobuf:"varint,7,opt,name=readAt,proto3" json:"readAt,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Message) Reset()         { *m = Message{} }
+func (m *Message) String() string { return proto.CompactTextString(m) }
+func (*Message) ProtoMessage()    {}
+func (*Message) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{6}
+}
+
+func (m *Message) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Message.Unmarshal(m, b)
+}
+func (m *Message) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Message.Marshal(b, m, deterministic)
+}
+func (m *Message) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Message.Merge(m, src)
+}
+func (m *Message) XXX_Size() int {
+	return xxx_messageInfo_Message.Size(m)
+}
+func (m *Message) XXX_DiscardUnknown() {
+	xxx_messageInfo_Message.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Message proto.InternalMessageInfo
+
+func (m *Message) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *Message) GetFrom() string {
+	if m != nil {
+		return m.From
+	}
+	return ""
+}
+
+func (m *Message) GetTo() string {
+	if m != nil {
+		return m.To
+	}
+	return ""
+}
+
+func (m *Message) GetBody() []byte {
+	if m != nil {
+		return m.Body
+	}
+	return nil
+}
+
+func (m *Message) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *Message) GetCreatedAt() int64 {
+	if m != nil {
+		return m.CreatedAt
+	}
+	return 0
+}
+
+func (m *Message) GetReadAt() int64 {
+	if m != nil {
+		return m.ReadAt
+	}
+	return 0
+}
+
+type SendMessageRequest struct {
+	To                   string   `protobuf:"bytes,1,opt,name=to,proto3" json:"to,omitempty"`
+	Body                 []byte   `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	Signature            []byte   `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SendMessageRequest) Reset()         { *m = SendMessageRequest{} }
+func (m *SendMessageRequest) String() string { return proto.CompactTextString(m) }
+func (*SendMessageRequest) ProtoMessage()    {}
+func (*SendMessageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{7}
+}
+
+func (m *SendMessageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SendMessageRequest.Unmarshal(m, b)
+}
+func (m *SendMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SendMessageRequest.Marshal(b, m, deterministic)
+}
+func (m *SendMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SendMessageRequest.Merge(m, src)
+}
+func (m *SendMessageRequest) XXX_Size() int {
+	return xxx_messageInfo_SendMessageRequest.Size(m)
+}
+func (m *SendMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SendMessageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SendMessageRequest proto.InternalMessageInfo
+
+func (m *SendMessageRequest) GetTo() string {
+	if m != nil {
+		return m.To
+	}
+	return ""
+}
+
+func (m *SendMessageRequest) GetBody() []byte {
+	if m != nil {
+		return m.Body
+	}
+	return nil
+}
+
+func (m *SendMessageRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+type SendMessageReply struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	CreatedAt            int64    `protobuf:"varint,2,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SendMessageReply) Reset()         { *m = SendMessageReply{} }
+func (m *SendMessageReply) String() string { return proto.CompactTextString(m) }
+func (*SendMessageReply) ProtoMessage()    {}
+func (*SendMessageReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{8}
+}
+
+func (m *SendMessageReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SendMessageReply.Unmarshal(m, b)
+}
+func (m *SendMessageReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SendMessageReply.Marshal(b, m, deterministic)
+}
+func (m *SendMessageReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SendMessageReply.Merge(m, src)
+}
+func (m *SendMessageReply) XXX_Size() int {
+	return xxx_messageInfo_SendMessageReply.Size(m)
+}
+func (m *SendMessageReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SendMessageReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SendMessageReply proto.InternalMessageInfo
+
+func (m *SendMessageReply) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *SendMessageReply) GetCreatedAt() int64 {
+	if m != nil {
+		return m.CreatedAt
+	}
+	return 0
+}
+
+type ListInboxMessagesRequest struct {
+	Seek                 string                          `protobuf:"bytes,1,opt,name=seek,proto3" json:"seek,omitempty"`
+	Limit                int64                           `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Status               ListInboxMessagesRequest_Status `protobuf:"varint,3,opt,name=status,proto3,enum=users.pb.ListInboxMessagesRequest_Status" json:"status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
+	XXX_unrecognized     []byte                          `json:"-"`
+	XXX_sizecache        int32                           `json:"-"`
+}
+
+func (m *ListInboxMessagesRequest) Reset()         { *m = ListInboxMessagesRequest{} }
+func (m *ListInboxMessagesRequest) String() string { return proto.CompactTextString(m) }
+func (*ListInboxMessagesRequest) ProtoMessage()    {}
+func (*ListInboxMessagesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{9}
+}
+
+func (m *ListInboxMessagesRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListInboxMessagesRequest.Unmarshal(m, b)
+}
+func (m *ListInboxMessagesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListInboxMessagesRequest.Marshal(b, m, deterministic)
+}
+func (m *ListInboxMessagesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListInboxMessagesRequest.Merge(m, src)
+}
+func (m *ListInboxMessagesRequest) XXX_Size() int {
+	return xxx_messageInfo_ListInboxMessagesRequest.Size(m)
+}
+func (m *ListInboxMessagesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListInboxMessagesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListInboxMessagesRequest proto.InternalMessageInfo
+
+func (m *ListInboxMessagesRequest) GetSeek() string {
+	if m != nil {
+		return m.Seek
+	}
+	return ""
+}
+
+func (m *ListInboxMessagesRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *ListInboxMessagesRequest) GetStatus() ListInboxMessagesRequest_Status {
+	if m != nil {
+		return m.Status
+	}
+	return ListInboxMessagesRequest_ALL
+}
+
+type ListOutboxMessagesRequest struct {
+	Seek                 string   `protobuf:"bytes,1,opt,name=seek,proto3" json:"seek,omitempty"`
+	Limit                int64    `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListOutboxMessagesRequest) Reset()         { *m = ListOutboxMessagesRequest{} }
+func (m *ListOutboxMessagesRequest) String() string { return proto.CompactTextString(m) }
+func (*ListOutboxMessagesRequest) ProtoMessage()    {}
+func (*ListOutboxMessagesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{10}
+}
+
+func (m *ListOutboxMessagesRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListOutboxMessagesRequest.Unmarshal(m, b)
+}
+func (m *ListOutboxMessagesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListOutboxMessagesRequest.Marshal(b, m, deterministic)
+}
+func (m *ListOutboxMessagesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListOutboxMessagesRequest.Merge(m, src)
+}
+func (m *ListOutboxMessagesRequest) XXX_Size() int {
+	return xxx_messageInfo_ListOutboxMessagesRequest.Size(m)
+}
+func (m *ListOutboxMessagesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListOutboxMessagesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListOutboxMessagesRequest proto.InternalMessageInfo
+
+func (m *ListOutboxMessagesRequest) GetSeek() string {
+	if m != nil {
+		return m.Seek
+	}
+	return ""
+}
+
+func (m *ListOutboxMessagesRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+type ListMessagesReply struct {
+	Messages             []*Message `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	NextOffset           int64      `protobuf:"varint,2,opt,name=nextOffset,proto3" json:"nextOffset,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
+}
+
+func (m *ListMessagesReply) Reset()         { *m = ListMessagesReply{} }
+func (m *ListMessagesReply) String() string { return proto.CompactTextString(m) }
+func (*ListMessagesReply) ProtoMessage()    {}
+func (*ListMessagesReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{11}
+}
+
+func (m *ListMessagesReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListMessagesReply.Unmarshal(m, b)
+}
+func (m *ListMessagesReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListMessagesReply.Marshal(b, m, deterministic)
+}
+func (m *ListMessagesReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListMessagesReply.Merge(m, src)
+}
+func (m *ListMessagesReply) XXX_Size() int {
+	return xxx_messageInfo_ListMessagesReply.Size(m)
+}
+func (m *ListMessagesReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListMessagesReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListMessagesReply proto.InternalMessageInfo
+
+func (m *ListMessagesReply) GetMessages() []*Message {
+	if m != nil {
+		return m.Messages
+	}
+	return nil
+}
+
+func (m *ListMessagesReply) GetNextOffset() int64 {
+	if m != nil {
+		return m.NextOffset
+	}
+	return 0
+}
+
+type ReadMessageRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReadMessageRequest) Reset()         { *m = ReadMessageRequest{} }
+func (m *ReadMessageRequest) String() string { return proto.CompactTextString(m) }
+func (*ReadMessageRequest) ProtoMessage()    {}
+func (*ReadMessageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{12}
+}
+
+func (m *ReadMessageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReadMessageRequest.Unmarshal(m, b)
+}
+func (m *ReadMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReadMessageRequest.Marshal(b, m, deterministic)
+}
+func (m *ReadMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReadMessageRequest.Merge(m, src)
+}
+func (m *ReadMessageRequest) XXX_Size() int {
+	return xxx_messageInfo_ReadMessageRequest.Size(m)
+}
+func (m *ReadMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReadMessageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReadMessageRequest proto.InternalMessageInfo
+
+func (m *ReadMessageRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type ReadMessageReply struct {
+	ReadAt               int64    `protobuf:"varint,1,opt,name=readAt,proto3" json:"readAt,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReadMessageReply) Reset()         { *m = ReadMessageReply{} }
+func (m *ReadMessageReply) String() string { return proto.CompactTextString(m) }
+func (*ReadMessageReply) ProtoMessage()    {}
+func (*ReadMessageReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{13}
+}
+
+func (m *ReadMessageReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReadMessageReply.Unmarshal(m, b)
+}
+func (m *ReadMessageReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReadMessageReply.Marshal(b, m, deterministic)
+}
+func (m *ReadMessageReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReadMessageReply.Merge(m, src)
+}
+func (m *ReadMessageReply) XXX_Size() int {
+	return xxx_messageInfo_ReadMessageReply.Size(m)
+}
+func (m *ReadMessageReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReadMessageReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReadMessageReply proto.InternalMessageInfo
+
+func (m *ReadMessageReply) GetReadAt() int64 {
+	if m != nil {
+		return m.ReadAt
+	}
+	return 0
+}
+
+type DeleteMessageRequest struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DeleteMessageRequest) Reset()         { *m = DeleteMessageRequest{} }
+func (m *DeleteMessageRequest) String() string { return proto.CompactTextString(m) }
+func (*DeleteMessageRequest) ProtoMessage()    {}
+func (*DeleteMessageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{14}
+}
+
+func (m *DeleteMessageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DeleteMessageRequest.Unmarshal(m, b)
+}
+func (m *DeleteMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DeleteMessageRequest.Marshal(b, m, deterministic)
+}
+func (m *DeleteMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteMessageRequest.Merge(m, src)
+}
+func (m *DeleteMessageRequest) XXX_Size() int {
+	return xxx_messageInfo_DeleteMessageRequest.Size(m)
+}
+func (m *DeleteMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DeleteMessageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DeleteMessageRequest proto.InternalMessageInfo
+
+func (m *DeleteMessageRequest) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+type DeleteMessageReply struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DeleteMessageReply) Reset()         { *m = DeleteMessageReply{} }
+func (m *DeleteMessageReply) String() string { return proto.CompactTextString(m) }
+func (*DeleteMessageReply) ProtoMessage()    {}
+func (*DeleteMessageReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_030765f334c86cea, []int{15}
+}
+
+func (m *DeleteMessageReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DeleteMessageReply.Unmarshal(m, b)
+}
+func (m *DeleteMessageReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DeleteMessageReply.Marshal(b, m, deterministic)
+}
+func (m *DeleteMessageReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteMessageReply.Merge(m, src)
+}
+func (m *DeleteMessageReply) XXX_Size() int {
+	return xxx_messageInfo_DeleteMessageReply.Size(m)
+}
+func (m *DeleteMessageReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_DeleteMessageReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DeleteMessageReply proto.InternalMessageInfo
+
 func init() {
+	proto.RegisterEnum("users.pb.ListInboxMessagesRequest_Status", ListInboxMessagesRequest_Status_name, ListInboxMessagesRequest_Status_value)
 	proto.RegisterType((*ListThreadsRequest)(nil), "users.pb.ListThreadsRequest")
 	proto.RegisterType((*ListThreadsReply)(nil), "users.pb.ListThreadsReply")
 	proto.RegisterType((*GetThreadRequest)(nil), "users.pb.GetThreadRequest")
 	proto.RegisterType((*GetThreadReply)(nil), "users.pb.GetThreadReply")
+	proto.RegisterType((*SetupMailboxesRequest)(nil), "users.pb.SetupMailboxesRequest")
+	proto.RegisterType((*SetupMailboxesReply)(nil), "users.pb.SetupMailboxesReply")
+	proto.RegisterType((*Message)(nil), "users.pb.Message")
+	proto.RegisterType((*SendMessageRequest)(nil), "users.pb.SendMessageRequest")
+	proto.RegisterType((*SendMessageReply)(nil), "users.pb.SendMessageReply")
+	proto.RegisterType((*ListInboxMessagesRequest)(nil), "users.pb.ListInboxMessagesRequest")
+	proto.RegisterType((*ListOutboxMessagesRequest)(nil), "users.pb.ListOutboxMessagesRequest")
+	proto.RegisterType((*ListMessagesReply)(nil), "users.pb.ListMessagesReply")
+	proto.RegisterType((*ReadMessageRequest)(nil), "users.pb.ReadMessageRequest")
+	proto.RegisterType((*ReadMessageReply)(nil), "users.pb.ReadMessageReply")
+	proto.RegisterType((*DeleteMessageRequest)(nil), "users.pb.DeleteMessageRequest")
+	proto.RegisterType((*DeleteMessageReply)(nil), "users.pb.DeleteMessageReply")
 }
 
 func init() { proto.RegisterFile("users.proto", fileDescriptor_030765f334c86cea) }
 
 var fileDescriptor_030765f334c86cea = []byte{
-	// 261 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2e, 0x2d, 0x4e, 0x2d,
-	0x2a, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x80, 0x72, 0x92, 0x94, 0x44, 0xb8, 0x84,
-	0x7c, 0x32, 0x8b, 0x4b, 0x42, 0x32, 0x8a, 0x52, 0x13, 0x53, 0x8a, 0x83, 0x52, 0x0b, 0x4b, 0x53,
-	0x8b, 0x4b, 0x94, 0x1c, 0xb8, 0x04, 0x50, 0x44, 0x0b, 0x72, 0x2a, 0x85, 0x74, 0xb8, 0x58, 0x72,
-	0x32, 0x8b, 0x4b, 0x24, 0x18, 0x15, 0x98, 0x35, 0xb8, 0x8d, 0x24, 0xf4, 0x60, 0x46, 0xe8, 0xb9,
-	0xa7, 0x42, 0x15, 0x82, 0xd5, 0x05, 0x81, 0x55, 0x29, 0xa9, 0x71, 0x09, 0x20, 0x89, 0x83, 0x4d,
-	0x15, 0x12, 0xe2, 0x62, 0xc9, 0x4b, 0xcc, 0x4d, 0x95, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x0c, 0x02,
-	0xb3, 0x95, 0x3c, 0xb8, 0xf8, 0x50, 0xf5, 0x0b, 0xf1, 0x71, 0x31, 0x79, 0xba, 0x80, 0xd5, 0xf0,
-	0x04, 0x31, 0x79, 0xba, 0xc0, 0x75, 0x31, 0x21, 0x74, 0x81, 0xc4, 0x32, 0x8b, 0x5d, 0x9c, 0x24,
-	0x98, 0x15, 0x18, 0x35, 0x38, 0x82, 0xc0, 0x6c, 0xa3, 0xa9, 0x8c, 0x5c, 0xcc, 0x8e, 0x01, 0x9e,
-	0x42, 0xce, 0x5c, 0x9c, 0x70, 0x13, 0x85, 0xa4, 0xb0, 0x3a, 0x13, 0xec, 0x1c, 0x29, 0x9c, 0x5e,
-	0x50, 0x62, 0x10, 0xf2, 0xe4, 0xe2, 0x46, 0x0a, 0x00, 0x21, 0x19, 0x84, 0x52, 0xcc, 0xd0, 0x92,
-	0x92, 0xc2, 0x21, 0x0b, 0x36, 0xca, 0xc9, 0x84, 0x4b, 0x34, 0x33, 0x5f, 0xaf, 0x24, 0xb5, 0xa2,
-	0x24, 0x33, 0x27, 0x15, 0xa2, 0x32, 0x3e, 0xbd, 0xa8, 0x20, 0xd9, 0x89, 0x27, 0x04, 0x22, 0x16,
-	0x0a, 0x12, 0x0a, 0x60, 0x5c, 0xc4, 0xc4, 0x15, 0x12, 0x11, 0xe2, 0x13, 0x1f, 0x1a, 0xec, 0x1a,
-	0x14, 0x9c, 0xc4, 0x06, 0x8e, 0x28, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x5e, 0x22, 0x80,
-	0xdd, 0xb7, 0x01, 0x00, 0x00,
+	// 700 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x55, 0x6d, 0x6f, 0x12, 0x41,
+	0x10, 0xe6, 0x0e, 0xca, 0xcb, 0xb4, 0x21, 0x74, 0x4a, 0xf5, 0x3c, 0x6b, 0x25, 0xab, 0xa9, 0x68,
+	0x94, 0x0f, 0xf8, 0x07, 0xa4, 0xd2, 0x28, 0xb1, 0x6f, 0x39, 0xa0, 0xf1, 0x5b, 0x73, 0x94, 0x6d,
+	0xbd, 0x78, 0x70, 0x78, 0xbb, 0x24, 0xf4, 0xef, 0x98, 0xf8, 0xdd, 0xff, 0xe4, 0x1f, 0x31, 0xbb,
+	0x7b, 0x6f, 0x4b, 0x21, 0x24, 0xfa, 0x6d, 0x76, 0xe6, 0x99, 0x87, 0xe7, 0x66, 0x9f, 0x1d, 0x60,
+	0x7b, 0xce, 0x68, 0xc8, 0x5a, 0xb3, 0x30, 0xe0, 0x01, 0x96, 0xa3, 0xc3, 0x88, 0xd4, 0x01, 0x4f,
+	0x3d, 0xc6, 0x07, 0xdf, 0x42, 0xea, 0x8e, 0x99, 0x43, 0x7f, 0xcc, 0x29, 0xe3, 0xe4, 0x03, 0xd4,
+	0xb4, 0xec, 0xcc, 0xbf, 0xc7, 0xb7, 0x50, 0xf0, 0x3d, 0xc6, 0x2d, 0xa3, 0x91, 0x6f, 0x6e, 0xb7,
+	0xad, 0x56, 0x4c, 0xd1, 0xfa, 0x44, 0x23, 0xa0, 0xc4, 0x39, 0x12, 0x45, 0x8e, 0xa0, 0x96, 0xc9,
+	0x4b, 0x56, 0x44, 0x28, 0x4c, 0xdd, 0x09, 0xb5, 0x8c, 0x86, 0xd1, 0xac, 0x38, 0x32, 0x26, 0x9f,
+	0xa1, 0xaa, 0xf7, 0x63, 0x15, 0xcc, 0x5e, 0x57, 0x62, 0x76, 0x1c, 0xb3, 0xd7, 0x4d, 0xba, 0xcc,
+	0xb4, 0x4b, 0xe4, 0x3c, 0xd6, 0x3d, 0xb6, 0xf2, 0x0d, 0xa3, 0x59, 0x76, 0x64, 0x4c, 0x1e, 0xc3,
+	0x7e, 0x9f, 0xf2, 0xf9, 0xec, 0xcc, 0xf5, 0xfc, 0x51, 0xb0, 0xa0, 0xc9, 0xc7, 0x7c, 0x81, 0xbd,
+	0xe5, 0x82, 0xf8, 0x1d, 0x0b, 0x4a, 0xde, 0x74, 0x14, 0x2c, 0x92, 0x1f, 0x8b, 0x8f, 0x68, 0x43,
+	0x39, 0x98, 0x73, 0x55, 0x32, 0x65, 0x29, 0x39, 0x93, 0x5f, 0x06, 0x94, 0xce, 0x28, 0x63, 0xee,
+	0x1d, 0xcd, 0x28, 0xad, 0xc4, 0x4a, 0x6f, 0xc3, 0x60, 0x12, 0x2b, 0x15, 0xb1, 0xc0, 0xf0, 0x40,
+	0xea, 0xac, 0x38, 0x26, 0x0f, 0x04, 0x66, 0x14, 0x8c, 0xef, 0xad, 0x82, 0xe4, 0x95, 0x31, 0x1e,
+	0x40, 0x85, 0x79, 0x77, 0x53, 0x97, 0xcf, 0x43, 0x6a, 0x6d, 0xc9, 0x42, 0x9a, 0x10, 0xd5, 0x9b,
+	0x90, 0xba, 0x9c, 0x8e, 0x3b, 0xdc, 0x2a, 0x36, 0x8c, 0x66, 0xde, 0x49, 0x13, 0xf8, 0x08, 0x8a,
+	0x62, 0x74, 0x1d, 0x6e, 0x95, 0x64, 0x29, 0x3a, 0x91, 0x2b, 0xc0, 0x3e, 0x9d, 0x8e, 0x23, 0xa9,
+	0xf1, 0x0d, 0x28, 0x35, 0xc6, 0x03, 0x35, 0xe6, 0x3a, 0x35, 0xf9, 0x25, 0x35, 0xc2, 0x19, 0x1a,
+	0xaf, 0x7e, 0x63, 0x6a, 0x0e, 0x9a, 0x62, 0x73, 0x49, 0x31, 0xf9, 0x6d, 0x80, 0x25, 0xcc, 0xd5,
+	0x13, 0xd3, 0x8e, 0x78, 0x58, 0xc6, 0x22, 0x8c, 0xd2, 0xef, 0xb1, 0x45, 0x44, 0x8c, 0x75, 0xd8,
+	0xf2, 0xbd, 0x89, 0x17, 0x53, 0xa9, 0x03, 0x76, 0xa0, 0xc8, 0xb8, 0xcb, 0xe7, 0x4c, 0x6a, 0xac,
+	0xb6, 0x5f, 0xa7, 0x86, 0x5c, 0xc7, 0xde, 0xea, 0xcb, 0x06, 0x27, 0x6a, 0x24, 0xaf, 0xa0, 0xa8,
+	0x32, 0x58, 0x82, 0x7c, 0xe7, 0xf4, 0xb4, 0x96, 0xc3, 0x32, 0x14, 0x9c, 0x93, 0x4e, 0xb7, 0x66,
+	0x20, 0x40, 0x71, 0x78, 0x2e, 0x63, 0x93, 0x9c, 0xc0, 0x13, 0xc1, 0x79, 0x21, 0x4d, 0xf0, 0xcf,
+	0x92, 0xc9, 0x08, 0x76, 0x05, 0x4d, 0x4a, 0x20, 0x86, 0xf7, 0x0e, 0xca, 0x93, 0x28, 0x11, 0x3d,
+	0xad, 0xdd, 0xf4, 0x4b, 0xe2, 0x31, 0x27, 0x10, 0x3c, 0x04, 0x98, 0xd2, 0x05, 0xbf, 0xb8, 0xbd,
+	0x65, 0x34, 0xa6, 0xcf, 0x64, 0xc8, 0x4b, 0x40, 0x87, 0xba, 0x2b, 0xee, 0x3d, 0x7b, 0x43, 0xe4,
+	0x0d, 0xd4, 0x34, 0x94, 0x10, 0x92, 0x3a, 0xc9, 0xd0, 0x9c, 0x74, 0x04, 0xf5, 0x2e, 0xf5, 0x29,
+	0xa7, 0x1b, 0x38, 0xeb, 0x80, 0x4b, 0xb8, 0x99, 0x7f, 0xdf, 0xfe, 0xb3, 0x05, 0xf9, 0xce, 0x65,
+	0x0f, 0x3f, 0x42, 0x25, 0x79, 0xe7, 0x68, 0xaf, 0x5c, 0x1e, 0x92, 0xd6, 0x5e, 0xbb, 0x58, 0x48,
+	0x0e, 0x7b, 0xb0, 0x9d, 0x59, 0x4b, 0x78, 0xa0, 0x5f, 0xb9, 0xbe, 0xc3, 0x6c, 0x7b, 0x4d, 0x55,
+	0x51, 0x39, 0x50, 0xd5, 0x97, 0x02, 0x3e, 0x4f, 0xf1, 0x2b, 0xf7, 0x88, 0xfd, 0x6c, 0x3d, 0x20,
+	0x91, 0x97, 0x79, 0x1b, 0x59, 0x79, 0x0f, 0x9f, 0x62, 0x56, 0xde, 0xf2, 0x83, 0x22, 0x39, 0xbc,
+	0x52, 0x56, 0xd1, 0x5c, 0x8c, 0x64, 0xb3, 0xc5, 0xed, 0xa7, 0x3a, 0x46, 0xf3, 0x1a, 0xc9, 0xe1,
+	0x57, 0xb5, 0xee, 0x75, 0x27, 0xe3, 0x0b, 0xbd, 0x69, 0xa5, 0xcf, 0x37, 0x31, 0x9f, 0x2b, 0x4b,
+	0x65, 0x45, 0x65, 0x27, 0xf0, 0xd0, 0x94, 0xd9, 0x09, 0x2c, 0x9b, 0x91, 0xe4, 0x70, 0x10, 0xdb,
+	0x49, 0x63, 0x3c, 0x4c, 0x7b, 0x56, 0x99, 0xd2, 0x3e, 0x58, 0x5b, 0x57, 0xac, 0x43, 0xd8, 0x53,
+	0x79, 0xed, 0x1b, 0xff, 0x97, 0xf6, 0xb8, 0x0d, 0xfb, 0x5e, 0xd0, 0xe2, 0x74, 0xc1, 0x3d, 0x9f,
+	0x2a, 0xec, 0xf5, 0x5d, 0x38, 0xbb, 0x39, 0xde, 0x19, 0xa8, 0xdc, 0x50, 0xa4, 0x2e, 0x8d, 0x9f,
+	0x66, 0x79, 0x30, 0xb8, 0x1e, 0xf6, 0x4f, 0x9c, 0xfe, 0xa8, 0x28, 0xff, 0x8a, 0xdf, 0xff, 0x0d,
+	0x00, 0x00, 0xff, 0xff, 0xfa, 0xe2, 0xd0, 0x29, 0x99, 0x07, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -232,6 +864,13 @@ const _ = grpc.SupportPackageIsVersion4
 type APIClient interface {
 	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadReply, error)
 	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
+	SetupMailboxes(ctx context.Context, in *SetupMailboxesRequest, opts ...grpc.CallOption) (*SetupMailboxesReply, error)
+	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageReply, error)
+	ListInboxMessages(ctx context.Context, in *ListInboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error)
+	ListOutboxMessages(ctx context.Context, in *ListOutboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error)
+	ReadInboxMessage(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageReply, error)
+	DeleteInboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error)
+	DeleteOutboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error)
 }
 
 type aPIClient struct {
@@ -260,10 +899,80 @@ func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opt
 	return out, nil
 }
 
+func (c *aPIClient) SetupMailboxes(ctx context.Context, in *SetupMailboxesRequest, opts ...grpc.CallOption) (*SetupMailboxesReply, error) {
+	out := new(SetupMailboxesReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/SetupMailboxes", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageReply, error) {
+	out := new(SendMessageReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/SendMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListInboxMessages(ctx context.Context, in *ListInboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error) {
+	out := new(ListMessagesReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/ListInboxMessages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ListOutboxMessages(ctx context.Context, in *ListOutboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error) {
+	out := new(ListMessagesReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/ListOutboxMessages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) ReadInboxMessage(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageReply, error) {
+	out := new(ReadMessageReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/ReadInboxMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) DeleteInboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error) {
+	out := new(DeleteMessageReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/DeleteInboxMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIClient) DeleteOutboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error) {
+	out := new(DeleteMessageReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/DeleteOutboxMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // APIServer is the server API for API service.
 type APIServer interface {
 	GetThread(context.Context, *GetThreadRequest) (*GetThreadReply, error)
 	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
+	SetupMailboxes(context.Context, *SetupMailboxesRequest) (*SetupMailboxesReply, error)
+	SendMessage(context.Context, *SendMessageRequest) (*SendMessageReply, error)
+	ListInboxMessages(context.Context, *ListInboxMessagesRequest) (*ListMessagesReply, error)
+	ListOutboxMessages(context.Context, *ListOutboxMessagesRequest) (*ListMessagesReply, error)
+	ReadInboxMessage(context.Context, *ReadMessageRequest) (*ReadMessageReply, error)
+	DeleteInboxMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageReply, error)
+	DeleteOutboxMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageReply, error)
 }
 
 // UnimplementedAPIServer can be embedded to have forward compatible implementations.
@@ -275,6 +984,27 @@ func (*UnimplementedAPIServer) GetThread(ctx context.Context, req *GetThreadRequ
 }
 func (*UnimplementedAPIServer) ListThreads(ctx context.Context, req *ListThreadsRequest) (*ListThreadsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListThreads not implemented")
+}
+func (*UnimplementedAPIServer) SetupMailboxes(ctx context.Context, req *SetupMailboxesRequest) (*SetupMailboxesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetupMailboxes not implemented")
+}
+func (*UnimplementedAPIServer) SendMessage(ctx context.Context, req *SendMessageRequest) (*SendMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (*UnimplementedAPIServer) ListInboxMessages(ctx context.Context, req *ListInboxMessagesRequest) (*ListMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListInboxMessages not implemented")
+}
+func (*UnimplementedAPIServer) ListOutboxMessages(ctx context.Context, req *ListOutboxMessagesRequest) (*ListMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListOutboxMessages not implemented")
+}
+func (*UnimplementedAPIServer) ReadInboxMessage(ctx context.Context, req *ReadMessageRequest) (*ReadMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadInboxMessage not implemented")
+}
+func (*UnimplementedAPIServer) DeleteInboxMessage(ctx context.Context, req *DeleteMessageRequest) (*DeleteMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteInboxMessage not implemented")
+}
+func (*UnimplementedAPIServer) DeleteOutboxMessage(ctx context.Context, req *DeleteMessageRequest) (*DeleteMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteOutboxMessage not implemented")
 }
 
 func RegisterAPIServer(s *grpc.Server, srv APIServer) {
@@ -317,6 +1047,132 @@ func _API_ListThreads_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _API_SetupMailboxes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetupMailboxesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).SetupMailboxes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/SetupMailboxes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).SetupMailboxes(ctx, req.(*SetupMailboxesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/SendMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).SendMessage(ctx, req.(*SendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListInboxMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInboxMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListInboxMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/ListInboxMessages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListInboxMessages(ctx, req.(*ListInboxMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ListOutboxMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOutboxMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ListOutboxMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/ListOutboxMessages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ListOutboxMessages(ctx, req.(*ListOutboxMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_ReadInboxMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).ReadInboxMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/ReadInboxMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).ReadInboxMessage(ctx, req.(*ReadMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_DeleteInboxMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).DeleteInboxMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/DeleteInboxMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).DeleteInboxMessage(ctx, req.(*DeleteMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _API_DeleteOutboxMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServer).DeleteOutboxMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/users.pb.API/DeleteOutboxMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServer).DeleteOutboxMessage(ctx, req.(*DeleteMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _API_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "users.pb.API",
 	HandlerType: (*APIServer)(nil),
@@ -328,6 +1184,34 @@ var _API_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListThreads",
 			Handler:    _API_ListThreads_Handler,
+		},
+		{
+			MethodName: "SetupMailboxes",
+			Handler:    _API_SetupMailboxes_Handler,
+		},
+		{
+			MethodName: "SendMessage",
+			Handler:    _API_SendMessage_Handler,
+		},
+		{
+			MethodName: "ListInboxMessages",
+			Handler:    _API_ListInboxMessages_Handler,
+		},
+		{
+			MethodName: "ListOutboxMessages",
+			Handler:    _API_ListOutboxMessages_Handler,
+		},
+		{
+			MethodName: "ReadInboxMessage",
+			Handler:    _API_ReadInboxMessage_Handler,
+		},
+		{
+			MethodName: "DeleteInboxMessage",
+			Handler:    _API_DeleteInboxMessage_Handler,
+		},
+		{
+			MethodName: "DeleteOutboxMessage",
+			Handler:    _API_DeleteOutboxMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

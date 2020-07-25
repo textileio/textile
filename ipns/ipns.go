@@ -14,7 +14,7 @@ import (
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	c "github.com/textileio/textile/collections"
+	mdb "github.com/textileio/textile/mongodb"
 	"github.com/textileio/textile/util"
 )
 
@@ -31,7 +31,7 @@ const (
 
 // Manager handles bucket name publishing to IPNS.
 type Manager struct {
-	keys    *c.IPNSKeys
+	keys    *mdb.IPNSKeys
 	keyAPI  iface.KeyAPI
 	nameAPI iface.NameAPI
 
@@ -42,7 +42,7 @@ type Manager struct {
 }
 
 // NewManager returns a new IPNS manager.
-func NewManager(keys *c.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, debug bool) (*Manager, error) {
+func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, debug bool) (*Manager, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"ipns": logging.LevelDebug,

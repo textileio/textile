@@ -1,4 +1,4 @@
-package collections
+package mongodb
 
 import (
 	"context"
@@ -8,7 +8,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const tokenLen = 44
+const (
+	tokenLen = 44
+
+	DuplicateErrMsg = "E11000 duplicate key error"
+)
 
 type ctxKey string
 
@@ -24,8 +28,7 @@ type Collections struct {
 	IPNSKeys     *IPNSKeys
 	FFSInstances *FFSInstances
 
-	Users    *Users
-	Messages *Messages
+	Users *Users
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -59,10 +62,6 @@ func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collect
 			return nil, err
 		}
 		c.Users, err = NewUsers(ctx, db)
-		if err != nil {
-			return nil, err
-		}
-		c.Messages, err = NewMessages(ctx, db)
 		if err != nil {
 			return nil, err
 		}

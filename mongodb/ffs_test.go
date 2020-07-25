@@ -1,4 +1,4 @@
-package collections_test
+package mongodb_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	. "github.com/textileio/textile/collections"
+	. "github.com/textileio/textile/mongodb"
 )
 
 func TestFFSInstances_Create(t *testing.T) {

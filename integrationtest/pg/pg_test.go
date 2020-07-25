@@ -37,7 +37,7 @@ func TestCreateBucket(t *testing.T) {
 	require.Equal(t, 0, len(lst))
 
 	_, err = client.Init(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	lst, err = powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 	// Create bucket with a file.
 	b, err := client.Init(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
@@ -105,7 +105,7 @@ func TestArchiveWatch(t *testing.T) {
 	ctx, client := setup(t)
 
 	b, err := client.Init(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(4 * time.Second)
 	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
@@ -136,7 +136,7 @@ func TestFailingArchive(t *testing.T) {
 	ctx, client := setup(t)
 
 	b, err := client.Init(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(4 * time.Second)
 	// Store a file that is bigger than the sector size, this
 	// should lead to an error on the PG side.
@@ -175,11 +175,11 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bucketKey string, fileName string) string {
 	t.Helper()
 	f, err := os.Open("testdata/" + fileName)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() { f.Close() })
 
 	pth, root, err := client.PushPath(ctx, bucketKey, fileName, f)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, pth)
 	assert.NotEmpty(t, root)
 
@@ -206,25 +206,25 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	}
 	apitest.MakeTextileWithConfig(t, conf, true)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	hubclient, err := hc.NewClient(target, opts...)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	threadsclient, err := tc.NewClient(target, opts...)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	user := apitest.Signup(t, hubclient, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
 	ctx = common.NewThreadNameContext(ctx, "buckets")
 	err = threadsclient.NewDB(ctx, id)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	ctx = common.NewThreadIDContext(ctx, id)
 	t.Cleanup(func() {
 		err := client.Close()
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 
 	return ctx, client

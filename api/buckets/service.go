@@ -24,14 +24,15 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/db"
 	"github.com/textileio/powergate/ffs"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
-	bc "github.com/textileio/textile/buckets/collection"
-	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
+	mdb "github.com/textileio/textile/mongodb"
+	tdb "github.com/textileio/textile/threaddb"
 	"github.com/textileio/textile/util"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -67,8 +68,8 @@ const (
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections               *c.Collections
-	Buckets                   *bc.Buckets
+	Collections               *mdb.Collections
+	Buckets                   *tdb.Buckets
 	BucketsMaxSize            int64
 	BucketsTotalMaxSize       int64
 	BucketsMaxNumberPerThread int
@@ -87,12 +88,13 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	list, err := s.Buckets.List(ctx, dbID, bc.WithToken(dbToken))
+	list, err := s.Buckets.List(ctx, dbID, &db.Query{}, &tdb.Bucket{}, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
-	roots := make([]*pb.Root, len(list))
-	for i, buck := range list {
+	bucks := list.([]*tdb.Bucket)
+	roots := make([]*pb.Root, len(bucks))
+	for i, buck := range bucks {
 		roots[i] = &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
@@ -115,10 +117,11 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	// Control if the user has reached max number of created buckets.
-	bucks, err := s.Buckets.List(ctx, dbID, bc.WithToken(dbToken))
+	list, err := s.Buckets.List(ctx, dbID, &db.Query{}, &tdb.Bucket{}, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, fmt.Errorf("getting existing buckets: %s", err)
 	}
+	bucks := list.([]*tdb.Bucket)
 
 	if s.BucketsMaxNumberPerThread > 0 && len(bucks) >= s.BucketsMaxNumberPerThread {
 		return nil, ErrTooManyBucketsInThread
@@ -169,7 +172,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 }
 
 // createBucket returns a new bucket and seed node.
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, key []byte, bootCid cid.Cid) (buck *bc.Bucket, seed ipld.Node, err error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, key []byte, bootCid cid.Cid) (buck *tdb.Bucket, seed ipld.Node, err error) {
 	// Make a random seed, which ensures a bucket's uniqueness
 	seed, err = makeSeed(key)
 	if err != nil {
@@ -197,7 +200,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	}
 
 	// Create the bucket, using the IPNS key as instance ID
-	buck, err = s.Buckets.Create(ctx, dbID, bkey, pth, bc.WithName(name), bc.WithKey(key), bc.WithToken(dbToken))
+	buck, err = s.Buckets.New(ctx, dbID, bkey, pth, tdb.WithNewBucketName(name), tdb.WithNewBucketKey(key), tdb.WithNewBucketToken(dbToken))
 	if err != nil {
 		return
 	}
@@ -210,7 +213,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 				return nil, nil, err
 			}
 			buck.DNSRecord = rec.ID
-			if err = s.Buckets.Save(ctx, dbID, buck, bc.WithToken(dbToken)); err != nil {
+			if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -268,7 +271,7 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 }
 
 // createBootstrapedPath creates an IPFS path which is the bootCid UnixFS DAG,
-// with bc.SeedName seed file added to the root of the DAG. The returned path will
+// with tdb.SeedName seed file added to the root of the DAG. The returned path will
 // be pinned.
 func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bootCid cid.Cid, key []byte) (path.Resolved, error) {
 	// Check early if we're about to pin some very big Cid exceeding the quota.
@@ -560,7 +563,8 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -585,14 +589,15 @@ func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksRep
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
 	return s.createLinks(dbID, buck), nil
 }
 
-func (s *Service) createLinks(dbID thread.ID, buck *bc.Bucket) *pb.LinksReply {
+func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksReply {
 	var threadLink, wwwLink, ipnsLink string
 	threadLink = fmt.Sprintf("%s/thread/%s/%s/%s", s.GatewayURL, dbID, buckets.CollectionName, buck.Key)
 	if s.DNSManager != nil && s.DNSManager.Domain != "" {
@@ -620,7 +625,8 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, fmt.Errorf("get bucket: %s", err)
 	}
@@ -682,7 +688,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 
 	buck.Path = dirpth.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.Save(ctx, dbID, buck, bc.WithToken(dbToken)); err != nil {
+	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("saving new bucket state: %s", err)
 	}
 	return &pb.SetPathReply{}, nil
@@ -857,20 +863,18 @@ func parsePath(pth string) (fpth string, err error) {
 	return
 }
 
-func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, key, pth string, token thread.Token) (*bc.Bucket, path.Path, error) {
+func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, key, pth string, token thread.Token) (*tdb.Bucket, path.Path, error) {
 	filePath := strings.TrimPrefix(pth, "/")
-	buck, err := s.Buckets.Get(ctx, dbID, key, bc.WithToken(token))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, key, buck, tdb.WithToken(token))
 	if err != nil {
 		return nil, nil, err
-	}
-	if buck == nil {
-		return nil, nil, status.Error(codes.NotFound, "bucket not found")
 	}
 	npth, err := inflateFilePath(buck, filePath)
 	return buck, npth, err
 }
 
-func inflateFilePath(buck *bc.Bucket, filePath string) (path.Path, error) {
+func inflateFilePath(buck *tdb.Bucket, filePath string) (path.Path, error) {
 	npth := path.New(filepath.Join(buck.Path, filePath))
 	if err := npth.IsValid(); err != nil {
 		return nil, err
@@ -878,7 +882,7 @@ func inflateFilePath(buck *bc.Bucket, filePath string) (path.Path, error) {
 	return npth, nil
 }
 
-func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *bc.Bucket, pth path.Path, includeNextLevel bool) (*pb.ListPathReply, error) {
+func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *tdb.Bucket, pth path.Path, includeNextLevel bool) (*pb.ListPathReply, error) {
 	item, err := s.pathToItem(ctx, pth, includeNextLevel, buck.GetEncKey())
 	if err != nil {
 		return nil, err
@@ -922,7 +926,8 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	buck, err := s.Buckets.Get(server.Context(), dbID, key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err = s.Buckets.Get(server.Context(), dbID, key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return err
 	}
@@ -1054,7 +1059,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 
 	buck.Path = dirpth.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.Save(server.Context(), dbID, buck, bc.WithToken(dbToken)); err != nil {
+	if err = s.Buckets.SaveSafe(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return err
 	}
 
@@ -1425,7 +1430,8 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -1443,7 +1449,7 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 			return nil, err
 		}
 	}
-	if err = s.Buckets.Delete(ctx, dbID, buck.Key, bc.WithToken(dbToken)); err != nil {
+	if err = s.Buckets.Delete(ctx, dbID, buck.Key, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	if err = s.IPNSManager.RemoveKey(ctx, buck.Key); err != nil {
@@ -1479,7 +1485,8 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err = s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -1507,7 +1514,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 
 	buck.Path = dirpth.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.Save(ctx, dbID, buck, bc.WithToken(dbToken)); err != nil {
+	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 
@@ -1604,7 +1611,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -1612,7 +1620,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if err != nil {
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
-	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), p.Cid(), bc.WithToken(dbToken)); err != nil {
+	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), p.Cid(), tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("archiving bucket %s: %s", req.GetKey(), err)
 	}
 	log.Debug("archived bucket")
@@ -1691,7 +1699,8 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck, err := s.Buckets.Get(ctx, dbID, req.Key, bc.WithToken(dbToken))
+	buck := &tdb.Bucket{}
+	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -1805,18 +1814,18 @@ func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
 	return u.BucketsTotalSize, nil
 }
 
-func accountFromContext(ctx context.Context) *c.Account {
-	if org, ok := c.OrgFromContext(ctx); ok {
+func accountFromContext(ctx context.Context) *mdb.Account {
+	if org, ok := mdb.OrgFromContext(ctx); ok {
 		return org
 	}
-	if dev, ok := c.DevFromContext(ctx); ok {
+	if dev, ok := mdb.DevFromContext(ctx); ok {
 		return dev
 	}
 	return nil
 }
 
-func userFromContext(ctx context.Context) *c.User {
-	if user, ok := c.UserFromContext(ctx); ok {
+func userFromContext(ctx context.Context) *mdb.User {
+	if user, ok := mdb.UserFromContext(ctx); ok {
 		return user
 	}
 	return nil

@@ -30,7 +30,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	bucketsclient "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/collections"
+	mdb "github.com/textileio/textile/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 )
@@ -61,7 +61,7 @@ type Gateway struct {
 	subdomains    bool
 	bucketsDomain string
 
-	collections *collections.Collections
+	collections *mdb.Collections
 	apiSession  string
 	threads     *threadsclient.Client
 	buckets     *bucketsclient.Client
@@ -80,7 +80,7 @@ type Config struct {
 	BucketsDomain   string
 	APIAddr         ma.Multiaddr
 	APISession      string
-	Collections     *collections.Collections
+	Collections     *mdb.Collections
 	IPFSClient      iface.CoreAPI
 	EmailSessionBus *broadcast.Broadcaster
 	Hub             bool
@@ -295,10 +295,10 @@ func (g *Gateway) consentInvite(c *gin.Context) {
 			}
 		}
 		if dev != nil {
-			if err := g.collections.Accounts.AddMember(ctx, invite.Org, collections.Member{
+			if err := g.collections.Accounts.AddMember(ctx, invite.Org, mdb.Member{
 				Key:      dev.Key,
 				Username: dev.Username,
-				Role:     collections.OrgMember,
+				Role:     mdb.OrgMember,
 			}); err != nil {
 				if err == mongo.ErrNoDocuments {
 					if err := g.collections.Invites.Delete(ctx, invite.Token); err != nil {
