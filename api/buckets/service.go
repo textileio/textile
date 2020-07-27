@@ -564,6 +564,17 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 	if err != nil {
 		return nil, err
 	}
+
+	buckPath := path.New(buck.Path)
+	stat, err := s.IPFSClient.Object().Stat(ctx, buckPath)
+	if err != nil {
+		return nil, fmt.Errorf("get stats of bucket path: %s", err)
+	}
+	total, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting buckets total size: %s", err)
+	}
+
 	return &pb.RootReply{
 		Root: &pb.Root{
 			Key:       buck.Key,
@@ -573,6 +584,8 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
+		Size:  int64(stat.CumulativeSize),
+		Total: total,
 	}, nil
 }
 

@@ -40,6 +40,8 @@ message RootRequest {
 
 message RootReply {
     Root root = 1;
+    int64 size = 2;
+    int64 total = 3;
 }
 
 message LinksRequest {
