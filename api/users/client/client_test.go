@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -254,7 +253,7 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 }
 
-func TestClient_SetupMailbox(t *testing.T) {
+func TestClient_SetupMail(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -270,11 +269,13 @@ func TestClient_SetupMailbox(t *testing.T) {
 	require.NoError(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
 
-	err = client.SetupMailboxes(ctx)
+	inbox, sentbox, err := client.SetupMail(ctx)
 	require.NoError(t, err)
+	assert.NotEmpty(t, inbox)
+	assert.NotEmpty(t, sentbox)
 
 	// should be idempotent
-	err = client.SetupMailboxes(ctx)
+	_, _, err = client.SetupMail(ctx)
 	require.NoError(t, err)
 }
 
@@ -286,8 +287,8 @@ func TestClient_SendMessage(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, _ := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, _ := setupUserMail(t, client, threads, key.Key)
 
 	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
@@ -303,8 +304,8 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, tctx := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, tctx := setupUserMail(t, client, threads, key.Key)
 
 	var i int
 	var readID string
@@ -318,7 +319,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	}
 
 	t.Run("check order", func(t *testing.T) {
-		list, _, err := client.ListInboxMessages(tctx, to)
+		list, err := client.ListInboxMessages(tctx, to)
 		require.NoError(t, err)
 		assert.Len(t, list, 100)
 		for i := 0; i < len(list)-1; i++ {
@@ -327,18 +328,17 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	})
 
 	t.Run("with limit", func(t *testing.T) {
-		list, next, err := client.ListInboxMessages(tctx, to, c.WithLimit(10))
+		list, err := client.ListInboxMessages(tctx, to, c.WithLimit(10))
 		require.NoError(t, err)
 		assert.Len(t, list, 10)
-		assert.False(t, next.IsZero())
 	})
 
 	t.Run("with seek", func(t *testing.T) {
 		var all []c.Message
-		seek := ulid.MustNew(ulid.MaxTime(), rand.Reader).String()
+		var seek string
 		pageSize := 10
 		for { // 10 pages
-			list, _, err := client.ListInboxMessages(tctx, to, c.WithLimit(pageSize+1), c.WithSeek(seek))
+			list, err := client.ListInboxMessages(tctx, to, c.WithLimit(pageSize+1), c.WithSeek(seek))
 			require.NoError(t, err)
 			all = append(all, list[:pageSize]...)
 			if len(list) < pageSize+1 {
@@ -356,21 +356,21 @@ func TestClient_ListInboxMessages(t *testing.T) {
 		err = client.ReadInboxMessage(tctx, readID)
 		require.NoError(t, err)
 
-		list1, _, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.All))
+		list1, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.All))
 		require.NoError(t, err)
 		assert.Len(t, list1, 100)
-		list2, _, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Read))
+		list2, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Read))
 		require.NoError(t, err)
 		assert.Len(t, list2, 1)
 		assert.False(t, list2[0].ReadAt.IsZero())
-		list3, _, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Unread))
+		list3, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Unread))
 		require.NoError(t, err)
 		assert.Len(t, list3, 99)
 		assert.True(t, list3[0].ReadAt.IsZero())
 	})
 }
 
-func TestClient_ListOutboxMessages(t *testing.T) {
+func TestClient_ListSentMessages(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -378,18 +378,17 @@ func TestClient_ListOutboxMessages(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, _ := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, _ := setupUserMail(t, client, threads, key.Key)
 
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("one"))
 	require.NoError(t, err)
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("two"))
 	require.NoError(t, err)
 
-	list, next, err := client.ListOutboxMessages(fctx, from, c.WithLimit(1))
+	list, err := client.ListSentMessages(fctx, from, c.WithLimit(1))
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
-	assert.False(t, next.IsZero())
 }
 
 func TestClient_ReadInboxMessage(t *testing.T) {
@@ -400,8 +399,8 @@ func TestClient_ReadInboxMessage(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, tctx := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, tctx := setupUserMail(t, client, threads, key.Key)
 
 	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
@@ -409,7 +408,7 @@ func TestClient_ReadInboxMessage(t *testing.T) {
 	err = client.ReadInboxMessage(tctx, res.ID)
 	require.NoError(t, err)
 
-	list, _, err := client.ListInboxMessages(tctx, to)
+	list, err := client.ListInboxMessages(tctx, to)
 	require.NoError(t, err)
 	assert.False(t, list[0].ReadAt.IsZero())
 }
@@ -422,8 +421,8 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, tctx := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, tctx := setupUserMail(t, client, threads, key.Key)
 
 	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
@@ -431,12 +430,12 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 	err = client.DeleteInboxMessage(tctx, res.ID)
 	require.NoError(t, err)
 
-	list, _, err := client.ListInboxMessages(tctx, to)
+	list, err := client.ListInboxMessages(tctx, to)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }
 
-func TestClient_DeleteOutboxMessage(t *testing.T) {
+func TestClient_DeleteSentMessage(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -444,21 +443,21 @@ func TestClient_DeleteOutboxMessage(t *testing.T) {
 	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMailboxes(t, client, threads, key.Key)
-	to, _ := setupUserMailboxes(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, key.Key)
+	to, _ := setupUserMail(t, client, threads, key.Key)
 
 	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
 
-	err = client.DeleteOutboxMessage(fctx, res.ID)
+	err = client.DeleteSentMessage(fctx, res.ID)
 	require.NoError(t, err)
 
-	list, _, err := client.ListOutboxMessages(fctx, to)
+	list, err := client.ListSentMessages(fctx, to)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }
 
-func setupUserMailboxes(t *testing.T, client *c.Client, threads *tc.Client, key string) (thread.Identity, context.Context) {
+func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key string) (thread.Identity, context.Context) {
 	ctx := common.NewAPIKeyContext(context.Background(), key)
 	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -466,7 +465,7 @@ func setupUserMailboxes(t *testing.T, client *c.Client, threads *tc.Client, key 
 	tok, err := threads.GetToken(ctx, id)
 	require.NoError(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
-	err = client.SetupMailboxes(ctx)
+	_, _, err = client.SetupMail(ctx)
 	require.NoError(t, err)
 	return id, ctx
 }

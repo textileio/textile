@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/oklog/ulid"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -24,20 +26,20 @@ import (
 var (
 	log = logging.Logger("usersapi")
 
-	// ErrInboxNotFound indicates that an inbox has not been setup for a message receiver.
-	ErrInboxNotFound = errors.New("message inbox not found")
-	// ErrOutboxNotFound indicates that an outbox has not been setup for a message sender.
-	ErrOutboxNotFound = errors.New("message outbox not found")
+	// ErrInboxNotFound indicates that an inbox has not been setup for a mail receiver.
+	ErrInboxNotFound = errors.New("inbox not found")
+	// ErrSentboxNotFound indicates that a sent mailbox has not been setup for a mail sender.
+	ErrSentboxNotFound = errors.New("sentbox not found")
 )
 
 const (
-	inboxName  = "messages-inbox"
-	outboxName = "messages-outbox"
+	inboxName   = "messages-inbox"
+	sentboxName = "messages-sent"
 )
 
 type Service struct {
 	Collections *mdb.Collections
-	Messages    *tdb.Messages
+	Mail        *tdb.Mail
 }
 
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadReply, error) {
@@ -85,8 +87,8 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	return reply, nil
 }
 
-func (s *Service) SetupMailboxes(ctx context.Context, _ *pb.SetupMailboxesRequest) (*pb.SetupMailboxesReply, error) {
-	log.Debugf("received setup mailboxes request")
+func (s *Service) SetupMail(ctx context.Context, _ *pb.SetupMailRequest) (*pb.SetupMailReply, error) {
+	log.Debugf("received setup mail request")
 
 	user, ok := mdb.UserFromContext(ctx)
 	if !ok {
@@ -94,17 +96,17 @@ func (s *Service) SetupMailboxes(ctx context.Context, _ *pb.SetupMailboxesReques
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	inbox, err := s.getOrCreateBox(ctx, user.Key, inboxName, tdb.WithToken(dbToken))
+	inbox, err := s.getOrCreateMailbox(ctx, user.Key, inboxName, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
-	outbox, err := s.getOrCreateBox(ctx, user.Key, outboxName, tdb.WithToken(dbToken))
+	sentbox, err := s.getOrCreateMailbox(ctx, user.Key, sentboxName, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SetupMailboxesReply{
-		InboxID:  inbox.Bytes(),
-		OutboxID: outbox.Bytes(),
+	return &pb.SetupMailReply{
+		InboxID: inbox.Bytes(),
+		SentID:  sentbox.Bytes(),
 	}, nil
 }
 
@@ -125,7 +127,7 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 	if !ok || err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Bad message signature")
 	}
-	outbox, err := s.getOutbox(ctx, user.Key)
+	sentbox, err := s.getSentbox(ctx, user.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -141,10 +143,10 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 		Signature: base64.StdEncoding.EncodeToString(req.Signature),
 		CreatedAt: time.Now().UnixNano(),
 	}
-	if _, err := s.Messages.Create(ctx, outbox, msg, tdb.WithToken(dbToken)); err != nil {
+	if _, err := s.Mail.Create(ctx, sentbox, msg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	if _, err := s.Messages.Create(ctx, inbox, msg, tdb.WithToken(dbToken)); err != nil {
+	if _, err := s.Mail.Create(ctx, inbox, msg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.SendMessageReply{
@@ -166,18 +168,15 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 	if err != nil {
 		return nil, err
 	}
-	list, next, err := s.listMessages(ctx, inbox, req.Seek, req.Limit, int32(req.Status), dbToken)
+	list, err := s.listMessages(ctx, inbox, req.Seek, req.Limit, int32(req.Status), dbToken)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.ListMessagesReply{
-		Messages:   list,
-		NextOffset: next,
-	}, nil
+	return &pb.ListMessagesReply{Messages: list}, nil
 }
 
-func (s *Service) ListOutboxMessages(ctx context.Context, req *pb.ListOutboxMessagesRequest) (*pb.ListMessagesReply, error) {
-	log.Debugf("received list outbox messages request")
+func (s *Service) ListSentMessages(ctx context.Context, req *pb.ListSentMessagesRequest) (*pb.ListMessagesReply, error) {
+	log.Debugf("received list sent messages request")
 
 	user, ok := mdb.UserFromContext(ctx)
 	if !ok {
@@ -185,26 +184,22 @@ func (s *Service) ListOutboxMessages(ctx context.Context, req *pb.ListOutboxMess
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	outbox, err := s.getOutbox(ctx, user.Key)
+	sentbox, err := s.getSentbox(ctx, user.Key)
 	if err != nil {
 		return nil, err
 	}
-	list, next, err := s.listMessages(ctx, outbox, req.Seek, req.Limit, 0, dbToken)
+	list, err := s.listMessages(ctx, sentbox, req.Seek, req.Limit, 0, dbToken)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.ListMessagesReply{
-		Messages:   list,
-		NextOffset: next,
-	}, nil
+	return &pb.ListMessagesReply{Messages: list}, nil
 }
 
-func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string, limit int64, stat int32, token thread.Token) ([]*pb.Message, int64, error) {
-	q := (&db.Query{}).LimitTo(int(limit)) //.SkipNum(int(offset))
-	//if offset > 0 {
-	//	q.And("created_at").Gt(float64(offset))
-	//}
-	q.Seek = seek
+func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string, limit int64, stat int32, token thread.Token) ([]*pb.Message, error) {
+	if seek == "" {
+		seek = ulid.MustNew(ulid.MaxTime(), rand.Reader).String()
+	}
+	q := db.OrderByIDDesc().SeekID(coredb.InstanceID(seek)).LimitTo(int(limit))
 	switch stat {
 	case 0:
 		break
@@ -213,25 +208,21 @@ func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string,
 	case 2:
 		q.And("read_at").Eq(float64(0))
 	default:
-		return nil, 0, fmt.Errorf("unknown message status")
+		return nil, fmt.Errorf("unknown message status")
 	}
-	res, err := s.Messages.List(ctx, dbID, q, &tdb.Message{}, tdb.WithToken(token))
+	res, err := s.Mail.List(ctx, dbID, q, &tdb.Message{}, tdb.WithToken(token))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	list := res.([]*tdb.Message)
 	pblist := make([]*pb.Message, len(list))
-	var next int64
 	for i, m := range list {
 		pblist[i], err = messageToPb(m)
 		if err != nil {
-			return nil, 0, err
-		}
-		if i == len(list)-1 {
-			next = m.CreatedAt
+			return nil, err
 		}
 	}
-	return pblist, next, nil
+	return pblist, nil
 }
 
 func messageToPb(m *tdb.Message) (*pb.Message, error) {
@@ -268,12 +259,12 @@ func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadMessageReque
 		return nil, err
 	}
 	msg := &tdb.Message{}
-	err = s.Messages.Get(ctx, inbox, req.ID, msg, tdb.WithToken(dbToken))
+	err = s.Mail.Get(ctx, inbox, req.ID, msg, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
 	msg.ReadAt = time.Now().UnixNano()
-	if err := s.Messages.Save(ctx, inbox, msg, tdb.WithToken(dbToken)); err != nil {
+	if err := s.Mail.Save(ctx, inbox, msg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.ReadMessageReply{
@@ -294,14 +285,14 @@ func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteMessageR
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Messages.Delete(ctx, inbox, req.ID, tdb.WithToken(dbToken)); err != nil {
+	if err := s.Mail.Delete(ctx, inbox, req.ID, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.DeleteMessageReply{}, nil
 }
 
-func (s *Service) DeleteOutboxMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
-	log.Debugf("received delete outbox message request")
+func (s *Service) DeleteSentMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
+	log.Debugf("received delete sent message request")
 
 	user, ok := mdb.UserFromContext(ctx)
 	if !ok {
@@ -309,11 +300,11 @@ func (s *Service) DeleteOutboxMessage(ctx context.Context, req *pb.DeleteMessage
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	outbox, err := s.getOutbox(ctx, user.Key)
+	sentbox, err := s.getSentbox(ctx, user.Key)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Messages.Delete(ctx, outbox, req.ID, tdb.WithToken(dbToken)); err != nil {
+	if err := s.Mail.Delete(ctx, sentbox, req.ID, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.DeleteMessageReply{}, nil
@@ -330,19 +321,19 @@ func (s *Service) getInbox(ctx context.Context, key crypto.PubKey) (thread.ID, e
 	return thrd.ID, nil
 }
 
-func (s *Service) getOutbox(ctx context.Context, key crypto.PubKey) (thread.ID, error) {
-	thrd, err := s.Collections.Threads.GetByName(ctx, outboxName, key)
+func (s *Service) getSentbox(ctx context.Context, key crypto.PubKey) (thread.ID, error) {
+	thrd, err := s.Collections.Threads.GetByName(ctx, sentboxName, key)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return thread.Undef, status.Error(codes.FailedPrecondition, ErrOutboxNotFound.Error())
+			return thread.Undef, status.Error(codes.FailedPrecondition, ErrSentboxNotFound.Error())
 		}
 		return thread.Undef, err
 	}
 	return thrd.ID, nil
 }
 
-func (s *Service) getOrCreateBox(ctx context.Context, key crypto.PubKey, name string, opts ...tdb.Option) (thread.ID, error) {
-	id, err := s.Messages.NewMailbox(ctx, name, opts...)
+func (s *Service) getOrCreateMailbox(ctx context.Context, key crypto.PubKey, name string, opts ...tdb.Option) (thread.ID, error) {
+	id, err := s.Mail.NewMailbox(ctx, name, opts...)
 	if err != nil && strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
 		thrd, err := s.Collections.Threads.GetByName(ctx, name, key)
 		if err != nil {

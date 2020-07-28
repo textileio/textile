@@ -22,6 +22,18 @@ func WithLimit(l int) ListOption {
 	}
 }
 
+// Status indicates message read status.
+type Status int
+
+const (
+	// All includes read and unread messages.
+	All Status = iota
+	// Read is only read messages.
+	Read
+	// Unread is only unread messages.
+	Unread
+)
+
 // WithStatus filters messages by read status.
 // Note: Only applies to inbox messages.
 func WithStatus(s Status) ListOption {

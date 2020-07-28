@@ -79,7 +79,7 @@ type Textile struct {
 	th    *threads.Client
 	thn   *netclient.Client
 	bucks *tdb.Buckets
-	msgs  *tdb.Messages
+	mail  *tdb.Mail
 	powc  *powc.Client
 
 	ipnsm *ipns.Manager
@@ -211,7 +211,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.msgs, err = tdb.NewMessages(t.th)
+	t.mail, err = tdb.NewMail(t.th)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 		us = &users.Service{
 			Collections: t.collections,
-			Messages:    t.msgs,
+			Mail:        t.mail,
 		}
 	}
 	bs := &buckets.Service{

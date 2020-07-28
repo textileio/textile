@@ -3,15 +3,12 @@ package local
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/radovskyb/watcher"
 	"github.com/textileio/go-threads/api/client"
 	"github.com/textileio/textile/buckets"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/textileio/textile/cmd"
 )
 
 const (
@@ -19,44 +16,12 @@ const (
 	reconnectInterval       = time.Second * 5
 )
 
-// WatchState is used to inform Watch callers about the connection state.
-type WatchState struct {
-	// State of the watch connection (online/offline).
-	State ConnectionState
-	// Error returned by the watch operation.
-	Err error
-	// Fatal indicates whether or not the associated error is fatal.
-	// (Connectivity related errors are not fatal.)
-	Fatal bool
-}
-
-// ConnectionState indicates an online/offline state.
-type ConnectionState int
-
-const (
-	// Offline indicates the remote is currently not reachable.
-	Offline ConnectionState = iota
-	// Online indicates a connection with the remote has been established.
-	Online
-)
-
-func (cs ConnectionState) String() string {
-	switch cs {
-	case Online:
-		return "online"
-	case Offline:
-		return "offline"
-	default:
-		return "unknown state"
-	}
-}
-
 // Watch watches for and auto-pushes local bucket changes at an interval,
 // and listens for and auto-pulls remote changes as they arrive.
-// Use the WithOffline option to keep watching while the local network is offline.
+// Use the WithOffline option to keep watching during network interruptions.
 // Returns a channel of watch connectivity states.
 // Cancel context to stop watching.
-func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan WatchState, error) {
+func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan cmd.WatchState, error) {
 	ctx, err := b.context(ctx)
 	if err != nil {
 		return nil, err
@@ -68,38 +33,13 @@ func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan WatchSt
 	if !args.offline {
 		return b.watchWhileConnected(ctx, args.events)
 	}
-
-	bc := backoff.NewConstantBackOff(reconnectInterval)
-	outerState := make(chan WatchState)
-	go func() {
-		defer close(outerState)
-		err := backoff.Retry(func() error {
-			state, err := b.watchWhileConnected(ctx, args.events)
-			if err != nil {
-				outerState <- WatchState{Err: err, Fatal: true}
-				return nil // Stop retrying
-			}
-			for s := range state {
-				outerState <- s
-				if s.Err != nil {
-					if s.Fatal {
-						return nil // Stop retrying
-					} else {
-						return s.Err // Connection error, keep trying
-					}
-				}
-			}
-			return nil
-		}, bc)
-		if err != nil {
-			outerState <- WatchState{Err: err, Fatal: true}
-		}
-	}()
-	return outerState, nil
+	return cmd.Watch(ctx, func(ctx context.Context) (<-chan cmd.WatchState, error) {
+		return b.watchWhileConnected(ctx, args.events)
+	}, reconnectInterval)
 }
 
 // watchWhileConnected will watch until context is canceled or an error occurs.
-func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEvent) (<-chan WatchState, error) {
+func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEvent) (<-chan cmd.WatchState, error) {
 	id, err := b.Thread()
 	if err != nil {
 		return nil, err
@@ -109,14 +49,14 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 		return nil, err
 	}
 
-	state := make(chan WatchState)
+	state := make(chan cmd.WatchState)
 	go func() {
 		defer close(state)
 		w := watcher.New()
 		defer w.Close()
 		w.SetMaxEvents(1)
 		if err := w.AddRecursive(bp); err != nil {
-			state <- WatchState{Err: err, Fatal: true}
+			state <- cmd.WatchState{Err: err, Fatal: true}
 			return
 		}
 
@@ -126,7 +66,7 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 			InstanceID: b.Key(),
 		}})
 		if err != nil {
-			state <- WatchState{Err: err, Fatal: !isConnectionErr(err)}
+			state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
 			return
 		}
 		errs := make(chan error)
@@ -164,17 +104,17 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 
 		// Manually sync once on startup
 		if err := b.watchPush(ctx, pevents); err != nil {
-			state <- WatchState{Err: err, Fatal: !isConnectionErr(err)}
+			state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
 			return
 		}
 
 		// If we made it here, we must be online
-		state <- WatchState{State: Online}
+		state <- cmd.WatchState{State: cmd.Online}
 
 		for {
 			select {
 			case err := <-errs:
-				state <- WatchState{Err: err, Fatal: !isConnectionErr(err)}
+				state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
 				return
 			case <-ctx.Done():
 				return
@@ -220,8 +160,4 @@ func (b *Bucket) watchPull(ctx context.Context, events chan<- PathEvent) error {
 		// Ignore if there's a push in progress
 	}
 	return nil
-}
-
-func isConnectionErr(err error) bool {
-	return status.Code(err) == codes.Unavailable || strings.Contains(err.Error(), "RST_STREAM")
 }
