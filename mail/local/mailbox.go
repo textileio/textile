@@ -3,7 +3,6 @@ package local
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -76,42 +75,64 @@ type MailboxEvent struct {
 type MailboxEventType int
 
 const (
-	// NewMessage indicates a mailbox has a new message.
+	// NewMessage indicates the mailbox has a new message.
 	NewMessage MailboxEventType = iota
-	// MessageDeleted indicates a message was deleted from a mailbox.
+	// MessageRead indicates a message was read in the mailbox.
+	MessageRead
+	// MessageDeleted indicates a message was deleted from the mailbox.
 	MessageDeleted
 )
 
-// Listen for mailbox events.
-// Use the WithOffline option to keep watching during network interruptions.
+// WatchInbox watches the inbox for new mailbox events.
+// If offline is true, this will keep watching during network interruptions.
 // Returns a channel of watch connectivity states.
 // Cancel context to stop watching.
-func (m *Mailbox) Listen(ctx context.Context, mevents chan<- MailboxEvent, offline bool) (<-chan cmd.WatchState, error) {
+func (m *Mailbox) WatchInbox(ctx context.Context, mevents chan<- MailboxEvent, offline bool) (<-chan cmd.WatchState, error) {
 	ctx, err := m.context(ctx)
 	if err != nil {
 		return nil, err
 	}
+	box, _, err := m.clients.Users.SetupMail(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if !offline {
-		return m.listenWhileConnected(ctx, mevents)
+		return m.listenWhileConnected(ctx, box, mevents)
 	}
 	return cmd.Watch(ctx, func(ctx context.Context) (<-chan cmd.WatchState, error) {
-		return m.listenWhileConnected(ctx, mevents)
+		return m.listenWhileConnected(ctx, box, mevents)
+	}, reconnectInterval)
+}
+
+// WatchSentbox watches the sentbox for new mailbox events.
+// If offline is true, this will keep watching during network interruptions.
+// Returns a channel of watch connectivity states.
+// Cancel context to stop watching.
+func (m *Mailbox) WatchSentbox(ctx context.Context, mevents chan<- MailboxEvent, offline bool) (<-chan cmd.WatchState, error) {
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, box, err := m.clients.Users.SetupMail(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !offline {
+		return m.listenWhileConnected(ctx, box, mevents)
+	}
+	return cmd.Watch(ctx, func(ctx context.Context) (<-chan cmd.WatchState, error) {
+		return m.listenWhileConnected(ctx, box, mevents)
 	}, reconnectInterval)
 }
 
 // listenWhileConnected will listen until context is canceled or an error occurs.
-func (m *Mailbox) listenWhileConnected(ctx context.Context, mevents chan<- MailboxEvent) (<-chan cmd.WatchState, error) {
-	inbox, _, err := m.clients.Users.SetupMail(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mevents chan<- MailboxEvent) (<-chan cmd.WatchState, error) {
 	state := make(chan cmd.WatchState)
 	go func() {
 		defer close(state)
 
 		// Start listening for remote changes
-		events, err := m.clients.Threads.Listen(ctx, inbox, []tc.ListenOption{{
+		events, err := m.clients.Threads.Listen(ctx, boxID, []tc.ListenOption{{
 			Type:       tc.ListenAll,
 			Collection: mail.CollectionName,
 		}})
@@ -127,14 +148,20 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, mevents chan<- Mailb
 					continue
 				}
 				switch e.Action.Type {
-				case tc.ActionCreate:
+				case tc.ActionCreate, tc.ActionSave:
 					var msg client.Message
-					if err := json.Unmarshal(e.Action.Instance, &msg); err != nil {
+					if err := msg.Unmarshal(e.Action.Instance); err != nil {
 						errs <- err
 						return
 					}
+					var t MailboxEventType
+					if e.Action.Type == tc.ActionCreate {
+						t = NewMessage
+					} else {
+						t = MessageRead
+					}
 					mevents <- MailboxEvent{
-						Type:      NewMessage,
+						Type:      t,
 						MessageID: db.InstanceID(e.Action.InstanceID),
 						Message:   msg,
 					}

@@ -376,9 +376,9 @@ func TestBucket_Watch(t *testing.T) {
 		for s := range state {
 			t.Logf("received watch state: %s", s.State)
 			switch s.State {
-			case Online:
+			case cmd.Online:
 				onlineStateCount++
-			case Offline:
+			case cmd.Offline:
 				offlineStateCount++
 			}
 		}

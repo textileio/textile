@@ -33,7 +33,7 @@ type Message struct {
 	Body      string `json:"body"`
 	Signature string `json:"signature"`
 	CreatedAt int64  `json:"created_at"`
-	ReadAt    int64  `json:"read_at"`
+	ReadAt    int64  `json:"read_at,omitempty"`
 }
 
 func init() {

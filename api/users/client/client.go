@@ -2,11 +2,14 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/users/pb"
+	"github.com/textileio/textile/threaddb"
 	"google.golang.org/grpc"
 )
 
@@ -82,6 +85,49 @@ func (m Message) Open(ctx context.Context, id thread.Identity) ([]byte, error) {
 // Read returns whether or not the message has been read.
 func (m Message) Read() bool {
 	return !m.ReadAt.IsZero()
+}
+
+func (m Message) Marshal() ([]byte, error) {
+	return json.Marshal(m)
+}
+
+func (m Message) Unmarshal(data []byte) error {
+	var tm threaddb.Message
+	if err := json.Unmarshal(data, &tm); err != nil {
+		return err
+	}
+	body, err := base64.StdEncoding.DecodeString(tm.Body)
+	if err != nil {
+		return err
+	}
+	sig, err := base64.StdEncoding.DecodeString(tm.Signature)
+	if err != nil {
+		return err
+	}
+	from := &thread.Libp2pPubKey{}
+	if err := from.UnmarshalString(tm.From); err != nil {
+		return fmt.Errorf("from public key is invalid")
+	}
+	ok, err := from.Verify(body, sig)
+	if !ok || err != nil {
+		return fmt.Errorf("bad message signature")
+	}
+	to := &thread.Libp2pPubKey{}
+	if err := to.UnmarshalString(tm.To); err != nil {
+		return fmt.Errorf("to public key is invalid")
+	}
+	readAt := time.Time{}
+	if tm.ReadAt > 0 {
+		readAt = time.Unix(0, tm.ReadAt)
+	}
+	m.ID = tm.ID
+	m.From = from
+	m.To = to
+	m.Body = body
+	m.Signature = sig
+	m.CreatedAt = time.Unix(0, tm.CreatedAt)
+	m.ReadAt = readAt
+	return nil
 }
 
 // SendMessage sends the message body to a recipient.
