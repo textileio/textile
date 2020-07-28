@@ -102,7 +102,13 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 			UpdatedAt: buck.UpdatedAt,
 		}
 	}
-	return &pb.ListReply{Roots: roots}, nil
+
+	size, err := s.getBucketsTotalSize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting buckets total size: %s", err)
+	}
+
+	return &pb.ListReply{Roots: roots, Size: int64(size)}, nil
 }
 
 func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
@@ -570,10 +576,6 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 	if err != nil {
 		return nil, fmt.Errorf("get stats of bucket path: %s", err)
 	}
-	total, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting buckets total size: %s", err)
-	}
 
 	return &pb.RootReply{
 		Root: &pb.Root{
@@ -584,8 +586,7 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 			CreatedAt: buck.CreatedAt,
 			UpdatedAt: buck.UpdatedAt,
 		},
-		Size:  int64(stat.CumulativeSize),
-		Total: total,
+		Size: int64(stat.CumulativeSize),
 	}, nil
 }
 
