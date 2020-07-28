@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oklog/ulid"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/oklog/ulid"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -23,19 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	log = logging.Logger("usersapi")
-
-	// ErrInboxNotFound indicates that an inbox has not been setup for a mail receiver.
-	ErrInboxNotFound = errors.New("inbox not found")
-	// ErrSentboxNotFound indicates that a sent mailbox has not been setup for a mail sender.
-	ErrSentboxNotFound = errors.New("sentbox not found")
-)
-
-const (
-	inboxName   = "messages-inbox"
-	sentboxName = "messages-sent"
-)
+var log = logging.Logger("usersapi")
 
 type Service struct {
 	Collections *mdb.Collections
@@ -87,6 +76,21 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	return reply, nil
 }
 
+var (
+	// ErrInboxNotFound indicates that an inbox has not been setup for a mail receiver.
+	ErrInboxNotFound = errors.New("inbox not found")
+	// ErrSentboxNotFound indicates that a sent mailbox has not been setup for a mail sender.
+	ErrSentboxNotFound = errors.New("sentbox not found")
+)
+
+const (
+	inboxName   = "messages-inbox"
+	sentboxName = "messages-sent"
+
+	defaultMessagePageSize = 100
+	maxMessagePageSize     = 10000
+)
+
 func (s *Service) SetupMail(ctx context.Context, _ *pb.SetupMailRequest) (*pb.SetupMailReply, error) {
 	log.Debugf("received setup mail request")
 
@@ -105,8 +109,8 @@ func (s *Service) SetupMail(ctx context.Context, _ *pb.SetupMailRequest) (*pb.Se
 		return nil, err
 	}
 	return &pb.SetupMailReply{
-		InboxID: inbox.Bytes(),
-		SentID:  sentbox.Bytes(),
+		InboxID:   inbox.Bytes(),
+		SentboxID: sentbox.Bytes(),
 	}, nil
 }
 
@@ -119,39 +123,56 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	to := &thread.Libp2pPubKey{}
-	if err := to.UnmarshalString(req.To); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "Invalid public key")
-	}
-	ok, err := user.Key.Verify(req.Body, req.Signature)
+	ok, err := user.Key.Verify(req.ToBody, req.ToSignature)
 	if !ok || err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Bad message signature")
 	}
-	sentbox, err := s.getSentbox(ctx, user.Key)
-	if err != nil {
-		return nil, err
+	ok, err = user.Key.Verify(req.FromBody, req.FromSignature)
+	if !ok || err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Bad message signature")
+	}
+
+	to := &thread.Libp2pPubKey{}
+	if err := to.UnmarshalString(req.To); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, "Invalid public key")
 	}
 	inbox, err := s.getInbox(ctx, to)
 	if err != nil {
 		return nil, err
 	}
-	msg := tdb.Message{
-		ID:        coredb.NewInstanceID().String(),
-		From:      thread.NewLibp2pPubKey(user.Key).String(),
-		To:        to.String(),
-		Body:      base64.StdEncoding.EncodeToString(req.Body),
-		Signature: base64.StdEncoding.EncodeToString(req.Signature),
-		CreatedAt: time.Now().UnixNano(),
-	}
-	if _, err := s.Mail.Create(ctx, sentbox, msg, tdb.WithToken(dbToken)); err != nil {
+	sentbox, err := s.getSentbox(ctx, user.Key)
+	if err != nil {
 		return nil, err
 	}
-	if _, err := s.Mail.Create(ctx, inbox, msg, tdb.WithToken(dbToken)); err != nil {
+
+	msgID := coredb.NewInstanceID().String()
+	now := time.Now().UnixNano()
+	from := thread.NewLibp2pPubKey(user.Key)
+	toMsg := tdb.Message{
+		ID:        msgID,
+		From:      from.String(),
+		To:        to.String(),
+		Body:      base64.StdEncoding.EncodeToString(req.ToBody),
+		Signature: base64.StdEncoding.EncodeToString(req.ToSignature),
+		CreatedAt: now,
+	}
+	if _, err := s.Mail.Create(ctx, inbox, toMsg, tdb.WithToken(dbToken)); err != nil {
+		return nil, err
+	}
+	fromMsg := tdb.Message{
+		ID:        msgID,
+		From:      from.String(),
+		To:        to.String(),
+		Body:      base64.StdEncoding.EncodeToString(req.FromBody),
+		Signature: base64.StdEncoding.EncodeToString(req.FromSignature),
+		CreatedAt: now,
+	}
+	if _, err := s.Mail.Create(ctx, sentbox, fromMsg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.SendMessageReply{
-		ID:        msg.ID,
-		CreatedAt: msg.CreatedAt,
+		ID:        msgID,
+		CreatedAt: now,
 	}, nil
 }
 
@@ -168,7 +189,7 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 	if err != nil {
 		return nil, err
 	}
-	list, err := s.listMessages(ctx, inbox, req.Seek, req.Limit, int32(req.Status), dbToken)
+	list, err := s.listMessages(ctx, inbox, req.Seek, req.Limit, req.Ascending, int32(req.Status), dbToken)
 	if err != nil {
 		return nil, err
 	}
@@ -188,18 +209,33 @@ func (s *Service) ListSentMessages(ctx context.Context, req *pb.ListSentMessages
 	if err != nil {
 		return nil, err
 	}
-	list, err := s.listMessages(ctx, sentbox, req.Seek, req.Limit, 0, dbToken)
+	list, err := s.listMessages(ctx, sentbox, req.Seek, req.Limit, req.Ascending, 0, dbToken)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.ListMessagesReply{Messages: list}, nil
 }
 
-func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string, limit int64, stat int32, token thread.Token) ([]*pb.Message, error) {
-	if seek == "" {
-		seek = ulid.MustNew(ulid.MaxTime(), rand.Reader).String()
+func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string, limit int64, asc bool, stat int32, token thread.Token) ([]*pb.Message, error) {
+	var q *db.Query
+	if asc {
+		q = db.OrderByID()
+		if seek != "" {
+			q = q.SeekID(coredb.InstanceID(seek))
+		}
+	} else {
+		q = db.OrderByIDDesc()
+		if seek == "" {
+			seek = ulid.MustNew(ulid.MaxTime(), rand.Reader).String()
+		}
+		q = q.SeekID(coredb.InstanceID(seek))
 	}
-	q := db.OrderByIDDesc().SeekID(coredb.InstanceID(seek)).LimitTo(int(limit))
+	if limit == 0 {
+		limit = defaultMessagePageSize
+	} else if limit > maxMessagePageSize {
+		limit = maxMessagePageSize
+	}
+	q = q.LimitTo(int(limit))
 	switch stat {
 	case 0:
 		break

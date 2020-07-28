@@ -325,12 +325,22 @@ func TestClient_ListInboxMessages(t *testing.T) {
 		for i := 0; i < len(list)-1; i++ {
 			assert.True(t, list[i].CreatedAt.After(list[i+1].CreatedAt))
 		}
+		assert.Equal(t, "hi", string(list[0].Body))
 	})
 
 	t.Run("with limit", func(t *testing.T) {
 		list, err := client.ListInboxMessages(tctx, to, c.WithLimit(10))
 		require.NoError(t, err)
 		assert.Len(t, list, 10)
+	})
+
+	t.Run("with ascending", func(t *testing.T) {
+		list, err := client.ListInboxMessages(tctx, to, c.WithLimit(10), c.WithAscending(true))
+		require.NoError(t, err)
+		assert.Len(t, list, 10)
+		for i := 0; i < len(list)-1; i++ {
+			assert.True(t, list[i].CreatedAt.Before(list[i+1].CreatedAt))
+		}
 	})
 
 	t.Run("with seek", func(t *testing.T) {
@@ -386,9 +396,11 @@ func TestClient_ListSentMessages(t *testing.T) {
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("two"))
 	require.NoError(t, err)
 
-	list, err := client.ListSentMessages(fctx, from, c.WithLimit(1))
+	list, err := client.ListSentMessages(fctx, from)
 	require.NoError(t, err)
-	assert.Len(t, list, 1)
+	assert.Len(t, list, 2)
+	assert.Equal(t, "two", string(list[0].Body))
+	assert.Equal(t, "one", string(list[1].Body))
 }
 
 func TestClient_ReadInboxMessage(t *testing.T) {

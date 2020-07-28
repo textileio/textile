@@ -1,9 +1,10 @@
 package client
 
 type listOptions struct {
-	seek   string
-	limit  int
-	status Status
+	seek      string
+	limit     int
+	ascending bool
+	status    Status
 }
 
 type ListOption func(*listOptions)
@@ -16,9 +17,16 @@ func WithSeek(id string) ListOption {
 }
 
 // WithLimit limits the number of list messages results.
-func WithLimit(l int) ListOption {
+func WithLimit(limit int) ListOption {
 	return func(args *listOptions) {
-		args.limit = l
+		args.limit = limit
+	}
+}
+
+// WithAscending lists messages by ascending order.
+func WithAscending(asc bool) ListOption {
+	return func(args *listOptions) {
+		args.ascending = asc
 	}
 }
 

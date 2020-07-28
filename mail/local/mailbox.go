@@ -7,18 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/textileio/go-threads/core/db"
-
-	"github.com/textileio/textile/mail"
-
 	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/api/users/client"
 	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/mail"
 )
-
-const reconnectInterval = time.Second * 5
 
 // Mailbox is a local-first messaging library built on ThreadDB and IPFS.
 type Mailbox struct {
@@ -50,6 +46,8 @@ func (m *Mailbox) ListInboxMessages(ctx context.Context, opts ...client.ListOpti
 func (m *Mailbox) ListSentMessages(ctx context.Context, opts ...client.ListOption) ([]client.Message, error) {
 	return m.clients.Users.ListSentMessages(ctx, m.id, opts...)
 }
+
+const reconnectInterval = time.Second * 5
 
 // MailboxEvent describes an event that occurred in a mailbox.
 type MailboxEvent struct {

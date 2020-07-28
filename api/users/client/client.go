@@ -76,18 +76,28 @@ type Message struct {
 
 // SendMessage sends the message body to a recipient.
 func (c *Client) SendMessage(ctx context.Context, from thread.Identity, to thread.PubKey, body []byte) (msg Message, err error) {
-	cbody, err := to.Encrypt(body)
+	fromBody, err := from.GetPublic().Encrypt(body)
 	if err != nil {
 		return msg, err
 	}
-	sig, err := from.Sign(ctx, cbody)
+	fromSig, err := from.Sign(ctx, fromBody)
+	if err != nil {
+		return msg, err
+	}
+	toBody, err := to.Encrypt(body)
+	if err != nil {
+		return msg, err
+	}
+	toSig, err := from.Sign(ctx, toBody)
 	if err != nil {
 		return msg, err
 	}
 	res, err := c.c.SendMessage(ctx, &pb.SendMessageRequest{
-		To:        to.String(),
-		Body:      cbody,
-		Signature: sig,
+		To:            to.String(),
+		ToBody:        toBody,
+		ToSignature:   toSig,
+		FromBody:      fromBody,
+		FromSignature: fromSig,
 	})
 	if err != nil {
 		return msg, err
@@ -96,8 +106,8 @@ func (c *Client) SendMessage(ctx context.Context, from thread.Identity, to threa
 		ID:        res.ID,
 		From:      from.GetPublic(),
 		To:        to,
-		Body:      cbody,
-		Signature: sig,
+		Body:      fromBody,
+		Signature: fromSig,
 		CreatedAt: time.Unix(0, res.CreatedAt),
 	}, nil
 }
@@ -113,9 +123,10 @@ func (c *Client) ListInboxMessages(ctx context.Context, to thread.Identity, opts
 		opt(args)
 	}
 	res, err := c.c.ListInboxMessages(ctx, &pb.ListInboxMessagesRequest{
-		Seek:   args.seek,
-		Limit:  int64(args.limit),
-		Status: pb.ListInboxMessagesRequest_Status(args.status),
+		Seek:      args.seek,
+		Limit:     int64(args.limit),
+		Ascending: args.ascending,
+		Status:    pb.ListInboxMessagesRequest_Status(args.status),
 	})
 	if err != nil {
 		return nil, err
@@ -139,7 +150,7 @@ func (c *Client) ListSentMessages(ctx context.Context, from thread.Identity, opt
 	if err != nil {
 		return nil, err
 	}
-	return handleMessageList(ctx, res, from, nil)
+	return handleMessageList(ctx, res, from)
 }
 
 func handleMessageList(ctx context.Context, res *pb.ListMessagesReply, to thread.Identity) ([]Message, error) {
@@ -154,16 +165,20 @@ func handleMessageList(ctx context.Context, res *pb.ListMessagesReply, to thread
 	return msgs, nil
 }
 
-func inboxMsgFromPb(ctx context.Context, m *pb.Message, to thread.Identity) (msg Message, err error) {
+func messageFromPb(ctx context.Context, m *pb.Message, id thread.Identity) (msg Message, err error) {
 	from := &thread.Libp2pPubKey{}
 	if err := from.UnmarshalString(m.From); err != nil {
-		return msg, fmt.Errorf("invalid public key")
+		return msg, fmt.Errorf("from public key is invalid")
 	}
 	ok, err := from.Verify(m.Body, m.Signature)
 	if !ok || err != nil {
 		return msg, fmt.Errorf("bad message signature")
 	}
-	body, err := to.Decrypt(ctx, m.Body)
+	to := &thread.Libp2pPubKey{}
+	if err := to.UnmarshalString(m.To); err != nil {
+		return msg, fmt.Errorf("to public key is invalid")
+	}
+	body, err := id.Decrypt(ctx, m.Body)
 	if err != nil {
 		return msg, err
 	}
@@ -174,31 +189,7 @@ func inboxMsgFromPb(ctx context.Context, m *pb.Message, to thread.Identity) (msg
 	return Message{
 		ID:        m.ID,
 		From:      from,
-		To:        to.GetPublic(),
-		Body:      body,
-		Signature: m.Signature,
-		CreatedAt: time.Unix(0, m.CreatedAt),
-		ReadAt:    readAt,
-	}, nil
-}
-
-func sentMsgFromPb(ctx context.Context, m *pb.Message, from thread.Identity) (msg Message, err error) {
-	to := &thread.Libp2pPubKey{}
-	if err := to.UnmarshalString(m.From); err != nil {
-		return msg, fmt.Errorf("invalid public key")
-	}
-	ok, err := to.Verify(m.Body, m.Signature)
-	if !ok || err != nil {
-		return msg, fmt.Errorf("bad message signature")
-	}
-	readAt := time.Time{}
-	if m.ReadAt > 0 {
-		readAt = time.Unix(0, m.ReadAt)
-	}
-	return Message{
-		ID:        m.ID,
-		From:      from,
-		To:        to.GetPublic(),
+		To:        to,
 		Body:      body,
 		Signature: m.Signature,
 		CreatedAt: time.Unix(0, m.CreatedAt),

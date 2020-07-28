@@ -41,8 +41,10 @@ message Message {
 
 message SendMessageRequest {
     string to = 1;
-    bytes body = 2;
-    bytes signature = 3;
+    bytes toBody = 2;
+    bytes toSignature = 3;
+    bytes fromBody = 4;
+    bytes fromSignature = 5;
 }
 
 message SendMessageReply {
@@ -53,7 +55,8 @@ message SendMessageReply {
 message ListInboxMessagesRequest {
     string seek = 1;
     int64 limit = 2;
-    Status status = 3;
+    bool ascending = 3;
+    Status status = 4;
 
     enum Status {
         ALL = 0;
@@ -65,6 +68,7 @@ message ListInboxMessagesRequest {
 message ListSentMessagesRequest {
     string seek = 1;
     int64 limit = 2;
+    bool ascending = 3;
 }
 
 message ListMessagesReply {
