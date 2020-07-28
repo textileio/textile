@@ -4,9 +4,9 @@ go 1.14
 
 replace github.com/textileio/go-threads => ../go-threads
 
-replace github.com/ipfs/go-datastore => ../go-datastore
+replace github.com/ipfs/go-datastore v0.4.4 => github.com/textileio/go-datastore v0.4.5-0.20200728205504-ffeb3591b248
 
-replace github.com/ipfs/go-ds-badger => ../go-ds-badger
+replace github.com/ipfs/go-ds-badger v0.2.4 => github.com/textileio/go-ds-badger v0.2.5-0.20200728212847-1ec9ac5e644c
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
@@ -57,7 +57,6 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/oklog/ulid v1.3.1
-	github.com/oklog/ulid/v2 v2.0.2
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
