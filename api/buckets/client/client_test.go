@@ -137,7 +137,6 @@ func TestClient_Root(t *testing.T) {
 	assert.NotEmpty(t, root.Root.Path)
 	assert.NotEmpty(t, root.Root.CreatedAt)
 	assert.NotEmpty(t, root.Root.UpdatedAt)
-	assert.Equal(t, int64(92), root.Size)
 }
 
 func TestClient_Links(t *testing.T) {
@@ -678,14 +677,14 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	assert.NotEqual(t, buck.Root.Key, buck2.Root.Key)
 
 	// get size of first bucket and account total
-	root, err := client.Root(ctx, buck.Root.Key)
+	root, err := client.List(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, int64(92), root.Size)
 
 	// get size of second bucket and account total
-	root2, err := client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(92), root2.Size)
+	assert.Equal(t, int64(92), root.Size)
 
 	file2, err := os.Open("testdata/file2.jpg")
 	require.Nil(t, err)
@@ -700,7 +699,7 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	file1.Close()
 
 	// get updated size of first and account
-	root, err = client.Root(ctx, buck.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, int64(601850), root.Size)
 
@@ -711,10 +710,10 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	_, _, err = client.PushPath(ctx, buck2.Root.Key, "file1.jpg", file1)
 	require.Nil(t, err)
 	file1.Close()
-	root2, err = client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
 	// get updated totals for second bucket and total
-	assert.Equal(t, int64(601850), root2.Size)
+	assert.Equal(t, int64(601850), root.Size)
 
 	// bucket1: file1.jpg, again/file2.jpg
 	// bucket2: file1.jpg
@@ -723,7 +722,7 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
 	require.Nil(t, err)
 	file1.Close()
-	root, err = client.Root(ctx, buck.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, int64(1203661), root.Size)
 
@@ -732,7 +731,7 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	_, err = client.RemovePath(ctx, buck.Root.Key, "file1.jpg")
 	require.Nil(t, err)
 
-	root, err = client.Root(ctx, buck.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, int64(601903), root.Size)
 
@@ -741,9 +740,9 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	_, err = client.RemovePath(ctx, buck2.Root.Key, "file1.jpg")
 	require.Nil(t, err)
 
-	root2, err = client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(92), root2.Size)
+	assert.Equal(t, int64(92), root.Size)
 
 	// bucket1: nil, again/file2.jpg
 	// bucket2: nil, again/file2.jpg
@@ -757,9 +756,9 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	assert.Equal(t, 0, len(rep.Item.Items))
 	assert.Equal(t, int64(601703), rep.Item.Size)
 
-	root2, err = client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(601903), root2.Size)
+	assert.Equal(t, int64(601903), root.Size)
 
 	// bucket1: nil, nil
 	// bucket2: nil, again/file2.jpg
@@ -769,13 +768,13 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.Nil(t, err)
 
-	root, err = client.Root(ctx, buck.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, int64(92), root.Size)
 
-	root2, err = client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(601903), root2.Size)
+	assert.Equal(t, int64(601903), root.Size)
 
 	rep, err = client.ListPath(ctx, buck2.Root.Key, "again/file2.jpg")
 	require.Nil(t, err)
@@ -791,9 +790,9 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	// bucket2: nil, nil
 	_, err = client.RemovePath(ctx, buck2.Root.Key, "again")
 	require.Nil(t, err)
-	root2, err = client.Root(ctx, buck2.Root.Key)
+	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(92), root2.Size)
+	assert.Equal(t, int64(92), root.Size)
 }
 
 func TestClient_ListIpfsPath(t *testing.T) {
