@@ -319,23 +319,25 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	}
 
 	t.Run("check order", func(t *testing.T) {
-		list, err := client.ListInboxMessages(tctx, to)
+		list, err := client.ListInboxMessages(tctx)
 		require.NoError(t, err)
 		assert.Len(t, list, 100)
 		for i := 0; i < len(list)-1; i++ {
 			assert.True(t, list[i].CreatedAt.After(list[i+1].CreatedAt))
 		}
-		assert.Equal(t, "hi", string(list[0].Body))
+		m, err := list[0].Open(context.Background(), from)
+		require.NoError(t, err)
+		assert.Equal(t, "hi", string(m))
 	})
 
 	t.Run("with limit", func(t *testing.T) {
-		list, err := client.ListInboxMessages(tctx, to, c.WithLimit(10))
+		list, err := client.ListInboxMessages(tctx, c.WithLimit(10))
 		require.NoError(t, err)
 		assert.Len(t, list, 10)
 	})
 
 	t.Run("with ascending", func(t *testing.T) {
-		list, err := client.ListInboxMessages(tctx, to, c.WithLimit(10), c.WithAscending(true))
+		list, err := client.ListInboxMessages(tctx, c.WithLimit(10), c.WithAscending(true))
 		require.NoError(t, err)
 		assert.Len(t, list, 10)
 		for i := 0; i < len(list)-1; i++ {
@@ -348,7 +350,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 		var seek string
 		pageSize := 10
 		for { // 10 pages
-			list, err := client.ListInboxMessages(tctx, to, c.WithLimit(pageSize+1), c.WithSeek(seek))
+			list, err := client.ListInboxMessages(tctx, c.WithLimit(pageSize+1), c.WithSeek(seek))
 			require.NoError(t, err)
 			all = append(all, list[:pageSize]...)
 			if len(list) < pageSize+1 {
@@ -366,14 +368,14 @@ func TestClient_ListInboxMessages(t *testing.T) {
 		err = client.ReadInboxMessage(tctx, readID)
 		require.NoError(t, err)
 
-		list1, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.All))
+		list1, err := client.ListInboxMessages(tctx, c.WithStatus(c.All))
 		require.NoError(t, err)
 		assert.Len(t, list1, 100)
-		list2, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Read))
+		list2, err := client.ListInboxMessages(tctx, c.WithStatus(c.Read))
 		require.NoError(t, err)
 		assert.Len(t, list2, 1)
 		assert.False(t, list2[0].ReadAt.IsZero())
-		list3, err := client.ListInboxMessages(tctx, to, c.WithStatus(c.Unread))
+		list3, err := client.ListInboxMessages(tctx, c.WithStatus(c.Unread))
 		require.NoError(t, err)
 		assert.Len(t, list3, 99)
 		assert.True(t, list3[0].ReadAt.IsZero())
@@ -396,11 +398,15 @@ func TestClient_ListSentMessages(t *testing.T) {
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("two"))
 	require.NoError(t, err)
 
-	list, err := client.ListSentMessages(fctx, from)
+	list, err := client.ListSentMessages(fctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
-	assert.Equal(t, "two", string(list[0].Body))
-	assert.Equal(t, "one", string(list[1].Body))
+	m1, err := list[0].Open(context.Background(), from)
+	require.NoError(t, err)
+	m2, err := list[1].Open(context.Background(), from)
+	require.NoError(t, err)
+	assert.Equal(t, "two", string(m2))
+	assert.Equal(t, "one", string(m1))
 }
 
 func TestClient_ReadInboxMessage(t *testing.T) {
@@ -420,7 +426,7 @@ func TestClient_ReadInboxMessage(t *testing.T) {
 	err = client.ReadInboxMessage(tctx, res.ID)
 	require.NoError(t, err)
 
-	list, err := client.ListInboxMessages(tctx, to)
+	list, err := client.ListInboxMessages(tctx)
 	require.NoError(t, err)
 	assert.False(t, list[0].ReadAt.IsZero())
 }
@@ -442,7 +448,7 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 	err = client.DeleteInboxMessage(tctx, res.ID)
 	require.NoError(t, err)
 
-	list, err := client.ListInboxMessages(tctx, to)
+	list, err := client.ListInboxMessages(tctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }
@@ -464,7 +470,7 @@ func TestClient_DeleteSentMessage(t *testing.T) {
 	err = client.DeleteSentMessage(fctx, res.ID)
 	require.NoError(t, err)
 
-	list, err := client.ListSentMessages(fctx, to)
+	list, err := client.ListSentMessages(fctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }

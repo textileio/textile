@@ -3,11 +3,13 @@ package local_test
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
@@ -34,111 +36,118 @@ func TestMail_NewMailbox(t *testing.T) {
 	})
 }
 
-//func TestBuckets_NewConfigFromCmd(t *testing.T) {
-//	buckets := setup(t)
-//
-//	t.Run("no flags", func(t *testing.T) {
-//		c := initCmd(t, buckets, "", thread.Undef, false, false)
-//		err := c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("with flags and no values", func(t *testing.T) {
-//		c := initCmd(t, buckets, "", thread.Undef, true, false)
-//		err := c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("with flags and default values", func(t *testing.T) {
-//		key := "mykey"
-//		tid := thread.NewIDV1(thread.Raw, 32)
-//		c := initCmd(t, buckets, key, tid, true, true)
-//		err := c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("with flags and set values", func(t *testing.T) {
-//		key := "mykey"
-//		tid := thread.NewIDV1(thread.Raw, 32)
-//		c := initCmd(t, buckets, key, tid, true, false)
-//		err := c.PersistentFlags().Set("key", key)
-//		require.NoError(t, err)
-//		err = c.PersistentFlags().Set("thread", tid.String())
-//		require.NoError(t, err)
-//		err = c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("no flags and env values", func(t *testing.T) {
-//		key := "mykey"
-//		tid := thread.NewIDV1(thread.Raw, 32)
-//		c := initCmd(t, buckets, key, tid, false, false)
-//		err := os.Setenv("BUCK_KEY", key)
-//		require.NoError(t, err)
-//		err = os.Setenv("BUCK_THREAD", tid.String())
-//		require.NoError(t, err)
-//		err = c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("with flags and env values", func(t *testing.T) {
-//		key := "mykey"
-//		tid := thread.NewIDV1(thread.Raw, 32)
-//		c := initCmd(t, buckets, key, tid, true, false)
-//		err := os.Setenv("BUCK_KEY", key)
-//		require.NoError(t, err)
-//		err = os.Setenv("BUCK_THREAD", tid.String())
-//		require.NoError(t, err)
-//		err = c.Execute()
-//		require.NoError(t, err)
-//	})
-//
-//	t.Run("with key and no thread", func(t *testing.T) {
-//		dir := newDir(t)
-//		c := &cobra.Command{
-//			Use: "init",
-//			Run: func(c *cobra.Command, args []string) {
-//				_, err := buckets.NewConfigFromCmd(c, dir)
-//				require.Error(t, err)
-//				assert.Equal(t, ErrThreadRequired, err)
-//			},
-//		}
-//		err := os.Setenv("BUCK_KEY", "mykey")
-//		require.NoError(t, err)
-//		err = os.Setenv("BUCK_THREAD", "")
-//		require.NoError(t, err)
-//		err = c.Execute()
-//		require.NoError(t, err)
-//	})
-//}
+func TestBuckets_NewConfigFromCmd(t *testing.T) {
+	mail, key, secret := setup(t)
+	id := createIdentity(t)
 
-//func initCmd(t *testing.T, buckets *Buckets, key string, tid thread.ID, addFlags, setDefaults bool) *cobra.Command {
-//	dir := newDir(t)
-//	c := &cobra.Command{
-//		Use: "init",
-//		Run: func(c *cobra.Command, args []string) {
-//			conf, err := buckets.NewConfigFromCmd(c, dir)
-//			require.NoError(t, err)
-//			assert.Equal(t, dir, conf.Path)
-//			assert.Equal(t, key, conf.Key)
-//			if tid.Defined() {
-//				assert.Equal(t, tid, conf.Thread)
-//			} else {
-//				assert.Equal(t, thread.Undef, conf.Thread)
-//			}
-//		},
-//	}
-//	var dkey, dtid string
-//	if setDefaults {
-//		dkey = key
-//		dtid = tid.String()
-//	}
-//	if addFlags {
-//		c.PersistentFlags().String("key", dkey, "")
-//		//c.PersistentFlags().String("thread", dtid, "")
-//	}
-//	return c
-//}
+	t.Run("no identity", func(t *testing.T) {
+		dir := newDir(t)
+		c := &cobra.Command{
+			Use: "init",
+			Run: func(c *cobra.Command, args []string) {
+				_, err := mail.NewConfigFromCmd(c, dir)
+				require.Error(t, err)
+				assert.Equal(t, ErrIdentityRequired, err)
+			},
+		}
+		err := c.Execute()
+		require.NoError(t, err)
+	})
+
+	t.Run("no api key", func(t *testing.T) {
+		dir := newDir(t)
+		c := &cobra.Command{
+			Use: "init",
+			Run: func(c *cobra.Command, args []string) {
+				_, err := mail.NewConfigFromCmd(c, dir)
+				require.Error(t, err)
+				assert.Equal(t, ErrAPIKeyRequired, err)
+			},
+		}
+		c.PersistentFlags().String("identity", "", "")
+		idb, err := id.MarshalBinary()
+		require.NoError(t, err)
+		ids := base64.StdEncoding.EncodeToString(idb)
+		err = c.PersistentFlags().Set("identity", ids)
+		require.NoError(t, err)
+		err = c.Execute()
+		require.NoError(t, err)
+	})
+
+	t.Run("with flags and set values", func(t *testing.T) {
+		c := initCmd(t, mail, id, key, secret, true, false)
+		idb, err := id.MarshalBinary()
+		require.NoError(t, err)
+		ids := base64.StdEncoding.EncodeToString(idb)
+		err = c.PersistentFlags().Set("identity", ids)
+		require.NoError(t, err)
+		err = c.PersistentFlags().Set("api_key", key)
+		require.NoError(t, err)
+		err = c.PersistentFlags().Set("api_secret", secret)
+		require.NoError(t, err)
+		err = c.Execute()
+		require.NoError(t, err)
+	})
+
+	t.Run("no flags and env values", func(t *testing.T) {
+		c := initCmd(t, mail, id, key, secret, false, false)
+		idb, err := id.MarshalBinary()
+		require.NoError(t, err)
+		ids := base64.StdEncoding.EncodeToString(idb)
+		err = os.Setenv("MAIL_IDENTITY", ids)
+		require.NoError(t, err)
+		err = os.Setenv("MAIL_API_KEY", key)
+		require.NoError(t, err)
+		err = os.Setenv("MAIL_API_SECRET", secret)
+		require.NoError(t, err)
+		err = c.Execute()
+		require.NoError(t, err)
+	})
+
+	t.Run("with flags and env values", func(t *testing.T) {
+		c := initCmd(t, mail, id, key, secret, true, false)
+		idb, err := id.MarshalBinary()
+		require.NoError(t, err)
+		ids := base64.StdEncoding.EncodeToString(idb)
+		err = os.Setenv("MAIL_IDENTITY", ids)
+		require.NoError(t, err)
+		err = os.Setenv("MAIL_API_KEY", key)
+		require.NoError(t, err)
+		err = os.Setenv("MAIL_API_SECRET", secret)
+		require.NoError(t, err)
+		err = c.Execute()
+		require.NoError(t, err)
+	})
+}
+
+func initCmd(t *testing.T, mail *Mail, id thread.Identity, key, secret string, addFlags, setDefaults bool) *cobra.Command {
+	dir := newDir(t)
+	c := &cobra.Command{
+		Use: "init",
+		Run: func(c *cobra.Command, args []string) {
+			conf, err := mail.NewConfigFromCmd(c, dir)
+			require.NoError(t, err)
+			assert.Equal(t, dir, conf.Path)
+			assert.Equal(t, id.GetPublic().String(), conf.Identity.GetPublic().String())
+			assert.Equal(t, key, conf.APIKey)
+			assert.Equal(t, secret, conf.APISecret)
+		},
+	}
+	var did, dkey, dsecret string
+	if setDefaults {
+		idb, err := id.MarshalBinary()
+		require.NoError(t, err)
+		did = base64.StdEncoding.EncodeToString(idb)
+		dkey = key
+		dsecret = secret
+	}
+	if addFlags {
+		c.PersistentFlags().String("identity", did, "")
+		c.PersistentFlags().String("api_key", dkey, "")
+		c.PersistentFlags().String("api_secret", dsecret, "")
+	}
+	return c
+}
 
 func setup(t *testing.T) (m *Mail, key string, secret string) {
 	conf := apitest.MakeTextile(t)

@@ -69,9 +69,19 @@ type Message struct {
 	From      thread.PubKey `json:"from"`
 	To        thread.PubKey `json:"to"`
 	Body      []byte        `json:"body"`
-	Signature []byte        `json:"body"`
+	Signature []byte        `json:"signature"`
 	CreatedAt time.Time     `json:"created_at"`
 	ReadAt    time.Time     `json:"read_at,omitempty"`
+}
+
+// Open decrypts the message body with identity.
+func (m Message) Open(ctx context.Context, id thread.Identity) ([]byte, error) {
+	return id.Decrypt(ctx, m.Body)
+}
+
+// Read returns whether or not the message has been read.
+func (m Message) Read() bool {
+	return !m.ReadAt.IsZero()
 }
 
 // SendMessage sends the message body to a recipient.
@@ -115,7 +125,7 @@ func (c *Client) SendMessage(ctx context.Context, from thread.Identity, to threa
 // ListInboxMessages lists messages from the inbox.
 // Use options to paginate with seek and limit,
 // and filter by read status.
-func (c *Client) ListInboxMessages(ctx context.Context, to thread.Identity, opts ...ListOption) ([]Message, error) {
+func (c *Client) ListInboxMessages(ctx context.Context, opts ...ListOption) ([]Message, error) {
 	args := &listOptions{
 		status: All,
 	}
@@ -131,12 +141,12 @@ func (c *Client) ListInboxMessages(ctx context.Context, to thread.Identity, opts
 	if err != nil {
 		return nil, err
 	}
-	return handleMessageList(ctx, res, to)
+	return handleMessageList(res)
 }
 
 // ListSentMessages lists messages from the sentbox.
 // Use options to paginate with seek and limit.
-func (c *Client) ListSentMessages(ctx context.Context, from thread.Identity, opts ...ListOption) ([]Message, error) {
+func (c *Client) ListSentMessages(ctx context.Context, opts ...ListOption) ([]Message, error) {
 	args := &listOptions{
 		status: All,
 	}
@@ -150,14 +160,14 @@ func (c *Client) ListSentMessages(ctx context.Context, from thread.Identity, opt
 	if err != nil {
 		return nil, err
 	}
-	return handleMessageList(ctx, res, from)
+	return handleMessageList(res)
 }
 
-func handleMessageList(ctx context.Context, res *pb.ListMessagesReply, to thread.Identity) ([]Message, error) {
+func handleMessageList(res *pb.ListMessagesReply) ([]Message, error) {
 	msgs := make([]Message, len(res.Messages))
 	var err error
 	for i, m := range res.Messages {
-		msgs[i], err = messageFromPb(ctx, m, to)
+		msgs[i], err = messageFromPb(m)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +175,7 @@ func handleMessageList(ctx context.Context, res *pb.ListMessagesReply, to thread
 	return msgs, nil
 }
 
-func messageFromPb(ctx context.Context, m *pb.Message, id thread.Identity) (msg Message, err error) {
+func messageFromPb(m *pb.Message) (msg Message, err error) {
 	from := &thread.Libp2pPubKey{}
 	if err := from.UnmarshalString(m.From); err != nil {
 		return msg, fmt.Errorf("from public key is invalid")
@@ -178,10 +188,6 @@ func messageFromPb(ctx context.Context, m *pb.Message, id thread.Identity) (msg 
 	if err := to.UnmarshalString(m.To); err != nil {
 		return msg, fmt.Errorf("to public key is invalid")
 	}
-	body, err := id.Decrypt(ctx, m.Body)
-	if err != nil {
-		return msg, err
-	}
 	readAt := time.Time{}
 	if m.ReadAt > 0 {
 		readAt = time.Unix(0, m.ReadAt)
@@ -190,7 +196,7 @@ func messageFromPb(ctx context.Context, m *pb.Message, id thread.Identity) (msg 
 		ID:        m.ID,
 		From:      from,
 		To:        to,
-		Body:      body,
+		Body:      m.Body,
 		Signature: m.Signature,
 		CreatedAt: time.Unix(0, m.CreatedAt),
 		ReadAt:    readAt,

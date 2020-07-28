@@ -25,6 +25,11 @@ type Mailbox struct {
 	token   thread.Token
 }
 
+// Identity returns the mailbox's identity.
+func (m *Mailbox) Identity() thread.Identity {
+	return m.id
+}
+
 // SendMessage sends the message body to a recipient.
 func (m *Mailbox) SendMessage(ctx context.Context, to thread.PubKey, body []byte) (msg client.Message, err error) {
 	ctx, err = m.context(ctx)
@@ -38,13 +43,21 @@ func (m *Mailbox) SendMessage(ctx context.Context, to thread.PubKey, body []byte
 // Use options to paginate with seek and limit,
 // and filter by read status.
 func (m *Mailbox) ListInboxMessages(ctx context.Context, opts ...client.ListOption) ([]client.Message, error) {
-	return m.clients.Users.ListInboxMessages(ctx, m.id, opts...)
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return m.clients.Users.ListInboxMessages(ctx, opts...)
 }
 
 // ListSentMessages lists messages from the sentbox.
 // Use options to paginate with seek and limit.
 func (m *Mailbox) ListSentMessages(ctx context.Context, opts ...client.ListOption) ([]client.Message, error) {
-	return m.clients.Users.ListSentMessages(ctx, m.id, opts...)
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return m.clients.Users.ListSentMessages(ctx, opts...)
 }
 
 const reconnectInterval = time.Second * 5
@@ -152,16 +165,28 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, mevents chan<- Mailb
 
 // ReadInboxMessage marks a message as read by ID.
 func (m *Mailbox) ReadInboxMessage(ctx context.Context, id string) error {
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return err
+	}
 	return m.clients.Users.ReadInboxMessage(ctx, id)
 }
 
 // DeleteInboxMessage deletes an inbox message by ID.
 func (m *Mailbox) DeleteInboxMessage(ctx context.Context, id string) error {
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return err
+	}
 	return m.clients.Users.DeleteInboxMessage(ctx, id)
 }
 
 // DeleteSentMessage deletes a sent message by ID.
 func (m *Mailbox) DeleteSentMessage(ctx context.Context, id string) error {
+	ctx, err := m.context(ctx)
+	if err != nil {
+		return err
+	}
 	return m.clients.Users.DeleteSentMessage(ctx, id)
 }
 
@@ -184,10 +209,13 @@ func (m *Mailbox) loadIdentity() error {
 
 func (m *Mailbox) context(ctx context.Context) (context.Context, error) {
 	ctx = common.NewAPIKeyContext(ctx, m.conf.Viper.GetString("api_key"))
-	var err error
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Hour), m.conf.Viper.GetString("api_secret"))
-	if err != nil {
-		return nil, err
+	secret := m.conf.Viper.GetString("api_secret")
+	if secret != "" {
+		var err error
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Hour), secret)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if m.token == "" {
 		tok, err := m.clients.Threads.GetToken(ctx, m.id)

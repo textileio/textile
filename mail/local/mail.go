@@ -135,7 +135,7 @@ func (m *Mail) NewMailbox(ctx context.Context, conf Config) (box *Mailbox, err e
 	if err != nil {
 		return
 	}
-	if err = m.clients.Users.SetupMail(ctx); err != nil {
+	if _, _, err = m.clients.Users.SetupMail(ctx); err != nil {
 		return
 	}
 
@@ -156,10 +156,6 @@ func (m *Mail) NewMailbox(ctx context.Context, conf Config) (box *Mailbox, err e
 
 	return box, nil
 }
-
-//func (m *Mail) repoName() string {
-//	return filepath.Join(m.config.Dir, "mail/repo")
-//}
 
 // GetLocalMailbox loads and returns the mailbox at path if it exists.
 func (m *Mail) GetLocalMailbox(ctx context.Context, pth string) (*Mailbox, error) {
