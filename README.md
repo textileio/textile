@@ -11,7 +11,7 @@
 
 Textile connects and extends [Libp2p](https://libp2p.io/), [IPFS](https://ipfs.io/), and [Filecoin](https://filecoin.io/). Three interoperable technologies makeup Textile:
 
-* [**ThreadDB**](https://github.com/textileio/go-threads): A serverless p2p database built on Libp2p
+* [**ThreadDB**](https://github.com/textileio/go-threads): A server-less p2p database built on Libp2p
 * [**Powergate**](https://github.com/textileio/powergate): File storage built on Filecoin and IPFS
 * [**Buckets**](https://github.com/textileio/textile/tree/master/buckets): File and dynamic directory storage built on ThreadDB, Powergate, and [UnixFS](https://github.com/ipfs/go-unixfs).
 
