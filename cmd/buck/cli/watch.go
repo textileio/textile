@@ -28,9 +28,9 @@ var watchCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		for s := range state {
 			switch s.State {
-			case local.Online:
+			case cmd.Online:
 				cmd.Success("Watching %s for changes...", aurora.White(bp).Bold())
-			case local.Offline:
+			case cmd.Offline:
 				if s.Fatal {
 					cmd.Fatal(s.Err)
 				} else {
