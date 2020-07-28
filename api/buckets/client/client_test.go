@@ -792,7 +792,7 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	require.Nil(t, err)
 	root, err = client.List(ctx)
 	require.Nil(t, err)
-	assert.Equal(t, int64(92), root.Size)
+	assert.Equal(t, int64(184), root.Size)
 }
 
 func TestClient_ListIpfsPath(t *testing.T) {
