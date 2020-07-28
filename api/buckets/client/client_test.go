@@ -742,7 +742,7 @@ func TestClient_OverlappingBuckets(t *testing.T) {
 	file1.Close()
 	root, err = client.Root(ctx, buck.Root.Key)
 	require.Nil(t, err)
-	assert.Equal(t, int64(1203661), root.Size)  // (jsign): wierd, shouldn't be deduped?
+	assert.Equal(t, int64(1203661), root.Size)  // (jsign): wierd, shouldn't be deduped? (After comment: is correct, at least on how cummSize is designed to work, see slack convo)
 	assert.Equal(t, int64(1805511), root.Total) // (jsign): if we consider previous line correct, reasonable
 
 	// bucket1: nil, again/file2.jpg
