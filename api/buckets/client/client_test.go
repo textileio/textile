@@ -277,22 +277,12 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 	assert.NotEmpty(t, pth1)
 	assert.NotEmpty(t, root1)
 
-	// Get size
-	root2, err := client.Root(ctx, buck.Root.Key)
-	require.Nil(t, err)
-	assert.Equal(t, int64(601850), root2.Size)
-
 	file2, err := os.Open("testdata/file2.jpg")
 	require.Nil(t, err)
 	defer file2.Close()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), buckets.ErrBucketExceedsMaxSize.Error())
-
-	// Get final size
-	root3, err := client.Root(ctx, buck.Root.Key)
-	require.Nil(t, err)
-	assert.Equal(t, int64(601850), root3.Size)
 }
 
 func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
@@ -673,9 +663,6 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 	rep, err = client.ListPath(ctx, buck.Root.Key, "")
 	require.Nil(t, err)
 	assert.Equal(t, 2, len(rep.Item.Items))
-
-	_, err = client.RemovePath(ctx, buck.Root.Key, "file1.jpg")
-	require.Nil(t, err)
 }
 
 func TestClient_OverlappingBuckets(t *testing.T) {
