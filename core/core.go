@@ -3,16 +3,21 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/golang/protobuf/proto"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -29,6 +34,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
+	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -75,11 +81,13 @@ var (
 type Textile struct {
 	collections *c.Collections
 
-	ts    tc.NetBoostrapper
-	th    *threads.Client
-	thn   *netclient.Client
-	bucks *bc.Buckets
-	powc  *powc.Client
+	ts             tc.NetBoostrapper
+	th             *threads.Client
+	thn            *netclient.Client
+	bucks          *bc.Buckets
+	powc           *powc.Client
+	powStub        grpcdynamic.Stub
+	ffsServiceDesc *desc.ServiceDescriptor
 
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
@@ -130,7 +138,7 @@ type Config struct {
 
 	ThreadsConnManager connmgr.ConnManager
 
-	FFSDefaultConfig *ffs.DefaultConfig
+	FFSDefaultConfig *ffs.StorageConfig
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -154,10 +162,28 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	if conf.AddrPowergateAPI != nil {
-		t.powc, err = powc.NewClient(conf.AddrPowergateAPI, grpc.WithInsecure(), grpc.WithPerRPCCredentials(powc.TokenAuth{}))
+		target, err := TCPAddrFromMultiAddr(conf.AddrPowergateAPI)
 		if err != nil {
 			return nil, err
 		}
+		t.powc, err = powc.NewClient(target)
+		if err != nil {
+			return nil, err
+		}
+		pgConn, err := grpc.Dial(target, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		t.powStub = grpcdynamic.NewStub(pgConn)
+		ffsDesc, err := desc.LoadFileDescriptor("ffs/rpc/rpc.proto")
+		if err != nil {
+			return nil, err
+		}
+		ffsServiceDesc := ffsDesc.FindService("ffs.rpc.RPCService")
+		if ffsServiceDesc == nil {
+			return nil, fmt.Errorf("no ffs service description found")
+		}
+		t.ffsServiceDesc = ffsServiceDesc
 	}
 	if conf.DNSToken != "" {
 		t.dnsm, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
@@ -191,7 +217,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC server
-	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
+	target, err := TCPAddrFromMultiAddr(conf.AddrAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -261,15 +287,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		DNSManager:                t.dnsm,
 	}
 
+	ffsService := ffsRpc.UnimplementedRPCServiceServer{}
+
 	// Start serving
-	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
+	ptarget, err := TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
 	}
 	var opts []grpc.ServerOption
 	if conf.Hub {
 		opts = []grpc.ServerOption{
-			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.powergateInterceptor, t.threadInterceptor()),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
 	} else {
@@ -291,6 +319,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			upb.RegisterAPIServer(t.server, us)
 		}
 		bpb.RegisterAPIServer(t.server, bs)
+		ffsRpc.RegisterRPCServiceServer(t.server, &ffsService)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
@@ -538,6 +567,22 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func (t *Textile) powergateInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	if !strings.Contains(info.FullMethod, "ffs.rpc.RPCService") {
+		return handler(ctx, req)
+	}
+	methodParts := strings.Split(info.FullMethod, "/")
+	if len(methodParts) < 2 {
+		return nil, fmt.Errorf("error parsing method string %s", info.FullMethod)
+	}
+	methodName := methodParts[len(methodParts)-1]
+	methodDesc := t.ffsServiceDesc.FindMethodByName(methodName)
+	if methodDesc == nil {
+		return nil, fmt.Errorf("no method found for %s", methodName)
+	}
+	return t.powStub.InvokeRpc(ctx, methodDesc, req.(proto.Message))
+}
+
 // threadInterceptor monitors for thread creation and deletion.
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
@@ -698,4 +743,24 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 		return res, nil
 	}
+}
+
+func TCPAddrFromMultiAddr(maddr ma.Multiaddr) (addr string, err error) {
+	if maddr == nil {
+		err = fmt.Errorf("invalid address")
+		return
+	}
+	var host string
+	host, err = maddr.ValueForProtocol(ma.P_DNS4)
+	if err != nil {
+		host, err = maddr.ValueForProtocol(ma.P_IP4)
+		if err != nil {
+			return
+		}
+	}
+	tcp, err := maddr.ValueForProtocol(ma.P_TCP)
+	if err != nil {
+		return
+	}
+	return fmt.Sprintf("%s:%s", host, tcp), nil
 }

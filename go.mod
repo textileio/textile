@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/hsanjuan/ipfs-lite v1.1.12 // indirect
 	github.com/improbable-eng/grpc-web v0.12.0
-	github.com/ipfs/go-blockservice v0.1.3
+	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
 	github.com/ipfs/go-cid v0.0.6
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-flatfs v0.4.4
@@ -37,6 +37,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
 	github.com/jbenet/go-is-domain v1.0.3
+	github.com/jhump/protoreflect v1.7.0
 	github.com/libp2p/go-libp2p-core v0.6.0
 	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
@@ -64,7 +65,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722
-	github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5
+	github.com/textileio/powergate v0.2.2-0.20200725003600-7c52b4bd502a
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.3.2
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a

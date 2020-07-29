@@ -191,7 +191,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	conf.FFSDefaultConfig = &ffs.DefaultConfig{
+	conf.FFSDefaultConfig = &ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled: true,
 			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
@@ -257,8 +257,10 @@ func spinup(t *testing.T) *pc.Client {
 	var err error
 	limit := 30
 	retries := 0
+	target, err := tutil.TCPAddrFromMultiAddr(powMultiaddr)
+	require.Nil(t, err)
 	for retries < limit {
-		powc, err = pc.NewClient(powMultiaddr, grpc.WithInsecure())
+		powc, err = pc.NewClient(target, grpc.WithInsecure())
 		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		s, _, err := powc.Health.Check(ctx)
