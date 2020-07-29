@@ -220,21 +220,21 @@ func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string,
 	if asc {
 		q = db.OrderByID()
 		if seek != "" {
-			q = q.SeekID(coredb.InstanceID(seek))
+			q.SeekID(coredb.InstanceID(seek))
 		}
 	} else {
 		q = db.OrderByIDDesc()
 		if seek == "" {
 			seek = ulid.MustNew(ulid.MaxTime(), rand.Reader).String()
 		}
-		q = q.SeekID(coredb.InstanceID(seek))
+		q.SeekID(coredb.InstanceID(seek))
 	}
 	if limit == 0 {
 		limit = defaultMessagePageSize
 	} else if limit > maxMessagePageSize {
 		limit = maxMessagePageSize
 	}
-	q = q.LimitTo(int(limit))
+	q.LimitTo(int(limit))
 	switch stat {
 	case 0:
 		break

@@ -325,7 +325,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 		for i := 0; i < len(list)-1; i++ {
 			assert.True(t, list[i].CreatedAt.After(list[i+1].CreatedAt))
 		}
-		m, err := list[0].Open(context.Background(), from)
+		m, err := list[0].Open(context.Background(), to)
 		require.NoError(t, err)
 		assert.Equal(t, "hi", string(m))
 	})
@@ -401,9 +401,9 @@ func TestClient_ListSentMessages(t *testing.T) {
 	list, err := client.ListSentMessages(fctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
-	m1, err := list[0].Open(context.Background(), from)
+	m2, err := list[0].Open(context.Background(), from)
 	require.NoError(t, err)
-	m2, err := list[1].Open(context.Background(), from)
+	m1, err := list[1].Open(context.Background(), from)
 	require.NoError(t, err)
 	assert.Equal(t, "two", string(m2))
 	assert.Equal(t, "one", string(m1))

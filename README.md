@@ -46,6 +46,10 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
   * [Multi-writer buckets](#multi-writer-buckets)
   * [Deleting a bucket](#deleting-a-bucket)
   * [Using the Buckets Library](#using-the-buckets-library)
+    * [Creating a bucket](#creating-a-bucket-1)
+    * [Getting an existing bucket](#getting-an-existing-bucket)
+    * [Pushing local changes](#pushing-local-changes)
+    * [Pulling remote changes](#pulling-remote-changes)
 * [Developing](#developing)
 * [Contributing](#contributing)
 * [Changelog](#changelog)
@@ -662,7 +666,56 @@ The `buckets/local` library powers both the `buck` and `hub buck` CLIs. Everythi
 go get github.com/textileio/textile/buckets/local
 ```
 
-See the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for usage.
+#### Creating a bucket
+
+Creating a new bucket is just a matter of specifying a config. Only `Path` is required.
+
+```
+// Setup the buckets lib
+buckets := local.NewBuckets(cmd.NewClients("api.textile.io:443", false), local.DefaultConfConfig())
+
+// Create a new bucket from config
+mybuck, err := buckets.NewBucket(context.Background(), local.Config{
+    Path: "path/to/bucket/folder"
+})
+
+// Check current status
+diff, err := mybuck.DiffLocal() // diff contains staged changes
+```
+
+See `local.WithName`, `local.WithPrivate`, `local.WithCid`, `local.WithExistingPathEvents` for more options when creating buckets.
+
+To create a bucket from an existing remote, use its thread ID and instance ID (bucket `key`) in the config.
+
+#### Getting an existing bucket
+
+`GetLocalBucket` returns the bucket at path.
+
+```
+mybuck, err := buckets.GetLocalBucket(context.Background(), "path/to/bucket/folder")
+```
+
+#### Pushing local files
+
+`PushLocal` pushes all staged changes to the remote and returns the new local and remote root Cids. These roots will only be different if the bucket is private (the remote is encrypted).
+
+```
+newRoots, err := mybuck.PushLocal()
+```
+
+See `local.PathOption` for more options when pushing.
+
+#### Pulling remote changes
+
+`PullRemote` pulls all remote changes locally and returns the new root Cids.
+
+```
+newRoots, err := mybuck.PullRemote()
+```
+
+See `local.PathOption` for more options when pulling.
+
+Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for more methods and usage.
 
 ## Developing
 
