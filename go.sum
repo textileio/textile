@@ -132,6 +132,8 @@ github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEe
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/cenkalti/backoff/v3 v3.0.0 h1:ske+9nBpD9qZsTBoF41nW5L+AIuFBKMeze18XQ3eG1c=
 github.com/cenkalti/backoff/v3 v3.0.0/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
+github.com/cenkalti/backoff/v4 v4.0.2 h1:JIufpQLbh4DkbQoii76ItQIUFzevQSqOLZca4eamEDs=
+github.com/cenkalti/backoff/v4 v4.0.2/go.mod h1:eEew/i+1Q6OrCDZh3WiXYv3+nJwBASZ8Bog/87DQnVg=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
@@ -581,13 +583,9 @@ github.com/ipfs/go-datastore v0.1.1/go.mod h1:w38XXW9kVFNp57Zj5knbKWM2T+KOZCGDRV
 github.com/ipfs/go-datastore v0.3.0/go.mod h1:w38XXW9kVFNp57Zj5knbKWM2T+KOZCGDRVNdgPHtbHw=
 github.com/ipfs/go-datastore v0.3.1/go.mod h1:w38XXW9kVFNp57Zj5knbKWM2T+KOZCGDRVNdgPHtbHw=
 github.com/ipfs/go-datastore v0.4.1/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13XEbGtsFUhA=
-github.com/ipfs/go-datastore v0.4.4 h1:rjvQ9+muFaJ+QZ7dN5B1MSDNQ0JVZKkkES/rMZmA8X8=
-github.com/ipfs/go-datastore v0.4.4/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13XEbGtsFUhA=
 github.com/ipfs/go-detect-race v0.0.1 h1:qX/xay2W3E4Q1U7d9lNs1sU9nvguX0a7319XbyQ6cOk=
 github.com/ipfs/go-detect-race v0.0.1/go.mod h1:8BNT7shDZPo99Q74BpGMK+4D8Mn4j46UU0LZ723meps=
 github.com/ipfs/go-ds-badger v0.2.3/go.mod h1:pEYw0rgg3FIrywKKnL+Snr+w/LjJZVMTBRn4FS6UHUk=
-github.com/ipfs/go-ds-badger v0.2.4 h1:UPGB0y7luFHk+mY/tUZrif/272M8o+hFsW+avLUeWrM=
-github.com/ipfs/go-ds-badger v0.2.4/go.mod h1:pEYw0rgg3FIrywKKnL+Snr+w/LjJZVMTBRn4FS6UHUk=
 github.com/ipfs/go-ds-badger2 v0.1.0 h1:784py6lXkwlVF+K6XSuqmdMgy5l8GI6k60ngBokb9Fg=
 github.com/ipfs/go-ds-badger2 v0.1.0/go.mod h1:pbR1p817OZbdId9EvLOhKBgUVTM3BMCSTan78lDDVaw=
 github.com/ipfs/go-ds-flatfs v0.4.4 h1:DmGZ4qOYQLNgu8Mltuz1DtUHpm+BjWMcVN3F3H3VJzQ=
@@ -1518,8 +1516,12 @@ github.com/textileio/dcrypto v0.0.1 h1:ftXQKd+CAM7a0XFrw+hJqizo+ux8+g5RttKjImZRc
 github.com/textileio/dcrypto v0.0.1/go.mod h1:rDlYXuL+HQwkyrxOR230zEUouRnlTwH6O5XWoPbmfcE=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7 h1:J7+UXJT/Ku8ylMqqHH4T+CiHtOSd8woUZjynG3fEwDI=
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7/go.mod h1:j7aKMh8sbbtvttp7V7yCOkHW/pfRtIM/6h+8qEDsLyI=
-github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722 h1:QLXNezkSqka09JQ7KMj2D52YQOBBhdqF4DH2ECSM86U=
-github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
+github.com/textileio/go-datastore v0.4.5-0.20200728205504-ffeb3591b248 h1:X4S0Y+yX1eZB1wx8Vm4spdGoSgCgPQJB5iuSY2hECXo=
+github.com/textileio/go-datastore v0.4.5-0.20200728205504-ffeb3591b248/go.mod h1:eXTcaaiN6uOlVCLS9GjJUJtlvJfM3xk23w3fyfrmmJs=
+github.com/textileio/go-ds-badger v0.2.5-0.20200728212847-1ec9ac5e644c h1:KdgC7TSGWvvNfPtzgHtzNdeBIKUBjCSJbW8luqIPTs4=
+github.com/textileio/go-ds-badger v0.2.5-0.20200728212847-1ec9ac5e644c/go.mod h1:xmAMBD9J5eVxClKrKggixADgZ8zMeOoG7RPnOuVRegg=
+github.com/textileio/go-threads v0.1.24-0.20200728224844-456a1ebdf635 h1:6d85z0bxi7PZXnv1DQwDHSi2jY87RtOfw5onH/LtKsU=
+github.com/textileio/go-threads v0.1.24-0.20200728224844-456a1ebdf635/go.mod h1:FG8UYG9r7jogBiuEzkJJj+8+HMEYGdnSo2NqjsEFXR4=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5 h1:sZxhbihpeGscOsceiLw7uokXQK0EoSmykAm+EpwgVSs=
 github.com/textileio/powergate v0.0.1-beta.13.0.20200703203605-db27e80fa8b5/go.mod h1:D3ImIiFCJSFdNdSO1m1SL+P8kQvW2Jrkc6hAZI8h7Bg=
 github.com/textileio/uiprogress v0.0.4 h1:7FWXEKK/h54ssNOW24q9MeJ9Eujptsr8eDPq35aPHjo=

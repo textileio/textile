@@ -1,4 +1,4 @@
-package collection
+package threaddb
 
 import (
 	"context"
@@ -10,26 +10,23 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
-	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/collections"
+	mdb "github.com/textileio/textile/mongodb"
 	"github.com/textileio/textile/util"
 )
 
 var (
-	log = logging.Logger("buckets")
-
-	schema  *jsonschema.Schema
-	indexes = []db.Index{{
+	bucketsSchema  *jsonschema.Schema
+	bucketsIndexes = []db.Index{{
 		Path: "path",
 	}}
+	bucketsConfig db.CollectionConfig
 
 	// ffsDefaultCidConfig is a default hardcoded CidConfig to be used
 	// on newly created FFS instances as the default CidConfig of archived Cids,
@@ -91,15 +88,53 @@ type Deal struct {
 	Miner       string `json:"miner"`
 }
 
+// BucketOptions defines options for interacting with buckets.
+type BucketOptions struct {
+	Name  string
+	Key   []byte
+	Token thread.Token
+}
+
+// BucketOption holds a bucket option.
+type BucketOption func(*BucketOptions)
+
+// WithNewBucketName specifies a name for a bucket.
+// Note: This is only valid when creating a new bucket.
+func WithNewBucketName(n string) BucketOption {
+	return func(args *BucketOptions) {
+		args.Name = n
+	}
+}
+
+// WithNewBucketKey sets the bucket encryption key.
+func WithNewBucketKey(k []byte) BucketOption {
+	return func(args *BucketOptions) {
+		args.Key = k
+	}
+}
+
+// WithNewBucketToken sets the threaddb token.
+func WithNewBucketToken(t thread.Token) BucketOption {
+	return func(args *BucketOptions) {
+		args.Token = t
+	}
+}
+
 func init() {
 	reflector := jsonschema.Reflector{ExpandedStruct: true}
-	schema = reflector.Reflect(&Bucket{})
+	bucketsSchema = reflector.Reflect(&Bucket{})
+	bucketsConfig = db.CollectionConfig{
+		Name:    buckets.CollectionName,
+		Schema:  bucketsSchema,
+		Indexes: bucketsIndexes,
+	}
 }
 
 // Buckets is a wrapper around a threaddb collection that performs object storage on IPFS and Filecoin.
 type Buckets struct {
-	ffsCol   *collections.FFSInstances
-	threads  *dbc.Client
+	collection
+
+	ffsCol   *mdb.FFSInstances
 	pgClient *powc.Client
 
 	buckCidConfig ffs.DefaultConfig
@@ -110,15 +145,8 @@ type Buckets struct {
 	wg     sync.WaitGroup
 }
 
-// New returns a new buckets collection mananger.
-func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, defaultCidConfig *ffs.DefaultConfig, debug bool) (*Buckets, error) {
-	if debug {
-		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"buckets": logging.LevelDebug,
-		}); err != nil {
-			return nil, err
-		}
-	}
+// NewBuckets returns a new buckets collection mananger.
+func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, defaultCidConfig *ffs.DefaultConfig) (*Buckets, error) {
 	buckCidConfig := ffsDefaultCidConfig
 	if defaultCidConfig != nil {
 		buckCidConfig = *defaultCidConfig
@@ -126,8 +154,11 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, default
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Buckets{
+		collection: collection{
+			c:      tc,
+			config: bucketsConfig,
+		},
 		ffsCol:   col,
-		threads:  t,
 		pgClient: pgc,
 
 		buckCidConfig: buckCidConfig,
@@ -138,8 +169,8 @@ func New(t *dbc.Client, pgc *powc.Client, col *collections.FFSInstances, default
 }
 
 // Create a bucket instance.
-func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth path.Path, opts ...Option) (*Bucket, error) {
-	args := &Options{}
+func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.Path, opts ...BucketOption) (*Bucket, error) {
+	args := &BucketOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -157,23 +188,11 @@ func (b *Buckets) Create(ctx context.Context, dbID thread.ID, key string, pth pa
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	ids, err := b.threads.Create(ctx, dbID, buckets.CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
-	if isColNotFoundErr(err) {
-		if err := b.addCollection(ctx, dbID, opts...); err != nil {
-			return nil, err
-		}
-		return b.Create(ctx, dbID, key, pth, opts...)
-	}
-	if isInvalidSchemaErr(err) {
-		if err := b.updateCollection(ctx, dbID, opts...); err != nil {
-			return nil, err
-		}
-		return b.Create(ctx, dbID, key, pth, opts...)
-	}
+	id, err := b.Create(ctx, dbID, bucket, WithToken(args.Token))
 	if err != nil {
 		return nil, fmt.Errorf("creating bucket in thread: %s", err)
 	}
-	bucket.Key = ids[0]
+	bucket.Key = string(id)
 
 	if err := b.createFFSInstance(ctx, key); err != nil {
 		return nil, fmt.Errorf("creating FFS instance for bucket: %s", err)
@@ -218,64 +237,10 @@ func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error
 	return nil
 }
 
-// Get a bucket instance.
-func (b *Buckets) Get(ctx context.Context, dbID thread.ID, key string, opts ...Option) (*Bucket, error) {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	buck := &Bucket{}
-	err := b.threads.FindByID(ctx, dbID, buckets.CollectionName, key, buck, db.WithTxnToken(args.Token))
-	if isColNotFoundErr(err) {
-		if err := b.addCollection(ctx, dbID, opts...); err != nil {
-			return nil, err
-		}
-		return b.Get(ctx, dbID, key, opts...)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("getting bucket in thread: %s", err)
-	}
-	return buck, nil
-}
-
-// List bucket instances.
-func (b *Buckets) List(ctx context.Context, dbID thread.ID, opts ...Option) ([]*Bucket, error) {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	res, err := b.threads.Find(ctx, dbID, buckets.CollectionName, &db.Query{}, &Bucket{}, db.WithTxnToken(args.Token))
-	if isColNotFoundErr(err) {
-		if err := b.addCollection(ctx, dbID, opts...); err != nil {
-			return nil, err
-		}
-		return b.List(ctx, dbID, opts...)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("listing bucket in thread: %s", err)
-	}
-	return res.([]*Bucket), nil
-}
-
-// Save a bucket instance.
-func (b *Buckets) Save(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
+// SaveSafe a bucket instance.
+func (b *Buckets) SaveSafe(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
 	ensureNoNulls(bucket)
-	err := b.threads.Save(ctx, dbID, buckets.CollectionName, dbc.Instances{bucket}, db.WithTxnToken(args.Token))
-	if isInvalidSchemaErr(err) {
-		if err := b.updateCollection(ctx, dbID, opts...); err != nil {
-			return err
-		}
-		return b.Save(ctx, dbID, bucket, opts...)
-	}
-	if err != nil {
-		return fmt.Errorf("saving bucket in thread: %s", err)
-	}
-	return nil
-
+	return b.Save(ctx, dbID, bucket, opts...)
 }
 
 func ensureNoNulls(b *Bucket) {
@@ -286,19 +251,6 @@ func ensureNoNulls(b *Bucket) {
 		}
 		b.Archives = Archives{Current: current, History: []Archive{}}
 	}
-}
-
-// Delete a bucket instance.
-func (b *Buckets) Delete(ctx context.Context, dbID thread.ID, key string, opts ...Option) error {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	err := b.threads.Delete(ctx, dbID, buckets.CollectionName, []string{key}, db.WithTxnToken(args.Token))
-	if err != nil {
-		return fmt.Errorf("deleting bucket in thread: %s", err)
-	}
-	return nil
 }
 
 // Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
@@ -371,7 +323,7 @@ func (b *Buckets) Archive(ctx context.Context, dbID thread.ID, key string, newCi
 		// since we're going to set a new _current_ archive.
 		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
 	}
-	ffsi.Archives.Current = collections.Archive{
+	ffsi.Archives.Current = mdb.Archive{
 		Cid:       newCid.Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid.String(),
@@ -502,7 +454,8 @@ Loop:
 }
 
 func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID thread.ID, ffsToken string, c cid.Cid, opts ...Option) error {
-	buck, err := b.Get(ctx, dbID, key, opts...)
+	buck := &Bucket{}
+	err := b.Get(ctx, dbID, key, buck, opts...)
 	if err != nil {
 		return fmt.Errorf("getting bucket for save deals: %s", err)
 	}
@@ -527,7 +480,7 @@ func (b *Buckets) saveDealsInArchive(ctx context.Context, key string, dbID threa
 	}
 
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = b.Save(ctx, dbID, buck, opts...); err != nil {
+	if err = b.SaveSafe(ctx, dbID, buck, opts...); err != nil {
 		return fmt.Errorf("saving deals in thread: %s", err)
 	}
 	return nil
@@ -567,70 +520,6 @@ func (b *Buckets) updateArchiveStatus(ctx context.Context, key string, jid strin
 		return fmt.Errorf("updating ffs status update instance data: %s", err)
 	}
 	return nil
-}
-
-func (b *Buckets) addCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	return b.threads.NewCollection(ctx, dbID, db.CollectionConfig{
-		Name:    buckets.CollectionName,
-		Schema:  schema,
-		Indexes: indexes,
-	}, db.WithManagedToken(args.Token))
-}
-
-func (b *Buckets) updateCollection(ctx context.Context, dbID thread.ID, opts ...Option) error {
-	args := &Options{}
-	for _, opt := range opts {
-		opt(args)
-	}
-	return b.threads.UpdateCollection(ctx, dbID, db.CollectionConfig{
-		Name:    buckets.CollectionName,
-		Schema:  schema,
-		Indexes: indexes,
-	}, db.WithManagedToken(args.Token))
-}
-
-type Options struct {
-	Name  string
-	Key   []byte
-	Token thread.Token
-}
-
-type Option func(*Options)
-
-func WithName(n string) Option {
-	return func(args *Options) {
-		args.Name = n
-	}
-}
-
-func WithKey(k []byte) Option {
-	return func(args *Options) {
-		args.Key = k
-	}
-}
-
-func WithToken(t thread.Token) Option {
-	return func(args *Options) {
-		args.Token = t
-	}
-}
-
-func isColNotFoundErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), "collection not found")
-}
-
-func isInvalidSchemaErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), "instance doesn't correspond to schema: (root)")
 }
 
 func isJobStatusFinal(js ffs.JobStatus) bool {

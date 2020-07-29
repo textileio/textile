@@ -1,4 +1,4 @@
-package collections
+package mongodb
 
 import (
 	"context"
@@ -8,7 +8,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const tokenLen = 44
+const (
+	tokenLen = 44
+
+	DuplicateErrMsg = "E11000 duplicate key error"
+)
 
 type ctxKey string
 

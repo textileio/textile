@@ -30,12 +30,12 @@ func MakeTextile(t *testing.T) core.Config {
 
 func DefaultTextileConfig(t *testing.T) core.Config {
 	dir, err := ioutil.TempDir("", "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	apiPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	gatewayPort, err := freeport.GetFreePort()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	return core.Config{
 		RepoPath: dir,
@@ -63,13 +63,13 @@ func DefaultTextileConfig(t *testing.T) core.Config {
 
 func MakeTextileWithConfig(t *testing.T, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
 	textile, err := core.NewTextile(context.Background(), conf)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	textile.Bootstrap()
 	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
 	done := func(deleteRepo bool) {
 		time.Sleep(time.Second) // Give threads a chance to finish work
 		err := textile.Close(true)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		if deleteRepo {
 			_ = os.RemoveAll(conf.RepoPath)
 		}
@@ -98,7 +98,7 @@ func Signup(t *testing.T, client *client.Client, conf core.Config, username, ema
 	go func() {
 		defer wg.Done()
 		res, err = client.Signup(context.Background(), username, email)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	ConfirmEmail(t, conf.AddrGatewayURL, SessionSecret)
 	wg.Wait()
@@ -115,7 +115,7 @@ func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEma
 	go func() {
 		defer wg.Done()
 		res, err = client.Signin(context.Background(), usernameOrEmail)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	ConfirmEmail(t, conf.AddrGatewayURL, SessionSecret)
 	wg.Wait()
@@ -128,6 +128,6 @@ func ConfirmEmail(t *testing.T, gurl string, secret string) {
 	time.Sleep(time.Second)
 	url := fmt.Sprintf("%s/confirm/%s", gurl, secret)
 	_, err := http.Get(url)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(time.Second)
 }

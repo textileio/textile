@@ -50,6 +50,30 @@ type Config struct {
 	Global bool
 }
 
+// ConfConfig is used to generate new messages configs.
+type ConfConfig struct {
+	Dir       string // Config directory base name
+	Name      string // Name of the mailbox config file
+	Type      string // Type is the type of config file (yaml/json)
+	EnvPrefix string // A prefix that will be expected on env vars
+}
+
+// NewConfig uses values from ConfConfig to contruct a new config.
+func (cc ConfConfig) NewConfig(pth string, flags map[string]Flag, global bool) (c *Config, fileExists bool, err error) {
+	v := viper.New()
+	v.SetConfigType(cc.Type)
+	c = &Config{
+		Viper:  v,
+		Dir:    cc.Dir,
+		Name:   cc.Name,
+		Flags:  flags,
+		EnvPre: cc.EnvPrefix,
+		Global: global,
+	}
+	fileExists = FindConfigFile(c, pth)
+	return c, fileExists, nil
+}
+
 // Clients wraps all the possible hubd/buckd clients.
 type Clients struct {
 	Buckets *bc.Client
