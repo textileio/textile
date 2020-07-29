@@ -16,9 +16,9 @@ type WatchState struct {
 	State ConnectionState
 	// Error returned by the watch operation.
 	Err error
-	// Fatal indicates whether or not the associated error is fatal.
-	// (Connectivity related errors are not fatal.)
-	Fatal bool
+	// Aborted indicates whether or not the associated error aborted the watch.
+	// (Connectivity related errors do not abort the watch.)
+	Aborted bool
 }
 
 // ConnectionState indicates an online/offline state.
@@ -60,13 +60,13 @@ func Watch(ctx context.Context, watchFunc WatchFunc, reconnectInterval time.Dura
 		err := backoff.Retry(func() error {
 			state, err := watchFunc(ctx)
 			if err != nil {
-				outerState <- WatchState{Err: err, Fatal: true}
+				outerState <- WatchState{Err: err, Aborted: true}
 				return nil // Stop retrying
 			}
 			for s := range state {
 				outerState <- s
 				if s.Err != nil {
-					if s.Fatal {
+					if s.Aborted {
 						return nil // Stop retrying
 					} else {
 						return s.Err // Connection error, keep trying
@@ -76,7 +76,7 @@ func Watch(ctx context.Context, watchFunc WatchFunc, reconnectInterval time.Dura
 			return nil
 		}, bc)
 		if err != nil {
-			outerState <- WatchState{Err: err, Fatal: true}
+			outerState <- WatchState{Err: err, Aborted: true}
 		}
 	}()
 	return outerState, nil

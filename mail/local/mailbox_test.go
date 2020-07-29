@@ -39,7 +39,7 @@ func TestMailbox_SendMessage(t *testing.T) {
 	ok, err := box1.Identity().GetPublic().Verify(m1.Body, m1.Signature)
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.Equal(t, false, m1.Read())
+	assert.Equal(t, false, m1.IsRead())
 	assert.NotEmpty(t, m1.CreatedAt)
 
 	b1, err := m1.Open(context.Background(), box1.Identity())
@@ -107,7 +107,7 @@ func TestMailbox_Watch(t *testing.T) {
 	require.NoError(t, err)
 	err = box1.DeleteInboxMessage(context.Background(), sent[1].ID)
 	require.NoError(t, err)
-	err = box2.DeleteSentMessage(context.Background(), sent[2].ID)
+	err = box2.DeleteSentboxMessage(context.Background(), sent[2].ID)
 	require.NoError(t, err)
 
 	cancel() // Stop listening

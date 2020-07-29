@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -88,6 +87,7 @@ const (
 
 	defaultMessagePageSize = 100
 	maxMessagePageSize     = 10000
+	minMessageReadAt       = float64(0)
 )
 
 func (s *Service) SetupMail(ctx context.Context, _ *pb.SetupMailRequest) (*pb.SetupMailReply, error) {
@@ -195,8 +195,8 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 	return &pb.ListMessagesReply{Messages: list}, nil
 }
 
-func (s *Service) ListSentMessages(ctx context.Context, req *pb.ListSentMessagesRequest) (*pb.ListMessagesReply, error) {
-	log.Debugf("received list sent messages request")
+func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentMessagesRequest) (*pb.ListMessagesReply, error) {
+	log.Debugf("received list sentbox messages request")
 
 	user, ok := mdb.UserFromContext(ctx)
 	if !ok {
@@ -239,9 +239,9 @@ func (s *Service) listMessages(ctx context.Context, dbID thread.ID, seek string,
 	case 0:
 		break
 	case 1:
-		q.And("read_at").Gt(float64(0))
+		q.And("read_at").Gt(minMessageReadAt)
 	case 2:
-		q.And("read_at").Eq(float64(0))
+		q.And("read_at").Eq(minMessageReadAt)
 	default:
 		return nil, fmt.Errorf("unknown message status")
 	}
@@ -326,8 +326,8 @@ func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteMessageR
 	return &pb.DeleteMessageReply{}, nil
 }
 
-func (s *Service) DeleteSentMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
-	log.Debugf("received delete sent message request")
+func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
+	log.Debugf("received delete sentbox message request")
 
 	user, ok := mdb.UserFromContext(ctx)
 	if !ok {
@@ -369,7 +369,7 @@ func (s *Service) getSentbox(ctx context.Context, key crypto.PubKey) (thread.ID,
 
 func (s *Service) getOrCreateMailbox(ctx context.Context, key crypto.PubKey, name string, opts ...tdb.Option) (thread.ID, error) {
 	id, err := s.Mail.NewMailbox(ctx, name, opts...)
-	if err != nil && strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
+	if errors.Is(err, tdb.ErrMailboxExists) {
 		thrd, err := s.Collections.Threads.GetByName(ctx, name, key)
 		if err != nil {
 			return thread.Undef, err

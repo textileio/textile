@@ -275,8 +275,10 @@ func TestClient_SetupMail(t *testing.T) {
 	assert.NotEmpty(t, sentbox)
 
 	// should be idempotent
-	_, _, err = client.SetupMail(ctx)
+	inbox2, sentbox2, err := client.SetupMail(ctx)
 	require.NoError(t, err)
+	assert.Equal(t, inbox, inbox2)
+	assert.Equal(t, sentbox, sentbox2)
 }
 
 func TestClient_SendMessage(t *testing.T) {
@@ -382,7 +384,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	})
 }
 
-func TestClient_ListSentMessages(t *testing.T) {
+func TestClient_ListSentboxMessages(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -398,7 +400,7 @@ func TestClient_ListSentMessages(t *testing.T) {
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("two"))
 	require.NoError(t, err)
 
-	list, err := client.ListSentMessages(fctx)
+	list, err := client.ListSentboxMessages(fctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
 	m2, err := list[0].Open(context.Background(), from)
@@ -453,7 +455,7 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 	assert.Len(t, list, 0)
 }
 
-func TestClient_DeleteSentMessage(t *testing.T) {
+func TestClient_DeleteSentboxMessage(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -467,10 +469,10 @@ func TestClient_DeleteSentMessage(t *testing.T) {
 	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
 
-	err = client.DeleteSentMessage(fctx, res.ID)
+	err = client.DeleteSentboxMessage(fctx, res.ID)
 	require.NoError(t, err)
 
-	list, err := client.ListSentMessages(fctx)
+	list, err := client.ListSentboxMessages(fctx)
 	require.NoError(t, err)
 	assert.Len(t, list, 0)
 }

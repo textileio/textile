@@ -56,7 +56,7 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 		defer w.Close()
 		w.SetMaxEvents(1)
 		if err := w.AddRecursive(bp); err != nil {
-			state <- cmd.WatchState{Err: err, Fatal: true}
+			state <- cmd.WatchState{Err: err, Aborted: true}
 			return
 		}
 
@@ -66,7 +66,7 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 			InstanceID: b.Key(),
 		}})
 		if err != nil {
-			state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
+			state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}
 			return
 		}
 		errs := make(chan error)
@@ -104,7 +104,7 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 
 		// Manually sync once on startup
 		if err := b.watchPush(ctx, pevents); err != nil {
-			state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
+			state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}
 			return
 		}
 
@@ -114,7 +114,7 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 		for {
 			select {
 			case err := <-errs:
-				state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
+				state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}
 				return
 			case <-ctx.Done():
 				return

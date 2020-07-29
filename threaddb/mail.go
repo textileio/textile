@@ -2,6 +2,10 @@ package threaddb
 
 import (
 	"context"
+	"errors"
+	"strings"
+
+	mdb "github.com/textileio/textile/mongodb"
 
 	"github.com/alecthomas/jsonschema"
 	dbc "github.com/textileio/go-threads/api/client"
@@ -23,6 +27,9 @@ var (
 		Path: "read_at",
 	}}
 	mailConfig db.CollectionConfig
+
+	// ErrMailboxExists indicates that a mailbox with the same name and owner already exists.
+	ErrMailboxExists = errors.New("mailbox already exists")
 )
 
 // Message represents the mail threaddb collection schema.
@@ -70,5 +77,8 @@ func (m *Mail) NewMailbox(ctx context.Context, name string, opts ...Option) (thr
 	id := thread.NewIDV1(thread.Raw, 32)
 	ctx = common.NewThreadNameContext(ctx, name)
 	err := m.c.NewDB(ctx, id, db.WithNewManagedName(name), db.WithNewManagedCollections(mailConfig), db.WithNewManagedToken(args.Token))
+	if err != nil && strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
+		return id, ErrMailboxExists
+	}
 	return id, err
 }

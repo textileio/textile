@@ -49,14 +49,14 @@ func (m *Mailbox) ListInboxMessages(ctx context.Context, opts ...client.ListOpti
 	return m.clients.Users.ListInboxMessages(ctx, opts...)
 }
 
-// ListSentMessages lists messages from the sentbox.
+// ListSentboxMessages lists messages from the sentbox.
 // Use options to paginate with seek and limit.
-func (m *Mailbox) ListSentMessages(ctx context.Context, opts ...client.ListOption) ([]client.Message, error) {
+func (m *Mailbox) ListSentboxMessages(ctx context.Context, opts ...client.ListOption) ([]client.Message, error) {
 	ctx, err := m.context(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return m.clients.Users.ListSentMessages(ctx, opts...)
+	return m.clients.Users.ListSentboxMessages(ctx, opts...)
 }
 
 const reconnectInterval = time.Second * 5
@@ -137,7 +137,7 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mev
 			Collection: mail.CollectionName,
 		}})
 		if err != nil {
-			state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
+			state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}
 			return
 		}
 		errs := make(chan error)
@@ -150,7 +150,7 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mev
 				switch e.Action.Type {
 				case tc.ActionCreate, tc.ActionSave:
 					var msg client.Message
-					if err := msg.Unmarshal(e.Action.Instance); err != nil {
+					if err := msg.UnmarshalInstance(e.Action.Instance); err != nil {
 						errs <- err
 						return
 					}
@@ -180,7 +180,7 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mev
 		for {
 			select {
 			case err := <-errs:
-				state <- cmd.WatchState{Err: err, Fatal: !cmd.IsConnectionError(err)}
+				state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}
 				return
 			case <-ctx.Done():
 				return
@@ -208,13 +208,13 @@ func (m *Mailbox) DeleteInboxMessage(ctx context.Context, id string) error {
 	return m.clients.Users.DeleteInboxMessage(ctx, id)
 }
 
-// DeleteSentMessage deletes a sent message by ID.
-func (m *Mailbox) DeleteSentMessage(ctx context.Context, id string) error {
+// DeleteSentboxMessage deletes a sent message by ID.
+func (m *Mailbox) DeleteSentboxMessage(ctx context.Context, id string) error {
 	ctx, err := m.context(ctx)
 	if err != nil {
 		return err
 	}
-	return m.clients.Users.DeleteSentMessage(ctx, id)
+	return m.clients.Users.DeleteSentboxMessage(ctx, id)
 }
 
 // Identity returns the mailbox's user identity.

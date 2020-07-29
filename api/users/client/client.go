@@ -67,6 +67,8 @@ func (c *Client) SetupMail(ctx context.Context) (inbox, sentbox thread.ID, err e
 }
 
 // Message is the client side representation of a mailbox message.
+// Signature corresponds to the encrypted body.
+// Use message.Open to get the plaintext body.
 type Message struct {
 	ID        string        `json:"_id"`
 	From      thread.PubKey `json:"from"`
@@ -82,16 +84,14 @@ func (m Message) Open(ctx context.Context, id thread.Identity) ([]byte, error) {
 	return id.Decrypt(ctx, m.Body)
 }
 
-// Read returns whether or not the message has been read.
-func (m Message) Read() bool {
+// IsRead returns whether or not the message has been read.
+func (m Message) IsRead() bool {
 	return !m.ReadAt.IsZero()
 }
 
-func (m Message) Marshal() ([]byte, error) {
-	return json.Marshal(m)
-}
-
-func (m Message) Unmarshal(data []byte) error {
+// UnmarshalInstance unmarshals the message from its ThreadDB instance data.
+// This will return an error if the message signature fails verification.
+func (m Message) UnmarshalInstance(data []byte) error {
 	var tm threaddb.Message
 	if err := json.Unmarshal(data, &tm); err != nil {
 		return err
@@ -169,8 +169,7 @@ func (c *Client) SendMessage(ctx context.Context, from thread.Identity, to threa
 }
 
 // ListInboxMessages lists messages from the inbox.
-// Use options to paginate with seek and limit,
-// and filter by read status.
+// Use options to paginate with seek and limit and filter by read status.
 func (c *Client) ListInboxMessages(ctx context.Context, opts ...ListOption) ([]Message, error) {
 	args := &listOptions{
 		status: All,
@@ -190,16 +189,16 @@ func (c *Client) ListInboxMessages(ctx context.Context, opts ...ListOption) ([]M
 	return handleMessageList(res)
 }
 
-// ListSentMessages lists messages from the sentbox.
+// ListSentboxMessages lists messages from the sentbox.
 // Use options to paginate with seek and limit.
-func (c *Client) ListSentMessages(ctx context.Context, opts ...ListOption) ([]Message, error) {
+func (c *Client) ListSentboxMessages(ctx context.Context, opts ...ListOption) ([]Message, error) {
 	args := &listOptions{
 		status: All,
 	}
 	for _, opt := range opts {
 		opt(args)
 	}
-	res, err := c.c.ListSentMessages(ctx, &pb.ListSentMessagesRequest{
+	res, err := c.c.ListSentboxMessages(ctx, &pb.ListSentMessagesRequest{
 		Seek:  args.seek,
 		Limit: int64(args.limit),
 	})
@@ -265,9 +264,9 @@ func (c *Client) DeleteInboxMessage(ctx context.Context, id string) error {
 	return err
 }
 
-// DeleteSentMessage deletes a sent message by ID.
-func (c *Client) DeleteSentMessage(ctx context.Context, id string) error {
-	_, err := c.c.DeleteSentMessage(ctx, &pb.DeleteMessageRequest{
+// DeleteSentboxMessage deletes a sent message by ID.
+func (c *Client) DeleteSentboxMessage(ctx context.Context, id string) error {
+	_, err := c.c.DeleteSentboxMessage(ctx, &pb.DeleteMessageRequest{
 		ID: id,
 	})
 	return err

@@ -96,8 +96,8 @@ service API {
     rpc SetupMail(SetupMailRequest) returns (SetupMailReply) {}
     rpc SendMessage(SendMessageRequest) returns (SendMessageReply) {}
     rpc ListInboxMessages(ListInboxMessagesRequest) returns (ListMessagesReply) {}
-    rpc ListSentMessages(ListSentMessagesRequest) returns (ListMessagesReply) {}
+    rpc ListSentboxMessages(ListSentMessagesRequest) returns (ListMessagesReply) {}
     rpc ReadInboxMessage(ReadMessageRequest) returns (ReadMessageReply) {}
     rpc DeleteInboxMessage(DeleteMessageRequest) returns (DeleteMessageReply) {}
-    rpc DeleteSentMessage(DeleteMessageRequest) returns (DeleteMessageReply) {}
+    rpc DeleteSentboxMessage(DeleteMessageRequest) returns (DeleteMessageReply) {}
 }
