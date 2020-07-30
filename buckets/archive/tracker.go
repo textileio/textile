@@ -119,7 +119,7 @@ func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Toke
 	return nil
 }
 
-// trackArcvhiveProgress queries the current archive status.
+// trackArchiveProgress queries the current archive status.
 // If a fatal error in tracking happens, it will return an error, which indicates the archive should be untracked.
 // If the archive didn't reach a final status yet, or a possibly recoverable error (by retrying) happens, it will return (true, "retry cause", nil).
 // If the archive reach final status, it will return (false, "", nil) and the tracking can be considered done.
