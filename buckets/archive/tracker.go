@@ -100,10 +100,9 @@ func (t *Tracker) run() {
 							return
 						}
 						log.Infof("rescheduling tracking archive with job %s, cause %s", a.JID, cause)
-						if err := t.colls.ArchiveTracking.Reschedule(ctx, a.JID, JobStatusPollInterval); err != nil {
+						if err := t.colls.ArchiveTracking.Reschedule(ctx, a.JID, JobStatusPollInterval, cause); err != nil {
 							log.Errorf("rescheduling tracked archive: %s", err)
 						}
-
 					}(a)
 				}
 				wg.Wait()

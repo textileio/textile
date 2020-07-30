@@ -118,11 +118,12 @@ func (at *ArchiveTracking) Finalize(ctx context.Context, jid ffs.JobID, cause st
 	return nil
 }
 
-func (at *ArchiveTracking) Reschedule(ctx context.Context, jid ffs.JobID, dur time.Duration) error {
+func (at *ArchiveTracking) Reschedule(ctx context.Context, jid ffs.JobID, dur time.Duration, cause string) error {
 	readyAt := time.Now().Add(dur)
 	res, err := at.col.UpdateOne(ctx, bson.M{"_id": jid}, bson.M{
 		"$set": bson.M{
 			"ready_at": readyAt,
+			"cause":    cause,
 		},
 	})
 	if err != nil {
