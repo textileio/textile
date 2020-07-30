@@ -25,10 +25,12 @@ import (
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
+	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/buckets/archive"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
 	mdb "github.com/textileio/textile/mongodb"
@@ -77,6 +79,8 @@ type Service struct {
 	IPFSClient                iface.CoreAPI
 	IPNSManager               *ipns.Manager
 	DNSManager                *dns.Manager
+	PGClient                  *powc.Client
+	ArchiveTracker            *archive.Tracker
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
@@ -1620,9 +1624,88 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if err != nil {
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
-	if err := s.Buckets.Archive(ctx, dbID, req.GetKey(), p.Cid(), tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("archiving bucket %s: %s", req.GetKey(), err)
+
+	ffsi, err := s.Collections.FFSInstances.Get(ctx, req.GetKey())
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs instance data: %s", err)
 	}
+
+	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
+
+	// Check that FFS wallet addr balance is > 0, if not, fail fast.
+	bal, err := s.PGClient.Wallet.WalletBalance(ctx, ffsi.WalletAddr)
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
+	}
+	if bal == 0 {
+		return nil, buckets.ErrZeroBalance
+	}
+
+	var jid ffs.JobID
+	firstTimeArchive := ffsi.Archives.Current.JobID == ""
+	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
+		// On the first archive, we simply push the Cid with
+		// the default CidConfig configured at bucket creation.
+		jid, err = s.PGClient.FFS.PushConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+		if err != nil {
+			return nil, fmt.Errorf("pushing config: %s", err)
+		}
+	} else {
+		oldCid, err := cid.Cast(ffsi.Archives.Current.Cid)
+		if err != nil {
+			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
+		}
+
+		// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
+		// The behaviour changes depending on different cases, depending on a previous archive.
+		// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
+		// 1. Last archive exists with the same Cid:
+		//   a. Last archive Successful: fails, there's nothing to do.
+		//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
+		//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
+		// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
+		if oldCid.Equals(p.Cid()) { // Case 1.
+			switch ffs.JobStatus(ffsi.Archives.Current.JobStatus) {
+			// Case 1.a.
+			case ffs.Success:
+				return nil, fmt.Errorf("the same bucket cid is already archived successfully")
+			// Case 1.b.
+			case ffs.Executing, ffs.Queued:
+				return nil, fmt.Errorf("there is an in progress archive")
+			// Case 1.c.
+			case ffs.Failed, ffs.Canceled:
+				jid, err = s.PGClient.FFS.PushConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+				if err != nil {
+					return nil, fmt.Errorf("pushing config: %s", err)
+				}
+			default:
+				return nil, fmt.Errorf("unexpected current archive status: %d", ffsi.Archives.Current.JobStatus)
+			}
+		} else { // Case 2.
+			jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
+			if err != nil {
+				return nil, fmt.Errorf("replacing cid: %s", err)
+			}
+		}
+
+		// Include the existing archive in history,
+		// since we're going to set a new _current_ archive.
+		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
+	}
+	ffsi.Archives.Current = mdb.Archive{
+		Cid:       p.Cid().Bytes(),
+		CreatedAt: time.Now().Unix(),
+		JobID:     jid.String(),
+		JobStatus: int(ffs.Queued),
+	}
+	if err := s.Collections.FFSInstances.Replace(ctx, ffsi); err != nil {
+		return nil, fmt.Errorf("updating ffs instance data: %s", err)
+	}
+
+	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.GetKey(), jid, p.Cid()); err != nil {
+		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
+	}
+
 	log.Debug("archived bucket")
 	return &pb.ArchiveReply{}, nil
 }
