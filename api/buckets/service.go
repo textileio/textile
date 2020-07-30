@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
+	gopath "path"
 	"strings"
 	"sync"
 	"time"
@@ -828,7 +828,7 @@ func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, ke
 	}
 	item := &pb.ListPathItem{
 		Cid:  node.Cid().String(),
-		Name: filepath.Base(pth),
+		Name: gopath.Base(pth),
 		Path: pth,
 		Size: int64(stat.CumulativeSize),
 	}
@@ -839,7 +839,7 @@ func (s *Service) nodeToItem(ctx context.Context, node ipld.Node, pth string, ke
 		item.IsDir = true
 		i := &pb.ListPathItem{}
 		if includeNextLevel {
-			p := filepath.Join(pth, l.Name)
+			p := gopath.Join(pth, l.Name)
 			n, err := l.GetNode(ctx, s.IPFSClient.Dag())
 			if err != nil {
 				return nil, err
@@ -875,7 +875,7 @@ func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, key, pth st
 }
 
 func inflateFilePath(buck *tdb.Bucket, filePath string) (path.Path, error) {
-	npth := path.New(filepath.Join(buck.Path, filePath))
+	npth := path.New(gopath.Join(buck.Path, filePath))
 	if err := npth.IsValid(); err != nil {
 		return nil, err
 	}
@@ -1093,13 +1093,13 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 	if err != nil {
 		return nil, err
 	}
-	fd, fn := filepath.Split(fp)
+	fd, fn := gopath.Split(fp)
 	fd = strings.TrimSuffix(fd, "/")
 	np, r, err := s.getNodesToPath(ctx, rp, fd, key)
 	if err != nil {
 		return nil, err
 	}
-	r = filepath.Join(r, fn)
+	r = gopath.Join(r, fn)
 
 	// If the remaining path segment is not empty, we need to create each one
 	// starting at the other end and walking back up to the deepest node
