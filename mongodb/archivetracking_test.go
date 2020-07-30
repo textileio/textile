@@ -123,7 +123,7 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
 	require.NoError(t, err)
 
-	err = col.Reschedule(ctx, jid, time.Hour+time.Second*5)
+	err = col.Reschedule(ctx, jid, time.Hour+time.Second*5, "retry me")
 	require.NoError(t, err)
 
 	ta, err := col.Get(ctx, jid)
