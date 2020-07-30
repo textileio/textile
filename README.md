@@ -675,7 +675,7 @@ Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local)
 
 #### Creating a bucket
 
-Creating a new bucket is done by constructing a configuration object. Only `Path` is required.
+Create a new bucket by constructing a configuration object. Only `Path` is required.
 
 ```
 // Setup the buckets lib
@@ -736,11 +736,11 @@ Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/mail/local) fo
 
 #### Creating a mailbox
 
-Like creating a bucket, creating a new mailbox is done by constructing a configuration object. All fields are required.
+Like creating a bucket, create a new mailbox by constructing a configuration object. All fields are required.
 
 ```
 // Setup the mail lib
-mail := local.NewMail(cmd.NewClients("api.textile.io:443", false), local.DefaultConfConfig())
+mail := local.NewMail(cmd.NewClients("api.textile.io:443", true), local.DefaultConfConfig())
 
 // Create a libp2p identity (this can be any thread.Identity)
 privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
