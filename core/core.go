@@ -166,24 +166,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if err != nil {
 			return nil, err
 		}
-		t.powc, err = powc.NewClient(target)
-		if err != nil {
+		if t.powc, err = powc.NewClient(target); err != nil {
 			return nil, err
 		}
-		pgConn, err := grpc.Dial(target, grpc.WithInsecure())
-		if err != nil {
+		if t.powStub, err = createPowStub(target); err != nil {
 			return nil, err
 		}
-		t.powStub = grpcdynamic.NewStub(pgConn)
-		ffsDesc, err := desc.LoadFileDescriptor("ffs/rpc/rpc.proto")
-		if err != nil {
+		if t.ffsServiceDesc, err = createFFSServiceDesciptor(); err != nil {
 			return nil, err
 		}
-		ffsServiceDesc := ffsDesc.FindService("ffs.rpc.RPCService")
-		if ffsServiceDesc == nil {
-			return nil, fmt.Errorf("no ffs service description found")
-		}
-		t.ffsServiceDesc = ffsServiceDesc
 	}
 	if conf.DNSToken != "" {
 		t.dnsm, err = dns.NewManager(conf.DNSDomain, conf.DNSZoneID, conf.DNSToken, conf.Debug)
@@ -298,7 +289,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var opts []grpc.ServerOption
 	if conf.Hub {
 		opts = []grpc.ServerOption{
-			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.powergateInterceptor, t.threadInterceptor()),
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor(), t.powergateInterceptor),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
 	} else {
@@ -572,6 +563,22 @@ func (t *Textile) powergateInterceptor(ctx context.Context, req interface{}, inf
 	if !strings.Contains(info.FullMethod, "ffs.rpc.RPCService") {
 		return handler(ctx, req)
 	}
+
+	var ffsInfo *c.FFSInfo
+	if org, ok := c.OrgFromContext(ctx); ok {
+		ffsInfo = org.FFSInfo
+	} else if dev, ok := c.DevFromContext(ctx); ok {
+		ffsInfo = dev.FFSInfo
+	} else if user, ok := c.UserFromContext(ctx); ok {
+		ffsInfo = user.FFSInfo
+	}
+
+	if ffsInfo == nil {
+		return nil, fmt.Errorf("no account or no FFS info associated with account")
+	}
+
+	ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+
 	methodParts := strings.Split(info.FullMethod, "/")
 	if len(methodParts) < 2 {
 		return nil, fmt.Errorf("error parsing method string %s", info.FullMethod)
@@ -581,7 +588,7 @@ func (t *Textile) powergateInterceptor(ctx context.Context, req interface{}, inf
 	if methodDesc == nil {
 		return nil, fmt.Errorf("no method found for %s", methodName)
 	}
-	return t.powStub.InvokeRpc(ctx, methodDesc, req.(proto.Message))
+	return t.powStub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
 }
 
 // threadInterceptor monitors for thread creation and deletion.
@@ -748,6 +755,26 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 		return res, nil
 	}
+}
+
+func createPowStub(target string) (grpcdynamic.Stub, error) {
+	pgConn, err := powc.CreateClientConn(target)
+	if err != nil {
+		return grpcdynamic.Stub{}, err
+	}
+	return grpcdynamic.NewStub(pgConn), nil
+}
+
+func createFFSServiceDesciptor() (*desc.ServiceDescriptor, error) {
+	ffsDesc, err := desc.LoadFileDescriptor("ffs/rpc/rpc.proto")
+	if err != nil {
+		return nil, err
+	}
+	ffsServiceDesc := ffsDesc.FindService("ffs.rpc.RPCService")
+	if ffsServiceDesc == nil {
+		return nil, fmt.Errorf("no ffs service description found")
+	}
+	return ffsServiceDesc, nil
 }
 
 func TCPAddrFromMultiAddr(maddr ma.Multiaddr) (addr string, err error) {

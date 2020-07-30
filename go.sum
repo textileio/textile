@@ -1513,8 +1513,8 @@ github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7 h1:J7+UXJT/Ku8
 github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7/go.mod h1:j7aKMh8sbbtvttp7V7yCOkHW/pfRtIM/6h+8qEDsLyI=
 github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722 h1:QLXNezkSqka09JQ7KMj2D52YQOBBhdqF4DH2ECSM86U=
 github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722/go.mod h1:64L0Vgmhs/+J92OdIblMaNC8rsaiWEtHotAikgkychw=
-github.com/textileio/powergate v0.2.2-0.20200725003600-7c52b4bd502a h1:3Ej64qeq31WTXfabMeRU51wb7VhuTvf0EI3ur83nzAk=
-github.com/textileio/powergate v0.2.2-0.20200725003600-7c52b4bd502a/go.mod h1:D+4CKYX5jvF6VMgCg7uWXtpwyfgzN2fCcRgHkG1jRhM=
+github.com/textileio/powergate v0.2.2-0.20200730195714-cc3080645ede h1:O1OVijlxTwBpOJ0U/kSxeXWEZk25JaxkE83/Sq2mgeE=
+github.com/textileio/powergate v0.2.2-0.20200730195714-cc3080645ede/go.mod h1:D+4CKYX5jvF6VMgCg7uWXtpwyfgzN2fCcRgHkG1jRhM=
 github.com/textileio/uiprogress v0.0.4 h1:7FWXEKK/h54ssNOW24q9MeJ9Eujptsr8eDPq35aPHjo=
 github.com/textileio/uiprogress v0.0.4/go.mod h1:ijtyLXHP6vw9MbbT4tmCKZonLPE3LN4mD9C/XRJkrgg=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=

@@ -65,7 +65,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v0.1.24-0.20200717194205-b42e93961722
-	github.com/textileio/powergate v0.2.2-0.20200725003600-7c52b4bd502a
+	github.com/textileio/powergate v0.2.2-0.20200730195714-cc3080645ede
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.3.2
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
