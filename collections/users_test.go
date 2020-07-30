@@ -18,9 +18,9 @@ func TestUsers_GetOrCreate(t *testing.T) {
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.Create(context.Background(), key)
+	err = col.Create(context.Background(), key, nil)
 	require.Nil(t, err)
-	err = col.Create(context.Background(), key)
+	err = col.Create(context.Background(), key, nil)
 	require.Nil(t, err)
 }
 
@@ -31,12 +31,14 @@ func TestUsers_Get(t *testing.T) {
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.Create(context.Background(), key)
+	err = col.Create(context.Background(), key, &FFSInfo{ID: "id", Token: "token"})
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), key)
 	require.Nil(t, err)
 	assert.Equal(t, key, got.Key)
+	assert.Equal(t, "id", got.FFSInfo.ID)
+	assert.Equal(t, "token", got.FFSInfo.Token)
 }
 
 func TestUsers_Delete(t *testing.T) {
@@ -46,7 +48,7 @@ func TestUsers_Delete(t *testing.T) {
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.Create(context.Background(), key)
+	err = col.Create(context.Background(), key, nil)
 	require.Nil(t, err)
 
 	err = col.Delete(context.Background(), key)
@@ -62,7 +64,7 @@ func TestUsers_BucketsTotalSize(t *testing.T) {
 
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.Nil(t, err)
-	err = col.Create(context.Background(), key)
+	err = col.Create(context.Background(), key, nil)
 	require.Nil(t, err)
 
 	err = col.SetBucketsTotalSize(context.Background(), key, 1234)

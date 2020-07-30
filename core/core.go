@@ -270,6 +270,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			IPFSClient:         ic,
 			IPNSManager:        t.ipnsm,
 			DNSManager:         t.dnsm,
+			Pow:                t.powc,
 		}
 		us = &users.Service{
 			Collections: t.collections,
@@ -675,7 +676,11 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := c.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			if err := t.collections.Users.Create(ctx, owner); err != nil {
+			ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if err := t.collections.Users.Create(ctx, owner, &c.FFSInfo{ID: ffsId, Token: ffsToken}); err != nil {
 				return nil, err
 			}
 		}

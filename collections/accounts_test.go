@@ -17,17 +17,19 @@ func TestAccounts_CreateDev(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
 	require.Nil(t, err)
 	assert.Equal(t, Dev, created.Type)
 	assert.Equal(t, "jon", created.Username)
 	assert.Equal(t, "jon@doe.com", created.Email)
 	assert.NotEmpty(t, created.Key)
 	assert.NotEmpty(t, created.Secret)
+	assert.Equal(t, "id", created.FFSInfo.ID)
+	assert.Equal(t, "token", created.FFSInfo.Token)
 
-	_, err = col.CreateDev(context.Background(), "jon", "jon2@doe.com")
+	_, err = col.CreateDev(context.Background(), "jon", "jon2@doe.com", &FFSInfo{ID: "id2", Token: "token2"})
 	require.NotNil(t, err)
-	_, err = col.CreateDev(context.Background(), "jon2", "jon@doe.com")
+	_, err = col.CreateDev(context.Background(), "jon2", "jon@doe.com", &FFSInfo{ID: "id3", Token: "token3"})
 	require.NotNil(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -36,7 +38,7 @@ func TestAccounts_CreateDev(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, &FFSInfo{ID: "id", Token: "token"})
 	require.NotNil(t, err)
 }
 
@@ -45,12 +47,14 @@ func TestAccounts_Get(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
 	require.Nil(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
 	require.Nil(t, err)
 	assert.Equal(t, created.Key, got.Key)
+	assert.Equal(t, "id", created.FFSInfo.ID)
+	assert.Equal(t, "token", created.FFSInfo.Token)
 }
 
 func TestAccounts_BucketsTotalSize(t *testing.T) {
@@ -58,7 +62,7 @@ func TestAccounts_BucketsTotalSize(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
 
 	err = col.SetBucketsTotalSize(context.Background(), created.Key, 1234)
@@ -74,7 +78,7 @@ func TestAccounts_GetByUsernameOrEmail(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
 
 	got, err := col.GetByUsernameOrEmail(context.Background(), "jon")
@@ -124,7 +128,7 @@ func TestAccounts_IsUsernameAvailable(t *testing.T) {
 	err = col.IsUsernameAvailable(context.Background(), "jon")
 	require.Nil(t, err)
 
-	_, err = col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	_, err = col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
 
 	err = col.IsUsernameAvailable(context.Background(), "jon")
@@ -136,7 +140,7 @@ func TestAccounts_SetToken(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
 
 	iss, _, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -156,11 +160,11 @@ func TestAccounts_ListMembers(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	one, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	one, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
-	two, err := col.CreateDev(context.Background(), "jane", "jane@doe.com")
+	two, err := col.CreateDev(context.Background(), "jane", "jane@doe.com", nil)
 	require.Nil(t, err)
-	_, err = col.CreateDev(context.Background(), "jone", "jone@doe.com")
+	_, err = col.CreateDev(context.Background(), "jone", "jone@doe.com", nil)
 	require.Nil(t, err)
 
 	list, err := col.ListMembers(context.Background(), []Member{{Key: one.Key}, {Key: two.Key}})
@@ -173,7 +177,7 @@ func TestAccounts_Delete(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.Nil(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com")
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
 	require.Nil(t, err)
 
 	err = col.Delete(context.Background(), created.Key)
@@ -193,24 +197,26 @@ func TestAccounts_CreateOrg(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, &FFSInfo{ID: "id", Token: "token"})
 	require.Nil(t, err)
 	assert.Equal(t, Org, created.Type)
 	assert.Equal(t, created.Name, "test")
 	assert.NotNil(t, created.Key)
 	assert.True(t, created.CreatedAt.Unix() > 0)
+	assert.Equal(t, "id", created.FFSInfo.ID)
+	assert.Equal(t, "token", created.FFSInfo.Token)
 
 	_, err = col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.NotNil(t, err)
 
-	_, err = col.CreateOrg(context.Background(), "empty", []Member{})
+	_, err = col.CreateOrg(context.Background(), "empty", []Member{}, nil)
 	require.NotNil(t, err)
 
-	_, err = col.CreateDev(context.Background(), "test", "jon@doe.com")
+	_, err = col.CreateDev(context.Background(), "test", "jon@doe.com", nil)
 	require.NotNil(t, err)
 }
 
@@ -225,7 +231,7 @@ func TestAccounts_GetByUsername(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	got, err := col.GetByUsername(context.Background(), created.Username)
@@ -247,7 +253,7 @@ func TestAccounts_IsNameAvailable(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 	assert.Equal(t, created.Username, "Test")
 
@@ -267,7 +273,7 @@ func TestAccounts_ListByMember(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	list, err := col.ListByMember(context.Background(), mem)
@@ -287,7 +293,7 @@ func TestAccounts_ListByOwner(t *testing.T) {
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	list, err := col.ListByOwner(context.Background(), mem1)
@@ -319,7 +325,7 @@ func TestAccounts_IsOwner(t *testing.T) {
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -350,7 +356,7 @@ func TestAccounts_IsMember(t *testing.T) {
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -383,7 +389,7 @@ func TestAccounts_AddMember(t *testing.T) {
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -417,7 +423,7 @@ func TestAccounts_RemoveMember(t *testing.T) {
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
-	}})
+	}}, nil)
 	require.Nil(t, err)
 
 	err = col.RemoveMember(context.Background(), created.Username, mem1)

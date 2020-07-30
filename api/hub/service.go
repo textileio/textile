@@ -16,6 +16,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
+	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/textile/api/common"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/buckets"
@@ -48,6 +49,7 @@ type Service struct {
 	IPFSClient         iface.CoreAPI
 	IPNSManager        *ipns.Manager
 	DNSManager         *dns.Manager
+	Pow                *powc.Client
 }
 
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
@@ -70,7 +72,12 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email)
+	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
+	}
+
+	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, &c.FFSInfo{ID: ffsId, Token: ffsToken})
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Account exists")
 	}
@@ -283,11 +290,16 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	log.Debugf("received create org request")
 
 	dev, _ := c.DevFromContext(ctx)
-	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []c.Member{{
+	members := []c.Member{{
 		Key:      dev.Key,
 		Username: dev.Username,
 		Role:     c.OrgOwner,
-	}})
+	}}
+	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
+	}
+	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, members, &c.FFSInfo{ID: ffsId, Token: ffsToken})
 	if err != nil {
 		return nil, err
 	}
