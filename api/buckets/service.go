@@ -780,14 +780,14 @@ func (s *Service) getNodeAtPath(ctx context.Context, pth path.Resolved, key []by
 
 // decryptNode returns a decrypted version of node.
 func decryptNode(cn ipld.Node, key []byte) (ipld.Node, error) {
-	switch cn.(type) {
+	switch cn := cn.(type) {
 	case *dag.RawNode:
 		return cn, nil // All raw nodes will be leaves
 	case *dag.ProtoNode:
 		if key == nil {
 			return cn, nil
 		}
-		fn, err := unixfs.FSNodeFromBytes(cn.(*dag.ProtoNode).Data())
+		fn, err := unixfs.FSNodeFromBytes(cn.Data())
 		if err != nil {
 			return nil, err
 		}

@@ -205,6 +205,8 @@ func (b *Buckets) IsArchivingEnabled() bool {
 }
 
 func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	// If the Powergate client isn't configured, don't do anything.
 	if b.pgClient == nil {
 		return nil

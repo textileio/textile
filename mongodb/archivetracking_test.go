@@ -128,7 +128,7 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 
 	ta, err := col.Get(ctx, jid)
 	require.NoError(t, err)
-	require.True(t, ta.ReadyAt.Sub(time.Now()) > time.Hour)
+	require.True(t, time.Until(ta.ReadyAt) > time.Hour)
 	require.True(t, ta.Active)
 
 }

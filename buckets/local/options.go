@@ -2,14 +2,14 @@ package local
 
 import (
 	cid "github.com/ipfs/go-cid"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type newOptions struct {
 	name    string
 	private bool
-	thread  thread.ID
-	key     string
+	// (jsign): unused?
+	//thread  thread.ID
+	//key     string
 	fromCid cid.Cid
 	events  chan<- PathEvent
 }
