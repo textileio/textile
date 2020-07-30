@@ -125,27 +125,25 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 }
 
 func (b *Bucket) watchPush(ctx context.Context, events chan<- PathEvent) error {
-	select {
-	case b.pushBlock <- struct{}{}:
-		defer func() {
-			<-b.pushBlock
-		}()
-		if _, err := b.PushLocal(ctx, WithPathEvents(events)); errors.Is(err, ErrUpToDate) {
-			return nil
-		} else if errors.Is(err, buckets.ErrNonFastForward) {
-			// Pull remote changes
-			if _, err = b.PullRemote(ctx, WithPathEvents(events)); err != nil {
-				return err
-			}
-			// Now try pushing again
-			if _, err = b.PushLocal(ctx, WithPathEvents(events)); err != nil {
-				return err
-			}
-		} else if err != nil {
+	b.pushBlock <- struct{}{}
+	defer func() {
+		<-b.pushBlock
+	}()
+	if _, err := b.PushLocal(ctx, WithPathEvents(events)); errors.Is(err, ErrUpToDate) {
+		return nil
+	} else if errors.Is(err, buckets.ErrNonFastForward) {
+		// Pull remote changes
+		if _, err = b.PullRemote(ctx, WithPathEvents(events)); err != nil {
 			return err
 		}
-		return nil
+		// Now try pushing again
+		if _, err = b.PushLocal(ctx, WithPathEvents(events)); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
 	}
+	return nil
 }
 
 func (b *Bucket) watchPull(ctx context.Context, events chan<- PathEvent) error {

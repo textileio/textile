@@ -136,7 +136,6 @@ func (c *eventCollector) collect(events chan MailboxEvent) {
 		}
 		c.Unlock()
 	}
-	return
 }
 
 func (c *eventCollector) check(t *testing.T, numNew, numRead, numDeleted int) {

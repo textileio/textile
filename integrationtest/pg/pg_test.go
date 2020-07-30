@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -22,15 +23,24 @@ import (
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	"github.com/textileio/textile/buckets/archive"
+	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
 )
 
 var powMultiaddr = multiaddr.StringCast("/ip4/127.0.0.1/tcp/5002")
 
+func TestMain(m *testing.M) {
+	archive.CheckInterval = time.Second * 5
+	archive.JobStatusPollInterval = time.Second * 5
+	os.Exit(m.Run())
+}
+
 func TestCreateBucket(t *testing.T) {
 	powc := spinup(t)
-	ctx, client := setup(t)
+	ctx, _, client, shutdown := setup(t)
+	defer shutdown(true)
 
 	lst, err := powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
@@ -44,9 +54,60 @@ func TestCreateBucket(t *testing.T) {
 	require.Equal(t, 1, len(lst))
 }
 
+func TestArchiveTracker(t *testing.T) {
+	_ = spinup(t)
+	ctx, conf, client, shutdown := setup(t)
+
+	// Create bucket with a file.
+	b, err := client.Init(ctx)
+	require.Nil(t, err)
+	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+
+	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+
+	// Archive it (push to PG)
+	_, err = client.Archive(ctx, b.Root.Key)
+	require.NoError(t, err)
+	time.Sleep(4 * time.Second) // Give some time to push the archive to PG.
+
+	// Force stop the Hub.
+	fmt.Println("<<< Force stopping Hub")
+	shutdown(false)
+	fmt.Println("<<< Hub stopped")
+
+	// Re-spin up Hub.
+	fmt.Println(">>> Re-spinning the Hub")
+	client = reSetup(t, conf)
+	time.Sleep(5 * time.Second) // Wait for Hub to spinup and resume archives tracking.
+	fmt.Println(">>> Hub started")
+
+	// ## Continue on as nothing "bad" happened and check for success...
+
+	// Wait for the archive to finish.
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+
+	// Verify that the current archive status is Done.
+	as, err := client.ArchiveStatus(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+
+	// Get ArchiveInfo, which has all successful pushs with
+	// its data about deals.
+	ai, err := client.ArchiveInfo(ctx, b.Root.Key)
+	require.NoError(t, err)
+
+	archive := ai.GetArchive()
+	require.Equal(t, rootCid1, archive.Cid)
+	require.Len(t, archive.Deals, 1)
+	deal := archive.Deals[0]
+	require.NotEmpty(t, deal.GetProposalCid())
+	require.NotEmpty(t, deal.GetMiner())
+}
+
 func TestArchiveBucketWorkflow(t *testing.T) {
 	_ = spinup(t)
-	ctx, client := setup(t)
+	ctx, _, client, shutdown := setup(t)
+	defer shutdown(true)
 
 	// Create bucket with a file.
 	b, err := client.Init(ctx)
@@ -102,7 +163,8 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 func TestArchiveWatch(t *testing.T) {
 	_ = spinup(t)
-	ctx, client := setup(t)
+	ctx, _, client, shutdown := setup(t)
+	defer shutdown(true)
 
 	b, err := client.Init(ctx)
 	require.NoError(t, err)
@@ -133,7 +195,8 @@ func TestArchiveWatch(t *testing.T) {
 
 func TestFailingArchive(t *testing.T) {
 	_ = spinup(t)
-	ctx, client := setup(t)
+	ctx, _, client, shutdown := setup(t)
+	defer shutdown(true)
 
 	b, err := client.Init(ctx)
 	require.NoError(t, err)
@@ -186,7 +249,7 @@ func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bu
 	return strings.SplitN(root.String(), "/", 4)[2]
 }
 
-func setup(t *testing.T) (context.Context, *c.Client) {
+func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
@@ -204,7 +267,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 			},
 		},
 	}
-	apitest.MakeTextileWithConfig(t, conf, true)
+	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -227,7 +290,23 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 		require.NoError(t, err)
 	})
 
-	return ctx, client
+	return ctx, conf, client, shutdown
+}
+
+func reSetup(t *testing.T, conf core.Config) *c.Client {
+	apitest.MakeTextileWithConfig(t, conf, true)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
+	require.Nil(t, err)
+	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
+	client, err := c.NewClient(target, opts...)
+	require.Nil(t, err)
+
+	t.Cleanup(func() {
+		err := client.Close()
+		require.Nil(t, err)
+	})
+
+	return client
 }
 
 func spinup(t *testing.T) *pc.Client {

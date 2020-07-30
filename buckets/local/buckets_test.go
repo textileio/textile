@@ -325,7 +325,6 @@ func (c *eventCollector) collect(events chan PathEvent) {
 		}
 		c.Unlock()
 	}
-	return
 }
 
 func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int) {

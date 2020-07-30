@@ -6,7 +6,6 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	dbc "github.com/textileio/go-threads/api/client"
-	tc "github.com/textileio/go-threads/api/client"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -15,7 +14,7 @@ import (
 var log = logging.Logger("threaddb")
 
 type collection struct {
-	c      *tc.Client
+	c      *dbc.Client
 	config db.CollectionConfig
 }
 

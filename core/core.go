@@ -36,6 +36,7 @@ import (
 	hpb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/api/users"
 	upb "github.com/textileio/textile/api/users/pb"
+	"github.com/textileio/textile/buckets/archive"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
@@ -75,12 +76,13 @@ var (
 type Textile struct {
 	collections *mdb.Collections
 
-	ts    tc.NetBoostrapper
-	th    *threads.Client
-	thn   *netclient.Client
-	bucks *tdb.Buckets
-	mail  *tdb.Mail
-	powc  *powc.Client
+	ts             tc.NetBoostrapper
+	th             *threads.Client
+	thn            *netclient.Client
+	bucks          *tdb.Buckets
+	mail           *tdb.Mail
+	powc           *powc.Client
+	archiveTracker *archive.Tracker
 
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
@@ -88,9 +90,9 @@ type Textile struct {
 	server *grpc.Server
 	proxy  *http.Server
 
-	gateway         *gateway.Gateway
-	gatewaySession  string
-	emailSessionBus *broadcast.Broadcaster
+	gateway            *gateway.Gateway
+	internalHubSession string
+	emailSessionBus    *broadcast.Broadcaster
 
 	conf Config
 }
@@ -137,17 +139,19 @@ type Config struct {
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":       logging.LevelDebug,
-			"threaddb":   logging.LevelDebug,
-			"hubapi":     logging.LevelDebug,
-			"bucketsapi": logging.LevelDebug,
-			"usersapi":   logging.LevelDebug,
+			"core":        logging.LevelDebug,
+			"threaddb":    logging.LevelDebug,
+			"hubapi":      logging.LevelDebug,
+			"bucketsapi":  logging.LevelDebug,
+			"usersapi":    logging.LevelDebug,
+			"pow-archive": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
 	}
 	t := &Textile{
-		conf: conf,
+		conf:               conf,
+		internalHubSession: util.MakeToken(32),
 	}
 
 	// Configure clients
@@ -256,6 +260,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			Mail:        t.mail,
 		}
 	}
+	if conf.Hub {
+		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.powc, t.internalHubSession)
+		if err != nil {
+			return nil, err
+		}
+	}
 	bs := &buckets.Service{
 		Collections:               t.collections,
 		Buckets:                   t.bucks,
@@ -266,6 +276,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
 		DNSManager:                t.dnsm,
+		PGClient:                  t.powc,
+		ArchiveTracker:            t.archiveTracker,
 	}
 
 	// Start serving
@@ -333,14 +345,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}()
 
 	// Configure gateway
-	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(gateway.Config{
 		Addr:            conf.AddrGatewayHost,
 		URL:             conf.AddrGatewayURL,
 		Subdomains:      conf.UseSubdomains,
 		BucketsDomain:   conf.DNSDomain,
 		APIAddr:         conf.AddrAPI,
-		APISession:      t.gatewaySession,
+		APISession:      t.internalHubSession,
 		Collections:     t.collections,
 		IPFSClient:      ic,
 		EmailSessionBus: t.emailSessionBus,
@@ -377,6 +388,11 @@ func (t *Textile) Close(force bool) error {
 		t.server.Stop()
 	} else {
 		t.server.GracefulStop()
+	}
+	if t.archiveTracker != nil {
+		if err := t.archiveTracker.Close(); err != nil {
+			return err
+		}
 	}
 	if err := t.bucks.Close(); err != nil {
 		return err
@@ -431,7 +447,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
 		ctx = common.NewSessionContext(ctx, sid)
-		if sid == t.gatewaySession {
+		if sid == t.internalHubSession {
 			return ctx, nil
 		}
 		session, err := t.collections.Sessions.Get(ctx, sid)
@@ -561,7 +577,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
 			}
 		}
-		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.gatewaySession {
+		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.internalHubSession {
 			return handler(ctx, req)
 		}
 
@@ -573,7 +589,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		} else if user, ok := mdb.UserFromContext(ctx); ok {
 			owner = user.Key
 		}
-		key, _ := mdb.APIKeyFromContext(ctx)
 
 		var newID thread.ID
 		var isDB bool
@@ -624,7 +639,9 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				}
 				if owner == nil || !owner.Equals(th.Owner) { // Linter can't see that owner can't be nil
 					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
+
 				}
+				key, _ := mdb.APIKeyFromContext(ctx)
 				if key != nil && key.Type == mdb.UserKey {
 					// Extra user check for user API keys.
 					if key.Key != th.Key {
