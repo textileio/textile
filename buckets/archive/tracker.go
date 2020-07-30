@@ -149,9 +149,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 		return true, "watching cancelled", nil
 	case s, ok := <-ch:
 		if !ok {
-			log.Errorf("getting job %s status stream closed", jid)
-			aborted = true
-			abortMsg = "server closed communication channel"
+			return true, "powergate closed communication chan", nil
 		}
 		if s.Err != nil {
 			log.Errorf("job %s update: %s", jid, s.Err)
@@ -176,7 +174,12 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 		return true, fmt.Sprintf("updating archive status: %s", err), nil
 	}
 
-	return false, "reached final status", nil
+	msg := "reached final status"
+	if aborted {
+		msg = "aborted with reason " + abortMsg
+	}
+
+	return false, msg, nil
 }
 
 // updateArchiveStatus save the last known job status. It also receives an
