@@ -92,15 +92,15 @@ func (m *Mailbox) WatchInbox(ctx context.Context, mevents chan<- MailboxEvent, o
 	if err != nil {
 		return nil, err
 	}
-	box, _, err := m.clients.Users.SetupMail(ctx)
+	box, err := m.clients.Users.SetupMailbox(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !offline {
-		return m.listenWhileConnected(ctx, box, mevents)
+		return m.listenWhileConnected(ctx, box, mail.InboxCollectionName, mevents)
 	}
 	return cmd.Watch(ctx, func(ctx context.Context) (<-chan cmd.WatchState, error) {
-		return m.listenWhileConnected(ctx, box, mevents)
+		return m.listenWhileConnected(ctx, box, mail.InboxCollectionName, mevents)
 	}, reconnectInterval)
 }
 
@@ -113,20 +113,20 @@ func (m *Mailbox) WatchSentbox(ctx context.Context, mevents chan<- MailboxEvent,
 	if err != nil {
 		return nil, err
 	}
-	_, box, err := m.clients.Users.SetupMail(ctx)
+	box, err := m.clients.Users.SetupMailbox(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !offline {
-		return m.listenWhileConnected(ctx, box, mevents)
+		return m.listenWhileConnected(ctx, box, mail.SentboxCollectionName, mevents)
 	}
 	return cmd.Watch(ctx, func(ctx context.Context) (<-chan cmd.WatchState, error) {
-		return m.listenWhileConnected(ctx, box, mevents)
+		return m.listenWhileConnected(ctx, box, mail.SentboxCollectionName, mevents)
 	}, reconnectInterval)
 }
 
 // listenWhileConnected will listen until context is canceled or an error occurs.
-func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mevents chan<- MailboxEvent) (<-chan cmd.WatchState, error) {
+func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, boxName string, mevents chan<- MailboxEvent) (<-chan cmd.WatchState, error) {
 	state := make(chan cmd.WatchState)
 	go func() {
 		defer close(state)
@@ -134,7 +134,7 @@ func (m *Mailbox) listenWhileConnected(ctx context.Context, boxID thread.ID, mev
 		// Start listening for remote changes
 		events, err := m.clients.Threads.Listen(ctx, boxID, []tc.ListenOption{{
 			Type:       tc.ListenAll,
-			Collection: mail.CollectionName,
+			Collection: boxName,
 		}})
 		if err != nil {
 			state <- cmd.WatchState{Err: err, Aborted: !cmd.IsConnectionError(err)}

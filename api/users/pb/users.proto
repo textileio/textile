@@ -22,11 +22,10 @@ message GetThreadReply {
     bool isDB = 3;
 }
 
-message SetupMailRequest {}
+message SetupMailboxRequest {}
 
-message SetupMailReply {
-    bytes inboxID = 1;
-    bytes sentboxID = 2;
+message SetupMailboxReply {
+    bytes mailboxID = 1;
 }
 
 message Message {
@@ -65,7 +64,7 @@ message ListInboxMessagesRequest {
     }
 }
 
-message ListSentMessagesRequest {
+message ListSentboxMessagesRequest {
     string seek = 1;
     int64 limit = 2;
     bool ascending = 3;
@@ -75,11 +74,11 @@ message ListMessagesReply {
     repeated Message messages = 1;
 }
 
-message ReadMessageRequest {
+message ReadInboxMessageRequest {
     string ID = 1;
 }
 
-message ReadMessageReply {
+message ReadInboxMessageReply {
     int64 readAt = 1;
 }
 
@@ -93,11 +92,11 @@ service API {
     rpc GetThread(GetThreadRequest) returns (GetThreadReply) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsReply) {}
 
-    rpc SetupMail(SetupMailRequest) returns (SetupMailReply) {}
+    rpc SetupMailbox(SetupMailboxRequest) returns (SetupMailboxReply) {}
     rpc SendMessage(SendMessageRequest) returns (SendMessageReply) {}
     rpc ListInboxMessages(ListInboxMessagesRequest) returns (ListMessagesReply) {}
-    rpc ListSentboxMessages(ListSentMessagesRequest) returns (ListMessagesReply) {}
-    rpc ReadInboxMessage(ReadMessageRequest) returns (ReadMessageReply) {}
+    rpc ListSentboxMessages(ListSentboxMessagesRequest) returns (ListMessagesReply) {}
+    rpc ReadInboxMessage(ReadInboxMessageRequest) returns (ReadInboxMessageReply) {}
     rpc DeleteInboxMessage(DeleteMessageRequest) returns (DeleteMessageReply) {}
     rpc DeleteSentboxMessage(DeleteMessageRequest) returns (DeleteMessageReply) {}
 }

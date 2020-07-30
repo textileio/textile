@@ -253,7 +253,7 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 }
 
-func TestClient_SetupMail(t *testing.T) {
+func TestClient_SetupMailbox(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, _, _ := setup(t)
 
@@ -269,16 +269,14 @@ func TestClient_SetupMail(t *testing.T) {
 	require.NoError(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
 
-	inbox, sentbox, err := client.SetupMail(ctx)
+	mailbox, err := client.SetupMailbox(ctx)
 	require.NoError(t, err)
-	assert.NotEmpty(t, inbox)
-	assert.NotEmpty(t, sentbox)
+	assert.NotEmpty(t, mailbox)
 
 	// should be idempotent
-	inbox2, sentbox2, err := client.SetupMail(ctx)
+	mailbox2, err := client.SetupMailbox(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, inbox, inbox2)
-	assert.Equal(t, sentbox, sentbox2)
+	assert.Equal(t, mailbox, mailbox2)
 }
 
 func TestClient_SendMessage(t *testing.T) {
@@ -485,7 +483,7 @@ func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key strin
 	tok, err := threads.GetToken(ctx, id)
 	require.NoError(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
-	_, _, err = client.SetupMail(ctx)
+	_, err = client.SetupMailbox(ctx)
 	require.NoError(t, err)
 	return id, ctx
 }

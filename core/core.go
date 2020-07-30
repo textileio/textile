@@ -140,7 +140,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"core":        logging.LevelDebug,
-			"threaddb":    logging.LevelDebug,
 			"hubapi":      logging.LevelDebug,
 			"bucketsapi":  logging.LevelDebug,
 			"usersapi":    logging.LevelDebug,

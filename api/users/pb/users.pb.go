@@ -216,80 +216,72 @@ func (m *GetThreadReply) GetIsDB() bool {
 	return false
 }
 
-type SetupMailRequest struct {
+type SetupMailboxRequest struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SetupMailRequest) Reset()         { *m = SetupMailRequest{} }
-func (m *SetupMailRequest) String() string { return proto.CompactTextString(m) }
-func (*SetupMailRequest) ProtoMessage()    {}
-func (*SetupMailRequest) Descriptor() ([]byte, []int) {
+func (m *SetupMailboxRequest) Reset()         { *m = SetupMailboxRequest{} }
+func (m *SetupMailboxRequest) String() string { return proto.CompactTextString(m) }
+func (*SetupMailboxRequest) ProtoMessage()    {}
+func (*SetupMailboxRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_030765f334c86cea, []int{4}
 }
 
-func (m *SetupMailRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SetupMailRequest.Unmarshal(m, b)
+func (m *SetupMailboxRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SetupMailboxRequest.Unmarshal(m, b)
 }
-func (m *SetupMailRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SetupMailRequest.Marshal(b, m, deterministic)
+func (m *SetupMailboxRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SetupMailboxRequest.Marshal(b, m, deterministic)
 }
-func (m *SetupMailRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SetupMailRequest.Merge(m, src)
+func (m *SetupMailboxRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SetupMailboxRequest.Merge(m, src)
 }
-func (m *SetupMailRequest) XXX_Size() int {
-	return xxx_messageInfo_SetupMailRequest.Size(m)
+func (m *SetupMailboxRequest) XXX_Size() int {
+	return xxx_messageInfo_SetupMailboxRequest.Size(m)
 }
-func (m *SetupMailRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_SetupMailRequest.DiscardUnknown(m)
+func (m *SetupMailboxRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SetupMailboxRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SetupMailRequest proto.InternalMessageInfo
+var xxx_messageInfo_SetupMailboxRequest proto.InternalMessageInfo
 
-type SetupMailReply struct {
-	InboxID              []byte   `protobuf:"bytes,1,opt,name=inboxID,proto3" json:"inboxID,omitempty"`
-	SentboxID            []byte   `protobuf:"bytes,2,opt,name=sentboxID,proto3" json:"sentboxID,omitempty"`
+type SetupMailboxReply struct {
+	MailboxID            []byte   `protobuf:"bytes,1,opt,name=mailboxID,proto3" json:"mailboxID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SetupMailReply) Reset()         { *m = SetupMailReply{} }
-func (m *SetupMailReply) String() string { return proto.CompactTextString(m) }
-func (*SetupMailReply) ProtoMessage()    {}
-func (*SetupMailReply) Descriptor() ([]byte, []int) {
+func (m *SetupMailboxReply) Reset()         { *m = SetupMailboxReply{} }
+func (m *SetupMailboxReply) String() string { return proto.CompactTextString(m) }
+func (*SetupMailboxReply) ProtoMessage()    {}
+func (*SetupMailboxReply) Descriptor() ([]byte, []int) {
 	return fileDescriptor_030765f334c86cea, []int{5}
 }
 
-func (m *SetupMailReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SetupMailReply.Unmarshal(m, b)
+func (m *SetupMailboxReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SetupMailboxReply.Unmarshal(m, b)
 }
-func (m *SetupMailReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SetupMailReply.Marshal(b, m, deterministic)
+func (m *SetupMailboxReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SetupMailboxReply.Marshal(b, m, deterministic)
 }
-func (m *SetupMailReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SetupMailReply.Merge(m, src)
+func (m *SetupMailboxReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SetupMailboxReply.Merge(m, src)
 }
-func (m *SetupMailReply) XXX_Size() int {
-	return xxx_messageInfo_SetupMailReply.Size(m)
+func (m *SetupMailboxReply) XXX_Size() int {
+	return xxx_messageInfo_SetupMailboxReply.Size(m)
 }
-func (m *SetupMailReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_SetupMailReply.DiscardUnknown(m)
+func (m *SetupMailboxReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_SetupMailboxReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SetupMailReply proto.InternalMessageInfo
+var xxx_messageInfo_SetupMailboxReply proto.InternalMessageInfo
 
-func (m *SetupMailReply) GetInboxID() []byte {
+func (m *SetupMailboxReply) GetMailboxID() []byte {
 	if m != nil {
-		return m.InboxID
-	}
-	return nil
-}
-
-func (m *SetupMailReply) GetSentboxID() []byte {
-	if m != nil {
-		return m.SentboxID
+		return m.MailboxID
 	}
 	return nil
 }
@@ -562,7 +554,7 @@ func (m *ListInboxMessagesRequest) GetStatus() ListInboxMessagesRequest_Status {
 	return ListInboxMessagesRequest_ALL
 }
 
-type ListSentMessagesRequest struct {
+type ListSentboxMessagesRequest struct {
 	Seek                 string   `protobuf:"bytes,1,opt,name=seek,proto3" json:"seek,omitempty"`
 	Limit                int64    `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	Ascending            bool     `protobuf:"varint,3,opt,name=ascending,proto3" json:"ascending,omitempty"`
@@ -571,46 +563,46 @@ type ListSentMessagesRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListSentMessagesRequest) Reset()         { *m = ListSentMessagesRequest{} }
-func (m *ListSentMessagesRequest) String() string { return proto.CompactTextString(m) }
-func (*ListSentMessagesRequest) ProtoMessage()    {}
-func (*ListSentMessagesRequest) Descriptor() ([]byte, []int) {
+func (m *ListSentboxMessagesRequest) Reset()         { *m = ListSentboxMessagesRequest{} }
+func (m *ListSentboxMessagesRequest) String() string { return proto.CompactTextString(m) }
+func (*ListSentboxMessagesRequest) ProtoMessage()    {}
+func (*ListSentboxMessagesRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_030765f334c86cea, []int{10}
 }
 
-func (m *ListSentMessagesRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListSentMessagesRequest.Unmarshal(m, b)
+func (m *ListSentboxMessagesRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListSentboxMessagesRequest.Unmarshal(m, b)
 }
-func (m *ListSentMessagesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListSentMessagesRequest.Marshal(b, m, deterministic)
+func (m *ListSentboxMessagesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListSentboxMessagesRequest.Marshal(b, m, deterministic)
 }
-func (m *ListSentMessagesRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListSentMessagesRequest.Merge(m, src)
+func (m *ListSentboxMessagesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListSentboxMessagesRequest.Merge(m, src)
 }
-func (m *ListSentMessagesRequest) XXX_Size() int {
-	return xxx_messageInfo_ListSentMessagesRequest.Size(m)
+func (m *ListSentboxMessagesRequest) XXX_Size() int {
+	return xxx_messageInfo_ListSentboxMessagesRequest.Size(m)
 }
-func (m *ListSentMessagesRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListSentMessagesRequest.DiscardUnknown(m)
+func (m *ListSentboxMessagesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListSentboxMessagesRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListSentMessagesRequest proto.InternalMessageInfo
+var xxx_messageInfo_ListSentboxMessagesRequest proto.InternalMessageInfo
 
-func (m *ListSentMessagesRequest) GetSeek() string {
+func (m *ListSentboxMessagesRequest) GetSeek() string {
 	if m != nil {
 		return m.Seek
 	}
 	return ""
 }
 
-func (m *ListSentMessagesRequest) GetLimit() int64 {
+func (m *ListSentboxMessagesRequest) GetLimit() int64 {
 	if m != nil {
 		return m.Limit
 	}
 	return 0
 }
 
-func (m *ListSentMessagesRequest) GetAscending() bool {
+func (m *ListSentboxMessagesRequest) GetAscending() bool {
 	if m != nil {
 		return m.Ascending
 	}
@@ -656,78 +648,78 @@ func (m *ListMessagesReply) GetMessages() []*Message {
 	return nil
 }
 
-type ReadMessageRequest struct {
+type ReadInboxMessageRequest struct {
 	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReadMessageRequest) Reset()         { *m = ReadMessageRequest{} }
-func (m *ReadMessageRequest) String() string { return proto.CompactTextString(m) }
-func (*ReadMessageRequest) ProtoMessage()    {}
-func (*ReadMessageRequest) Descriptor() ([]byte, []int) {
+func (m *ReadInboxMessageRequest) Reset()         { *m = ReadInboxMessageRequest{} }
+func (m *ReadInboxMessageRequest) String() string { return proto.CompactTextString(m) }
+func (*ReadInboxMessageRequest) ProtoMessage()    {}
+func (*ReadInboxMessageRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_030765f334c86cea, []int{12}
 }
 
-func (m *ReadMessageRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReadMessageRequest.Unmarshal(m, b)
+func (m *ReadInboxMessageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReadInboxMessageRequest.Unmarshal(m, b)
 }
-func (m *ReadMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReadMessageRequest.Marshal(b, m, deterministic)
+func (m *ReadInboxMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReadInboxMessageRequest.Marshal(b, m, deterministic)
 }
-func (m *ReadMessageRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReadMessageRequest.Merge(m, src)
+func (m *ReadInboxMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReadInboxMessageRequest.Merge(m, src)
 }
-func (m *ReadMessageRequest) XXX_Size() int {
-	return xxx_messageInfo_ReadMessageRequest.Size(m)
+func (m *ReadInboxMessageRequest) XXX_Size() int {
+	return xxx_messageInfo_ReadInboxMessageRequest.Size(m)
 }
-func (m *ReadMessageRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReadMessageRequest.DiscardUnknown(m)
+func (m *ReadInboxMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReadInboxMessageRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ReadMessageRequest proto.InternalMessageInfo
+var xxx_messageInfo_ReadInboxMessageRequest proto.InternalMessageInfo
 
-func (m *ReadMessageRequest) GetID() string {
+func (m *ReadInboxMessageRequest) GetID() string {
 	if m != nil {
 		return m.ID
 	}
 	return ""
 }
 
-type ReadMessageReply struct {
+type ReadInboxMessageReply struct {
 	ReadAt               int64    `protobuf:"varint,1,opt,name=readAt,proto3" json:"readAt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReadMessageReply) Reset()         { *m = ReadMessageReply{} }
-func (m *ReadMessageReply) String() string { return proto.CompactTextString(m) }
-func (*ReadMessageReply) ProtoMessage()    {}
-func (*ReadMessageReply) Descriptor() ([]byte, []int) {
+func (m *ReadInboxMessageReply) Reset()         { *m = ReadInboxMessageReply{} }
+func (m *ReadInboxMessageReply) String() string { return proto.CompactTextString(m) }
+func (*ReadInboxMessageReply) ProtoMessage()    {}
+func (*ReadInboxMessageReply) Descriptor() ([]byte, []int) {
 	return fileDescriptor_030765f334c86cea, []int{13}
 }
 
-func (m *ReadMessageReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReadMessageReply.Unmarshal(m, b)
+func (m *ReadInboxMessageReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReadInboxMessageReply.Unmarshal(m, b)
 }
-func (m *ReadMessageReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReadMessageReply.Marshal(b, m, deterministic)
+func (m *ReadInboxMessageReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReadInboxMessageReply.Marshal(b, m, deterministic)
 }
-func (m *ReadMessageReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReadMessageReply.Merge(m, src)
+func (m *ReadInboxMessageReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReadInboxMessageReply.Merge(m, src)
 }
-func (m *ReadMessageReply) XXX_Size() int {
-	return xxx_messageInfo_ReadMessageReply.Size(m)
+func (m *ReadInboxMessageReply) XXX_Size() int {
+	return xxx_messageInfo_ReadInboxMessageReply.Size(m)
 }
-func (m *ReadMessageReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReadMessageReply.DiscardUnknown(m)
+func (m *ReadInboxMessageReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReadInboxMessageReply.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ReadMessageReply proto.InternalMessageInfo
+var xxx_messageInfo_ReadInboxMessageReply proto.InternalMessageInfo
 
-func (m *ReadMessageReply) GetReadAt() int64 {
+func (m *ReadInboxMessageReply) GetReadAt() int64 {
 	if m != nil {
 		return m.ReadAt
 	}
@@ -810,16 +802,16 @@ func init() {
 	proto.RegisterType((*ListThreadsReply)(nil), "users.pb.ListThreadsReply")
 	proto.RegisterType((*GetThreadRequest)(nil), "users.pb.GetThreadRequest")
 	proto.RegisterType((*GetThreadReply)(nil), "users.pb.GetThreadReply")
-	proto.RegisterType((*SetupMailRequest)(nil), "users.pb.SetupMailRequest")
-	proto.RegisterType((*SetupMailReply)(nil), "users.pb.SetupMailReply")
+	proto.RegisterType((*SetupMailboxRequest)(nil), "users.pb.SetupMailboxRequest")
+	proto.RegisterType((*SetupMailboxReply)(nil), "users.pb.SetupMailboxReply")
 	proto.RegisterType((*Message)(nil), "users.pb.Message")
 	proto.RegisterType((*SendMessageRequest)(nil), "users.pb.SendMessageRequest")
 	proto.RegisterType((*SendMessageReply)(nil), "users.pb.SendMessageReply")
 	proto.RegisterType((*ListInboxMessagesRequest)(nil), "users.pb.ListInboxMessagesRequest")
-	proto.RegisterType((*ListSentMessagesRequest)(nil), "users.pb.ListSentMessagesRequest")
+	proto.RegisterType((*ListSentboxMessagesRequest)(nil), "users.pb.ListSentboxMessagesRequest")
 	proto.RegisterType((*ListMessagesReply)(nil), "users.pb.ListMessagesReply")
-	proto.RegisterType((*ReadMessageRequest)(nil), "users.pb.ReadMessageRequest")
-	proto.RegisterType((*ReadMessageReply)(nil), "users.pb.ReadMessageReply")
+	proto.RegisterType((*ReadInboxMessageRequest)(nil), "users.pb.ReadInboxMessageRequest")
+	proto.RegisterType((*ReadInboxMessageReply)(nil), "users.pb.ReadInboxMessageReply")
 	proto.RegisterType((*DeleteMessageRequest)(nil), "users.pb.DeleteMessageRequest")
 	proto.RegisterType((*DeleteMessageReply)(nil), "users.pb.DeleteMessageReply")
 }
@@ -827,53 +819,53 @@ func init() {
 func init() { proto.RegisterFile("users.proto", fileDescriptor_030765f334c86cea) }
 
 var fileDescriptor_030765f334c86cea = []byte{
-	// 731 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0xdd, 0x6e, 0xda, 0x4a,
-	0x10, 0xc6, 0x86, 0xf0, 0x33, 0xe4, 0x20, 0x32, 0x87, 0x93, 0x63, 0xf9, 0x44, 0x47, 0x74, 0x15,
-	0xa5, 0xb4, 0x6a, 0xb9, 0xa0, 0x2f, 0x50, 0x08, 0x51, 0x83, 0x94, 0x44, 0x91, 0x4d, 0xda, 0xcb,
-	0xc8, 0x84, 0x2d, 0xb5, 0x6a, 0x6c, 0xea, 0x5d, 0xa4, 0xe4, 0x6d, 0xaa, 0x4a, 0x7d, 0x9d, 0x5e,
-	0xf5, 0x81, 0xaa, 0x5d, 0xff, 0xed, 0x12, 0x50, 0x2e, 0xaa, 0xde, 0xed, 0x7e, 0x33, 0xfb, 0xed,
-	0x37, 0xb3, 0x9f, 0xc7, 0xd0, 0x5c, 0x33, 0x1a, 0xb3, 0xfe, 0x2a, 0x8e, 0x78, 0x84, 0xf5, 0x74,
-	0x33, 0x23, 0x1d, 0xc0, 0x0b, 0x9f, 0xf1, 0xe9, 0xa7, 0x98, 0x7a, 0x73, 0xe6, 0xd0, 0x2f, 0x6b,
-	0xca, 0x38, 0x79, 0x0b, 0x6d, 0x0d, 0x5d, 0x05, 0x0f, 0xf8, 0x0a, 0x2a, 0x81, 0xcf, 0xb8, 0x65,
-	0x74, 0xcb, 0xbd, 0xe6, 0xc0, 0xea, 0x67, 0x14, 0xfd, 0x77, 0x34, 0x4d, 0x94, 0x79, 0x8e, 0xcc,
-	0x22, 0x27, 0xd0, 0x56, 0x70, 0xc9, 0x8a, 0x08, 0x95, 0xd0, 0x5b, 0x52, 0xcb, 0xe8, 0x1a, 0xbd,
-	0x86, 0x23, 0xd7, 0xe4, 0x1c, 0x5a, 0xfa, 0x79, 0x6c, 0x81, 0x39, 0x19, 0xcb, 0x9c, 0x7d, 0xc7,
-	0x9c, 0x8c, 0xf3, 0x53, 0x66, 0x71, 0x4a, 0x60, 0x3e, 0x1b, 0x8f, 0xac, 0x72, 0xd7, 0xe8, 0xd5,
-	0x1d, 0xb9, 0x26, 0x08, 0x6d, 0x97, 0xf2, 0xf5, 0xea, 0xd2, 0xf3, 0x83, 0xac, 0x8e, 0x73, 0x68,
-	0x29, 0x98, 0x60, 0xb7, 0xa0, 0xe6, 0x87, 0xb3, 0xe8, 0x3e, 0xbf, 0x22, 0xdb, 0xe2, 0x11, 0x34,
-	0x18, 0x0d, 0x79, 0x12, 0x33, 0x65, 0xac, 0x00, 0xc8, 0x77, 0x03, 0x6a, 0x97, 0x94, 0x31, 0x6f,
-	0x41, 0x15, 0x85, 0x8d, 0x4c, 0xe1, 0xc7, 0x38, 0x5a, 0x66, 0x0a, 0xc5, 0x5a, 0xe4, 0xf0, 0x48,
-	0xea, 0x6b, 0x38, 0x26, 0x8f, 0x44, 0xce, 0x2c, 0x9a, 0x3f, 0x58, 0x15, 0x49, 0x2c, 0xd7, 0xf2,
-	0x46, 0x7f, 0x11, 0x7a, 0x7c, 0x1d, 0x53, 0x6b, 0x2f, 0xbd, 0x31, 0x03, 0x44, 0xf4, 0x2e, 0xa6,
-	0x1e, 0xa7, 0xf3, 0x21, 0xb7, 0xaa, 0x5d, 0xa3, 0x57, 0x76, 0x0a, 0x00, 0x0f, 0xa1, 0x2a, 0x5a,
-	0x36, 0xe4, 0x56, 0x4d, 0x86, 0xd2, 0x1d, 0xf9, 0x6a, 0x00, 0xba, 0x34, 0x9c, 0xa7, 0x5a, 0xb3,
-	0xd6, 0x27, 0x72, 0x8c, 0x5c, 0xce, 0x21, 0x54, 0x79, 0x34, 0x12, 0x82, 0x92, 0x4a, 0xd3, 0x1d,
-	0x76, 0xa1, 0xc9, 0x23, 0x37, 0x17, 0x55, 0x96, 0x41, 0x15, 0x42, 0x1b, 0xea, 0xa2, 0xc0, 0x51,
-	0x51, 0x4c, 0xbe, 0xc7, 0x63, 0xf8, 0x4b, 0xac, 0xdd, 0x8d, 0xa2, 0x74, 0x50, 0x98, 0x4b, 0x53,
-	0xa8, 0x3f, 0x7a, 0xd2, 0x52, 0xad, 0x78, 0x73, 0xa3, 0x78, 0xf2, 0xc3, 0x00, 0x4b, 0xf8, 0x73,
-	0x22, 0x9e, 0x2e, 0xe5, 0x61, 0x8a, 0xcb, 0x18, 0xa5, 0x9f, 0x33, 0x97, 0x89, 0x35, 0x76, 0x60,
-	0x2f, 0xf0, 0x97, 0x7e, 0x46, 0x95, 0x6c, 0xc4, 0x25, 0x1e, 0xbb, 0xa3, 0xe1, 0xdc, 0x0f, 0x17,
-	0xa9, 0x95, 0x0a, 0x00, 0x87, 0x50, 0x65, 0xdc, 0xe3, 0x6b, 0x26, 0xcb, 0x6c, 0x0d, 0x5e, 0x14,
-	0x8e, 0xdf, 0x75, 0x77, 0xdf, 0x95, 0x07, 0x9c, 0xf4, 0x20, 0x79, 0x0e, 0xd5, 0x04, 0xc1, 0x1a,
-	0x94, 0x87, 0x17, 0x17, 0xed, 0x12, 0xd6, 0xa1, 0xe2, 0x9c, 0x0d, 0xc7, 0x6d, 0x03, 0x01, 0xaa,
-	0x37, 0x57, 0x72, 0x6d, 0x12, 0x0f, 0xfe, 0x15, 0x9c, 0x2e, 0x0d, 0xf9, 0x1f, 0x2a, 0x87, 0x8c,
-	0xe0, 0x40, 0x5c, 0x51, 0xd0, 0x8b, 0xb6, 0xbf, 0x86, 0xfa, 0x32, 0x05, 0xd2, 0xef, 0xfa, 0xa0,
-	0xa8, 0x32, 0x7b, 0xa0, 0x3c, 0x85, 0x1c, 0x03, 0x3a, 0xd4, 0xdb, 0xe2, 0x2d, 0xf5, 0xed, 0xc8,
-	0x4b, 0x68, 0x6b, 0x59, 0xe2, 0xa2, 0xc2, 0xae, 0x86, 0x66, 0xd7, 0x13, 0xe8, 0x8c, 0x69, 0x40,
-	0x39, 0x7d, 0x82, 0xb3, 0x03, 0xb8, 0x91, 0xb7, 0x0a, 0x1e, 0x06, 0x3f, 0xf7, 0xa0, 0x3c, 0xbc,
-	0x9e, 0xe0, 0x29, 0x34, 0xf2, 0x21, 0x82, 0xf6, 0xd6, 0xc9, 0x24, 0x69, 0xed, 0x9d, 0x53, 0x8b,
-	0x94, 0x70, 0x02, 0x4d, 0x65, 0xe6, 0xe1, 0x91, 0xfe, 0xdc, 0xfa, 0x80, 0xb4, 0xed, 0x1d, 0xd1,
-	0x84, 0xea, 0x14, 0x1a, 0xf9, 0xd8, 0x51, 0xf5, 0x6c, 0xce, 0x27, 0x55, 0x8f, 0x3e, 0xa7, 0x12,
-	0x3d, 0xca, 0x67, 0xa2, 0xea, 0x79, 0xfc, 0x7d, 0xdb, 0xf6, 0x8e, 0x68, 0x42, 0xf5, 0x3e, 0x79,
-	0x7b, 0xcd, 0xb2, 0x48, 0x9e, 0xf6, 0xb3, 0xfd, 0x9f, 0x9e, 0xa3, 0x99, 0x87, 0x94, 0xf0, 0x03,
-	0xfc, 0x9d, 0xd9, 0x56, 0x65, 0x7e, 0xa6, 0x9f, 0xda, 0xe2, 0xea, 0xa7, 0x88, 0xaf, 0x12, 0x0b,
-	0xa9, 0x9a, 0xd4, 0x06, 0x3c, 0x36, 0xa1, 0xda, 0x80, 0x4d, 0xf3, 0x91, 0x12, 0x4e, 0x33, 0xfb,
-	0x68, 0x8c, 0xff, 0x17, 0x67, 0xb6, 0x99, 0xd0, 0x3e, 0xda, 0x19, 0xcf, 0xda, 0x9a, 0x9a, 0x57,
-	0x6f, 0xc0, 0xef, 0xf2, 0x8e, 0x06, 0xf0, 0x8f, 0x1f, 0xf5, 0x39, 0xbd, 0xe7, 0x7e, 0x40, 0x93,
-	0xdc, 0xdb, 0x45, 0xbc, 0xba, 0x1b, 0xed, 0x4f, 0x13, 0xec, 0x46, 0x40, 0xd7, 0xc6, 0x37, 0xb3,
-	0x3e, 0x9d, 0xde, 0xde, 0xb8, 0x67, 0x8e, 0x3b, 0xab, 0xca, 0x1f, 0xfb, 0x9b, 0x5f, 0x01, 0x00,
-	0x00, 0xff, 0xff, 0xa7, 0x41, 0x35, 0x3b, 0xe7, 0x07, 0x00, 0x00,
+	// 729 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0xed, 0x6e, 0xd3, 0x4a,
+	0x10, 0x8d, 0x9d, 0x34, 0x4d, 0x26, 0xbd, 0x55, 0x3a, 0x4d, 0x7b, 0x2d, 0xdf, 0x5e, 0x08, 0xab,
+	0xaa, 0xa4, 0x12, 0x04, 0x11, 0x5e, 0x80, 0x84, 0x54, 0x10, 0x29, 0x45, 0x95, 0x9d, 0x22, 0xc4,
+	0x9f, 0xca, 0xa9, 0x97, 0x60, 0xe1, 0xd8, 0xc1, 0xbb, 0x91, 0xda, 0xb7, 0x41, 0x48, 0xbc, 0x0e,
+	0x0f, 0xc2, 0x53, 0xa0, 0x5d, 0x7f, 0x6e, 0x9a, 0xd0, 0x1f, 0x88, 0x7f, 0xbb, 0x67, 0x67, 0xce,
+	0x9c, 0x59, 0x9f, 0x1d, 0x43, 0x63, 0xc9, 0x68, 0xc4, 0xba, 0x8b, 0x28, 0xe4, 0x21, 0xd6, 0x92,
+	0xcd, 0x94, 0xb4, 0x00, 0xc7, 0x1e, 0xe3, 0x93, 0x4f, 0x11, 0x75, 0x5c, 0x66, 0xd1, 0x2f, 0x4b,
+	0xca, 0x38, 0x79, 0x09, 0x4d, 0x05, 0x5d, 0xf8, 0xb7, 0xf8, 0x04, 0x2a, 0xbe, 0xc7, 0xb8, 0xa1,
+	0xb5, 0xcb, 0x9d, 0x46, 0xcf, 0xe8, 0xa6, 0x14, 0xdd, 0xd7, 0x34, 0x09, 0x94, 0x71, 0x96, 0x8c,
+	0x22, 0x27, 0xd0, 0x2c, 0xe0, 0x92, 0x15, 0x11, 0x2a, 0x81, 0x33, 0xa7, 0x86, 0xd6, 0xd6, 0x3a,
+	0x75, 0x4b, 0xae, 0xc9, 0x1b, 0xd8, 0x55, 0xf3, 0x71, 0x17, 0xf4, 0xd1, 0x50, 0xc6, 0xec, 0x58,
+	0xfa, 0x68, 0x98, 0x65, 0xe9, 0x79, 0x96, 0xc0, 0x3c, 0x36, 0x1c, 0x18, 0xe5, 0xb6, 0xd6, 0xa9,
+	0x59, 0x72, 0x4d, 0x0e, 0x60, 0xdf, 0xa6, 0x7c, 0xb9, 0x38, 0x77, 0x3c, 0x7f, 0x1a, 0xde, 0xa4,
+	0xad, 0x3c, 0x87, 0x3d, 0x15, 0x16, 0x35, 0x8e, 0xa0, 0x3e, 0x8f, 0xf7, 0x59, 0xa9, 0x1c, 0x20,
+	0xdf, 0x35, 0xd8, 0x3e, 0xa7, 0x8c, 0x39, 0x33, 0x5a, 0x50, 0x53, 0x4f, 0xd5, 0x7c, 0x8c, 0xc2,
+	0x79, 0xaa, 0x46, 0xac, 0x45, 0x0c, 0x0f, 0xa5, 0x96, 0xba, 0xa5, 0xf3, 0x50, 0xc4, 0x4c, 0x43,
+	0xf7, 0xd6, 0xa8, 0x48, 0x62, 0xb9, 0x16, 0x15, 0x99, 0x37, 0x0b, 0x1c, 0xbe, 0x8c, 0xa8, 0xb1,
+	0x15, 0x57, 0xcc, 0x00, 0x71, 0x7a, 0x1d, 0x51, 0x87, 0x53, 0xb7, 0xcf, 0x8d, 0x6a, 0x5b, 0xeb,
+	0x94, 0xad, 0x1c, 0xc0, 0x43, 0xa8, 0x8a, 0xeb, 0xe9, 0x73, 0x63, 0x5b, 0x1e, 0x25, 0x3b, 0xf2,
+	0x55, 0x03, 0xb4, 0x69, 0xe0, 0x26, 0x5a, 0xd3, 0x6b, 0x8e, 0xe5, 0x68, 0x99, 0x9c, 0x43, 0xa8,
+	0xf2, 0x70, 0x20, 0x04, 0xe9, 0xb2, 0x6e, 0xb2, 0xc3, 0x36, 0x34, 0x78, 0x68, 0x67, 0xa2, 0xca,
+	0xf2, 0xb0, 0x08, 0xa1, 0x09, 0x35, 0xd1, 0xe0, 0x20, 0x6f, 0x26, 0xdb, 0xe3, 0x31, 0xfc, 0x23,
+	0xd6, 0xf6, 0x4a, 0x53, 0x2a, 0x28, 0x8c, 0xa4, 0x28, 0x54, 0x3f, 0x70, 0x7c, 0xa5, 0x4a, 0xf3,
+	0xfa, 0x4a, 0xf3, 0xe4, 0x87, 0x06, 0x86, 0xf0, 0xe2, 0x28, 0x98, 0x86, 0x37, 0x09, 0x0f, 0x2b,
+	0x38, 0x8a, 0x51, 0xfa, 0x39, 0x75, 0x94, 0x58, 0x63, 0x0b, 0xb6, 0x7c, 0x6f, 0xee, 0xa5, 0x54,
+	0xf1, 0x46, 0x14, 0x71, 0xd8, 0x35, 0x0d, 0x5c, 0x2f, 0x98, 0x25, 0xb6, 0xc9, 0x01, 0xec, 0x43,
+	0x95, 0x71, 0x87, 0x2f, 0x99, 0x6c, 0x73, 0xb7, 0x77, 0x9a, 0xbb, 0x7b, 0x53, 0xed, 0xae, 0x2d,
+	0x13, 0xac, 0x24, 0x91, 0x3c, 0x86, 0x6a, 0x8c, 0xe0, 0x36, 0x94, 0xfb, 0xe3, 0x71, 0xb3, 0x84,
+	0x35, 0xa8, 0x58, 0x67, 0xfd, 0x61, 0x53, 0x43, 0x80, 0xea, 0xe5, 0x5b, 0xb9, 0xd6, 0x89, 0x0b,
+	0xa6, 0xe0, 0xb4, 0x69, 0xc0, 0xff, 0x5e, 0x47, 0x64, 0x00, 0x7b, 0xa2, 0x4a, 0x4e, 0x2f, 0x6e,
+	0xfe, 0x29, 0xd4, 0xe6, 0x09, 0x90, 0x3c, 0xe3, 0xbd, 0xbc, 0xd1, 0xf4, 0x1b, 0x65, 0x21, 0xe4,
+	0x14, 0xfe, 0xb5, 0xa8, 0xe3, 0x16, 0xbb, 0x2f, 0x78, 0xac, 0xf8, 0x0d, 0xc9, 0x33, 0x38, 0xb8,
+	0x1b, 0x2a, 0x4a, 0xe6, 0xde, 0xd5, 0x14, 0xef, 0x9e, 0x40, 0x6b, 0x48, 0x7d, 0xca, 0xe9, 0x3d,
+	0xc4, 0x2d, 0xc0, 0x95, 0xb8, 0x85, 0x7f, 0xdb, 0xfb, 0xb9, 0x05, 0xe5, 0xfe, 0xc5, 0x08, 0x5f,
+	0x41, 0x3d, 0x9b, 0x1e, 0x68, 0xae, 0x1d, 0x49, 0x92, 0xd6, 0xdc, 0x38, 0xae, 0x48, 0x09, 0x47,
+	0xd0, 0x28, 0x0c, 0x3b, 0x3c, 0x52, 0xbf, 0xbd, 0x3a, 0x19, 0x4d, 0x73, 0xc3, 0x69, 0x4c, 0x35,
+	0x86, 0x9d, 0xe2, 0xb0, 0xc1, 0xff, 0xf3, 0xe8, 0x35, 0xb3, 0xc9, 0xfc, 0x6f, 0xd3, 0x71, 0x26,
+	0xac, 0xf0, 0x78, 0x8a, 0xc2, 0xee, 0xbe, 0xfa, 0xa2, 0xb0, 0xd5, 0x17, 0x47, 0x4a, 0xf8, 0x2e,
+	0xb6, 0x83, 0x62, 0x64, 0x24, 0xf7, 0xbb, 0xbc, 0x28, 0xf1, 0x8e, 0x9f, 0x48, 0x09, 0x3f, 0xc0,
+	0xfe, 0x1a, 0x33, 0xe3, 0xb1, 0x9a, 0xb5, 0xde, 0xeb, 0xf7, 0x71, 0xbf, 0x87, 0xe6, 0xaa, 0xa7,
+	0xf0, 0x51, 0x9e, 0xb2, 0xc1, 0x9a, 0xe6, 0xc3, 0xdf, 0x85, 0xc4, 0xcc, 0x93, 0xd4, 0x54, 0x0a,
+	0xf7, 0x83, 0x3c, 0x71, 0x9d, 0x35, 0xcd, 0xa3, 0x8d, 0xe7, 0xe9, 0x1d, 0x27, 0x96, 0x56, 0xdb,
+	0xfd, 0x53, 0xde, 0x41, 0x0f, 0x0e, 0xbc, 0xb0, 0xcb, 0xe9, 0x0d, 0xf7, 0x7c, 0x1a, 0xc7, 0x5e,
+	0xcd, 0xa2, 0xc5, 0xf5, 0x60, 0x67, 0x12, 0x63, 0x97, 0x02, 0xba, 0xd0, 0xbe, 0xe9, 0xb5, 0xc9,
+	0xe4, 0xea, 0xd2, 0x3e, 0xb3, 0xec, 0x69, 0x55, 0xfe, 0xe7, 0x5f, 0xfc, 0x0a, 0x00, 0x00, 0xff,
+	0xff, 0x3f, 0xdd, 0x2f, 0x26, 0xf6, 0x07, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -890,11 +882,11 @@ const _ = grpc.SupportPackageIsVersion4
 type APIClient interface {
 	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadReply, error)
 	ListThreads(ctx context.Context, in *ListThreadsRequest, opts ...grpc.CallOption) (*ListThreadsReply, error)
-	SetupMail(ctx context.Context, in *SetupMailRequest, opts ...grpc.CallOption) (*SetupMailReply, error)
+	SetupMailbox(ctx context.Context, in *SetupMailboxRequest, opts ...grpc.CallOption) (*SetupMailboxReply, error)
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageReply, error)
 	ListInboxMessages(ctx context.Context, in *ListInboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error)
-	ListSentboxMessages(ctx context.Context, in *ListSentMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error)
-	ReadInboxMessage(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageReply, error)
+	ListSentboxMessages(ctx context.Context, in *ListSentboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error)
+	ReadInboxMessage(ctx context.Context, in *ReadInboxMessageRequest, opts ...grpc.CallOption) (*ReadInboxMessageReply, error)
 	DeleteInboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error)
 	DeleteSentboxMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageReply, error)
 }
@@ -925,9 +917,9 @@ func (c *aPIClient) ListThreads(ctx context.Context, in *ListThreadsRequest, opt
 	return out, nil
 }
 
-func (c *aPIClient) SetupMail(ctx context.Context, in *SetupMailRequest, opts ...grpc.CallOption) (*SetupMailReply, error) {
-	out := new(SetupMailReply)
-	err := c.cc.Invoke(ctx, "/users.pb.API/SetupMail", in, out, opts...)
+func (c *aPIClient) SetupMailbox(ctx context.Context, in *SetupMailboxRequest, opts ...grpc.CallOption) (*SetupMailboxReply, error) {
+	out := new(SetupMailboxReply)
+	err := c.cc.Invoke(ctx, "/users.pb.API/SetupMailbox", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -952,7 +944,7 @@ func (c *aPIClient) ListInboxMessages(ctx context.Context, in *ListInboxMessages
 	return out, nil
 }
 
-func (c *aPIClient) ListSentboxMessages(ctx context.Context, in *ListSentMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error) {
+func (c *aPIClient) ListSentboxMessages(ctx context.Context, in *ListSentboxMessagesRequest, opts ...grpc.CallOption) (*ListMessagesReply, error) {
 	out := new(ListMessagesReply)
 	err := c.cc.Invoke(ctx, "/users.pb.API/ListSentboxMessages", in, out, opts...)
 	if err != nil {
@@ -961,8 +953,8 @@ func (c *aPIClient) ListSentboxMessages(ctx context.Context, in *ListSentMessage
 	return out, nil
 }
 
-func (c *aPIClient) ReadInboxMessage(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageReply, error) {
-	out := new(ReadMessageReply)
+func (c *aPIClient) ReadInboxMessage(ctx context.Context, in *ReadInboxMessageRequest, opts ...grpc.CallOption) (*ReadInboxMessageReply, error) {
+	out := new(ReadInboxMessageReply)
 	err := c.cc.Invoke(ctx, "/users.pb.API/ReadInboxMessage", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -992,11 +984,11 @@ func (c *aPIClient) DeleteSentboxMessage(ctx context.Context, in *DeleteMessageR
 type APIServer interface {
 	GetThread(context.Context, *GetThreadRequest) (*GetThreadReply, error)
 	ListThreads(context.Context, *ListThreadsRequest) (*ListThreadsReply, error)
-	SetupMail(context.Context, *SetupMailRequest) (*SetupMailReply, error)
+	SetupMailbox(context.Context, *SetupMailboxRequest) (*SetupMailboxReply, error)
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageReply, error)
 	ListInboxMessages(context.Context, *ListInboxMessagesRequest) (*ListMessagesReply, error)
-	ListSentboxMessages(context.Context, *ListSentMessagesRequest) (*ListMessagesReply, error)
-	ReadInboxMessage(context.Context, *ReadMessageRequest) (*ReadMessageReply, error)
+	ListSentboxMessages(context.Context, *ListSentboxMessagesRequest) (*ListMessagesReply, error)
+	ReadInboxMessage(context.Context, *ReadInboxMessageRequest) (*ReadInboxMessageReply, error)
 	DeleteInboxMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageReply, error)
 	DeleteSentboxMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageReply, error)
 }
@@ -1011,8 +1003,8 @@ func (*UnimplementedAPIServer) GetThread(ctx context.Context, req *GetThreadRequ
 func (*UnimplementedAPIServer) ListThreads(ctx context.Context, req *ListThreadsRequest) (*ListThreadsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListThreads not implemented")
 }
-func (*UnimplementedAPIServer) SetupMail(ctx context.Context, req *SetupMailRequest) (*SetupMailReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetupMail not implemented")
+func (*UnimplementedAPIServer) SetupMailbox(ctx context.Context, req *SetupMailboxRequest) (*SetupMailboxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetupMailbox not implemented")
 }
 func (*UnimplementedAPIServer) SendMessage(ctx context.Context, req *SendMessageRequest) (*SendMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
@@ -1020,10 +1012,10 @@ func (*UnimplementedAPIServer) SendMessage(ctx context.Context, req *SendMessage
 func (*UnimplementedAPIServer) ListInboxMessages(ctx context.Context, req *ListInboxMessagesRequest) (*ListMessagesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListInboxMessages not implemented")
 }
-func (*UnimplementedAPIServer) ListSentboxMessages(ctx context.Context, req *ListSentMessagesRequest) (*ListMessagesReply, error) {
+func (*UnimplementedAPIServer) ListSentboxMessages(ctx context.Context, req *ListSentboxMessagesRequest) (*ListMessagesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSentboxMessages not implemented")
 }
-func (*UnimplementedAPIServer) ReadInboxMessage(ctx context.Context, req *ReadMessageRequest) (*ReadMessageReply, error) {
+func (*UnimplementedAPIServer) ReadInboxMessage(ctx context.Context, req *ReadInboxMessageRequest) (*ReadInboxMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadInboxMessage not implemented")
 }
 func (*UnimplementedAPIServer) DeleteInboxMessage(ctx context.Context, req *DeleteMessageRequest) (*DeleteMessageReply, error) {
@@ -1073,20 +1065,20 @@ func _API_ListThreads_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_SetupMail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetupMailRequest)
+func _API_SetupMailbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetupMailboxRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).SetupMail(ctx, in)
+		return srv.(APIServer).SetupMailbox(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/users.pb.API/SetupMail",
+		FullMethod: "/users.pb.API/SetupMailbox",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).SetupMail(ctx, req.(*SetupMailRequest))
+		return srv.(APIServer).SetupMailbox(ctx, req.(*SetupMailboxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1128,7 +1120,7 @@ func _API_ListInboxMessages_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 func _API_ListSentboxMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListSentMessagesRequest)
+	in := new(ListSentboxMessagesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1140,13 +1132,13 @@ func _API_ListSentboxMessages_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/users.pb.API/ListSentboxMessages",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).ListSentboxMessages(ctx, req.(*ListSentMessagesRequest))
+		return srv.(APIServer).ListSentboxMessages(ctx, req.(*ListSentboxMessagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _API_ReadInboxMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadMessageRequest)
+	in := new(ReadInboxMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1158,7 +1150,7 @@ func _API_ReadInboxMessage_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: "/users.pb.API/ReadInboxMessage",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).ReadInboxMessage(ctx, req.(*ReadMessageRequest))
+		return srv.(APIServer).ReadInboxMessage(ctx, req.(*ReadInboxMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1212,8 +1204,8 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_ListThreads_Handler,
 		},
 		{
-			MethodName: "SetupMail",
-			Handler:    _API_SetupMail_Handler,
+			MethodName: "SetupMailbox",
+			Handler:    _API_SetupMailbox_Handler,
 		},
 		{
 			MethodName: "SendMessage",

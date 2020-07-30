@@ -50,20 +50,12 @@ func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) 
 }
 
 // SetupMailbox creates inbox and sentbox threads needed user mail.
-func (c *Client) SetupMail(ctx context.Context) (inbox, sentbox thread.ID, err error) {
-	res, err := c.c.SetupMail(ctx, &pb.SetupMailRequest{})
+func (c *Client) SetupMailbox(ctx context.Context) (mailbox thread.ID, err error) {
+	res, err := c.c.SetupMailbox(ctx, &pb.SetupMailboxRequest{})
 	if err != nil {
 		return
 	}
-	inbox, err = thread.Cast(res.InboxID)
-	if err != nil {
-		return
-	}
-	sentbox, err = thread.Cast(res.SentboxID)
-	if err != nil {
-		return
-	}
-	return
+	return thread.Cast(res.MailboxID)
 }
 
 // Message is the client side representation of a mailbox message.
@@ -92,7 +84,8 @@ func (m Message) IsRead() bool {
 // UnmarshalInstance unmarshals the message from its ThreadDB instance data.
 // This will return an error if the message signature fails verification.
 func (m Message) UnmarshalInstance(data []byte) error {
-	var tm threaddb.Message
+	// InboxMessage works for both inbox and sentbox messages (it contains a superset of SentboxMessage fields)
+	var tm threaddb.InboxMessage
 	if err := json.Unmarshal(data, &tm); err != nil {
 		return err
 	}
@@ -198,7 +191,7 @@ func (c *Client) ListSentboxMessages(ctx context.Context, opts ...ListOption) ([
 	for _, opt := range opts {
 		opt(args)
 	}
-	res, err := c.c.ListSentboxMessages(ctx, &pb.ListSentMessagesRequest{
+	res, err := c.c.ListSentboxMessages(ctx, &pb.ListSentboxMessagesRequest{
 		Seek:  args.seek,
 		Limit: int64(args.limit),
 	})
@@ -250,7 +243,7 @@ func messageFromPb(m *pb.Message) (msg Message, err error) {
 
 // ReadInboxMessage marks a message as read by ID.
 func (c *Client) ReadInboxMessage(ctx context.Context, id string) error {
-	_, err := c.c.ReadInboxMessage(ctx, &pb.ReadMessageRequest{
+	_, err := c.c.ReadInboxMessage(ctx, &pb.ReadInboxMessageRequest{
 		ID: id,
 	})
 	return err
