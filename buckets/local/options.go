@@ -7,9 +7,6 @@ import (
 type newOptions struct {
 	name    string
 	private bool
-	// (jsign): unused?
-	//thread  thread.ID
-	//key     string
 	fromCid cid.Cid
 	events  chan<- PathEvent
 }
