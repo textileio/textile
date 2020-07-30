@@ -4,16 +4,14 @@ import (
 	"context"
 	"strings"
 
-	logging "github.com/ipfs/go-log"
 	dbc "github.com/textileio/go-threads/api/client"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 )
 
-var log = logging.Logger("threaddb")
-
-type collection struct {
+// Collection wraps a ThreadDB collection with some convenience methods.
+type Collection struct {
 	c      *dbc.Client
 	config db.CollectionConfig
 }
@@ -34,7 +32,7 @@ func WithToken(t thread.Token) Option {
 }
 
 // Create a collection instance.
-func (c *collection) Create(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) (coredb.InstanceID, error) {
+func (c *Collection) Create(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) (coredb.InstanceID, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -59,7 +57,7 @@ func (c *collection) Create(ctx context.Context, dbID thread.ID, instance interf
 }
 
 // Get a collection instance.
-func (c *collection) Get(ctx context.Context, dbID thread.ID, key string, instance interface{}, opts ...Option) error {
+func (c *Collection) Get(ctx context.Context, dbID thread.ID, key string, instance interface{}, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -75,7 +73,7 @@ func (c *collection) Get(ctx context.Context, dbID thread.ID, key string, instan
 }
 
 // List collection instances.
-func (c *collection) List(ctx context.Context, dbID thread.ID, query *db.Query, instance interface{}, opts ...Option) (interface{}, error) {
+func (c *Collection) List(ctx context.Context, dbID thread.ID, query *db.Query, instance interface{}, opts ...Option) (interface{}, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -94,7 +92,7 @@ func (c *collection) List(ctx context.Context, dbID thread.ID, query *db.Query, 
 }
 
 // Save a collection instance.
-func (c *collection) Save(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) error {
+func (c *Collection) Save(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -110,7 +108,7 @@ func (c *collection) Save(ctx context.Context, dbID thread.ID, instance interfac
 }
 
 // Delete a collection instance.
-func (c *collection) Delete(ctx context.Context, dbID thread.ID, id string, opts ...Option) error {
+func (c *Collection) Delete(ctx context.Context, dbID thread.ID, id string, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -122,11 +120,11 @@ func (c *collection) Delete(ctx context.Context, dbID thread.ID, id string, opts
 	return nil
 }
 
-func (c *collection) addCollection(ctx context.Context, dbID thread.ID, token thread.Token) error {
+func (c *Collection) addCollection(ctx context.Context, dbID thread.ID, token thread.Token) error {
 	return c.c.NewCollection(ctx, dbID, c.config, db.WithManagedToken(token))
 }
 
-func (c *collection) updateCollection(ctx context.Context, dbID thread.ID, token thread.Token) error {
+func (c *Collection) updateCollection(ctx context.Context, dbID thread.ID, token thread.Token) error {
 	return c.c.UpdateCollection(ctx, dbID, c.config, db.WithManagedToken(token))
 }
 

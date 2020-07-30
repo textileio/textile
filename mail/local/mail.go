@@ -135,7 +135,7 @@ func (m *Mail) NewMailbox(ctx context.Context, conf Config) (box *Mailbox, err e
 	if err != nil {
 		return
 	}
-	if _, _, err = m.clients.Users.SetupMail(ctx); err != nil {
+	if _, err = m.clients.Users.SetupMailbox(ctx); err != nil {
 		return
 	}
 

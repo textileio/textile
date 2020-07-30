@@ -1,6 +1,12 @@
 package mail
 
 const (
-	// CollectionName is the name of the threaddb collection used for mail.
-	CollectionName = "mail"
+	// ThreadName is the name of the threaddb used for mail.
+	ThreadName = "hubmail"
+
+	// InboxCollectionName is the name of the threaddb collection used for an inbox.
+	InboxCollectionName = "inbox"
+
+	// SentbocCollectionName is the name of the threaddb collection used for a sentbox.
+	SentboxCollectionName = "sentbox"
 )

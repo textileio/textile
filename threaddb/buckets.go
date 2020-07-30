@@ -130,7 +130,7 @@ func init() {
 
 // Buckets is a wrapper around a threaddb collection that performs object storage on IPFS and Filecoin.
 type Buckets struct {
-	collection
+	Collection
 
 	ffsCol   *mdb.FFSInstances
 	pgClient *powc.Client
@@ -152,7 +152,7 @@ func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, default
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Buckets{
-		collection: collection{
+		Collection: Collection{
 			c:      tc,
 			config: bucketsConfig,
 		},
