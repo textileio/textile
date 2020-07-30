@@ -260,9 +260,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			Mail:        t.mail,
 		}
 	}
-	t.archiveTracker, err = archive.New(t.collections, t.bucks, t.powc, t.internalHubSession)
-	if err != nil {
-		return nil, err
+	if conf.Hub {
+		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.powc, t.internalHubSession)
+		if err != nil {
+			return nil, err
+		}
 	}
 	bs := &buckets.Service{
 		Collections:               t.collections,
@@ -387,8 +389,10 @@ func (t *Textile) Close(force bool) error {
 	} else {
 		t.server.GracefulStop()
 	}
-	if err := t.archiveTracker.Close(); err != nil {
-		return err
+	if t.archiveTracker != nil {
+		if err := t.archiveTracker.Close(); err != nil {
+			return err
+		}
 	}
 	if err := t.bucks.Close(); err != nil {
 		return err
