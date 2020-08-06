@@ -209,20 +209,6 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		return
 	}
 
-	// Add a DNS record if possible
-	if s.DNSManager != nil {
-		if host, ok := s.getGatewayHost(); ok {
-			rec, err := s.DNSManager.NewCNAME(buck.Key, host)
-			if err != nil {
-				return nil, nil, err
-			}
-			buck.DNSRecord = rec.ID
-			if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-
 	// Finally, publish the new bucket's address to the name system
 	go s.IPNSManager.Publish(pth, buck.Key)
 	return buck, seed, nil
@@ -1458,11 +1444,6 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 	if err = s.IPNSManager.RemoveKey(ctx, buck.Key); err != nil {
 		return nil, err
-	}
-	if buck.DNSRecord != "" && s.DNSManager != nil {
-		if err = s.DNSManager.DeleteRecord(buck.DNSRecord); err != nil {
-			return nil, err
-		}
 	}
 
 	log.Debugf("removed bucket: %s", buck.Key)
