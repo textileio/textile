@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -29,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var powMultiaddr = multiaddr.StringCast("/ip4/127.0.0.1/tcp/5002")
+var powMultiaddr = "127.0.0.1:5002"
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
@@ -254,7 +253,7 @@ func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	conf.FFSDefaultConfig = &ffs.DefaultConfig{
+	conf.FFSDefaultConfig = &ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled: true,
 			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
@@ -263,7 +262,7 @@ func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
 			Enabled: true,
 			Filecoin: ffs.FilConfig{
 				RepFactor:       1,
-				DealMinDuration: 1000,
+				DealMinDuration: 800000,
 			},
 		},
 	}

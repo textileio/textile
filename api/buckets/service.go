@@ -1614,7 +1614,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
 
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := s.PGClient.Wallet.WalletBalance(ctx, ffsi.WalletAddr)
+	bal, err := s.PGClient.Wallet.Balance(ctx, ffsi.WalletAddr)
 	if err != nil {
 		return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
 	}
@@ -1627,7 +1627,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = s.PGClient.FFS.PushConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+		jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
 		if err != nil {
 			return nil, fmt.Errorf("pushing config: %s", err)
 		}
@@ -1655,7 +1655,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
 			case ffs.Failed, ffs.Canceled:
-				jid, err = s.PGClient.FFS.PushConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}

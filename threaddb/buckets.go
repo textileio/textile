@@ -29,7 +29,7 @@ var (
 	// ffsDefaultCidConfig is a default hardcoded CidConfig to be used
 	// on newly created FFS instances as the default CidConfig of archived Cids,
 	// if none is provided in constructor.
-	ffsDefaultCidConfig = ffs.DefaultConfig{
+	ffsDefaultCidConfig = ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled:       false,
 			AllowUnfreeze: true,
@@ -41,7 +41,7 @@ var (
 			Enabled: true,
 			Filecoin: ffs.FilConfig{
 				RepFactor:       10,     // Aim high for testnet
-				DealMinDuration: 200000, // ~2 months
+				DealMinDuration: 550000, // ~6 months, the minimum accepted in the network.
 			},
 		},
 	}
@@ -135,7 +135,7 @@ type Buckets struct {
 	ffsCol   *mdb.FFSInstances
 	pgClient *powc.Client
 
-	buckCidConfig ffs.DefaultConfig
+	buckCidConfig ffs.StorageConfig
 
 	lock   sync.Mutex
 	ctx    context.Context
@@ -144,7 +144,7 @@ type Buckets struct {
 }
 
 // NewBuckets returns a new buckets collection mananger.
-func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, defaultCidConfig *ffs.DefaultConfig) (*Buckets, error) {
+func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, defaultCidConfig *ffs.StorageConfig) (*Buckets, error) {
 	buckCidConfig := ffsDefaultCidConfig
 	if defaultCidConfig != nil {
 		buckCidConfig = *defaultCidConfig
@@ -225,13 +225,13 @@ func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error
 	if err := b.ffsCol.Create(ctx, bucketKey, token, waddr); err != nil {
 		return fmt.Errorf("saving FFS instances data: %s", err)
 	}
-	defaultBucketCidConfig := ffs.DefaultConfig{
+	defaultBucketCidConfig := ffs.StorageConfig{
 		Cold:       b.buckCidConfig.Cold,
 		Hot:        b.buckCidConfig.Hot,
 		Repairable: b.buckCidConfig.Repairable,
 	}
 	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
-	if err := b.pgClient.FFS.SetDefaultConfig(ctxFFS, defaultBucketCidConfig); err != nil {
+	if err := b.pgClient.FFS.SetDefaultStorageConfig(ctxFFS, defaultBucketCidConfig); err != nil {
 		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
 	}
 	return nil

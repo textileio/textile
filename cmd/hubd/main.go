@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -271,10 +270,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 
-		var addrPowergateApi ma.Multiaddr
-		if str := config.Viper.GetString("addr.powergate.api"); str != "" {
-			addrPowergateApi = cmd.AddrFromStr(str)
-		}
+		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
