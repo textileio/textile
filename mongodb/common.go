@@ -1,4 +1,4 @@
-package collections
+package mongodb
 
 import (
 	"go.mongodb.org/mongo-driver/bson"

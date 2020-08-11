@@ -44,7 +44,7 @@ jobs:
         run: |
           go get -v -t -d ./...
       - name: Test
-        run: go test -v -timeout 20m -race ./api/... ./collections
+        run: go test -v -timeout 20m -race ./mongodb ./api/... ./mail/...
 
   buckets-test:
     name: Buckets Test
@@ -95,4 +95,4 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v1 
       - name: Test
-        run: go test -race ./integrationtest/...
+        run: go test -timeout 45m -race ./integrationtest/...

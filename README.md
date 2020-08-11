@@ -11,7 +11,7 @@
 
 Textile connects and extends [Libp2p](https://libp2p.io/), [IPFS](https://ipfs.io/), and [Filecoin](https://filecoin.io/). Three interoperable technologies makeup Textile:
 
-* [**ThreadDB**](https://github.com/textileio/go-threads): A serverless p2p database built on Libp2p
+* [**ThreadDB**](https://github.com/textileio/go-threads): A server-less p2p database built on Libp2p
 * [**Powergate**](https://github.com/textileio/powergate): File storage built on Filecoin and IPFS
 * [**Buckets**](https://github.com/textileio/textile/tree/master/buckets): File and dynamic directory storage built on ThreadDB, Powergate, and [UnixFS](https://github.com/ipfs/go-unixfs).
 
@@ -46,6 +46,15 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
   * [Multi-writer buckets](#multi-writer-buckets)
   * [Deleting a bucket](#deleting-a-bucket)
   * [Using the Buckets Library](#using-the-buckets-library)
+    * [Creating a bucket](#creating-a-bucket-1)
+    * [Getting an existing bucket](#getting-an-existing-bucket)
+    * [Pushing local changes](#pushing-local-changes)
+    * [Pulling remote changes](#pulling-remote-changes)
+  * [Using the Mail Library](#using-the-mail-library)
+    * [Creating a mailbox](#creating-a-mailbox)
+    * [Getting an existing mailbox](#getting-an-existing-mailbox)
+    * [Sending a message](#sending-a-message)
+    * [Watching for new messages](#watching-for-new-messages)
 * [Developing](#developing)
 * [Contributing](#contributing)
 * [Changelog](#changelog)
@@ -595,52 +604,52 @@ Use the `archive status` command with `-w` to watch the progress of your archive
 ```
 buck archive status -w
 > Archive is currently executing, grab a coffee and be patient...
-> 	 Pushing new configuration...
-> 	 Configuration saved successfully
-> 	 Executing job 1006707f-efa8-48c2-98af-a1b320a59780...
-> 	 Ensuring Hot-Storage satisfies the configuration...
-> 	 No actions needed in Hot Storage.
-> 	 Hot-Storage execution ran successfully.
-> 	 Ensuring Cold-Storage satisfies the configuration...
-> 	 Current replication factor is lower than desired, making 10 new deals...
-> 	 Calculating piece size...
-> 	 Estimated piece size is 256 bytes.
-> 	 Proposing deal to miner t01459 with 0 fil per epoch...
-> 	 Proposing deal to miner t0117734 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0120993 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0120642 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0121477 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0119390 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0101180 with 10000000 fil per epoch...
-> 	 Proposing deal to miner t0117803 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0121852 with 500000000 fil per epoch...
-> 	 Proposing deal to miner t0119822 with 500000000 fil per epoch...
-> 	 Watching deals unfold...
-> 	 Deal with miner t0117803 changed state to StorageDealClientFunding
-> 	 Deal with miner t0121852 changed state to StorageDealClientFunding
-> 	 Deal with miner t0121477 changed state to StorageDealClientFunding
-> 	 Deal with miner t0101180 changed state to StorageDealClientFunding
-> 	 Deal with miner t0119822 changed state to StorageDealClientFunding
-> 	 Deal with miner t0119390 changed state to StorageDealClientFunding
-> 	 Deal with miner t0120642 changed state to StorageDealClientFunding
-> 	 Deal with miner t0117734 changed state to StorageDealClientFunding
-> 	 Deal with miner t01459 changed state to StorageDealClientFunding
-> 	 Deal with miner t0120993 changed state to StorageDealClientFunding
-> 	 Deal with miner t0121477 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0119822 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0117734 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0121852 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t01459 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0120642 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0120993 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0117803 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0101180 changed state to StorageDealWaitingForDataRequest
-> 	 Deal with miner t0119390 changed state to StorageDealWaitingForDataRequest
+>    Pushing new configuration...
+>    Configuration saved successfully
+>    Executing job 1006707f-efa8-48c2-98af-a1b320a59780...
+>    Ensuring Hot-Storage satisfies the configuration...
+>    No actions needed in Hot Storage.
+>    Hot-Storage execution ran successfully.
+>    Ensuring Cold-Storage satisfies the configuration...
+>    Current replication factor is lower than desired, making 10 new deals...
+>    Calculating piece size...
+>    Estimated piece size is 256 bytes.
+>    Proposing deal to miner t01459 with 0 fil per epoch...
+>    Proposing deal to miner t0117734 with 500000000 fil per epoch...
+>    Proposing deal to miner t0120993 with 500000000 fil per epoch...
+>    Proposing deal to miner t0120642 with 500000000 fil per epoch...
+>    Proposing deal to miner t0121477 with 500000000 fil per epoch...
+>    Proposing deal to miner t0119390 with 500000000 fil per epoch...
+>    Proposing deal to miner t0101180 with 10000000 fil per epoch...
+>    Proposing deal to miner t0117803 with 500000000 fil per epoch...
+>    Proposing deal to miner t0121852 with 500000000 fil per epoch...
+>    Proposing deal to miner t0119822 with 500000000 fil per epoch...
+>    Watching deals unfold...
+>    Deal with miner t0117803 changed state to StorageDealClientFunding
+>    Deal with miner t0121852 changed state to StorageDealClientFunding
+>    Deal with miner t0121477 changed state to StorageDealClientFunding
+>    Deal with miner t0101180 changed state to StorageDealClientFunding
+>    Deal with miner t0119822 changed state to StorageDealClientFunding
+>    Deal with miner t0119390 changed state to StorageDealClientFunding
+>    Deal with miner t0120642 changed state to StorageDealClientFunding
+>    Deal with miner t0117734 changed state to StorageDealClientFunding
+>    Deal with miner t01459 changed state to StorageDealClientFunding
+>    Deal with miner t0120993 changed state to StorageDealClientFunding
+>    Deal with miner t0121477 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0119822 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0117734 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0121852 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t01459 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0120642 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0120993 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0117803 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0101180 changed state to StorageDealWaitingForDataRequest
+>    Deal with miner t0119390 changed state to StorageDealWaitingForDataRequest
 >    Deal with miner t01459 changed state to StorageDealProposalAccepted
-> 	 Deal with miner t01459 changed state to StorageDealSealing
+>    Deal with miner t01459 changed state to StorageDealSealing
 ```
 
-The output will looks something like the above. With a little luck, you will start seeing some successful storage deals.
+The output will look something like the above. With a little luck, you will start seeing some successful storage deals.
 
 Bucket archiving allows you to leverage the purely decentralized nature of Filecoin in your buckets. Check out [this video](https://www.youtube.com/watch?v=jiBUxIi1zko&feature=emb_title) from a [blog post](https://blog.textile.io/buckets-diffing-syncing-archiving/) demonstrating Filecoin bucket recovery using the [Lotus client](https://github.com/filecoin-project/lotus).
 
@@ -656,13 +665,161 @@ Deleting a bucket is easy... and permanent! `buck destroy` will delete your loca
 
 ### Using the Buckets Library
 
-The `buckets/local` library powers both the `buck` and `hub buck` CLIs. Everything possible in `buck`, from bucket diffing, pushing, pulling, watching, archiving, etc., is available to you in existing projects by importing the Buckets Library:
+The `buckets/local` library powers both the `buck` and `hub buck` CLIs. Everything possible in `buck`, from bucket diffing, pushing, pulling, watching, archiving, etc., is available to you in existing projects by importing the Buckets Library.
 
 ```
 go get github.com/textileio/textile/buckets/local
 ```
 
-See the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for usage.
+Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for a complete list of methods and more usage descriptions.
+
+#### Creating a bucket
+
+Create a new bucket by constructing a configuration object. Only `Path` is required.
+
+```
+// Setup the buckets lib
+buckets := local.NewBuckets(cmd.NewClients("api.textile.io:443", false), local.DefaultConfConfig())
+
+// Create a new bucket with config
+mybuck, err := buckets.NewBucket(context.Background(), local.Config{
+    Path: "path/to/bucket/folder"
+})
+
+// Check current status
+diff, err := mybuck.DiffLocal() // diff contains staged changes
+```
+
+`buckets.NewBucket` will write a local config file and data repo.
+
+See `local.WithName`, `local.WithPrivate`, `local.WithCid`, `local.WithExistingPathEvents` for more options when creating buckets.
+
+To create a bucket from an existing remote, use its thread ID and instance ID (bucket `key`) in the config.
+
+#### Getting an existing bucket
+
+`GetLocalBucket` returns the bucket at path.
+
+```
+mybuck, err := buckets.GetLocalBucket(context.Background(), "path/to/bucket/folder")
+```
+
+#### Pushing local files
+
+`PushLocal` pushes all staged changes to the remote and returns the new local and remote root Cids. These roots will only be different if the bucket is private (the remote is encrypted).
+
+```
+newRoots, err := mybuck.PushLocal()
+```
+
+See `local.PathOption` for more options when pushing.
+
+#### Pulling remote changes
+
+`PullRemote` pulls all remote changes locally and returns the new root Cids.
+
+```
+newRoots, err := mybuck.PullRemote()
+```
+
+See `local.PathOption` for more options when pulling.
+
+### Using the Mail Library
+
+The `mail/local` library provides mechanisms for sending and receiving messages between Hub users. Mailboxes are built on ThreadDB.
+
+```
+go get github.com/textileio/textile/mail/local
+```
+
+Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/mail/local) for a complete list of methods and more usage descriptions.
+
+#### Creating a mailbox
+
+Like creating a bucket, create a new mailbox by constructing a configuration object. All fields are required.
+
+```
+// Setup the mail lib
+mail := local.NewMail(cmd.NewClients("api.textile.io:443", true), local.DefaultConfConfig())
+
+// Create a libp2p identity (this can be any thread.Identity)
+privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+id := thread.NewLibp2pIdentity(privKey)
+
+// Create a new mailbox with config
+mailbox, err := mail.NewMailbox(context.Background(), local.Config{
+    Path: "path/to/mail/folder", // Usually a global location like ~/.textile/mail
+    Identity: id,
+    APIKey: <API_SECRET>,
+    APISecret: <API_KEY>,
+})
+```
+
+`APIKey` and `APISecret` are User Group API Keys. Read more about [creating API Keys](https://docs.textile.io/hub/app-apis/#creating-user-group-keys).
+
+To recreate a user's mailbox, specify the same identity and API Key in the config.
+
+#### Getting an existing mailbox
+
+`GetLocalMailbox` returns the mailbox at path.
+
+```
+mailbox, err := mail.GetLocalMailbox(context.Background(), "path/to/mailbox/folder")
+```
+
+#### Sending a message
+
+When a mailbox sends a message to another mailbox, the message is encrypted for the recipient's inbox _and_ for the senders sentbox. This allows both parties to control the message's lifecycle.
+
+```
+// Create two mailboxes (for most applications, this would not happen on the same machine)
+box1, err := mail.NewMailbox(context.Background(), local.Config{...})
+box2, err := mail.NewMailbox(context.Background(), local.Config{...})
+
+// Send a message from the first mailbox to the second
+message, err := box1.SendMessage(context.Background(), box2.Identity().GetPublic(), []byte("howdy"))
+
+// List the recipient's inbox
+inbox, err := box2.ListInboxMessages(context.Background())
+
+// Open decrypts the message body
+body, err := inbox[0].Open(context.Background(), box2.Identity())
+
+// Mark the message as read
+err = box2.ReadInboxMessage(context.Background(), inbox[0].ID)
+```
+
+#### Watching for new messages
+
+Applications may watch for mailbox events in the inbox and/or sentbox.
+
+```
+// Handle mailbox events as they arrive
+events := make(chan MailboxEvent)
+defer close(events)
+go func() {
+    for e := range events {
+        switch e.Type {
+        case NewMessage:
+            // handle new message
+        case MessageRead:
+            // handle message read (inbox only)
+        case MessageDeleted:
+            // handle message deleted
+        }
+    }
+}()
+
+// Start watching (the third param indicates we want to keep watching when offline)
+state, err := mailbox.WatchInbox(context.Background(), events, true)
+for s := range state {
+    // handle connectivity state
+}
+```
+
+Similarly, use `WatchSentbox` to watch a sentbox.
+
+
 
 ## Developing
 

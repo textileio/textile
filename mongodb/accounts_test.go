@@ -1,4 +1,4 @@
-package collections_test
+package mongodb_test
 
 import (
 	"context"
@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
-	. "github.com/textileio/textile/collections"
+	. "github.com/textileio/textile/mongodb"
 )
 
 func TestAccounts_CreateDev(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, Dev, created.Type)
 	assert.Equal(t, "jon", created.Username)
 	assert.Equal(t, "jon@doe.com", created.Email)
@@ -28,30 +28,30 @@ func TestAccounts_CreateDev(t *testing.T) {
 	assert.Equal(t, "token", created.FFSInfo.Token)
 
 	_, err = col.CreateDev(context.Background(), "jon", "jon2@doe.com", &FFSInfo{ID: "id2", Token: "token2"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	_, err = col.CreateDev(context.Background(), "jon2", "jon@doe.com", &FFSInfo{ID: "id3", Token: "token3"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = col.CreateOrg(context.Background(), "jon", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, &FFSInfo{ID: "id", Token: "token"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestAccounts_Get(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
 	assert.Equal(t, "id", created.FFSInfo.ID)
 	assert.Equal(t, "token", created.FFSInfo.Token)
@@ -60,43 +60,43 @@ func TestAccounts_Get(t *testing.T) {
 func TestAccounts_BucketsTotalSize(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.SetBucketsTotalSize(context.Background(), created.Key, 1234)
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(1234), got.BucketsTotalSize)
 }
 
 func TestAccounts_GetByUsernameOrEmail(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.GetByUsernameOrEmail(context.Background(), "jon")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
 
 	got, err = col.GetByUsernameOrEmail(context.Background(), "jon@doe.com")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
 
 	_, err = col.GetByUsernameOrEmail(context.Background(), "jon2")
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestAccounts_ValidateUsername(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tests := map[string]bool{
 		"":      false,
@@ -123,82 +123,82 @@ func TestAccounts_ValidateUsername(t *testing.T) {
 func TestAccounts_IsUsernameAvailable(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.IsUsernameAvailable(context.Background(), "jon")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.IsUsernameAvailable(context.Background(), "jon")
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestAccounts_SetToken(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	iss, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tok, err := thread.NewToken(iss, thread.NewLibp2pPubKey(created.Key))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.SetToken(context.Background(), created.Key, tok)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, got.Token)
 }
 
 func TestAccounts_ListMembers(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	one, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	two, err := col.CreateDev(context.Background(), "jane", "jane@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = col.CreateDev(context.Background(), "jone", "jone@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	list, err := col.ListMembers(context.Background(), []Member{{Key: one.Key}, {Key: two.Key}})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(list))
 }
 
 func TestAccounts_Delete(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), created.Key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = col.Get(context.Background(), created.Key)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestAccounts_CreateOrg(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, &FFSInfo{ID: "id", Token: "token"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, Org, created.Type)
 	assert.Equal(t, created.Name, "test")
 	assert.NotNil(t, created.Key)
@@ -211,73 +211,73 @@ func TestAccounts_CreateOrg(t *testing.T) {
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, err = col.CreateOrg(context.Background(), "empty", []Member{}, nil)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, err = col.CreateDev(context.Background(), "test", "jon@doe.com", nil)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestAccounts_GetByUsername(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.GetByUsername(context.Background(), created.Username)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
 }
 
 func TestAccounts_IsNameAvailable(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = col.IsNameAvailable(context.Background(), "test")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "Test!", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, created.Username, "Test")
 
 	name, err := col.IsNameAvailable(context.Background(), "Test!")
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, created.Username, name)
 }
 
 func TestAccounts_ListByMember(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	list, err := col.ListByMember(context.Background(), mem)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(list))
 	assert.Equal(t, created.Name, list[0].Name)
 }
@@ -285,162 +285,162 @@ func TestAccounts_ListByMember(t *testing.T) {
 func TestAccounts_ListByOwner(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	list, err := col.ListByOwner(context.Background(), mem1)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(list))
 	assert.Equal(t, created.Name, list[0].Name)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	list, err = col.ListByOwner(context.Background(), mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(list))
 }
 
 func TestAccounts_IsOwner(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	is, err := col.IsOwner(context.Background(), created.Username, mem1)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, is)
 	is, err = col.IsOwner(context.Background(), created.Username, mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, is)
 }
 
 func TestAccounts_IsMember(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	is, err := col.IsMember(context.Background(), created.Username, mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, is)
 	err = col.RemoveMember(context.Background(), created.Username, mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	is, err = col.IsMember(context.Background(), created.Username, mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, is)
 }
 
 func TestAccounts_AddMember(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{ // Add again should not duplicate entry
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	got, err := col.GetByUsername(context.Background(), created.Username)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(got.Members))
 }
 
 func TestAccounts_RemoveMember(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem1,
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.RemoveMember(context.Background(), created.Username, mem1)
-	require.NotNil(t, err) // Can't remove the sole owner
+	require.Error(t, err) // Can't remove the sole owner
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
 		Key:      mem2,
 		Username: "member",
 		Role:     OrgMember,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = col.RemoveMember(context.Background(), created.Username, mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	list, err := col.ListByMember(context.Background(), mem2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(list))
 }

@@ -27,9 +27,9 @@ func TestRepo_SetCidVersion(t *testing.T) {
 	repo0 := makeRepo(t, "testdata/a", options.BalancedLayout)
 	repo0.SetCidVersion(0)
 	err := repo0.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc0, _, err := repo0.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc0.Defined())
 	assert.Equal(t, 0, repo0.CidVersion())
 	assert.Equal(t, 0, int(lc0.Version()))
@@ -39,9 +39,9 @@ func TestRepo_SetCidVersion(t *testing.T) {
 	defer repo1.Close()
 	repo1.SetCidVersion(1)
 	err = repo1.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc1, _, err := repo1.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc1.Defined())
 	assert.Equal(t, 1, repo1.CidVersion())
 	assert.Equal(t, 1, int(lc1.Version()))
@@ -51,20 +51,20 @@ func TestRepo_Save(t *testing.T) {
 	repo := makeRepo(t, "testdata/a", options.BalancedLayout)
 
 	err := repo.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc, _, err := repo.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc.Defined())
 	repo.Close()
 
 	repo2 := makeRepo(t, "testdata/a", options.BalancedLayout)
 	defer repo2.Close()
 	n, err := repo2.GetNode(context.Background(), lc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	checkLinks(t, repo2, n)
 
 	diff, err := repo2.Diff(context.Background(), "testdata/a")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Empty(t, diff)
 }
 
@@ -72,20 +72,20 @@ func TestRepo_SaveFile(t *testing.T) {
 	repo := makeRepo(t, "testdata/c", options.BalancedLayout)
 
 	err := repo.SaveFile(context.Background(), "testdata/c/one.jpg", "one.jpg")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc, _, err := repo.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc.Defined())
 	repo.Close()
 
 	repo2 := makeRepo(t, "testdata/c", options.BalancedLayout)
 	defer repo2.Close()
 	n, err := repo2.GetNode(context.Background(), lc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	checkLinks(t, repo2, n)
 
 	diff, err := repo2.Diff(context.Background(), "testdata/c")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 1, len(diff))
 }
 
@@ -93,9 +93,9 @@ func checkLinks(t *testing.T, repo *Repo, n ipld.Node) {
 	for _, l := range n.Links() {
 		ln, err := repo.GetNode(context.Background(), l.Cid)
 		if l.Name == "" { // Data node should not have been saved
-			require.NotNil(t, err)
+			require.Error(t, err)
 		} else {
-			require.Nil(t, err)
+			require.NoError(t, err)
 			checkLinks(t, repo, ln)
 		}
 	}
@@ -106,7 +106,7 @@ func TestRepo_HashFile(t *testing.T) {
 	defer repo.Close()
 
 	c, err := repo.HashFile("testdata/c/one.jpg")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, c)
 }
 
@@ -116,14 +116,14 @@ func TestRepo_Diff(t *testing.T) {
 		defer repo.Close()
 
 		err := repo.Save(context.Background())
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		diffa, err := repo.Diff(context.Background(), "testdata/a")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, diffa)
 
 		diffb, err := repo.Diff(context.Background(), "testdata/b")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotEmpty(t, diffb)
 		assert.Equal(t, 6, len(diffb))
 
@@ -150,7 +150,7 @@ func TestRepo_Diff(t *testing.T) {
 		})
 
 		dira, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		dirs = append(dirs, dira)
 
 		repo := makeRepo(t, dira, options.BalancedLayout)
@@ -158,31 +158,31 @@ func TestRepo_Diff(t *testing.T) {
 
 		// Add a file large enough to have multiple raw node chunks
 		fa, err := os.Create(filepath.Join(dira, "file"))
-		require.Nil(t, err)
+		require.NoError(t, err)
 		defer fa.Close()
 		_, err = io.CopyN(fa, rand.Reader, 1000*1024)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err = repo.Save(context.Background())
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		diffa, err := repo.Diff(context.Background(), dira)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, diffa)
 
 		// Create another dir with a file of the same name.
 		// We should see the file as modified in the diff.
 		dirb, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		dirs = append(dirs, dirb)
 		fb, err := os.Create(filepath.Join(dirb, "file"))
-		require.Nil(t, err)
+		require.NoError(t, err)
 		defer fb.Close()
 		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		diffb, err := repo.Diff(context.Background(), dirb)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotEmpty(t, diffb)
 		assert.Equal(t, 1, len(diffb))
 		changes := []*du.Change{
@@ -196,18 +196,18 @@ func TestRepo_Diff(t *testing.T) {
 		// Create another dir with a nested dir of the same name as the original file.
 		// We should see the file as modified in the diff.
 		dirc, err := ioutil.TempDir("", "")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		dirs = append(dirs, dirc)
 		err = os.MkdirAll(filepath.Join(dirc, "file"), os.ModePerm)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		fc, err := os.Create(filepath.Join(dirc, "file", "file"))
-		require.Nil(t, err)
+		require.NoError(t, err)
 		defer fc.Close()
 		_, err = io.CopyN(fb, rand.Reader, 1000*1024)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		diffc, err := repo.Diff(context.Background(), dirc)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotEmpty(t, diffc)
 		assert.Equal(t, 1, len(diffc))
 		for i, c := range diffc {
@@ -222,13 +222,13 @@ func TestRepo_Get(t *testing.T) {
 	defer repo.Close()
 
 	err := repo.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	lc, _, err := repo.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc.Defined())
 	n, err := repo.GetNode(context.Background(), lc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, lc, n.Cid())
 }
 
@@ -237,13 +237,13 @@ func TestRepo_SetRemotePath(t *testing.T) {
 	defer repo.Close()
 
 	err := repo.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc, _, err := repo.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc.Defined())
 
 	err = repo.SetRemotePath("", lc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRepo_MatchPath(t *testing.T) {
@@ -251,17 +251,17 @@ func TestRepo_MatchPath(t *testing.T) {
 	defer repo.Close()
 
 	err := repo.Save(context.Background())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	lc, _, err := repo.Root()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, lc.Defined())
 
 	rc := makeCid(t, "remote")
 	err = repo.SetRemotePath("", rc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	match, err := repo.MatchPath("", lc, rc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, match)
 }
 
@@ -270,21 +270,21 @@ func TestRepo_RemovePath(t *testing.T) {
 	defer repo.Close()
 
 	err := repo.SetRemotePath("path/to/file", makeCid(t, "remote"))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = repo.RemovePath(context.Background(), "path/to/file")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, _, err = repo.GetPathMap("path/to/file")
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func makeRepo(t *testing.T, root string, layout options.Layout) *Repo {
 	repo, err := NewRepo(root, ".textile/repo", layout)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err := os.RemoveAll(repo.Path())
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 	return repo
 }

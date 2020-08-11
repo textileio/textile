@@ -1,4 +1,4 @@
-package collections
+package mongodb
 
 import (
 	"context"
@@ -8,7 +8,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const tokenLen = 44
+const (
+	tokenLen = 44
+
+	DuplicateErrMsg = "E11000 duplicate key error"
+)
 
 type ctxKey string
 
@@ -19,10 +23,11 @@ type Collections struct {
 	Accounts *Accounts
 	Invites  *Invites
 
-	Threads      *Threads
-	APIKeys      *APIKeys
-	IPNSKeys     *IPNSKeys
-	FFSInstances *FFSInstances
+	Threads         *Threads
+	APIKeys         *APIKeys
+	IPNSKeys        *IPNSKeys
+	FFSInstances    *FFSInstances
+	ArchiveTracking *ArchiveTracking
 
 	Users *Users
 }
@@ -58,6 +63,10 @@ func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collect
 			return nil, err
 		}
 		c.Users, err = NewUsers(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		c.ArchiveTracking, err = NewArchiveTracking(ctx, db)
 		if err != nil {
 			return nil, err
 		}

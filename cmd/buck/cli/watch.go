@@ -28,10 +28,10 @@ var watchCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		for s := range state {
 			switch s.State {
-			case local.Online:
+			case cmd.Online:
 				cmd.Success("Watching %s for changes...", aurora.White(bp).Bold())
-			case local.Offline:
-				if s.Fatal {
+			case cmd.Offline:
+				if s.Aborted {
 					cmd.Fatal(s.Err)
 				} else {
 					cmd.Message("Not connected. Trying to connect...")

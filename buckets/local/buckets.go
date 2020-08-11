@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
@@ -24,23 +23,16 @@ var (
 	ErrBucketExists = errors.New("bucket is already initialized")
 	// ErrThreadRequired indicates the operation requires a thread ID but none was given.
 	ErrThreadRequired = errors.New("thread ID is required")
+
+	flags = map[string]cmd.Flag{
+		"key":    {Key: "key", DefValue: ""},
+		"thread": {Key: "thread", DefValue: ""},
+	}
 )
 
-// ConfConfig is used to generate new bucket configs.
-type ConfConfig struct {
-	// Dir is the bucket config directory base name (.textile by default).
-	Dir string
-	// Name is the name of the bucket config file (config by default).
-	Name string
-	// Type is the type of config file (yaml/json, ymal by default).
-	Type string
-	// EnvPrefix is a prefix that's expected to be appended to env vars (BUCK by default).
-	EnvPrefix string
-}
-
 // DefaultConfConfig returns the default ConfConfig.
-func DefaultConfConfig() ConfConfig {
-	return ConfConfig{
+func DefaultConfConfig() cmd.ConfConfig {
+	return cmd.ConfConfig{
 		Dir:       ".textile",
 		Name:      "config",
 		Type:      "yaml",
@@ -50,13 +42,13 @@ func DefaultConfConfig() ConfConfig {
 
 // Buckets is used to create new individual buckets based on the provided clients and config.
 type Buckets struct {
-	config  ConfConfig
+	config  cmd.ConfConfig
 	clients *cmd.Clients
 	auth    AuthFunc
 }
 
 // NewBuckets creates Buckets from clients and config.
-func NewBuckets(clients *cmd.Clients, config ConfConfig) *Buckets {
+func NewBuckets(clients *cmd.Clients, config cmd.ConfConfig) *Buckets {
 	return &Buckets{clients: clients, config: config}
 }
 
@@ -65,7 +57,7 @@ func NewBuckets(clients *cmd.Clients, config ConfConfig) *Buckets {
 type AuthFunc func(context.Context) context.Context
 
 // NewBucketsWithAuth creates Buckets from clients and config and auth.
-func NewBucketsWithAuth(clients *cmd.Clients, config ConfConfig, auth AuthFunc) *Buckets {
+func NewBucketsWithAuth(clients *cmd.Clients, config cmd.ConfConfig, auth AuthFunc) *Buckets {
 	return &Buckets{clients: clients, config: config, auth: auth}
 }
 
@@ -129,7 +121,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 	if err != nil {
 		return
 	}
-	bc, found, err := b.newConfig(cwd)
+	bc, found, err := b.config.NewConfig(cwd, flags, false)
 	if err != nil {
 		return
 	}
@@ -246,23 +238,6 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 	return buck, nil
 }
 
-func (b *Buckets) newConfig(pth string) (c *cmd.Config, fileExists bool, err error) {
-	v := viper.New()
-	v.SetConfigType(b.config.Type)
-	c = &cmd.Config{
-		Viper: v,
-		Dir:   b.config.Dir,
-		Name:  b.config.Name,
-		Flags: map[string]cmd.Flag{
-			"key":    {Key: "key", DefValue: ""},
-			"thread": {Key: "thread", DefValue: ""}},
-		EnvPre: b.config.EnvPrefix,
-		Global: false,
-	}
-	fileExists = cmd.FindConfigFile(c, pth)
-	return c, fileExists, nil
-}
-
 func (b *Buckets) repoName() string {
 	return filepath.Join(b.config.Dir, "repo")
 }
@@ -273,7 +248,7 @@ func (b *Buckets) GetLocalBucket(ctx context.Context, pth string) (*Bucket, erro
 	if err != nil {
 		return nil, err
 	}
-	bc, found, err := b.newConfig(cwd)
+	bc, found, err := b.config.NewConfig(cwd, flags, false)
 	if err != nil {
 		return nil, err
 	}

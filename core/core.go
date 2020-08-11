@@ -42,12 +42,13 @@ import (
 	hpb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/api/users"
 	upb "github.com/textileio/textile/api/users/pb"
-	bc "github.com/textileio/textile/buckets/collection"
-	c "github.com/textileio/textile/collections"
+	"github.com/textileio/textile/buckets/archive"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/gateway"
 	"github.com/textileio/textile/ipns"
+	mdb "github.com/textileio/textile/mongodb"
+	tdb "github.com/textileio/textile/threaddb"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
@@ -79,15 +80,17 @@ var (
 )
 
 type Textile struct {
-	collections *c.Collections
+	collections *mdb.Collections
 
 	ts             tc.NetBoostrapper
 	th             *threads.Client
 	thn            *netclient.Client
-	bucks          *bc.Buckets
+	bucks          *tdb.Buckets
+	mail           *tdb.Mail
 	powc           *powc.Client
 	powStub        grpcdynamic.Stub
 	ffsServiceDesc *desc.ServiceDescriptor
+	archiveTracker *archive.Tracker
 
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
@@ -95,9 +98,9 @@ type Textile struct {
 	server *grpc.Server
 	proxy  *http.Server
 
-	gateway         *gateway.Gateway
-	gatewaySession  string
-	emailSessionBus *broadcast.Broadcaster
+	gateway            *gateway.Gateway
+	internalHubSession string
+	emailSessionBus    *broadcast.Broadcaster
 
 	conf Config
 }
@@ -111,7 +114,7 @@ type Config struct {
 	AddrIPFSAPI      ma.Multiaddr
 	AddrGatewayHost  ma.Multiaddr
 	AddrGatewayURL   string
-	AddrPowergateAPI ma.Multiaddr
+	AddrPowergateAPI string
 	AddrMongoURI     string
 
 	UseSubdomains bool
@@ -144,16 +147,18 @@ type Config struct {
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":       logging.LevelDebug,
-			"hubapi":     logging.LevelDebug,
-			"bucketsapi": logging.LevelDebug,
-			"usersapi":   logging.LevelDebug,
+			"core":        logging.LevelDebug,
+			"hubapi":      logging.LevelDebug,
+			"bucketsapi":  logging.LevelDebug,
+			"usersapi":    logging.LevelDebug,
+			"pow-archive": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
 	}
 	t := &Textile{
-		conf: conf,
+		conf:               conf,
+		internalHubSession: util.MakeToken(32),
 	}
 
 	// Configure clients
@@ -161,15 +166,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if conf.AddrPowergateAPI != nil {
-		target, err := TCPAddrFromMultiAddr(conf.AddrPowergateAPI)
+	if conf.AddrPowergateAPI != "" {
+		t.powc, err = powc.NewClient(conf.AddrPowergateAPI)
 		if err != nil {
 			return nil, err
 		}
-		if t.powc, err = powc.NewClient(target); err != nil {
+		if t.powc, err = powc.NewClient(conf.AddrPowergateAPI); err != nil {
 			return nil, err
 		}
-		if t.powStub, err = createPowStub(target); err != nil {
+		if t.powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 			return nil, err
 		}
 		if t.ffsServiceDesc, err = createFFSServiceDesciptor(); err != nil {
@@ -182,7 +187,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	t.collections, err = c.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName, conf.Hub)
+	t.collections, err = mdb.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName, conf.Hub)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +227,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = bc.New(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig, conf.Debug)
+	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig)
+	if err != nil {
+		return nil, err
+	}
+	t.mail, err = tdb.NewMail(t.th)
 	if err != nil {
 		return nil, err
 	}
@@ -265,6 +274,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 		us = &users.Service{
 			Collections: t.collections,
+			Mail:        t.mail,
+		}
+	}
+	if conf.Hub {
+		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.powc, t.internalHubSession)
+		if err != nil {
+			return nil, err
 		}
 	}
 	bs := &buckets.Service{
@@ -277,6 +293,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
 		DNSManager:                t.dnsm,
+		PGClient:                  t.powc,
+		ArchiveTracker:            t.archiveTracker,
 	}
 
 	ffsService := ffsRpc.UnimplementedRPCServiceServer{}
@@ -347,14 +365,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}()
 
 	// Configure gateway
-	t.gatewaySession = util.MakeToken(32)
 	t.gateway, err = gateway.NewGateway(gateway.Config{
 		Addr:            conf.AddrGatewayHost,
 		URL:             conf.AddrGatewayURL,
 		Subdomains:      conf.UseSubdomains,
 		BucketsDomain:   conf.DNSDomain,
 		APIAddr:         conf.AddrAPI,
-		APISession:      t.gatewaySession,
+		APISession:      t.internalHubSession,
 		Collections:     t.collections,
 		IPFSClient:      ic,
 		EmailSessionBus: t.emailSessionBus,
@@ -391,6 +408,11 @@ func (t *Textile) Close(force bool) error {
 		t.server.Stop()
 	} else {
 		t.server.GracefulStop()
+	}
+	if t.archiveTracker != nil {
+		if err := t.archiveTracker.Close(); err != nil {
+			return err
+		}
 	}
 	if err := t.bucks.Close(); err != nil {
 		return err
@@ -445,7 +467,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
 		ctx = common.NewSessionContext(ctx, sid)
-		if sid == t.gatewaySession {
+		if sid == t.internalHubSession {
 			return ctx, nil
 		}
 		session, err := t.collections.Sessions.Get(ctx, sid)
@@ -458,13 +480,13 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		if err := t.collections.Sessions.Touch(ctx, session.ID); err != nil {
 			return nil, err
 		}
-		ctx = c.NewSessionContext(ctx, session)
+		ctx = mdb.NewSessionContext(ctx, session)
 
 		dev, err := t.collections.Accounts.Get(ctx, session.Owner)
 		if err != nil {
 			return nil, status.Error(codes.NotFound, "User not found")
 		}
-		ctx = c.NewDevContext(ctx, dev)
+		ctx = mdb.NewDevContext(ctx, dev)
 
 		orgSlug, ok := common.OrgSlugFromMD(ctx)
 		if ok {
@@ -479,7 +501,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				if err != nil {
 					return nil, status.Error(codes.NotFound, "Org not found")
 				}
-				ctx = c.NewOrgContext(ctx, org)
+				ctx = mdb.NewOrgContext(ctx, org)
 				ctx = common.NewOrgSlugContext(ctx, orgSlug)
 				ctx = thread.NewTokenContext(ctx, org.Token)
 			}
@@ -504,19 +526,19 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			}
 		}
 		switch key.Type {
-		case c.AccountKey:
+		case mdb.AccountKey:
 			acc, err := t.collections.Accounts.Get(ctx, key.Owner)
 			if err != nil {
 				return nil, status.Error(codes.NotFound, "Account not found")
 			}
 			switch acc.Type {
-			case c.Dev:
-				ctx = c.NewDevContext(ctx, acc)
-			case c.Org:
-				ctx = c.NewOrgContext(ctx, acc)
+			case mdb.Dev:
+				ctx = mdb.NewDevContext(ctx, acc)
+			case mdb.Org:
+				ctx = mdb.NewOrgContext(ctx, acc)
 			}
 			ctx = thread.NewTokenContext(ctx, acc.Token)
-		case c.UserKey:
+		case mdb.UserKey:
 			token, ok := thread.TokenFromContext(ctx)
 			if ok {
 				var claims jwt.StandardClaims
@@ -533,14 +555,14 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				}
 				if user == nil {
 					// Attach a temp user context that will be accessible in the next interceptor.
-					user = &c.User{Key: ukey.PubKey}
+					user = &mdb.User{Key: ukey.PubKey}
 				}
-				ctx = c.NewUserContext(ctx, user)
+				ctx = mdb.NewUserContext(ctx, user)
 			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
 				return nil, status.Error(codes.Unauthenticated, "Token required")
 			}
 		}
-		ctx = c.NewAPIKeyContext(ctx, key)
+		ctx = mdb.NewAPIKeyContext(ctx, key)
 	} else {
 		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
 	}
@@ -564,12 +586,12 @@ func (t *Textile) powergateInterceptor(ctx context.Context, req interface{}, inf
 		return handler(ctx, req)
 	}
 
-	var ffsInfo *c.FFSInfo
-	if org, ok := c.OrgFromContext(ctx); ok {
+	var ffsInfo *mdb.FFSInfo
+	if org, ok := mdb.OrgFromContext(ctx); ok {
 		ffsInfo = org.FFSInfo
-	} else if dev, ok := c.DevFromContext(ctx); ok {
+	} else if dev, ok := mdb.DevFromContext(ctx); ok {
 		ffsInfo = dev.FFSInfo
-	} else if user, ok := c.UserFromContext(ctx); ok {
+	} else if user, ok := mdb.UserFromContext(ctx); ok {
 		ffsInfo = user.FFSInfo
 	}
 
@@ -607,19 +629,18 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
 			}
 		}
-		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.gatewaySession {
+		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.internalHubSession {
 			return handler(ctx, req)
 		}
 
 		var owner crypto.PubKey
-		if org, ok := c.OrgFromContext(ctx); ok {
+		if org, ok := mdb.OrgFromContext(ctx); ok {
 			owner = org.Key
-		} else if dev, ok := c.DevFromContext(ctx); ok {
+		} else if dev, ok := mdb.DevFromContext(ctx); ok {
 			owner = dev.Key
-		} else if user, ok := c.UserFromContext(ctx); ok {
+		} else if user, ok := mdb.UserFromContext(ctx); ok {
 			owner = user.Key
 		}
-		key, _ := c.APIKeyFromContext(ctx)
 
 		var newID thread.ID
 		var isDB bool
@@ -670,8 +691,10 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				}
 				if owner == nil || !owner.Equals(th.Owner) { // Linter can't see that owner can't be nil
 					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
+
 				}
-				if key != nil && key.Type == c.UserKey {
+				key, _ := mdb.APIKeyFromContext(ctx)
+				if key != nil && key.Type == mdb.UserKey {
 					// Extra user check for user API keys.
 					if key.Key != th.Key {
 						return nil, status.Error(codes.PermissionDenied, "Bad API key")
@@ -681,19 +704,19 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		// Collect the user if we haven't seen them before.
-		user, ok := c.UserFromContext(ctx)
+		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
 			ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
 			if err != nil {
 				return nil, err
 			}
-			if err := t.collections.Users.Create(ctx, owner, &c.FFSInfo{ID: ffsId, Token: ffsToken}); err != nil {
+			if err := t.collections.Users.Create(ctx, owner, &mdb.FFSInfo{ID: ffsId, Token: ffsToken}); err != nil {
 				return nil, err
 			}
 		}
 		if !ok && owner != nil {
 			// Add the dev/org as the user for the user API.
-			ctx = c.NewUserContext(ctx, &c.User{Key: owner})
+			ctx = mdb.NewUserContext(ctx, &mdb.User{Key: owner})
 		}
 
 		// Preemptively track the new thread ID for the owner.
@@ -707,7 +730,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if t.conf.ThreadsMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadsMaxNumberPerOwner {
 				return nil, ErrTooManyThreadsPerOwner
 			}
-
 			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {
 				return nil, err
 			}

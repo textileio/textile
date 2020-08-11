@@ -20,11 +20,11 @@ import (
 	"github.com/textileio/textile/api/common"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/buckets"
-	bc "github.com/textileio/textile/buckets/collection"
-	c "github.com/textileio/textile/collections"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/ipns"
+	mdb "github.com/textileio/textile/mongodb"
+	tdb "github.com/textileio/textile/threaddb"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
@@ -39,7 +39,7 @@ var (
 )
 
 type Service struct {
-	Collections        *c.Collections
+	Collections        *mdb.Collections
 	Threads            *threads.Client
 	ThreadsNet         *netclient.Client
 	GatewayURL         string
@@ -77,7 +77,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
 	}
 
-	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, &c.FFSInfo{ID: ffsId, Token: ffsToken})
+	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, &mdb.FFSInfo{ID: ffsId, Token: ffsToken})
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Account exists")
 	}
@@ -101,10 +101,10 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 	for _, invite := range invites {
 		if invite.Accepted {
-			if err := s.Collections.Accounts.AddMember(ctx, invite.Org, c.Member{
+			if err := s.Collections.Accounts.AddMember(ctx, invite.Org, mdb.Member{
 				Key:      dev.Key,
 				Username: dev.Username,
-				Role:     c.OrgMember,
+				Role:     mdb.OrgMember,
 			}); err != nil {
 				if err == mongo.ErrNoDocuments {
 					if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
@@ -203,7 +203,7 @@ func getSessionSecret(secret string) string {
 func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.SignoutReply, error) {
 	log.Debugf("received signout request")
 
-	session, _ := c.SessionFromContext(ctx)
+	session, _ := mdb.SessionFromContext(ctx)
 	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.Signou
 func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoRequest) (*pb.GetSessionInfoReply, error) {
 	log.Debugf("received get session info request")
 
-	dev, _ := c.DevFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
 	key, err := crypto.MarshalPublicKey(dev.Key)
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, owner, c.APIKeyType(req.Type), req.Secure)
+	key, err := s.Collections.APIKeys.Create(ctx, owner, mdb.APIKeyType(req.Type), req.Secure)
 	if err != nil {
 		return nil, err
 	}
@@ -289,17 +289,16 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.GetOrgReply, error) {
 	log.Debugf("received create org request")
 
-	dev, _ := c.DevFromContext(ctx)
-	members := []c.Member{{
-		Key:      dev.Key,
-		Username: dev.Username,
-		Role:     c.OrgOwner,
-	}}
+	dev, _ := mdb.DevFromContext(ctx)
 	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
 	}
-	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, members, &c.FFSInfo{ID: ffsId, Token: ffsToken})
+	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
+		Key:      dev.Key,
+		Username: dev.Username,
+		Role:     mdb.OrgOwner,
+	}}, &mdb.FFSInfo{ID: ffsId, Token: ffsToken})
 	if err != nil {
 		return nil, err
 	}
@@ -316,14 +315,14 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgReply, error) {
 	log.Debugf("received get org request")
 
-	org, ok := c.OrgFromContext(ctx)
+	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
 	return s.orgToPbOrg(org)
 }
 
-func (s *Service) orgToPbOrg(org *c.Account) (*pb.GetOrgReply, error) {
+func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.GetOrgReply, error) {
 	members := make([]*pb.GetOrgReply_Member, len(org.Members))
 	for i, m := range org.Members {
 		key, err := crypto.MarshalPublicKey(m.Key)
@@ -353,7 +352,7 @@ func (s *Service) orgToPbOrg(org *c.Account) (*pb.GetOrgReply, error) {
 func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsReply, error) {
 	log.Debugf("received list orgs request")
 
-	dev, _ := c.DevFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
 	orgs, err := s.Collections.Accounts.ListByMember(ctx, dev.Key)
 	if err != nil {
 		return nil, err
@@ -371,8 +370,8 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgReply, error) {
 	log.Debugf("received remove org request")
 
-	dev, _ := c.DevFromContext(ctx)
-	org, ok := c.OrgFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
+	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
@@ -393,8 +392,8 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (*pb.InviteToOrgReply, error) {
 	log.Debugf("received invite to org request")
 
-	dev, _ := c.DevFromContext(ctx)
-	org, ok := c.OrgFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
+	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
@@ -418,8 +417,8 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgReply, error) {
 	log.Debugf("received leave org request")
 
-	dev, _ := c.DevFromContext(ctx)
-	org, ok := c.OrgFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
+	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
@@ -457,7 +456,7 @@ func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvail
 func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountRequest) (*pb.DestroyAccountReply, error) {
 	log.Debugf("received destroy account request")
 
-	dev, _ := c.DevFromContext(ctx)
+	dev, _ := mdb.DevFromContext(ctx)
 	if err := s.destroyAccount(ctx, dev); err != nil {
 		return nil, err
 	}
@@ -465,17 +464,17 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 }
 
 func ownerFromContext(ctx context.Context) crypto.PubKey {
-	org, ok := c.OrgFromContext(ctx)
+	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
-		dev, _ := c.DevFromContext(ctx)
+		dev, _ := mdb.DevFromContext(ctx)
 		return dev.Key
 	}
 	return org.Key
 }
 
-func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
+func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 	// First, ensure that the account does not own any orgs
-	if a.Type == c.Dev {
+	if a.Type == mdb.Dev {
 		orgs, err := s.Collections.Accounts.ListByOwner(ctx, a.Key)
 		if err != nil {
 			return err
@@ -505,11 +504,11 @@ func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
 	for _, t := range ts {
 		if t.IsDB {
 			// Clean up bucket pins, keys, and dns records.
-			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &bc.Bucket{}, db.WithTxnToken(a.Token))
+			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &tdb.Bucket{}, db.WithTxnToken(a.Token))
 			if err != nil {
 				return err
 			}
-			for _, b := range bres.([]*bc.Bucket) {
+			for _, b := range bres.([]*tdb.Bucket) {
 				if err = s.IPFSClient.Pin().Rm(ctx, path.New(b.Path)); err != nil {
 					return err
 				}
@@ -545,7 +544,7 @@ func (s *Service) destroyAccount(ctx context.Context, a *c.Account) error {
 	if err = s.Collections.Sessions.DeleteByOwner(ctx, a.Key); err != nil {
 		return err
 	}
-	if a.Type == c.Org {
+	if a.Type == mdb.Org {
 		if err = s.Collections.Invites.DeleteByOrg(ctx, a.Username); err != nil {
 			return err
 		}

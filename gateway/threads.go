@@ -12,7 +12,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
-	bc "github.com/textileio/textile/buckets/collection"
+	tdb "github.com/textileio/textile/threaddb"
 )
 
 // collectionHandler handles collection requests.
@@ -52,7 +52,7 @@ func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collectio
 			renderError(c, http.StatusInternalServerError, err)
 			return
 		}
-		var all, pub []bc.Bucket
+		var all, pub []tdb.Bucket
 		if err = json.Unmarshal(data, &all); err == nil {
 			for _, b := range all {
 				if b.GetEncKey() == nil {
@@ -108,7 +108,7 @@ func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection,
 			renderError(c, http.StatusInternalServerError, err)
 			return
 		}
-		var buck bc.Bucket
+		var buck tdb.Bucket
 		if err = json.Unmarshal(data, &buck); err == nil {
 			if buck.GetEncKey() != nil {
 				render404(c)

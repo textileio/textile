@@ -19,8 +19,8 @@ import (
 	"github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
-	bc "github.com/textileio/textile/buckets/collection"
-	"github.com/textileio/textile/collections"
+	mdb "github.com/textileio/textile/mongodb"
+	tdb "github.com/textileio/textile/threaddb"
 )
 
 type fileSystem struct {
@@ -68,7 +68,7 @@ func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thr
 }
 
 func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID thread.ID, collection, id, pth string, token thread.Token) {
-	var buck bc.Bucket
+	var buck tdb.Bucket
 	if err := g.threads.FindByID(ctx, threadID, collection, id, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
@@ -132,7 +132,7 @@ type serveBucketFS interface {
 
 type bucketFS struct {
 	client  *client.Client
-	keys    *collections.IPNSKeys
+	keys    *mdb.IPNSKeys
 	session string
 	host    string
 }
@@ -235,7 +235,7 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 		ctx = thread.NewTokenContext(ctx, token)
 	}
 
-	buck := &bc.Bucket{}
+	buck := &tdb.Bucket{}
 	if err := g.threads.FindByID(ctx, ipnskey.ThreadID, buckets.CollectionName, key, &buck, db.WithTxnToken(token)); err != nil {
 		render404(c)
 		return
