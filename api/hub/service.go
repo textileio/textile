@@ -72,12 +72,16 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
 	}
 
-	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+	var ffsInfo *mdb.FFSInfo
+	if s.Pow != nil {
+		ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+		}
+		ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
 	}
 
-	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, &mdb.FFSInfo{ID: ffsId, Token: ffsToken})
+	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, ffsInfo)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Account exists")
 	}
@@ -290,15 +294,20 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	log.Debugf("received create org request")
 
 	dev, _ := mdb.DevFromContext(ctx)
-	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+
+	var ffsInfo *mdb.FFSInfo
+	if s.Pow != nil {
+		ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+		}
+		ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
 	}
 	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
 		Key:      dev.Key,
 		Username: dev.Username,
 		Role:     mdb.OrgOwner,
-	}}, &mdb.FFSInfo{ID: ffsId, Token: ffsToken})
+	}}, ffsInfo)
 	if err != nil {
 		return nil, err
 	}

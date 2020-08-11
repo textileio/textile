@@ -213,7 +213,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC server
-	target, err := TCPAddrFromMultiAddr(conf.AddrAPI)
+	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	ffsService := ffsRpc.UnimplementedRPCServiceServer{}
 
 	// Start serving
-	ptarget, err := TCPAddrFromMultiAddr(conf.AddrAPIProxy)
+	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -706,11 +706,15 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
-			if err != nil {
-				return nil, err
+			var ffsInfo *mdb.FFSInfo
+			if t.powc != nil {
+				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
+				if err != nil {
+					return nil, err
+				}
+				ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
 			}
-			if err := t.collections.Users.Create(ctx, owner, &mdb.FFSInfo{ID: ffsId, Token: ffsToken}); err != nil {
+			if err := t.collections.Users.Create(ctx, owner, ffsInfo); err != nil {
 				return nil, err
 			}
 		}
@@ -797,24 +801,4 @@ func createFFSServiceDesciptor() (*desc.ServiceDescriptor, error) {
 		return nil, fmt.Errorf("no ffs service description found")
 	}
 	return ffsServiceDesc, nil
-}
-
-func TCPAddrFromMultiAddr(maddr ma.Multiaddr) (addr string, err error) {
-	if maddr == nil {
-		err = fmt.Errorf("invalid address")
-		return
-	}
-	var host string
-	host, err = maddr.ValueForProtocol(ma.P_DNS4)
-	if err != nil {
-		host, err = maddr.ValueForProtocol(ma.P_IP4)
-		if err != nil {
-			return
-		}
-	}
-	tcp, err := maddr.ValueForProtocol(ma.P_TCP)
-	if err != nil {
-		return
-	}
-	return fmt.Sprintf("%s:%s", host, tcp), nil
 }
