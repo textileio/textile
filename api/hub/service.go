@@ -74,7 +74,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
+		return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
 	}
 
 	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, &mdb.FFSInfo{ID: ffsId, Token: ffsToken})
@@ -292,7 +292,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	dev, _ := mdb.DevFromContext(ctx)
 	ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Unable to create FFS instance")
+		return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
 	}
 	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
 		Key:      dev.Key,
