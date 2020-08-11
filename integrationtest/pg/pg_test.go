@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -29,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var powMultiaddr = multiaddr.StringCast("/ip4/127.0.0.1/tcp/5002")
+var powMultiaddr = "127.0.0.1:5002"
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
@@ -55,167 +54,175 @@ func TestCreateBucket(t *testing.T) {
 }
 
 func TestArchiveTracker(t *testing.T) {
-	_ = spinup(t)
-	ctx, conf, client, shutdown := setup(t)
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = spinup(t)
+		ctx, conf, client, shutdown := setup(t)
 
-	// Create bucket with a file.
-	b, err := client.Init(ctx)
-	require.Nil(t, err)
-	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+		// Create bucket with a file.
+		b, err := client.Init(ctx)
+		require.Nil(t, err)
+		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 
-	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
-	// Archive it (push to PG)
-	_, err = client.Archive(ctx, b.Root.Key)
-	require.NoError(t, err)
-	time.Sleep(4 * time.Second) // Give some time to push the archive to PG.
+		// Archive it (push to PG)
+		_, err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second) // Give some time to push the archive to PG.
 
-	// Force stop the Hub.
-	fmt.Println("<<< Force stopping Hub")
-	shutdown(false)
-	fmt.Println("<<< Hub stopped")
+		// Force stop the Hub.
+		fmt.Println("<<< Force stopping Hub")
+		shutdown(false)
+		fmt.Println("<<< Hub stopped")
 
-	// Re-spin up Hub.
-	fmt.Println(">>> Re-spinning the Hub")
-	client = reSetup(t, conf)
-	time.Sleep(5 * time.Second) // Wait for Hub to spinup and resume archives tracking.
-	fmt.Println(">>> Hub started")
+		// Re-spin up Hub.
+		fmt.Println(">>> Re-spinning the Hub")
+		client = reSetup(t, conf)
+		time.Sleep(5 * time.Second) // Wait for Hub to spinup and resume archives tracking.
+		fmt.Println(">>> Hub started")
 
-	// ## Continue on as nothing "bad" happened and check for success...
+		// ## Continue on as nothing "bad" happened and check for success...
 
-	// Wait for the archive to finish.
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		// Wait for the archive to finish.
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 
-	// Verify that the current archive status is Done.
-	as, err := client.ArchiveStatus(ctx, b.Root.Key)
-	require.NoError(t, err)
-	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		// Verify that the current archive status is Done.
+		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
 
-	// Get ArchiveInfo, which has all successful pushs with
-	// its data about deals.
-	ai, err := client.ArchiveInfo(ctx, b.Root.Key)
-	require.NoError(t, err)
+		// Get ArchiveInfo, which has all successful pushs with
+		// its data about deals.
+		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	archive := ai.GetArchive()
-	require.Equal(t, rootCid1, archive.Cid)
-	require.Len(t, archive.Deals, 1)
-	deal := archive.Deals[0]
-	require.NotEmpty(t, deal.GetProposalCid())
-	require.NotEmpty(t, deal.GetMiner())
+		archive := ai.GetArchive()
+		require.Equal(t, rootCid1, archive.Cid)
+		require.Len(t, archive.Deals, 1)
+		deal := archive.Deals[0]
+		require.NotEmpty(t, deal.GetProposalCid())
+		require.NotEmpty(t, deal.GetMiner())
+	})
 }
 
 func TestArchiveBucketWorkflow(t *testing.T) {
-	_ = spinup(t)
-	ctx, _, client, shutdown := setup(t)
-	defer shutdown(true)
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = spinup(t)
+		ctx, _, client, shutdown := setup(t)
+		defer shutdown(true)
 
-	// Create bucket with a file.
-	b, err := client.Init(ctx)
-	require.NoError(t, err)
-	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
-	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+		// Create bucket with a file.
+		b, err := client.Init(ctx)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
-	// Archive it (push to PG)
-	_, err = client.Archive(ctx, b.Root.Key)
-	require.NoError(t, err)
+		// Archive it (push to PG)
+		_, err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	// Wait for the archive to finish.
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		// Wait for the archive to finish.
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 
-	// Verify that the current archive status is Done.
-	as, err := client.ArchiveStatus(ctx, b.Root.Key)
-	require.NoError(t, err)
-	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		// Verify that the current archive status is Done.
+		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
 
-	// Get ArchiveInfo, which has all successful pushs with
-	// its data about deals.
-	ai, err := client.ArchiveInfo(ctx, b.Root.Key)
-	require.NoError(t, err)
+		// Get ArchiveInfo, which has all successful pushs with
+		// its data about deals.
+		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	archive := ai.GetArchive()
-	require.Equal(t, rootCid1, archive.Cid)
-	require.Len(t, archive.Deals, 1)
-	deal := archive.Deals[0]
-	require.NotEmpty(t, deal.GetProposalCid())
-	require.NotEmpty(t, deal.GetMiner())
+		archive := ai.GetArchive()
+		require.Equal(t, rootCid1, archive.Cid)
+		require.Len(t, archive.Deals, 1)
+		deal := archive.Deals[0]
+		require.NotEmpty(t, deal.GetProposalCid())
+		require.NotEmpty(t, deal.GetMiner())
 
-	// Add another file to the bucket.
-	rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
+		// Add another file to the bucket.
+		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
 
-	// Archive again.
-	_, err = client.Archive(ctx, b.Root.Key)
-	require.NoError(t, err)
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
-	as, err = client.ArchiveStatus(ctx, b.Root.Key)
-	require.NoError(t, err)
-	require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		// Archive again.
+		_, err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		as, err = client.ArchiveStatus(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
 
-	ai, err = client.ArchiveInfo(ctx, b.Root.Key)
-	require.NoError(t, err)
+		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	archive = ai.GetArchive()
-	require.Equal(t, rootCid2, archive.Cid)
-	require.Len(t, archive.Deals, 1)
-	deal = archive.Deals[0]
-	require.NotEmpty(t, deal.GetProposalCid())
-	require.NotEmpty(t, deal.GetMiner())
+		archive = ai.GetArchive()
+		require.Equal(t, rootCid2, archive.Cid)
+		require.Len(t, archive.Deals, 1)
+		deal = archive.Deals[0]
+		require.NotEmpty(t, deal.GetProposalCid())
+		require.NotEmpty(t, deal.GetMiner())
+	})
 }
 
 func TestArchiveWatch(t *testing.T) {
-	_ = spinup(t)
-	ctx, _, client, shutdown := setup(t)
-	defer shutdown(true)
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = spinup(t)
+		ctx, _, client, shutdown := setup(t)
+		defer shutdown(true)
 
-	b, err := client.Init(ctx)
-	require.NoError(t, err)
-	time.Sleep(4 * time.Second)
-	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+		b, err := client.Init(ctx)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second)
+		addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
-	_, err = client.Archive(ctx, b.Root.Key)
-	require.NoError(t, err)
+		_, err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	ch := make(chan string, 100)
-	go func() {
-		err = client.ArchiveWatch(ctx, b.Root.Key, ch)
-		close(ch)
-	}()
-	count := 0
-	for s := range ch {
-		require.NotEmpty(t, s)
-		count++
-		if count > 4 {
-			cancel()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		ch := make(chan string, 100)
+		go func() {
+			err = client.ArchiveWatch(ctx, b.Root.Key, ch)
+			close(ch)
+		}()
+		count := 0
+		for s := range ch {
+			require.NotEmpty(t, s)
+			count++
+			if count > 4 {
+				cancel()
+			}
 		}
-	}
-	require.NoError(t, err)
-	require.Greater(t, count, 3)
+		require.NoError(t, err)
+		require.Greater(t, count, 3)
+	})
 }
 
 func TestFailingArchive(t *testing.T) {
-	_ = spinup(t)
-	ctx, _, client, shutdown := setup(t)
-	defer shutdown(true)
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = spinup(t)
+		ctx, _, client, shutdown := setup(t)
+		defer shutdown(true)
 
-	b, err := client.Init(ctx)
-	require.NoError(t, err)
-	time.Sleep(4 * time.Second)
-	// Store a file that is bigger than the sector size, this
-	// should lead to an error on the PG side.
-	addDataFileToBucket(ctx, t, client, b.Root.Key, "Data3.txt")
+		b, err := client.Init(ctx)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second)
+		// Store a file that is bigger than the sector size, this
+		// should lead to an error on the PG side.
+		addDataFileToBucket(ctx, t, client, b.Root.Key, "Data3.txt")
 
-	_, err = client.Archive(ctx, b.Root.Key)
-	require.NoError(t, err)
+		_, err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
 
-	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
-	as, err := client.ArchiveStatus(ctx, b.Root.Key)
-	require.NoError(t, err)
-	require.Equal(t, pb.ArchiveStatusReply_Failed, as.GetStatus())
-	require.NotEmpty(t, as.GetFailedMsg())
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatusReply_Failed, as.GetStatus())
+		require.NotEmpty(t, as.GetFailedMsg())
+	})
 }
 
-func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, bucketKey string) func() bool {
+func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *c.Client, bucketKey string) func() bool {
 	return func() bool {
 		as, err := client.ArchiveStatus(ctx, bucketKey)
 		require.NoError(t, err)
@@ -227,7 +234,8 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 			return true
 		case pb.ArchiveStatusReply_Executing:
 		default:
-			t.Fatalf("unknown archive status")
+			t.Errorf("unknown archive status")
+			t.FailNow()
 		}
 		return false
 	}
@@ -235,8 +243,7 @@ func archiveFinalState(ctx context.Context, t *testing.T, client *c.Client, buck
 
 // addDataFileToBucket add a file from the testdata folder, and returns the
 // new stringified root Cid of the bucket.
-func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bucketKey string, fileName string) string {
-	t.Helper()
+func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client *c.Client, bucketKey string, fileName string) string {
 	f, err := os.Open("testdata/" + fileName)
 	require.NoError(t, err)
 	t.Cleanup(func() { f.Close() })
@@ -249,12 +256,12 @@ func addDataFileToBucket(ctx context.Context, t *testing.T, client *c.Client, bu
 	return strings.SplitN(root.String(), "/", 4)[2]
 }
 
-func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
+func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func(bool)) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powMultiaddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	conf.FFSDefaultConfig = &ffs.DefaultConfig{
+	conf.FFSDefaultConfig = &ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled: true,
 			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
@@ -263,7 +270,7 @@ func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
 			Enabled: true,
 			Filecoin: ffs.FilConfig{
 				RepFactor:       1,
-				DealMinDuration: 1000,
+				DealMinDuration: 800000,
 			},
 		},
 	}
@@ -293,7 +300,7 @@ func setup(t *testing.T) (context.Context, core.Config, *c.Client, func(bool)) {
 	return ctx, conf, client, shutdown
 }
 
-func reSetup(t *testing.T, conf core.Config) *c.Client {
+func reSetup(t util.TestingTWithCleanup, conf core.Config) *c.Client {
 	apitest.MakeTextileWithConfig(t, conf, true)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
@@ -309,7 +316,7 @@ func reSetup(t *testing.T, conf core.Config) *c.Client {
 	return client
 }
 
-func spinup(t *testing.T) *pc.Client {
+func spinup(t util.TestingTWithCleanup) *pc.Client {
 	makeDown := func() {
 		if err := exec.Command("docker-compose", "down", "-v").Run(); err != nil {
 			panic(err)
@@ -321,14 +328,16 @@ func spinup(t *testing.T) *pc.Client {
 	//cmd.Stdout = os.Stdout
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("docker-compose build: %s", err)
+		t.Errorf("docker-compose build: %s", err)
+		t.FailNow()
 	}
 
 	cmd = exec.Command("docker-compose", "up", "-V")
 	//cmd.Stdout = os.Stdout
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("running docker-compose: %s", err)
+		t.Errorf("running docker-compose: %s", err)
+		t.FailNow()
 	}
 	t.Cleanup(makeDown)
 
@@ -352,9 +361,11 @@ func spinup(t *testing.T) *pc.Client {
 	}
 	if retries == limit {
 		if err != nil {
-			t.Fatalf("trying to confirm health check: %s", err)
+			t.Errorf("trying to confirm health check: %s", err)
+			t.FailNow()
 		}
-		t.Fatalf("max retries to connect with Powergate")
+		t.Errorf("max retries to connect with Powergate")
+		t.FailNow()
 	}
 	return powc
 }

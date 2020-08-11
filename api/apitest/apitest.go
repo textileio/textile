@@ -28,7 +28,7 @@ func MakeTextile(t *testing.T) core.Config {
 	return conf
 }
 
-func DefaultTextileConfig(t *testing.T) core.Config {
+func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 	dir, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
 
@@ -61,7 +61,7 @@ func DefaultTextileConfig(t *testing.T) core.Config {
 	}
 }
 
-func MakeTextileWithConfig(t *testing.T, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
+func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.NoError(t, err)
 	textile.Bootstrap()
@@ -90,7 +90,7 @@ func NewEmail() string {
 	return fmt.Sprintf("%s@doe.com", NewUsername())
 }
 
-func Signup(t *testing.T, client *client.Client, conf core.Config, username, email string) *pb.SignupReply {
+func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config, username, email string) *pb.SignupReply {
 	var err error
 	var res *pb.SignupReply
 	var wg sync.WaitGroup
@@ -124,7 +124,7 @@ func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEma
 	return res
 }
 
-func ConfirmEmail(t *testing.T, gurl string, secret string) {
+func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 	time.Sleep(time.Second)
 	url := fmt.Sprintf("%s/confirm/%s", gurl, secret)
 	_, err := http.Get(url)
