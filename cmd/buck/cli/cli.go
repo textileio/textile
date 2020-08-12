@@ -28,7 +28,6 @@ func Init(baseCmd *cobra.Command) {
 
 	initCmd.PersistentFlags().String("key", "", "Bucket key")
 	initCmd.PersistentFlags().String("thread", "", "Thread ID")
-	initCmd.PersistentFlags().String("org", "", "Org username")
 
 	initCmd.Flags().StringP("name", "n", "", "Bucket name")
 	initCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
