@@ -41,13 +41,15 @@ func TestCreateBucket(t *testing.T) {
 	ctx, _, client, shutdown := setup(t)
 	defer shutdown(true)
 
+	// FFS is now created for the user, so it should exist after spinup
 	lst, err := powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(lst))
+	require.Equal(t, 1, len(lst))
 
 	_, err = client.Init(ctx)
 	require.NoError(t, err)
 
+	// No new FFS instance should be created for the bucket
 	lst, err = powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(lst))

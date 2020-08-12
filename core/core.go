@@ -167,10 +167,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	if conf.AddrPowergateAPI != "" {
-		t.powc, err = powc.NewClient(conf.AddrPowergateAPI)
-		if err != nil {
-			return nil, err
-		}
 		if t.powc, err = powc.NewClient(conf.AddrPowergateAPI); err != nil {
 			return nil, err
 		}
@@ -227,7 +223,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig)
+	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.BucketArchives, conf.FFSDefaultConfig)
 	if err != nil {
 		return nil, err
 	}

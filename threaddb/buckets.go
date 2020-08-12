@@ -132,7 +132,7 @@ func init() {
 type Buckets struct {
 	Collection
 
-	ffsCol   *mdb.FFSInstances
+	baCol    *mdb.BucketArchives
 	pgClient *powc.Client
 
 	buckCidConfig ffs.StorageConfig
@@ -144,7 +144,7 @@ type Buckets struct {
 }
 
 // NewBuckets returns a new buckets collection mananger.
-func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, defaultCidConfig *ffs.StorageConfig) (*Buckets, error) {
+func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives, defaultCidConfig *ffs.StorageConfig) (*Buckets, error) {
 	buckCidConfig := ffsDefaultCidConfig
 	if defaultCidConfig != nil {
 		buckCidConfig = *defaultCidConfig
@@ -156,7 +156,7 @@ func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.FFSInstances, default
 			c:      tc,
 			config: bucketsConfig,
 		},
-		ffsCol:   col,
+		baCol:    col,
 		pgClient: pgc,
 
 		buckCidConfig: buckCidConfig,
@@ -192,8 +192,8 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	}
 	bucket.Key = string(id)
 
-	if err := b.createFFSInstance(ctx, key); err != nil {
-		return nil, fmt.Errorf("creating FFS instance for bucket: %s", err)
+	if err := b.baCol.Create(ctx, key); err != nil {
+		return nil, fmt.Errorf("saving BucketArchive data: %s", err)
 	}
 
 	return bucket, nil
@@ -204,38 +204,35 @@ func (b *Buckets) IsArchivingEnabled() bool {
 	return b.pgClient != nil
 }
 
-func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	// If the Powergate client isn't configured, don't do anything.
-	if b.pgClient == nil {
-		return nil
-	}
-	_, token, err := b.pgClient.FFS.Create(ctx)
-	if err != nil {
-		return fmt.Errorf("creating FFS instance: %s", err)
-	}
+// func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error {
+// 	b.lock.Lock()
+// 	defer b.lock.Unlock()
+// 	// If the Powergate client isn't configured, don't do anything.
+// 	if b.pgClient == nil {
+// 		return nil
+// 	}
+// 	_, token, err := b.pgClient.FFS.Create(ctx)
+// 	if err != nil {
+// 		return fmt.Errorf("creating FFS instance: %s", err)
+// 	}
 
-	ctxFFS := context.WithValue(ctx, powc.AuthKey, token)
-	i, err := b.pgClient.FFS.Info(ctxFFS)
-	if err != nil {
-		return fmt.Errorf("getting information about created ffs instance: %s", err)
-	}
-	waddr := i.Balances[0].Addr
-	if err := b.ffsCol.Create(ctx, bucketKey, token, waddr); err != nil {
-		return fmt.Errorf("saving FFS instances data: %s", err)
-	}
-	defaultBucketCidConfig := ffs.StorageConfig{
-		Cold:       b.buckCidConfig.Cold,
-		Hot:        b.buckCidConfig.Hot,
-		Repairable: b.buckCidConfig.Repairable,
-	}
-	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
-	if err := b.pgClient.FFS.SetDefaultStorageConfig(ctxFFS, defaultBucketCidConfig); err != nil {
-		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
-	}
-	return nil
-}
+// 	ctxFFS := context.WithValue(ctx, powc.AuthKey, token)
+// 	i, err := b.pgClient.FFS.Info(ctxFFS)
+// 	if err != nil {
+// 		return fmt.Errorf("getting information about created ffs instance: %s", err)
+// 	}
+// 	waddr := i.Balances[0].Addr
+// 	defaultBucketCidConfig := ffs.StorageConfig{
+// 		Cold:       b.buckCidConfig.Cold,
+// 		Hot:        b.buckCidConfig.Hot,
+// 		Repairable: b.buckCidConfig.Repairable,
+// 	}
+// 	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
+// 	if err := b.pgClient.FFS.SetDefaultStorageConfig(ctxFFS, defaultBucketCidConfig); err != nil {
+// 		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
+// 	}
+// 	return nil
+// }
 
 // SaveSafe a bucket instance.
 func (b *Buckets) SaveSafe(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
@@ -256,15 +253,15 @@ func ensureNoNulls(b *Bucket) {
 // ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,
 // an extra string with the error message is provided.
 func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus, string, error) {
-	ffsi, err := b.ffsCol.Get(ctx, key)
+	ba, err := b.baCol.Get(ctx, key)
 	if err != nil {
 		return ffs.Failed, "", fmt.Errorf("getting ffs instance data: %s", err)
 	}
 
-	if ffsi.Archives.Current.JobID == "" {
+	if ba.Archives.Current.JobID == "" {
 		return ffs.Failed, "", buckets.ErrNoCurrentArchive
 	}
-	current := ffsi.Archives.Current
+	current := ba.Archives.Current
 	if current.Aborted {
 		return ffs.Failed, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
@@ -274,16 +271,16 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus,
 // ArchiveWatch allows to have the last log execution for the last archive, plus realtime
 // human-friendly log output of how the current archive is executing.
 // If the last archive is already done, it will simply return the log history and close the channel.
-func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string) error {
-	ffsi, err := b.ffsCol.Get(ctx, key)
+func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ffsToken string, ch chan<- string) error {
+	ba, err := b.baCol.Get(ctx, key)
 	if err != nil {
 		return fmt.Errorf("getting ffs instance data: %s", err)
 	}
 
-	if ffsi.Archives.Current.JobID == "" {
+	if ba.Archives.Current.JobID == "" {
 		return buckets.ErrNoCurrentArchive
 	}
-	current := ffsi.Archives.Current
+	current := ba.Archives.Current
 	if current.Aborted {
 		return fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
@@ -291,7 +288,7 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ch chan<- string
 	if err != nil {
 		return fmt.Errorf("parsing current archive cid: %s", err)
 	}
-	ctx = context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
+	ctx = context.WithValue(ctx, powc.AuthKey, ffsToken)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ffsCh := make(chan powc.LogEvent)
