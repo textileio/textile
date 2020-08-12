@@ -9,7 +9,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	threads "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	net "github.com/textileio/go-threads/core/net"
@@ -103,7 +102,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, err
 	}
 	ctx = common.NewSessionContext(ctx, session.ID)
-	tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(dev.Secret))
+	tok, err := s.Threads.GetToken(ctx, dev.Secret)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +141,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		}
 	}
 
-	key, err := crypto.MarshalPublicKey(dev.Key)
+	key, err := dev.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +174,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, err
 	}
 
-	key, err := crypto.MarshalPublicKey(dev.Key)
+	key, err := dev.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +230,7 @@ func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoReques
 	log.Debugf("received get session info request")
 
 	dev, _ := mdb.DevFromContext(ctx)
-	key, err := crypto.MarshalPublicKey(dev.Key)
+	key, err := dev.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +238,26 @@ func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoReques
 		Key:      key,
 		Username: dev.Username,
 		Email:    dev.Email,
+	}, nil
+}
+
+func (s *Service) GetIdentity(ctx context.Context, _ *pb.GetIdentityRequest) (*pb.GetIdentityResponse, error) {
+	log.Debugf("received get identity request")
+
+	var identity thread.Identity
+	org, ok := mdb.OrgFromContext(ctx)
+	if !ok {
+		dev, _ := mdb.DevFromContext(ctx)
+		identity = dev.Secret
+	} else {
+		identity = org.Secret
+	}
+	data, err := identity.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetIdentityResponse{
+		Identity: data,
 	}, nil
 }
 
@@ -346,7 +365,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	tok, err := s.Threads.GetToken(ctx, thread.NewLibp2pIdentity(org.Secret))
+	tok, err := s.Threads.GetToken(ctx, org.Secret)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +400,7 @@ func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgRe
 func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.OrgInfo, error) {
 	members := make([]*pb.OrgInfo_Member, len(org.Members))
 	for i, m := range org.Members {
-		key, err := crypto.MarshalPublicKey(m.Key)
+		key, err := m.Key.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +410,7 @@ func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.OrgInfo, error) {
 			Role:     m.Role.String(),
 		}
 	}
-	key, err := crypto.MarshalPublicKey(org.Key)
+	key, err := org.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +538,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	return &pb.DestroyAccountResponse{}, nil
 }
 
-func ownerFromContext(ctx context.Context) crypto.PubKey {
+func ownerFromContext(ctx context.Context) thread.PubKey {
 	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		dev, _ := mdb.DevFromContext(ctx)
@@ -570,11 +589,6 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 				}
 				if err = s.IPNSManager.RemoveKey(ctx, b.Key); err != nil {
 					return err
-				}
-				if b.DNSRecord != "" && s.DNSManager != nil {
-					if err = s.DNSManager.DeleteRecord(b.DNSRecord); err != nil {
-						return err
-					}
 				}
 			}
 			// Delete the entire DB.

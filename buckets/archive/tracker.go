@@ -9,7 +9,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logger "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
@@ -33,7 +32,7 @@ type Tracker struct {
 	lock   sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
-	closed chan (struct{})
+	closed chan struct{}
 
 	internalSession string
 	colls           *mdb.Collections
@@ -128,7 +127,7 @@ func (t *Tracker) run() {
 	}
 }
 
-func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner crypto.PubKey) error {
+func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner thread.PubKey) error {
 	if err := t.colls.ArchiveTracking.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, owner); err != nil {
 		return fmt.Errorf("saving tracking information: %s", err)
 	}

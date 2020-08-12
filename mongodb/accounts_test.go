@@ -35,7 +35,7 @@ func TestAccounts_CreateDev(t *testing.T) {
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	_, err = col.CreateOrg(context.Background(), "jon", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, &PowInfo{ID: "id", Token: "token"})
@@ -166,7 +166,7 @@ func TestAccounts_SetToken(t *testing.T) {
 
 	iss, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	tok, err := thread.NewToken(iss, thread.NewLibp2pPubKey(created.Key))
+	tok, err := thread.NewToken(iss, created.Key)
 	require.NoError(t, err)
 	err = col.SetToken(context.Background(), created.Key, tok)
 	require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestAccounts_CreateOrg(t *testing.T) {
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, &PowInfo{ID: "id", Token: "token"})
@@ -228,7 +228,7 @@ func TestAccounts_CreateOrg(t *testing.T) {
 	assert.Equal(t, "token", created.PowInfo.Token)
 
 	_, err = col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -249,7 +249,7 @@ func TestAccounts_GetByUsername(t *testing.T) {
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -271,7 +271,7 @@ func TestAccounts_IsNameAvailable(t *testing.T) {
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "Test!", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -291,13 +291,13 @@ func TestAccounts_ListByMember(t *testing.T) {
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem,
+		Key:      thread.NewLibp2pPubKey(mem),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
 	require.NoError(t, err)
 
-	list, err := col.ListByMember(context.Background(), mem)
+	list, err := col.ListByMember(context.Background(), thread.NewLibp2pPubKey(mem))
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(list))
 	assert.Equal(t, created.Name, list[0].Name)
@@ -311,13 +311,13 @@ func TestAccounts_ListByOwner(t *testing.T) {
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem1,
+		Key:      thread.NewLibp2pPubKey(mem1),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
 	require.NoError(t, err)
 
-	list, err := col.ListByOwner(context.Background(), mem1)
+	list, err := col.ListByOwner(context.Background(), thread.NewLibp2pPubKey(mem1))
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(list))
 	assert.Equal(t, created.Name, list[0].Name)
@@ -325,12 +325,12 @@ func TestAccounts_ListByOwner(t *testing.T) {
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.NoError(t, err)
-	list, err = col.ListByOwner(context.Background(), mem2)
+	list, err = col.ListByOwner(context.Background(), thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(list))
 }
@@ -343,7 +343,7 @@ func TestAccounts_IsOwner(t *testing.T) {
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem1,
+		Key:      thread.NewLibp2pPubKey(mem1),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -352,16 +352,16 @@ func TestAccounts_IsOwner(t *testing.T) {
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.NoError(t, err)
 
-	is, err := col.IsOwner(context.Background(), created.Username, mem1)
+	is, err := col.IsOwner(context.Background(), created.Username, thread.NewLibp2pPubKey(mem1))
 	require.NoError(t, err)
 	assert.True(t, is)
-	is, err = col.IsOwner(context.Background(), created.Username, mem2)
+	is, err = col.IsOwner(context.Background(), created.Username, thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
 	assert.False(t, is)
 }
@@ -374,7 +374,7 @@ func TestAccounts_IsMember(t *testing.T) {
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem1,
+		Key:      thread.NewLibp2pPubKey(mem1),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -383,18 +383,18 @@ func TestAccounts_IsMember(t *testing.T) {
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.NoError(t, err)
 
-	is, err := col.IsMember(context.Background(), created.Username, mem2)
+	is, err := col.IsMember(context.Background(), created.Username, thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
 	assert.True(t, is)
-	err = col.RemoveMember(context.Background(), created.Username, mem2)
+	err = col.RemoveMember(context.Background(), created.Username, thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
-	is, err = col.IsMember(context.Background(), created.Username, mem2)
+	is, err = col.IsMember(context.Background(), created.Username, thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
 	assert.False(t, is)
 }
@@ -407,7 +407,7 @@ func TestAccounts_AddMember(t *testing.T) {
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem1,
+		Key:      thread.NewLibp2pPubKey(mem1),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
@@ -416,13 +416,13 @@ func TestAccounts_AddMember(t *testing.T) {
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{ // Add again should not duplicate entry
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
@@ -441,27 +441,27 @@ func TestAccounts_RemoveMember(t *testing.T) {
 	_, mem1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	created, err := col.CreateOrg(context.Background(), "test", []Member{{
-		Key:      mem1,
+		Key:      thread.NewLibp2pPubKey(mem1),
 		Username: "test",
 		Role:     OrgOwner,
 	}}, nil)
 	require.NoError(t, err)
 
-	err = col.RemoveMember(context.Background(), created.Username, mem1)
+	err = col.RemoveMember(context.Background(), created.Username, thread.NewLibp2pPubKey(mem1))
 	require.Error(t, err) // Can't remove the sole owner
 
 	_, mem2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	err = col.AddMember(context.Background(), created.Username, Member{
-		Key:      mem2,
+		Key:      thread.NewLibp2pPubKey(mem2),
 		Username: "member",
 		Role:     OrgMember,
 	})
 	require.NoError(t, err)
 
-	err = col.RemoveMember(context.Background(), created.Username, mem2)
+	err = col.RemoveMember(context.Background(), created.Username, thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
-	list, err := col.ListByMember(context.Background(), mem2)
+	list, err := col.ListByMember(context.Background(), thread.NewLibp2pPubKey(mem2))
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(list))
 }

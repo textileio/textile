@@ -193,7 +193,7 @@ var encryptCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		err = buck.EncryptLocalPath(args[0], args[1], os.Stdout)
+		err = buck.EncryptLocalPathWithPassword(args[0], args[1], os.Stdout)
 		cmd.ErrCheck(err)
 	},
 }
@@ -208,7 +208,7 @@ var decryptCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		err = buck.DecryptRemotePath(ctx, args[0], args[1], os.Stdout)
+		err = buck.DecryptRemotePathWithPassword(ctx, args[0], args[1], os.Stdout)
 		cmd.ErrCheck(err)
 	},
 }

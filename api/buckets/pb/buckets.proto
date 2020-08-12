@@ -1,6 +1,13 @@
 syntax = "proto3";
 package api.buckets.pb;
 
+message Metadata {
+    string cid = 1;
+    map<string, PathAccessRole> roles = 2;
+    int64 created_at = 3;
+    int64 updated_at = 4;
+}
+
 message Root {
     string key = 1;
     string name = 2;
@@ -8,6 +15,9 @@ message Root {
     int64 created_at = 4;
     int64 updated_at = 5;
     string thread = 6;
+    string owner = 7;
+    int32 version = 8;
+    map<string, Metadata> metadata = 9;
 }
 
 message ListRequest {}
@@ -53,17 +63,18 @@ message ListPathRequest {
 }
 
 message ListPathResponse {
-    ListPathItem item = 1;
+    PathItem item = 1;
     Root root = 2;
 }
 
-message ListPathItem {
+message PathItem {
     string cid = 1;
     string name = 2;
     string path = 3;
     int64 size = 4;
     bool is_dir = 5;
-    repeated ListPathItem items = 6;
+    repeated PathItem items = 6;
+    int32 items_count = 7;
 }
 
 message ListIpfsPathRequest {
@@ -71,7 +82,7 @@ message ListIpfsPathRequest {
 }
 
 message ListIpfsPathResponse {
-    ListPathItem item = 1;
+    PathItem item = 1;
 }
 
 message PushPathRequest {
@@ -144,6 +155,30 @@ message RemovePathResponse {
     Root root = 1;
 }
 
+enum PathAccessRole {
+    PATH_ACCESS_ROLE_UNSPECIFIED = 0;
+    PATH_ACCESS_ROLE_READER = 1;
+    PATH_ACCESS_ROLE_WRITER = 2;
+    PATH_ACCESS_ROLE_ADMIN = 3;
+}
+
+message GetPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message GetPathAccessRolesResponse {
+    map<string, PathAccessRole> roles = 1;
+}
+
+message EditPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+    map<string, PathAccessRole> roles = 3;
+}
+
+message EditPathAccessRolesResponse {}
+
 message ArchiveRequest {
     string key = 1;
 }
@@ -208,6 +243,8 @@ service APIService {
     rpc SetPath(SetPathRequest) returns (SetPathResponse) {}
     rpc Remove(RemoveRequest) returns (RemoveResponse) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
+    rpc GetPathAccessRoles(GetPathAccessRolesRequest) returns (GetPathAccessRolesResponse) {}
+    rpc EditPathAccessRoles(EditPathAccessRolesRequest) returns (EditPathAccessRolesResponse) {}
     
     // Archive
     rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}

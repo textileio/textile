@@ -30,8 +30,8 @@ func init() {
 
 type Account struct {
 	Type             AccountType
-	Key              crypto.PubKey
-	Secret           crypto.PrivKey
+	Key              thread.PubKey
+	Secret           thread.Identity
 	Name             string
 	Username         string
 	Email            string
@@ -50,7 +50,7 @@ const (
 )
 
 type Member struct {
-	Key      crypto.PubKey
+	Key      thread.PubKey
 	Username string
 	Role     Role
 }
@@ -117,24 +117,24 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 	if err := a.ValidateUsername(username); err != nil {
 		return nil, err
 	}
-	skey, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	sk, pk, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 	doc := &Account{
 		Type:      Dev,
-		Key:       key,
-		Secret:    skey,
+		Key:       thread.NewLibp2pPubKey(pk),
+		Secret:    thread.NewLibp2pIdentity(sk),
 		Email:     email,
 		Username:  username,
 		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
 	}
-	id, err := crypto.MarshalPublicKey(key)
+	id, err := doc.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	secret, err := crypto.MarshalPrivateKey(skey)
+	secret, err := doc.Secret.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	if !ok {
 		return nil, fmt.Errorf("name '%s' is not available", name)
 	}
-	skey, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	sk, pk, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -175,25 +175,25 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	}
 	doc := &Account{
 		Type:      Org,
-		Key:       key,
-		Secret:    skey,
+		Key:       thread.NewLibp2pPubKey(pk),
+		Secret:    thread.NewLibp2pIdentity(sk),
 		Name:      name,
 		Username:  slg,
 		Members:   members,
 		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
 	}
-	id, err := crypto.MarshalPublicKey(key)
+	id, err := doc.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	secret, err := crypto.MarshalPrivateKey(skey)
+	secret, err := doc.Secret.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
 	rmems := make(bson.A, len(doc.Members))
 	for i, m := range doc.Members {
-		k, err := crypto.MarshalPublicKey(m.Key)
+		k, err := m.Key.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
@@ -219,8 +219,8 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	return doc, nil
 }
 
-func (a *Accounts) UpdatePowInfo(ctx context.Context, key crypto.PubKey, powInfo *PowInfo) (*Account, error) {
-	id, err := crypto.MarshalPublicKey(key)
+func (a *Accounts) UpdatePowInfo(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*Account, error) {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -240,8 +240,8 @@ func (a *Accounts) UpdatePowInfo(ctx context.Context, key crypto.PubKey, powInfo
 	return a.Get(ctx, key)
 }
 
-func (a *Accounts) Get(ctx context.Context, key crypto.PubKey) (*Account, error) {
-	id, err := crypto.MarshalPublicKey(key)
+func (a *Accounts) Get(ctx context.Context, key thread.PubKey) (*Account, error) {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -314,8 +314,8 @@ func (a *Accounts) IsNameAvailable(ctx context.Context, name string) (s string, 
 	return s, fmt.Errorf("the name '%s' is already taken", name)
 }
 
-func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread.Token) error {
-	id, err := crypto.MarshalPublicKey(key)
+func (a *Accounts) SetToken(ctx context.Context, key thread.PubKey, token thread.Token) error {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -329,11 +329,11 @@ func (a *Accounts) SetToken(ctx context.Context, key crypto.PubKey, token thread
 	return nil
 }
 
-func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newTotalSize int64) error {
+func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, newTotalSize int64) error {
 	if newTotalSize < 0 {
 		return fmt.Errorf("new size %d must be positive", newTotalSize)
 	}
-	id, err := crypto.MarshalPublicKey(key)
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -347,8 +347,8 @@ func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, n
 	return nil
 }
 
-func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Account, error) {
-	mid, err := crypto.MarshalPublicKey(member)
+func (a *Accounts) ListByMember(ctx context.Context, member thread.PubKey) ([]Account, error) {
+	mid, err := member.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +376,8 @@ func (a *Accounts) ListByMember(ctx context.Context, member crypto.PubKey) ([]Ac
 	return docs, nil
 }
 
-func (a *Accounts) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]Account, error) {
-	oid, err := crypto.MarshalPublicKey(owner)
+func (a *Accounts) ListByOwner(ctx context.Context, owner thread.PubKey) ([]Account, error) {
+	oid, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (a *Accounts) ListMembers(ctx context.Context, members []Member) ([]Account
 	keys := make([][]byte, len(members))
 	var err error
 	for i, m := range members {
-		keys[i], err = crypto.MarshalPublicKey(m.Key)
+		keys[i], err = m.Key.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
@@ -437,8 +437,8 @@ func (a *Accounts) ListMembers(ctx context.Context, members []Member) ([]Account
 	return docs, nil
 }
 
-func (a *Accounts) IsOwner(ctx context.Context, username string, member crypto.PubKey) (bool, error) {
-	mid, err := crypto.MarshalPublicKey(member)
+func (a *Accounts) IsOwner(ctx context.Context, username string, member thread.PubKey) (bool, error) {
+	mid, err := member.MarshalBinary()
 	if err != nil {
 		return false, err
 	}
@@ -454,8 +454,8 @@ func (a *Accounts) IsOwner(ctx context.Context, username string, member crypto.P
 	return true, nil
 }
 
-func (a *Accounts) IsMember(ctx context.Context, username string, member crypto.PubKey) (bool, error) {
-	mid, err := crypto.MarshalPublicKey(member)
+func (a *Accounts) IsMember(ctx context.Context, username string, member thread.PubKey) (bool, error) {
+	mid, err := member.MarshalBinary()
 	if err != nil {
 		return false, err
 	}
@@ -472,7 +472,7 @@ func (a *Accounts) IsMember(ctx context.Context, username string, member crypto.
 }
 
 func (a *Accounts) AddMember(ctx context.Context, username string, member Member) error {
-	mk, err := crypto.MarshalPublicKey(member.Key)
+	mk, err := member.Key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -485,7 +485,7 @@ func (a *Accounts) AddMember(ctx context.Context, username string, member Member
 	return err
 }
 
-func (a *Accounts) RemoveMember(ctx context.Context, username string, member crypto.PubKey) error {
+func (a *Accounts) RemoveMember(ctx context.Context, username string, member thread.PubKey) error {
 	isOwner, err := a.IsOwner(ctx, username, member)
 	if err != nil {
 		return err
@@ -523,7 +523,7 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member cry
 			return fmt.Errorf("an org must have at least one owner")
 		}
 	}
-	mid, err := crypto.MarshalPublicKey(member)
+	mid, err := member.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -537,8 +537,8 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member cry
 	return nil
 }
 
-func (a *Accounts) Delete(ctx context.Context, key crypto.PubKey) error {
-	id, err := crypto.MarshalPublicKey(key)
+func (a *Accounts) Delete(ctx context.Context, key thread.PubKey) error {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -564,7 +564,8 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if v, ok := raw["buckets_total_size"]; ok {
 		totalSize = v.(int64)
 	}
-	skey, err := crypto.UnmarshalPrivateKey(raw["secret"].(primitive.Binary).Data)
+	secret := &thread.Libp2pIdentity{}
+	err := secret.UnmarshalBinary(raw["secret"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}
@@ -579,7 +580,8 @@ func decodeAccount(raw bson.M) (*Account, error) {
 
 		for i, m := range raw["members"].(bson.A) {
 			mem := m.(bson.M)
-			k, err := crypto.UnmarshalPublicKey(mem["_id"].(primitive.Binary).Data)
+			k := &thread.Libp2pPubKey{}
+			err := k.UnmarshalBinary(mem["_id"].(primitive.Binary).Data)
 			if err != nil {
 				return nil, err
 			}
@@ -596,8 +598,8 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	}
 	return &Account{
 		Type:             AccountType(raw["type"].(int32)),
-		Key:              skey.GetPublic(),
-		Secret:           skey,
+		Key:              secret.GetPublic(),
+		Secret:           secret,
 		Name:             name,
 		Username:         raw["username"].(string),
 		Email:            email,

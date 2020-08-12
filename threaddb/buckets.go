@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	gopath "path"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +21,8 @@ import (
 	mdb "github.com/textileio/textile/mongodb"
 )
 
+const Version = 1
+
 var (
 	bucketsSchema  *jsonschema.Schema
 	bucketsIndexes = []db.Index{{
@@ -29,23 +33,24 @@ var (
 
 // Bucket represents the buckets threaddb collection schema.
 type Bucket struct {
-	Key       string   `json:"_id"`
-	Name      string   `json:"name"`
-	Path      string   `json:"path"`
-	EncKey    string   `json:"key,omitempty"`
-	DNSRecord string   `json:"dns_record,omitempty"`
-	Archives  Archives `json:"archives"`
-	CreatedAt int64    `json:"created_at"`
-	UpdatedAt int64    `json:"updated_at"`
+	Key       string              `json:"_id"`
+	Owner     string              `json:"owner"`
+	Name      string              `json:"name"`
+	Version   int                 `json:"version"`
+	EncKey    string              `json:"key,omitempty"`
+	Path      string              `json:"path"`
+	Metadata  map[string]Metadata `json:"metadata"`
+	Archives  Archives            `json:"archives"`
+	CreatedAt int64               `json:"created_at"`
+	UpdatedAt int64               `json:"updated_at"`
 }
 
-// GetEncKey returns the encryption key as bytes if present.
-func (b *Bucket) GetEncKey() []byte {
-	if b.EncKey == "" {
-		return nil
-	}
-	key, _ := base64.StdEncoding.DecodeString(b.EncKey)
-	return key
+// Metadata contains metadata about a bucket item (a file or folder).
+type Metadata struct {
+	Cid       string                  `json:"cid"`
+	Roles     map[string]buckets.Role `json:"roles"`
+	CreatedAt int64                   `json:"created_at"`
+	UpdatedAt int64                   `json:"updated_at"`
 }
 
 // Archives contains all archives for a single bucket.
@@ -64,6 +69,73 @@ type Archive struct {
 type Deal struct {
 	ProposalCid string `json:"proposal_cid"`
 	Miner       string `json:"miner"`
+}
+
+// GetEncKey returns the encryption key as bytes if present.
+func (b *Bucket) GetEncKey() []byte {
+	if b.EncKey == "" {
+		return nil
+	}
+	key, _ := base64.StdEncoding.DecodeString(b.EncKey)
+	return key
+}
+
+// UpsertMetadataAtPath adds new or updates the existing metadata for path.
+func (b *Bucket) UpsertMetadataAtPath(pth string, cid cid.Cid, updated time.Time) error {
+	if b.Version == 0 {
+		return nil
+	}
+	nanos := updated.UnixNano()
+	x, ok := b.Metadata[pth]
+	if ok && x.Cid != cid.String() {
+		x.Cid = cid.String()
+		x.UpdatedAt = nanos
+		b.Metadata[pth] = x
+	} else {
+		roles := make(map[string]buckets.Role)
+		if b.Owner != "" {
+			if b.EncKey == "" {
+				roles["*"] = buckets.Reader
+			}
+			roles[b.Owner] = buckets.Admin
+		}
+		b.Metadata[pth] = Metadata{
+			Cid:       cid.String(),
+			Roles:     roles,
+			CreatedAt: nanos,
+			UpdatedAt: nanos,
+		}
+	}
+	return nil
+}
+
+// IsPathReadable returns whether or not the bucket path is readable.
+func (b *Bucket) IsPathReadable(pth string) bool {
+	if b.Version == 0 {
+		return true
+	}
+	// Check for an exact match
+	if _, ok := b.Metadata[pth]; ok {
+		return true
+	}
+	// Check if we can see this path via a parent
+	parent := pth
+	for {
+		parent = gopath.Dir(parent)
+		if parent == "." {
+			break
+		}
+		if _, ok := b.Metadata[parent]; ok {
+			return true
+		}
+	}
+	// Check if there's child paths visible under the path.
+	for i := range b.Metadata {
+		if strings.HasPrefix(i, pth) {
+			return true
+		}
+	}
+	return false
 }
 
 // BucketOptions defines options for interacting with buckets.
@@ -105,6 +177,90 @@ func init() {
 		Name:    buckets.CollectionName,
 		Schema:  bucketsSchema,
 		Indexes: bucketsIndexes,
+		WriteValidator: `
+			if (instance && !instance.version) {
+			  return true
+			}
+			var type = event.patch.type
+			var patch = event.patch.json_patch
+			var restricted = ["owner", "name", "version", "key", "archives", "created_at"]
+			switch (type) {
+			  case "create":
+			    if (patch.owner !== "" && writer !== patch.owner) {
+			      return "permission denied" // writer must match new bucket owner
+			    }
+			    break
+			  case "save":
+			    if (instance.owner === "") {
+			      return true
+			    }
+			    if (writer !== instance.owner) {
+			      for (i = 0; i < restricted.length; i++) {
+			        if (patch[restricted[i]]) {
+			          return "permission denied"
+			        }
+			      }
+			    }
+			    if (!patch.metadata) {
+			      return true
+			    }
+			    var keys = Object.keys(patch.metadata)
+			    for (i = 0; i < keys.length; i++) {
+			      var p = patch.metadata[keys[i]]
+			      var x = instance.metadata[keys[i]]
+			      if (x) {
+			        if (!x.roles[writer]) {
+			          x.roles[writer] = 0
+			        }
+			        if (!x.roles["*"]) {
+			          x.roles["*"] = 0
+			        }
+			        if (!p) {
+                      if (x.roles[writer] < 3) {
+			            patch.metadata[keys[i]] = x // reset patch, no admin access to delete items
+			          }
+			          continue
+			        } else {
+			          if (p.roles && x.roles[writer] < 3) {
+			            return "permission denied" // no admin access to edit roles
+			          }
+			        }
+			        if (x.roles[writer] < 2 && x.roles["*"] < 2) {
+			          return "permission denied" // no write access
+			        }
+			      } else {
+			        if (writer !== instance.owner) {
+			          return "permission denied" // no owner access to create items
+			        }
+			      }
+			    }
+			    break
+			  case "delete":
+			    if (instance.owner !== "" && writer !== instance.owner) {
+			      return "permission denied" // no owner access to delete instance
+			    }
+			    break
+			}
+			return true
+		`,
+		ReadFilter: `
+			if (!instance.version) {
+			  return instance
+			}
+			if (instance.owner === "") {
+			  return instance
+			}
+			var filtered = {}
+			var keys = Object.keys(instance.metadata)
+			for (i = 0; i < keys.length; i++) {
+			  var x = instance.metadata[keys[i]]
+			  if (x.roles[reader] > 0 || x.roles["*"] > 0) {
+			    filtered[keys[i]] = x
+			  }
+			}
+			instance.metadata = filtered
+			return instance
+		`,
 	}
 }
 
@@ -138,7 +294,7 @@ func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives) (*Buc
 }
 
 // Create a bucket instance.
-func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.Path, opts ...BucketOption) (*Bucket, error) {
+func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.Path, now time.Time, owner thread.PubKey, metadata map[string]Metadata, opts ...BucketOption) (*Bucket, error) {
 	args := &BucketOptions{}
 	for _, opt := range opts {
 		opt(args)
@@ -147,15 +303,31 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	if args.Key != nil {
 		encKey = base64.StdEncoding.EncodeToString(args.Key)
 	}
-	now := time.Now().UnixNano()
+	if args.Token.Defined() {
+		tokenOwner, err := args.Token.PubKey()
+		if err != nil {
+			return nil, err
+		}
+		if tokenOwner != nil && owner.String() != tokenOwner.String() {
+			return nil, fmt.Errorf("creating bucket: token owner mismatch")
+		}
+	}
+	if metadata == nil {
+		metadata = make(map[string]Metadata)
+	}
 	bucket := &Bucket{
 		Key:       key,
 		Name:      args.Name,
-		Path:      pth.String(),
+		Version:   Version,
 		EncKey:    encKey,
+		Path:      pth.String(),
+		Metadata:  metadata,
 		Archives:  Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}},
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt: now.UnixNano(),
+		UpdatedAt: now.UnixNano(),
+	}
+	if owner != nil {
+		bucket.Owner = owner.String()
 	}
 	id, err := b.Create(ctx, dbID, bucket, WithToken(args.Token))
 	if err != nil {
@@ -166,7 +338,6 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	if _, err := b.baCol.Create(ctx, key); err != nil {
 		return nil, fmt.Errorf("creating BucketArchive data: %s", err)
 	}
-
 	return bucket, nil
 }
 
@@ -182,6 +353,9 @@ func (b *Buckets) SaveSafe(ctx context.Context, dbID thread.ID, bucket *Bucket, 
 }
 
 func ensureNoNulls(b *Bucket) {
+	if b.Metadata == nil {
+		b.Metadata = make(map[string]Metadata)
+	}
 	if len(b.Archives.History) == 0 {
 		current := b.Archives.Current
 		if len(current.Deals) == 0 {

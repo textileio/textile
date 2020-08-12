@@ -13,8 +13,10 @@ import (
 	"time"
 
 	"github.com/ipfs/go-merkledag/dagutils"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
@@ -80,10 +82,15 @@ func TestBucket(t *testing.T) {
 	})
 
 	t.Run("DBInfo", func(t *testing.T) {
-		dbinfo, err := buck.DBInfo(context.Background())
+		dbinfo, cc, err := buck.DBInfo(context.Background())
 		require.NoError(t, err)
 		assert.True(t, dbinfo.Key.Defined())
 		assert.NotEmpty(t, dbinfo.Addrs)
+		assert.NotEmpty(t, cc.Name)
+		assert.NotEmpty(t, cc.Schema)
+		assert.NotEmpty(t, cc.WriteValidator)
+		assert.NotEmpty(t, cc.ReadFilter)
+		assert.NotEmpty(t, cc.Indexes)
 	})
 
 	t.Run("Destroy", func(t *testing.T) {
@@ -100,8 +107,10 @@ func TestBucket(t *testing.T) {
 
 	t.Run("EncryptLocalPath", func(t *testing.T) {
 		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		key, err := dcrypto.NewKey()
+		require.NoError(t, err)
 		var buf bytes.Buffer
-		err = buck.EncryptLocalPath(fpth, "shhhhh!", &buf)
+		err = buck.EncryptLocalPath(fpth, key, &buf)
 		require.NoError(t, err)
 	})
 
@@ -110,13 +119,38 @@ func TestBucket(t *testing.T) {
 		cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
 		f, err := os.Create(cipher)
 		require.NoError(t, err)
-		err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+		key, err := dcrypto.NewKey()
+		require.NoError(t, err)
+		err = buck.EncryptLocalPath(fpth, key, f)
 		require.NoError(t, err)
 		f.Close()
 		var buf bytes.Buffer
-		err = buck.DecryptLocalPath(cipher, "badpass", &buf)
+		err = buck.DecryptLocalPath(cipher, []byte("badpass"), &buf)
 		require.Error(t, err)
-		err = buck.DecryptLocalPath(cipher, "shhhhh!", &buf)
+		err = buck.DecryptLocalPath(cipher, key, &buf)
+		require.NoError(t, err)
+		assert.Equal(t, 1024, buf.Len())
+	})
+
+	t.Run("EncryptLocalPathWithPassword", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		var buf bytes.Buffer
+		err = buck.EncryptLocalPathWithPassword(fpth, "shhhhh!", &buf)
+		require.NoError(t, err)
+	})
+
+	t.Run("DecryptLocalPathWithPassword", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+		f, err := os.Create(cipher)
+		require.NoError(t, err)
+		err = buck.EncryptLocalPathWithPassword(fpth, "shhhhh!", f)
+		require.NoError(t, err)
+		f.Close()
+		var buf bytes.Buffer
+		err = buck.DecryptLocalPathWithPassword(cipher, "badpass", &buf)
+		require.Error(t, err)
+		err = buck.DecryptLocalPathWithPassword(cipher, "shhhhh!", &buf)
 		require.NoError(t, err)
 		assert.Equal(t, 1024, buf.Len())
 	})
@@ -272,7 +306,9 @@ func TestBucket_RemotePaths(t *testing.T) {
 		f, err := os.Create(cipher)
 		require.NoError(t, err)
 		defer f.Close()
-		err = buck.EncryptLocalPath(fpth, "shhhhh!", f)
+		key, err := dcrypto.NewKey()
+		require.NoError(t, err)
+		err = buck.EncryptLocalPath(fpth, key, f)
 		require.NoError(t, err)
 		err = os.RemoveAll(fpth)
 		require.NoError(t, err)
@@ -280,9 +316,30 @@ func TestBucket_RemotePaths(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf2 bytes.Buffer
-		err = buck.DecryptRemotePath(context.Background(), "ciphertext", "badpass", &buf2)
+		err = buck.DecryptRemotePath(context.Background(), "ciphertext", []byte("badpass"), &buf2)
 		require.Error(t, err)
-		err = buck.DecryptRemotePath(context.Background(), "ciphertext", "shhhhh!", &buf2)
+		err = buck.DecryptRemotePath(context.Background(), "ciphertext", key, &buf2)
+		require.NoError(t, err)
+		assert.Equal(t, 1024, buf2.Len())
+	})
+
+	t.Run("DecryptRemotePathWithPassword", func(t *testing.T) {
+		fpth := addRandomFile(t, buck, "plaintext", 1024)
+		cipher := filepath.Join(filepath.Dir(fpth), "ciphertext")
+		f, err := os.Create(cipher)
+		require.NoError(t, err)
+		defer f.Close()
+		err = buck.EncryptLocalPathWithPassword(fpth, "shhhhh!", f)
+		require.NoError(t, err)
+		err = os.RemoveAll(fpth)
+		require.NoError(t, err)
+		_, err = buck.PushLocal(context.Background())
+		require.NoError(t, err)
+
+		var buf2 bytes.Buffer
+		err = buck.DecryptRemotePathWithPassword(context.Background(), "ciphertext", "badpass", &buf2)
+		require.Error(t, err)
+		err = buck.DecryptRemotePathWithPassword(context.Background(), "ciphertext", "shhhhh!", &buf2)
 		require.NoError(t, err)
 		assert.Equal(t, 1024, buf2.Len())
 	})
@@ -398,7 +455,7 @@ func TestBucket_Watch(t *testing.T) {
 	require.NoError(t, err)
 	dbinfo, err := buckets1.Clients().Threads.GetDBInfo(context.Background(), tid)
 	require.NoError(t, err)
-	colinfo, err := buckets1.Clients().Threads.GetCollectionInfo(context.Background(), tid, bucks.CollectionName)
+	cc, err := buckets1.Clients().Threads.GetCollectionInfo(context.Background(), tid, bucks.CollectionName)
 	require.NoError(t, err)
 
 	err = buckets2.Clients().Threads.NewDBFromAddr(
@@ -406,7 +463,7 @@ func TestBucket_Watch(t *testing.T) {
 		dbinfo.Addrs[0],
 		dbinfo.Key,
 		db.WithNewManagedName(dbinfo.Name),
-		db.WithNewManagedCollections(colinfo),
+		db.WithNewManagedCollections(cc),
 		db.WithNewManagedBackfillBlock(true))
 	require.NoError(t, err)
 
@@ -447,6 +504,43 @@ func TestBucket_Watch(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, 2, onlineStateCount)    // 1 for the initial start, 1 for the restart
 	assert.Greater(t, offlineStateCount, 0) // At least one, but could be more as watch retries
+}
+
+func TestBucket_AccessRoles(t *testing.T) {
+	buckets := setup(t)
+	buck, err := buckets.NewBucket(context.Background(), getConf(t, buckets))
+	require.NoError(t, err)
+
+	addRandomFile(t, buck, "file", 1024)
+
+	_, err = buck.PushLocal(context.Background())
+	require.NoError(t, err)
+
+	roles, err := buck.GetPathAccessRoles(context.Background(), "file")
+	require.NoError(t, err)
+	assert.Len(t, roles, 0)
+
+	_, rpk, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	reader := thread.NewLibp2pPubKey(rpk).String()
+	_, wpk, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	writer := thread.NewLibp2pPubKey(wpk).String()
+	all, err := buck.EditPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
+		reader: bucks.Reader,
+		writer: bucks.Writer,
+	})
+	require.NoError(t, err)
+	assert.Len(t, all, 2)
+	assert.Equal(t, bucks.Reader, all[reader])
+	assert.Equal(t, bucks.Writer, all[writer])
+
+	all, err = buck.EditPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
+		reader: bucks.None,
+	})
+	assert.Len(t, all, 1)
+	_, ok := all[reader]
+	assert.False(t, ok)
 }
 
 func addRandomFile(t *testing.T, buck *Bucket, pth string, size int64) string {

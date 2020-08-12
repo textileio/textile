@@ -22,7 +22,7 @@ var (
 		Flags: map[string]cmd.Flag{
 			"api": {
 				Key:      "api",
-				DefValue: "api.textile.io:443",
+				DefValue: "api.hub.textile.io:443",
 			},
 			"session": {
 				Key:      "session",

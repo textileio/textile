@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,7 +17,7 @@ const (
 
 type Session struct {
 	ID        string
-	Owner     crypto.PubKey
+	Owner     thread.PubKey
 	ExpiresAt time.Time
 }
 
@@ -44,13 +44,13 @@ func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
 	return s, err
 }
 
-func (s *Sessions) Create(ctx context.Context, owner crypto.PubKey) (*Session, error) {
+func (s *Sessions) Create(ctx context.Context, owner thread.PubKey) (*Session, error) {
 	doc := &Session{
 		ID:        util.MakeToken(tokenLen),
 		Owner:     owner,
 		ExpiresAt: time.Now().Add(sessionDur),
 	}
-	ownerID, err := crypto.MarshalPublicKey(owner)
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +99,8 @@ func (s *Sessions) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Sessions) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (s *Sessions) DeleteByOwner(ctx context.Context, owner thread.PubKey) error {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,8 @@ func (s *Sessions) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error
 }
 
 func decodeSession(raw bson.M) (*Session, error) {
-	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
+	owner := &thread.Libp2pPubKey{}
+	err := owner.UnmarshalBinary(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}
