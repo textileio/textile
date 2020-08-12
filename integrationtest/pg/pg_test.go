@@ -92,10 +92,10 @@ func TestArchiveTracker(t *testing.T) {
 		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive := ai.GetArchive()
-		require.Equal(t, rootCid1, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal := archive.Deals[0]
+		arc := ai.GetArchive()
+		require.Equal(t, rootCid1, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal := arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 	})
@@ -130,10 +130,10 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive := ai.GetArchive()
-		require.Equal(t, rootCid1, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal := archive.Deals[0]
+		arc := ai.GetArchive()
+		require.Equal(t, rootCid1, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal := arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 
@@ -151,10 +151,10 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive = ai.GetArchive()
-		require.Equal(t, rootCid2, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal = archive.Deals[0]
+		arc = ai.GetArchive()
+		require.Equal(t, rootCid2, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal = arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 	})

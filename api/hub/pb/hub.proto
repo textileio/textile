@@ -32,6 +32,12 @@ message GetSessionInfoResponse {
     string email = 3;
 }
 
+message GetIdentityRequest {}
+
+message GetIdentityResponse {
+    bytes identity = 1;
+}
+
 enum KeyType {
     KEY_TYPE_UNSPECIFIED = 0;
     KEY_TYPE_ACCOUNT = 1;
@@ -144,6 +150,7 @@ service APIService {
     rpc Signout(SignoutRequest) returns (SignoutResponse) {}
 
     rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoResponse) {}
+    rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse) {}
 
     rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
     rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}

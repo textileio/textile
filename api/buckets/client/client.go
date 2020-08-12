@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -313,6 +314,68 @@ func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option
 		return nil, err
 	}
 	return util.NewResolvedPath(res.Root.Path)
+}
+
+// GetPathAccessRoles returns access roles for a path.
+func (c *Client) GetPathAccessRoles(ctx context.Context, key, pth string) (map[string]buckets.Role, error) {
+	res, err := c.c.GetPathAccessRoles(ctx, &pb.GetPathAccessRolesRequest{
+		Key:  key,
+		Path: pth,
+	})
+	if err != nil {
+		return nil, err
+	}
+	roles := make(map[string]buckets.Role)
+	for pk, r := range res.Roles {
+		var role buckets.Role
+		switch r {
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
+			role = buckets.None
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
+			role = buckets.Reader
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
+			role = buckets.Writer
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
+			role = buckets.Admin
+		default:
+			return nil, fmt.Errorf("unknown path access role %d", r)
+		}
+		roles[pk] = role
+	}
+	return roles, nil
+}
+
+// EditPathAccessRoles updates path access roles by merging the given roles with existing roles.
+// roles is a map of string marshaled public keys to path roles. A non-nil error is returned
+// if the map keys are not unmarshalable to public keys.
+// To delete a role for a public key, set its value to buckets.None.
+func (c *Client) EditPathAccessRoles(ctx context.Context, key, pth string, roles map[string]buckets.Role) error {
+	pbroles := make(map[string]pb.PathAccessRole)
+	for pk, r := range roles {
+		var pr pb.PathAccessRole
+		switch r {
+		case buckets.None:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
+		case buckets.Reader:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
+		case buckets.Writer:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
+		case buckets.Admin:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
+		default:
+			return fmt.Errorf("unknown path access role %d", r)
+		}
+		pbroles[pk] = pr
+	}
+	_, err := c.c.EditPathAccessRoles(ctx, &pb.EditPathAccessRolesRequest{
+		Key:   key,
+		Path:  pth,
+		Roles: pbroles,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Archive creates a Filecoin bucket archive via Powergate.

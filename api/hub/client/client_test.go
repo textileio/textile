@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
+	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/api/apitest"
 	"github.com/textileio/textile/api/common"
@@ -88,6 +89,33 @@ func TestClient_GetSessionInfo(t *testing.T) {
 		assert.Equal(t, user.Key, res.Key)
 		assert.Equal(t, username, res.Username)
 		assert.Equal(t, email, res.Email)
+	})
+}
+
+func TestClient_GetIdentity(t *testing.T) {
+	t.Parallel()
+	conf, client, _ := setup(t)
+	ctx := context.Background()
+
+	t.Run("without session", func(t *testing.T) {
+		_, err := client.GetIdentity(ctx)
+		require.Error(t, err)
+	})
+
+	username := apitest.NewUsername()
+	email := apitest.NewEmail()
+	user := apitest.Signup(t, client, conf, username, email)
+
+	t.Run("with session", func(t *testing.T) {
+		res, err := client.GetIdentity(common.NewSessionContext(ctx, user.Session))
+		require.NoError(t, err)
+		id := &thread.Libp2pIdentity{}
+		err = id.UnmarshalBinary(res.Identity)
+		require.NoError(t, err)
+		key := &thread.Libp2pPubKey{}
+		err = key.UnmarshalBinary(user.Key)
+		require.NoError(t, err)
+		assert.True(t, id.GetPublic().Equals(key))
 	})
 }
 

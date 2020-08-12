@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,7 +18,7 @@ const (
 type Invite struct {
 	Token     string
 	Org       string
-	From      crypto.PubKey
+	From      thread.PubKey
 	EmailTo   string
 	Accepted  bool
 	ExpiresAt time.Time
@@ -44,7 +44,7 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 	return i, err
 }
 
-func (i *Invites) Create(ctx context.Context, from crypto.PubKey, org, emailTo string) (*Invite, error) {
+func (i *Invites) Create(ctx context.Context, from thread.PubKey, org, emailTo string) (*Invite, error) {
 	doc := &Invite{
 		Token:     util.MakeToken(tokenLen),
 		Org:       org,
@@ -53,7 +53,7 @@ func (i *Invites) Create(ctx context.Context, from crypto.PubKey, org, emailTo s
 		Accepted:  false,
 		ExpiresAt: time.Now().Add(inviteDur),
 	}
-	fromID, err := crypto.MarshalPublicKey(from)
+	fromID, err := from.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +128,8 @@ func (i *Invites) Delete(ctx context.Context, token string) error {
 	return nil
 }
 
-func (i *Invites) DeleteByFrom(ctx context.Context, from crypto.PubKey) error {
-	fromID, err := crypto.MarshalPublicKey(from)
+func (i *Invites) DeleteByFrom(ctx context.Context, from thread.PubKey) error {
+	fromID, err := from.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -142,8 +142,8 @@ func (i *Invites) DeleteByOrg(ctx context.Context, org string) error {
 	return err
 }
 
-func (i *Invites) DeleteByFromAndOrg(ctx context.Context, from crypto.PubKey, org string) error {
-	fromID, err := crypto.MarshalPublicKey(from)
+func (i *Invites) DeleteByFromAndOrg(ctx context.Context, from thread.PubKey, org string) error {
+	fromID, err := from.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,8 @@ func (i *Invites) DeleteByFromAndOrg(ctx context.Context, from crypto.PubKey, or
 }
 
 func decodeInvite(raw bson.M) (*Invite, error) {
-	from, err := crypto.UnmarshalPublicKey(raw["from_id"].(primitive.Binary).Data)
+	from := &thread.Libp2pPubKey{}
+	err := from.UnmarshalBinary(raw["from_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}

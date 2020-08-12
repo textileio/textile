@@ -133,18 +133,29 @@ func (b *Bucket) LocalSize() (int64, error) {
 	return size, err
 }
 
-// BucketInfo wraps info about a bucket.
-type BucketInfo struct {
-	Key       string        `json:"key"`
-	Name      string        `json:"name"`
-	Path      path.Resolved `json:"path"`
-	Thread    thread.ID     `json:"id"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+// Info wraps info about a bucket.
+type Info struct {
+	Key       string              `json:"key"`
+	Owner     string              `json:"owner"`
+	Name      string              `json:"name"`
+	Version   int                 `json:"version"`
+	Path      path.Resolved       `json:"path"`
+	Metadata  map[string]Metadata `json:"metadata"`
+	Thread    thread.ID           `json:"id"`
+	CreatedAt time.Time           `json:"created_at"`
+	UpdatedAt time.Time           `json:"updated_at"`
+}
+
+// Metadata wraps metadata about a bucket item.
+type Metadata struct {
+	Cid       cid.Cid                 `json:"cid"`
+	Roles     map[string]buckets.Role `json:"roles"`
+	CreatedAt time.Time               `json:"created_at"`
+	UpdatedAt time.Time               `json:"updated_at"`
 }
 
 // Info returns info about a bucket from the remote.
-func (b *Bucket) Info(ctx context.Context) (info BucketInfo, err error) {
+func (b *Bucket) Info(ctx context.Context) (info Info, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return
@@ -156,7 +167,7 @@ func (b *Bucket) Info(ctx context.Context) (info BucketInfo, err error) {
 	return pbRootToInfo(rep.Root)
 }
 
-func pbRootToInfo(r *pb.Root) (info BucketInfo, err error) {
+func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	name := "unnamed"
 	if r.Name != "" {
 		name = r.Name
@@ -169,10 +180,43 @@ func pbRootToInfo(r *pb.Root) (info BucketInfo, err error) {
 	if err != nil {
 		return
 	}
-	return BucketInfo{
+	md := make(map[string]Metadata)
+	for p, m := range r.Metadata {
+		c, err := cid.Decode(m.Cid)
+		if err != nil {
+			return info, err
+		}
+		roles := make(map[string]buckets.Role)
+		for k, r := range m.Roles {
+			var role buckets.Role
+			switch r {
+			case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
+				role = buckets.None
+			case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
+				role = buckets.Reader
+			case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
+				role = buckets.Writer
+			case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
+				role = buckets.Admin
+			default:
+				return info, fmt.Errorf("unknown path access role %d", r)
+			}
+			roles[k] = role
+		}
+		md[p] = Metadata{
+			Cid:       c,
+			Roles:     roles,
+			CreatedAt: time.Unix(0, m.CreatedAt),
+			UpdatedAt: time.Unix(0, m.UpdatedAt),
+		}
+	}
+	return Info{
 		Key:       r.Key,
+		Owner:     r.Owner,
 		Name:      name,
+		Version:   int(r.Version),
 		Path:      pth,
+		Metadata:  md,
 		Thread:    id,
 		CreatedAt: time.Unix(0, r.CreatedAt),
 		UpdatedAt: time.Unix(0, r.UpdatedAt),
@@ -231,7 +275,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 
 // DBInfo returns info about the bucket's ThreadDB.
 // This info can be used to add replicas or additional peers to the bucket.
-func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, err error) {
+func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, cc db.CollectionConfig, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return
@@ -240,7 +284,15 @@ func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, err error) {
 	if err != nil {
 		return
 	}
-	return b.clients.Threads.GetDBInfo(ctx, id)
+	info, err = b.clients.Threads.GetDBInfo(ctx, id)
+	if err != nil {
+		return
+	}
+	cc, err = b.clients.Threads.GetCollectionInfo(ctx, id, buckets.CollectionName)
+	if err != nil {
+		return
+	}
+	return info, cc, nil
 }
 
 // CatRemotePath writes the content of the remote path to writer.

@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/core/thread"
 	. "github.com/textileio/textile/mongodb"
 )
 
@@ -18,7 +19,7 @@ func TestAPIKeys_Create(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner, AccountKey, true)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner), AccountKey, true)
 	require.NoError(t, err)
 	assert.NotEmpty(t, created.Secret)
 	assert.Equal(t, AccountKey, created.Type)
@@ -32,7 +33,7 @@ func TestAPIKeys_Get(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, false)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner), UserKey, false)
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
@@ -47,18 +48,18 @@ func TestAPIKeys_ListByOwner(t *testing.T) {
 
 	_, owner1, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	_, err = col.Create(context.Background(), owner1, UserKey, false)
+	_, err = col.Create(context.Background(), thread.NewLibp2pPubKey(owner1), UserKey, false)
 	require.NoError(t, err)
-	_, err = col.Create(context.Background(), owner1, UserKey, false)
+	_, err = col.Create(context.Background(), thread.NewLibp2pPubKey(owner1), UserKey, false)
 	require.NoError(t, err)
 
-	list1, err := col.ListByOwner(context.Background(), owner1)
+	list1, err := col.ListByOwner(context.Background(), thread.NewLibp2pPubKey(owner1))
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(list1))
 
 	_, owner2, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	list2, err := col.ListByOwner(context.Background(), owner2)
+	list2, err := col.ListByOwner(context.Background(), thread.NewLibp2pPubKey(owner2))
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(list2))
 }
@@ -70,7 +71,7 @@ func TestAPIKeys_Invalidate(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, false)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner), UserKey, false)
 	require.NoError(t, err)
 
 	err = col.Invalidate(context.Background(), created.Key)
@@ -87,10 +88,10 @@ func TestAPIKeys_DeleteByOwner(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner, UserKey, false)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner), UserKey, false)
 	require.NoError(t, err)
 
-	err = col.DeleteByOwner(context.Background(), owner)
+	err = col.DeleteByOwner(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 	_, err = col.Get(context.Background(), created.Key)
 	require.Error(t, err)

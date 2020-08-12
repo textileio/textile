@@ -9,7 +9,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	ulid "github.com/oklog/ulid/v2"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
@@ -137,7 +136,7 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 
 	msgID := coredb.NewInstanceID().String()
 	now := time.Now().UnixNano()
-	from := thread.NewLibp2pPubKey(user.Key)
+	from := user.Key
 	toMsg := tdb.InboxMessage{
 		ID:        msgID,
 		From:      from.String(),
@@ -367,7 +366,7 @@ func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentbo
 	return &pb.DeleteSentboxMessageResponse{}, nil
 }
 
-func (s *Service) getMailbox(ctx context.Context, key crypto.PubKey) (thread.ID, error) {
+func (s *Service) getMailbox(ctx context.Context, key thread.PubKey) (thread.ID, error) {
 	thrd, err := s.Collections.Threads.GetByName(ctx, mail.ThreadName, key)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -378,7 +377,7 @@ func (s *Service) getMailbox(ctx context.Context, key crypto.PubKey) (thread.ID,
 	return thrd.ID, nil
 }
 
-func (s *Service) getOrCreateMailbox(ctx context.Context, key crypto.PubKey, opts ...tdb.Option) (thread.ID, error) {
+func (s *Service) getOrCreateMailbox(ctx context.Context, key thread.PubKey, opts ...tdb.Option) (thread.ID, error) {
 	id, err := s.Mail.NewMailbox(ctx, opts...)
 	if errors.Is(err, tdb.ErrMailboxExists) {
 		thrd, err := s.Collections.Threads.GetByName(ctx, mail.ThreadName, key)

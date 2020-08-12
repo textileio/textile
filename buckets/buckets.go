@@ -12,6 +12,16 @@ const (
 	SeedName = ".textileseed"
 )
 
+// Role describes an access role for a bucket item.
+type Role int
+
+const (
+	None Role = iota
+	Reader
+	Writer
+	Admin
+)
+
 var (
 	// ErrNonFastForward is returned when an update in non-fast-forward.
 	ErrNonFastForward = fmt.Errorf("update is non-fast-forward")

@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/core/thread"
 	. "github.com/textileio/textile/mongodb"
 )
 
@@ -19,7 +20,7 @@ func TestSessions_Create(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 	assert.True(t, created.ExpiresAt.After(time.Now()))
 }
@@ -31,7 +32,7 @@ func TestSessions_Get(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.ID)
@@ -46,7 +47,7 @@ func TestSessions_Touch(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
@@ -64,7 +65,7 @@ func TestSessions_Delete(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), created.ID)
@@ -80,7 +81,7 @@ func TestSessions_DeleteByOwner(t *testing.T) {
 
 	_, owner, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), owner)
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(owner))
 	require.NoError(t, err)
 
 	err = col.DeleteByOwner(context.Background(), created.Owner)

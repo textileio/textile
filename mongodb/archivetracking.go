@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,7 +19,7 @@ type TrackedArchive struct {
 	DbToken    thread.Token
 	BucketKey  string
 	BucketRoot cid.Cid
-	Owner      crypto.PubKey
+	Owner      thread.PubKey
 	ReadyAt    time.Time
 	Cause      string
 	Active     bool
@@ -44,15 +43,15 @@ type ArchiveTracking struct {
 	col *mongo.Collection
 }
 
-func NewArchiveTracking(ctx context.Context, db *mongo.Database) (*ArchiveTracking, error) {
+func NewArchiveTracking(_ context.Context, db *mongo.Database) (*ArchiveTracking, error) {
 	s := &ArchiveTracking{
 		col: db.Collection("archivetrackings"),
 	}
 	return s, nil
 }
 
-func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner crypto.PubKey) error {
-	ownerBytes, err := crypto.MarshalPublicKey(owner)
+func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner thread.PubKey) error {
+	ownerBytes, err := owner.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("marshaling owner to bytes: %v", err)
 	}
@@ -148,7 +147,8 @@ func cast(ta *trackedArchive) (*TrackedArchive, error) {
 	if err != nil {
 		return nil, fmt.Errorf("casting bucket root: %s", err)
 	}
-	owner, err := crypto.UnmarshalPublicKey(ta.Owner)
+	owner := &thread.Libp2pPubKey{}
+	err = owner.UnmarshalBinary(ta.Owner)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling public key: %s", err)
 	}

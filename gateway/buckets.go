@@ -73,11 +73,6 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		render404(c)
 		return
 	}
-	// @todo: Remove this private bucket handling when the thread ACL is done.
-	if buck.GetEncKey() != nil {
-		render404(c)
-		return
-	}
 	rep, err := g.buckets.ListPath(ctx, buck.Key, pth)
 	if err != nil {
 		render404(c)
@@ -85,7 +80,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 	}
 	if !rep.Item.IsDir {
 		if err := g.buckets.PullPath(ctx, buck.Key, pth, c.Writer); err != nil {
-			renderError(c, http.StatusInternalServerError, err)
+			render404(c)
 		}
 	} else {
 		var base string
@@ -240,14 +235,9 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 		render404(c)
 		return
 	}
-	// @todo: Remove this private bucket handling when the thread ACL is done.
-	if buck.GetEncKey() != nil {
-		render404(c)
-		return
-	}
 	rep, err := g.buckets.ListPath(ctx, buck.Key, "")
 	if err != nil {
-		renderError(c, http.StatusInternalServerError, err)
+		render404(c)
 		return
 	}
 	for _, item := range rep.Item.Items {
@@ -255,7 +245,7 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 			c.Writer.WriteHeader(http.StatusOK)
 			c.Writer.Header().Set("Content-Type", "text/html")
 			if err := g.buckets.PullPath(ctx, buck.Key, item.Name, c.Writer); err != nil {
-				renderError(c, http.StatusInternalServerError, err)
+				render404(c)
 			}
 			return
 		}

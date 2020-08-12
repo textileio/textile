@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/api/common"
 	"go.mongodb.org/mongo-driver/bson"
@@ -27,7 +26,7 @@ func init() {
 
 type Thread struct {
 	ID        thread.ID
-	Owner     crypto.PubKey
+	Owner     thread.PubKey
 	Name      string
 	Key       string
 	IsDB      bool
@@ -57,7 +56,7 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 	return t, err
 }
 
-func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey, isDB bool) (*Thread, error) {
+func (t *Threads) Create(ctx context.Context, id thread.ID, owner thread.PubKey, isDB bool) (*Thread, error) {
 	name, _ := common.ThreadNameFromContext(ctx)
 	if name != "" && !threadNameRx.MatchString(name) {
 		return nil, ErrInvalidThreadName
@@ -71,7 +70,7 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey,
 		IsDB:      isDB,
 		CreatedAt: time.Now(),
 	}
-	ownerID, err := crypto.MarshalPublicKey(owner)
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +89,8 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner crypto.PubKey,
 	return doc, nil
 }
 
-func (t *Threads) Get(ctx context.Context, id thread.ID, owner crypto.PubKey) (*Thread, error) {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (t *Threads) Get(ctx context.Context, id thread.ID, owner thread.PubKey) (*Thread, error) {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +105,8 @@ func (t *Threads) Get(ctx context.Context, id thread.ID, owner crypto.PubKey) (*
 	return decodeThread(raw)
 }
 
-func (t *Threads) GetByName(ctx context.Context, name string, owner crypto.PubKey) (*Thread, error) {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (t *Threads) GetByName(ctx context.Context, name string, owner thread.PubKey) (*Thread, error) {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +121,8 @@ func (t *Threads) GetByName(ctx context.Context, name string, owner crypto.PubKe
 	return decodeThread(raw)
 }
 
-func (t *Threads) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]Thread, error) {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (t *Threads) ListByOwner(ctx context.Context, owner thread.PubKey) ([]Thread, error) {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +173,8 @@ func (t *Threads) ListByKey(ctx context.Context, key string) ([]Thread, error) {
 	return docs, nil
 }
 
-func (t *Threads) Delete(ctx context.Context, id thread.ID, owner crypto.PubKey) error {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (t *Threads) Delete(ctx context.Context, id thread.ID, owner thread.PubKey) error {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -189,8 +188,8 @@ func (t *Threads) Delete(ctx context.Context, id thread.ID, owner crypto.PubKey)
 	return nil
 }
 
-func (t *Threads) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (t *Threads) DeleteByOwner(ctx context.Context, owner thread.PubKey) error {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,8 @@ func (t *Threads) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error 
 
 func decodeThread(raw bson.M) (*Thread, error) {
 	rid := raw["_id"].(bson.M)
-	owner, err := crypto.UnmarshalPublicKey(rid["owner"].(primitive.Binary).Data)
+	owner := &thread.Libp2pPubKey{}
+	err := owner.UnmarshalBinary(rid["owner"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}

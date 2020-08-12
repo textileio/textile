@@ -55,7 +55,7 @@ func (b *Bucket) ListRemotePath(ctx context.Context, pth string) (items []Bucket
 	return items, nil
 }
 
-func pbItemToItem(pi *pb.ListPathItem) (item BucketItem, err error) {
+func pbItemToItem(pi *pb.PathItem) (item BucketItem, err error) {
 	if pi.Cid == "" {
 		return item, errEmptyItem
 	}
@@ -81,6 +81,6 @@ func pbItemToItem(pi *pb.ListPathItem) (item BucketItem, err error) {
 		Size:       pi.Size,
 		IsDir:      pi.IsDir,
 		Items:      items,
-		ItemsCount: len(pi.Items),
+		ItemsCount: int(pi.ItemsCount),
 	}, nil
 }
