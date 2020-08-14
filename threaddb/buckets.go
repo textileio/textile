@@ -25,26 +25,6 @@ var (
 		Path: "path",
 	}}
 	bucketsConfig db.CollectionConfig
-
-	// ffsDefaultCidConfig is a default hardcoded CidConfig to be used
-	// on newly created FFS instances as the default CidConfig of archived Cids,
-	// if none is provided in constructor.
-	ffsDefaultCidConfig = ffs.StorageConfig{
-		Hot: ffs.HotConfig{
-			Enabled:       false,
-			AllowUnfreeze: true,
-			Ipfs: ffs.IpfsConfig{
-				AddTimeout: 60 * 2,
-			},
-		},
-		Cold: ffs.ColdConfig{
-			Enabled: true,
-			Filecoin: ffs.FilConfig{
-				RepFactor:       10,     // Aim high for testnet
-				DealMinDuration: 550000, // ~6 months, the minimum accepted in the network.
-			},
-		},
-	}
 )
 
 // Bucket represents the buckets threaddb collection schema.
@@ -135,8 +115,6 @@ type Buckets struct {
 	baCol    *mdb.BucketArchives
 	pgClient *powc.Client
 
-	buckCidConfig ffs.StorageConfig
-
 	lock   sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -144,12 +122,7 @@ type Buckets struct {
 }
 
 // NewBuckets returns a new buckets collection mananger.
-func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives, defaultCidConfig *ffs.StorageConfig) (*Buckets, error) {
-	buckCidConfig := ffsDefaultCidConfig
-	if defaultCidConfig != nil {
-		buckCidConfig = *defaultCidConfig
-	}
-
+func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives) (*Buckets, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Buckets{
 		Collection: Collection{
@@ -158,8 +131,6 @@ func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives, defau
 		},
 		baCol:    col,
 		pgClient: pgc,
-
-		buckCidConfig: buckCidConfig,
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -203,36 +174,6 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 func (b *Buckets) IsArchivingEnabled() bool {
 	return b.pgClient != nil
 }
-
-// func (b *Buckets) createFFSInstance(ctx context.Context, bucketKey string) error {
-// 	b.lock.Lock()
-// 	defer b.lock.Unlock()
-// 	// If the Powergate client isn't configured, don't do anything.
-// 	if b.pgClient == nil {
-// 		return nil
-// 	}
-// 	_, token, err := b.pgClient.FFS.Create(ctx)
-// 	if err != nil {
-// 		return fmt.Errorf("creating FFS instance: %s", err)
-// 	}
-
-// 	ctxFFS := context.WithValue(ctx, powc.AuthKey, token)
-// 	i, err := b.pgClient.FFS.Info(ctxFFS)
-// 	if err != nil {
-// 		return fmt.Errorf("getting information about created ffs instance: %s", err)
-// 	}
-// 	waddr := i.Balances[0].Addr
-// 	defaultBucketCidConfig := ffs.StorageConfig{
-// 		Cold:       b.buckCidConfig.Cold,
-// 		Hot:        b.buckCidConfig.Hot,
-// 		Repairable: b.buckCidConfig.Repairable,
-// 	}
-// 	defaultBucketCidConfig.Cold.Filecoin.Addr = waddr
-// 	if err := b.pgClient.FFS.SetDefaultStorageConfig(ctxFFS, defaultBucketCidConfig); err != nil {
-// 		return fmt.Errorf("setting default bucket FFS cidconfig: %s", err)
-// 	}
-// 	return nil
-// }
 
 // SaveSafe a bucket instance.
 func (b *Buckets) SaveSafe(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {

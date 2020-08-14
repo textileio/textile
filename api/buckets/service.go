@@ -1628,14 +1628,20 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("getting ffs instance data: %s", err)
 	}
 
+	// Get the default StorageConfig
+	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs default StorageConfig: %s", err)
+	}
+
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	// bal, err := s.PGClient.Wallet.Balance(ctx, ba.WalletAddr)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
-	// }
-	// if bal == 0 {
-	// 	return nil, buckets.ErrZeroBalance
-	// }
+	bal, err := s.PGClient.Wallet.Balance(ctx, defConf.Cold.Filecoin.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
+	}
+	if bal == 0 {
+		return nil, buckets.ErrZeroBalance
+	}
 
 	var jid ffs.JobID
 	firstTimeArchive := ba.Archives.Current.JobID == ""

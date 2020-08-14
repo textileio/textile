@@ -33,7 +33,6 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
@@ -140,8 +139,6 @@ type Config struct {
 	Debug bool
 
 	ThreadsConnManager connmgr.ConnManager
-
-	FFSDefaultConfig *ffs.StorageConfig
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -223,7 +220,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.BucketArchives, conf.FFSDefaultConfig)
+	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.BucketArchives)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +300,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var opts []grpc.ServerOption
 	if conf.Hub {
 		opts = []grpc.ServerOption{
-			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor(), t.powergateInterceptor),
+			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
 	} else {
