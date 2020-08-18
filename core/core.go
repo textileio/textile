@@ -3,16 +3,21 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/golang/protobuf/proto"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,6 +33,7 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
+	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -81,6 +87,8 @@ type Textile struct {
 	bucks          *tdb.Buckets
 	mail           *tdb.Mail
 	powc           *powc.Client
+	powStub        grpcdynamic.Stub
+	ffsServiceDesc *desc.ServiceDescriptor
 	archiveTracker *archive.Tracker
 
 	ipnsm *ipns.Manager
@@ -157,6 +165,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	if conf.AddrPowergateAPI != "" {
 		if t.powc, err = powc.NewClient(conf.AddrPowergateAPI); err != nil {
+			return nil, err
+		}
+		if t.powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
+			return nil, err
+		}
+		if t.ffsServiceDesc, err = createFFSServiceDesciptor(); err != nil {
 			return nil, err
 		}
 	}
@@ -276,6 +290,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		ArchiveTracker:            t.archiveTracker,
 	}
 
+	ffsService := ffsRpc.UnimplementedRPCServiceServer{}
+
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
 	if err != nil {
@@ -306,6 +322,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			upb.RegisterAPIServer(t.server, us)
 		}
 		bpb.RegisterAPIServer(t.server, bs)
+		ffsRpc.RegisterRPCServiceServer(t.server, &ffsService)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)
 		}
@@ -557,6 +574,38 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func (t *Textile) powergateInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	if !strings.Contains(info.FullMethod, "ffs.rpc.RPCService") {
+		return handler(ctx, req)
+	}
+
+	var ffsInfo *mdb.FFSInfo
+	if org, ok := mdb.OrgFromContext(ctx); ok {
+		ffsInfo = org.FFSInfo
+	} else if dev, ok := mdb.DevFromContext(ctx); ok {
+		ffsInfo = dev.FFSInfo
+	} else if user, ok := mdb.UserFromContext(ctx); ok {
+		ffsInfo = user.FFSInfo
+	}
+
+	if ffsInfo == nil {
+		return nil, fmt.Errorf("no account or no FFS info associated with account")
+	}
+
+	ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+
+	methodParts := strings.Split(info.FullMethod, "/")
+	if len(methodParts) < 2 {
+		return nil, fmt.Errorf("error parsing method string %s", info.FullMethod)
+	}
+	methodName := methodParts[len(methodParts)-1]
+	methodDesc := t.ffsServiceDesc.FindMethodByName(methodName)
+	if methodDesc == nil {
+		return nil, fmt.Errorf("no method found for %s", methodName)
+	}
+	return t.powStub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+}
+
 // threadInterceptor monitors for thread creation and deletion.
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
@@ -725,4 +774,24 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 		return res, nil
 	}
+}
+
+func createPowStub(target string) (grpcdynamic.Stub, error) {
+	pgConn, err := powc.CreateClientConn(target)
+	if err != nil {
+		return grpcdynamic.Stub{}, err
+	}
+	return grpcdynamic.NewStub(pgConn), nil
+}
+
+func createFFSServiceDesciptor() (*desc.ServiceDescriptor, error) {
+	ffsDesc, err := desc.LoadFileDescriptor("ffs/rpc/rpc.proto")
+	if err != nil {
+		return nil, err
+	}
+	ffsServiceDesc := ffsDesc.FindService("ffs.rpc.RPCService")
+	if ffsServiceDesc == nil {
+		return nil, fmt.Errorf("no ffs service description found")
+	}
+	return ffsServiceDesc, nil
 }

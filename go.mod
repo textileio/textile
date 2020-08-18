@@ -41,6 +41,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.7
 	github.com/jbenet/go-is-domain v1.0.3
+	github.com/jhump/protoreflect v1.7.0
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
