@@ -1623,6 +1623,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
 
+	// here
+
 	ba, err := s.Collections.BucketArchives.Get(ctx, req.GetKey())
 	if err != nil {
 		return nil, fmt.Errorf("getting ffs instance data: %s", err)
@@ -1729,6 +1731,8 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 	if ffsInfo == nil {
 		return fmt.Errorf("no account or no FFS info associated with account")
 	}
+
+	// here
 
 	var err error
 	ctx, cancel := context.WithCancel(server.Context())

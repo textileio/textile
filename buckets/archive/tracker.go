@@ -102,6 +102,9 @@ func (t *Tracker) run() {
 							return
 						}
 
+						// here but maybe we'll know that old archives where cleared out
+						// no do this below by looking at the error returned by WatchJobs
+
 						reschedule, cause, err := t.trackArchiveProgress(ctx, a.BucketKey, a.DbID, a.DbToken, a.JID, a.BucketRoot, ffsInfo)
 						if err != nil || !reschedule {
 							if err != nil {
@@ -147,6 +150,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 	ctx = context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
 	ch := make(chan powc.JobEvent, 1)
 	if err := t.pgClient.FFS.WatchJobs(ctx, ch, jid); err != nil {
+		// if the error is "no ffs instance", return fatal error
 		return true, fmt.Sprintf("watching current job %s for bucket %s: %s", jid, buckKey, err), nil
 	}
 
