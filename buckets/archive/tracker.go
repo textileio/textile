@@ -98,7 +98,9 @@ func (t *Tracker) run() {
 						}
 
 						if ffsInfo == nil {
-							log.Errorf("no FFSInfo, could not find an Account or User: %s", err)
+							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "huh? no FFS info, weird"); err != nil {
+								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
+							}
 							return
 						}
 

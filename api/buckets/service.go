@@ -1618,6 +1618,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		ffsInfo = user.FFSInfo
 		owner = user.Key
 		isAccount = false
+	} else {
+		return nil, fmt.Errorf("no user/account found in request context")
 	}
 
 	createNewFFS := func() error {
@@ -1761,7 +1763,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 	}
 
 	if ffsInfo == nil {
-		return fmt.Errorf("no account or no FFS info associated with account")
+		return fmt.Errorf("no user/account or no FFS info associated with user/account")
 	}
 
 	var err error
