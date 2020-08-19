@@ -28,7 +28,6 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -132,8 +131,6 @@ type Config struct {
 	Debug bool
 
 	ThreadsConnManager connmgr.ConnManager
-
-	FFSDefaultConfig *ffs.StorageConfig
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -159,8 +156,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	if conf.AddrPowergateAPI != "" {
-		t.powc, err = powc.NewClient(conf.AddrPowergateAPI, grpc.WithInsecure(), grpc.WithPerRPCCredentials(powc.TokenAuth{}))
-		if err != nil {
+		if t.powc, err = powc.NewClient(conf.AddrPowergateAPI); err != nil {
 			return nil, err
 		}
 	}
@@ -210,7 +206,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.FFSInstances, conf.FFSDefaultConfig)
+	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.BucketArchives)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +249,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			IPFSClient:         ic,
 			IPNSManager:        t.ipnsm,
 			DNSManager:         t.dnsm,
+			Pow:                t.powc,
 		}
 		us = &users.Service{
 			Collections: t.collections,
@@ -653,7 +650,15 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			if err := t.collections.Users.Create(ctx, owner); err != nil {
+			var ffsInfo *mdb.FFSInfo
+			if t.powc != nil {
+				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
+				if err != nil {
+					return nil, err
+				}
+				ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
+			}
+			if err := t.collections.Users.Create(ctx, owner, ffsInfo); err != nil {
 				return nil, err
 			}
 		}

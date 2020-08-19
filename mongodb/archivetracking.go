@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,6 +20,7 @@ type TrackedArchive struct {
 	DbToken    thread.Token
 	BucketKey  string
 	BucketRoot cid.Cid
+	Owner      crypto.PubKey
 	ReadyAt    time.Time
 	Cause      string
 	Active     bool
@@ -32,6 +34,7 @@ type trackedArchive struct {
 	DbToken    thread.Token `bson:"db_token"`
 	BucketKey  string       `bson:"bucket_key"`
 	BucketRoot []byte       `bson:"bucket_root"`
+	Owner      []byte       `bson:"owner"`
 	ReadyAt    time.Time    `bson:"ready_at"`
 	Cause      string       `bson:"cause"`
 	Active     bool         `bson:"active"`
@@ -48,18 +51,23 @@ func NewArchiveTracking(ctx context.Context, db *mongo.Database) (*ArchiveTracki
 	return s, nil
 }
 
-func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid) error {
+func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner crypto.PubKey) error {
+	ownerBytes, err := crypto.MarshalPublicKey(owner)
+	if err != nil {
+		return fmt.Errorf("marshaling owner to bytes: %v", err)
+	}
 	newTA := trackedArchive{
 		JID:        jid,
 		DbID:       dbID,
 		DbToken:    dbToken,
 		BucketKey:  bucketKey,
 		BucketRoot: bucketRoot.Bytes(),
+		Owner:      ownerBytes,
 		ReadyAt:    time.Now(),
 		Cause:      "",
 		Active:     true,
 	}
-	_, err := at.col.InsertOne(ctx, newTA)
+	_, err = at.col.InsertOne(ctx, newTA)
 	if err != nil {
 		return fmt.Errorf("inserting in collection: %s", err)
 	}
@@ -140,12 +148,17 @@ func cast(ta *trackedArchive) (*TrackedArchive, error) {
 	if err != nil {
 		return nil, fmt.Errorf("casting bucket root: %s", err)
 	}
+	owner, err := crypto.UnmarshalPublicKey(ta.Owner)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling public key: %s", err)
+	}
 	return &TrackedArchive{
 		JID:        ta.JID,
 		DbID:       ta.DbID,
 		DbToken:    ta.DbToken,
 		BucketKey:  ta.BucketKey,
 		BucketRoot: bckCid,
+		Owner:      owner,
 		ReadyAt:    ta.ReadyAt,
 		Cause:      ta.Cause,
 		Active:     ta.Active,

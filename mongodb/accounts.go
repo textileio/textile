@@ -39,6 +39,7 @@ type Account struct {
 	Members          []Member
 	BucketsTotalSize int64
 	CreatedAt        time.Time
+	FFSInfo          *FFSInfo
 }
 
 type AccountType int
@@ -112,7 +113,7 @@ func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
 	return a, err
 }
 
-func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Account, error) {
+func (a *Accounts) CreateDev(ctx context.Context, username, email string, ffsInfo *FFSInfo) (*Account, error) {
 	if err := a.ValidateUsername(username); err != nil {
 		return nil, err
 	}
@@ -127,6 +128,7 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 		Email:     email,
 		Username:  username,
 		CreatedAt: time.Now(),
+		FFSInfo:   ffsInfo,
 	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
@@ -136,7 +138,7 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 	if err != nil {
 		return nil, err
 	}
-	if _, err := a.col.InsertOne(ctx, bson.M{
+	data := bson.M{
 		"_id":                id,
 		"type":               int32(doc.Type),
 		"secret":             secret,
@@ -144,13 +146,15 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string) (*Acco
 		"username":           doc.Username,
 		"created_at":         doc.CreatedAt,
 		"buckets_total_size": int64(0),
-	}); err != nil {
+	}
+	encodeFFSInfo(data, doc.FFSInfo)
+	if _, err := a.col.InsertOne(ctx, data); err != nil {
 		return nil, err
 	}
 	return doc, nil
 }
 
-func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member) (*Account, error) {
+func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member, ffsInfo *FFSInfo) (*Account, error) {
 	slg, ok := util.ToValidName(name)
 	if !ok {
 		return nil, fmt.Errorf("name '%s' is not available", name)
@@ -177,6 +181,7 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member)
 		Username:  slg,
 		Members:   members,
 		CreatedAt: time.Now(),
+		FFSInfo:   ffsInfo,
 	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
@@ -198,7 +203,7 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member)
 			"role":     int32(m.Role),
 		}
 	}
-	if _, err = a.col.InsertOne(ctx, bson.M{
+	data := bson.M{
 		"_id":        id,
 		"type":       doc.Type,
 		"secret":     secret,
@@ -206,10 +211,33 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member)
 		"username":   doc.Username,
 		"members":    rmems,
 		"created_at": doc.CreatedAt,
-	}); err != nil {
+	}
+	encodeFFSInfo(data, doc.FFSInfo)
+	if _, err = a.col.InsertOne(ctx, data); err != nil {
 		return nil, err
 	}
 	return doc, nil
+}
+
+func (a *Accounts) UpdateFFSInfo(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) (*Account, error) {
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	update := bson.M{}
+	encodeFFSInfo(update, ffsInfo)
+	res, err := a.col.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if res.ModifiedCount != 1 {
+		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
+	}
+	return a.Get(ctx, key)
 }
 
 func (a *Accounts) Get(ctx context.Context, key crypto.PubKey) (*Account, error) {
@@ -577,5 +605,6 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		Members:          mems,
 		BucketsTotalSize: totalSize,
 		CreatedAt:        created,
+		FFSInfo:          decodeFFSInfo(raw),
 	}, nil
 }

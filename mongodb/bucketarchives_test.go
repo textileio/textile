@@ -10,37 +10,35 @@ import (
 	. "github.com/textileio/textile/mongodb"
 )
 
-func TestFFSInstances_Create(t *testing.T) {
+func TestBucketArchives_Create(t *testing.T) {
 	db := newDB(t)
-	col, err := NewFFSInstances(context.Background(), db)
+	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1", "ffstoken1", "waddr1")
+	err = col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
 }
 
-func TestFFSInstances_Get(t *testing.T) {
+func TestBucketArchives_Get(t *testing.T) {
 	db := newDB(t)
-	col, err := NewFFSInstances(context.Background(), db)
+	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1", "ffstoken1", "waddr1")
+	err = col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), "buckkey1")
 	require.NoError(t, err)
 	require.Equal(t, "buckkey1", got.BucketKey)
-	require.Equal(t, "ffstoken1", got.FFSToken)
-	require.Equal(t, "waddr1", got.WalletAddr)
 }
 
-func TestFFSInstances_Replace(t *testing.T) {
+func TestBucketArchives_Replace(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
-	col, err := NewFFSInstances(context.Background(), db)
+	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1", "ffstoken1", "waddr1")
+	err = col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
 
 	ffs, err := col.Get(context.Background(), "buckkey1")

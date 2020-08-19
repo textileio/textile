@@ -15,7 +15,6 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	pc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
 	"github.com/textileio/powergate/health"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
@@ -28,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var powMultiaddr = "127.0.0.1:5002"
+var powAddr = "127.0.0.1:5002"
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
@@ -41,13 +40,15 @@ func TestCreateBucket(t *testing.T) {
 	ctx, _, client, shutdown := setup(t)
 	defer shutdown(true)
 
+	// FFS is now created for the user, so it should exist after spinup
 	lst, err := powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(lst))
+	require.Equal(t, 1, len(lst))
 
 	_, err = client.Init(ctx)
 	require.NoError(t, err)
 
+	// No new FFS instance should be created for the bucket
 	lst, err = powc.FFS.ListAPI(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(lst))
@@ -258,22 +259,9 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 
 func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func(bool)) {
 	conf := apitest.DefaultTextileConfig(t)
-	conf.AddrPowergateAPI = powMultiaddr
+	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	conf.FFSDefaultConfig = &ffs.StorageConfig{
-		Hot: ffs.HotConfig{
-			Enabled: true,
-			Ipfs:    ffs.IpfsConfig{AddTimeout: 10},
-		},
-		Cold: ffs.ColdConfig{
-			Enabled: true,
-			Filecoin: ffs.FilConfig{
-				RepFactor:       1,
-				DealMinDuration: 800000,
-			},
-		},
-	}
 	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
@@ -345,8 +333,9 @@ func spinup(t util.TestingTWithCleanup) *pc.Client {
 	var err error
 	limit := 30
 	retries := 0
+	require.Nil(t, err)
 	for retries < limit {
-		powc, err = pc.NewClient(powMultiaddr, grpc.WithInsecure())
+		powc, err = pc.NewClient(powAddr, grpc.WithInsecure())
 		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		s, _, err := powc.Health.Check(ctx)

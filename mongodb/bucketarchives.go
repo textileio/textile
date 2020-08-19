@@ -7,11 +7,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FFSInstance struct {
-	BucketKey  string   `bson:"_id"`
-	FFSToken   string   `bson:"ffs_token"`
-	WalletAddr string   `bson:"ffs_walletaddr"`
-	Archives   Archives `bson:"archives"`
+type BucketArchive struct {
+	BucketKey string   `bson:"_id"`
+	Archives  Archives `bson:"archives"`
 }
 
 type Archives struct {
@@ -29,26 +27,25 @@ type Archive struct {
 	CreatedAt  int64  `bson:"created_at"`
 }
 
-type FFSInstances struct {
+type BucketArchives struct {
 	col *mongo.Collection
 }
 
-func NewFFSInstances(_ context.Context, db *mongo.Database) (*FFSInstances, error) {
-	s := &FFSInstances{col: db.Collection("ffsinstances")}
+func NewBucketArchives(_ context.Context, db *mongo.Database) (*BucketArchives, error) {
+	// ToDo: Let's rename this collection to bucketarchives when there is a data loss event like a powergate reset
+	s := &BucketArchives{col: db.Collection("ffsinstances")}
 	return s, nil
 }
 
-func (k *FFSInstances) Create(ctx context.Context, bucketKey, ffsToken, waddr string) error {
-	ffs := &FFSInstance{
-		BucketKey:  bucketKey,
-		FFSToken:   ffsToken,
-		WalletAddr: waddr,
+func (k *BucketArchives) Create(ctx context.Context, bucketKey string) error {
+	ffs := &BucketArchive{
+		BucketKey: bucketKey,
 	}
 	_, err := k.col.InsertOne(ctx, ffs)
 	return err
 }
 
-func (k *FFSInstances) Replace(ctx context.Context, ffs *FFSInstance) error {
+func (k *BucketArchives) Replace(ctx context.Context, ffs *BucketArchive) error {
 	res, err := k.col.ReplaceOne(ctx, bson.M{"_id": ffs.BucketKey}, ffs)
 	if err != nil {
 		return err
@@ -59,12 +56,12 @@ func (k *FFSInstances) Replace(ctx context.Context, ffs *FFSInstance) error {
 	return nil
 }
 
-func (k *FFSInstances) Get(ctx context.Context, bucketKey string) (*FFSInstance, error) {
+func (k *BucketArchives) Get(ctx context.Context, bucketKey string) (*BucketArchive, error) {
 	res := k.col.FindOne(ctx, bson.M{"_id": bucketKey})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
-	var raw FFSInstance
+	var raw BucketArchive
 	if err := res.Decode(&raw); err != nil {
 		return nil, err
 	}

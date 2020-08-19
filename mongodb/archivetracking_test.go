@@ -2,10 +2,12 @@ package mongodb_test
 
 import (
 	"context"
+	"crypto/rand"
 	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
@@ -23,7 +25,9 @@ func TestArchiveTracking_Create(t *testing.T) {
 	bucketKey := "buckKey"
 	jid := ffs.JobID("jobID1")
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
 	require.NoError(t, err)
 }
 
@@ -38,7 +42,9 @@ func TestArchiveTracking_Get(t *testing.T) {
 	bucketKey := "buckKey"
 	jid := ffs.JobID("jobID1")
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
 	require.NoError(t, err)
 
 	ta, err := col.Get(ctx, jid)
@@ -48,6 +54,7 @@ func TestArchiveTracking_Get(t *testing.T) {
 	require.Equal(t, dbToken, ta.DbToken)
 	require.Equal(t, bucketKey, ta.BucketKey)
 	require.Equal(t, bucketRoot, ta.BucketRoot)
+	require.Equal(t, key, ta.Owner)
 	require.True(t, time.Since(ta.ReadyAt) > 0)
 	require.True(t, ta.Active)
 }
@@ -67,7 +74,9 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	bucketKey := "buckKey"
 	jid := ffs.JobID("jobID1")
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
 	require.NoError(t, err)
 
 	tas, err = col.GetReadyToCheck(ctx, 10)
@@ -78,6 +87,7 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	require.Equal(t, dbToken, tas[0].DbToken)
 	require.Equal(t, bucketKey, tas[0].BucketKey)
 	require.Equal(t, bucketRoot, tas[0].BucketRoot)
+	require.Equal(t, key, tas[0].Owner)
 	require.True(t, time.Since(tas[0].ReadyAt) > 0)
 	require.True(t, tas[0].Active)
 }
@@ -92,7 +102,9 @@ func TestArchiveTracking_Finalize(t *testing.T) {
 	bucketKey := "buckKey"
 	jid := ffs.JobID("jobID1")
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
 	require.NoError(t, err)
 
 	cause := "all good"
@@ -120,7 +132,9 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 	bucketKey := "buckKey"
 	jid := ffs.JobID("jobID1")
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot)
+	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
 	require.NoError(t, err)
 
 	err = col.Reschedule(ctx, jid, time.Hour+time.Second*5, "retry me")

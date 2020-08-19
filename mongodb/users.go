@@ -15,6 +15,7 @@ type User struct {
 	Key              crypto.PubKey
 	BucketsTotalSize int64
 	CreatedAt        time.Time
+	FFSInfo          *FFSInfo
 }
 
 func NewUserContext(ctx context.Context, user *User) context.Context {
@@ -34,26 +35,50 @@ func NewUsers(_ context.Context, db *mongo.Database) (*Users, error) {
 	return &Users{col: db.Collection("users")}, nil
 }
 
-func (u *Users) Create(ctx context.Context, key crypto.PubKey) error {
+func (u *Users) Create(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) error {
 	doc := &User{
 		Key:       key,
 		CreatedAt: time.Now(),
+		FFSInfo:   ffsInfo,
 	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
 		return err
 	}
-	if _, err := u.col.InsertOne(ctx, bson.M{
+	data := bson.M{
 		"_id":                id,
 		"buckets_total_size": int64(0),
 		"created_at":         doc.CreatedAt,
-	}); err != nil {
+	}
+	encodeFFSInfo(data, doc.FFSInfo)
+	if _, err := u.col.InsertOne(ctx, data); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
 			return nil
 		}
 		return err
 	}
 	return nil
+}
+
+func (u *Users) UpdateFFSInfo(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) (*User, error) {
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	update := bson.M{}
+	encodeFFSInfo(update, ffsInfo)
+	res, err := u.col.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if res.ModifiedCount != 1 {
+		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
+	}
+	return u.Get(ctx, key)
 }
 
 func (u *Users) Get(ctx context.Context, key crypto.PubKey) (*User, error) {
@@ -122,5 +147,6 @@ func decodeUser(raw bson.M) (*User, error) {
 		Key:              key,
 		BucketsTotalSize: bucketsTotalSize,
 		CreatedAt:        created,
+		FFSInfo:          decodeFFSInfo(raw),
 	}, nil
 }

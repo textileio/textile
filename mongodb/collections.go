@@ -26,7 +26,7 @@ type Collections struct {
 	Threads         *Threads
 	APIKeys         *APIKeys
 	IPNSKeys        *IPNSKeys
-	FFSInstances    *FFSInstances
+	BucketArchives  *BucketArchives
 	ArchiveTracking *ArchiveTracking
 
 	Users *Users
@@ -75,7 +75,7 @@ func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collect
 	if err != nil {
 		return nil, err
 	}
-	c.FFSInstances, err = NewFFSInstances(ctx, db)
+	c.BucketArchives, err = NewBucketArchives(ctx, db)
 	if err != nil {
 		return nil, err
 	}

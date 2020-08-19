@@ -22,6 +22,7 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -1606,15 +1607,66 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
 
-	ffsi, err := s.Collections.FFSInstances.Get(ctx, req.GetKey())
-	if err != nil {
-		return nil, fmt.Errorf("getting ffs instance data: %s", err)
+	var ffsInfo *mdb.FFSInfo
+	var owner crypto.PubKey
+	var isAccount bool
+	if acct := accountFromContext(ctx); acct != nil {
+		ffsInfo = acct.FFSInfo
+		owner = acct.Key
+		isAccount = true
+	} else if user := userFromContext(ctx); user != nil {
+		ffsInfo = user.FFSInfo
+		owner = user.Key
+		isAccount = false
+	} else {
+		return nil, fmt.Errorf("no user/account found in request context")
 	}
 
-	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsi.FFSToken)
+	createNewFFS := func() error {
+		id, token, err := s.PGClient.FFS.Create(ctx)
+		if err != nil {
+			return fmt.Errorf("creating new ffs instance: %v", err)
+		}
+		if isAccount {
+			_, err = s.Collections.Accounts.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+		} else {
+			_, err = s.Collections.Users.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+		}
+		if err != nil {
+			return fmt.Errorf("updating user/account with new ffs information: %v", err)
+		}
+		return nil
+	}
+
+	tryAgain := fmt.Errorf("new ffs instance created, please try again in 30 seconds to allow time for wallet funding")
+
+	// case where account/user was created before bucket archives were enabled.
+	// create a ffs instance for them.
+	if ffsInfo == nil {
+		if err := createNewFFS(); err != nil {
+			return nil, err
+		}
+		return nil, tryAgain
+	}
+
+	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+
+	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
+	if err != nil {
+		if err.Error() != "auth token not found" {
+			return nil, fmt.Errorf("getting ffs default StorageConfig: %v", err)
+		} else {
+			// case where the ffs token is no longer valid because powergate was reset.
+			// create a new ffs instance for them.
+			if err := createNewFFS(); err != nil {
+				return nil, err
+			}
+			return nil, tryAgain
+		}
+	}
 
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := s.PGClient.Wallet.Balance(ctx, ffsi.WalletAddr)
+	bal, err := s.PGClient.Wallet.Balance(ctx, defConf.Cold.Filecoin.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
 	}
@@ -1622,9 +1674,14 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, buckets.ErrZeroBalance
 	}
 
+	ba, err := s.Collections.BucketArchives.Get(ctx, req.GetKey())
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs instance data: %s", err)
+	}
+
 	var jid ffs.JobID
-	firstTimeArchive := ffsi.Archives.Current.JobID == ""
-	if firstTimeArchive || ffsi.Archives.Current.Aborted { // Case 0.
+	firstTimeArchive := ba.Archives.Current.JobID == ""
+	if firstTimeArchive || ba.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
 		jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
@@ -1632,7 +1689,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("pushing config: %s", err)
 		}
 	} else {
-		oldCid, err := cid.Cast(ffsi.Archives.Current.Cid)
+		oldCid, err := cid.Cast(ba.Archives.Current.Cid)
 		if err != nil {
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
@@ -1646,7 +1703,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
 		// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
 		if oldCid.Equals(p.Cid()) { // Case 1.
-			switch ffs.JobStatus(ffsi.Archives.Current.JobStatus) {
+			switch ffs.JobStatus(ba.Archives.Current.JobStatus) {
 			// Case 1.a.
 			case ffs.Success:
 				return nil, fmt.Errorf("the same bucket cid is already archived successfully")
@@ -1660,7 +1717,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
 			default:
-				return nil, fmt.Errorf("unexpected current archive status: %d", ffsi.Archives.Current.JobStatus)
+				return nil, fmt.Errorf("unexpected current archive status: %d", ba.Archives.Current.JobStatus)
 			}
 		} else { // Case 2.
 			jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
@@ -1671,19 +1728,19 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 		// Include the existing archive in history,
 		// since we're going to set a new _current_ archive.
-		ffsi.Archives.History = append(ffsi.Archives.History, ffsi.Archives.Current)
+		ba.Archives.History = append(ba.Archives.History, ba.Archives.Current)
 	}
-	ffsi.Archives.Current = mdb.Archive{
+	ba.Archives.Current = mdb.Archive{
 		Cid:       p.Cid().Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid.String(),
 		JobStatus: int(ffs.Queued),
 	}
-	if err := s.Collections.FFSInstances.Replace(ctx, ffsi); err != nil {
+	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
 		return nil, fmt.Errorf("updating ffs instance data: %s", err)
 	}
 
-	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.GetKey(), jid, p.Cid()); err != nil {
+	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.GetKey(), jid, p.Cid(), owner); err != nil {
 		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
 	}
 
@@ -1698,12 +1755,23 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 		return ErrArchivingFeatureDisabled
 	}
 
+	var ffsInfo *mdb.FFSInfo
+	if acct := accountFromContext(server.Context()); acct != nil {
+		ffsInfo = acct.FFSInfo
+	} else if user := userFromContext(server.Context()); user != nil {
+		ffsInfo = user.FFSInfo
+	}
+
+	if ffsInfo == nil {
+		return fmt.Errorf("no user/account or no FFS info associated with user/account")
+	}
+
 	var err error
 	ctx, cancel := context.WithCancel(server.Context())
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), ch)
+		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), ffsInfo.Token, ch)
 		close(ch)
 	}()
 	for s := range ch {
