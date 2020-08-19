@@ -11,7 +11,7 @@ type FFSInfo struct {
 }
 
 const (
-	key      = "ffs_info"
+	key      = "pow_info"
 	idKey    = "id"
 	tokenKey = "token"
 )
