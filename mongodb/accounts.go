@@ -219,6 +219,27 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	return doc, nil
 }
 
+func (a *Accounts) UpdateFFSInfo(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) (*Account, error) {
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	update := bson.M{}
+	encodeFFSInfo(update, ffsInfo)
+	res, err := a.col.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if res.ModifiedCount != 1 {
+		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
+	}
+	return a.Get(ctx, key)
+}
+
 func (a *Accounts) Get(ctx context.Context, key crypto.PubKey) (*Account, error) {
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {

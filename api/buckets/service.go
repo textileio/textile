@@ -1609,31 +1609,58 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	var ffsInfo *mdb.FFSInfo
 	var owner crypto.PubKey
+	var isAccount bool
 	if acct := accountFromContext(ctx); acct != nil {
 		ffsInfo = acct.FFSInfo
 		owner = acct.Key
+		isAccount = true
 	} else if user := userFromContext(ctx); user != nil {
 		ffsInfo = user.FFSInfo
 		owner = user.Key
+		isAccount = false
 	}
 
+	createNewFFS := func() error {
+		id, token, err := s.PGClient.FFS.Create(ctx)
+		if err != nil {
+			return fmt.Errorf("creating new ffs instance: %v", err)
+		}
+		if isAccount {
+			_, err = s.Collections.Accounts.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+		} else {
+			_, err = s.Collections.Users.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+		}
+		if err != nil {
+			return fmt.Errorf("updating user/account with new ffs information: %v", err)
+		}
+		return nil
+	}
+
+	tryAgain := fmt.Errorf("new ffs instance created, please try again in 30 seconds to allow time for wallet funding")
+
+	// case where account/user was created before bucket archives were enabled.
+	// create a ffs instance for them.
 	if ffsInfo == nil {
-		return nil, fmt.Errorf("no account or no FFS info associated with account")
+		if err := createNewFFS(); err != nil {
+			return nil, err
+		}
+		return nil, tryAgain
 	}
 
 	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
 
-	// here
-
-	ba, err := s.Collections.BucketArchives.Get(ctx, req.GetKey())
-	if err != nil {
-		return nil, fmt.Errorf("getting ffs instance data: %s", err)
-	}
-
-	// Get the default StorageConfig
 	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
-		return nil, fmt.Errorf("getting ffs default StorageConfig: %s", err)
+		if err.Error() != "auth token not found" {
+			return nil, fmt.Errorf("getting ffs default StorageConfig: %v", err)
+		} else {
+			// case where the ffs token is no longer valid because powergate was reset.
+			// create a new ffs instance for them.
+			if err := createNewFFS(); err != nil {
+				return nil, err
+			}
+			return nil, tryAgain
+		}
 	}
 
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
@@ -1643,6 +1670,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 	if bal == 0 {
 		return nil, buckets.ErrZeroBalance
+	}
+
+	ba, err := s.Collections.BucketArchives.Get(ctx, req.GetKey())
+	if err != nil {
+		return nil, fmt.Errorf("getting ffs instance data: %s", err)
 	}
 
 	var jid ffs.JobID
@@ -1731,8 +1763,6 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 	if ffsInfo == nil {
 		return fmt.Errorf("no account or no FFS info associated with account")
 	}
-
-	// here
 
 	var err error
 	ctx, cancel := context.WithCancel(server.Context())
