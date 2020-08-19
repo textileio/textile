@@ -42,6 +42,27 @@ func TestAccounts_CreateDev(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAccounts_UpdateFFSInfo(t *testing.T) {
+	db := newDB(t)
+	col, err := NewAccounts(context.Background(), db)
+	require.NoError(t, err)
+
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
+	require.NoError(t, err)
+	assert.Equal(t, "id", created.FFSInfo.ID)
+	assert.Equal(t, "token", created.FFSInfo.Token)
+	updated, err := col.UpdateFFSInfo(context.Background(), created.Key, &FFSInfo{ID: "id2", Token: "token2"})
+	require.NoError(t, err)
+	assert.Equal(t, created.Key, updated.Key)
+	assert.Equal(t, "id2", updated.FFSInfo.ID)
+	assert.Equal(t, "token2", updated.FFSInfo.Token)
+	got, err := col.Get(context.Background(), created.Key)
+	require.NoError(t, err)
+	assert.Equal(t, created.Key, got.Key)
+	assert.Equal(t, "id2", got.FFSInfo.ID)
+	assert.Equal(t, "token2", got.FFSInfo.Token)
+}
+
 func TestAccounts_Get(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
