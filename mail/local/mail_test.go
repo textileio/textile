@@ -159,9 +159,9 @@ func setup(t *testing.T) (m *Mail, key string, secret string) {
 	})
 
 	dev := apitest.Signup(t, clients.Hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	res, err := clients.Hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, true)
+	res, err := clients.Hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, true)
 	require.NoError(t, err)
-	return NewMail(clients, DefaultConfConfig()), res.Key, res.Secret
+	return NewMail(clients, DefaultConfConfig()), res.KeyInfo.Key, res.KeyInfo.Secret
 }
 
 func getConf(t *testing.T, key, secret string) Config {

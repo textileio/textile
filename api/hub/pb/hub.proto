@@ -100,7 +100,7 @@ message GetOrgResponse {
 message ListOrgsRequest {}
 
 message ListOrgsResponse {
-    repeated GetOrgResponse list = 1;
+    repeated OrgInfo list = 1;
 }
 
 message RemoveOrgRequest {}

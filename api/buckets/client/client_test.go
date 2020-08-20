@@ -27,11 +27,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestClient_Init(t *testing.T) {
+func TestClient_Create(t *testing.T) {
 	t.Parallel()
 	ctx, client := setup(t)
 
-	buck, err := client.Init(ctx, c.WithName("mybuck"))
+	buck, err := client.Create(ctx, c.WithName("mybuck"))
 	require.NoError(t, err)
 	assert.NotEmpty(t, buck.Root)
 	assert.NotEmpty(t, buck.Root.Key)
@@ -42,7 +42,7 @@ func TestClient_Init(t *testing.T) {
 	assert.NotEmpty(t, buck.Links)
 	assert.NotEmpty(t, buck.Seed)
 
-	pbuck, err := client.Init(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
+	pbuck, err := client.Create(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
 	require.NoError(t, err)
 	assert.NotEmpty(t, pbuck.Root)
 	assert.NotEmpty(t, pbuck.Root.Key)
@@ -60,9 +60,9 @@ func TestClient_InitExceedLimit(t *testing.T) {
 	conf.BucketsMaxNumberPerThread = 1
 	ctx, client := setupWithConf(t, conf)
 
-	_, err := client.Init(ctx, c.WithName("mybuck"))
+	_, err := client.Create(ctx, c.WithName("mybuck"))
 	require.NoError(t, err)
-	_, err = client.Init(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
+	_, err = client.Create(ctx, c.WithName("myprivatebuck"), c.WithPrivate(true))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), buckets.ErrTooManyBucketsInThread.Error())
 }
@@ -101,7 +101,7 @@ func initWithCid(t *testing.T, ctx context.Context, client *c.Client, private bo
 	)
 	require.NoError(t, err)
 	initCid := p.Cid()
-	buck, err := client.Init(ctx, c.WithCid(initCid), c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithCid(initCid), c.WithPrivate(private))
 	require.NoError(t, err)
 
 	// Assert top level bucket.
@@ -127,7 +127,7 @@ func TestClient_Root(t *testing.T) {
 	t.Parallel()
 	ctx, client := setup(t)
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
 	root, err := client.Root(ctx, buck.Root.Key)
@@ -143,13 +143,13 @@ func TestClient_Links(t *testing.T) {
 	t.Parallel()
 	ctx, client := setup(t)
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
 	links, err := client.Links(ctx, buck.Root.Key)
 	require.NoError(t, err)
-	assert.NotEmpty(t, links.URL)
-	assert.NotEmpty(t, links.IPNS)
+	assert.NotEmpty(t, links.Url)
+	assert.NotEmpty(t, links.Ipns)
 }
 
 func TestClient_List(t *testing.T) {
@@ -162,7 +162,7 @@ func TestClient_List(t *testing.T) {
 		assert.Equal(t, 0, len(rep.Roots))
 	})
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestClient_ListPath(t *testing.T) {
 }
 
 func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-	buck, err := client.Init(ctx, c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
 	t.Run("empty", func(t *testing.T) {
@@ -268,7 +268,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 	conf.BucketsMaxSize = maxBucketSize
 	ctx, client := setupWithConf(t, conf)
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
 	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
@@ -299,7 +299,7 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 	conf.BucketsTotalMaxSize = maxBucketsSize
 	ctx, client := setupWithConf(t, conf)
 
-	buck, err := client.Init(ctx)
+	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
 	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
@@ -309,7 +309,7 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 
 	// Create a second bucket. Since the limit is bucket-wide
 	// should fail.
-	buck, err = client.Init(ctx)
+	buck, err = client.Create(ctx)
 	require.NoError(t, err)
 
 	file2, err := os.Open("testdata/file2.jpg")
@@ -335,7 +335,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 	conf.BucketsTotalMaxSize = maxBucketsSize
 	ctx, client := setupWithConf(t, conf)
 
-	buck, err := client.Init(ctx, c.WithPrivate(true))
+	buck, err := client.Create(ctx, c.WithPrivate(true))
 	require.NoError(t, err)
 
 	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
@@ -345,7 +345,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 
 	// Create a second bucket. Since the limit is bucket-wide
 	// should fail.
-	buck, err = client.Init(ctx)
+	buck, err = client.Create(ctx)
 	require.NoError(t, err)
 
 	file2, err := os.Open("testdata/file2.jpg")
@@ -357,7 +357,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 }
 
 func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-	buck, err := client.Init(ctx, c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -488,7 +488,7 @@ func setPath(t *testing.T, private bool) {
 			)
 			require.NoError(t, err)
 
-			buck, err := client.Init(ctx, c.WithPrivate(private))
+			buck, err := client.Create(ctx, c.WithPrivate(private))
 			require.NoError(t, err)
 
 			_, err = client.SetPath(ctx, buck.Root.Key, innerPath.Path, p.Cid())
@@ -546,7 +546,7 @@ func TestClient_PullPath(t *testing.T) {
 }
 
 func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-	buck, err := client.Init(ctx, c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
 	file, err := os.Open("testdata/file1.jpg")
@@ -595,7 +595,7 @@ func TestClient_Remove(t *testing.T) {
 }
 
 func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-	buck, err := client.Init(ctx, c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")
@@ -629,7 +629,7 @@ func TestClient_RemovePath(t *testing.T) {
 }
 
 func removePath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-	buck, err := client.Init(ctx, c.WithPrivate(private))
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
 	file1, err := os.Open("testdata/file1.jpg")

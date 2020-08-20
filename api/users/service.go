@@ -30,7 +30,7 @@ type Service struct {
 	Mail        *tdb.Mail
 }
 
-func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadReply, error) {
+func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadResponse, error) {
 	log.Debugf("received get thread request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -44,14 +44,14 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 		}
 		return nil, err
 	}
-	return &pb.GetThreadReply{
-		ID:   thrd.ID.Bytes(),
+	return &pb.GetThreadResponse{
+		Id:   thrd.ID.Bytes(),
 		Name: thrd.Name,
-		IsDB: thrd.IsDB,
+		IsDb: thrd.IsDB,
 	}, nil
 }
 
-func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsReply, error) {
+func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsResponse, error) {
 	log.Debugf("received list threads request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -62,14 +62,14 @@ func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	reply := &pb.ListThreadsReply{
-		List: make([]*pb.GetThreadReply, len(list)),
+	reply := &pb.ListThreadsResponse{
+		List: make([]*pb.GetThreadResponse, len(list)),
 	}
 	for i, t := range list {
-		reply.List[i] = &pb.GetThreadReply{
-			ID:   t.ID.Bytes(),
+		reply.List[i] = &pb.GetThreadResponse{
+			Id:   t.ID.Bytes(),
 			Name: t.Name,
-			IsDB: t.IsDB,
+			IsDb: t.IsDB,
 		}
 	}
 	return reply, nil
@@ -86,7 +86,7 @@ var (
 	ErrMailboxNotFound = errors.New("mail not found")
 )
 
-func (s *Service) SetupMailbox(ctx context.Context, _ *pb.SetupMailboxRequest) (*pb.SetupMailboxReply, error) {
+func (s *Service) SetupMailbox(ctx context.Context, _ *pb.SetupMailboxRequest) (*pb.SetupMailboxResponse, error) {
 	log.Debugf("received setup mailbox request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -99,12 +99,12 @@ func (s *Service) SetupMailbox(ctx context.Context, _ *pb.SetupMailboxRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SetupMailboxReply{
-		MailboxID: box.Bytes(),
+	return &pb.SetupMailboxResponse{
+		MailboxId: box.Bytes(),
 	}, nil
 }
 
-func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageReply, error) {
+func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
 	log.Debugf("received send message request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -160,13 +160,13 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 	if _, err := s.Mail.Sentbox.Create(ctx, sentbox, fromMsg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	return &pb.SendMessageReply{
-		ID:        msgID,
+	return &pb.SendMessageResponse{
+		Id:        msgID,
 		CreatedAt: now,
 	}, nil
 }
 
-func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessagesRequest) (*pb.ListMessagesReply, error) {
+func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessagesRequest) (*pb.ListInboxMessagesResponse, error) {
 	log.Debugf("received list inbox messages request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -195,10 +195,10 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 			return nil, err
 		}
 	}
-	return &pb.ListMessagesReply{Messages: pblist}, nil
+	return &pb.ListInboxMessagesResponse{Messages: pblist}, nil
 }
 
-func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentboxMessagesRequest) (*pb.ListMessagesReply, error) {
+func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentboxMessagesRequest) (*pb.ListSentboxMessagesResponse, error) {
 	log.Debugf("received list sentbox messages request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -227,7 +227,7 @@ func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentboxMe
 			return nil, err
 		}
 	}
-	return &pb.ListMessagesReply{Messages: pblist}, nil
+	return &pb.ListSentboxMessagesResponse{Messages: pblist}, nil
 }
 
 func inboxMessageToPb(m *tdb.InboxMessage) (*pb.Message, error) {
@@ -240,7 +240,7 @@ func inboxMessageToPb(m *tdb.InboxMessage) (*pb.Message, error) {
 		return nil, err
 	}
 	return &pb.Message{
-		ID:        m.ID,
+		Id:        m.ID,
 		From:      m.From,
 		To:        m.To,
 		Body:      body,
@@ -260,7 +260,7 @@ func sentboxMessageToPb(m *tdb.SentboxMessage) (*pb.Message, error) {
 		return nil, err
 	}
 	return &pb.Message{
-		ID:        m.ID,
+		Id:        m.ID,
 		From:      m.From,
 		To:        m.To,
 		Body:      body,
@@ -301,7 +301,7 @@ func getMailboxQuery(seek string, limit int64, asc bool, stat int32) (q *db.Quer
 	return q, nil
 }
 
-func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessageRequest) (*pb.ReadInboxMessageReply, error) {
+func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessageRequest) (*pb.ReadInboxMessageResponse, error) {
 	log.Debugf("received read inbox message request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -315,7 +315,7 @@ func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessage
 		return nil, err
 	}
 	msg := &tdb.InboxMessage{}
-	err = s.Mail.Inbox.Get(ctx, box, req.ID, msg, tdb.WithToken(dbToken))
+	err = s.Mail.Inbox.Get(ctx, box, req.Id, msg, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -323,12 +323,12 @@ func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessage
 	if err := s.Mail.Inbox.Save(ctx, box, msg, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	return &pb.ReadInboxMessageReply{
+	return &pb.ReadInboxMessageResponse{
 		ReadAt: msg.ReadAt,
 	}, nil
 }
 
-func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
+func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteInboxMessageRequest) (*pb.DeleteInboxMessageResponse, error) {
 	log.Debugf("received delete inbox message request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -341,13 +341,13 @@ func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteMessageR
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Mail.Inbox.Delete(ctx, box, req.ID, tdb.WithToken(dbToken)); err != nil {
+	if err := s.Mail.Inbox.Delete(ctx, box, req.Id, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	return &pb.DeleteMessageReply{}, nil
+	return &pb.DeleteInboxMessageResponse{}, nil
 }
 
-func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteMessageRequest) (*pb.DeleteMessageReply, error) {
+func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentboxMessageRequest) (*pb.DeleteSentboxMessageResponse, error) {
 	log.Debugf("received delete sentbox message request")
 
 	user, ok := mdb.UserFromContext(ctx)
@@ -360,10 +360,10 @@ func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteMessag
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Mail.Sentbox.Delete(ctx, box, req.ID, tdb.WithToken(dbToken)); err != nil {
+	if err := s.Mail.Sentbox.Delete(ctx, box, req.Id, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	return &pb.DeleteMessageReply{}, nil
+	return &pb.DeleteSentboxMessageResponse{}, nil
 }
 
 func (s *Service) getMailbox(ctx context.Context, key crypto.PubKey) (thread.ID, error) {

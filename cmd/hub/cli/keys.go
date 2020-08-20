@@ -64,9 +64,9 @@ However, for development purposes, you may opt-out of Signature Authentication d
 			secure = true
 		}
 
-		k, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), secure)
+		res, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), secure)
 		cmd.ErrCheck(err)
-		cmd.RenderTable([]string{"key", "secret", "type", "secure"}, [][]string{{k.Key, k.Secret, keyTypeDesc, strconv.FormatBool(secure)}})
+		cmd.RenderTable([]string{"key", "secret", "type", "secure"}, [][]string{{res.KeyInfo.Key, res.KeyInfo.Secret, keyTypeDesc, strconv.FormatBool(secure)}})
 		cmd.Success("Created new API key and secret")
 	},
 }
@@ -154,9 +154,9 @@ func selectKey(ctx context.Context, label, successMsg string) *keyItem {
 
 func keyTypeToString(t pb.KeyType) (s string) {
 	switch t {
-	case pb.KeyType_ACCOUNT:
+	case pb.KeyType_KEY_TYPE_ACCOUNT:
 		return "account"
-	case pb.KeyType_USER:
+	case pb.KeyType_KEY_TYPE_USER:
 		return "user group"
 	}
 	return

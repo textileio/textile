@@ -84,7 +84,7 @@ type Service struct {
 	ArchiveTracker            *archive.Tracker
 }
 
-func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, error) {
+func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse, error) {
 	log.Debugf("received list request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -109,10 +109,10 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListReply, e
 			UpdatedAt: buck.UpdatedAt,
 		}
 	}
-	return &pb.ListReply{Roots: roots}, nil
+	return &pb.ListResponse{Roots: roots}, nil
 }
 
-func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply, error) {
+func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.CreateResponse, error) {
 	log.Debugf("received init request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -161,7 +161,7 @@ func (s *Service) Init(ctx context.Context, req *pb.InitRequest) (*pb.InitReply,
 		seedData = seed.RawData()
 	}
 
-	return &pb.InitReply{
+	return &pb.CreateResponse{
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
@@ -545,7 +545,7 @@ func (s *Service) encryptFileNode(ctx context.Context, n ipld.Node, key []byte) 
 	return s.IPFSClient.ResolveNode(ctx, pth)
 }
 
-func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply, error) {
+func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootResponse, error) {
 	log.Debugf("received root request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -559,7 +559,7 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 	if err != nil {
 		return nil, err
 	}
-	return &pb.RootReply{
+	return &pb.RootResponse{
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
@@ -571,7 +571,7 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootReply,
 	}, nil
 }
 
-func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksReply, error) {
+func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksResponse, error) {
 	log.Debugf("received lists request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -588,7 +588,7 @@ func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksRep
 	return s.createLinks(dbID, buck), nil
 }
 
-func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksReply {
+func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksResponse {
 	var threadLink, wwwLink, ipnsLink string
 	threadLink = fmt.Sprintf("%s/thread/%s/%s/%s", s.GatewayURL, dbID, buckets.CollectionName, buck.Key)
 	if s.DNSManager != nil && s.DNSManager.Domain != "" {
@@ -600,14 +600,14 @@ func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksReply {
 		wwwLink = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
 	}
 	ipnsLink = fmt.Sprintf("%s/ipns/%s", s.GatewayURL, buck.Key)
-	return &pb.LinksReply{
-		URL:  threadLink,
-		WWW:  wwwLink,
-		IPNS: ipnsLink,
+	return &pb.LinksResponse{
+		Url:  threadLink,
+		Www:  wwwLink,
+		Ipns: ipnsLink,
 	}
 }
 
-func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetPathReply, error) {
+func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetPathResponse, error) {
 	log.Debugf("received set path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -682,7 +682,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("saving new bucket state: %s", err)
 	}
-	return &pb.SetPathReply{}, nil
+	return &pb.SetPathResponse{}, nil
 }
 
 func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
@@ -692,7 +692,7 @@ func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
 	return s.pinBlocks(ctx, nodes)
 }
 
-func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.ListPathReply, error) {
+func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.ListPathResponse, error) {
 	log.Debugf("received list path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -715,7 +715,7 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	return rep, nil
 }
 
-func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest) (*pb.ListIpfsPathReply, error) {
+func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest) (*pb.ListIpfsPathResponse, error) {
 	log.Debugf("received list ipfs path request")
 
 	pth := path.New(req.Path)
@@ -723,7 +723,7 @@ func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.ListIpfsPathReply{Item: item}, nil
+	return &pb.ListIpfsPathResponse{Item: item}, nil
 }
 
 // pathToItem returns items at path, optionally including one level down of links.
@@ -873,12 +873,12 @@ func inflateFilePath(buck *tdb.Bucket, filePath string) (path.Path, error) {
 	return npth, nil
 }
 
-func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *tdb.Bucket, pth path.Path, includeNextLevel bool) (*pb.ListPathReply, error) {
+func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *tdb.Bucket, pth path.Path, includeNextLevel bool) (*pb.ListPathResponse, error) {
 	item, err := s.pathToItem(ctx, pth, includeNextLevel, buck.GetEncKey())
 	if err != nil {
 		return nil, err
 	}
-	return &pb.ListPathReply{
+	return &pb.ListPathResponse{
 		Item: item,
 		Root: &pb.Root{
 			Key:       buck.Key,
@@ -891,7 +891,7 @@ func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *tdb.Bucket, 
 	}, nil
 }
 
-func (s *Service) PushPath(server pb.API_PushPathServer) error {
+func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	log.Debugf("received push path request")
 
 	dbID, ok := common.ThreadIDFromContext(server.Context())
@@ -926,17 +926,17 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
 
-	sendEvent := func(event *pb.PushPathReply_Event) error {
-		return server.Send(&pb.PushPathReply{
-			Payload: &pb.PushPathReply_Event_{
+	sendEvent := func(event *pb.PushPathResponse_Event) error {
+		return server.Send(&pb.PushPathResponse{
+			Payload: &pb.PushPathResponse_Event_{
 				Event: event,
 			},
 		})
 	}
 
 	sendErr := func(err error) {
-		if err2 := server.Send(&pb.PushPathReply{
-			Payload: &pb.PushPathReply_Error{
+		if err2 := server.Send(&pb.PushPathResponse{
+			Payload: &pb.PushPathResponse_Error{
 				Error: err.Error(),
 			},
 		}); err2 != nil {
@@ -994,7 +994,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 				continue
 			}
 			if event.Path == nil { // This is a progress event
-				if err := sendEvent(&pb.PushPathReply_Event{
+				if err := sendEvent(&pb.PushPathResponse_Event{
 					Name:  event.Name,
 					Bytes: event.Bytes,
 				}); err != nil {
@@ -1055,7 +1055,7 @@ func (s *Service) PushPath(server pb.API_PushPathServer) error {
 	}
 
 	size := <-chSize
-	if err = sendEvent(&pb.PushPathReply_Event{
+	if err = sendEvent(&pb.PushPathResponse_Event{
 		Path: pth.String(),
 		Size: size,
 		Root: &pb.Root{
@@ -1301,7 +1301,7 @@ func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
 	return int64(stat.CumulativeSize), nil
 }
 
-func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer) error {
+func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPathServer) error {
 	log.Debugf("received pull path request")
 
 	dbID, ok := common.ThreadIDFromContext(server.Context())
@@ -1364,7 +1364,7 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
-			if err := server.Send(&pb.PullPathReply{
+			if err := server.Send(&pb.PullPathResponse{
 				Chunk: buf[:n],
 			}); err != nil {
 				return err
@@ -1379,7 +1379,7 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.API_PullPathServer
 	return nil
 }
 
-func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.API_PullIpfsPathServer) error {
+func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.APIService_PullIpfsPathServer) error {
 	log.Debugf("received ipfs pull path request")
 
 	pth := path.New(req.Path)
@@ -1397,7 +1397,7 @@ func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.API_PullIp
 	for {
 		n, err := file.Read(buf)
 		if n > 0 {
-			if err := server.Send(&pb.PullIpfsPathReply{
+			if err := server.Send(&pb.PullIpfsPathResponse{
 				Chunk: buf[:n],
 			}); err != nil {
 				return err
@@ -1412,7 +1412,7 @@ func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.API_PullIp
 	return nil
 }
 
-func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.RemoveReply, error) {
+func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.RemoveResponse, error) {
 	log.Debugf("received remove request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -1448,7 +1448,7 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 
 	log.Debugf("removed bucket: %s", buck.Key)
-	return &pb.RemoveReply{}, nil
+	return &pb.RemoveResponse{}, nil
 }
 
 func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key []byte) error {
@@ -1458,7 +1458,7 @@ func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key
 	return s.unpinPath(ctx, pth)
 }
 
-func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathReply, error) {
+func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathResponse, error) {
 	log.Debugf("received remove path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -1507,7 +1507,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	go s.IPNSManager.Publish(dirpth, buck.Key)
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
-	return &pb.RemovePathReply{
+	return &pb.RemovePathResponse{
 		Root: &pb.Root{
 			Key:       buck.Key,
 			Name:      buck.Name,
@@ -1584,7 +1584,7 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	return path.IpfsPath(np[0].new.Cid()), nil
 }
 
-func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveReply, error) {
+func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveResponse, error) {
 	log.Debug("received archive request")
 
 	if !s.Buckets.IsArchivingEnabled() {
@@ -1745,10 +1745,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	log.Debug("archived bucket")
-	return &pb.ArchiveReply{}, nil
+	return &pb.ArchiveResponse{}, nil
 }
 
-func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_ArchiveWatchServer) error {
+func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService_ArchiveWatchServer) error {
 	log.Debug("received archive watch")
 
 	if !s.Buckets.IsArchivingEnabled() {
@@ -1775,7 +1775,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 		close(ch)
 	}()
 	for s := range ch {
-		if err := server.Send(&pb.ArchiveWatchReply{Msg: s}); err != nil {
+		if err := server.Send(&pb.ArchiveWatchResponse{Msg: s}); err != nil {
 			return err
 		}
 	}
@@ -1785,7 +1785,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.API_Archiv
 	return nil
 }
 
-func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusReply, error) {
+func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusResponse, error) {
 	log.Debug("received archive status")
 
 	if !s.Buckets.IsArchivingEnabled() {
@@ -1796,29 +1796,29 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	if err != nil {
 		return nil, fmt.Errorf("getting status from last archive: %s", err)
 	}
-	var st pb.ArchiveStatusReply_Status
+	var st pb.ArchiveStatusResponse_Status
 	switch jstatus {
 	case ffs.Success:
-		st = pb.ArchiveStatusReply_Done
+		st = pb.ArchiveStatusResponse_STATUS_DONE
 	case ffs.Queued, ffs.Executing:
-		st = pb.ArchiveStatusReply_Executing
+		st = pb.ArchiveStatusResponse_STATUS_EXECUTING
 	case ffs.Failed:
-		st = pb.ArchiveStatusReply_Failed
+		st = pb.ArchiveStatusResponse_STATUS_FAILED
 	case ffs.Canceled:
-		st = pb.ArchiveStatusReply_Canceled
+		st = pb.ArchiveStatusResponse_STATUS_CANCELED
 	default:
 		return nil, fmt.Errorf("unknown job status %d", jstatus)
 	}
 
 	log.Debug("finished archive status")
-	return &pb.ArchiveStatusReply{
+	return &pb.ArchiveStatusResponse{
 		Key:       req.Key,
 		Status:    st,
 		FailedMsg: failedMsg,
 	}, nil
 }
 
-func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoReply, error) {
+func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoResponse, error) {
 	log.Debug("received archive info")
 
 	if !s.Buckets.IsArchivingEnabled() {
@@ -1841,17 +1841,17 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 		return nil, buckets.ErrNoCurrentArchive
 	}
 
-	deals := make([]*pb.ArchiveInfoReply_Archive_Deal, len(currentArchive.Deals))
+	deals := make([]*pb.ArchiveInfoResponse_Archive_Deal, len(currentArchive.Deals))
 	for i, d := range currentArchive.Deals {
-		deals[i] = &pb.ArchiveInfoReply_Archive_Deal{
+		deals[i] = &pb.ArchiveInfoResponse_Archive_Deal{
 			ProposalCid: d.ProposalCid,
 			Miner:       d.Miner,
 		}
 	}
 	log.Debug("finished archive info")
-	return &pb.ArchiveInfoReply{
+	return &pb.ArchiveInfoResponse{
 		Key: req.Key,
-		Archive: &pb.ArchiveInfoReply_Archive{
+		Archive: &pb.ArchiveInfoResponse_Archive{
 			Cid:   currentArchive.Cid,
 			Deals: deals,
 		},

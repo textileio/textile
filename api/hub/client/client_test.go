@@ -97,19 +97,19 @@ func TestClient_CreateKey(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
-		_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT, true)
+		_, err := client.CreateKey(ctx, pb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.Error(t, err)
 	})
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT, true)
+		res, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.NoError(t, err)
-		assert.NotEmpty(t, key.Key)
-		assert.NotEmpty(t, key.Secret)
-		assert.Equal(t, pb.KeyType_ACCOUNT, key.Type)
-		assert.True(t, key.Secure)
+		assert.NotEmpty(t, res.KeyInfo.Key)
+		assert.NotEmpty(t, res.KeyInfo.Secret)
+		assert.Equal(t, pb.KeyType_KEY_TYPE_ACCOUNT, res.KeyInfo.Type)
+		assert.True(t, res.KeyInfo.Secure)
 	})
 }
 
@@ -119,18 +119,18 @@ func TestClient_InvalidateKey(t *testing.T) {
 	ctx := context.Background()
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_ACCOUNT, true)
+	res, err := client.CreateKey(common.NewSessionContext(ctx, user.Session), pb.KeyType_KEY_TYPE_ACCOUNT, true)
 	require.NoError(t, err)
 
 	t.Run("without session", func(t *testing.T) {
-		err := client.InvalidateKey(ctx, key.Key)
+		err := client.InvalidateKey(ctx, res.KeyInfo.Key)
 		require.Error(t, err)
 	})
 
 	ctx = common.NewSessionContext(ctx, user.Session)
 
 	t.Run("with session", func(t *testing.T) {
-		err := client.InvalidateKey(ctx, key.Key)
+		err := client.InvalidateKey(ctx, res.KeyInfo.Key)
 		require.NoError(t, err)
 		keys, err := client.ListKeys(ctx)
 		require.NoError(t, err)
@@ -152,9 +152,9 @@ func TestClient_ListKeys(t *testing.T) {
 		assert.Empty(t, keys.List)
 	})
 
-	_, err := client.CreateKey(ctx, pb.KeyType_ACCOUNT, true)
+	_, err := client.CreateKey(ctx, pb.KeyType_KEY_TYPE_ACCOUNT, true)
 	require.NoError(t, err)
-	_, err = client.CreateKey(ctx, pb.KeyType_USER, true)
+	_, err = client.CreateKey(ctx, pb.KeyType_KEY_TYPE_USER, true)
 	require.NoError(t, err)
 
 	t.Run("not empty", func(t *testing.T) {
@@ -179,10 +179,10 @@ func TestClient_CreateOrg(t *testing.T) {
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		org, err := client.CreateOrg(common.NewSessionContext(ctx, user.Session), name)
+		res, err := client.CreateOrg(common.NewSessionContext(ctx, user.Session), name)
 		require.NoError(t, err)
-		assert.NotEmpty(t, org.Key)
-		assert.Equal(t, name, org.Name)
+		assert.NotEmpty(t, res.OrgInfo.Key)
+		assert.Equal(t, name, res.OrgInfo.Name)
 	})
 }
 
@@ -193,7 +193,7 @@ func TestClient_GetOrg(t *testing.T) {
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.CreateOrg(ctx, name)
+	res, err := client.CreateOrg(ctx, name)
 	require.NoError(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
@@ -202,9 +202,9 @@ func TestClient_GetOrg(t *testing.T) {
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		got, err := client.GetOrg(common.NewOrgSlugContext(ctx, org.Name))
+		got, err := client.GetOrg(common.NewOrgSlugContext(ctx, res.OrgInfo.Name))
 		require.NoError(t, err)
-		assert.Equal(t, org.Key, got.Key)
+		assert.Equal(t, res.OrgInfo.Key, got.OrgInfo.Key)
 	})
 }
 
@@ -240,7 +240,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.CreateOrg(ctx, name)
+	res, err := client.CreateOrg(ctx, name)
 	require.NoError(t, err)
 
 	t.Run("bad org", func(t *testing.T) {
@@ -252,12 +252,12 @@ func TestClient_RemoveOrg(t *testing.T) {
 	ctx2 := common.NewSessionContext(context.Background(), user2.Session)
 
 	t.Run("bad session", func(t *testing.T) {
-		err := client.RemoveOrg(common.NewOrgSlugContext(ctx2, org.Name))
+		err := client.RemoveOrg(common.NewOrgSlugContext(ctx2, res.OrgInfo.Name))
 		require.Error(t, err)
 	})
 
 	t.Run("good org", func(t *testing.T) {
-		octx := common.NewOrgSlugContext(ctx, org.Name)
+		octx := common.NewOrgSlugContext(ctx, res.OrgInfo.Name)
 		err := client.RemoveOrg(octx)
 		require.NoError(t, err)
 		_, err = client.GetOrg(octx)
@@ -272,9 +272,9 @@ func TestClient_InviteToOrg(t *testing.T) {
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.CreateOrg(ctx, name)
+	res, err := client.CreateOrg(ctx, name)
 	require.NoError(t, err)
-	ctx = common.NewOrgSlugContext(ctx, org.Name)
+	ctx = common.NewOrgSlugContext(ctx, res.OrgInfo.Name)
 
 	t.Run("bad email", func(t *testing.T) {
 		_, err := client.InviteToOrg(ctx, "jane")
@@ -295,9 +295,9 @@ func TestClient_LeaveOrg(t *testing.T) {
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
-	org, err := client.CreateOrg(ctx, name)
+	res, err := client.CreateOrg(ctx, name)
 	require.NoError(t, err)
-	ctx = common.NewOrgSlugContext(ctx, org.Name)
+	ctx = common.NewOrgSlugContext(ctx, res.OrgInfo.Name)
 
 	t.Run("as owner", func(t *testing.T) {
 		err := client.LeaveOrg(ctx)
@@ -350,9 +350,9 @@ func TestClient_IsOrgNameAvailable(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "My-awesome-org", res.Slug)
 
-	org, err := client.CreateOrg(ctx, name)
+	res2, err := client.CreateOrg(ctx, name)
 	require.NoError(t, err)
-	require.Equal(t, res.Slug, org.Slug)
+	require.Equal(t, res.Slug, res2.OrgInfo.Slug)
 
 	_, err = client.IsOrgNameAvailable(ctx, name)
 	require.Error(t, err)

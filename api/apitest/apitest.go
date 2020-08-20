@@ -90,9 +90,9 @@ func NewEmail() string {
 	return fmt.Sprintf("%s@doe.com", NewUsername())
 }
 
-func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config, username, email string) *pb.SignupReply {
+func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config, username, email string) *pb.SignupResponse {
 	var err error
-	var res *pb.SignupReply
+	var res *pb.SignupResponse
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -107,9 +107,9 @@ func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config,
 	return res
 }
 
-func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEmail string) *pb.SigninReply {
+func Signin(t *testing.T, client *client.Client, conf core.Config, usernameOrEmail string) *pb.SigninResponse {
 	var err error
-	var res *pb.SigninReply
+	var res *pb.SigninResponse
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
