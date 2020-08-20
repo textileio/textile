@@ -58,9 +58,9 @@ var (
 
 	// ignoreMethods are not intercepted by the auth.
 	ignoreMethods = []string{
-		"/hub.pb.API/Signup",
-		"/hub.pb.API/Signin",
-		"/hub.pb.API/IsUsernameAvailable",
+		"/api.hub.pb.APIService/Signup",
+		"/api.hub.pb.APIService/Signin",
+		"/api.hub.pb.APIService/IsUsernameAvailable",
 	}
 
 	// blockMethods are always blocked by auth.
