@@ -2,7 +2,9 @@ build:
   roots:
     - .
   excludes:
-    - buildtools
+    - api/buckets/pb/javascript
+    - api/hub/pb/javascript
+    - api/users/pb/javascript
 lint:
   use:
     - DEFAULT
