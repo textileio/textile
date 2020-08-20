@@ -1,44 +1,39 @@
 syntax = "proto3";
-package buckets.pb;
-
-option java_multiple_files = true;
-option java_package = "io.textile.buckets_grpc";
-option java_outer_classname = "TextileBuckets";
-option objc_class_prefix = "TT_BUCKETS";
+package api.buckets.pb;
 
 message Root {
     string key = 1;
     string name = 2;
     string path = 3;
-    int64 createdAt = 4;
-    int64 updatedAt = 5;
+    int64 created_at = 4;
+    int64 updated_at = 5;
     string thread = 6;
 }
 
 message ListRequest {}
 
-message ListReply {
+message ListResponse {
     repeated Root roots = 1;
 }
 
-message InitRequest {
+message CreateRequest {
     string name = 1;
-    string bootstrapCid = 2;
+    string bootstrap_cid = 2;
     bool private = 3;
 }
 
-message InitReply {
+message CreateResponse {
     Root root = 1;
-    LinksReply links = 2;
+    LinksResponse links = 2;
     bytes seed = 3;
-    string seedCid = 4;
+    string seed_cid = 4;
 }
 
 message RootRequest {
     string key = 1;
 }
 
-message RootReply {
+message RootResponse {
     Root root = 1;
 }
 
@@ -46,10 +41,10 @@ message LinksRequest {
     string key = 1;
 }
 
-message LinksReply {
-    string URL = 1;
-    string WWW = 2;
-    string IPNS = 3;
+message LinksResponse {
+    string url = 1;
+    string www = 2;
+    string ipns = 3;
 }
 
 message ListPathRequest {
@@ -57,7 +52,7 @@ message ListPathRequest {
     string path = 2;
 }
 
-message ListPathReply {
+message ListPathResponse {
     ListPathItem item = 1;
     Root root = 2;
 }
@@ -67,7 +62,7 @@ message ListPathItem {
     string name = 2;
     string path = 3;
     int64 size = 4;
-    bool isDir = 5;
+    bool is_dir = 5;
     repeated ListPathItem items = 6;
 }
 
@@ -75,7 +70,7 @@ message ListIpfsPathRequest {
     string path = 1;
 }
 
-message ListIpfsPathReply {
+message ListIpfsPathResponse {
     ListPathItem item = 1;
 }
 
@@ -92,7 +87,7 @@ message PushPathRequest {
     }
 }
 
-message PushPathReply {
+message PushPathResponse {
     oneof payload {
         Event event = 1;
         string error = 2;
@@ -112,7 +107,7 @@ message PullPathRequest {
     string path = 2;
 }
 
-message PullPathReply {
+message PullPathResponse {
     bytes chunk = 1;
 }
 
@@ -121,7 +116,7 @@ message PullIpfsPathRequest {
     string path = 1;
 }
 
-message PullIpfsPathReply {
+message PullIpfsPathResponse {
     bytes chunk = 1;
 }
 
@@ -131,13 +126,13 @@ message SetPathRequest {
     string cid = 3;
 }
 
-message SetPathReply {}
+message SetPathResponse {}
 
 message RemoveRequest {
     string key = 1;
 }
 
-message RemoveReply {}
+message RemoveResponse {}
 
 message RemovePathRequest {
     string key = 1;
@@ -145,7 +140,7 @@ message RemovePathRequest {
     string root = 3;
 }
 
-message RemovePathReply {
+message RemovePathResponse {
     Root root = 1;
 }
 
@@ -153,22 +148,23 @@ message ArchiveRequest {
     string key = 1;
 }
 
-message ArchiveReply {}
+message ArchiveResponse {}
 
 message ArchiveStatusRequest {
     string key = 1;
 }
 
-message ArchiveStatusReply {
+message ArchiveStatusResponse {
     string key = 1;
     Status status = 2;
-    string failedMsg = 3;
+    string failed_msg = 3;
 
     enum Status {
-        Executing = 0;
-        Failed = 1;
-        Done = 2;
-        Canceled = 3;
+        STATUS_UNSPECIFIED = 0;
+        STATUS_EXECUTING = 1;
+        STATUS_FAILED = 2;
+        STATUS_DONE = 3;
+        STATUS_CANCELED = 4;
     }
 }
 
@@ -176,7 +172,7 @@ message ArchiveInfoRequest {
     string key = 1;
 }
 
-message ArchiveInfoReply {
+message ArchiveInfoResponse {
     string key = 1;
     Archive archive = 2;
 
@@ -185,7 +181,7 @@ message ArchiveInfoReply {
         repeated Deal deals = 2;
 
         message Deal {
-            string proposalCid = 1;
+            string proposal_cid = 1;
             string miner = 2;
         }
     }
@@ -195,27 +191,27 @@ message ArchiveWatchRequest {
     string key = 1;
 }
 
-message ArchiveWatchReply {
+message ArchiveWatchResponse {
     string msg = 1;
 }
 
-service API {
-    rpc List(ListRequest) returns (ListReply) {}
-    rpc Init(InitRequest) returns (InitReply) {}
-    rpc Root(RootRequest) returns (RootReply) {}
-    rpc Links(LinksRequest) returns (LinksReply) {}
-    rpc ListPath(ListPathRequest) returns (ListPathReply) {}
-    rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathReply) {}
-    rpc PushPath(stream PushPathRequest) returns (stream PushPathReply) {}
-    rpc PullPath(PullPathRequest) returns (stream PullPathReply) {}
-    rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathReply) {}
-    rpc SetPath(SetPathRequest) returns (SetPathReply) {}
-    rpc Remove(RemoveRequest) returns (RemoveReply) {}
-    rpc RemovePath(RemovePathRequest) returns (RemovePathReply) {}
+service APIService {
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Create(CreateRequest) returns (CreateResponse) {}
+    rpc Root(RootRequest) returns (RootResponse) {}
+    rpc Links(LinksRequest) returns (LinksResponse) {}
+    rpc ListPath(ListPathRequest) returns (ListPathResponse) {}
+    rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathResponse) {}
+    rpc PushPath(stream PushPathRequest) returns (stream PushPathResponse) {}
+    rpc PullPath(PullPathRequest) returns (stream PullPathResponse) {}
+    rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathResponse) {}
+    rpc SetPath(SetPathRequest) returns (SetPathResponse) {}
+    rpc Remove(RemoveRequest) returns (RemoveResponse) {}
+    rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
     
     // Archive
-    rpc Archive(ArchiveRequest) returns (ArchiveReply) {}
-    rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusReply) {}
-    rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoReply) {}
-    rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchReply) {}
+    rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
+    rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusResponse) {}
+    rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoResponse) {}
+    rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchResponse) {}
 }
