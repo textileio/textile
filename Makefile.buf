@@ -6,7 +6,7 @@ include .bingo/Variables.mk
 .PHONY: local
 local: $(BUF)
 	$(BUF) check lint
-	$(BUF) check breaking --against-input '.git#branch=master'
+	# $(BUF) check breaking --against-input '.git#branch=master'
 
 # https is what we run when testing in most CI providers.
 # This does breaking change detection against our remote HTTPS git repository.
@@ -14,7 +14,7 @@ local: $(BUF)
 .PHONY: https
 https: $(BUF)
 	$(BUF) check lint
-	$(BUF) check breaking --against-input "$(HTTPS_GIT)#branch=master"
+	# $(BUF) check breaking --against-input "$(HTTPS_GIT)#branch=master"
 
 # ssh is what we run when testing in CI providers that provide ssh public key authentication.
 # This does breaking change detection against our remote HTTPS ssh repository.
@@ -23,4 +23,4 @@ https: $(BUF)
 .PHONY: ssh
 ssh: $(BUF)
 	$(BUF) check lint
-	$(BUF) check breaking --against-input "$(SSH_GIT)#branch=master"
+	# $(BUF) check breaking --against-input "$(SSH_GIT)#branch=master"
