@@ -233,7 +233,18 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, owner, mdb.APIKeyType(req.Type), req.Secure)
+
+	var keyType mdb.APIKeyType
+	switch req.Type {
+	case pb.KeyType_KEY_TYPE_ACCOUNT:
+		keyType = mdb.AccountKey
+	case pb.KeyType_KEY_TYPE_USER:
+		keyType = mdb.UserKey
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "invalid ekey type: %v", req.Type.String())
+	}
+
+	key, err := s.Collections.APIKeys.Create(ctx, owner, keyType, req.Secure)
 	if err != nil {
 		return nil, err
 	}
