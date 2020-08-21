@@ -211,7 +211,7 @@ func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentboxMe
 	if err != nil {
 		return nil, err
 	}
-	query, err := getMailboxQuery(req.Seek, req.Limit, req.Ascending, 0)
+	query, err := getMailboxQuery(req.Seek, req.Limit, req.Ascending, pb.ListInboxMessagesRequest_STATUS_ALL)
 	if err != nil {
 		return nil, err
 	}
