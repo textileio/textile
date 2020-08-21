@@ -170,11 +170,22 @@ func (c *Client) ListInboxMessages(ctx context.Context, opts ...ListOption) ([]M
 	for _, opt := range opts {
 		opt(args)
 	}
+	var s pb.ListInboxMessagesRequest_Status
+	switch args.status {
+	case All:
+		s = pb.ListInboxMessagesRequest_STATUS_ALL
+	case Read:
+		s = pb.ListInboxMessagesRequest_STATUS_READ
+	case Unread:
+		s = pb.ListInboxMessagesRequest_STATUS_UNREAD
+	default:
+		return nil, fmt.Errorf("unknown status: %v", args.status)
+	}
 	res, err := c.c.ListInboxMessages(ctx, &pb.ListInboxMessagesRequest{
 		Seek:      args.seek,
 		Limit:     int64(args.limit),
 		Ascending: args.ascending,
-		Status:    pb.ListInboxMessagesRequest_Status(args.status),
+		Status:    s,
 	})
 	if err != nil {
 		return nil, err

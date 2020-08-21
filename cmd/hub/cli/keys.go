@@ -64,7 +64,12 @@ However, for development purposes, you may opt-out of Signature Authentication d
 			secure = true
 		}
 
-		res, err := clients.Hub.CreateKey(ctx, pb.KeyType(index), secure)
+		keyType := pb.KeyType_KEY_TYPE_ACCOUNT
+		if index > 0 {
+			keyType = pb.KeyType_KEY_TYPE_USER
+		}
+
+		res, err := clients.Hub.CreateKey(ctx, keyType, secure)
 		cmd.ErrCheck(err)
 		cmd.RenderTable([]string{"key", "secret", "type", "secure"}, [][]string{{res.KeyInfo.Key, res.KeyInfo.Secret, keyTypeDesc, strconv.FormatBool(secure)}})
 		cmd.Success("Created new API key and secret")

@@ -241,18 +241,22 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	case pb.KeyType_KEY_TYPE_USER:
 		keyType = mdb.UserKey
 	default:
-		return nil, status.Errorf(codes.InvalidArgument, "invalid ekey type: %v", req.Type.String())
+		return nil, status.Errorf(codes.InvalidArgument, "invalid key type: %v", req.Type.String())
 	}
 
 	key, err := s.Collections.APIKeys.Create(ctx, owner, keyType, req.Secure)
 	if err != nil {
 		return nil, err
 	}
+	t, err := keyTypeToPb(key.Type)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
+	}
 	return &pb.CreateKeyResponse{
 		KeyInfo: &pb.KeyInfo{
 			Key:     key.Key,
 			Secret:  key.Secret,
-			Type:    pb.KeyType(key.Type),
+			Type:    t,
 			Valid:   true,
 			Threads: 0,
 			Secure:  key.Secure,
@@ -287,6 +291,10 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 	}
 	list := make([]*pb.KeyInfo, len(keys))
 	for i, key := range keys {
+		t, err := keyTypeToPb(key.Type)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
+		}
 		ts, err := s.Collections.Threads.ListByKey(ctx, key.Key)
 		if err != nil {
 			return nil, err
@@ -294,7 +302,7 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 		list[i] = &pb.KeyInfo{
 			Key:     key.Key,
 			Secret:  key.Secret,
-			Type:    pb.KeyType(key.Type),
+			Type:    t,
 			Valid:   key.Valid,
 			Threads: int32(len(ts)),
 			Secure:  key.Secure,
@@ -590,4 +598,15 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 
 	// Finally, delete the account.
 	return s.Collections.Accounts.Delete(ctx, a.Key)
+}
+
+func keyTypeToPb(t mdb.APIKeyType) (pb.KeyType, error) {
+	switch t {
+	case mdb.AccountKey:
+		return pb.KeyType_KEY_TYPE_ACCOUNT, nil
+	case mdb.UserKey:
+		return pb.KeyType_KEY_TYPE_USER, nil
+	default:
+		return 0, fmt.Errorf("unknown key type: %v", t)
+	}
 }

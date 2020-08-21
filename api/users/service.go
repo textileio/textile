@@ -179,7 +179,7 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 	if err != nil {
 		return nil, err
 	}
-	query, err := getMailboxQuery(req.Seek, req.Limit, req.Ascending, int32(req.Status))
+	query, err := getMailboxQuery(req.Seek, req.Limit, req.Ascending, req.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func sentboxMessageToPb(m *tdb.SentboxMessage) (*pb.Message, error) {
 	}, nil
 }
 
-func getMailboxQuery(seek string, limit int64, asc bool, stat int32) (q *db.Query, err error) {
+func getMailboxQuery(seek string, limit int64, asc bool, stat pb.ListInboxMessagesRequest_Status) (q *db.Query, err error) {
 	if asc {
 		q = db.OrderByID()
 		if seek != "" {
@@ -289,14 +289,14 @@ func getMailboxQuery(seek string, limit int64, asc bool, stat int32) (q *db.Quer
 	}
 	q.LimitTo(int(limit))
 	switch stat {
-	case 0:
+	case pb.ListInboxMessagesRequest_STATUS_ALL:
 		break
-	case 1:
+	case pb.ListInboxMessagesRequest_STATUS_READ:
 		q.And("read_at").Gt(minMessageReadAt)
-	case 2:
+	case pb.ListInboxMessagesRequest_STATUS_UNREAD:
 		q.And("read_at").Eq(minMessageReadAt)
 	default:
-		return nil, fmt.Errorf("unknown message status")
+		return nil, fmt.Errorf("unknown message status: %v", stat.String())
 	}
 	return q, nil
 }
