@@ -44,8 +44,8 @@ func (c *Client) Close() error {
 
 // Create initializes a new bucket.
 // The bucket name is only meant to help identify a bucket in a UI and is not unique.
-func (c *Client) Create(ctx context.Context, opts ...InitOption) (*pb.CreateResponse, error) {
-	args := &initOptions{}
+func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*pb.CreateResponse, error) {
+	args := &createOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
