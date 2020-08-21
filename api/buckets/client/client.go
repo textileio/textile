@@ -21,7 +21,7 @@ const (
 
 // Client provides the client api.
 type Client struct {
-	c    pb.APIClient
+	c    pb.APIServiceClient
 	conn *grpc.ClientConn
 }
 
@@ -32,7 +32,7 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		c:    pb.NewAPIClient(conn),
+		c:    pb.NewAPIServiceClient(conn),
 		conn: conn,
 	}, nil
 }
@@ -42,10 +42,10 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Init initializes a new bucket.
+// Create initializes a new bucket.
 // The bucket name is only meant to help identify a bucket in a UI and is not unique.
-func (c *Client) Init(ctx context.Context, opts ...InitOption) (*pb.InitReply, error) {
-	args := &initOptions{}
+func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*pb.CreateResponse, error) {
+	args := &createOptions{}
 	for _, opt := range opts {
 		opt(args)
 	}
@@ -53,7 +53,7 @@ func (c *Client) Init(ctx context.Context, opts ...InitOption) (*pb.InitReply, e
 	if args.fromCid.Defined() {
 		strCid = args.fromCid.String()
 	}
-	return c.c.Init(ctx, &pb.InitRequest{
+	return c.c.Create(ctx, &pb.CreateRequest{
 		Name:         args.name,
 		Private:      args.private,
 		BootstrapCid: strCid,
@@ -61,31 +61,31 @@ func (c *Client) Init(ctx context.Context, opts ...InitOption) (*pb.InitReply, e
 }
 
 // Root returns the bucket root.
-func (c *Client) Root(ctx context.Context, key string) (*pb.RootReply, error) {
+func (c *Client) Root(ctx context.Context, key string) (*pb.RootResponse, error) {
 	return c.c.Root(ctx, &pb.RootRequest{
 		Key: key,
 	})
 }
 
 // Links returns a list of links that can be used to view the bucket.
-func (c *Client) Links(ctx context.Context, key string) (*pb.LinksReply, error) {
+func (c *Client) Links(ctx context.Context, key string) (*pb.LinksResponse, error) {
 	return c.c.Links(ctx, &pb.LinksRequest{
 		Key: key,
 	})
 }
 
 // List returns a list of all bucket roots.
-func (c *Client) List(ctx context.Context) (*pb.ListReply, error) {
+func (c *Client) List(ctx context.Context) (*pb.ListResponse, error) {
 	return c.c.List(ctx, &pb.ListRequest{})
 }
 
 // ListIpfsPath returns items at a particular path in a UnixFS path living in the IPFS network.
-func (c *Client) ListIpfsPath(ctx context.Context, pth path.Path) (*pb.ListIpfsPathReply, error) {
+func (c *Client) ListIpfsPath(ctx context.Context, pth path.Path) (*pb.ListIpfsPathResponse, error) {
 	return c.c.ListIpfsPath(ctx, &pb.ListIpfsPathRequest{Path: pth.String()})
 }
 
 // ListPath returns information about a bucket path.
-func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathReply, error) {
+func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathResponse, error) {
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
 		Key:  key,
 		Path: pth,
@@ -93,7 +93,7 @@ func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathRep
 }
 
 // SetPath set a particular path to an existing IPFS UnixFS DAG.
-func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid) (*pb.SetPathReply, error) {
+func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid) (*pb.SetPathResponse, error) {
 	return c.c.SetPath(ctx, &pb.SetPathRequest{
 		Key:  key,
 		Path: pth,
@@ -150,7 +150,7 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 				return
 			}
 			switch payload := rep.Payload.(type) {
-			case *pb.PushPathReply_Event_:
+			case *pb.PushPathResponse_Event_:
 				if payload.Event.Path != "" {
 					id, err := cid.Parse(payload.Event.Path)
 					if err != nil {
@@ -169,7 +169,7 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 				} else if args.progress != nil {
 					args.progress <- payload.Event.Bytes
 				}
-			case *pb.PushPathReply_Error:
+			case *pb.PushPathResponse_Error:
 				waitCh <- pushPathResult{err: fmt.Errorf(payload.Error)}
 				return
 			default:
@@ -316,14 +316,14 @@ func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option
 }
 
 // Archive creates a Filecoin bucket archive via Powergate.
-func (c *Client) Archive(ctx context.Context, key string) (*pb.ArchiveReply, error) {
+func (c *Client) Archive(ctx context.Context, key string) (*pb.ArchiveResponse, error) {
 	return c.c.Archive(ctx, &pb.ArchiveRequest{
 		Key: key,
 	})
 }
 
 // ArchiveStatus returns the status of a Filecoin bucket archive.
-func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusReply, error) {
+func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusResponse, error) {
 	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
 		Key: key,
 	})
@@ -351,7 +351,7 @@ func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string)
 }
 
 // ArchiveInfo returns info about a Filecoin bucket archive.
-func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoReply, error) {
+func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoResponse, error) {
 	return c.c.ArchiveInfo(ctx, &pb.ArchiveInfoRequest{
 		Key: key,
 	})

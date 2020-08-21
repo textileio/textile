@@ -5,32 +5,32 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 )
 
-type initOptions struct {
+type createOptions struct {
 	name    string
 	private bool
 	fromCid cid.Cid
 }
 
-type InitOption func(*initOptions)
+type CreateOption func(*createOptions)
 
 // WithName sets a name for the bucket.
-func WithName(name string) InitOption {
-	return func(args *initOptions) {
+func WithName(name string) CreateOption {
+	return func(args *createOptions) {
 		args.name = name
 	}
 }
 
 // WithPrivate specifies that an encryption key will be used for the bucket.
-func WithPrivate(private bool) InitOption {
-	return func(args *initOptions) {
+func WithPrivate(private bool) CreateOption {
+	return func(args *createOptions) {
 		args.private = private
 	}
 }
 
 // WithCid indicates that an inited bucket should be boostraped
 // with a particular UnixFS DAG.
-func WithCid(c cid.Cid) InitOption {
-	return func(args *initOptions) {
+func WithCid(c cid.Cid) CreateOption {
+	return func(args *createOptions) {
 		args.fromCid = c
 	}
 }

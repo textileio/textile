@@ -15,7 +15,7 @@ import (
 
 // Client provides the client api.
 type Client struct {
-	c    pb.APIClient
+	c    pb.APIServiceClient
 	conn *grpc.ClientConn
 }
 
@@ -26,7 +26,7 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		c:    pb.NewAPIClient(conn),
+		c:    pb.NewAPIServiceClient(conn),
 		conn: conn,
 	}, nil
 }
@@ -37,7 +37,7 @@ func (c *Client) Close() error {
 }
 
 // GetThread returns a thread by name.
-func (c *Client) GetThread(ctx context.Context, name string) (*pb.GetThreadReply, error) {
+func (c *Client) GetThread(ctx context.Context, name string) (*pb.GetThreadResponse, error) {
 	return c.c.GetThread(ctx, &pb.GetThreadRequest{
 		Name: name,
 	})
@@ -45,7 +45,7 @@ func (c *Client) GetThread(ctx context.Context, name string) (*pb.GetThreadReply
 
 // ListThreads returns a list of threads.
 // Threads can be created using the threads or threads network client.
-func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsReply, error) {
+func (c *Client) ListThreads(ctx context.Context) (*pb.ListThreadsResponse, error) {
 	return c.c.ListThreads(ctx, &pb.ListThreadsRequest{})
 }
 
@@ -55,7 +55,7 @@ func (c *Client) SetupMailbox(ctx context.Context) (mailbox thread.ID, err error
 	if err != nil {
 		return
 	}
-	return thread.Cast(res.MailboxID)
+	return thread.Cast(res.MailboxId)
 }
 
 // Message is the client side representation of a mailbox message.
@@ -152,7 +152,7 @@ func (c *Client) SendMessage(ctx context.Context, from thread.Identity, to threa
 		return msg, err
 	}
 	return Message{
-		ID:        res.ID,
+		ID:        res.Id,
 		From:      from.GetPublic(),
 		To:        to,
 		Body:      fromBody,
@@ -170,16 +170,27 @@ func (c *Client) ListInboxMessages(ctx context.Context, opts ...ListOption) ([]M
 	for _, opt := range opts {
 		opt(args)
 	}
+	var s pb.ListInboxMessagesRequest_Status
+	switch args.status {
+	case All:
+		s = pb.ListInboxMessagesRequest_STATUS_ALL
+	case Read:
+		s = pb.ListInboxMessagesRequest_STATUS_READ
+	case Unread:
+		s = pb.ListInboxMessagesRequest_STATUS_UNREAD
+	default:
+		return nil, fmt.Errorf("unknown status: %v", args.status)
+	}
 	res, err := c.c.ListInboxMessages(ctx, &pb.ListInboxMessagesRequest{
 		Seek:      args.seek,
 		Limit:     int64(args.limit),
 		Ascending: args.ascending,
-		Status:    pb.ListInboxMessagesRequest_Status(args.status),
+		Status:    s,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return handleMessageList(res)
+	return handleMessageList(res.Messages)
 }
 
 // ListSentboxMessages lists messages from the sentbox.
@@ -198,13 +209,13 @@ func (c *Client) ListSentboxMessages(ctx context.Context, opts ...ListOption) ([
 	if err != nil {
 		return nil, err
 	}
-	return handleMessageList(res)
+	return handleMessageList(res.Messages)
 }
 
-func handleMessageList(res *pb.ListMessagesReply) ([]Message, error) {
-	msgs := make([]Message, len(res.Messages))
+func handleMessageList(list []*pb.Message) ([]Message, error) {
+	msgs := make([]Message, len(list))
 	var err error
-	for i, m := range res.Messages {
+	for i, m := range list {
 		msgs[i], err = messageFromPb(m)
 		if err != nil {
 			return nil, err
@@ -231,7 +242,7 @@ func messageFromPb(m *pb.Message) (msg Message, err error) {
 		readAt = time.Unix(0, m.ReadAt)
 	}
 	return Message{
-		ID:        m.ID,
+		ID:        m.Id,
 		From:      from,
 		To:        to,
 		Body:      m.Body,
@@ -244,23 +255,23 @@ func messageFromPb(m *pb.Message) (msg Message, err error) {
 // ReadInboxMessage marks a message as read by ID.
 func (c *Client) ReadInboxMessage(ctx context.Context, id string) error {
 	_, err := c.c.ReadInboxMessage(ctx, &pb.ReadInboxMessageRequest{
-		ID: id,
+		Id: id,
 	})
 	return err
 }
 
 // DeleteInboxMessage deletes an inbox message by ID.
 func (c *Client) DeleteInboxMessage(ctx context.Context, id string) error {
-	_, err := c.c.DeleteInboxMessage(ctx, &pb.DeleteMessageRequest{
-		ID: id,
+	_, err := c.c.DeleteInboxMessage(ctx, &pb.DeleteInboxMessageRequest{
+		Id: id,
 	})
 	return err
 }
 
 // DeleteSentboxMessage deletes a sent message by ID.
 func (c *Client) DeleteSentboxMessage(ctx context.Context, id string) error {
-	_, err := c.c.DeleteSentboxMessage(ctx, &pb.DeleteMessageRequest{
-		ID: id,
+	_, err := c.c.DeleteSentboxMessage(ctx, &pb.DeleteSentboxMessageRequest{
+		Id: id,
 	})
 	return err
 }

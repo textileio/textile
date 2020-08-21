@@ -58,12 +58,12 @@ var orgsCreateCmd = &cobra.Command{
 			cmd.End("")
 		}
 
-		org, err := clients.Hub.CreateOrg(ctx, name)
+		res, err := clients.Hub.CreateOrg(ctx, name)
 		cmd.ErrCheck(err)
 		//url = fmt.Sprintf("%s/%s", org.Host, org.Slug)
 		// @todo: Uncomment when dashboard's are live
 		//cmd.Success("Created new org %s with URL %s", aurora.White(org.Name).Bold(), aurora.Underline(url))
-		cmd.Success("Created new org %s", aurora.White(org.Name).Bold())
+		cmd.Success("Created new org %s", aurora.White(res.OrgInfo.Name).Bold())
 	},
 }
 
@@ -107,18 +107,18 @@ var orgsMembersCmd = &cobra.Command{
 			aurora.BrightBlack("> Selected org {{ .Name | white | bold }}")))
 		ctx = common.NewOrgSlugContext(ctx, selected.Slug)
 
-		org, err := clients.Hub.GetOrg(ctx)
+		res, err := clients.Hub.GetOrg(ctx)
 		cmd.ErrCheck(err)
-		if len(org.Members) > 0 {
-			data := make([][]string, len(org.Members))
-			for i, m := range org.Members {
+		if len(res.OrgInfo.Members) > 0 {
+			data := make([][]string, len(res.OrgInfo.Members))
+			for i, m := range res.OrgInfo.Members {
 				key, err := mbase.Encode(mbase.Base32, m.Key)
 				cmd.ErrCheck(err)
 				data[i] = []string{m.Username, key}
 			}
 			cmd.RenderTable([]string{"username", "key"}, data)
 		}
-		cmd.Message("Found %d members", aurora.White(len(org.Members)).Bold())
+		cmd.Message("Found %d members", aurora.White(len(res.OrgInfo.Members)).Bold())
 	},
 }
 

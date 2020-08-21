@@ -45,7 +45,7 @@ func TestCreateBucket(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(lst))
 
-	_, err = client.Init(ctx)
+	_, err = client.Create(ctx)
 	require.NoError(t, err)
 
 	// No new FFS instance should be created for the bucket
@@ -60,7 +60,7 @@ func TestArchiveTracker(t *testing.T) {
 		ctx, conf, client, shutdown := setup(t)
 
 		// Create bucket with a file.
-		b, err := client.Init(ctx)
+		b, err := client.Create(ctx)
 		require.Nil(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 
@@ -90,7 +90,7 @@ func TestArchiveTracker(t *testing.T) {
 		// Verify that the current archive status is Done.
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
 
 		// Get ArchiveInfo, which has all successful pushs with
 		// its data about deals.
@@ -113,7 +113,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		defer shutdown(true)
 
 		// Create bucket with a file.
-		b, err := client.Init(ctx)
+		b, err := client.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
@@ -128,7 +128,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		// Verify that the current archive status is Done.
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
 
 		// Get ArchiveInfo, which has all successful pushs with
 		// its data about deals.
@@ -151,7 +151,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
 		as, err = client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusReply_Done, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
 
 		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestArchiveWatch(t *testing.T) {
 		ctx, _, client, shutdown := setup(t)
 		defer shutdown(true)
 
-		b, err := client.Init(ctx)
+		b, err := client.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second)
 		addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
@@ -205,7 +205,7 @@ func TestFailingArchive(t *testing.T) {
 		ctx, _, client, shutdown := setup(t)
 		defer shutdown(true)
 
-		b, err := client.Init(ctx)
+		b, err := client.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second)
 		// Store a file that is bigger than the sector size, this
@@ -218,7 +218,7 @@ func TestFailingArchive(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusReply_Failed, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatusResponse_STATUS_FAILED, as.GetStatus())
 		require.NotEmpty(t, as.GetFailedMsg())
 	})
 }
@@ -229,11 +229,11 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 		require.NoError(t, err)
 
 		switch as.GetStatus() {
-		case pb.ArchiveStatusReply_Failed,
-			pb.ArchiveStatusReply_Done,
-			pb.ArchiveStatusReply_Canceled:
+		case pb.ArchiveStatusResponse_STATUS_FAILED,
+			pb.ArchiveStatusResponse_STATUS_DONE,
+			pb.ArchiveStatusResponse_STATUS_CANCELED:
 			return true
-		case pb.ArchiveStatusReply_Executing:
+		case pb.ArchiveStatusResponse_STATUS_EXECUTING:
 		default:
 			t.Errorf("unknown archive status")
 			t.FailNow()
