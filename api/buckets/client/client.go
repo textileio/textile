@@ -16,7 +16,7 @@ import (
 
 const (
 	// chunkSize for add file requests.
-	chunkSize = 1024
+	chunkSize = 1024 * 32
 )
 
 // Client provides the client api.
