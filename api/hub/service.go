@@ -237,6 +237,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	var keyType mdb.APIKeyType
 	switch req.Type {
 	case pb.KeyType_KEY_TYPE_ACCOUNT:
+	case pb.KeyType_KEY_TYPE_UNSPECIFIED:
 		keyType = mdb.AccountKey
 	case pb.KeyType_KEY_TYPE_USER:
 		keyType = mdb.UserKey

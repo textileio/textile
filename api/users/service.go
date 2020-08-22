@@ -290,6 +290,7 @@ func getMailboxQuery(seek string, limit int64, asc bool, stat pb.ListInboxMessag
 	q.LimitTo(int(limit))
 	switch stat {
 	case pb.ListInboxMessagesRequest_STATUS_ALL:
+	case pb.ListInboxMessagesRequest_STATUS_UNSPECIFIED:
 		break
 	case pb.ListInboxMessagesRequest_STATUS_READ:
 		q.And("read_at").Gt(minMessageReadAt)
