@@ -65,22 +65,22 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 	go func() {
 		defer close(msgs)
 		switch rep.GetStatus() {
-		case pb.ArchiveStatusReply_Failed:
+		case pb.ArchiveStatusResponse_STATUS_FAILED:
 			msgs <- ArchiveStatusMessage{
 				Type:    ArchiveWarning,
 				Message: "Archive failed with message: " + rep.GetFailedMsg(),
 			}
-		case pb.ArchiveStatusReply_Canceled:
+		case pb.ArchiveStatusResponse_STATUS_CANCELED:
 			msgs <- ArchiveStatusMessage{
 				Type:    ArchiveWarning,
 				Message: "Archive was superseded by a new executing archive",
 			}
-		case pb.ArchiveStatusReply_Executing:
+		case pb.ArchiveStatusResponse_STATUS_EXECUTING:
 			msgs <- ArchiveStatusMessage{
 				Type:    ArchiveMessage,
 				Message: "Archive is currently executing, grab a coffee and be patient...",
 			}
-		case pb.ArchiveStatusReply_Done:
+		case pb.ArchiveStatusResponse_STATUS_DONE:
 			msgs <- ArchiveStatusMessage{
 				Type:    ArchiveSuccess,
 				Message: "Archive executed successfully!",
@@ -106,6 +106,7 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 				r, err := b.clients.Buckets.ArchiveStatus(sctx, key)
 				if err != nil {
 					msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
+					scancel()
 					cancel()
 					return
 				}
@@ -126,11 +127,11 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 	return msgs, nil
 }
 
-func isJobStatusFinal(status pb.ArchiveStatusReply_Status) (bool, error) {
+func isJobStatusFinal(status pb.ArchiveStatusResponse_Status) (bool, error) {
 	switch status {
-	case pb.ArchiveStatusReply_Failed, pb.ArchiveStatusReply_Canceled, pb.ArchiveStatusReply_Done:
+	case pb.ArchiveStatusResponse_STATUS_FAILED, pb.ArchiveStatusResponse_STATUS_CANCELED, pb.ArchiveStatusResponse_STATUS_DONE:
 		return true, nil
-	case pb.ArchiveStatusReply_Executing:
+	case pb.ArchiveStatusResponse_STATUS_EXECUTING:
 		return false, nil
 	}
 	return true, fmt.Errorf("unknown job status")
@@ -170,7 +171,7 @@ func (b *Bucket) ArchiveInfo(ctx context.Context) (info ArchiveInfo, err error) 
 	return pbArchiveInfoToArchiveInfo(rep)
 }
 
-func pbArchiveInfoToArchiveInfo(pi *pb.ArchiveInfoReply) (info ArchiveInfo, err error) {
+func pbArchiveInfoToArchiveInfo(pi *pb.ArchiveInfoResponse) (info ArchiveInfo, err error) {
 	info.Key = pi.Key
 	if pi.Archive != nil {
 		info.Archive.Cid, err = cid.Decode(pi.Archive.Cid)

@@ -60,6 +60,27 @@ func (u *Users) Create(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo)
 	return nil
 }
 
+func (u *Users) UpdateFFSInfo(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) (*User, error) {
+	id, err := crypto.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	update := bson.M{}
+	encodeFFSInfo(update, ffsInfo)
+	res, err := u.col.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if res.ModifiedCount != 1 {
+		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
+	}
+	return u.Get(ctx, key)
+}
+
 func (u *Users) Get(ctx context.Context, key crypto.PubKey) (*User, error) {
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {

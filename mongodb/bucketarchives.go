@@ -32,6 +32,7 @@ type BucketArchives struct {
 }
 
 func NewBucketArchives(_ context.Context, db *mongo.Database) (*BucketArchives, error) {
+	// ToDo: Let's rename this collection to bucketarchives when there is a data loss event like a powergate reset
 	s := &BucketArchives{col: db.Collection("ffsinstances")}
 	return s, nil
 }

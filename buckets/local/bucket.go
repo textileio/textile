@@ -224,7 +224,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 	if err != nil {
 		return
 	}
-	links = Links{URL: res.URL, WWW: res.WWW, IPNS: res.IPNS}
+	links = Links{URL: res.Url, WWW: res.Www, IPNS: res.Ipns}
 	b.links = &links
 	return links, err
 }

@@ -169,10 +169,10 @@ func (c *Clients) ListThreads(ctx context.Context, dbsOnly bool) []Thread {
 			Fatal(err)
 		}
 		for _, t := range list.List {
-			if dbsOnly && !t.IsDB {
+			if dbsOnly && !t.IsDb {
 				continue
 			}
-			id, err := thread.Cast(t.ID)
+			id, err := thread.Cast(t.Id)
 			if err != nil {
 				Fatal(err)
 			}
@@ -183,7 +183,7 @@ func (c *Clients) ListThreads(ctx context.Context, dbsOnly bool) []Thread {
 				ID:    id,
 				Label: id.String(),
 				Name:  t.Name,
-				Type:  GetThreadType(t.IsDB),
+				Type:  GetThreadType(t.IsDb),
 			})
 		}
 	} else {

@@ -150,7 +150,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 
 	initRemote := conf.Key == ""
 	if initRemote {
-		rep, err := b.clients.Buckets.Init(
+		rep, err := b.clients.Buckets.Create(
 			ctx,
 			client.WithName(args.name),
 			client.WithPrivate(args.private),
@@ -193,7 +193,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 			return nil, err
 		}
 
-		buck.links = &Links{URL: rep.Links.URL, WWW: rep.Links.WWW, IPNS: rep.Links.IPNS}
+		buck.links = &Links{URL: rep.Links.Url, WWW: rep.Links.Www, IPNS: rep.Links.Ipns}
 	} else {
 		if err := buck.loadLocalRepo(ctx, cwd, b.repoName(), true); err != nil {
 			return nil, err

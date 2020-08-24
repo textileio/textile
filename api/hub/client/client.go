@@ -9,7 +9,7 @@ import (
 
 // Client provides the client api.
 type Client struct {
-	c    pb.APIClient
+	c    pb.APIServiceClient
 	conn *grpc.ClientConn
 }
 
@@ -20,7 +20,7 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		c:    pb.NewAPIClient(conn),
+		c:    pb.NewAPIServiceClient(conn),
 		conn: conn,
 	}, nil
 }
@@ -32,7 +32,7 @@ func (c *Client) Close() error {
 
 // Signup creates a new user and returns a session.
 // This method will block and wait for email-based verification.
-func (c *Client) Signup(ctx context.Context, username, email string) (*pb.SignupReply, error) {
+func (c *Client) Signup(ctx context.Context, username, email string) (*pb.SignupResponse, error) {
 	return c.c.Signup(ctx, &pb.SignupRequest{
 		Username: username,
 		Email:    email,
@@ -41,7 +41,7 @@ func (c *Client) Signup(ctx context.Context, username, email string) (*pb.Signup
 
 // Signin returns a session for an existing username or email.
 // This method will block and wait for email-based verification.
-func (c *Client) Signin(ctx context.Context, usernameOrEmail string) (*pb.SigninReply, error) {
+func (c *Client) Signin(ctx context.Context, usernameOrEmail string) (*pb.SigninResponse, error) {
 	return c.c.Signin(ctx, &pb.SigninRequest{
 		UsernameOrEmail: usernameOrEmail,
 	})
@@ -54,12 +54,12 @@ func (c *Client) Signout(ctx context.Context) error {
 }
 
 // GetSessionInfo returns session info.
-func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoReply, error) {
+func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoResponse, error) {
 	return c.c.GetSessionInfo(ctx, &pb.GetSessionInfoRequest{})
 }
 
 // CreateKey creates a new key for the current session.
-func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType, secure bool) (*pb.GetKeyReply, error) {
+func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType, secure bool) (*pb.CreateKeyResponse, error) {
 	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{
 		Type:   keyType,
 		Secure: secure,
@@ -74,22 +74,22 @@ func (c *Client) InvalidateKey(ctx context.Context, key string) error {
 }
 
 // ListKeys returns a list of keys for the current session.
-func (c *Client) ListKeys(ctx context.Context) (*pb.ListKeysReply, error) {
+func (c *Client) ListKeys(ctx context.Context) (*pb.ListKeysResponse, error) {
 	return c.c.ListKeys(ctx, &pb.ListKeysRequest{})
 }
 
 // CreateOrg creates a new org by name.
-func (c *Client) CreateOrg(ctx context.Context, name string) (*pb.GetOrgReply, error) {
+func (c *Client) CreateOrg(ctx context.Context, name string) (*pb.CreateOrgResponse, error) {
 	return c.c.CreateOrg(ctx, &pb.CreateOrgRequest{Name: name})
 }
 
 // GetOrg returns an org.
-func (c *Client) GetOrg(ctx context.Context) (*pb.GetOrgReply, error) {
+func (c *Client) GetOrg(ctx context.Context) (*pb.GetOrgResponse, error) {
 	return c.c.GetOrg(ctx, &pb.GetOrgRequest{})
 }
 
 // ListOrgs returns a list of orgs for the current session.
-func (c *Client) ListOrgs(ctx context.Context) (*pb.ListOrgsReply, error) {
+func (c *Client) ListOrgs(ctx context.Context) (*pb.ListOrgsResponse, error) {
 	return c.c.ListOrgs(ctx, &pb.ListOrgsRequest{})
 }
 
@@ -100,7 +100,7 @@ func (c *Client) RemoveOrg(ctx context.Context) error {
 }
 
 // InviteToOrg invites the given email to an org.
-func (c *Client) InviteToOrg(ctx context.Context, email string) (*pb.InviteToOrgReply, error) {
+func (c *Client) InviteToOrg(ctx context.Context, email string) (*pb.InviteToOrgResponse, error) {
 	return c.c.InviteToOrg(ctx, &pb.InviteToOrgRequest{
 		Email: email,
 	})
@@ -121,7 +121,7 @@ func (c *Client) IsUsernameAvailable(ctx context.Context, username string) error
 }
 
 // IsOrgNameAvailable returns a nil error if the name is valid and available.
-func (c *Client) IsOrgNameAvailable(ctx context.Context, name string) (*pb.IsOrgNameAvailableReply, error) {
+func (c *Client) IsOrgNameAvailable(ctx context.Context, name string) (*pb.IsOrgNameAvailableResponse, error) {
 	return c.c.IsOrgNameAvailable(ctx, &pb.IsOrgNameAvailableRequest{
 		Name: name,
 	})

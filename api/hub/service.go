@@ -52,7 +52,7 @@ type Service struct {
 	Pow                *powc.Client
 }
 
-func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupReply, error) {
+func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupResponse, error) {
 	log.Debugf("received signup request")
 
 	if err := s.Collections.Accounts.ValidateUsername(req.Username); err != nil {
@@ -133,13 +133,13 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SignupReply{
+	return &pb.SignupResponse{
 		Key:     key,
 		Session: session.ID,
 	}, nil
 }
 
-func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.SigninReply, error) {
+func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.SigninResponse, error) {
 	log.Debugf("received signin request")
 
 	dev, err := s.Collections.Accounts.GetByUsernameOrEmail(ctx, req.UsernameOrEmail)
@@ -166,7 +166,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SigninReply{
+	return &pb.SigninResponse{
 		Key:     key,
 		Session: session.ID,
 	}, nil
@@ -204,17 +204,17 @@ func getSessionSecret(secret string) string {
 	return util.MakeToken(44)
 }
 
-func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.SignoutReply, error) {
+func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.SignoutResponse, error) {
 	log.Debugf("received signout request")
 
 	session, _ := mdb.SessionFromContext(ctx)
 	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
-	return &pb.SignoutReply{}, nil
+	return &pb.SignoutResponse{}, nil
 }
 
-func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoRequest) (*pb.GetSessionInfoReply, error) {
+func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoRequest) (*pb.GetSessionInfoResponse, error) {
 	log.Debugf("received get session info request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -222,32 +222,50 @@ func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoReques
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetSessionInfoReply{
+	return &pb.GetSessionInfoResponse{
 		Key:      key,
 		Username: dev.Username,
 		Email:    dev.Email,
 	}, nil
 }
 
-func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.GetKeyReply, error) {
+func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.CreateKeyResponse, error) {
 	log.Debugf("received create key request")
 
 	owner := ownerFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, owner, mdb.APIKeyType(req.Type), req.Secure)
+
+	var keyType mdb.APIKeyType
+	switch req.Type {
+	case pb.KeyType_KEY_TYPE_ACCOUNT:
+	case pb.KeyType_KEY_TYPE_UNSPECIFIED:
+		keyType = mdb.AccountKey
+	case pb.KeyType_KEY_TYPE_USER:
+		keyType = mdb.UserKey
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "invalid key type: %v", req.Type.String())
+	}
+
+	key, err := s.Collections.APIKeys.Create(ctx, owner, keyType, req.Secure)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetKeyReply{
-		Key:     key.Key,
-		Secret:  key.Secret,
-		Type:    pb.KeyType(key.Type),
-		Valid:   true,
-		Threads: 0,
-		Secure:  key.Secure,
+	t, err := keyTypeToPb(key.Type)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
+	}
+	return &pb.CreateKeyResponse{
+		KeyInfo: &pb.KeyInfo{
+			Key:     key.Key,
+			Secret:  key.Secret,
+			Type:    t,
+			Valid:   true,
+			Threads: 0,
+			Secure:  key.Secure,
+		},
 	}, nil
 }
 
-func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyReply, error) {
+func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyResponse, error) {
 	log.Debugf("received invalidate key request")
 
 	key, err := s.Collections.APIKeys.Get(ctx, req.Key)
@@ -261,10 +279,10 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 	if err := s.Collections.APIKeys.Invalidate(ctx, req.Key); err != nil {
 		return nil, err
 	}
-	return &pb.InvalidateKeyReply{}, nil
+	return &pb.InvalidateKeyResponse{}, nil
 }
 
-func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysReply, error) {
+func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
 	log.Debugf("received list keys request")
 
 	owner := ownerFromContext(ctx)
@@ -272,25 +290,29 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 	if err != nil {
 		return nil, err
 	}
-	list := make([]*pb.GetKeyReply, len(keys))
+	list := make([]*pb.KeyInfo, len(keys))
 	for i, key := range keys {
+		t, err := keyTypeToPb(key.Type)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
+		}
 		ts, err := s.Collections.Threads.ListByKey(ctx, key.Key)
 		if err != nil {
 			return nil, err
 		}
-		list[i] = &pb.GetKeyReply{
+		list[i] = &pb.KeyInfo{
 			Key:     key.Key,
 			Secret:  key.Secret,
-			Type:    pb.KeyType(key.Type),
+			Type:    t,
 			Valid:   key.Valid,
 			Threads: int32(len(ts)),
 			Secure:  key.Secure,
 		}
 	}
-	return &pb.ListKeysReply{List: list}, nil
+	return &pb.ListKeysResponse{List: list}, nil
 }
 
-func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.GetOrgReply, error) {
+func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.CreateOrgResponse, error) {
 	log.Debugf("received create org request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -318,27 +340,39 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err := s.Collections.Accounts.SetToken(ctx, org.Key, tok); err != nil {
 		return nil, err
 	}
-	return s.orgToPbOrg(org)
+	orgInfo, err := s.orgToPbOrg(org)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
+	}
+	return &pb.CreateOrgResponse{
+		OrgInfo: orgInfo,
+	}, nil
 }
 
-func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgReply, error) {
+func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgResponse, error) {
 	log.Debugf("received get org request")
 
 	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("org required")
 	}
-	return s.orgToPbOrg(org)
+	orgInfo, err := s.orgToPbOrg(org)
+	if err != nil {
+		return nil, fmt.Errorf("encoding org: %v", err)
+	}
+	return &pb.GetOrgResponse{
+		OrgInfo: orgInfo,
+	}, nil
 }
 
-func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.GetOrgReply, error) {
-	members := make([]*pb.GetOrgReply_Member, len(org.Members))
+func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.OrgInfo, error) {
+	members := make([]*pb.OrgInfo_Member, len(org.Members))
 	for i, m := range org.Members {
 		key, err := crypto.MarshalPublicKey(m.Key)
 		if err != nil {
 			return nil, err
 		}
-		members[i] = &pb.GetOrgReply_Member{
+		members[i] = &pb.OrgInfo_Member{
 			Key:      key,
 			Username: m.Username,
 			Role:     m.Role.String(),
@@ -348,7 +382,7 @@ func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.GetOrgReply, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetOrgReply{
+	return &pb.OrgInfo{
 		Key:       key,
 		Name:      org.Name,
 		Slug:      org.Username,
@@ -358,7 +392,7 @@ func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.GetOrgReply, error) {
 	}, nil
 }
 
-func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsReply, error) {
+func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsResponse, error) {
 	log.Debugf("received list orgs request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -366,17 +400,17 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 	if err != nil {
 		return nil, err
 	}
-	list := make([]*pb.GetOrgReply, len(orgs))
+	list := make([]*pb.OrgInfo, len(orgs))
 	for i, org := range orgs {
 		list[i], err = s.orgToPbOrg(&org)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &pb.ListOrgsReply{List: list}, nil
+	return &pb.ListOrgsResponse{List: list}, nil
 }
 
-func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgReply, error) {
+func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgResponse, error) {
 	log.Debugf("received remove org request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -395,10 +429,10 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	if err = s.destroyAccount(ctx, org); err != nil {
 		return nil, err
 	}
-	return &pb.RemoveOrgReply{}, nil
+	return &pb.RemoveOrgResponse{}, nil
 }
 
-func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (*pb.InviteToOrgReply, error) {
+func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (*pb.InviteToOrgResponse, error) {
 	log.Debugf("received invite to org request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -420,10 +454,10 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		ectx, org.Name, dev.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
-	return &pb.InviteToOrgReply{Token: invite.Token}, nil
+	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
 }
 
-func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgReply, error) {
+func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgResponse, error) {
 	log.Debugf("received leave org request")
 
 	dev, _ := mdb.DevFromContext(ctx)
@@ -437,39 +471,39 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if err := s.Collections.Invites.DeleteByFromAndOrg(ctx, dev.Key, org.Username); err != nil {
 		return nil, err
 	}
-	return &pb.LeaveOrgReply{}, nil
+	return &pb.LeaveOrgResponse{}, nil
 }
 
-func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableReply, error) {
+func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {
 	log.Debugf("received is username available request")
 
 	if err := s.Collections.Accounts.IsUsernameAvailable(ctx, req.Username); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	return &pb.IsUsernameAvailableReply{}, nil
+	return &pb.IsUsernameAvailableResponse{}, nil
 }
 
-func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvailableRequest) (*pb.IsOrgNameAvailableReply, error) {
+func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvailableRequest) (*pb.IsOrgNameAvailableResponse, error) {
 	log.Debugf("received is org name available request")
 
 	slug, err := s.Collections.Accounts.IsNameAvailable(ctx, req.Name)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	return &pb.IsOrgNameAvailableReply{
+	return &pb.IsOrgNameAvailableResponse{
 		Slug: slug,
 		Host: s.GatewayURL,
 	}, nil
 }
 
-func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountRequest) (*pb.DestroyAccountReply, error) {
+func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountRequest) (*pb.DestroyAccountResponse, error) {
 	log.Debugf("received destroy account request")
 
 	dev, _ := mdb.DevFromContext(ctx)
 	if err := s.destroyAccount(ctx, dev); err != nil {
 		return nil, err
 	}
-	return &pb.DestroyAccountReply{}, nil
+	return &pb.DestroyAccountResponse{}, nil
 }
 
 func ownerFromContext(ctx context.Context) crypto.PubKey {
@@ -565,4 +599,15 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 
 	// Finally, delete the account.
 	return s.Collections.Accounts.Delete(ctx, a.Key)
+}
+
+func keyTypeToPb(t mdb.APIKeyType) (pb.KeyType, error) {
+	switch t {
+	case mdb.AccountKey:
+		return pb.KeyType_KEY_TYPE_ACCOUNT, nil
+	case mdb.UserKey:
+		return pb.KeyType_KEY_TYPE_USER, nil
+	default:
+		return 0, fmt.Errorf("unknown key type: %v", t)
+	}
 }

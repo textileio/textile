@@ -40,15 +40,15 @@ func TestClient_GetThread(t *testing.T) {
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// No key signature
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
 		_, err = client.GetThread(ctx, "foo")
 		require.Error(t, err)
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// Old key signature
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 		_, err = client.GetThread(ctx, "foo")
 		require.Error(t, err)
@@ -56,10 +56,10 @@ func TestClient_GetThread(t *testing.T) {
 	})
 
 	t.Run("account keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 
 		// Not found
@@ -71,17 +71,17 @@ func TestClient_GetThread(t *testing.T) {
 		ctx = common.NewThreadNameContext(ctx, "foo")
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err := client.GetThread(ctx, "foo")
+		res2, err := client.GetThread(ctx, "foo")
 		require.NoError(t, err)
-		assert.Equal(t, "foo", res.Name)
-		assert.True(t, res.IsDB)
+		assert.Equal(t, "foo", res2.Name)
+		assert.True(t, res2.IsDb)
 	})
 
 	t.Run("users keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_USER, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 
 		// No token
@@ -103,25 +103,25 @@ func TestClient_GetThread(t *testing.T) {
 		ctx = common.NewThreadNameContext(ctx, "foo")
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err := client.GetThread(ctx, "foo")
+		res2, err := client.GetThread(ctx, "foo")
 		require.NoError(t, err)
-		assert.Equal(t, "foo", res.Name)
-		assert.True(t, res.IsDB)
+		assert.Equal(t, "foo", res2.Name)
+		assert.True(t, res2.IsDb)
 	})
 
 	t.Run("insecure keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, false)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, false)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
 
 		// All good
 		ctx = common.NewThreadNameContext(ctx, "foo2")
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err := client.GetThread(ctx, "foo2")
+		res2, err := client.GetThread(ctx, "foo2")
 		require.NoError(t, err)
-		assert.Equal(t, "foo2", res.Name)
-		assert.True(t, res.IsDB)
+		assert.Equal(t, "foo2", res2.Name)
+		assert.True(t, res2.IsDb)
 	})
 }
 
@@ -134,10 +134,10 @@ func TestClient_CreateThreadsLimit(t *testing.T) {
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	ctx := context.Background()
-	key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+	res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 	require.NoError(t, err)
-	ctx = common.NewAPIKeyContext(ctx, key.Key)
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	ctx = common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 	require.NoError(t, err)
 
 	// First thread allowed.
@@ -164,15 +164,15 @@ func TestClient_ListThreads(t *testing.T) {
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// No key signature
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
 		_, err = client.ListThreads(ctx)
 		require.Error(t, err)
 		assert.Equal(t, codes.Unauthenticated, status.Code(err))
 
 		// Old key signature
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), key.Secret)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(-time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 		_, err = client.ListThreads(ctx)
 		require.Error(t, err)
@@ -180,31 +180,31 @@ func TestClient_ListThreads(t *testing.T) {
 	})
 
 	t.Run("account keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 
 		// Empty
-		res, err := client.ListThreads(ctx)
+		res2, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, len(res.List))
+		assert.Equal(t, 0, len(res2.List))
 
 		// Got one
 		_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err = client.ListThreads(ctx)
+		res3, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 1, len(res.List))
-		assert.False(t, res.List[0].IsDB)
+		assert.Equal(t, 1, len(res3.List))
+		assert.False(t, res3.List[0].IsDb)
 	})
 
 	t.Run("users keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_USER, true)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_USER, true)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
-		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+		ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 		require.NoError(t, err)
 
 		// No token
@@ -218,38 +218,38 @@ func TestClient_ListThreads(t *testing.T) {
 		tok, err := threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
 		require.NoError(t, err)
 		ctx = thread.NewTokenContext(ctx, tok)
-		res, err := client.ListThreads(ctx)
+		res2, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, len(res.List))
+		assert.Equal(t, 0, len(res2.List))
 
 		// Got one
 		ctx = common.NewThreadNameContext(ctx, "foo")
 		err = threads.NewDB(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err = client.ListThreads(ctx)
+		res3, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 1, len(res.List))
-		assert.Equal(t, "foo", res.List[0].Name)
-		assert.True(t, res.List[0].IsDB)
+		assert.Equal(t, 1, len(res3.List))
+		assert.Equal(t, "foo", res3.List[0].Name)
+		assert.True(t, res3.List[0].IsDb)
 	})
 
 	t.Run("insecure keys", func(t *testing.T) {
-		key, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_ACCOUNT, false)
+		res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, false)
 		require.NoError(t, err)
-		ctx := common.NewAPIKeyContext(ctx, key.Key)
+		ctx := common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
 
 		// Got one
-		res, err := client.ListThreads(ctx)
+		res2, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 1, len(res.List))
+		assert.Equal(t, 1, len(res2.List))
 
 		// Got two
 		_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
 		require.NoError(t, err)
-		res, err = client.ListThreads(ctx)
+		res3, err := client.ListThreads(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 2, len(res.List))
-		assert.False(t, res.List[1].IsDB)
+		assert.Equal(t, 2, len(res3.List))
+		assert.False(t, res3.List[1].IsDb)
 	})
 }
 
@@ -258,10 +258,10 @@ func TestClient_SetupMailbox(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	ctx := common.NewAPIKeyContext(context.Background(), key.Key)
+	ctx := common.NewAPIKeyContext(context.Background(), res.KeyInfo.Key)
 	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	from := thread.NewLibp2pIdentity(sk)
@@ -284,16 +284,16 @@ func TestClient_SendMessage(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, _ := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, _ := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
-	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
+	msg, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
-	assert.NotEmpty(t, res.ID)
-	assert.NotEmpty(t, res.CreatedAt)
+	assert.NotEmpty(t, msg.ID)
+	assert.NotEmpty(t, msg.CreatedAt)
 }
 
 func TestClient_ListInboxMessages(t *testing.T) {
@@ -301,11 +301,11 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, tctx := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, tctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
 	var i int
 	var readID string
@@ -387,11 +387,11 @@ func TestClient_ListSentboxMessages(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, _ := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, _ := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
 	_, err = client.SendMessage(fctx, from, to.GetPublic(), []byte("one"))
 	require.NoError(t, err)
@@ -414,16 +414,16 @@ func TestClient_ReadInboxMessage(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, tctx := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, tctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
-	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
+	msg, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
 
-	err = client.ReadInboxMessage(tctx, res.ID)
+	err = client.ReadInboxMessage(tctx, msg.ID)
 	require.NoError(t, err)
 
 	list, err := client.ListInboxMessages(tctx)
@@ -436,16 +436,16 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, tctx := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, tctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
-	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
+	msg, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
 
-	err = client.DeleteInboxMessage(tctx, res.ID)
+	err = client.DeleteInboxMessage(tctx, msg.ID)
 	require.NoError(t, err)
 
 	list, err := client.ListInboxMessages(tctx)
@@ -458,16 +458,16 @@ func TestClient_DeleteSentboxMessage(t *testing.T) {
 	conf, client, hub, threads, _, _ := setup(t)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	key, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_USER, false)
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
 	require.NoError(t, err)
 
-	from, fctx := setupUserMail(t, client, threads, key.Key)
-	to, _ := setupUserMail(t, client, threads, key.Key)
+	from, fctx := setupUserMail(t, client, threads, res.KeyInfo.Key)
+	to, _ := setupUserMail(t, client, threads, res.KeyInfo.Key)
 
-	res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
+	msg, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("howdy"))
 	require.NoError(t, err)
 
-	err = client.DeleteSentboxMessage(fctx, res.ID)
+	err = client.DeleteSentboxMessage(fctx, msg.ID)
 	require.NoError(t, err)
 
 	list, err := client.ListSentboxMessages(fctx)
@@ -496,10 +496,10 @@ func TestAccountBuckets(t *testing.T) {
 	// Signup, create an API key, and sign it for the requests
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	devCtx := common.NewSessionContext(ctx, dev.Session)
-	key, err := hub.CreateKey(devCtx, hubpb.KeyType_ACCOUNT, true)
+	res, err := hub.CreateKey(devCtx, hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
 	require.NoError(t, err)
-	ctx = common.NewAPIKeyContext(ctx, key.Key)
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	ctx = common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 	require.NoError(t, err)
 
 	// Create a db for the bucket
@@ -510,7 +510,7 @@ func TestAccountBuckets(t *testing.T) {
 
 	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
-	buck, err := buckets.Init(ctx)
+	buck, err := buckets.Create(ctx)
 	require.NoError(t, err)
 
 	// Finally, push a file to the bucket.
@@ -522,9 +522,9 @@ func TestAccountBuckets(t *testing.T) {
 	assert.NotEmpty(t, file1Root.String())
 
 	// We should have a thread named "my-buckets"
-	res, err := users.GetThread(ctx, "my-buckets")
+	res2, err := users.GetThread(ctx, "my-buckets")
 	require.NoError(t, err)
-	assert.Equal(t, dbID.Bytes(), res.ID)
+	assert.Equal(t, dbID.Bytes(), res2.Id)
 }
 
 func TestUserBuckets(t *testing.T) {
@@ -535,10 +535,10 @@ func TestUserBuckets(t *testing.T) {
 	// Signup, create an API key, and sign it for the requests
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	devCtx := common.NewSessionContext(ctx, dev.Session)
-	key, err := hub.CreateKey(devCtx, hubpb.KeyType_USER, true)
+	res, err := hub.CreateKey(devCtx, hubpb.KeyType_KEY_TYPE_USER, true)
 	require.NoError(t, err)
-	ctx = common.NewAPIKeyContext(ctx, key.Key)
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), key.Secret)
+	ctx = common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
+	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
 	require.NoError(t, err)
 
 	// Generate a user identity and get a token for it
@@ -556,7 +556,7 @@ func TestUserBuckets(t *testing.T) {
 
 	// Initialize a new bucket in the db
 	ctx = common.NewThreadIDContext(ctx, dbID)
-	buck, err := buckets.Init(ctx)
+	buck, err := buckets.Create(ctx)
 	require.NoError(t, err)
 
 	// Finally, push a file to the bucket.
@@ -568,9 +568,9 @@ func TestUserBuckets(t *testing.T) {
 	assert.NotEmpty(t, file1Root.String())
 
 	// We should have a thread named "my-buckets"
-	res, err := users.GetThread(ctx, "my-buckets")
+	res2, err := users.GetThread(ctx, "my-buckets")
 	require.NoError(t, err)
-	assert.Equal(t, dbID.Bytes(), res.ID)
+	assert.Equal(t, dbID.Bytes(), res2.Id)
 
 	// The dev should see that the key was used to create one thread
 	keys, err := hub.ListKeys(devCtx)

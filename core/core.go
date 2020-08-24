@@ -64,9 +64,9 @@ var (
 
 	// ignoreMethods are not intercepted by the auth.
 	ignoreMethods = []string{
-		"/hub.pb.API/Signup",
-		"/hub.pb.API/Signin",
-		"/hub.pb.API/IsUsernameAvailable",
+		"/api.hub.pb.APIService/Signup",
+		"/api.hub.pb.APIService/Signin",
+		"/api.hub.pb.APIService/IsUsernameAvailable",
 	}
 
 	// blockMethods are always blocked by auth.
@@ -318,10 +318,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
 		if conf.Hub {
-			hpb.RegisterAPIServer(t.server, hs)
-			upb.RegisterAPIServer(t.server, us)
+			hpb.RegisterAPIServiceServer(t.server, hs)
+			upb.RegisterAPIServiceServer(t.server, us)
 		}
-		bpb.RegisterAPIServer(t.server, bs)
+		bpb.RegisterAPIServiceServer(t.server, bs)
 		ffsRpc.RegisterRPCServiceServer(t.server, &ffsService)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("serve error: %v", err)

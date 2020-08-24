@@ -1,53 +1,44 @@
 syntax = "proto3";
-package hub.pb;
-
-option java_multiple_files = true;
-option java_package = "io.textile.hub_grpc";
-option java_outer_classname = "TextileHub";
-option objc_class_prefix = "TT_HUB";
+package api.hub.pb;
 
 message SignupRequest {
     string username = 1;
     string email = 2;
 }
 
-message SignupReply {
+message SignupResponse {
     bytes key = 1;
     string session = 2;
 }
 
 message SigninRequest {
-    string usernameOrEmail = 1;
+    string username_or_email = 1;
 }
 
-message SigninReply {
+message SigninResponse {
     bytes key = 1;
     string session = 2;
 }
 
 message SignoutRequest {}
 
-message SignoutReply {}
+message SignoutResponse {}
 
 message GetSessionInfoRequest {}
 
-message GetSessionInfoReply {
+message GetSessionInfoResponse {
     bytes key = 1;
     string username = 2;
     string email = 3;
 }
 
-message CreateKeyRequest {
-    KeyType type = 1;
-    bool secure = 2;
-}
-
 enum KeyType {
-    ACCOUNT = 0;
-    USER = 1;
+    KEY_TYPE_UNSPECIFIED = 0;
+    KEY_TYPE_ACCOUNT = 1;
+    KEY_TYPE_USER = 2;
 }
 
-message GetKeyReply {
+message KeyInfo {
     string key = 1;
     string secret = 2;
     KeyType type = 3;
@@ -56,31 +47,34 @@ message GetKeyReply {
     bool secure = 6;
 }
 
+message CreateKeyRequest {
+    KeyType type = 1;
+    bool secure = 2;
+}
+
+message CreateKeyResponse {
+    KeyInfo key_info = 1;
+}
+
 message InvalidateKeyRequest {
     string key = 1;
 }
 
-message InvalidateKeyReply {}
+message InvalidateKeyResponse {}
 
 message ListKeysRequest {}
 
-message ListKeysReply {
-    repeated GetKeyReply list = 1;
+message ListKeysResponse {
+    repeated KeyInfo list = 1;
 }
 
-message CreateOrgRequest {
-    string name = 1;
-}
-
-message GetOrgRequest {}
-
-message GetOrgReply {
+message OrgInfo {
     bytes key = 1;
     string name = 2;
     string slug = 3;
     string host = 4;
     repeated Member members = 5;
-    int64 createdAt = 6;
+    int64 created_at = 6;
 
     message Member {
         bytes key = 1;
@@ -89,67 +83,81 @@ message GetOrgReply {
     }
 }
 
+message CreateOrgRequest {
+    string name = 1;
+}
+
+message CreateOrgResponse {
+    OrgInfo org_info = 1;
+}
+
+message GetOrgRequest {}
+
+message GetOrgResponse {
+    OrgInfo org_info = 1;
+}
+
 message ListOrgsRequest {}
 
-message ListOrgsReply {
-    repeated GetOrgReply list = 1;
+message ListOrgsResponse {
+    repeated OrgInfo list = 1;
 }
 
 message RemoveOrgRequest {}
 
-message RemoveOrgReply {}
+message RemoveOrgResponse {}
 
 message InviteToOrgRequest {
     string email = 1;
 }
 
-message InviteToOrgReply {
+message InviteToOrgResponse {
     string token = 1;
 }
 
 message LeaveOrgRequest {}
 
-message LeaveOrgReply {}
+message LeaveOrgResponse {}
 
 message IsUsernameAvailableRequest {
     string username = 1;
 }
 
-message IsUsernameAvailableReply {}
+message IsUsernameAvailableResponse {}
 
 message IsOrgNameAvailableRequest {
     string name = 1;
 }
 
-message IsOrgNameAvailableReply {
+message IsOrgNameAvailableResponse {
     string slug = 1;
     string host = 2;
 }
 
 message DestroyAccountRequest {}
 
-message DestroyAccountReply {}
+message DestroyAccountResponse {}
 
-service API {
-    rpc Signup(SignupRequest) returns (SignupReply) {}
-    rpc Signin(SigninRequest) returns (SigninReply) {}
-    rpc Signout(SignoutRequest) returns (SignoutReply) {}
+service APIService {
+    rpc Signup(SignupRequest) returns (SignupResponse) {}
+    rpc Signin(SigninRequest) returns (SigninResponse) {}
+    rpc Signout(SignoutRequest) returns (SignoutResponse) {}
 
-    rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoReply) {}
+    rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoResponse) {}
 
-    rpc CreateKey(CreateKeyRequest) returns (GetKeyReply) {}
-    rpc ListKeys(ListKeysRequest) returns (ListKeysReply) {}
-    rpc InvalidateKey(InvalidateKeyRequest) returns (InvalidateKeyReply) {}
+    rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+    rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+    rpc InvalidateKey(InvalidateKeyRequest) returns (InvalidateKeyResponse) {}
 
-    rpc CreateOrg(CreateOrgRequest) returns (GetOrgReply) {}
-    rpc GetOrg(GetOrgRequest) returns (GetOrgReply) {}
-    rpc ListOrgs(ListOrgsRequest) returns (ListOrgsReply) {}
-    rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgReply) {}
-    rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgReply) {}
-    rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgReply) {}
+    rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse) {}
+    rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {}
+    rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse) {}
+    rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgResponse) {}
+    rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgResponse) {}
+    rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgResponse) {}
 
-    rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableReply) {}
-    rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableReply) {}
+    rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableResponse) {}
+    rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}
 
-    rpc DestroyAccount(DestroyAccountRequest) returns (DestroyAccountReply) {}
+    rpc DestroyAccount(DestroyAccountRequest) returns (DestroyAccountResponse) {}
 }
