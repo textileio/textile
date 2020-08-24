@@ -75,10 +75,8 @@ require (
 	go.mongodb.org/mongo-driver v1.3.2
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	golang.org/x/tools v0.0.0-20200522201501-cb1345f3a375 // indirect
 	google.golang.org/grpc v1.31.0
 	gopkg.in/ini.v1 v1.55.0 // indirect
-	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 )
 
 // Fixes races. Keep this until this gets tagged and propagated to other deps.
