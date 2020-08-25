@@ -135,6 +135,9 @@ type Textile struct {
 	emailSessionBus    *broadcast.Broadcaster
 
 	conf Config
+
+	stub    *grpcdynamic.Stub
+	ffsDesc *desc.ServiceDescriptor
 }
 
 type Config struct {
@@ -333,28 +336,31 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if err != nil {
 				return nil, err
 			}
-			healthServiceDesc, err := createServiceDesciptor("health/rpc/rpc.proto", "health.rpc.RPCService")
-			if err != nil {
-				return nil, err
-			}
-			netServiceDesc, err := createServiceDesciptor("net/rpc/rpc.proto", "net.rpc.RPCService")
-			if err != nil {
-				return nil, err
-			}
+			t.stub = powStub
+			// healthServiceDesc, err := createServiceDesciptor("health/rpc/rpc.proto", "health.rpc.RPCService")
+			// if err != nil {
+			// 	return nil, err
+			// }
+			// netServiceDesc, err := createServiceDesciptor("net/rpc/rpc.proto", "net.rpc.RPCService")
+			// if err != nil {
+			// 	return nil, err
+			// }
 			ffsServiceDesc, err := createServiceDesciptor("ffs/rpc/rpc.proto", "ffs.rpc.RPCService")
 			if err != nil {
 				return nil, err
 			}
-			walletServiceDesc, err := createServiceDesciptor("wallet/rpc/rpc.proto", "wallet.rpc.RPCService")
-			if err != nil {
-				return nil, err
-			}
+			t.ffsDesc = ffsServiceDesc
+			// walletServiceDesc, err := createServiceDesciptor("wallet/rpc/rpc.proto", "wallet.rpc.RPCService")
+			// if err != nil {
+			// 	return nil, err
+			// }
 			interceptors = append(
 				interceptors,
-				generatePowUnaryInterceptor(allowedHealthMethods, healthServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedNetMethods, netServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedFFSMethods, ffsServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedWalletMethods, walletServiceDesc, powStub),
+				// generatePowUnaryInterceptor(allowedHealthMethods, healthServiceDesc, powStub),
+				// generatePowUnaryInterceptor(allowedNetMethods, netServiceDesc, powStub),
+				// generatePowUnaryInterceptor(allowedFFSMethods, ffsServiceDesc, powStub),
+				t.ffsInt,
+				// generatePowUnaryInterceptor(allowedWalletMethods, walletServiceDesc, powStub),
 			)
 		}
 		opts = []grpc.ServerOption{
@@ -637,7 +643,7 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func generatePowUnaryInterceptor(allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub grpcdynamic.Stub) grpc.UnaryServerInterceptor {
+func generatePowUnaryInterceptor(allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		isAllowedMethod := false
 		for _, method := range allowedMethods {
@@ -675,8 +681,50 @@ func generatePowUnaryInterceptor(allowedMethods []string, serviceDesc *desc.Serv
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
 		}
-		return stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		return res, err
 	}
+}
+
+func (t *Textile) ffsInt(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	isAllowedMethod := false
+	for _, method := range allowedFFSMethods {
+		if method == info.FullMethod {
+			isAllowedMethod = true
+			break
+		}
+	}
+
+	if !isAllowedMethod {
+		return handler(ctx, req)
+	}
+
+	var ffsInfo *mdb.FFSInfo
+	if org, ok := mdb.OrgFromContext(ctx); ok {
+		ffsInfo = org.FFSInfo
+	} else if dev, ok := mdb.DevFromContext(ctx); ok {
+		ffsInfo = dev.FFSInfo
+	} else if user, ok := mdb.UserFromContext(ctx); ok {
+		ffsInfo = user.FFSInfo
+	}
+
+	if ffsInfo == nil {
+		return nil, status.Error(codes.NotFound, "no account or no FFS info associated with account")
+	}
+
+	ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+
+	methodParts := strings.Split(info.FullMethod, "/")
+	if len(methodParts) < 2 {
+		return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
+	}
+	methodName := methodParts[len(methodParts)-1]
+	methodDesc := t.ffsDesc.FindMethodByName(methodName)
+	if methodDesc == nil {
+		return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
+	}
+	res, err := t.stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+	return res, err
 }
 
 // threadInterceptor monitors for thread creation and deletion.
@@ -849,12 +897,13 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func createPowStub(target string) (grpcdynamic.Stub, error) {
+func createPowStub(target string) (*grpcdynamic.Stub, error) {
 	pgConn, err := powc.CreateClientConn(target)
 	if err != nil {
-		return grpcdynamic.Stub{}, err
+		return &grpcdynamic.Stub{}, err
 	}
-	return grpcdynamic.NewStub(pgConn), nil
+	s := grpcdynamic.NewStub(pgConn)
+	return &s, nil
 }
 
 func createServiceDesciptor(file string, serviceName string) (*desc.ServiceDescriptor, error) {
