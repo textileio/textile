@@ -78,38 +78,37 @@ var (
 		"/threads.pb.API/ListDBs",
 	}
 
-	// allow these methods to be directly proxied through to powergate health service
-	allowedHealthMethods = []string{
-		"/health.rpc.RPCService/Check",
-	}
+	healthServiceName = "health.rpc.RPCService"
+	netServiceName    = "net.rpc.RPCService"
+	ffsServiceName    = "ffs.rpc.RPCService"
+	walletServiceName = "wallet.rpc.RPCService"
 
-	// allow these methods to be directly proxied through to powergate net service
-	allowedNetMethods = []string{
-		"/net.rpc.RPCService/ListenAddr",
-		"/net.rpc.RPCService/Peers",
-		"/net.rpc.RPCService/FindPeer",
-		"/net.rpc.RPCService/ConnectPeer",
-		"/net.rpc.RPCService/DisconnectPeer",
-		"/net.rpc.RPCService/Connectedness",
-	}
-
-	// allow these methods to be directly proxied through to powergate FFS service
-	allowedFFSMethods = []string{
-		"/ffs.rpc.RPCService/ListAPI", // ToDo: Remove this
-		"/ffs.rpc.RPCService/ID",      // and this
-		"/ffs.rpc.RPCService/Addrs",
-		"/ffs.rpc.RPCService/NewAddr",
-		"/ffs.rpc.RPCService/SendFil",
-		"/ffs.rpc.RPCService/Info",
-		"/ffs.rpc.RPCService/Show",
-		"/ffs.rpc.RPCService/ShowAll",
-		"/ffs.rpc.RPCService/ListStorageDealRecords",
-		"/ffs.rpc.RPCService/ListRetrievalDealRecords",
-	}
-
-	// allow these methods to be directly proxied through to powergate wallet service
-	allowedWalletMethods = []string{
-		"/wallet.rpc.RPCService/Balance",
+	// allow these methods to be directly proxied through to powergate service
+	allowedPowMethods = map[string][]string{
+		healthServiceName: {
+			"Check",
+		},
+		netServiceName: {
+			"ListenAddr",
+			"Peers",
+			"FindPeer",
+			"ConnectPeer",
+			"DisconnectPeer",
+			"Connectedness",
+		},
+		ffsServiceName: {
+			"Addrs",
+			"NewAddr",
+			"SendFil",
+			"Info",
+			"Show",
+			"ShowAll",
+			"ListStorageDealRecords",
+			"ListRetrievalDealRecords",
+		},
+		walletServiceName: {
+			"Balance",
+		},
 	}
 
 	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
@@ -336,28 +335,28 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if err != nil {
 				return nil, err
 			}
-			healthServiceDesc, err := createServiceDesciptor("health/rpc/rpc.proto", "health.rpc.RPCService")
+			healthServiceDesc, err := createServiceDesciptor("health/rpc/rpc.proto", healthServiceName)
 			if err != nil {
 				return nil, err
 			}
-			netServiceDesc, err := createServiceDesciptor("net/rpc/rpc.proto", "net.rpc.RPCService")
+			netServiceDesc, err := createServiceDesciptor("net/rpc/rpc.proto", netServiceName)
 			if err != nil {
 				return nil, err
 			}
-			ffsServiceDesc, err := createServiceDesciptor("ffs/rpc/rpc.proto", "ffs.rpc.RPCService")
+			ffsServiceDesc, err := createServiceDesciptor("ffs/rpc/rpc.proto", ffsServiceName)
 			if err != nil {
 				return nil, err
 			}
-			walletServiceDesc, err := createServiceDesciptor("wallet/rpc/rpc.proto", "wallet.rpc.RPCService")
+			walletServiceDesc, err := createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName)
 			if err != nil {
 				return nil, err
 			}
 			interceptors = append(
 				interceptors,
-				generatePowUnaryInterceptor(allowedHealthMethods, healthServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedNetMethods, netServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedFFSMethods, ffsServiceDesc, powStub),
-				generatePowUnaryInterceptor(allowedWalletMethods, walletServiceDesc, powStub),
+				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub),
+				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub),
+				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub),
+				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub),
 			)
 		}
 		opts = []grpc.ServerOption{
@@ -640,18 +639,29 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func generatePowUnaryInterceptor(allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub) grpc.UnaryServerInterceptor {
+func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		methodParts := strings.Split(info.FullMethod, "/")
+		if len(methodParts) != 3 {
+			return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
+		}
+		methodServiceName := methodParts[1]
+		methodName := methodParts[2]
+
+		if methodServiceName != serviceName {
+			return handler(ctx, req)
+		}
+
 		isAllowedMethod := false
 		for _, method := range allowedMethods {
-			if method == info.FullMethod {
+			if method == methodName {
 				isAllowedMethod = true
 				break
 			}
 		}
 
 		if !isAllowedMethod {
-			return handler(ctx, req)
+			return nil, status.Errorf(codes.PermissionDenied, "method not allowed: %s", info.FullMethod)
 		}
 
 		var ffsInfo *mdb.FFSInfo
@@ -669,11 +679,6 @@ func generatePowUnaryInterceptor(allowedMethods []string, serviceDesc *desc.Serv
 
 		ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
 
-		methodParts := strings.Split(info.FullMethod, "/")
-		if len(methodParts) < 2 {
-			return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
-		}
-		methodName := methodParts[len(methodParts)-1]
 		methodDesc := serviceDesc.FindMethodByName(methodName)
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
