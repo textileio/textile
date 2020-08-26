@@ -683,8 +683,7 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
 		}
-		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
-		return res, err
+		return stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
 	}
 }
 
