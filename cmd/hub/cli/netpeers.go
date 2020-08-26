@@ -16,7 +16,7 @@ var netPeersCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 
-		peers, err := clients.Powergate.Net.Peers(ctx)
+		peers, err := clients.Pow.Peers(ctx)
 		cmd.ErrCheck(err)
 		cmd.Message("PEERS: %v", peers)
 	},

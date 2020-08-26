@@ -16,7 +16,7 @@ var ffsAddrsCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 
-		addrs, err := clients.Powergate.FFS.Addrs(ctx)
+		addrs, err := clients.Users.Pow.Addrs(ctx)
 		cmd.ErrCheck(err)
 		cmd.Message("FFS addrs:\n%v", addrs)
 	},

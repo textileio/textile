@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/viper"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
-	pc "github.com/textileio/powergate/api/client"
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	pc "github.com/textileio/textile/api/pow/client"
 	uc "github.com/textileio/textile/api/users/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -77,11 +77,11 @@ func (cc ConfConfig) NewConfig(pth string, flags map[string]Flag, global bool) (
 
 // Clients wraps all the possible hubd/buckd clients.
 type Clients struct {
-	Buckets   *bc.Client
-	Threads   *tc.Client
-	Hub       *hc.Client
-	Users     *uc.Client
-	Powergate *pc.Client
+	Buckets *bc.Client
+	Threads *tc.Client
+	Hub     *hc.Client
+	Users   *uc.Client
+	Pow     *pc.Client
 }
 
 // NewClients returns a new clients object pointing to the target address.
@@ -118,7 +118,7 @@ func NewClients(target string, isHub bool) *Clients {
 			Fatal(err)
 		}
 	}
-	c.Powergate, err = pc.NewClient(target, opts...)
+	c.Pow, err = pc.NewClient(target, opts...)
 	if err != nil {
 		Fatal(err)
 	}

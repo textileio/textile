@@ -89,11 +89,8 @@ var (
 			"Check",
 		},
 		netServiceName: {
-			"ListenAddr",
 			"Peers",
 			"FindPeer",
-			"ConnectPeer",
-			"DisconnectPeer",
 			"Connectedness",
 		},
 		ffsServiceName: {
