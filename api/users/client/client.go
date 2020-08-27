@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/api/users/client/pow"
 	pb "github.com/textileio/textile/api/users/pb"
 	"github.com/textileio/textile/threaddb"
 	"google.golang.org/grpc"
@@ -18,7 +17,6 @@ import (
 type Client struct {
 	c    pb.APIServiceClient
 	conn *grpc.ClientConn
-	Pow  *pow.Client
 }
 
 // NewClient starts the client.
@@ -30,7 +28,6 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 	return &Client{
 		c:    pb.NewAPIServiceClient(conn),
 		conn: conn,
-		Pow:  pow.NewClient(conn),
 	}, nil
 }
 
