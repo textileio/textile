@@ -323,41 +323,39 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	var opts []grpc.ServerOption
 	if conf.Hub {
-		interceptors := []grpc.UnaryServerInterceptor{
-			auth.UnaryServerInterceptor(t.authFunc),
-			t.threadInterceptor(),
-		}
+		var powStub *grpcdynamic.Stub
+		var healthServiceDesc *desc.ServiceDescriptor
+		var netServiceDesc *desc.ServiceDescriptor
+		var ffsServiceDesc *desc.ServiceDescriptor
+		var walletServiceDesc *desc.ServiceDescriptor
+		powEnabled := false
 		if conf.AddrPowergateAPI != "" {
-			powStub, err := createPowStub(conf.AddrPowergateAPI)
-			if err != nil {
+			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
 			}
-			healthServiceDesc, err := createServiceDesciptor("health/rpc/rpc.proto", healthServiceName)
-			if err != nil {
+			if healthServiceDesc, err = createServiceDesciptor("health/rpc/rpc.proto", healthServiceName); err != nil {
 				return nil, err
 			}
-			netServiceDesc, err := createServiceDesciptor("net/rpc/rpc.proto", netServiceName)
-			if err != nil {
+			if netServiceDesc, err = createServiceDesciptor("net/rpc/rpc.proto", netServiceName); err != nil {
 				return nil, err
 			}
-			ffsServiceDesc, err := createServiceDesciptor("ffs/rpc/rpc.proto", ffsServiceName)
-			if err != nil {
+			if ffsServiceDesc, err = createServiceDesciptor("ffs/rpc/rpc.proto", ffsServiceName); err != nil {
 				return nil, err
 			}
-			walletServiceDesc, err := createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName)
-			if err != nil {
+			if walletServiceDesc, err = createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName); err != nil {
 				return nil, err
 			}
-			interceptors = append(
-				interceptors,
-				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub),
-				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub),
-				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub),
-				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub),
-			)
+			powEnabled = true
 		}
 		opts = []grpc.ServerOption{
-			grpcm.WithUnaryServerChain(interceptors...),
+			grpcm.WithUnaryServerChain(
+				auth.UnaryServerInterceptor(t.authFunc),
+				t.threadInterceptor(),
+				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, powEnabled),
+				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, powEnabled),
+				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, powEnabled),
+				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, powEnabled),
+			),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
 	} else {
@@ -377,12 +375,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if conf.Hub {
 			hpb.RegisterAPIServiceServer(t.server, hs)
 			upb.RegisterAPIServiceServer(t.server, us)
-			if conf.AddrPowergateAPI != "" {
-				healthRpc.RegisterRPCServiceServer(t.server, &healthRpc.UnimplementedRPCServiceServer{})
-				netRpc.RegisterRPCServiceServer(t.server, &netRpc.UnimplementedRPCServiceServer{})
-				ffsRpc.RegisterRPCServiceServer(t.server, &ffsRpc.UnimplementedRPCServiceServer{})
-				walletRpc.RegisterRPCServiceServer(t.server, &walletRpc.UnimplementedRPCServiceServer{})
-			}
+			healthRpc.RegisterRPCServiceServer(t.server, &healthRpc.UnimplementedRPCServiceServer{})
+			netRpc.RegisterRPCServiceServer(t.server, &netRpc.UnimplementedRPCServiceServer{})
+			ffsRpc.RegisterRPCServiceServer(t.server, &ffsRpc.UnimplementedRPCServiceServer{})
+			walletRpc.RegisterRPCServiceServer(t.server, &walletRpc.UnimplementedRPCServiceServer{})
 		}
 		bpb.RegisterAPIServiceServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
@@ -636,7 +632,7 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub) grpc.UnaryServerInterceptor {
+func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, powEnabled bool) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		methodParts := strings.Split(info.FullMethod, "/")
 		if len(methodParts) != 3 {
@@ -647,6 +643,10 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 
 		if methodServiceName != serviceName {
 			return handler(ctx, req)
+		}
+
+		if !powEnabled {
+			return nil, status.Error(codes.Internal, "powergate isn't enabled in hub")
 		}
 
 		isAllowedMethod := false
@@ -859,8 +859,7 @@ func createPowStub(target string) (*grpcdynamic.Stub, error) {
 	if err != nil {
 		return &grpcdynamic.Stub{}, err
 	}
-	factory := dynamic.NewMessageFactoryWithDefaults()
-	s := grpcdynamic.NewStubWithMessageFactory(pgConn, factory)
+	s := grpcdynamic.NewStubWithMessageFactory(pgConn, dynamic.NewMessageFactoryWithDefaults())
 	return &s, nil
 }
 
