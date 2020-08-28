@@ -659,19 +659,19 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 			return nil, status.Errorf(codes.PermissionDenied, "method not allowed: %s", info.FullMethod)
 		}
 
-		var ffsInfo *mdb.FFSInfo
+		var powInfo *mdb.PowInfo
 		var owner crypto.PubKey
 		var isAccount bool
 		if org, ok := mdb.OrgFromContext(ctx); ok {
-			ffsInfo = org.FFSInfo
+			powInfo = org.PowInfo
 			owner = org.Key
 			isAccount = true
 		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			ffsInfo = dev.FFSInfo
+			powInfo = dev.PowInfo
 			owner = dev.Key
 			isAccount = true
 		} else if user, ok := mdb.UserFromContext(ctx); ok {
-			ffsInfo = user.FFSInfo
+			powInfo = user.PowInfo
 			owner = user.Key
 			isAccount = false
 		}
@@ -682,9 +682,9 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 				return fmt.Errorf("creating new ffs instance: %v", err)
 			}
 			if isAccount {
-				_, err = c.Accounts.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+				_, err = c.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 			} else {
-				_, err = c.Users.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+				_, err = c.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 			}
 			if err != nil {
 				return fmt.Errorf("updating user/account with new ffs information: %v", err)
@@ -696,14 +696,14 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 
 		// case where account/user was created before powergate was enabled.
 		// create a ffs instance for them.
-		if ffsInfo == nil {
+		if powInfo == nil {
 			if err := createNewFFS(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
 		}
 
-		ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+		ffsCtx := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
 
 		methodDesc := serviceDesc.FindMethodByName(methodName)
 		if methodDesc == nil {
@@ -820,15 +820,15 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			var ffsInfo *mdb.FFSInfo
+			var powInfo *mdb.PowInfo
 			if t.powc != nil {
 				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
 				if err != nil {
 					return nil, err
 				}
-				ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
+				powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
 			}
-			if err := t.collections.Users.Create(ctx, owner, ffsInfo); err != nil {
+			if err := t.collections.Users.Create(ctx, owner, powInfo); err != nil {
 				return nil, err
 			}
 		}

@@ -45,7 +45,7 @@ var (
 func Init(rootCmd *cobra.Command) {
 	config.Viper.SetConfigType("yaml")
 
-	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, ffsAddrsCmd, netPeersCmd)
+	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd)
 	rootCmd.AddCommand(orgsCmd, keysCmd, threadsCmd, powCmd)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)

@@ -1607,15 +1607,15 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
 
-	var ffsInfo *mdb.FFSInfo
+	var powInfo *mdb.PowInfo
 	var owner crypto.PubKey
 	var isAccount bool
 	if acct := accountFromContext(ctx); acct != nil {
-		ffsInfo = acct.FFSInfo
+		powInfo = acct.PowInfo
 		owner = acct.Key
 		isAccount = true
 	} else if user := userFromContext(ctx); user != nil {
-		ffsInfo = user.FFSInfo
+		powInfo = user.PowInfo
 		owner = user.Key
 		isAccount = false
 	} else {
@@ -1628,9 +1628,9 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return fmt.Errorf("creating new ffs instance: %v", err)
 		}
 		if isAccount {
-			_, err = s.Collections.Accounts.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+			_, err = s.Collections.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 		} else {
-			_, err = s.Collections.Users.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+			_, err = s.Collections.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 		}
 		if err != nil {
 			return fmt.Errorf("updating user/account with new ffs information: %v", err)
@@ -1642,14 +1642,14 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	// case where account/user was created before bucket archives were enabled.
 	// create a ffs instance for them.
-	if ffsInfo == nil {
+	if powInfo == nil {
 		if err := createNewFFS(); err != nil {
 			return nil, err
 		}
 		return nil, tryAgain
 	}
 
-	ctxFFS := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+	ctxFFS := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
 
 	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
@@ -1755,14 +1755,14 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 		return ErrArchivingFeatureDisabled
 	}
 
-	var ffsInfo *mdb.FFSInfo
+	var powInfo *mdb.PowInfo
 	if acct := accountFromContext(server.Context()); acct != nil {
-		ffsInfo = acct.FFSInfo
+		powInfo = acct.PowInfo
 	} else if user := userFromContext(server.Context()); user != nil {
-		ffsInfo = user.FFSInfo
+		powInfo = user.PowInfo
 	}
 
-	if ffsInfo == nil {
+	if powInfo == nil {
 		return fmt.Errorf("no user/account or no FFS info associated with user/account")
 	}
 
@@ -1771,7 +1771,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), ffsInfo.Token, ch)
+		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), powInfo.Token, ch)
 		close(ch)
 	}()
 	for s := range ch {
