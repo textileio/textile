@@ -15,7 +15,7 @@ type User struct {
 	Key              crypto.PubKey
 	BucketsTotalSize int64
 	CreatedAt        time.Time
-	FFSInfo          *FFSInfo
+	PowInfo          *PowInfo
 }
 
 func NewUserContext(ctx context.Context, user *User) context.Context {
@@ -35,11 +35,11 @@ func NewUsers(_ context.Context, db *mongo.Database) (*Users, error) {
 	return &Users{col: db.Collection("users")}, nil
 }
 
-func (u *Users) Create(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) error {
+func (u *Users) Create(ctx context.Context, key crypto.PubKey, powInfo *PowInfo) error {
 	doc := &User{
 		Key:       key,
 		CreatedAt: time.Now(),
-		FFSInfo:   ffsInfo,
+		PowInfo:   powInfo,
 	}
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
@@ -50,7 +50,7 @@ func (u *Users) Create(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo)
 		"buckets_total_size": int64(0),
 		"created_at":         doc.CreatedAt,
 	}
-	encodeFFSInfo(data, doc.FFSInfo)
+	encodePowInfo(data, doc.PowInfo)
 	if _, err := u.col.InsertOne(ctx, data); err != nil {
 		if _, ok := err.(mongo.WriteException); ok {
 			return nil
@@ -60,13 +60,13 @@ func (u *Users) Create(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo)
 	return nil
 }
 
-func (u *Users) UpdateFFSInfo(ctx context.Context, key crypto.PubKey, ffsInfo *FFSInfo) (*User, error) {
+func (u *Users) UpdatePowInfo(ctx context.Context, key crypto.PubKey, powInfo *PowInfo) (*User, error) {
 	id, err := crypto.MarshalPublicKey(key)
 	if err != nil {
 		return nil, err
 	}
 	update := bson.M{}
-	encodeFFSInfo(update, ffsInfo)
+	encodePowInfo(update, powInfo)
 	res, err := u.col.UpdateOne(
 		ctx,
 		bson.M{"_id": id},
@@ -147,6 +147,6 @@ func decodeUser(raw bson.M) (*User, error) {
 		Key:              key,
 		BucketsTotalSize: bucketsTotalSize,
 		CreatedAt:        created,
-		FFSInfo:          decodeFFSInfo(raw),
+		PowInfo:          decodePowInfo(raw),
 	}, nil
 }

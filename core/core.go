@@ -3,16 +3,22 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/golang/protobuf/proto"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
+	"github.com/jhump/protoreflect/desc"
+	"github.com/jhump/protoreflect/dynamic"
+	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,6 +34,10 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
+	ffsRpc "github.com/textileio/powergate/ffs/rpc"
+	healthRpc "github.com/textileio/powergate/health/rpc"
+	netRpc "github.com/textileio/powergate/net/rpc"
+	walletRpc "github.com/textileio/powergate/wallet/rpc"
 	"github.com/textileio/textile/api/buckets"
 	bpb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
@@ -66,6 +76,36 @@ var (
 	// blockMethods are always blocked by auth.
 	blockMethods = []string{
 		"/threads.pb.API/ListDBs",
+	}
+
+	healthServiceName = "health.rpc.RPCService"
+	netServiceName    = "net.rpc.RPCService"
+	ffsServiceName    = "ffs.rpc.RPCService"
+	walletServiceName = "wallet.rpc.RPCService"
+
+	// allow these methods to be directly proxied through to powergate service
+	allowedPowMethods = map[string][]string{
+		healthServiceName: {
+			"Check",
+		},
+		netServiceName: {
+			"Peers",
+			"FindPeer",
+			"Connectedness",
+		},
+		ffsServiceName: {
+			"Addrs",
+			"NewAddr",
+			"SendFil",
+			"Info",
+			"Show",
+			"ShowAll",
+			"ListStorageDealRecords",
+			"ListRetrievalDealRecords",
+		},
+		walletServiceName: {
+			"Balance",
+		},
 	}
 
 	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
@@ -283,8 +323,37 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	var opts []grpc.ServerOption
 	if conf.Hub {
+		var powStub *grpcdynamic.Stub
+		var healthServiceDesc *desc.ServiceDescriptor
+		var netServiceDesc *desc.ServiceDescriptor
+		var ffsServiceDesc *desc.ServiceDescriptor
+		var walletServiceDesc *desc.ServiceDescriptor
+		if conf.AddrPowergateAPI != "" {
+			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
+				return nil, err
+			}
+			if healthServiceDesc, err = createServiceDesciptor("health/rpc/rpc.proto", healthServiceName); err != nil {
+				return nil, err
+			}
+			if netServiceDesc, err = createServiceDesciptor("net/rpc/rpc.proto", netServiceName); err != nil {
+				return nil, err
+			}
+			if ffsServiceDesc, err = createServiceDesciptor("ffs/rpc/rpc.proto", ffsServiceName); err != nil {
+				return nil, err
+			}
+			if walletServiceDesc, err = createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName); err != nil {
+				return nil, err
+			}
+		}
 		opts = []grpc.ServerOption{
-			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.authFunc), t.threadInterceptor()),
+			grpcm.WithUnaryServerChain(
+				auth.UnaryServerInterceptor(t.authFunc),
+				t.threadInterceptor(),
+				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.powc, t.collections),
+			),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
 	} else {
@@ -304,6 +373,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if conf.Hub {
 			hpb.RegisterAPIServiceServer(t.server, hs)
 			upb.RegisterAPIServiceServer(t.server, us)
+			healthRpc.RegisterRPCServiceServer(t.server, &healthRpc.UnimplementedRPCServiceServer{})
+			netRpc.RegisterRPCServiceServer(t.server, &netRpc.UnimplementedRPCServiceServer{})
+			ffsRpc.RegisterRPCServiceServer(t.server, &ffsRpc.UnimplementedRPCServiceServer{})
+			walletRpc.RegisterRPCServiceServer(t.server, &walletRpc.UnimplementedRPCServiceServer{})
 		}
 		bpb.RegisterAPIServiceServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
@@ -557,6 +630,103 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, pc *powc.Client, c *mdb.Collections) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		methodParts := strings.Split(info.FullMethod, "/")
+		if len(methodParts) != 3 {
+			return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
+		}
+		methodServiceName := methodParts[1]
+		methodName := methodParts[2]
+
+		if methodServiceName != serviceName {
+			return handler(ctx, req)
+		}
+
+		if pc == nil {
+			return nil, status.Error(codes.Internal, "Powergate isn't enabled in Hub")
+		}
+
+		isAllowedMethod := false
+		for _, method := range allowedMethods {
+			if method == methodName {
+				isAllowedMethod = true
+				break
+			}
+		}
+
+		if !isAllowedMethod {
+			return nil, status.Errorf(codes.PermissionDenied, "method not allowed: %s", info.FullMethod)
+		}
+
+		var powInfo *mdb.PowInfo
+		var owner crypto.PubKey
+		var isAccount bool
+		if org, ok := mdb.OrgFromContext(ctx); ok {
+			powInfo = org.PowInfo
+			owner = org.Key
+			isAccount = true
+		} else if dev, ok := mdb.DevFromContext(ctx); ok {
+			powInfo = dev.PowInfo
+			owner = dev.Key
+			isAccount = true
+		} else if user, ok := mdb.UserFromContext(ctx); ok {
+			powInfo = user.PowInfo
+			owner = user.Key
+			isAccount = false
+		}
+
+		createNewFFS := func() error {
+			id, token, err := pc.FFS.Create(ctx)
+			if err != nil {
+				return fmt.Errorf("creating new ffs instance: %v", err)
+			}
+			if isAccount {
+				_, err = c.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
+			} else {
+				_, err = c.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
+			}
+			if err != nil {
+				return fmt.Errorf("updating user/account with new ffs information: %v", err)
+			}
+			return nil
+		}
+
+		tryAgain := fmt.Errorf("powergate newly integrated into your account, please try again in 30 seconds to allow time for setup to complete")
+
+		// case where account/user was created before powergate was enabled.
+		// create a ffs instance for them.
+		if powInfo == nil {
+			if err := createNewFFS(); err != nil {
+				return nil, err
+			}
+			return nil, tryAgain
+		}
+
+		ffsCtx := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
+
+		methodDesc := serviceDesc.FindMethodByName(methodName)
+		if methodDesc == nil {
+			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
+		}
+
+		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		if err != nil {
+			if err.Error() != "auth token not found" {
+				return nil, err
+			} else {
+				// case where the ffs token is no longer valid because powergate was reset.
+				// create a new ffs instance for them.
+				if err := createNewFFS(); err != nil {
+					return nil, err
+				}
+				return nil, tryAgain
+			}
+		}
+		return res, nil
+	}
+}
+
 // threadInterceptor monitors for thread creation and deletion.
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
@@ -650,15 +820,15 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		// Collect the user if we haven't seen them before.
 		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
-			var ffsInfo *mdb.FFSInfo
+			var powInfo *mdb.PowInfo
 			if t.powc != nil {
 				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
 				if err != nil {
 					return nil, err
 				}
-				ffsInfo = &mdb.FFSInfo{ID: ffsId, Token: ffsToken}
+				powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
 			}
-			if err := t.collections.Users.Create(ctx, owner, ffsInfo); err != nil {
+			if err := t.collections.Users.Create(ctx, owner, powInfo); err != nil {
 				return nil, err
 			}
 		}
@@ -725,4 +895,25 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 		return res, nil
 	}
+}
+
+func createPowStub(target string) (*grpcdynamic.Stub, error) {
+	pgConn, err := powc.CreateClientConn(target)
+	if err != nil {
+		return &grpcdynamic.Stub{}, err
+	}
+	s := grpcdynamic.NewStubWithMessageFactory(pgConn, dynamic.NewMessageFactoryWithDefaults())
+	return &s, nil
+}
+
+func createServiceDesciptor(file string, serviceName string) (*desc.ServiceDescriptor, error) {
+	fileDesc, err := desc.LoadFileDescriptor(file)
+	if err != nil {
+		return nil, err
+	}
+	serviceDesc := fileDesc.FindService(serviceName)
+	if serviceDesc == nil {
+		return nil, fmt.Errorf("no service description found")
+	}
+	return serviceDesc, nil
 }

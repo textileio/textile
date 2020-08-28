@@ -5,7 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type FFSInfo struct {
+type PowInfo struct {
 	ID    string
 	Token string
 }
@@ -16,26 +16,26 @@ const (
 	tokenKey = "token"
 )
 
-func encodeFFSInfo(data bson.M, ffsInfo *FFSInfo) {
-	if ffsInfo != nil {
+func encodePowInfo(data bson.M, powInfo *PowInfo) {
+	if powInfo != nil {
 		data[key] = bson.M{
-			idKey:    ffsInfo.ID,
-			tokenKey: ffsInfo.Token,
+			idKey:    powInfo.ID,
+			tokenKey: powInfo.Token,
 		}
 	}
 }
 
-func decodeFFSInfo(raw primitive.M) *FFSInfo {
-	var ffsInfo *FFSInfo
+func decodePowInfo(raw primitive.M) *PowInfo {
+	var powInfo *PowInfo
 	if v, ok := raw[key]; ok {
-		ffsInfo = &FFSInfo{}
+		powInfo = &PowInfo{}
 		raw := v.(bson.M)
 		if v, ok := raw[idKey]; ok {
-			ffsInfo.ID = v.(string)
+			powInfo.ID = v.(string)
 		}
 		if v, ok := raw[tokenKey]; ok {
-			ffsInfo.Token = v.(string)
+			powInfo.Token = v.(string)
 		}
 	}
-	return ffsInfo
+	return powInfo
 }

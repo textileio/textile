@@ -17,19 +17,19 @@ func TestAccounts_CreateDev(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.NoError(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &PowInfo{ID: "id", Token: "token"})
 	require.NoError(t, err)
 	assert.Equal(t, Dev, created.Type)
 	assert.Equal(t, "jon", created.Username)
 	assert.Equal(t, "jon@doe.com", created.Email)
 	assert.NotEmpty(t, created.Key)
 	assert.NotEmpty(t, created.Secret)
-	assert.Equal(t, "id", created.FFSInfo.ID)
-	assert.Equal(t, "token", created.FFSInfo.Token)
+	assert.Equal(t, "id", created.PowInfo.ID)
+	assert.Equal(t, "token", created.PowInfo.Token)
 
-	_, err = col.CreateDev(context.Background(), "jon", "jon2@doe.com", &FFSInfo{ID: "id2", Token: "token2"})
+	_, err = col.CreateDev(context.Background(), "jon", "jon2@doe.com", &PowInfo{ID: "id2", Token: "token2"})
 	require.Error(t, err)
-	_, err = col.CreateDev(context.Background(), "jon2", "jon@doe.com", &FFSInfo{ID: "id3", Token: "token3"})
+	_, err = col.CreateDev(context.Background(), "jon2", "jon@doe.com", &PowInfo{ID: "id3", Token: "token3"})
 	require.Error(t, err)
 
 	_, mem, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -38,29 +38,29 @@ func TestAccounts_CreateDev(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}}, &FFSInfo{ID: "id", Token: "token"})
+	}}, &PowInfo{ID: "id", Token: "token"})
 	require.Error(t, err)
 }
 
-func TestAccounts_UpdateFFSInfo(t *testing.T) {
+func TestAccounts_UpdatePowInfo(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)
 	require.NoError(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &PowInfo{ID: "id", Token: "token"})
 	require.NoError(t, err)
-	assert.Equal(t, "id", created.FFSInfo.ID)
-	assert.Equal(t, "token", created.FFSInfo.Token)
-	updated, err := col.UpdateFFSInfo(context.Background(), created.Key, &FFSInfo{ID: "id2", Token: "token2"})
+	assert.Equal(t, "id", created.PowInfo.ID)
+	assert.Equal(t, "token", created.PowInfo.Token)
+	updated, err := col.UpdatePowInfo(context.Background(), created.Key, &PowInfo{ID: "id2", Token: "token2"})
 	require.NoError(t, err)
 	assert.Equal(t, created.Key, updated.Key)
-	assert.Equal(t, "id2", updated.FFSInfo.ID)
-	assert.Equal(t, "token2", updated.FFSInfo.Token)
+	assert.Equal(t, "id2", updated.PowInfo.ID)
+	assert.Equal(t, "token2", updated.PowInfo.Token)
 	got, err := col.Get(context.Background(), created.Key)
 	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
-	assert.Equal(t, "id2", got.FFSInfo.ID)
-	assert.Equal(t, "token2", got.FFSInfo.Token)
+	assert.Equal(t, "id2", got.PowInfo.ID)
+	assert.Equal(t, "token2", got.PowInfo.Token)
 }
 
 func TestAccounts_Get(t *testing.T) {
@@ -68,14 +68,14 @@ func TestAccounts_Get(t *testing.T) {
 	col, err := NewAccounts(context.Background(), db)
 	require.NoError(t, err)
 
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &FFSInfo{ID: "id", Token: "token"})
+	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", &PowInfo{ID: "id", Token: "token"})
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Key)
 	require.NoError(t, err)
 	assert.Equal(t, created.Key, got.Key)
-	assert.Equal(t, "id", created.FFSInfo.ID)
-	assert.Equal(t, "token", created.FFSInfo.Token)
+	assert.Equal(t, "id", created.PowInfo.ID)
+	assert.Equal(t, "token", created.PowInfo.Token)
 }
 
 func TestAccounts_BucketsTotalSize(t *testing.T) {
@@ -218,14 +218,14 @@ func TestAccounts_CreateOrg(t *testing.T) {
 		Key:      mem,
 		Username: "test",
 		Role:     OrgOwner,
-	}}, &FFSInfo{ID: "id", Token: "token"})
+	}}, &PowInfo{ID: "id", Token: "token"})
 	require.NoError(t, err)
 	assert.Equal(t, Org, created.Type)
 	assert.Equal(t, created.Name, "test")
 	assert.NotNil(t, created.Key)
 	assert.True(t, created.CreatedAt.Unix() > 0)
-	assert.Equal(t, "id", created.FFSInfo.ID)
-	assert.Equal(t, "token", created.FFSInfo.Token)
+	assert.Equal(t, "id", created.PowInfo.ID)
+	assert.Equal(t, "token", created.PowInfo.Token)
 
 	_, err = col.CreateOrg(context.Background(), "test", []Member{{
 		Key:      mem,

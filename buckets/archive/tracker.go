@@ -90,21 +90,21 @@ func (t *Tracker) run() {
 						ctx, cancel := context.WithTimeout(t.ctx, time.Second*5)
 						defer cancel()
 
-						var ffsInfo *mdb.FFSInfo
+						var powInfo *mdb.PowInfo
 						if account, err := t.colls.Accounts.Get(ctx, a.Owner); err == nil {
-							ffsInfo = account.FFSInfo
+							powInfo = account.PowInfo
 						} else if user, err := t.colls.Users.Get(ctx, a.Owner); err == nil {
-							ffsInfo = user.FFSInfo
+							powInfo = user.PowInfo
 						}
 
-						if ffsInfo == nil {
+						if powInfo == nil {
 							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "huh? no FFS info, weird"); err != nil {
 								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
 							}
 							return
 						}
 
-						reschedule, cause, err := t.trackArchiveProgress(ctx, a.BucketKey, a.DbID, a.DbToken, a.JID, a.BucketRoot, ffsInfo)
+						reschedule, cause, err := t.trackArchiveProgress(ctx, a.BucketKey, a.DbID, a.DbToken, a.JID, a.BucketRoot, powInfo)
 						if err != nil || !reschedule {
 							if err != nil {
 								cause = err.Error()
@@ -139,14 +139,14 @@ func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Toke
 // If a fatal error in tracking happens, it will return an error, which indicates the archive should be untracked.
 // If the archive didn't reach a final status yet, or a possibly recoverable error (by retrying) happens, it will return (true, "retry cause", nil).
 // If the archive reach final status, it will return (false, "", nil) and the tracking can be considered done.
-func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID thread.ID, dbToken thread.Token, jid ffs.JobID, bucketRoot cid.Cid, ffsInfo *mdb.FFSInfo) (bool, string, error) {
+func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID thread.ID, dbToken thread.Token, jid ffs.JobID, bucketRoot cid.Cid, powInfo *mdb.PowInfo) (bool, string, error) {
 	log.Infof("querying archive status of job %s", jid)
 	defer log.Infof("finished querying archive status of job %s", jid)
 	// Step 1: watch for the Job status, and keep updating on Mongo until
 	// we're in a final state.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ctx = context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
+	ctx = context.WithValue(ctx, powc.AuthKey, powInfo.Token)
 	ch := make(chan powc.JobEvent, 1)
 	if err := t.pgClient.FFS.WatchJobs(ctx, ch, jid); err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
@@ -183,7 +183,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 	// Step 2: On success, save Deal data in the underlying Bucket thread. On
 	// failure save the error message. Also update status on Mongo for the archive.
 	if job.Status == ffs.Success {
-		if err := t.saveDealsInArchive(ctx, buckKey, dbID, dbToken, ffsInfo.Token, bucketRoot); err != nil {
+		if err := t.saveDealsInArchive(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
 			return true, fmt.Sprintf("saving deal data in archive: %s", err), nil
 		}
 	}

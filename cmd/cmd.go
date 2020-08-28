@@ -14,6 +14,7 @@ import (
 	bc "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	pc "github.com/textileio/textile/api/pow/client"
 	uc "github.com/textileio/textile/api/users/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,6 +81,7 @@ type Clients struct {
 	Threads *tc.Client
 	Hub     *hc.Client
 	Users   *uc.Client
+	Pow     *pc.Client
 }
 
 // NewClients returns a new clients object pointing to the target address.
@@ -115,6 +117,10 @@ func NewClients(target string, isHub bool) *Clients {
 		if err != nil {
 			Fatal(err)
 		}
+	}
+	c.Pow, err = pc.NewClient(target, opts...)
+	if err != nil {
+		Fatal(err)
 	}
 	return c
 }
