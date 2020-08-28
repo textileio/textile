@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -14,8 +13,6 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	pc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/health"
 	"github.com/textileio/textile/api/apitest"
 	c "github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
@@ -27,8 +24,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var powAddr = "127.0.0.1:5002"
-
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
 	archive.JobStatusPollInterval = time.Second * 5
@@ -36,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateBucket(t *testing.T) {
-	powc := spinup(t)
+	powc := StartPowergate(t)
 	ctx, _, client, shutdown := setup(t)
 	defer shutdown(true)
 
@@ -56,7 +51,7 @@ func TestCreateBucket(t *testing.T) {
 
 func TestArchiveTracker(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = spinup(t)
+		_ = StartPowergate(t)
 		ctx, conf, client, shutdown := setup(t)
 
 		// Create bucket with a file.
@@ -108,7 +103,7 @@ func TestArchiveTracker(t *testing.T) {
 
 func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = spinup(t)
+		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
 		defer shutdown(true)
 
@@ -167,7 +162,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = spinup(t)
+		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
 		defer shutdown(true)
 
@@ -201,7 +196,7 @@ func TestArchiveWatch(t *testing.T) {
 
 func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = spinup(t)
+		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
 		defer shutdown(true)
 
@@ -302,59 +297,4 @@ func reSetup(t util.TestingTWithCleanup, conf core.Config) *c.Client {
 	})
 
 	return client
-}
-
-func spinup(t util.TestingTWithCleanup) *pc.Client {
-	makeDown := func() {
-		if err := exec.Command("docker-compose", "down", "-v").Run(); err != nil {
-			panic(err)
-		}
-	}
-	makeDown()
-
-	cmd := exec.Command("docker-compose", "build")
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		t.Errorf("docker-compose build: %s", err)
-		t.FailNow()
-	}
-
-	cmd = exec.Command("docker-compose", "up", "-V")
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		t.Errorf("running docker-compose: %s", err)
-		t.FailNow()
-	}
-	t.Cleanup(makeDown)
-
-	var powc *pc.Client
-	var err error
-	limit := 30
-	retries := 0
-	require.Nil(t, err)
-	for retries < limit {
-		powc, err = pc.NewClient(powAddr, grpc.WithInsecure())
-		require.NoError(t, err)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		s, _, err := powc.Health.Check(ctx)
-		if err == nil {
-			require.Equal(t, health.Ok, s)
-			cancel()
-			break
-		}
-		time.Sleep(time.Second)
-		retries++
-		cancel()
-	}
-	if retries == limit {
-		if err != nil {
-			t.Errorf("trying to confirm health check: %s", err)
-			t.FailNow()
-		}
-		t.Errorf("max retries to connect with Powergate")
-		t.FailNow()
-	}
-	return powc
 }
