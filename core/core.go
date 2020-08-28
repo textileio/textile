@@ -328,7 +328,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		var netServiceDesc *desc.ServiceDescriptor
 		var ffsServiceDesc *desc.ServiceDescriptor
 		var walletServiceDesc *desc.ServiceDescriptor
-		powEnabled := false
 		if conf.AddrPowergateAPI != "" {
 			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
@@ -345,16 +344,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if walletServiceDesc, err = createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName); err != nil {
 				return nil, err
 			}
-			powEnabled = true
 		}
 		opts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
-				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, powEnabled),
-				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, powEnabled),
-				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, powEnabled),
-				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, powEnabled),
+				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.powc, t.collections),
+				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.powc, t.collections),
 			),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
@@ -632,7 +630,7 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, powEnabled bool) grpc.UnaryServerInterceptor {
+func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, pc *powc.Client, c *mdb.Collections) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		methodParts := strings.Split(info.FullMethod, "/")
 		if len(methodParts) != 3 {
@@ -645,8 +643,8 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 			return handler(ctx, req)
 		}
 
-		if !powEnabled {
-			return nil, status.Error(codes.Internal, "powergate isn't enabled in hub")
+		if pc == nil {
+			return nil, status.Error(codes.Internal, "Powergate isn't enabled in Hub")
 		}
 
 		isAllowedMethod := false
@@ -662,16 +660,47 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 		}
 
 		var ffsInfo *mdb.FFSInfo
+		var owner crypto.PubKey
+		var isAccount bool
 		if org, ok := mdb.OrgFromContext(ctx); ok {
 			ffsInfo = org.FFSInfo
+			owner = org.Key
+			isAccount = true
 		} else if dev, ok := mdb.DevFromContext(ctx); ok {
 			ffsInfo = dev.FFSInfo
+			owner = dev.Key
+			isAccount = true
 		} else if user, ok := mdb.UserFromContext(ctx); ok {
 			ffsInfo = user.FFSInfo
+			owner = user.Key
+			isAccount = false
 		}
 
+		createNewFFS := func() error {
+			id, token, err := pc.FFS.Create(ctx)
+			if err != nil {
+				return fmt.Errorf("creating new ffs instance: %v", err)
+			}
+			if isAccount {
+				_, err = c.Accounts.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+			} else {
+				_, err = c.Users.UpdateFFSInfo(ctx, owner, &mdb.FFSInfo{ID: id, Token: token})
+			}
+			if err != nil {
+				return fmt.Errorf("updating user/account with new ffs information: %v", err)
+			}
+			return nil
+		}
+
+		tryAgain := fmt.Errorf("powergate newly integrated into your account, please try again in 30 seconds to allow time for setup to complete")
+
+		// case where account/user was created before powergate was enabled.
+		// create a ffs instance for them.
 		if ffsInfo == nil {
-			return nil, status.Error(codes.NotFound, "no account or no FFS info associated with account")
+			if err := createNewFFS(); err != nil {
+				return nil, err
+			}
+			return nil, tryAgain
 		}
 
 		ffsCtx := context.WithValue(ctx, powc.AuthKey, ffsInfo.Token)
@@ -680,7 +709,21 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
 		}
-		return stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+
+		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		if err != nil {
+			if err.Error() != "auth token not found" {
+				return nil, err
+			} else {
+				// case where the ffs token is no longer valid because powergate was reset.
+				// create a new ffs instance for them.
+				if err := createNewFFS(); err != nil {
+					return nil, err
+				}
+				return nil, tryAgain
+			}
+		}
+		return res, nil
 	}
 }
 
