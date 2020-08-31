@@ -158,7 +158,7 @@ func (m *Mail) NewMailbox(ctx context.Context, conf Config) (box *Mailbox, err e
 }
 
 // GetLocalMailbox loads and returns the mailbox at path if it exists.
-func (m *Mail) GetLocalMailbox(ctx context.Context, pth string) (*Mailbox, error) {
+func (m *Mail) GetLocalMailbox(_ context.Context, pth string) (*Mailbox, error) {
 	cwd, err := filepath.Abs(pth)
 	if err != nil {
 		return nil, err

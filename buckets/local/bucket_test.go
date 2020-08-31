@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alecthomas/jsonschema"
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -403,20 +401,12 @@ func TestBucket_Watch(t *testing.T) {
 	colinfo, err := buckets1.Clients().Threads.GetCollectionInfo(context.Background(), tid, bucks.CollectionName)
 	require.NoError(t, err)
 
-	schema := &jsonschema.Schema{}
-	err = json.Unmarshal(colinfo.Schema, schema)
-	require.NoError(t, err)
-
 	err = buckets2.Clients().Threads.NewDBFromAddr(
 		context.Background(),
 		dbinfo.Addrs[0],
 		dbinfo.Key,
 		db.WithNewManagedName(dbinfo.Name),
-		db.WithNewManagedCollections(db.CollectionConfig{
-			Name:    bucks.CollectionName,
-			Schema:  schema,
-			Indexes: colinfo.Indexes,
-		}),
+		db.WithNewManagedCollections(colinfo),
 		db.WithNewManagedBackfillBlock(true))
 	require.NoError(t, err)
 
