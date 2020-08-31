@@ -406,13 +406,7 @@ func TestBucket_Watch(t *testing.T) {
 		dbinfo.Addrs[0],
 		dbinfo.Key,
 		db.WithNewManagedName(dbinfo.Name),
-		db.WithNewManagedCollections(db.CollectionConfig{
-			Name:           bucks.CollectionName,
-			Schema:         colinfo.Schema,
-			Indexes:        colinfo.Indexes,
-			WriteValidator: colinfo.WriteValidator,
-			ReadFilter:     colinfo.ReadFilter,
-		}),
+		db.WithNewManagedCollections(colinfo),
 		db.WithNewManagedBackfillBlock(true))
 	require.NoError(t, err)
 
