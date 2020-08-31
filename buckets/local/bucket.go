@@ -14,8 +14,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/db"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
@@ -231,7 +231,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 
 // DBInfo returns info about the bucket's ThreadDB.
 // This info can be used to add replicas or additional peers to the bucket.
-func (b *Bucket) DBInfo(ctx context.Context) (info *client.DBInfo, err error) {
+func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return
