@@ -603,7 +603,7 @@ func TestUserBuckets(t *testing.T) {
 
 	// Grant path read access
 	ctx = thread.NewTokenContext(ctx, tok)
-	err = buckets.EditPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", map[string]bucks.Role{
+	err = buckets.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", map[string]bucks.Role{
 		pk2: bucks.Reader,
 	})
 	require.NoError(t, err)
@@ -615,7 +615,7 @@ func TestUserBuckets(t *testing.T) {
 
 	// Grant path write access
 	ctx = thread.NewTokenContext(ctx, tok)
-	err = buckets.EditPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", map[string]bucks.Role{
+	err = buckets.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", map[string]bucks.Role{
 		pk2: bucks.Writer,
 	})
 	require.NoError(t, err)

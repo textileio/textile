@@ -125,7 +125,7 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 	if err := to.UnmarshalString(req.To); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Invalid public key")
 	}
-	inbox, err := s.getMailbox(ctx, to.PubKey)
+	inbox, err := s.getMailbox(ctx, to)
 	if err != nil {
 		return nil, err
 	}
