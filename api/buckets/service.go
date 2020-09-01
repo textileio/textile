@@ -1625,7 +1625,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	createNewFFS := func() error {
 		id, token, err := s.PGClient.FFS.Create(ctx)
 		if err != nil {
-			return fmt.Errorf("creating new ffs instance: %v", err)
+			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
 		if isAccount {
 			_, err = s.Collections.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
@@ -1633,12 +1633,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			_, err = s.Collections.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 		}
 		if err != nil {
-			return fmt.Errorf("updating user/account with new ffs information: %v", err)
+			return fmt.Errorf("updating user/account with new powergate information: %v", err)
 		}
 		return nil
 	}
 
-	tryAgain := fmt.Errorf("new ffs instance created, please try again in 30 seconds to allow time for wallet funding")
+	tryAgain := fmt.Errorf("new powergate integration created, please try again in 30 seconds to allow time for wallet funding")
 
 	// case where account/user was created before bucket archives were enabled.
 	// create a ffs instance for them.
@@ -1654,7 +1654,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
 		if err.Error() != "auth token not found" {
-			return nil, fmt.Errorf("getting ffs default StorageConfig: %v", err)
+			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
 		} else {
 			// case where the ffs token is no longer valid because powergate was reset.
 			// create a new ffs instance for them.
@@ -1668,15 +1668,15 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
 	bal, err := s.PGClient.Wallet.Balance(ctx, defConf.Cold.Filecoin.Addr)
 	if err != nil {
-		return nil, fmt.Errorf("getting ffs wallet address balance: %s", err)
+		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
 	}
 	if bal == 0 {
 		return nil, buckets.ErrZeroBalance
 	}
 
-	ba, err := s.Collections.BucketArchives.Get(ctx, req.GetKey())
+	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.GetKey())
 	if err != nil {
-		return nil, fmt.Errorf("getting ffs instance data: %s", err)
+		return nil, fmt.Errorf("getting bucket archive data: %s", err)
 	}
 
 	var jid ffs.JobID
@@ -1737,7 +1737,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		JobStatus: int(ffs.Queued),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
-		return nil, fmt.Errorf("updating ffs instance data: %s", err)
+		return nil, fmt.Errorf("updating bucket archives data: %s", err)
 	}
 
 	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.GetKey(), jid, p.Cid(), owner); err != nil {
@@ -1763,7 +1763,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 	}
 
 	if powInfo == nil {
-		return fmt.Errorf("no user/account or no FFS info associated with user/account")
+		return fmt.Errorf("no user/account or no powergate info associated with user/account")
 	}
 
 	var err error

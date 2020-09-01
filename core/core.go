@@ -679,7 +679,7 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 		createNewFFS := func() error {
 			id, token, err := pc.FFS.Create(ctx)
 			if err != nil {
-				return fmt.Errorf("creating new ffs instance: %v", err)
+				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
 			if isAccount {
 				_, err = c.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
@@ -687,7 +687,7 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 				_, err = c.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
 			}
 			if err != nil {
-				return fmt.Errorf("updating user/account with new ffs information: %v", err)
+				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}
 			return nil
 		}
