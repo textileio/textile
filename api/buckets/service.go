@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -34,7 +35,6 @@ import (
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/ipns"
 	mdb "github.com/textileio/textile/mongodb"
-	"github.com/textileio/textile/threaddb"
 	tdb "github.com/textileio/textile/threaddb"
 	"github.com/textileio/textile/util"
 	"golang.org/x/sync/errgroup"
@@ -108,10 +108,15 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse
 	return &pb.ListResponse{Roots: roots}, nil
 }
 
-func getPbRoot(dbID thread.ID, buck *threaddb.Bucket) (*pb.Root, error) {
-	md, err := metadataToPb(buck.Metadata)
-	if err != nil {
-		return nil, err
+func getPbRoot(dbID thread.ID, buck *tdb.Bucket) (*pb.Root, error) {
+	var pmd *pb.Metadata
+	md, ok := buck.Metadata[""]
+	if ok {
+		var err error
+		pmd, err = metadataToPb(md)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &pb.Root{
 		Key:       buck.Key,
@@ -119,44 +124,35 @@ func getPbRoot(dbID thread.ID, buck *threaddb.Bucket) (*pb.Root, error) {
 		Name:      buck.Name,
 		Version:   int32(buck.Version),
 		Path:      buck.Path,
-		Metadata:  md,
+		Metadata:  pmd,
 		Thread:    dbID.String(),
 		CreatedAt: buck.CreatedAt,
 		UpdatedAt: buck.UpdatedAt,
 	}, nil
 }
 
-func metadataToPb(md map[string]threaddb.Metadata) (map[string]*pb.Metadata, error) {
-	pmd := make(map[string]*pb.Metadata)
-	if md == nil {
-		return pmd, nil
-	}
-	for p, m := range md {
-		roles := make(map[string]pb.PathAccessRole)
-		for k, r := range m.Roles {
-			var pr pb.PathAccessRole
-			switch r {
-			case buckets.None:
-				pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
-			case buckets.Reader:
-				pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
-			case buckets.Writer:
-				pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
-			case buckets.Admin:
-				pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
-			default:
-				return nil, fmt.Errorf("unknown path access role %d", r)
-			}
-			roles[k] = pr
+func metadataToPb(md tdb.Metadata) (*pb.Metadata, error) {
+	roles := make(map[string]pb.PathAccessRole)
+	for k, r := range md.Roles {
+		var pr pb.PathAccessRole
+		switch r {
+		case buckets.None:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
+		case buckets.Reader:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
+		case buckets.Writer:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
+		case buckets.Admin:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
+		default:
+			return nil, fmt.Errorf("unknown path access role %d", r)
 		}
-		pmd[p] = &pb.Metadata{
-			Cid:       m.Cid,
-			Roles:     roles,
-			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
-		}
+		roles[k] = pr
 	}
-	return pmd, nil
+	return &pb.Metadata{
+		Roles:     roles,
+		UpdatedAt: md.UpdatedAt,
+	}, nil
 }
 
 func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.CreateResponse, error) {
@@ -179,14 +175,6 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		return nil, ErrTooManyBucketsInThread
 	}
 
-	var key []byte
-	if req.Private {
-		var err error
-		key, err = dcrypto.NewKey()
-		if err != nil {
-			return nil, err
-		}
-	}
 	var bootCid cid.Cid
 	if req.BootstrapCid != "" {
 		bootCid, err = cid.Decode(req.BootstrapCid)
@@ -194,13 +182,17 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 			return nil, fmt.Errorf("invalid bootstrap cid: %s", err)
 		}
 	}
-	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, key, bootCid)
+	buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, req.Private, bootCid)
 	if err != nil {
 		return nil, err
 	}
 	var seedData []byte
-	if key != nil {
-		seedData, err = decryptData(seed.RawData(), key)
+	if buck.IsPrivate() {
+		fileKey, err := buck.GetFileEncryptionKeyForPath("")
+		if err != nil {
+			return nil, err
+		}
+		seedData, err = decryptData(seed.RawData(), fileKey)
 		if err != nil {
 			return nil, err
 		}
@@ -221,7 +213,7 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 }
 
 // createBucket returns a new bucket and seed node.
-func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, key []byte, bootCid cid.Cid) (buck *tdb.Bucket, seed ipld.Node, err error) {
+func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thread.Token, name string, private bool, bootCid cid.Cid) (buck *tdb.Bucket, seed ipld.Node, err error) {
 	var owner thread.PubKey
 	if dbToken.Defined() {
 		owner, err = dbToken.PubKey()
@@ -232,34 +224,48 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 		owner = getOwnerFromContext(ctx)
 	}
 
+	// Create bucket keys if private
+	var linkKey, fileKey []byte
+	if private {
+		var err error
+		linkKey, err = dcrypto.NewKey()
+		if err != nil {
+			return nil, nil, err
+		}
+		fileKey, err = dcrypto.NewKey()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Make a random seed, which ensures a bucket's uniqueness
-	now := time.Now()
-	var seedItem threaddb.Metadata
-	seed, seedItem, err = makeSeed(key, owner, now)
+	seed, err = makeSeed(fileKey)
 	if err != nil {
 		return
 	}
 
 	// Create the bucket directory
-	var pth path.Resolved
-	var links []*ipld.Link
-	md := make(map[string]threaddb.Metadata)
+	var buckPath path.Resolved
 	if bootCid.Defined() {
-		pth, links, err = s.createBootstrappedPath(ctx, seed, bootCid, key)
+		buckPath, err = s.createBootstrappedPath(ctx, seed, bootCid, linkKey, fileKey)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating prepared bucket: %s", err)
 		}
-		md = defaultLinkRoles(links, owner, key, now)
 	} else {
-		pth, err = s.createPristinePath(ctx, seed, key)
+		buckPath, err = s.createPristinePath(ctx, seed, linkKey)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating pristine bucket: %s", err)
 		}
 	}
-	md[buckets.SeedName] = seedItem
+
+	// Create top-level metadata
+	now := time.Now()
+	md := map[string]tdb.Metadata{
+		"": defaultMetadata(owner, fileKey, now),
+	}
 
 	// Create a new IPNS key
-	bkey, err := s.IPNSManager.CreateKey(ctx, dbID)
+	buckKey, err := s.IPNSManager.CreateKey(ctx, dbID)
 	if err != nil {
 		return
 	}
@@ -268,53 +274,38 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	buck, err = s.Buckets.New(
 		ctx,
 		dbID,
-		bkey,
-		pth,
+		buckKey,
+		buckPath,
 		now,
 		owner,
 		md,
 		tdb.WithNewBucketName(name),
-		tdb.WithNewBucketKey(key),
+		tdb.WithNewBucketKey(linkKey),
 		tdb.WithNewBucketToken(dbToken))
 	if err != nil {
 		return
 	}
 
 	// Finally, publish the new bucket's address to the name system
-	go s.IPNSManager.Publish(pth, buck.Key)
+	go s.IPNSManager.Publish(buckPath, buck.Key)
 	return buck, seed, nil
 }
 
 // makeSeed returns a raw ipld node containing a random seed.
-func makeSeed(key []byte, owner thread.PubKey, ts time.Time) (ipld.Node, threaddb.Metadata, error) {
+func makeSeed(key []byte) (ipld.Node, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
-		return nil, threaddb.Metadata{}, err
+		return nil, err
 	}
 	// Encrypt seed if key is set (treating the seed differently here would complicate bucket reading)
 	if key != nil {
 		var err error
 		seed, err = encryptData(seed, key)
 		if err != nil {
-			return nil, threaddb.Metadata{}, err
+			return nil, err
 		}
 	}
-	node := dag.NewRawNode(seed)
-	roles := make(map[string]buckets.Role)
-	if owner != nil {
-		if key == nil {
-			roles["*"] = buckets.Reader
-		}
-		roles[owner.String()] = buckets.Admin
-	}
-	now := ts.UnixNano()
-	md := threaddb.Metadata{
-		Cid:       node.Cid().String(),
-		Roles:     roles,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	return node, md, nil
+	return dag.NewRawNode(seed), nil
 }
 
 func encryptData(data, key []byte) ([]byte, error) {
@@ -325,8 +316,7 @@ func encryptData(data, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func defaultLinkRoles(links []*ipld.Link, owner thread.PubKey, key []byte, ts time.Time) map[string]threaddb.Metadata {
-	md := make(map[string]threaddb.Metadata)
+func defaultMetadata(owner thread.PubKey, key []byte, ts time.Time) tdb.Metadata {
 	roles := make(map[string]buckets.Role)
 	if owner != nil {
 		if key == nil {
@@ -334,13 +324,12 @@ func defaultLinkRoles(links []*ipld.Link, owner thread.PubKey, key []byte, ts ti
 		}
 		roles[owner.String()] = buckets.Admin
 	}
-	for _, l := range links {
-		md[l.Name] = threaddb.Metadata{
-			Cid:       l.Cid.String(),
-			Roles:     roles,
-			CreatedAt: ts.UnixNano(),
-			UpdatedAt: ts.UnixNano(),
-		}
+	md := tdb.Metadata{
+		Roles:     roles,
+		UpdatedAt: ts.UnixNano(),
+	}
+	if key != nil {
+		md.Key = base64.StdEncoding.EncodeToString(key)
 	}
 	return md
 }
@@ -369,39 +358,39 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 // createBootstrapedPath creates an IPFS path which is the bootCid UnixFS DAG,
 // with tdb.SeedName seed file added to the root of the DAG. The returned path will
 // be pinned.
-func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bootCid cid.Cid, key []byte) (path.Resolved, []*ipld.Link, error) {
+func (s *Service) createBootstrappedPath(ctx context.Context, seed ipld.Node, bootCid cid.Cid, linkKey, fileKey []byte) (path.Resolved, error) {
 	// Check early if we're about to pin some very big Cid exceeding the quota.
 	pth := path.IpfsPath(bootCid)
 	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolving boot cid node: %s", err)
+		return nil, fmt.Errorf("resolving boot cid node: %s", err)
 	}
 	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("getting current buckets total size: %s", err)
+		return nil, fmt.Errorf("getting current buckets total size: %s", err)
 	}
 	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+int64(bootStatn.CumulativeSize) > s.BucketsTotalMaxSize {
-		return nil, nil, ErrBucketsTotalSizeExceedsMaxSize
+		return nil, ErrBucketsTotalSizeExceedsMaxSize
 	}
 
 	// Here we have to walk and possibly encrypt the boot path dag
-	n, links, nodes, err := s.newDirFromExistingPath(ctx, pth, key, seed, buckets.SeedName)
+	n, nodes, err := s.newDirFromExistingPath(ctx, pth, linkKey, fileKey, seed, buckets.SeedName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err = s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var pins []ipld.Node
-	if key != nil {
+	if linkKey != nil {
 		pins = nodes
 	} else {
 		pins = []ipld.Node{n}
 	}
 	if err = s.pinBlocks(ctx, pins); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return path.IpfsPath(n.Cid()), links, nil
+	return path.IpfsPath(n.Cid()), nil
 }
 
 // newDirWithNode returns a new proto node directory wrapping the node,
@@ -430,27 +419,29 @@ func encryptNode(n *dag.ProtoNode, key []byte) (*dag.ProtoNode, error) {
 }
 
 // newDirFromExistingPath returns a new dir based on path.
-// If key is not nil, this method recursively walks the path, encrypting files and directories.
+// If keys are not nil, this method recursively walks the path, encrypting files and directories.
 // If add is not nil, it will be included in the resulting (possibly encrypted) node under a link named addName.
 // This method returns the root node and a list of all new nodes (which also includes the root).
-func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key []byte, add ipld.Node, addName string) (ipld.Node, []*ipld.Link, []ipld.Node, error) {
+func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, linkKey, fileKey []byte, add ipld.Node, addName string) (ipld.Node, []ipld.Node, error) {
 	rn, err := s.IPFSClient.ResolveNode(ctx, pth)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	top, ok := rn.(*dag.ProtoNode)
 	if !ok {
-		return nil, nil, nil, dag.ErrNotProtobuf
+		return nil, nil, dag.ErrNotProtobuf
 	}
-	if key == nil {
+	if linkKey == nil && fileKey == nil {
 		nodes := []ipld.Node{top}
 		if add != nil {
 			if err := top.AddNodeLink(addName, add); err != nil {
-				return nil, nil, nil, err
+				return nil, nil, err
 			}
 			nodes = append(nodes, add)
 		}
-		return top, top.Links(), nodes, nil
+		return top, nodes, nil
+	} else if linkKey == nil || fileKey == nil {
+		return nil, nil, fmt.Errorf("invalid link or file key")
 	}
 
 	// Walk the node, encrypting the leaves and directories
@@ -461,9 +452,9 @@ func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key
 			node: add,
 		}
 	}
-	nmap, links, err := s.encryptDag(ctx, s.IPFSClient.Dag(), top, key, addNode)
+	nmap, err := s.encryptDag(ctx, s.IPFSClient.Dag(), top, linkKey, fileKey, addNode)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	// Collect new nodes
@@ -473,7 +464,7 @@ func (s *Service) newDirFromExistingPath(ctx context.Context, pth path.Path, key
 		nodes[i] = tn.node
 		i++
 	}
-	return nmap[top.Cid()].node, links, nodes, nil
+	return nmap[top.Cid()].node, nodes, nil
 }
 
 type namedNode struct {
@@ -510,7 +501,7 @@ func (nn *namedNodes) Store(c cid.Cid, n *namedNode) {
 // add will be added to the encrypted root node if not nil.
 // This method returns a map of all nodes keyed by their _original_ plaintext cid,
 // and a list of the root's direct links.
-func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.Node, key []byte, add *namedNode) (map[cid.Cid]*namedNode, []*ipld.Link, error) {
+func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.Node, linkKey, fileKey []byte, add *namedNode) (map[cid.Cid]*namedNode, error) {
 	// Step 1: Create a preordered list of joint and leaf nodes
 	var stack, joints []*namedNode
 	jmap := make(map[cid.Cid]*namedNode)
@@ -547,7 +538,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 				}
 				ln, err := l.GetNode(ctx, ds)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				stack = append(stack, &namedNode{name: l.Name, node: ln})
 				// Collect first level of links for the acl map
@@ -558,7 +549,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 			joints = append(joints, cur)
 			jmap[cur.node.Cid()] = cur
 		default:
-			return nil, nil, errInvalidNodeType
+			return nil, errInvalidNodeType
 		}
 	}
 
@@ -574,14 +565,14 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 			var cn ipld.Node
 			switch l.node.(type) {
 			case *dag.RawNode:
-				data, err := encryptData(l.node.RawData(), key)
+				data, err := encryptData(l.node.RawData(), fileKey)
 				if err != nil {
 					return err
 				}
 				cn = dag.NewRawNode(data)
 			case *dag.ProtoNode:
 				var err error
-				cn, err = s.encryptFileNode(gctx, l.node, key)
+				cn, err = s.encryptFileNode(gctx, l.node, fileKey)
 				if err != nil {
 					return err
 				}
@@ -594,11 +585,10 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 		})
 	}
 	if err := eg.Wait(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Step 3: Encrypt joint nodes in reverse, walking up to root
-	var rootLinks []*ipld.Link
 	for i := len(joints) - 1; i >= 0; i-- {
 		j := joints[i]
 		jn := j.node.(*dag.ProtoNode)
@@ -607,31 +597,30 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 		for _, l := range jn.Links() {
 			ln := nmap.Get(l.Cid)
 			if ln == nil {
-				return nil, nil, fmt.Errorf("link node not found")
+				return nil, fmt.Errorf("link node not found")
 			}
 			if err := dir.AddNodeLink(ln.name, ln.node); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 		}
 		if i == 0 {
 			if add != nil {
 				if err := dir.AddNodeLink(add.name, add.node); err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				nmap.Store(add.node.Cid(), add)
 			}
-			rootLinks = dir.Links()
 		}
-		cn, err := encryptNode(dir, key)
+		cn, err := encryptNode(dir, linkKey)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		nmap.Store(jn.Cid(), &namedNode{
 			name: j.name,
 			node: cn,
 		})
 	}
-	return nmap.m, rootLinks, nil
+	return nmap.m, nil
 }
 
 func (s *Service) encryptFileNode(ctx context.Context, n ipld.Node, key []byte) (ipld.Node, error) {
@@ -726,16 +715,6 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 		return nil, fmt.Errorf("db required")
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
-	var owner thread.PubKey
-	if dbToken.Defined() {
-		var err error
-		owner, err = dbToken.PubKey()
-		if err != nil {
-			return nil, fmt.Errorf("set path: invalid token public key")
-		}
-	} else {
-		owner = getOwnerFromContext(ctx)
-	}
 
 	buck := &tdb.Bucket{}
 	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
@@ -744,31 +723,38 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	buckPath := path.New(buck.Path)
 
-	remoteCid, err := cid.Decode(req.Cid)
+	bootCid, err := cid.Decode(req.Cid)
 	if err != nil {
 		return nil, fmt.Errorf("invalid remote cid: %s", err)
 	}
-	remotePath := path.IpfsPath(remoteCid)
 
-	encKey := buck.GetEncKey()
-	var dirpth path.Resolved
+	destPath := cleanPath(req.Path)
+	var linkKey, fileKey []byte
+	if buck.IsPrivate() {
+		linkKey = buck.GetLinkEncryptionKey()
+		fileKey, err = buck.GetFileEncryptionKeyForPath(destPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var dirPath path.Resolved
 	now := time.Now()
-	if req.Path == "" {
-		sn, si, err := makeSeed(encKey, owner, now)
+	if destPath == "" {
+		sn, err := makeSeed(fileKey)
 		if err != nil {
 			return nil, fmt.Errorf("generating new seed: %s", err)
 		}
-		var links []*ipld.Link
-		dirpth, links, err = s.createBootstrappedPath(ctx, sn, remoteCid, encKey)
+		dirPath, err = s.createBootstrappedPath(ctx, sn, bootCid, linkKey, fileKey)
 		if err != nil {
 			return nil, fmt.Errorf("generating bucket new root: %s", err)
 		}
-		if encKey != nil {
+		if buck.IsPrivate() {
 			buckPathResolved, err := s.IPFSClient.ResolvePath(ctx, buckPath)
 			if err != nil {
 				return nil, fmt.Errorf("resolving path: %s", err)
 			}
-			if err = s.unpinNodeAndBranch(ctx, buckPathResolved, encKey); err != nil {
+			if err = s.unpinNodeAndBranch(ctx, buckPathResolved, linkKey); err != nil {
 				return nil, fmt.Errorf("unpinning pinned root: %s", err)
 			}
 		} else {
@@ -776,39 +762,32 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
 		}
-		buck.Metadata = defaultLinkRoles(links, owner, encKey, now)
-		buck.Metadata[buckets.SeedName] = si
 	} else {
-		var itemCid cid.Cid
-		if encKey != nil {
-			n, _, nodes, err := s.newDirFromExistingPath(ctx, remotePath, encKey, nil, "")
+		bootPath := path.IpfsPath(bootCid)
+		if buck.IsPrivate() {
+			n, nodes, err := s.newDirFromExistingPath(ctx, bootPath, linkKey, fileKey, nil, "")
 			if err != nil {
 				return nil, fmt.Errorf("resolving remote path: %s", err)
 			}
-			dirpth, err = s.insertNodeAtPath(ctx, n, path.Join(buckPath, req.Path), encKey)
+			dirPath, err = s.insertNodeAtPath(ctx, n, path.Join(buckPath, destPath), linkKey)
 			if err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
 			if err := s.addAndPinNodes(ctx, nodes); err != nil {
 				return nil, err
 			}
-			itemCid = n.Cid()
 		} else {
-			dirpth, err = s.IPFSClient.Object().AddLink(ctx, buckPath, req.Path, remotePath, options.Object.Create(true))
+			dirPath, err = s.IPFSClient.Object().AddLink(ctx, buckPath, destPath, bootPath, options.Object.Create(true))
 			if err != nil {
 				return nil, fmt.Errorf("adding folder: %s", err)
 			}
-			if err = s.updateOrAddPin(ctx, buckPath, dirpth); err != nil {
+			if err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
-			itemCid = remoteCid
-		}
-		if err = buck.UpsertMetadataAtPath(req.Path, itemCid, now); err != nil {
-			return nil, err
 		}
 	}
 
-	buck.Path = dirpth.String()
+	buck.Path = dirPath.String()
 	buck.UpdatedAt = now.UnixNano()
 	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("saving new bucket state: %s", err)
@@ -832,8 +811,8 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	rpth := cleanPath(req.Path)
-	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, rpth, dbToken)
+	reqPath := cleanPath(req.Path)
+	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, reqPath, dbToken)
 	if err != nil {
 		return nil, err
 	}
@@ -863,16 +842,16 @@ func (s *Service) ListIpfsPath(ctx context.Context, req *pb.ListIpfsPathRequest)
 // If key is not nil, the items will be decrypted.
 func (s *Service) pathToItem(ctx context.Context, buck *tdb.Bucket, pth path.Path, includeNextLevel bool) (*pb.PathItem, error) {
 	var n ipld.Node
-	var key []byte
+	var linkKey []byte
 	if buck != nil {
-		key = buck.GetEncKey()
+		linkKey = buck.GetLinkEncryptionKey()
 	}
-	if key != nil {
+	if linkKey != nil {
 		rp, fp, err := util.ParsePath(pth)
 		if err != nil {
 			return nil, err
 		}
-		np, r, err := s.getNodesToPath(ctx, rp, fp, key)
+		np, r, err := s.getNodesToPath(ctx, rp, fp, linkKey)
 		if err != nil {
 			return nil, err
 		}
@@ -890,11 +869,7 @@ func (s *Service) pathToItem(ctx context.Context, buck *tdb.Bucket, pth path.Pat
 			return nil, err
 		}
 	}
-	var fromRoot bool
-	if buck != nil {
-		fromRoot = cleanPath(strings.TrimPrefix(pth.String(), buck.Path)) == ""
-	}
-	return s.nodeToItem(ctx, buck, n, pth.String(), fromRoot, false, includeNextLevel)
+	return s.nodeToItem(ctx, buck, n, pth.String(), linkKey, false, includeNextLevel)
 }
 
 // getNodeAtPath returns the decrypted node at path.
@@ -946,11 +921,7 @@ func decryptData(data, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.Node, pth string, fromRoot, decrypt, includeNextLevel bool) (*pb.PathItem, error) {
-	var key []byte
-	if buck != nil {
-		key = buck.GetEncKey()
-	}
+func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.Node, pth string, key []byte, decrypt, includeNextLevel bool) (*pb.PathItem, error) {
 	if decrypt && key != nil {
 		var err error
 		node, err = decryptNode(node, key)
@@ -958,18 +929,21 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 			return nil, err
 		}
 	}
+	// Skip orphaned directories
+	if _, ok := node.(*dag.ProtoNode); ok && len(node.Links()) == 0 {
+		return nil, nil
+	}
+	var pmd *pb.Metadata
 	if buck != nil {
 		name := cleanPath(strings.TrimPrefix(pth, buck.Path))
-		if name != "" && !buck.IsPathReadable(name) {
-			if fromRoot && gopath.Dir(name) == "." {
-				// Top-level paths that are unreadable are ignored w/o error
-				// because theyre not being directly requested
-				return nil, nil
-			}
-			// Allow to pass if this is an orphaned directory
-			if _, ok := node.(*dag.ProtoNode); !(ok && len(node.Links()) == 0) {
-				return nil, fmt.Errorf("could not resolve path: %s", pth)
-			}
+		md, _, ok := buck.GetMetadataForPath(name)
+		if !ok {
+			return nil, fmt.Errorf("could not resolve path: %s", pth)
+		}
+		var err error
+		pmd, err = metadataToPb(md)
+		if err != nil {
+			return nil, err
 		}
 	}
 	stat, err := node.Stat()
@@ -977,10 +951,11 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 		return nil, err
 	}
 	item := &pb.PathItem{
-		Cid:  node.Cid().String(),
-		Name: gopath.Base(pth),
-		Path: pth,
-		Size: int64(stat.CumulativeSize),
+		Cid:      node.Cid().String(),
+		Name:     gopath.Base(pth),
+		Path:     pth,
+		Size:     int64(stat.CumulativeSize),
+		Metadata: pmd,
 	}
 	for _, l := range node.Links() {
 		if l.Name == "" {
@@ -994,7 +969,7 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 			if err != nil {
 				return nil, err
 			}
-			i, err = s.nodeToItem(ctx, buck, n, p, fromRoot, true, false)
+			i, err = s.nodeToItem(ctx, buck, n, p, key, true, false)
 			if err != nil {
 				return nil, err
 			}
@@ -1065,10 +1040,10 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	var key, headerPath, root string
+	var buckKey, headerPath, root string
 	switch payload := req.Payload.(type) {
 	case *pb.PushPathRequest_Header_:
-		key = payload.Header.Key
+		buckKey = payload.Header.Key
 		headerPath = payload.Header.Path
 		root = payload.Header.Root
 	default:
@@ -1079,12 +1054,17 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		return err
 	}
 	buck := &tdb.Bucket{}
-	err = s.Buckets.Get(server.Context(), dbID, key, buck, tdb.WithToken(dbToken))
+	err = s.Buckets.Get(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return err
 	}
 	if root != "" && root != buck.Path {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	fileKey, err := buck.GetFileEncryptionKeyForPath(filePath)
+	if err != nil {
+		return err
 	}
 
 	sendEvent := func(event *pb.PushPathResponse_Event) error {
@@ -1168,9 +1148,8 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	}()
 
 	var r io.Reader
-	encKey := buck.GetEncKey()
-	if encKey != nil {
-		r, err = dcrypto.NewEncrypter(reader, encKey)
+	if fileKey != nil {
+		r, err = dcrypto.NewEncrypter(reader, fileKey)
 		if err != nil {
 			return err
 		}
@@ -1178,7 +1157,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		r = reader
 	}
 
-	pth, err := s.IPFSClient.Unixfs().Add(
+	newPath, err := s.IPFSClient.Unixfs().Add(
 		server.Context(),
 		ipfsfiles.NewReaderFile(r),
 		options.Unixfs.CidVersion(1),
@@ -1188,32 +1167,29 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	if err != nil {
 		return err
 	}
-	fn, err := s.IPFSClient.ResolveNode(server.Context(), pth)
+	fn, err := s.IPFSClient.ResolveNode(server.Context(), newPath)
 	if err != nil {
 		return err
 	}
 
-	var dirpth path.Resolved
-	if encKey != nil {
-		dirpth, err = s.insertNodeAtPath(server.Context(), fn, path.Join(buckPath, filePath), encKey)
+	var dirPath path.Resolved
+	if buck.IsPrivate() {
+		dirPath, err = s.insertNodeAtPath(server.Context(), fn, path.Join(buckPath, filePath), buck.GetLinkEncryptionKey())
 		if err != nil {
 			return err
 		}
 	} else {
-		dirpth, err = s.IPFSClient.Object().AddLink(server.Context(), buckPath, filePath, pth, options.Object.Create(true))
+		dirPath, err = s.IPFSClient.Object().AddLink(server.Context(), buckPath, filePath, newPath, options.Object.Create(true))
 		if err != nil {
 			return err
 		}
-		if err = s.updateOrAddPin(server.Context(), buckPath, dirpth); err != nil {
+		if err = s.updateOrAddPin(server.Context(), buckPath, dirPath); err != nil {
 			return err
 		}
 	}
 
 	now := time.Now()
-	buck.Path = dirpth.String()
-	if err = buck.UpsertMetadataAtPath(filePath, fn.Cid(), now); err != nil {
-		return err
-	}
+	buck.Path = dirPath.String()
 	buck.UpdatedAt = now.UnixNano()
 	if err = s.Buckets.SaveSafe(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return err
@@ -1225,14 +1201,14 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		return err
 	}
 	if err = sendEvent(&pb.PushPathResponse_Event{
-		Path: pth.String(),
+		Path: newPath.String(),
 		Size: size,
 		Root: pbroot,
 	}); err != nil {
 		return err
 	}
 
-	go s.IPNSManager.Publish(dirpth, buck.Key)
+	go s.IPNSManager.Publish(dirPath, buck.Key)
 
 	log.Debugf("pushed %s to bucket: %s", filePath, buck.Key)
 	return nil
@@ -1472,23 +1448,23 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
-	rpth := cleanPath(req.Path)
-	buck, pth, err := s.getBucketPath(server.Context(), dbID, req.Key, rpth, dbToken)
+	reqPath := cleanPath(req.Path)
+	buck, pth, err := s.getBucketPath(server.Context(), dbID, req.Key, reqPath, dbToken)
 	if err != nil {
 		return err
 	}
-	if !buck.IsPathReadable(rpth) {
-		return fmt.Errorf("could not resolve path: %s", pth)
+	fileKey, err := buck.GetFileEncryptionKeyForPath(reqPath)
+	if err != nil {
+		return err
 	}
 
-	var fpth path.Resolved
-	encKey := buck.GetEncKey()
-	if encKey != nil {
+	var filePath path.Resolved
+	if buck.IsPrivate() {
 		buckPath, err := util.NewResolvedPath(buck.Path)
 		if err != nil {
 			return err
 		}
-		np, r, err := s.getNodesToPath(server.Context(), buckPath, req.Path, encKey)
+		np, r, err := s.getNodesToPath(server.Context(), buckPath, reqPath, buck.GetLinkEncryptionKey())
 		if err != nil {
 			return err
 		}
@@ -1496,15 +1472,15 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 			return fmt.Errorf("could not resolve path: %s", pth)
 		}
 		fn := np[len(np)-1]
-		fpth = path.IpfsPath(fn.new.Cid())
+		filePath = path.IpfsPath(fn.new.Cid())
 	} else {
-		fpth, err = s.IPFSClient.ResolvePath(server.Context(), pth)
+		filePath, err = s.IPFSClient.ResolvePath(server.Context(), pth)
 		if err != nil {
 			return err
 		}
 	}
 
-	node, err := s.IPFSClient.Unixfs().Get(server.Context(), fpth)
+	node, err := s.IPFSClient.Unixfs().Get(server.Context(), filePath)
 	if err != nil {
 		return err
 	}
@@ -1515,8 +1491,8 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 	}
 
 	var reader io.Reader
-	if encKey != nil {
-		r, err := dcrypto.NewDecrypter(file, encKey)
+	if fileKey != nil {
+		r, err := dcrypto.NewDecrypter(file, fileKey)
 		if err != nil {
 			return err
 		}
@@ -1548,8 +1524,8 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.APIService_PullIpfsPathServer) error {
 	log.Debugf("received ipfs pull path request")
 
-	pth := path.New(req.Path)
-	node, err := s.IPFSClient.Unixfs().Get(server.Context(), pth)
+	reqPath := path.New(req.Path)
+	node, err := s.IPFSClient.Unixfs().Get(server.Context(), reqPath)
 	if err != nil {
 		return err
 	}
@@ -1596,9 +1572,9 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	if err != nil {
 		return nil, err
 	}
-	encKey := buck.GetEncKey()
-	if encKey != nil {
-		if err = s.unpinNodeAndBranch(ctx, buckPath, encKey); err != nil {
+	linkKey := buck.GetLinkEncryptionKey()
+	if linkKey != nil {
+		if err = s.unpinNodeAndBranch(ctx, buckPath, linkKey); err != nil {
 			return nil, err
 		}
 	} else {
@@ -1647,24 +1623,23 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	}
 
 	buckPath := path.New(buck.Path)
-	encKey := buck.GetEncKey()
-	var dirpth path.Resolved
-	if encKey != nil {
-		dirpth, err = s.removeNodeAtPath(ctx, path.Join(path.New(buck.Path), filePath), encKey)
+	var dirPath path.Resolved
+	if buck.IsPrivate() {
+		dirPath, err = s.removeNodeAtPath(ctx, path.Join(path.New(buck.Path), filePath), buck.GetLinkEncryptionKey())
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		dirpth, err = s.IPFSClient.Object().RmLink(ctx, buckPath, filePath)
+		dirPath, err = s.IPFSClient.Object().RmLink(ctx, buckPath, filePath)
 		if err != nil {
 			return nil, err
 		}
-		if err = s.updateOrAddPin(ctx, buckPath, dirpth); err != nil {
+		if err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
 			return nil, err
 		}
 	}
 
-	buck.Path = dirpth.String()
+	buck.Path = dirPath.String()
 	if buck.Metadata != nil {
 		delete(buck.Metadata, filePath)
 	}
@@ -1673,7 +1648,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 		return nil, err
 	}
 
-	go s.IPNSManager.Publish(dirpth, buck.Key)
+	go s.IPNSManager.Publish(dirPath, buck.Key)
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
 	root, err := getPbRoot(dbID, buck)
@@ -1750,8 +1725,9 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	return path.IpfsPath(np[0].new.Cid()), nil
 }
 
-func (s *Service) GetPathAccessRoles(ctx context.Context, req *pb.GetPathAccessRolesRequest) (*pb.GetPathAccessRolesResponse, error) {
-	log.Debugf("received get path access roles request")
+// @todo: Ensure child metadata in not more restrictive than parents.
+func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAccessRolesRequest) (*pb.PushPathAccessRolesResponse, error) {
+	log.Debugf("received push path access roles request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
@@ -1768,97 +1744,84 @@ func (s *Service) GetPathAccessRoles(ctx context.Context, req *pb.GetPathAccessR
 	if err != nil {
 		return nil, err
 	}
-	if buck.Version == 0 {
-		return nil, fmt.Errorf("bucket version does not support access roles")
-	}
 
-	md, ok := buck.Metadata[filePath]
+	var fileKey []byte
+	md, mdPath, ok := buck.GetMetadataForPath(filePath)
 	if !ok {
-		return nil, fmt.Errorf("path does not exist")
+		return nil, fmt.Errorf("could not resolve path: %s", filePath)
 	}
-	pbroles := make(map[string]pb.PathAccessRole)
-	for pk, r := range md.Roles {
-		var pr pb.PathAccessRole
-		switch r {
-		case buckets.None:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
-		case buckets.Reader:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
-		case buckets.Writer:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
-		case buckets.Admin:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
-		default:
-			return nil, fmt.Errorf("unknown path access role %d", r)
+	var target tdb.Metadata
+	if mdPath != filePath { // If the metadata is inherited from a parent, create a new entry
+		target = tdb.Metadata{
+			Roles: make(map[string]buckets.Role),
 		}
-		pbroles[pk] = pr
+		if buck.IsPrivate() {
+			fileKey, err = dcrypto.NewKey()
+			if err != nil {
+				return nil, err
+			}
+			target.Key = base64.StdEncoding.EncodeToString(fileKey)
+		}
+	} else {
+		target = md // Refresh file key?
 	}
-	return &pb.GetPathAccessRolesResponse{
-		Roles: pbroles,
-	}, nil
-}
-
-func (s *Service) EditPathAccessRoles(ctx context.Context, req *pb.EditPathAccessRolesRequest) (*pb.EditPathAccessRolesResponse, error) {
-	log.Debugf("received edit path access roles request")
-
-	dbID, ok := common.ThreadIDFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("db required")
-	}
-	dbToken, _ := thread.TokenFromContext(ctx)
-
-	filePath, err := parsePath(req.Path)
+	newRoles, err := buckets.RolesFromPb(req.Roles)
 	if err != nil {
 		return nil, err
 	}
-	buck := &tdb.Bucket{}
-	err = s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-	if buck.Version == 0 {
-		return nil, fmt.Errorf("bucket version does not support access roles")
-	}
-
-	now := time.Now().UnixNano()
-	md, ok := buck.Metadata[filePath]
-	if !ok {
-		return nil, fmt.Errorf("path does not exist")
-	}
-	for k, r := range req.Roles {
-		pk := &thread.Libp2pPubKey{}
-		if err = pk.UnmarshalString(k); err != nil {
-			return nil, fmt.Errorf("unmarshaling role public key: %s", err)
-		}
-		var role buckets.Role
-		switch r {
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
-			role = buckets.None
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
-			role = buckets.Reader
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
-			role = buckets.Writer
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
-			role = buckets.Admin
-		default:
-			return nil, fmt.Errorf("unknown path access role %d", r)
-		}
-		if x, ok := md.Roles[pk.String()]; ok && x == role {
+	var changed bool
+	for k, r := range newRoles {
+		if x, ok := target.Roles[k]; ok && x == r {
 			continue
 		}
 		if r > 0 {
-			md.Roles[pk.String()] = role
+			target.Roles[k] = r
 		} else {
-			delete(md.Roles, pk.String())
+			delete(target.Roles, k)
 		}
-		md.UpdatedAt = now
+		changed = true
 	}
+	now := time.Now().UnixNano()
+	if changed {
+		target.UpdatedAt = now
+		buck.Metadata[filePath] = target
+		buck.UpdatedAt = now
+		if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+			return nil, fmt.Errorf("saving bucket roles: %s", err)
+		}
+	}
+	return &pb.PushPathAccessRolesResponse{}, nil
+}
 
-	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("saving bucket roles: %s", err)
+func (s *Service) PullPathAccessRoles(ctx context.Context, req *pb.PullPathAccessRolesRequest) (*pb.PullPathAccessRolesResponse, error) {
+	log.Debugf("received pull path access roles request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("db required")
 	}
-	return &pb.EditPathAccessRolesResponse{}, nil
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	filePath, err := parsePath(req.Path)
+	if err != nil {
+		return nil, err
+	}
+	buck := &tdb.Bucket{}
+	err = s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	md, _, ok := buck.GetMetadataForPath(filePath)
+	if !ok {
+		return nil, fmt.Errorf("could not resolve path: %s", filePath)
+	}
+	roles, err := buckets.RolesToPb(md.Roles)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.PullPathAccessRolesResponse{
+		Roles: roles,
+	}, nil
 }
 
 func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveResponse, error) {

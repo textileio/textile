@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/textileio/textile/buckets"
 )
 
 type createOptions struct {
@@ -37,6 +38,7 @@ func WithCid(c cid.Cid) CreateOption {
 
 type options struct {
 	root     path.Resolved
+	roles    map[string]buckets.Role
 	progress chan<- int64
 }
 
@@ -46,6 +48,16 @@ type Option func(*options)
 func WithFastForwardOnly(root path.Resolved) Option {
 	return func(args *options) {
 		args.root = root
+	}
+}
+
+// WithAccessRoles defines path access roles to be merged with the remote.
+// roles is a map of string marshaled public keys to path roles.
+// A non-nil error is returned if the map keys are not unmarshalable to public keys.
+// To delete a role for a public key, set its value to buckets.None.
+func WithAccessRoles(roles map[string]buckets.Role) Option {
+	return func(args *options) {
+		args.roles = roles
 	}
 }
 

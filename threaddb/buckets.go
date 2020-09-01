@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	gopath "path"
-	"strings"
 	"sync"
 	"time"
 
@@ -37,7 +36,7 @@ type Bucket struct {
 	Owner     string              `json:"owner"`
 	Name      string              `json:"name"`
 	Version   int                 `json:"version"`
-	EncKey    string              `json:"key,omitempty"`
+	LinkKey   string              `json:"key,omitempty"`
 	Path      string              `json:"path"`
 	Metadata  map[string]Metadata `json:"metadata"`
 	Archives  Archives            `json:"archives"`
@@ -47,9 +46,8 @@ type Bucket struct {
 
 // Metadata contains metadata about a bucket item (a file or folder).
 type Metadata struct {
-	Cid       string                  `json:"cid"`
+	Key       string                  `json:"key,omitempty"`
 	Roles     map[string]buckets.Role `json:"roles"`
-	CreatedAt int64                   `json:"created_at"`
 	UpdatedAt int64                   `json:"updated_at"`
 }
 
@@ -71,71 +69,73 @@ type Deal struct {
 	Miner       string `json:"miner"`
 }
 
-// GetEncKey returns the encryption key as bytes if present.
-func (b *Bucket) GetEncKey() []byte {
-	if b.EncKey == "" {
-		return nil
-	}
-	key, _ := base64.StdEncoding.DecodeString(b.EncKey)
-	return key
+// IsPrivate returns whether or not the bucket is private.
+func (b *Bucket) IsPrivate() bool {
+	return b.LinkKey != ""
 }
 
-// UpsertMetadataAtPath adds new or updates the existing metadata for path.
-func (b *Bucket) UpsertMetadataAtPath(pth string, cid cid.Cid, updated time.Time) error {
-	if b.Version == 0 {
+// GetLinkEncryptionKey returns the bucket encryption key as bytes if present.
+// Version 0 buckets use the link key for all files and folders.
+// Version 1 buckets only use the link for folders.
+func (b *Bucket) GetLinkEncryptionKey() []byte {
+	if b.LinkKey == "" {
 		return nil
 	}
-	nanos := updated.UnixNano()
-	x, ok := b.Metadata[pth]
-	if ok && x.Cid != cid.String() {
-		x.Cid = cid.String()
-		x.UpdatedAt = nanos
-		b.Metadata[pth] = x
+	return keyBytes(b.LinkKey)
+}
+
+// GetFileEncryptionKeyForPath returns the encryption key for path.
+// Version 0 buckets use the link key for all paths.
+// Version 1 buckets use a different key defined in path metadata.
+func (b *Bucket) GetFileEncryptionKeyForPath(pth string) ([]byte, error) {
+	if b.Version == 0 {
+		return b.GetLinkEncryptionKey(), nil
 	} else {
-		roles := make(map[string]buckets.Role)
-		if b.Owner != "" {
-			if b.EncKey == "" {
-				roles["*"] = buckets.Reader
-			}
-			roles[b.Owner] = buckets.Admin
+		md, _, ok := b.GetMetadataForPath(pth)
+		if !ok {
+			return nil, fmt.Errorf("could not resolve path: %s", pth)
 		}
-		b.Metadata[pth] = Metadata{
-			Cid:       cid.String(),
-			Roles:     roles,
-			CreatedAt: nanos,
-			UpdatedAt: nanos,
+		if md.Key != "" {
+			return keyBytes(md.Key), nil
+		} else {
+			return nil, nil
 		}
 	}
-	return nil
 }
 
-// IsPathReadable returns whether or not the bucket path is readable.
-func (b *Bucket) IsPathReadable(pth string) bool {
+func keyBytes(k string) []byte {
+	b, _ := base64.StdEncoding.DecodeString(k)
+	return b
+}
+
+// GetMetadataForPath returns metadata for path.
+// The returned metadata could be from an exact path match or
+// the nearest parent, i.e., path was added as part of a folder.
+func (b *Bucket) GetMetadataForPath(pth string) (md Metadata, at string, ok bool) {
 	if b.Version == 0 {
-		return true
+		return md, at, true
 	}
 	// Check for an exact match
-	if _, ok := b.Metadata[pth]; ok {
-		return true
+	if md, ok = b.Metadata[pth]; ok {
+		return md, pth, true
 	}
 	// Check if we can see this path via a parent
 	parent := pth
+	var done bool
 	for {
-		parent = gopath.Dir(parent)
-		if parent == "." {
+		if done {
 			break
 		}
-		if _, ok := b.Metadata[parent]; ok {
-			return true
+		parent = gopath.Dir(parent)
+		if parent == "." {
+			parent = ""
+			done = true
+		}
+		if md, ok = b.Metadata[parent]; ok {
+			return md, parent, true
 		}
 	}
-	// Check if there's child paths visible under the path.
-	for i := range b.Metadata {
-		if strings.HasPrefix(i, pth) {
-			return true
-		}
-	}
-	return false
+	return md, at, false
 }
 
 // BucketOptions defines options for interacting with buckets.
@@ -319,7 +319,7 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 		Key:       key,
 		Name:      args.Name,
 		Version:   Version,
-		EncKey:    encKey,
+		LinkKey:   encKey,
 		Path:      pth.String(),
 		Metadata:  metadata,
 		Archives:  Archives{Current: Archive{Deals: []Deal{}}, History: []Archive{}},

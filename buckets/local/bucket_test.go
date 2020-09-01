@@ -516,7 +516,7 @@ func TestBucket_AccessRoles(t *testing.T) {
 	_, err = buck.PushLocal(context.Background())
 	require.NoError(t, err)
 
-	roles, err := buck.GetPathAccessRoles(context.Background(), "file")
+	roles, err := buck.PullPathAccessRoles(context.Background(), "file")
 	require.NoError(t, err)
 	assert.Len(t, roles, 0)
 
@@ -526,7 +526,7 @@ func TestBucket_AccessRoles(t *testing.T) {
 	_, wpk, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	writer := thread.NewLibp2pPubKey(wpk).String()
-	all, err := buck.EditPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
+	all, err := buck.PushPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
 		reader: bucks.Reader,
 		writer: bucks.Writer,
 	})
@@ -535,7 +535,7 @@ func TestBucket_AccessRoles(t *testing.T) {
 	assert.Equal(t, bucks.Reader, all[reader])
 	assert.Equal(t, bucks.Writer, all[writer])
 
-	all, err = buck.EditPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
+	all, err = buck.PushPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
 		reader: bucks.None,
 	})
 	assert.Len(t, all, 1)
