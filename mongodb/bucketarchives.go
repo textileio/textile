@@ -32,21 +32,20 @@ type BucketArchives struct {
 }
 
 func NewBucketArchives(_ context.Context, db *mongo.Database) (*BucketArchives, error) {
-	// ToDo: Let's rename this collection to bucketarchives when there is a data loss event like a powergate reset
-	s := &BucketArchives{col: db.Collection("ffsinstances")}
+	s := &BucketArchives{col: db.Collection("bucketarchives")}
 	return s, nil
 }
 
-func (k *BucketArchives) Create(ctx context.Context, bucketKey string) error {
-	ffs := &BucketArchive{
+func (k *BucketArchives) Create(ctx context.Context, bucketKey string) (*BucketArchive, error) {
+	ba := &BucketArchive{
 		BucketKey: bucketKey,
 	}
-	_, err := k.col.InsertOne(ctx, ffs)
-	return err
+	_, err := k.col.InsertOne(ctx, ba)
+	return ba, err
 }
 
-func (k *BucketArchives) Replace(ctx context.Context, ffs *BucketArchive) error {
-	res, err := k.col.ReplaceOne(ctx, bson.M{"_id": ffs.BucketKey}, ffs)
+func (k *BucketArchives) Replace(ctx context.Context, ba *BucketArchive) error {
+	res, err := k.col.ReplaceOne(ctx, bson.M{"_id": ba.BucketKey}, ba)
 	if err != nil {
 		return err
 	}
@@ -56,10 +55,14 @@ func (k *BucketArchives) Replace(ctx context.Context, ffs *BucketArchive) error 
 	return nil
 }
 
-func (k *BucketArchives) Get(ctx context.Context, bucketKey string) (*BucketArchive, error) {
+func (k *BucketArchives) GetOrCreate(ctx context.Context, bucketKey string) (*BucketArchive, error) {
 	res := k.col.FindOne(ctx, bson.M{"_id": bucketKey})
 	if res.Err() != nil {
-		return nil, res.Err()
+		if res.Err() == mongo.ErrNoDocuments {
+			return k.Create(ctx, bucketKey)
+		} else {
+			return nil, res.Err()
+		}
 	}
 	var raw BucketArchive
 	if err := res.Decode(&raw); err != nil {

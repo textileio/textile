@@ -98,7 +98,7 @@ func (t *Tracker) run() {
 						}
 
 						if powInfo == nil {
-							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "huh? no FFS info, weird"); err != nil {
+							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "no powergate info found"); err != nil {
 								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
 							}
 							return
@@ -211,7 +211,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job ffs.Job, aborted bool, abortMsg string) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	ba, err := t.colls.BucketArchives.Get(ctx, buckKey)
+	ba, err := t.colls.BucketArchives.GetOrCreate(ctx, buckKey)
 	if err != nil {
 		return fmt.Errorf("getting BucketArchive data: %s", err)
 	}
@@ -229,7 +229,7 @@ func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job f
 	lastArchive.AbortedMsg = abortMsg
 	lastArchive.FailureMsg = prepareFailureMsg(job)
 	if err := t.colls.BucketArchives.Replace(ctx, ba); err != nil {
-		return fmt.Errorf("updating ffs status update instance data: %s", err)
+		return fmt.Errorf("updating bucket archives status: %s", err)
 	}
 	return nil
 }

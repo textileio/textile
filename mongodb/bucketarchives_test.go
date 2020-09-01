@@ -15,8 +15,9 @@ func TestBucketArchives_Create(t *testing.T) {
 	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1")
+	res, err := col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
+	require.Equal(t, "buckkey1", res.BucketKey)
 }
 
 func TestBucketArchives_Get(t *testing.T) {
@@ -24,10 +25,11 @@ func TestBucketArchives_Get(t *testing.T) {
 	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1")
+	res, err := col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
+	require.Equal(t, "buckkey1", res.BucketKey)
 
-	got, err := col.Get(context.Background(), "buckkey1")
+	got, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
 	require.Equal(t, "buckkey1", got.BucketKey)
 }
@@ -38,10 +40,11 @@ func TestBucketArchives_Replace(t *testing.T) {
 	col, err := NewBucketArchives(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "buckkey1")
+	res, err := col.Create(context.Background(), "buckkey1")
 	require.NoError(t, err)
+	require.Equal(t, "buckkey1", res.BucketKey)
 
-	ffs, err := col.Get(context.Background(), "buckkey1")
+	ffs, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
 
 	c1, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
@@ -63,7 +66,7 @@ func TestBucketArchives_Replace(t *testing.T) {
 	err = col.Replace(ctx, ffs)
 	require.NoError(t, err)
 
-	ffs2, err := col.Get(context.Background(), "buckkey1")
+	ffs2, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
 	require.Equal(t, ffs, ffs2)
 }

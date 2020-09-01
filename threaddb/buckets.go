@@ -163,8 +163,8 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	}
 	bucket.Key = string(id)
 
-	if err := b.baCol.Create(ctx, key); err != nil {
-		return nil, fmt.Errorf("saving BucketArchive data: %s", err)
+	if _, err := b.baCol.Create(ctx, key); err != nil {
+		return nil, fmt.Errorf("creating BucketArchive data: %s", err)
 	}
 
 	return bucket, nil
@@ -194,9 +194,9 @@ func ensureNoNulls(b *Bucket) {
 // ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,
 // an extra string with the error message is provided.
 func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus, string, error) {
-	ba, err := b.baCol.Get(ctx, key)
+	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
-		return ffs.Failed, "", fmt.Errorf("getting ffs instance data: %s", err)
+		return ffs.Failed, "", fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
 	if ba.Archives.Current.JobID == "" {
@@ -213,9 +213,9 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus,
 // human-friendly log output of how the current archive is executing.
 // If the last archive is already done, it will simply return the log history and close the channel.
 func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ffsToken string, ch chan<- string) error {
-	ba, err := b.baCol.Get(ctx, key)
+	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
-		return fmt.Errorf("getting ffs instance data: %s", err)
+		return fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
 	if ba.Archives.Current.JobID == "" {
