@@ -2207,7 +2207,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) error {
 func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
 	var a *mdb.Account
 	var u *mdb.User
-	if owner, ok := ctx.Value(ctxKey("owner")).(string); ok {
+	if owner, ok := ctx.Value(ctxKey("owner")).(string); ok && owner != "" {
 		pk := &thread.Libp2pPubKey{}
 		err := pk.UnmarshalString(owner)
 		if err != nil {
