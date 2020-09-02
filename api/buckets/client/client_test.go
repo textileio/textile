@@ -781,7 +781,20 @@ func TestClient_PullPathAccessRoles(t *testing.T) {
 
 	roles, err := client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
 	require.NoError(t, err)
-	assert.Len(t, roles, 2)
+	assert.Len(t, roles, 0)
+
+	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	reader := thread.NewLibp2pPubKey(pk)
+	roles = map[string]bucks.Role{
+		reader.String(): bucks.Reader,
+	}
+	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", roles)
+	require.NoError(t, err)
+
+	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
+	require.NoError(t, err)
+	assert.Len(t, roles, 1)
 }
 
 func TestClose(t *testing.T) {
