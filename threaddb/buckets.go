@@ -168,6 +168,29 @@ func (b *Bucket) GetMetadataForPath(pth string, requireKey bool) (md Metadata, a
 	return md, at, false
 }
 
+// SetMetadataAtPath create new or merges existing metadata at path.
+func (b *Bucket) SetMetadataAtPath(pth string, md Metadata) {
+	if b.Version == 0 {
+		return
+	}
+	x, ok := b.Metadata[pth]
+	if ok {
+		if md.Key != "" {
+			x.Key = md.Key
+		}
+		if md.Roles != nil {
+			x.Roles = md.Roles
+		}
+		x.UpdatedAt = md.UpdatedAt
+		b.Metadata[pth] = x
+	} else {
+		if md.Roles == nil {
+			md.Roles = make(map[string]buckets.Role)
+		}
+		b.Metadata[pth] = md
+	}
+}
+
 // BucketOptions defines options for interacting with buckets.
 type BucketOptions struct {
 	Name  string
