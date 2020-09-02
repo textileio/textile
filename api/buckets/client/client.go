@@ -190,8 +190,7 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 					Chunk: buf[:n],
 				},
 			}); err == io.EOF {
-				var noOp interface{}
-				return nil, nil, stream.RecvMsg(noOp)
+				break
 			} else if err != nil {
 				_ = stream.CloseSend()
 				return nil, nil, err

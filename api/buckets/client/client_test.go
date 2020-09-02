@@ -759,6 +759,13 @@ func TestClient_PushPathAccessRoles(t *testing.T) {
 	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
 	require.NoError(t, err)
 	assert.Len(t, roles, 1)
+
+	tmp, err := ioutil.TempFile("", "")
+	require.NoError(t, err)
+	defer tmp.Close()
+
+	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp)
+	require.NoError(t, err)
 }
 
 func TestClient_PullPathAccessRoles(t *testing.T) {
