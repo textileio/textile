@@ -51,6 +51,35 @@ type Metadata struct {
 	UpdatedAt int64                   `json:"updated_at"`
 }
 
+// NewDefaultMetadata returns the default metadata for a path.
+func NewDefaultMetadata(owner thread.PubKey, key []byte, ts time.Time) Metadata {
+	roles := make(map[string]buckets.Role)
+	if owner != nil {
+		if key == nil {
+			roles["*"] = buckets.Reader
+		}
+		roles[owner.String()] = buckets.Admin
+	}
+	md := Metadata{
+		Roles:     roles,
+		UpdatedAt: ts.UnixNano(),
+	}
+	md.SetFileEncryptionKey(key)
+	return md
+}
+
+// GetFileEncryptionKey returns the file encryption key as bytes if present.
+func (m *Metadata) GetFileEncryptionKey() []byte {
+	return keyBytes(m.Key)
+}
+
+// SetFileEncryptionKey sets the file encryption key.
+func (m *Metadata) SetFileEncryptionKey(key []byte) {
+	if key != nil {
+		m.Key = base64.StdEncoding.EncodeToString(key)
+	}
+}
+
 // Archives contains all archives for a single bucket.
 type Archives struct {
 	Current Archive   `json:"current"`
@@ -78,9 +107,6 @@ func (b *Bucket) IsPrivate() bool {
 // Version 0 buckets use the link key for all files and folders.
 // Version 1 buckets only use the link for folders.
 func (b *Bucket) GetLinkEncryptionKey() []byte {
-	if b.LinkKey == "" {
-		return nil
-	}
 	return keyBytes(b.LinkKey)
 }
 
@@ -95,15 +121,14 @@ func (b *Bucket) GetFileEncryptionKeyForPath(pth string) ([]byte, error) {
 		if !ok {
 			return nil, fmt.Errorf("could not resolve path: %s", pth)
 		}
-		if md.Key != "" {
-			return keyBytes(md.Key), nil
-		} else {
-			return nil, nil
-		}
+		return keyBytes(md.Key), nil
 	}
 }
 
 func keyBytes(k string) []byte {
+	if k == "" {
+		return nil
+	}
 	b, _ := base64.StdEncoding.DecodeString(k)
 	return b
 }
