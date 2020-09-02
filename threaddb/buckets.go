@@ -117,7 +117,7 @@ func (b *Bucket) GetFileEncryptionKeyForPath(pth string) ([]byte, error) {
 	if b.Version == 0 {
 		return b.GetLinkEncryptionKey(), nil
 	} else {
-		md, _, ok := b.GetMetadataForPath(pth)
+		md, _, ok := b.GetMetadataForPath(pth, true)
 		if !ok {
 			return nil, fmt.Errorf("could not resolve path: %s", pth)
 		}
@@ -136,13 +136,16 @@ func keyBytes(k string) []byte {
 // GetMetadataForPath returns metadata for path.
 // The returned metadata could be from an exact path match or
 // the nearest parent, i.e., path was added as part of a folder.
-func (b *Bucket) GetMetadataForPath(pth string) (md Metadata, at string, ok bool) {
+// If requireKey is true, metadata w/o a key is ignored and the search continues toward root.
+func (b *Bucket) GetMetadataForPath(pth string, requireKey bool) (md Metadata, at string, ok bool) {
 	if b.Version == 0 {
 		return md, at, true
 	}
 	// Check for an exact match
 	if md, ok = b.Metadata[pth]; ok {
-		return md, pth, true
+		if !b.IsPrivate() || !requireKey || md.Key != "" {
+			return md, pth, true
+		}
 	}
 	// Check if we can see this path via a parent
 	parent := pth
@@ -157,7 +160,9 @@ func (b *Bucket) GetMetadataForPath(pth string) (md Metadata, at string, ok bool
 			done = true
 		}
 		if md, ok = b.Metadata[parent]; ok {
-			return md, parent, true
+			if !b.IsPrivate() || !requireKey || md.Key != "" {
+				return md, parent, true
+			}
 		}
 	}
 	return md, at, false
@@ -209,39 +214,76 @@ func init() {
 			var type = event.patch.type
 			var patch = event.patch.json_patch
 			var restricted = ["owner", "name", "version", "key", "archives", "created_at"]
+			function fillRoles(roles) {
+			  if (!x.roles[writer]) {
+				x.roles[writer] = 0
+			  }
+			  if (!x.roles["*"]) {
+				x.roles["*"] = 0
+			  }
+			}
 			switch (type) {
 			  case "create":
-			    if (patch.owner !== "" && writer !== patch.owner) {
-			      return "permission denied" // writer must match new bucket owner
-			    }
-			    break
+				if (patch.owner !== "" && writer !== patch.owner) {
+				  return "permission denied" // writer must match new bucket owner
+				}
+				break
 			  case "save":
-			    if (instance.owner === "") {
-			      return true
-			    }
-			    if (writer !== instance.owner) {
-			      for (i = 0; i < restricted.length; i++) {
-			        if (patch[restricted[i]]) {
-			          return "permission denied"
-			        }
-			      }
-			    }
-			    if (!patch.metadata) {
-			      return true
-			    }
-			    var keys = Object.keys(patch.metadata)
-			    for (i = 0; i < keys.length; i++) {
-			      var p = patch.metadata[keys[i]]
-			      var x = instance.metadata[keys[i]]
-			      if (x) {
-			        if (!x.roles[writer]) {
-			          x.roles[writer] = 0
-			        }
-			        if (!x.roles["*"]) {
-			          x.roles["*"] = 0
-			        }
-			        if (!p) {
-                      if (x.roles[writer] < 3) {
+				if (instance.owner === "") {
+				  return true
+				}
+				if (writer !== instance.owner) {
+				  for (i = 0; i < restricted.length; i++) {
+					if (patch[restricted[i]]) {
+					  return "permission denied"
+					}
+				  }
+				}
+				if (!patch.metadata) {
+				  return true
+				}
+				var keys = Object.keys(patch.metadata)
+				for (i = 0; i < keys.length; i++) {
+				  var p = patch.metadata[keys[i]]
+				  var x = instance.metadata[keys[i]]
+				  if (x) {
+					if (!x.roles[writer]) {
+					  x.roles[writer] = 0
+					}
+					if (!x.roles["*"]) {
+					  x.roles["*"] = 0
+					}
+					// merge all parents, taking most privileged role
+					if (keys[i].length > 0) {
+					  var parts = keys[i].split("/")
+					  parts.unshift("")
+					  var path = ""
+					  for (j = 0; j < parts.length; j++) {
+						if (path.length > 0) {
+						  path += "/"
+						}
+						path += parts[j]
+						var y = instance.metadata[path]
+						if (!y) {
+						  continue
+						}
+						if (!y.roles[writer]) {
+						  y.roles[writer] = 0
+						}
+						if (!y.roles["*"]) {
+						  y.roles["*"] = 0
+						}
+						if (y.roles[writer] > x.roles[writer]) {
+						  x.roles[writer] = y.roles[writer]
+						}
+						if (y.roles["*"] > x.roles["*"]) {
+						  x.roles["*"] = y.roles["*"]
+						}
+					  }
+					}
+					// check access against merged roles
+					if (!p) {
+			          if (x.roles[writer] < 3) {
 			            patch.metadata[keys[i]] = x // reset patch, no admin access to delete items
 			          }
 			          continue
@@ -277,13 +319,29 @@ func init() {
 			}
 			var filtered = {}
 			var keys = Object.keys(instance.metadata)
-			for (i = 0; i < keys.length; i++) {
-			  var x = instance.metadata[keys[i]]
-			  if (x.roles[reader] > 0 || x.roles["*"] > 0) {
-			    filtered[keys[i]] = x
+			outer: for (i = 0; i < keys.length; i++) {
+			  var m = instance.metadata[keys[i]]
+			  var parts = keys[i].split("/")
+			  if (keys[i].length > 0) {
+			    parts.unshift("")
+			  }
+			  var path = ""
+			  for (j = 0; j < parts.length; j++) {
+			    if (path.length > 0) {
+			      path += "/"
+			    }
+			    path += parts[j]
+			    var x = instance.metadata[path]
+			    if (x && (x.roles[reader] > 0 || x.roles["*"] > 0)) {
+			      filtered[keys[i]] = m
+			      continue outer
+			    }
 			  }
 			}
 			instance.metadata = filtered
+			if (Object.keys(instance.metadata).length === 0) {
+			  delete instance.key
+			}
 			return instance
 		`,
 	}
