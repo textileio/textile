@@ -729,7 +729,7 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 func TestClient_PushPathAccessRoles(t *testing.T) {
 	ctx, client := setup(t)
 
-	buck, err := client.Create(ctx)
+	buck, err := client.Create(ctx, c.WithPrivate(true))
 	require.NoError(t, err)
 
 	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -739,7 +739,7 @@ func TestClient_PushPathAccessRoles(t *testing.T) {
 		reader.String(): bucks.Reader,
 	}
 	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "nothing/here", roles)
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	file, err := os.Open("testdata/file1.jpg")
 	require.NoError(t, err)
@@ -749,6 +749,10 @@ func TestClient_PushPathAccessRoles(t *testing.T) {
 
 	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", roles)
 	require.NoError(t, err)
+
+	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
+	require.NoError(t, err)
+	assert.Len(t, roles, 1)
 }
 
 func TestClient_PullPathAccessRoles(t *testing.T) {
