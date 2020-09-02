@@ -354,14 +354,16 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	if owner != nil {
 		bucket.Owner = owner.String()
 	}
-	id, err := b.Create(ctx, dbID, bucket, WithToken(args.Token))
+	_, err := b.Create(ctx, dbID, bucket, WithToken(args.Token))
 	if err != nil {
 		return nil, fmt.Errorf("creating bucket in thread: %s", err)
 	}
-	bucket.Key = string(id)
 
 	if _, err := b.baCol.Create(ctx, key); err != nil {
 		return nil, fmt.Errorf("creating BucketArchive data: %s", err)
+	}
+	if err = b.Get(ctx, dbID, key, &bucket, WithToken(args.Token)); err != nil {
+		return nil, fmt.Errorf("getting bucket in thread: %s", err)
 	}
 	return bucket, nil
 }

@@ -10,12 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	bucks "github.com/textileio/textile/buckets"
-
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -26,6 +24,7 @@ import (
 	c "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	bucks "github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
@@ -38,8 +37,11 @@ func TestClient_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, buck.Root)
 	assert.NotEmpty(t, buck.Root.Key)
+	assert.NotEmpty(t, buck.Root.Owner)
 	assert.NotEmpty(t, buck.Root.Name)
+	assert.NotEmpty(t, buck.Root.Version)
 	assert.NotEmpty(t, buck.Root.Path)
+	assert.NotEmpty(t, buck.Root.Metadata)
 	assert.NotEmpty(t, buck.Root.CreatedAt)
 	assert.NotEmpty(t, buck.Root.UpdatedAt)
 	assert.NotEmpty(t, buck.Links)
@@ -49,8 +51,11 @@ func TestClient_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, pbuck.Root)
 	assert.NotEmpty(t, pbuck.Root.Key)
+	assert.NotEmpty(t, buck.Root.Owner)
 	assert.NotEmpty(t, pbuck.Root.Name)
+	assert.NotEmpty(t, buck.Root.Version)
 	assert.NotEmpty(t, pbuck.Root.Path)
+	assert.NotEmpty(t, buck.Root.Metadata)
 	assert.NotEmpty(t, pbuck.Root.CreatedAt)
 	assert.NotEmpty(t, pbuck.Root.UpdatedAt)
 	assert.NotEmpty(t, pbuck.Links)
@@ -137,6 +142,7 @@ func TestClient_Root(t *testing.T) {
 	assert.NotEmpty(t, root.Root.Owner)
 	assert.NotEmpty(t, root.Root.Version)
 	assert.NotEmpty(t, root.Root.Path)
+	assert.NotEmpty(t, root.Root.Metadata)
 	assert.NotEmpty(t, root.Root.CreatedAt)
 	assert.NotEmpty(t, root.Root.UpdatedAt)
 }
@@ -715,7 +721,7 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 	require.Error(t, err)
 	rep, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.NoError(t, err)
-	assert.Len(t, rep.Item.Items, 2)
+	assert.Len(t, rep.Item.Items, 3)
 
 	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
 	require.NoError(t, err)

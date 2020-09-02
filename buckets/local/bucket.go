@@ -135,22 +135,20 @@ func (b *Bucket) LocalSize() (int64, error) {
 
 // Info wraps info about a bucket.
 type Info struct {
-	Key       string              `json:"key"`
-	Owner     string              `json:"owner"`
-	Name      string              `json:"name"`
-	Version   int                 `json:"version"`
-	Path      path.Resolved       `json:"path"`
-	Metadata  map[string]Metadata `json:"metadata"`
-	Thread    thread.ID           `json:"id"`
-	CreatedAt time.Time           `json:"created_at"`
-	UpdatedAt time.Time           `json:"updated_at"`
+	Key       string        `json:"key"`
+	Owner     string        `json:"owner"`
+	Name      string        `json:"name"`
+	Version   int           `json:"version"`
+	Path      path.Resolved `json:"path"`
+	Metadata  Metadata      `json:"metadata"`
+	Thread    thread.ID     `json:"id"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
 }
 
 // Metadata wraps metadata about a bucket item.
 type Metadata struct {
-	Cid       cid.Cid                 `json:"cid"`
 	Roles     map[string]buckets.Role `json:"roles"`
-	CreatedAt time.Time               `json:"created_at"`
 	UpdatedAt time.Time               `json:"updated_at"`
 }
 
@@ -180,35 +178,10 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	md := make(map[string]Metadata)
-	for p, m := range r.Metadata {
-		c, err := cid.Decode(m.Cid)
-		if err != nil {
-			return info, err
-		}
-		roles := make(map[string]buckets.Role)
-		for k, r := range m.Roles {
-			var role buckets.Role
-			switch r {
-			case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
-				role = buckets.None
-			case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
-				role = buckets.Reader
-			case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
-				role = buckets.Writer
-			case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
-				role = buckets.Admin
-			default:
-				return info, fmt.Errorf("unknown path access role %d", r)
-			}
-			roles[k] = role
-		}
-		md[p] = Metadata{
-			Cid:       c,
-			Roles:     roles,
-			CreatedAt: time.Unix(0, m.CreatedAt),
-			UpdatedAt: time.Unix(0, m.UpdatedAt),
-		}
+	roles, err := buckets.RolesFromPb(r.Metadata.Roles)
+	md := Metadata{
+		Roles:     roles,
+		UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
 	}
 	return Info{
 		Key:       r.Key,

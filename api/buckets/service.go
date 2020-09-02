@@ -941,7 +941,7 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 	}
 	// Skip orphaned directories
 	if _, ok := node.(*dag.ProtoNode); ok && len(node.Links()) == 0 {
-		return nil, nil
+		//return nil, nil
 	}
 	var pmd *pb.Metadata
 	if buck != nil {
@@ -972,22 +972,19 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 			break
 		}
 		item.IsDir = true
-		i := &pb.PathItem{}
 		if includeNextLevel {
 			p := gopath.Join(pth, l.Name)
 			n, err := l.GetNode(ctx, s.IPFSClient.Dag())
 			if err != nil {
 				return nil, err
 			}
-			i, err = s.nodeToItem(ctx, buck, n, p, key, true, false)
+			i, err := s.nodeToItem(ctx, buck, n, p, key, true, false)
 			if err != nil {
 				return nil, err
 			}
-		}
-		if i != nil {
 			item.Items = append(item.Items, i)
-			item.ItemsCount++
 		}
+		item.ItemsCount++
 	}
 	return item, nil
 }
@@ -1489,13 +1486,28 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 			return err
 		}
 	}
-
-	node, reader, err := s.decryptFilePath(server.Context(), filePath, fileKey)
+	node, err := s.IPFSClient.Unixfs().Get(server.Context(), filePath)
 	if err != nil {
 		return err
 	}
 	defer node.Close()
-	defer reader.Close()
+
+	file := ipfsfiles.ToFile(node)
+	if file == nil {
+		return fmt.Errorf("node is a directory")
+	}
+	var reader io.Reader
+	if fileKey != nil {
+		r, err := dcrypto.NewDecrypter(file, fileKey)
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		reader = r
+	} else {
+		reader = file
+	}
+
 	buf := make([]byte, chunkSize)
 	for {
 		n, err := reader.Read(buf)
@@ -1513,27 +1525,6 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 		}
 	}
 	return nil
-}
-
-func (s *Service) decryptFilePath(ctx context.Context, pth path.Path, key []byte) (ipfsfiles.Node, io.ReadCloser, error) {
-	fn, err := s.IPFSClient.Unixfs().Get(ctx, pth)
-	if err != nil {
-		return nil, nil, err
-	}
-	file := ipfsfiles.ToFile(fn)
-	if file == nil {
-		fn.Close()
-		return nil, nil, fmt.Errorf("node is a directory")
-	}
-	if key != nil {
-		reader, err := dcrypto.NewDecrypter(file, key)
-		if err != nil {
-			return nil, nil, err
-		}
-		return fn, reader, nil
-	} else {
-		return fn, file, nil
-	}
 }
 
 func (s *Service) PullIpfsPath(req *pb.PullIpfsPathRequest, server pb.APIService_PullIpfsPathServer) error {
