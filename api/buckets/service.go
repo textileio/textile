@@ -752,10 +752,9 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	buck.Path = dirPath.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	buck.Metadata[destPath] = tdb.Metadata{
-		Roles:     make(map[string]buckets.Role),
+	buck.SetMetadataAtPath(destPath, tdb.Metadata{
 		UpdatedAt: buck.UpdatedAt,
-	}
+	})
 	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("saving new bucket state: %s", err)
 	}
@@ -1209,10 +1208,9 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 
 	buck.Path = dirPath.String()
 	buck.UpdatedAt = time.Now().UnixNano()
-	buck.Metadata[filePath] = tdb.Metadata{
-		Roles:     make(map[string]buckets.Role),
+	buck.SetMetadataAtPath(filePath, tdb.Metadata{
 		UpdatedAt: buck.UpdatedAt,
-	}
+	})
 	if err = s.Buckets.SaveSafe(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return err
 	}
