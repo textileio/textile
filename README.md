@@ -83,8 +83,9 @@ This repo contains two service daemons with CLIs and a Buckets Library for build
 -   **Build from the source**:
 
 ```
-go get github.com/textileio/textile
-go install github.com/textileio/textile/cmd/hubd
+git clone https://github.com/textileio/textile
+cd textile
+go get ./cmd/hubd
 ```
 
 #### `hub`
@@ -93,16 +94,17 @@ go install github.com/textileio/textile/cmd/hubd
 -   **Build from the source**: 
 
 ```
-go get github.com/textileio/textile
-go install github.com/textileio/textile/cmd/hub
+git clone https://github.com/textileio/textile
+cd textile
+go get ./cmd/hub
 ```
 
 **Note**: `hub` _includes_ `buck` as a subcommand: `hub buck`. This is because `hubd` hosts `buckd`, along with other services.
 
-`hub` is built in part on the gRPC client, which can be installed in an existing project with `go get`.
+`hub` is built in part on the gRPC client, which can be imported to an existing project:
 
 ```
-go get github.com/textileio/textile/api/hub/client
+import "github.com/textileio/textile/api/hub/client"
 ```
 
 ### Buckets
@@ -114,8 +116,9 @@ go get github.com/textileio/textile/api/hub/client
 -   **Build from the source**: 
 
 ```
-go get github.com/textileio/textile
-go install github.com/textileio/textile/cmd/buckd
+git clone https://github.com/textileio/textile
+cd textile
+go get ./cmd/buckd
 ```
 
 #### `buck`
@@ -124,20 +127,21 @@ go install github.com/textileio/textile/cmd/buckd
 -   **Build from the source**: 
 
 ```
-go get github.com/textileio/textile
-go install github.com/textileio/textile/cmd/buck
+git clone https://github.com/textileio/textile
+cd textile
+go get ./cmd/buck
 ```
 
-`buck` is built in part on the gRPC client, which can be used in an existing project with `go get`.
+`buck` is built in part on the gRPC client, which can be imported in an existing project:
 
 ```
-go get github.com/textileio/textile/api/buckets/client
+import "github.com/textileio/textile/api/buckets/client"
 ```
 
 ### The Buckets Library
 
 ```
-go get github.com/textileio/textile/buckets/local
+import "github.com/textileio/textile/buckets/local"
 ```
 
 ## Getting Started
