@@ -20,6 +20,9 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// Version is the current semvar or "development" if not production
+var Version = "development"
+
 var (
 	// Timeout is the default timeout used for most commands.
 	Timeout = time.Minute * 10
@@ -32,6 +35,9 @@ var (
 
 	// Bold is a styler used to make the output text bold.
 	Bold = promptui.Styler(promptui.FGBold)
+
+	// Repo organization/repo where client releases are published
+	Repo = "textileio/textile"
 )
 
 // Flaf describes a command flag.

@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/caarlos0/spin v1.1.0
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cloudflare/cloudflare-go v0.11.6
@@ -55,6 +56,7 @@ require (
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/radovskyb/watcher v1.0.7
+	github.com/rhysd/go-github-selfupdate v1.2.2
 	github.com/rs/cors v1.7.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect

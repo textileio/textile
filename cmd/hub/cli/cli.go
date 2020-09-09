@@ -45,7 +45,7 @@ var (
 func Init(rootCmd *cobra.Command) {
 	config.Viper.SetConfigType("yaml")
 
-	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd)
+	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, versionCmd)
 	rootCmd.AddCommand(orgsCmd, keysCmd, threadsCmd, powCmd)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
@@ -53,6 +53,8 @@ func Init(rootCmd *cobra.Command) {
 	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powNewAddrCmd, powPeersCmd, powRetrievalsCmd, powSendFilCmd, powShowAllCmd, powShowCmd, powStorageCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
+
+	versionCmd.Flags().BoolP("update", "u", false, "Update hub cli to latest release")
 
 	rootCmd.PersistentFlags().String(
 		"api",
