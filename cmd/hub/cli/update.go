@@ -63,7 +63,6 @@ var updateCmd = &cobra.Command{
 			}
 		}
 		if version == "git" {
-			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
 			cmd.RenderTable(
 				[]string{"GitBranch", "GitState", "GitSummary"},
 				[][]string{{
@@ -72,6 +71,7 @@ var updateCmd = &cobra.Command{
 					bi.GitSummary,
 				}},
 			)
+			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
 		} else {
 			cmd.Message("%s", aurora.Green(version))
 		}
