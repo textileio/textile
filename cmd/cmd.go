@@ -20,9 +20,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// Version is the current semvar or "development" if not production
-var Version = "development"
-
 var (
 	// Timeout is the default timeout used for most commands.
 	Timeout = time.Minute * 10

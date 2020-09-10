@@ -1,15 +1,47 @@
 package cli
 
 import (
-	"os"
+	"context"
+	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
 	su "github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/spf13/cobra"
+	bi "github.com/textileio/textile/buildinfo"
 	"github.com/textileio/textile/cmd"
 )
+
+func checkProduction() (*su.Release, error) {
+	config := su.Config{
+		Filters: []string{
+			"hub",
+		},
+	}
+	updater, err := su.NewUpdater(config)
+	if err != nil {
+		return nil, err
+	}
+
+	latest, found, err := updater.DetectLatest(cmd.Repo)
+	if err != nil || !found {
+		return nil, err
+	}
+	return latest, nil
+}
+
+func getAPIVersion() (string, error) {
+	ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+	defer cancel()
+	res, err := clients.Hub.BuildInfo(ctx)
+	if err != nil {
+		return "", err
+	}
+	if res.Version == "development" {
+		return fmt.Sprintf("%s (%s)", res.GitCommit, res.BuildDate), nil
+	}
+	return res.Version, nil
+}
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
@@ -17,59 +49,43 @@ var versionCmd = &cobra.Command{
 	Long:  `Shows the installed CLI version.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		version := cmd.Version
+		version := bi.Version
 
-		update, err := c.Flags().GetBool("update")
-		cmd.ErrCheck(err)
+		apiVersion, err := getAPIVersion()
+		if err != nil {
+			cmd.Error(err)
+			cmd.Warn("Unable to check API version.")
+		} else {
+			cmd.Message("The Hub API is running %s", apiVersion)
+		}
 
-		current, err := semver.ParseTolerant(version)
-		if err == nil {
-			config := su.Config{
-				Filters: []string{
-					"hub",
-				},
-			}
-			updater, err := su.NewUpdater(config)
+		latest, err := checkProduction()
+		if err != nil {
+			cmd.Error(err)
+			cmd.Warn("Unable to check latest public release.")
+		} else {
+			current, err := semver.ParseTolerant(version)
 			if err != nil {
-				cmd.Fatal(err)
-				return
-			}
-
-			latest, found, err := updater.DetectLatest(cmd.Repo)
-			if err != nil {
-				cmd.Fatal(err)
-				return
-			}
-
-			if found && err == nil {
-				if current.LT(latest.Version) {
-					if update {
-						// Update cli if requested
-						exe, err := os.Executable()
-						if err != nil {
-							cmd.Fatal(err)
-							return
-						}
-
-						s := spin.New("%s Downloading release")
-						s.Start()
-						if err := su.UpdateTo(latest.AssetURL, exe); err != nil {
-							cmd.Fatal(err)
-							return
-						}
-						version = latest.Version.String()
-						s.Stop()
-
-						cmd.Message("Success: hub updated.")
-					} else {
-						// Display warning if outdated
-						cmd.Message("Warning: hub is behind. Run `%s` to install %s.", aurora.White("hub version --update").Bold(), aurora.Cyan(latest.Version.String()))
-					}
-				} else if update {
-					cmd.Message("Info: hub already up-to-date.")
-				}
+				// Display warning if off production
+				cmd.Warn("Running a developer branch. Run `%s` to install production release.", aurora.White("hub update").Bold())
+			} else if current.LT(latest.Version) {
+				// Display warning if outdated
+				cmd.Warn("Your hub is behind. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
 			}
 		}
-		cmd.Message("%s", aurora.Green(version))
+
+		if version == "git" {
+			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
+			cmd.RenderTable(
+				[]string{"GitBranch", "GitState", "GitSummary"},
+				[][]string{{
+					bi.GitBranch,
+					bi.GitState,
+					bi.GitSummary,
+				}},
+			)
+		} else {
+			cmd.Message("%s", aurora.Green(version))
+		}
 	},
 }

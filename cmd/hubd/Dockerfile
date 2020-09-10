@@ -31,9 +31,13 @@ RUN cd $SRC_DIR \
 
 COPY . $SRC_DIR
 
+# Setup the API buildinfo
+RUN cd $SRC_DIR \
+  && go build -modfile .bingo/govvv.mod -o=. github.com/ahmetb/govvv
+
 # Install the daemon
 RUN cd $SRC_DIR \
-  && CGO_ENABLED=0 GOOS=linux go build -o hubd cmd/hubd/main.go
+  && pkg="$(go list ./buildinfo)" && govvvflags="$(./govvv -flags -pkg $pkg)" && CGO_ENABLED=0 GOOS=linux go build -ldflags="$govvvflags" -o hubd cmd/hubd/main.go
 
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1.31.0-glibc

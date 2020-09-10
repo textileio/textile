@@ -35,7 +35,7 @@ func End(format string, args ...interface{}) {
 	os.Exit(0)
 }
 
-func Fatal(err error, args ...interface{}) {
+func Error(err error, args ...interface{}) {
 	var msg string
 	stat, ok := status.FromError(err)
 	if ok {
@@ -48,6 +48,10 @@ func Fatal(err error, args ...interface{}) {
 	msg = strings.Join(words, " ")
 	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
 		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
+}
+
+func Fatal(err error, args ...interface{}) {
+	Error(err, args)
 	os.Exit(1)
 }
 
