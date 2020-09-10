@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
+	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
 	su "github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/spf13/cobra"
@@ -13,6 +14,9 @@ import (
 )
 
 func checkProduction() (*su.Release, error) {
+	s := spin.New("%s Checking latest Hub CLI release")
+	s.Start()
+	defer s.Stop()
 	config := su.Config{
 		Filters: []string{
 			"hub",
@@ -31,6 +35,9 @@ func checkProduction() (*su.Release, error) {
 }
 
 func getAPIVersion() (string, error) {
+	s := spin.New("%s Checking Hub API version")
+	s.Start()
+	defer s.Stop()
 	ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 	defer cancel()
 	res, err := clients.Hub.BuildInfo(ctx)
@@ -62,19 +69,20 @@ var versionCmd = &cobra.Command{
 		latest, err := checkProduction()
 		if err != nil {
 			cmd.Error(err)
-			cmd.Warn("Unable to check latest public release.")
+			cmd.Warn("Unable to get latest release.")
 		} else {
 			current, err := semver.ParseTolerant(version)
 			if err != nil {
 				// Display warning if off production
-				cmd.Warn("Running a developer branch. Run `%s` to install production release.", aurora.White("hub update").Bold())
+				cmd.Warn("Running a custom hub build. Run `%s` to install the latest release.", aurora.White("hub update").Bold())
 			} else if current.LT(latest.Version) {
 				// Display warning if outdated
-				cmd.Warn("Your hub is behind. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
+				cmd.Warn("There is a new hub release. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
 			}
 		}
 
 		if version == "git" {
+			cmd.Message("Custom version.")
 			cmd.RenderTable(
 				[]string{"GitBranch", "GitState", "GitSummary"},
 				[][]string{{

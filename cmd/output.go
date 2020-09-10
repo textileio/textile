@@ -51,7 +51,7 @@ func Error(err error, args ...interface{}) {
 }
 
 func Fatal(err error, args ...interface{}) {
-	Error(err, args)
+	Error(err, args...)
 	os.Exit(1)
 }
 

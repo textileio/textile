@@ -13,16 +13,16 @@ import (
 )
 
 func install(assetURL string) error {
+	s := spin.New("%s Downloading release")
+	s.Start()
+	defer s.Stop()
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	s := spin.New("%s Downloading release")
-	s.Start()
 	if err := su.UpdateTo(assetURL, exe); err != nil {
 		return err
 	}
-	s.Stop()
 	return nil
 }
 
@@ -63,6 +63,7 @@ var updateCmd = &cobra.Command{
 			}
 		}
 		if version == "git" {
+			cmd.Message("Custom version:")
 			cmd.RenderTable(
 				[]string{"GitBranch", "GitState", "GitSummary"},
 				[][]string{{
