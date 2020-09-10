@@ -26,14 +26,16 @@ jobs:
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           go get -v -t -d ./...
-      - name: Install gox
+      - name: Build govvv
         run: |
-          export PATH=${PATH}:`go env GOPATH`/bin
-          go get github.com/mitchellh/gox  
+          go build -modfile .bingo/govvv.mod -o=. github.com/ahmetb/govvv
+      - name: Build gox
+        run: |
+          go build -modfile .bingo/gox.mod -o=. github.com/mitchellh/gox
       - name: Compile
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
-          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" ./cmd/hub
+          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" -ldflags="$(./govvv -flags -version $(VERSION) -pkg $(go list ./buildinfo))" ./cmd/hub
           gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="buck-{{.OS}}-{{.Arch}}" ./cmd/buck
       - name: Collect artifacts
         run: |
