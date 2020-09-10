@@ -712,7 +712,7 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 
 		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
 		if err != nil {
-			if err.Error() != "auth token not found" {
+			if !strings.Contains(err.Error(), "auth token not found") {
 				return nil, err
 			} else {
 				// case where the ffs token is no longer valid because powergate was reset.

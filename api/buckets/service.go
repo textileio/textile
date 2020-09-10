@@ -1653,7 +1653,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
-		if err.Error() != "auth token not found" {
+		if !strings.Contains(err.Error(), "auth token not found") {
 			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
 		} else {
 			// case where the ffs token is no longer valid because powergate was reset.

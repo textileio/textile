@@ -87,7 +87,7 @@ func (t *Tracker) run() {
 					go func(a *mdb.TrackedArchive) {
 						defer wg.Done()
 
-						ctx, cancel := context.WithTimeout(t.ctx, time.Second*5)
+						ctx, cancel := context.WithTimeout(t.ctx, time.Second*10)
 						defer cancel()
 
 						var powInfo *mdb.PowInfo
@@ -151,7 +151,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 	if err := t.pgClient.FFS.WatchJobs(ctx, ch, jid); err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
 		// return the error as fatal so the archive will be untracked
-		if err.Error() == "auth token not found" {
+		if strings.Contains(err.Error(), "auth token not found") {
 			return false, "", err
 		}
 		return true, fmt.Sprintf("watching current job %s for bucket %s: %s", jid, buckKey, err), nil
