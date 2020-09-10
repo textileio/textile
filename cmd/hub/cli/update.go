@@ -37,7 +37,7 @@ var updateCmd = &cobra.Command{
 		latest, err := checkProduction()
 		if err != nil {
 			cmd.Error(err)
-			cmd.Warn("Unable to check latest public release.")
+			cmd.Warn("Unable to fetch latest public release.")
 		} else {
 			current, err := semver.ParseTolerant(version)
 			if err == nil {
