@@ -154,9 +154,6 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 		if strings.Contains(err.Error(), "auth token not found") {
 			return false, "", err
 		}
-		if strings.Contains(err.Error(), "job not found") {
-			return false, "", err
-		}
 		return true, fmt.Sprintf("watching current job %s for bucket %s: %s", jid, buckKey, err), nil
 	}
 
@@ -179,7 +176,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 		job = s.Job
 	}
 
-	if !isJobStatusFinal(job.Status) {
+	if !aborted && !isJobStatusFinal(job.Status) {
 		return true, "no final status yet", nil
 	}
 
