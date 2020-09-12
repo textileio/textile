@@ -111,11 +111,9 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 					return
 				}
 				scancel()
-				final, err := isJobStatusFinal(r.GetStatus())
+				_, err = isJobStatusFinal(r.GetStatus())
 				if err != nil {
 					msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
-					cancel()
-				} else if final {
 					cancel()
 				}
 			}
