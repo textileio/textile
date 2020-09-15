@@ -260,7 +260,7 @@ func (t *Tracker) saveDealsInArchive(ctx context.Context, buckKey string, dbID t
 		Deals: deals,
 	}
 	buck.UpdatedAt = time.Now().UnixNano()
-	if err = t.buckets.SaveSafe(ctx, dbID, buck, opts); err != nil {
+	if err = t.buckets.Save(ctx, dbID, buck, opts); err != nil {
 		return fmt.Errorf("saving deals in thread: %s", err)
 	}
 	return nil

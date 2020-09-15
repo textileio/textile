@@ -247,6 +247,20 @@ func (b *Bucket) UnsetMetadataWithPrefix(pre string) {
 	}
 }
 
+// ensureNoNulls inflates any values that are nil due to schema updates.
+func (b *Bucket) ensureNoNulls() {
+	if b.Metadata == nil {
+		b.Metadata = make(map[string]Metadata)
+	}
+	if len(b.Archives.History) == 0 {
+		current := b.Archives.Current
+		if len(current.Deals) == 0 {
+			b.Archives.Current = Archive{Deals: []Deal{}}
+		}
+		b.Archives = Archives{Current: current, History: []Archive{}}
+	}
+}
+
 // BucketOptions defines options for interacting with buckets.
 type BucketOptions struct {
 	Name  string
@@ -311,7 +325,11 @@ func init() {
 				  }
 				}
 				if (!patch.metadata) {
-				  return false
+			      if (patch.path && writer !== instance.owner) {
+			        return "permission denied"
+			      } else {
+			        patch.metadata = {}
+			      }
 				}
 				var keys = Object.keys(patch.metadata)
 				for (i = 0; i < keys.length; i++) {
@@ -496,28 +514,18 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	return bucket, nil
 }
 
+// GetSafe gets a bucket instance and inflates any values that are nil due to schema updates.
+func (b *Buckets) GetSafe(ctx context.Context, dbID thread.ID, key string, buck *Bucket, opts ...Option) error {
+	if err := b.Get(ctx, dbID, key, buck, opts...); err != nil {
+		return err
+	}
+	buck.ensureNoNulls()
+	return nil
+}
+
 // IsArchivingEnabled returns whether or not Powergate archiving is enabled.
 func (b *Buckets) IsArchivingEnabled() bool {
 	return b.pgClient != nil
-}
-
-// SaveSafe a bucket instance.
-func (b *Buckets) SaveSafe(ctx context.Context, dbID thread.ID, bucket *Bucket, opts ...Option) error {
-	ensureNoNulls(bucket)
-	return b.Save(ctx, dbID, bucket, opts...)
-}
-
-func ensureNoNulls(b *Bucket) {
-	if b.Metadata == nil {
-		b.Metadata = make(map[string]Metadata)
-	}
-	if len(b.Archives.History) == 0 {
-		current := b.Archives.Current
-		if len(current.Deals) == 0 {
-			b.Archives.Current = Archive{Deals: []Deal{}}
-		}
-		b.Archives = Archives{Current: current, History: []Archive{}}
-	}
 }
 
 // ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,

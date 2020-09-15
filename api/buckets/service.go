@@ -681,7 +681,7 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootRespon
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksRes
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -739,19 +739,31 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, fmt.Errorf("get bucket: %s", err)
-	}
-	buckPath := path.New(buck.Path)
-
+	destPath := cleanPath(req.Path)
 	bootCid, err := cid.Decode(req.Cid)
 	if err != nil {
 		return nil, fmt.Errorf("invalid remote cid: %s", err)
 	}
 
-	destPath := cleanPath(req.Path)
+	buck := &tdb.Bucket{}
+	if err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("get bucket: %s", err)
+	}
+
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(destPath, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(destPath + "/")
+
+	txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	if err = txn.Verify(ctx, buck); err != nil {
+		return nil, err
+	}
+
 	var linkKey, fileKey []byte
 	if buck.IsPrivate() {
 		linkKey = buck.GetLinkEncryptionKey()
@@ -761,18 +773,19 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 		}
 	}
 
+	buckPath := path.New(buck.Path)
 	dirPath, err := s.setPathFromExistingCid(ctx, buck, buckPath, destPath, bootCid, linkKey, fileKey)
 	if err != nil {
 		return nil, err
 	}
 	buck.Path = dirPath.String()
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.SetMetadataAtPath(destPath, tdb.Metadata{
-		UpdatedAt: buck.UpdatedAt,
-	})
-	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("saving new bucket state: %s", err)
+	if err = txn.Save(ctx, buck); err != nil {
+		return nil, err
 	}
+	if err = txn.End(); err != nil {
+		return nil, err
+	}
+
 	return &pb.SetPathResponse{}, nil
 }
 
@@ -991,24 +1004,31 @@ func (s *Service) nodeToItem(ctx context.Context, buck *tdb.Bucket, node ipld.No
 		Size:     int64(stat.CumulativeSize),
 		Metadata: pmd,
 	}
-	for _, l := range node.Links() {
-		if l.Name == "" {
-			break
+	if pn, ok := node.(*dag.ProtoNode); ok {
+		fn, _ := unixfs.FSNodeFromBytes(pn.Data())
+		if fn != nil && fn.IsDir() {
+			item.IsDir = true
 		}
-		item.IsDir = true
-		if includeNextLevel {
-			p := gopath.Join(pth, l.Name)
-			n, err := l.GetNode(ctx, s.IPFSClient.Dag())
-			if err != nil {
-				return nil, err
+	}
+	if item.IsDir {
+		for _, l := range node.Links() {
+			if l.Name == "" {
+				break
 			}
-			i, err := s.nodeToItem(ctx, buck, n, p, key, true, false)
-			if err != nil {
-				return nil, err
+			if includeNextLevel {
+				p := gopath.Join(pth, l.Name)
+				n, err := l.GetNode(ctx, s.IPFSClient.Dag())
+				if err != nil {
+					return nil, err
+				}
+				i, err := s.nodeToItem(ctx, buck, n, p, key, true, false)
+				if err != nil {
+					return nil, err
+				}
+				item.Items = append(item.Items, i)
 			}
-			item.Items = append(item.Items, i)
+			item.ItemsCount++
 		}
-		item.ItemsCount++
 	}
 	return item, nil
 }
@@ -1023,7 +1043,7 @@ func parsePath(pth string) (fpth string, err error) {
 
 func (s *Service) getBucketPath(ctx context.Context, dbID thread.ID, key, pth string, token thread.Token) (*tdb.Bucket, path.Path, error) {
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, key, buck, tdb.WithToken(token))
+	err := s.Buckets.GetSafe(ctx, dbID, key, buck, tdb.WithToken(token))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1084,13 +1104,28 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	if err != nil {
 		return err
 	}
+
 	buck := &tdb.Bucket{}
-	err = s.Buckets.Get(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
+	err = s.Buckets.GetSafe(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return err
 	}
 	if root != "" && root != buck.Path {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(filePath, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(filePath + "/")
+
+	txn, err := s.Buckets.WriteTxn(server.Context(), dbID, tdb.WithToken(dbToken))
+	if err != nil {
+		return err
+	}
+	if err = txn.Verify(server.Context(), buck); err != nil {
+		return err
 	}
 
 	fileKey, err := buck.GetFileEncryptionKeyForPath(filePath)
@@ -1222,12 +1257,10 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	}
 
 	buck.Path = dirPath.String()
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.SetMetadataAtPath(filePath, tdb.Metadata{
-		UpdatedAt: buck.UpdatedAt,
-	})
-	buck.UnsetMetadataWithPrefix(filePath + "/") // This file may overwrite a directory
-	if err = s.Buckets.SaveSafe(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+	if err = txn.Save(ctx, buck); err != nil {
+		return err
+	}
+	if err = txn.End(); err != nil {
 		return err
 	}
 
@@ -1602,10 +1635,15 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
+
+	if err = s.Buckets.Delete(ctx, dbID, buck.Key, tdb.WithToken(dbToken)); err != nil {
+		return nil, err
+	}
+
 	buckPath, err := util.NewResolvedPath(buck.Path)
 	if err != nil {
 		return nil, err
@@ -1619,9 +1657,6 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 		if err = s.unpinPath(ctx, buckPath); err != nil {
 			return nil, err
 		}
-	}
-	if err = s.Buckets.Delete(ctx, dbID, buck.Key, tdb.WithToken(dbToken)); err != nil {
-		return nil, err
 	}
 	if err = s.IPNSManager.RemoveKey(ctx, buck.Key); err != nil {
 		return nil, err
@@ -1651,13 +1686,25 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+
 	buck := &tdb.Bucket{}
-	err = s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
 	if req.Root != "" && req.Root != buck.Path {
 		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.UnsetMetadataWithPrefix(filePath)
+
+	txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+	if err = txn.Verify(ctx, buck); err != nil {
+		return nil, err
 	}
 
 	buckPath := path.New(buck.Path)
@@ -1678,11 +1725,10 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	}
 
 	buck.Path = dirPath.String()
-	if buck.Metadata != nil {
-		delete(buck.Metadata, filePath)
+	if err = txn.Save(ctx, buck); err != nil {
+		return nil, err
 	}
-	buck.UpdatedAt = time.Now().UnixNano()
-	if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+	if err = txn.End(); err != nil {
 		return nil, err
 	}
 
@@ -1831,8 +1877,13 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 		buck.UpdatedAt = time.Now().UnixNano()
 		target.UpdatedAt = buck.UpdatedAt
 		buck.Metadata[reqPath] = target
-		if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("pre-saving bucket roles: %s", err)
+
+		txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
+		if err != nil {
+			return nil, err
+		}
+		if err = txn.Verify(ctx, buck); err != nil {
+			return nil, err
 		}
 
 		if buck.IsPrivate() {
@@ -1861,14 +1912,14 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 			if err := s.addAndPinNodes(ctx, nodes); err != nil {
 				return nil, err
 			}
-
 			buck.Path = dirPath.String()
-			buck.UpdatedAt = time.Now().UnixNano()
-			target.UpdatedAt = buck.UpdatedAt
-			buck.Metadata[reqPath] = target
-			if err = s.Buckets.SaveSafe(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-				return nil, fmt.Errorf("saving bucket roles: %s", err)
-			}
+		}
+
+		if err = txn.Save(ctx, buck); err != nil {
+			return nil, err
+		}
+		if err = txn.End(); err != nil {
+			return nil, err
 		}
 	}
 	return &pb.PushPathAccessRolesResponse{}, nil
@@ -1921,7 +1972,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -2155,7 +2206,7 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	buck := &tdb.Bucket{}
-	err := s.Buckets.Get(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
