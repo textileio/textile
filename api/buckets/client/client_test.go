@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"io"
 	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -24,6 +26,7 @@ import (
 	c "github.com/textileio/textile/api/buckets/client"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
+	hubpb "github.com/textileio/textile/api/hub/pb"
 	bucks "github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
@@ -65,7 +68,7 @@ func TestClient_Create(t *testing.T) {
 func TestClient_CreateExceedLimit(t *testing.T) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsMaxNumberPerThread = 1
-	ctx, client := setupWithConf(t, conf)
+	ctx, _, _, client := setupWithConf(t, conf)
 
 	_, err := client.Create(ctx, c.WithName("mybuck"))
 	require.NoError(t, err)
@@ -352,7 +355,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsMaxSize = maxBucketSize
-	ctx, client := setupWithConf(t, conf)
+	ctx, _, _, client := setupWithConf(t, conf)
 
 	buck, err := client.Create(ctx)
 	require.NoError(t, err)
@@ -382,7 +385,7 @@ func TestClient_PushPathBucketsExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsTotalMaxSize = maxBucketsSize
-	ctx, client := setupWithConf(t, conf)
+	ctx, _, _, client := setupWithConf(t, conf)
 
 	buck, err := client.Create(ctx)
 	require.NoError(t, err)
@@ -417,7 +420,7 @@ func TestClient_PushPathPrivateBucketsExceedLimit(t *testing.T) {
 
 	conf := apitest.DefaultTextileConfig(t)
 	conf.BucketsTotalMaxSize = maxBucketsSize
-	ctx, client := setupWithConf(t, conf)
+	ctx, _, _, client := setupWithConf(t, conf)
 
 	buck, err := client.Create(ctx, c.WithPrivate(true))
 	require.NoError(t, err)
@@ -733,39 +736,177 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 }
 
 func TestClient_PushPathAccessRoles(t *testing.T) {
-	ctx, client := setup(t)
+	ctx, userctx, threadsclient, client := setupForUsers(t)
 
-	buck, err := client.Create(ctx, c.WithPrivate(true))
+	t.Run("public", func(t *testing.T) {
+		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, true)
+	})
+}
+
+func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Context, threadsclient *tc.Client, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
+	t.Run("non-existent path", func(t *testing.T) {
+		_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.NoError(t, err)
+		reader := thread.NewLibp2pPubKey(pk)
+
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "nothing/here", map[string]bucks.Role{
+			reader.String(): bucks.Reader,
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("existent path", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+
+		file1, err := os.Open("testdata/file1.jpg")
+		require.NoError(t, err)
+		defer file1.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "file", file1)
+		require.NoError(t, err)
+
+		// Check initial access (none)
+		check := accessCheck{
+			Key:  buck.Root.Key,
+			Path: "file",
+		}
+		check.Read = !private // public buckets readable by all
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant reader
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Reader,
+		})
+		require.NoError(t, err)
+		check.Read = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant writer
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		check.Write = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant admin
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Admin,
+		})
+		require.NoError(t, err)
+		check.Admin = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Ungrant
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.None,
+		})
+		require.NoError(t, err)
+		check.Read = !private
+		check.Write = false
+		check.Admin = false
+		checkAccess(t, user1ctx, client, check)
+	})
+
+	t.Run("overlapping paths", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+		user2, user2ctx := newUser(t, userctx, threadsclient)
+
+		file1, err := os.Open("testdata/file1.jpg")
+		require.NoError(t, err)
+		defer file1.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/b/f1", file1)
+		require.NoError(t, err)
+
+		file2, err := os.Open("testdata/file2.jpg")
+		require.NoError(t, err)
+		defer file2.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/f2", file2)
+		require.NoError(t, err)
+
+		// Grant nested tree
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a/b", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+
+		// Grant parent of nested tree
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a", map[string]bucks.Role{
+			user2.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user2ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+
+		// Re-check nested access for user1
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+	})
+}
+
+type accessCheck struct {
+	Key  string
+	Path string
+
+	Read  bool
+	Write bool
+	Admin bool
+}
+
+func checkAccess(t *testing.T, ctx context.Context, client *c.Client, check accessCheck) {
+	// Check read access
+	res, err := client.ListPath(ctx, check.Key, check.Path)
+	if check.Read {
+		require.NoError(t, err)
+		assert.NotEmpty(t, res.Item)
+	} else {
+		require.Error(t, err)
+	}
+
+	// Check write access
+	tmp2, err := ioutil.TempFile("", "")
+	require.NoError(t, err)
+	defer tmp2.Close()
+	_, err = io.CopyN(tmp2, rand.Reader, 1024)
+	require.NoError(t, err)
+	_, _, err = client.PushPath(ctx, check.Key, check.Path, tmp2)
+	if check.Write {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err)
+	}
+
+	// Check admin access (role editing)
 	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	reader := thread.NewLibp2pPubKey(pk)
-	roles := map[string]bucks.Role{
-		reader.String(): bucks.Reader,
+	err = client.PushPathAccessRoles(ctx, check.Key, check.Path, map[string]bucks.Role{
+		thread.NewLibp2pPubKey(pk).String(): bucks.Reader,
+	})
+	if check.Admin {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err)
 	}
-	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "nothing/here", roles)
-	require.Error(t, err)
-
-	file, err := os.Open("testdata/file1.jpg")
-	require.NoError(t, err)
-	defer file.Close()
-	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-	require.NoError(t, err)
-
-	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", roles)
-	require.NoError(t, err)
-
-	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
-	require.NoError(t, err)
-	assert.Len(t, roles, 1)
-
-	tmp, err := ioutil.TempFile("", "")
-	require.NoError(t, err)
-	defer tmp.Close()
-
-	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp)
-	require.NoError(t, err)
 }
 
 func TestClient_PullPathAccessRoles(t *testing.T) {
@@ -812,10 +953,28 @@ func TestClose(t *testing.T) {
 
 func setup(t *testing.T) (context.Context, *c.Client) {
 	conf := apitest.DefaultTextileConfig(t)
-	return setupWithConf(t, conf)
+	ctx, _, _, client := setupWithConf(t, conf)
+	return ctx, client
 }
 
-func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client) {
+func setupForUsers(t *testing.T) (context.Context, context.Context, *tc.Client, *c.Client) {
+	conf := apitest.DefaultTextileConfig(t)
+	ctx, hubclient, threadsclient, client := setupWithConf(t, conf)
+
+	res, err := hubclient.CreateKey(ctx, hubpb.KeyType_KEY_TYPE_USER, true)
+	require.NoError(t, err)
+	userctx := common.NewAPIKeyContext(context.Background(), res.KeyInfo.Key)
+	userctx, err = common.CreateAPISigContext(userctx, time.Now().Add(time.Hour), res.KeyInfo.Secret)
+	require.NoError(t, err)
+
+	id, ok := common.ThreadIDFromContext(ctx)
+	require.True(t, ok)
+	userctx = common.NewThreadIDContext(userctx, id)
+
+	return ctx, userctx, threadsclient, client
+}
+
+func setupWithConf(t *testing.T, conf core.Config) (context.Context, *hc.Client, *tc.Client, *c.Client) {
 	apitest.MakeTextileWithConfig(t, conf, true)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
@@ -839,5 +998,14 @@ func setupWithConf(t *testing.T, conf core.Config) (context.Context, *c.Client) 
 		err := client.Close()
 		require.NoError(t, err)
 	})
-	return ctx, client
+	return ctx, hubclient, threadsclient, client
+}
+
+func newUser(t *testing.T, ctx context.Context, threadsclient *tc.Client) (thread.Identity, context.Context) {
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	identity := thread.NewLibp2pIdentity(sk)
+	tok, err := threadsclient.GetToken(ctx, identity)
+	require.NoError(t, err)
+	return identity, thread.NewTokenContext(ctx, tok)
 }

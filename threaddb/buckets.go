@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	gopath "path"
+	"strings"
 	"sync"
 	"time"
 
@@ -133,6 +134,25 @@ func keyBytes(k string) []byte {
 	return b
 }
 
+// GetFileEncryptionKeysForPrefix returns a map of keys for every path under prefix.
+func (b *Bucket) GetFileEncryptionKeysForPrefix(pre string) (map[string][]byte, error) {
+	if b.Version == 0 {
+		return map[string][]byte{"": b.GetLinkEncryptionKey()}, nil
+	} else {
+		keys := make(map[string][]byte)
+		for p := range b.Metadata {
+			if strings.HasPrefix(p, pre) {
+				md, _, ok := b.GetMetadataForPath(p, true)
+				if !ok {
+					return nil, fmt.Errorf("could not resolve path: %s", p)
+				}
+				keys[p] = keyBytes(md.Key)
+			}
+		}
+		return keys, nil
+	}
+}
+
 // GetMetadataForPath returns metadata for path.
 // The returned metadata could be from an exact path match or
 // the nearest parent, i.e., path was added as part of a folder.
@@ -191,6 +211,18 @@ func (b *Bucket) SetMetadataAtPath(pth string, md Metadata) {
 	}
 }
 
+// UnsetMetadataWithPrefix removes metadata with the path prefix.
+func (b *Bucket) UnsetMetadataWithPrefix(pre string) {
+	if b.Version == 0 {
+		return
+	}
+	for p := range b.Metadata {
+		if strings.HasPrefix(p, pre) {
+			delete(b.Metadata, p)
+		}
+	}
+}
+
 // BucketOptions defines options for interacting with buckets.
 type BucketOptions struct {
 	Name  string
@@ -237,14 +269,6 @@ func init() {
 			var type = event.patch.type
 			var patch = event.patch.json_patch
 			var restricted = ["owner", "name", "version", "key", "archives", "created_at"]
-			function fillRoles(roles) {
-			  if (!x.roles[writer]) {
-				x.roles[writer] = 0
-			  }
-			  if (!x.roles["*"]) {
-				x.roles["*"] = 0
-			  }
-			}
 			switch (type) {
 			  case "create":
 				if (patch.owner !== "" && writer !== patch.owner) {
@@ -263,7 +287,7 @@ func init() {
 				  }
 				}
 				if (!patch.metadata) {
-				  return true
+				  return false
 				}
 				var keys = Object.keys(patch.metadata)
 				for (i = 0; i < keys.length; i++) {
@@ -307,9 +331,8 @@ func init() {
 					// check access against merged roles
 					if (!p) {
 			          if (x.roles[writer] < 3) {
-			            patch.metadata[keys[i]] = x // reset patch, no admin access to delete items
+			            return "permission denied" // no admin access to delete items
 			          }
-			          continue
 			        } else {
 			          if (p.roles && x.roles[writer] < 3) {
 			            return "permission denied" // no admin access to edit roles
