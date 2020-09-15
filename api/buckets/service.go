@@ -1836,6 +1836,9 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 		}
 
 		if buck.IsPrivate() {
+			if err := buck.RotateFileEncryptionKeysForPrefix(reqPath); err != nil {
+				return nil, err
+			}
 			newFileKeys, err := buck.GetFileEncryptionKeysForPrefix(reqPath)
 			if err != nil {
 				return nil, err

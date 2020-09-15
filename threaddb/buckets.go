@@ -12,6 +12,7 @@ import (
 	"github.com/alecthomas/jsonschema"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/textileio/dcrypto"
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
@@ -117,13 +118,13 @@ func (b *Bucket) GetLinkEncryptionKey() []byte {
 func (b *Bucket) GetFileEncryptionKeyForPath(pth string) ([]byte, error) {
 	if b.Version == 0 {
 		return b.GetLinkEncryptionKey(), nil
-	} else {
-		md, _, ok := b.GetMetadataForPath(pth, true)
-		if !ok {
-			return nil, fmt.Errorf("could not resolve path: %s", pth)
-		}
-		return keyBytes(md.Key), nil
 	}
+
+	md, _, ok := b.GetMetadataForPath(pth, true)
+	if !ok {
+		return nil, fmt.Errorf("could not resolve path: %s", pth)
+	}
+	return keyBytes(md.Key), nil
 }
 
 func keyBytes(k string) []byte {
@@ -138,19 +139,39 @@ func keyBytes(k string) []byte {
 func (b *Bucket) GetFileEncryptionKeysForPrefix(pre string) (map[string][]byte, error) {
 	if b.Version == 0 {
 		return map[string][]byte{"": b.GetLinkEncryptionKey()}, nil
-	} else {
-		keys := make(map[string][]byte)
-		for p := range b.Metadata {
-			if strings.HasPrefix(p, pre) {
-				md, _, ok := b.GetMetadataForPath(p, true)
-				if !ok {
-					return nil, fmt.Errorf("could not resolve path: %s", p)
+	}
+
+	keys := make(map[string][]byte)
+	for p := range b.Metadata {
+		if strings.HasPrefix(p, pre) {
+			md, _, ok := b.GetMetadataForPath(p, true)
+			if !ok {
+				return nil, fmt.Errorf("could not resolve path: %s", p)
+			}
+			keys[p] = keyBytes(md.Key)
+		}
+	}
+	return keys, nil
+}
+
+// RotateFileEncryptionKeysForPrefix re-generates existing metadata keys for every path under prefix.
+func (b *Bucket) RotateFileEncryptionKeysForPrefix(pre string) error {
+	if b.Version == 0 {
+		return nil
+	}
+
+	for p, md := range b.Metadata {
+		if strings.HasPrefix(p, pre) {
+			if md.Key != "" {
+				key, err := dcrypto.NewKey()
+				if err != nil {
+					return err
 				}
-				keys[p] = keyBytes(md.Key)
+				md.SetFileEncryptionKey(key)
 			}
 		}
-		return keys, nil
 	}
+	return nil
 }
 
 // GetMetadataForPath returns metadata for path.
@@ -161,6 +182,7 @@ func (b *Bucket) GetMetadataForPath(pth string, requireKey bool) (md Metadata, a
 	if b.Version == 0 {
 		return md, at, true
 	}
+
 	// Check for an exact match
 	if md, ok = b.Metadata[pth]; ok {
 		if !b.IsPrivate() || !requireKey || md.Key != "" {
@@ -193,6 +215,7 @@ func (b *Bucket) SetMetadataAtPath(pth string, md Metadata) {
 	if b.Version == 0 {
 		return
 	}
+
 	x, ok := b.Metadata[pth]
 	if ok {
 		if md.Key != "" {
@@ -216,6 +239,7 @@ func (b *Bucket) UnsetMetadataWithPrefix(pre string) {
 	if b.Version == 0 {
 		return
 	}
+
 	for p := range b.Metadata {
 		if strings.HasPrefix(p, pre) {
 			delete(b.Metadata, p)
