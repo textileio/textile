@@ -2,8 +2,6 @@ module github.com/textileio/textile
 
 go 1.14
 
-// replace github.com/textileio/go-threads => ../go-threads
-
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
@@ -68,7 +66,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.24-0.20200915220633-cb3a898e5545
+	github.com/textileio/go-threads v0.1.24-0.20200915225235-8355a2e43aa1
 	github.com/textileio/powergate v0.4.0
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.4.0
