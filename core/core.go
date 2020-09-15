@@ -123,8 +123,8 @@ var (
 		"/api.buckets.pb.APIService/PullPath",
 		"/api.buckets.pb.APIService/SetPath",
 		"/api.buckets.pb.APIService/RemovePath",
-		"/api.buckets.pb.APIService/PushPathAccessRoles",
-		"/api.buckets.pb.APIService/PullPathAccessRoles",
+		"/api.buckets.pb.APIService/GetPathAccessRoles",
+		"/api.buckets.pb.APIService/EditPathAccessRoles",
 	}
 
 	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
