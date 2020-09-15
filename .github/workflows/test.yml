@@ -80,12 +80,7 @@ jobs:
         run: |
           go get -v -t -d ./...
       - name: Test
-<<<<<<< HEAD
         run: go test -v -timeout 45m -race ./buckets/...
-
-=======
-        run: go test -v -timeout 20m -race ./buckets/...
->>>>>>> buckets: adds new bucket version with write validator and read filter
   integration-test:
     name: Integration Test
     runs-on: self-hosted
