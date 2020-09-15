@@ -2,8 +2,10 @@ include .bingo/Variables.mk
 
 .DEFAULT_GOAL=textile
 
-textile:
-	go install ./...
+GOVVV_FLAGS=$(shell $(GOVVV) -version git -flags -pkg $(shell go list ./buildinfo))
+
+textile: $(GOVVV)
+	go install -ldflags="${GOVVV_FLAGS}" ./...
 
 hub-up:
 	docker-compose -f cmd/hubd/docker-compose-dev.yml up --build

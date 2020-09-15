@@ -30,6 +30,11 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+// Info provides API build information.
+func (c *Client) BuildInfo(ctx context.Context) (*pb.BuildInfoResponse, error) {
+	return c.c.BuildInfo(ctx, &pb.BuildInfoRequest{})
+}
+
 // Signup creates a new user and returns a session.
 // This method will block and wait for email-based verification.
 func (c *Client) Signup(ctx context.Context, username, email string) (*pb.SignupResponse, error) {

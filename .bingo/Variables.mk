@@ -22,6 +22,18 @@ $(BUF): .bingo/buf.mod
 	@echo "(re)installing $(GOBIN)/buf-v0.20.5"
 	@cd .bingo && $(GO) build -modfile=buf.mod -o=$(GOBIN)/buf-v0.20.5 "github.com/bufbuild/buf/cmd/buf"
 
+GOVVV := $(GOBIN)/govvv-v0.3.0
+$(GOVVV): .bingo/govvv.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/govvv-v0.3.0"
+	@cd .bingo && $(GO) build -modfile=govvv.mod -o=$(GOBIN)/govvv-v0.3.0 "github.com/ahmetb/govvv"
+
+GOX := $(GOBIN)/gox-v1.0.1
+$(GOX): .bingo/gox.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/gox-v1.0.1"
+	@cd .bingo && $(GO) build -modfile=gox.mod -o=$(GOBIN)/gox-v1.0.1 "github.com/mitchellh/gox"
+
 PROTOC_GEN_BUF_CHECK_BREAKING := $(GOBIN)/protoc-gen-buf-check-breaking-v0.20.5
 $(PROTOC_GEN_BUF_CHECK_BREAKING): .bingo/protoc-gen-buf-check-breaking.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.

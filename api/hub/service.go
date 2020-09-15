@@ -20,6 +20,7 @@ import (
 	"github.com/textileio/textile/api/common"
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/buckets"
+	bi "github.com/textileio/textile/buildinfo"
 	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/ipns"
@@ -50,6 +51,18 @@ type Service struct {
 	IPNSManager        *ipns.Manager
 	DNSManager         *dns.Manager
 	Pow                *powc.Client
+}
+
+// Info provides the currently running API's build information
+func (s *Service) BuildInfo(ctx context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
+	return &pb.BuildInfoResponse{
+		GitCommit:  bi.GitCommit,
+		GitBranch:  bi.GitBranch,
+		GitState:   bi.GitState,
+		GitSummary: bi.GitSummary,
+		BuildDate:  bi.BuildDate,
+		Version:    bi.Version,
+	}, nil
 }
 
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupResponse, error) {

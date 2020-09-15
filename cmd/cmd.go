@@ -32,6 +32,9 @@ var (
 
 	// Bold is a styler used to make the output text bold.
 	Bold = promptui.Styler(promptui.FGBold)
+
+	// Repo organization/repo where client releases are published
+	Repo = "textileio/textile"
 )
 
 // Flaf describes a command flag.
