@@ -158,7 +158,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 
 	var aborted bool
 	var abortMsg string
-	var job ffs.Job
+	var job ffs.StorageJob
 	select {
 	case <-ctx.Done():
 		log.Infof("job %s status watching canceled", jid)
@@ -207,7 +207,7 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 // To track for this situation, we use the _aborted_ and _abortMsg_ parameters.
 // An archive with _aborted_ true should eventually be re-queried to understand
 // how it finished (if wanted).
-func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job ffs.Job, aborted bool, abortMsg string) error {
+func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job ffs.StorageJob, aborted bool, abortMsg string) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	ba, err := t.colls.BucketArchives.GetOrCreate(ctx, buckKey)
@@ -266,7 +266,7 @@ func (t *Tracker) saveDealsInArchive(ctx context.Context, buckKey string, dbID t
 	return nil
 }
 
-func prepareFailureMsg(job ffs.Job) string {
+func prepareFailureMsg(job ffs.StorageJob) string {
 	if job.ErrCause == "" {
 		return ""
 	}
