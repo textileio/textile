@@ -538,6 +538,7 @@ func TestBucket_AccessRoles(t *testing.T) {
 	all, err = buck.PushPathAccessRoles(context.Background(), "file", map[string]bucks.Role{
 		reader: bucks.None,
 	})
+	require.NoError(t, err)
 	assert.Len(t, all, 1)
 	_, ok := all[reader]
 	assert.False(t, ok)

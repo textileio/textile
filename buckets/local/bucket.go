@@ -179,6 +179,9 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 		return
 	}
 	roles, err := buckets.RolesFromPb(r.Metadata.Roles)
+	if err != nil {
+		return
+	}
 	md := Metadata{
 		Roles:     roles,
 		UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),

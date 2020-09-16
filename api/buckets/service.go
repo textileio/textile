@@ -223,7 +223,7 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 			return nil, nil, fmt.Errorf("creating bucket: invalid token public key")
 		}
 	} else {
-		owner = getOwnerFromContext(ctx)
+		owner = getAccountOrUserFromContext(ctx)
 	}
 
 	// Create bucket keys if private
@@ -560,6 +560,7 @@ func (s *Service) encryptDag(ctx context.Context, ds ipld.DAGService, root ipld.
 		cfk := getFileKey(nil, currentFileKeys, l.path)
 		nfk := getFileKey(newFileKey, newFileKeys, l.path)
 		if nfk == nil {
+			// This shouldn't happen
 			return nil, fmt.Errorf("new file key not found for path %s", l.path)
 		}
 		eg.Go(func() error {
@@ -730,7 +731,7 @@ func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksRespons
 	}
 }
 
-func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetPathResponse, error) {
+func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -760,6 +761,11 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if e := txn.End(); err == nil {
+			err = e
+		}
+	}()
 	if err = txn.Verify(ctx, buck); err != nil {
 		return nil, err
 	}
@@ -780,9 +786,6 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (*pb.SetP
 	}
 	buck.Path = dirPath.String()
 	if err = txn.Save(ctx, buck); err != nil {
-		return nil, err
-	}
-	if err = txn.End(); err != nil {
 		return nil, err
 	}
 
@@ -1078,7 +1081,7 @@ func (s *Service) pathToPb(ctx context.Context, id thread.ID, buck *tdb.Bucket, 
 	}, nil
 }
 
-func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
+func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	log.Debugf("received push path request")
 
 	dbID, ok := common.ThreadIDFromContext(server.Context())
@@ -1124,6 +1127,11 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if e := txn.End(); err == nil {
+			err = e
+		}
+	}()
 	if err = txn.Verify(server.Context(), buck); err != nil {
 		return err
 	}
@@ -1258,9 +1266,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 
 	buck.Path = dirPath.String()
 	if err = txn.Save(ctx, buck); err != nil {
-		return err
-	}
-	if err = txn.End(); err != nil {
 		return err
 	}
 
@@ -1673,7 +1678,7 @@ func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key
 	return s.unpinPath(ctx, pth)
 }
 
-func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*pb.RemovePathResponse, error) {
+func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (res *pb.RemovePathResponse, err error) {
 	log.Debugf("received remove path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -1703,6 +1708,11 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if e := txn.End(); err == nil {
+			err = e
+		}
+	}()
 	if err = txn.Verify(ctx, buck); err != nil {
 		return nil, err
 	}
@@ -1726,9 +1736,6 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (*p
 
 	buck.Path = dirPath.String()
 	if err = txn.Save(ctx, buck); err != nil {
-		return nil, err
-	}
-	if err = txn.End(); err != nil {
 		return nil, err
 	}
 
@@ -1809,7 +1816,7 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	return path.IpfsPath(np[0].new.Cid()), nil
 }
 
-func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAccessRolesRequest) (*pb.PushPathAccessRolesResponse, error) {
+func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAccessRolesRequest) (res *pb.PushPathAccessRolesResponse, err error) {
 	log.Debugf("received push path access roles request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
@@ -1866,7 +1873,7 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 		if x, ok := target.Roles[k]; ok && x == r {
 			continue
 		}
-		if r > 0 {
+		if r > buckets.None {
 			target.Roles[k] = r
 		} else {
 			delete(target.Roles, k)
@@ -1877,19 +1884,26 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 		buck.UpdatedAt = time.Now().UnixNano()
 		target.UpdatedAt = buck.UpdatedAt
 		buck.Metadata[reqPath] = target
+		if buck.IsPrivate() {
+			if err := buck.RotateFileEncryptionKeysForPrefix(reqPath); err != nil {
+				return nil, err
+			}
+		}
 
 		txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if e := txn.End(); err == nil {
+				err = e
+			}
+		}()
 		if err = txn.Verify(ctx, buck); err != nil {
 			return nil, err
 		}
 
 		if buck.IsPrivate() {
-			if err := buck.RotateFileEncryptionKeysForPrefix(reqPath); err != nil {
-				return nil, err
-			}
 			newFileKeys, err := buck.GetFileEncryptionKeysForPrefix(reqPath)
 			if err != nil {
 				return nil, err
@@ -1916,9 +1930,6 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 		}
 
 		if err = txn.Save(ctx, buck); err != nil {
-			return nil, err
-		}
-		if err = txn.End(); err != nil {
 			return nil, err
 		}
 	}
@@ -2343,7 +2354,7 @@ func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
 	return u.BucketsTotalSize, nil
 }
 
-func getOwnerFromContext(ctx context.Context) thread.PubKey {
+func getAccountOrUserFromContext(ctx context.Context) thread.PubKey {
 	if a := accountFromContext(ctx); a != nil {
 		return a.Key
 	} else if u := userFromContext(ctx); u != nil {
