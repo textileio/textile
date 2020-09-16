@@ -37,8 +37,9 @@ func (b *Bucket) PullPathAccessRoles(ctx context.Context, pth string) (roles map
 
 // PathInvite wraps information needed to collaborate on a bucket path.
 type PathInvite struct {
-	Key  string `json:"key"`
-	Path string `json:"path"`
+	Thread string `json:"thread"`
+	Key    string `json:"key"`
+	Path   string `json:"path"`
 }
 
 // SendPathInvite sends a message containing a bucket key and path,
@@ -47,9 +48,14 @@ func (b *Bucket) SendPathInvite(ctx context.Context, from thread.Identity, to th
 	if b.clients.Users == nil {
 		return fmt.Errorf("hub is required to send invites")
 	}
+	thrd, err := b.Thread()
+	if err != nil {
+		return err
+	}
 	msg, err := json.Marshal(&PathInvite{
-		Key:  b.Key(),
-		Path: pth,
+		Thread: thrd.String(),
+		Key:    b.Key(),
+		Path:   pth,
 	})
 	if err != nil {
 		return err
