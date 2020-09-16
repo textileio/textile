@@ -2,7 +2,7 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/caarlos0/spin"
@@ -44,10 +44,7 @@ func getAPIVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if res.Version == "development" {
-		return fmt.Sprintf("%s (%s)", res.GitCommit, res.BuildDate), nil
-	}
-	return res.Version, nil
+	return strings.Replace(res.GitSummary, "-dirty", "", 1), nil
 }
 
 var versionCmd = &cobra.Command{
