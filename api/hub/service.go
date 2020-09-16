@@ -34,7 +34,7 @@ import (
 var (
 	log = logging.Logger("hubapi")
 
-	loginTimeout = time.Minute * 3
+	loginTimeout = time.Minute * 30
 	emailTimeout = time.Second * 10
 )
 
