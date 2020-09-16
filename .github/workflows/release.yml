@@ -36,8 +36,8 @@ jobs:
         run: |
           VERSION=${GITHUB_REF##*/}
           export PATH=${PATH}:`go env GOPATH`/bin
-          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" -ldflags="$(./govvv -flags -version $(VERSION) -pkg $(go list ./buildinfo))" ./cmd/hub
-          gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="buck-{{.OS}}-{{.Arch}}" ./cmd/buck
+          ./gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="hub-{{.OS}}-{{.Arch}}" -ldflags="$(./govvv -flags -version ${VERSION} -pkg $(go list ./buildinfo))" ./cmd/hub
+          ./gox -osarch="linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64" -output="buck-{{.OS}}-{{.Arch}}" ./cmd/buck
       - name: Collect artifacts
         run: |
           VERSION=${GITHUB_REF##*/}
