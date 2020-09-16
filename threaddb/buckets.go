@@ -309,69 +309,69 @@ func init() {
 			var restricted = ["owner", "name", "version", "key", "archives", "created_at"]
 			switch (type) {
 			  case "create":
-				if (patch.owner !== "" && writer !== patch.owner) {
-				  return "permission denied" // writer must match new bucket owner
-				}
-				break
+			    if (patch.owner !== "" && writer !== patch.owner) {
+			      return "permission denied" // writer must match new bucket owner
+			    }
+			    break
 			  case "save":
-				if (instance.owner === "") {
-				  return true
-				}
-				if (writer !== instance.owner) {
-				  for (i = 0; i < restricted.length; i++) {
-					if (patch[restricted[i]]) {
-					  return "permission denied"
-					}
-				  }
-				}
-				if (!patch.metadata) {
+			    if (instance.owner === "") {
+			      return true
+			    }
+			    if (writer !== instance.owner) {
+			      for (i = 0; i < restricted.length; i++) {
+			        if (patch[restricted[i]]) {
+			          return "permission denied"
+			        }
+			      }
+			    }
+			    if (!patch.metadata) {
 			      if (patch.path && writer !== instance.owner) {
 			        return "permission denied"
 			      } else {
 			        patch.metadata = {}
 			      }
-				}
-				var keys = Object.keys(patch.metadata)
-				for (i = 0; i < keys.length; i++) {
-				  var p = patch.metadata[keys[i]]
-				  var x = instance.metadata[keys[i]]
-				  if (x) {
-					if (!x.roles[writer]) {
-					  x.roles[writer] = 0
-					}
-					if (!x.roles["*"]) {
-					  x.roles["*"] = 0
-					}
-					// merge all parents, taking most privileged role
-					if (keys[i].length > 0) {
-					  var parts = keys[i].split("/")
-					  parts.unshift("")
-					  var path = ""
-					  for (j = 0; j < parts.length; j++) {
-						if (path.length > 0) {
-						  path += "/"
-						}
-						path += parts[j]
-						var y = instance.metadata[path]
-						if (!y) {
-						  continue
-						}
-						if (!y.roles[writer]) {
-						  y.roles[writer] = 0
-						}
-						if (!y.roles["*"]) {
-						  y.roles["*"] = 0
-						}
-						if (y.roles[writer] > x.roles[writer]) {
-						  x.roles[writer] = y.roles[writer]
-						}
-						if (y.roles["*"] > x.roles["*"]) {
-						  x.roles["*"] = y.roles["*"]
-						}
-					  }
-					}
-					// check access against merged roles
-					if (!p) {
+			    }
+			    var keys = Object.keys(patch.metadata)
+			    for (i = 0; i < keys.length; i++) {
+			      var p = patch.metadata[keys[i]]
+			      var x = instance.metadata[keys[i]]
+			      if (x) {
+			        if (!x.roles[writer]) {
+			          x.roles[writer] = 0
+			        }
+			        if (!x.roles["*"]) {
+			          x.roles["*"] = 0
+			        }
+			        // merge all parents, taking most privileged role
+			        if (keys[i].length > 0) {
+			          var parts = keys[i].split("/")
+			          parts.unshift("")
+			          var path = ""
+			          for (j = 0; j < parts.length; j++) {
+			            if (path.length > 0) {
+			              path += "/"
+			            }
+			            path += parts[j]
+			            var y = instance.metadata[path]
+			            if (!y) {
+			              continue
+			            }
+			            if (!y.roles[writer]) {
+			              y.roles[writer] = 0
+			            }
+			            if (!y.roles["*"]) {
+			              y.roles["*"] = 0
+			            }
+			            if (y.roles[writer] > x.roles[writer]) {
+			              x.roles[writer] = y.roles[writer]
+			            }
+			            if (y.roles["*"] > x.roles["*"]) {
+			              x.roles["*"] = y.roles["*"]
+			            }
+			          }
+			        }
+			        // check access against merged roles
+			        if (!p) {
 			          if (x.roles[writer] < 3) {
 			            return "permission denied" // no admin access to delete items
 			          }
