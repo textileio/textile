@@ -762,7 +762,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 		return nil, err
 	}
 	defer func() {
-		if e := txn.End(); err == nil {
+		if e := txn.End(err); err == nil {
 			err = e
 		}
 	}()
@@ -1128,7 +1128,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		return err
 	}
 	defer func() {
-		if e := txn.End(); err == nil {
+		if e := txn.End(err); err == nil {
 			err = e
 		}
 	}()
@@ -1709,7 +1709,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 		return nil, err
 	}
 	defer func() {
-		if e := txn.End(); err == nil {
+		if e := txn.End(err); err == nil {
 			err = e
 		}
 	}()
@@ -1895,7 +1895,7 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 			return nil, err
 		}
 		defer func() {
-			if e := txn.End(); err == nil {
+			if e := txn.End(err); err == nil {
 				err = e
 			}
 		}()

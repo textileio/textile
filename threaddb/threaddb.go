@@ -126,6 +126,26 @@ type WriteTxn struct {
 }
 
 // WriteTxn returns a write transaction in the collection.
+// Call WriteTxn.End to commit the transaction. Using a defer statement and a named err param is the usual pattern:
+//
+// func MyFunc() (err error) {
+//   defer func() {
+//     if e := txn.End(err); err == nil {
+//       err = e
+//     }
+//   }()
+//   ...
+//   if err = txn.Save(...); err != nil {
+//     return nil, err
+//   }
+//   ...
+//   if err = txn.Save(...); err != nil {
+//     return nil, err
+//   }
+//   ...
+// }
+//
+// See WriteTxn.End for more.
 func (c *Collection) WriteTxn(ctx context.Context, dbID thread.ID, opts ...Option) (*WriteTxn, error) {
 	args := &Options{}
 	for _, opt := range opts {
@@ -177,8 +197,19 @@ func (t *WriteTxn) Delete(_ context.Context, id string) error {
 	return t.t.Delete(id)
 }
 
+// Discard the transaction.
+func (t *WriteTxn) Discard() {
+	// Ignore the error, which can only arise from a network issue.
+	// A subsequent End will also fail.
+	_ = t.t.Discard()
+}
+
 // End ends the underlying transaction.
-func (t *WriteTxn) End() error {
+// A non-nil err results in the transaction being discarded before it's ended.
+func (t *WriteTxn) End(err error) error {
+	if err != nil {
+		t.Discard()
+	}
 	return t.end()
 }
 
