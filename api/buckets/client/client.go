@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	pb "github.com/textileio/textile/api/buckets/pb"
+	"github.com/textileio/textile/buckets"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -188,8 +189,7 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 					Chunk: buf[:n],
 				},
 			}); err == io.EOF {
-				var noOp interface{}
-				return nil, nil, stream.RecvMsg(noOp)
+				break
 			} else if err != nil {
 				_ = stream.CloseSend()
 				return nil, nil, err
@@ -313,6 +313,35 @@ func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option
 		return nil, err
 	}
 	return util.NewResolvedPath(res.Root.Path)
+}
+
+// PushPathAccessRoles updates path access roles by merging the pushed roles with existing roles.
+// roles is a map of string marshaled public keys to path roles. A non-nil error is returned
+// if the map keys are not unmarshalable to public keys.
+// To delete a role for a public key, set its value to buckets.None.
+func (c *Client) PushPathAccessRoles(ctx context.Context, key, pth string, roles map[string]buckets.Role) error {
+	pbroles, err := buckets.RolesToPb(roles)
+	if err != nil {
+		return err
+	}
+	_, err = c.c.PushPathAccessRoles(ctx, &pb.PushPathAccessRolesRequest{
+		Key:   key,
+		Path:  pth,
+		Roles: pbroles,
+	})
+	return err
+}
+
+// PullPathAccessRoles returns access roles for a path.
+func (c *Client) PullPathAccessRoles(ctx context.Context, key, pth string) (map[string]buckets.Role, error) {
+	res, err := c.c.PullPathAccessRoles(ctx, &pb.PullPathAccessRolesRequest{
+		Key:  key,
+		Path: pth,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return buckets.RolesFromPb(res.Roles)
 }
 
 // Archive creates a Filecoin bucket archive via Powergate.

@@ -63,6 +63,11 @@ func (c *Client) GetSessionInfo(ctx context.Context) (*pb.GetSessionInfoResponse
 	return c.c.GetSessionInfo(ctx, &pb.GetSessionInfoRequest{})
 }
 
+// GetIdentity returns the identity of the current session.
+func (c *Client) GetIdentity(ctx context.Context) (*pb.GetIdentityResponse, error) {
+	return c.c.GetIdentity(ctx, &pb.GetIdentityRequest{})
+}
+
 // CreateKey creates a new key for the current session.
 func (c *Client) CreateKey(ctx context.Context, keyType pb.KeyType, secure bool) (*pb.CreateKeyResponse, error) {
 	return c.c.CreateKey(ctx, &pb.CreateKeyRequest{

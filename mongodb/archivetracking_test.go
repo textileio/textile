@@ -27,7 +27,7 @@ func TestArchiveTracking_Create(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 }
 
@@ -44,7 +44,7 @@ func TestArchiveTracking_Get(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	ta, err := col.Get(ctx, jid)
@@ -54,7 +54,7 @@ func TestArchiveTracking_Get(t *testing.T) {
 	require.Equal(t, dbToken, ta.DbToken)
 	require.Equal(t, bucketKey, ta.BucketKey)
 	require.Equal(t, bucketRoot, ta.BucketRoot)
-	require.Equal(t, key, ta.Owner)
+	require.Equal(t, thread.NewLibp2pPubKey(key), ta.Owner)
 	require.True(t, time.Since(ta.ReadyAt) > 0)
 	require.True(t, ta.Active)
 }
@@ -76,7 +76,7 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	tas, err = col.GetReadyToCheck(ctx, 10)
@@ -87,7 +87,7 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	require.Equal(t, dbToken, tas[0].DbToken)
 	require.Equal(t, bucketKey, tas[0].BucketKey)
 	require.Equal(t, bucketRoot, tas[0].BucketRoot)
-	require.Equal(t, key, tas[0].Owner)
+	require.Equal(t, thread.NewLibp2pPubKey(key), tas[0].Owner)
 	require.True(t, time.Since(tas[0].ReadyAt) > 0)
 	require.True(t, tas[0].Active)
 }
@@ -104,7 +104,7 @@ func TestArchiveTracking_Finalize(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	cause := "all good"
@@ -134,7 +134,7 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, key)
+	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	err = col.Reschedule(ctx, jid, time.Hour+time.Second*5, "retry me")

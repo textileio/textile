@@ -1,6 +1,11 @@
 syntax = "proto3";
 package api.buckets.pb;
 
+message Metadata {
+    map<string, PathAccessRole> roles = 1;
+    int64 updated_at = 2;
+}
+
 message Root {
     string key = 1;
     string name = 2;
@@ -8,6 +13,9 @@ message Root {
     int64 created_at = 4;
     int64 updated_at = 5;
     string thread = 6;
+    string owner = 7;
+    int32 version = 8;
+    Metadata metadata = 9;
 }
 
 message ListRequest {}
@@ -53,17 +61,19 @@ message ListPathRequest {
 }
 
 message ListPathResponse {
-    ListPathItem item = 1;
+    PathItem item = 1;
     Root root = 2;
 }
 
-message ListPathItem {
+message PathItem {
     string cid = 1;
     string name = 2;
     string path = 3;
     int64 size = 4;
     bool is_dir = 5;
-    repeated ListPathItem items = 6;
+    repeated PathItem items = 6;
+    int32 items_count = 7;
+    Metadata metadata = 9;
 }
 
 message ListIpfsPathRequest {
@@ -71,7 +81,7 @@ message ListIpfsPathRequest {
 }
 
 message ListIpfsPathResponse {
-    ListPathItem item = 1;
+    PathItem item = 1;
 }
 
 message PushPathRequest {
@@ -144,6 +154,30 @@ message RemovePathResponse {
     Root root = 1;
 }
 
+enum PathAccessRole {
+    PATH_ACCESS_ROLE_UNSPECIFIED = 0;
+    PATH_ACCESS_ROLE_READER = 1;
+    PATH_ACCESS_ROLE_WRITER = 2;
+    PATH_ACCESS_ROLE_ADMIN = 3;
+}
+
+message PushPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+    map<string, PathAccessRole> roles = 3;
+}
+
+message PushPathAccessRolesResponse {}
+
+message PullPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message PullPathAccessRolesResponse {
+    map<string, PathAccessRole> roles = 1;
+}
+
 message ArchiveRequest {
     string key = 1;
 }
@@ -208,7 +242,9 @@ service APIService {
     rpc SetPath(SetPathRequest) returns (SetPathResponse) {}
     rpc Remove(RemoveRequest) returns (RemoveResponse) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
-    
+    rpc PushPathAccessRoles(PushPathAccessRolesRequest) returns (PushPathAccessRolesResponse) {}
+    rpc PullPathAccessRoles(PullPathAccessRolesRequest) returns (PullPathAccessRolesResponse) {}
+
     // Archive
     rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
     rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusResponse) {}

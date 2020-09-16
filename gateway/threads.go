@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	"github.com/textileio/go-threads/db"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
-	tdb "github.com/textileio/textile/threaddb"
 )
 
 // collectionHandler handles collection requests.
@@ -46,21 +44,7 @@ func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collectio
 			render404(c)
 			return
 		}
-		// @todo: Remove this private bucket handling when the thread ACL is done.
-		data, err := json.Marshal(res)
-		if err != nil {
-			renderError(c, http.StatusInternalServerError, err)
-			return
-		}
-		var all, pub []tdb.Bucket
-		if err = json.Unmarshal(data, &all); err == nil {
-			for _, b := range all {
-				if b.GetEncKey() == nil {
-					pub = append(pub, b)
-				}
-			}
-		}
-		c.JSON(http.StatusOK, pub)
+		c.JSON(http.StatusOK, res)
 	}
 }
 
@@ -101,19 +85,6 @@ func (g *Gateway) renderInstance(c *gin.Context, threadID thread.ID, collection,
 		if err := g.threads.FindByID(ctx, threadID, collection, id, &res, db.WithTxnToken(token)); err != nil {
 			render404(c)
 			return
-		}
-		// @todo: Remove this private bucket handling when the thread ACL is done.
-		data, err := json.Marshal(res)
-		if err != nil {
-			renderError(c, http.StatusInternalServerError, err)
-			return
-		}
-		var buck tdb.Bucket
-		if err = json.Unmarshal(data, &buck); err == nil {
-			if buck.GetEncKey() != nil {
-				render404(c)
-				return
-			}
 		}
 		c.JSON(http.StatusOK, res)
 	}

@@ -25,7 +25,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:v0.4.0
+    image: textile/powergate:v0.6.0-rc2
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -46,7 +46,7 @@ services:
     image: mongo:latest
 
   lotus:
-    image: textile/lotus-devnet:sha-03a015d
+    image: textile/lotus-devnet:sha-ce1d788
     environment:
       - TEXLOTUSDEVNET_SPEED=1500
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001

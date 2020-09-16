@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -26,7 +26,7 @@ const (
 type APIKey struct {
 	Key       string
 	Secret    string
-	Owner     crypto.PubKey
+	Owner     thread.PubKey
 	Type      APIKeyType
 	Secure    bool
 	Valid     bool
@@ -56,7 +56,7 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 	return k, err
 }
 
-func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKeyType, secure bool) (*APIKey, error) {
+func (k *APIKeys) Create(ctx context.Context, owner thread.PubKey, keyType APIKeyType, secure bool) (*APIKey, error) {
 	doc := &APIKey{
 		Key:       util.MakeToken(keyLen),
 		Secret:    util.MakeToken(secretLen),
@@ -66,7 +66,7 @@ func (k *APIKeys) Create(ctx context.Context, owner crypto.PubKey, keyType APIKe
 		Valid:     true,
 		CreatedAt: time.Now(),
 	}
-	ownerID, err := crypto.MarshalPublicKey(owner)
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +96,8 @@ func (k *APIKeys) Get(ctx context.Context, key string) (*APIKey, error) {
 	return decodeAPIKey(raw)
 }
 
-func (k *APIKeys) ListByOwner(ctx context.Context, owner crypto.PubKey) ([]APIKey, error) {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (k *APIKeys) ListByOwner(ctx context.Context, owner thread.PubKey) ([]APIKey, error) {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +135,8 @@ func (k *APIKeys) Invalidate(ctx context.Context, key string) error {
 	return nil
 }
 
-func (k *APIKeys) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error {
-	ownerID, err := crypto.MarshalPublicKey(owner)
+func (k *APIKeys) DeleteByOwner(ctx context.Context, owner thread.PubKey) error {
+	ownerID, err := owner.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,8 @@ func (k *APIKeys) DeleteByOwner(ctx context.Context, owner crypto.PubKey) error 
 }
 
 func decodeAPIKey(raw bson.M) (*APIKey, error) {
-	owner, err := crypto.UnmarshalPublicKey(raw["owner_id"].(primitive.Binary).Data)
+	owner := &thread.Libp2pPubKey{}
+	err := owner.UnmarshalBinary(raw["owner_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}

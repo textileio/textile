@@ -11,7 +11,7 @@ import (
 	"github.com/textileio/textile/api/apitest"
 	"github.com/textileio/textile/api/common"
 	hc "github.com/textileio/textile/api/hub/client"
-	"github.com/textileio/textile/api/pow/client"
+	pc "github.com/textileio/textile/api/pow/client"
 	"github.com/textileio/textile/core"
 	"github.com/textileio/textile/util"
 	"google.golang.org/grpc"
@@ -123,7 +123,7 @@ func TestPowClient(t *testing.T) {
 	cleanup(true)
 }
 
-func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *client.Client, func(bool)) {
+func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *pc.Client, func(bool)) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
@@ -132,7 +132,7 @@ func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
-	client, err := client.NewClient(target, opts...)
+	client, err := pc.NewClient(target, opts...)
 	require.NoError(t, err)
 	hubclient, err := hc.NewClient(target, opts...)
 	require.NoError(t, err)

@@ -47,7 +47,7 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 
 	var powc *pc.Client
 	var err error
-	limit := 30
+	limit := 100
 	retries := 0
 	require.Nil(t, err)
 	for retries < limit {

@@ -133,18 +133,27 @@ func (b *Bucket) LocalSize() (int64, error) {
 	return size, err
 }
 
-// BucketInfo wraps info about a bucket.
-type BucketInfo struct {
+// Info wraps info about a bucket.
+type Info struct {
 	Key       string        `json:"key"`
+	Owner     string        `json:"owner"`
 	Name      string        `json:"name"`
+	Version   int           `json:"version"`
 	Path      path.Resolved `json:"path"`
+	Metadata  Metadata      `json:"metadata"`
 	Thread    thread.ID     `json:"id"`
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
 }
 
+// Metadata wraps metadata about a bucket item.
+type Metadata struct {
+	Roles     map[string]buckets.Role `json:"roles"`
+	UpdatedAt time.Time               `json:"updated_at"`
+}
+
 // Info returns info about a bucket from the remote.
-func (b *Bucket) Info(ctx context.Context) (info BucketInfo, err error) {
+func (b *Bucket) Info(ctx context.Context) (info Info, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return
@@ -156,7 +165,7 @@ func (b *Bucket) Info(ctx context.Context) (info BucketInfo, err error) {
 	return pbRootToInfo(rep.Root)
 }
 
-func pbRootToInfo(r *pb.Root) (info BucketInfo, err error) {
+func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	name := "unnamed"
 	if r.Name != "" {
 		name = r.Name
@@ -169,10 +178,21 @@ func pbRootToInfo(r *pb.Root) (info BucketInfo, err error) {
 	if err != nil {
 		return
 	}
-	return BucketInfo{
+	roles, err := buckets.RolesFromPb(r.Metadata.Roles)
+	if err != nil {
+		return
+	}
+	md := Metadata{
+		Roles:     roles,
+		UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
+	}
+	return Info{
 		Key:       r.Key,
+		Owner:     r.Owner,
 		Name:      name,
+		Version:   int(r.Version),
 		Path:      pth,
+		Metadata:  md,
 		Thread:    id,
 		CreatedAt: time.Unix(0, r.CreatedAt),
 		UpdatedAt: time.Unix(0, r.UpdatedAt),
@@ -231,7 +251,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 
 // DBInfo returns info about the bucket's ThreadDB.
 // This info can be used to add replicas or additional peers to the bucket.
-func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, err error) {
+func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, cc db.CollectionConfig, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return
@@ -240,7 +260,15 @@ func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, err error) {
 	if err != nil {
 		return
 	}
-	return b.clients.Threads.GetDBInfo(ctx, id)
+	info, err = b.clients.Threads.GetDBInfo(ctx, id)
+	if err != nil {
+		return
+	}
+	cc, err = b.clients.Threads.GetCollectionInfo(ctx, id, buckets.CollectionName)
+	if err != nil {
+		return
+	}
+	return info, cc, nil
 }
 
 // CatRemotePath writes the content of the remote path to writer.

@@ -113,11 +113,104 @@ func (c *Collection) Delete(ctx context.Context, dbID thread.ID, id string, opts
 	for _, opt := range opts {
 		opt(args)
 	}
-	err := c.c.Delete(ctx, dbID, c.config.Name, []string{id}, db.WithTxnToken(args.Token))
-	if err != nil {
-		return err
+	return c.c.Delete(ctx, dbID, c.config.Name, []string{id}, db.WithTxnToken(args.Token))
+}
+
+// WriteTxn wraps a write transaction in a collection.
+type WriteTxn struct {
+	c     *Collection
+	t     *dbc.WriteTransaction
+	end   dbc.EndTransactionFunc
+	id    thread.ID
+	token thread.Token
+}
+
+// WriteTxn returns a write transaction in the collection.
+// Call WriteTxn.End to commit the transaction. Using a defer statement and a named err param is the usual pattern:
+//
+// func MyFunc() (err error) {
+//   defer func() {
+//     if e := txn.End(err); err == nil {
+//       err = e
+//     }
+//   }()
+//   ...
+//   if err = txn.Save(...); err != nil {
+//     return nil, err
+//   }
+//   ...
+//   if err = txn.Save(...); err != nil {
+//     return nil, err
+//   }
+//   ...
+// }
+//
+// See WriteTxn.End for more.
+func (c *Collection) WriteTxn(ctx context.Context, dbID thread.ID, opts ...Option) (*WriteTxn, error) {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
 	}
-	return nil
+	txn, err := c.c.WriteTransaction(ctx, dbID, c.config.Name, db.WithTxnToken(args.Token))
+	if err != nil {
+		return nil, err
+	}
+	end, err := txn.Start()
+	if err != nil {
+		return nil, err
+	}
+	return &WriteTxn{
+		c:     c,
+		t:     txn,
+		end:   end,
+		id:    dbID,
+		token: args.Token,
+	}, nil
+}
+
+// Verify a collection instance in the transaction.
+func (t *WriteTxn) Verify(ctx context.Context, instance interface{}) error {
+	err := t.t.Verify(instance)
+	if isInvalidSchemaErr(err) {
+		if err := t.c.updateCollection(ctx, t.id, t.token); err != nil {
+			return err
+		}
+		return t.t.Verify(instance)
+	}
+	return err
+}
+
+// Save a collection instance in the transaction.
+func (t *WriteTxn) Save(ctx context.Context, instance interface{}) error {
+	err := t.t.Save(instance)
+	if isInvalidSchemaErr(err) {
+		if err := t.c.updateCollection(ctx, t.id, t.token); err != nil {
+			return err
+		}
+		return t.t.Save(instance)
+	}
+	return err
+}
+
+// Delete a collection instance in the transaction.
+func (t *WriteTxn) Delete(_ context.Context, id string) error {
+	return t.t.Delete(id)
+}
+
+// Discard the transaction.
+func (t *WriteTxn) Discard() {
+	// Ignore the error, which can only arise from a network issue.
+	// A subsequent End will also fail.
+	_ = t.t.Discard()
+}
+
+// End ends the underlying transaction.
+// A non-nil err results in the transaction being discarded before it's ended.
+func (t *WriteTxn) End(err error) error {
+	if err != nil {
+		t.Discard()
+	}
+	return t.end()
 }
 
 func (c *Collection) addCollection(ctx context.Context, dbID thread.ID, token thread.Token) error {

@@ -3,6 +3,9 @@ package buckets
 import (
 	"errors"
 	"fmt"
+
+	"github.com/textileio/go-threads/core/thread"
+	pb "github.com/textileio/textile/api/buckets/pb"
 )
 
 const (
@@ -10,6 +13,16 @@ const (
 	CollectionName = "buckets"
 	// SeedName is the file name reserved for a random bucket seed.
 	SeedName = ".textileseed"
+)
+
+// Role describes an access role for a bucket item.
+type Role int
+
+const (
+	None Role = iota
+	Reader
+	Writer
+	Admin
 )
 
 var (
@@ -24,3 +37,53 @@ var (
 	// underlying Account/User FFS instance balance is zero.
 	ErrZeroBalance = errors.New("powergate wallet FIL balance is zero, if recently created wait 30s")
 )
+
+// RolesToPb maps native type roles to protobuf type roles.
+func RolesToPb(in map[string]Role) (map[string]pb.PathAccessRole, error) {
+	roles := make(map[string]pb.PathAccessRole)
+	for k, r := range in {
+		var pr pb.PathAccessRole
+		switch r {
+		case None:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
+		case Reader:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
+		case Writer:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
+		case Admin:
+			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
+		default:
+			return nil, fmt.Errorf("unknown path access role %d", r)
+		}
+		roles[k] = pr
+	}
+	return roles, nil
+}
+
+// RolesFromPb maps protobuf type roles to native type roles.
+func RolesFromPb(in map[string]pb.PathAccessRole) (map[string]Role, error) {
+	roles := make(map[string]Role)
+	for k, pr := range in {
+		if k != "*" {
+			pk := &thread.Libp2pPubKey{}
+			if err := pk.UnmarshalString(k); err != nil {
+				return nil, fmt.Errorf("unmarshaling role public key: %s", err)
+			}
+		}
+		var r Role
+		switch pr {
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
+			r = None
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
+			r = Reader
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
+			r = Writer
+		case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
+			r = Admin
+		default:
+			return nil, fmt.Errorf("unknown path access role %d", pr)
+		}
+		roles[k] = r
+	}
+	return roles, nil
+}

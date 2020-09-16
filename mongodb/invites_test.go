@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-threads/core/thread"
 	. "github.com/textileio/textile/mongodb"
 )
 
@@ -19,7 +20,7 @@ func TestInvites_Create(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 	assert.True(t, created.ExpiresAt.After(time.Now()))
 }
@@ -31,7 +32,7 @@ func TestInvites_Get(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), created.Token)
@@ -50,7 +51,7 @@ func TestInvites_ListByEmail(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
 	list, err = col.ListByEmail(context.Background(), "jane@doe.com")
@@ -66,7 +67,7 @@ func TestInvites_Accept(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 	assert.False(t, created.Accepted)
 
@@ -84,7 +85,7 @@ func TestInvites_Delete(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), created.Token)
@@ -100,7 +101,7 @@ func TestInvites_DeleteByFrom(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
 	err = col.DeleteByFrom(context.Background(), created.From)
@@ -116,7 +117,7 @@ func TestInvites_DeleteByOrg(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
 	err = col.DeleteByOrg(context.Background(), created.Org)
@@ -132,10 +133,10 @@ func TestInvites_DeleteByFromAndOrg(t *testing.T) {
 
 	_, from, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	created, err := col.Create(context.Background(), from, "myorg", "jane@doe.com")
+	created, err := col.Create(context.Background(), thread.NewLibp2pPubKey(from), "myorg", "jane@doe.com")
 	require.NoError(t, err)
 
-	err = col.DeleteByFromAndOrg(context.Background(), from, created.Org)
+	err = col.DeleteByFromAndOrg(context.Background(), thread.NewLibp2pPubKey(from), created.Org)
 	require.NoError(t, err)
 	_, err = col.Get(context.Background(), created.Token)
 	require.Error(t, err)

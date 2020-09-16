@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/textileio/go-threads/core/thread"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type User struct {
-	Key              crypto.PubKey
+	Key              thread.PubKey
 	BucketsTotalSize int64
 	CreatedAt        time.Time
 	PowInfo          *PowInfo
@@ -35,13 +35,13 @@ func NewUsers(_ context.Context, db *mongo.Database) (*Users, error) {
 	return &Users{col: db.Collection("users")}, nil
 }
 
-func (u *Users) Create(ctx context.Context, key crypto.PubKey, powInfo *PowInfo) error {
+func (u *Users) Create(ctx context.Context, key thread.PubKey, powInfo *PowInfo) error {
 	doc := &User{
 		Key:       key,
 		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
 	}
-	id, err := crypto.MarshalPublicKey(key)
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -60,8 +60,8 @@ func (u *Users) Create(ctx context.Context, key crypto.PubKey, powInfo *PowInfo)
 	return nil
 }
 
-func (u *Users) UpdatePowInfo(ctx context.Context, key crypto.PubKey, powInfo *PowInfo) (*User, error) {
-	id, err := crypto.MarshalPublicKey(key)
+func (u *Users) UpdatePowInfo(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*User, error) {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +81,8 @@ func (u *Users) UpdatePowInfo(ctx context.Context, key crypto.PubKey, powInfo *P
 	return u.Get(ctx, key)
 }
 
-func (u *Users) Get(ctx context.Context, key crypto.PubKey) (*User, error) {
-	id, err := crypto.MarshalPublicKey(key)
+func (u *Users) Get(ctx context.Context, key thread.PubKey) (*User, error) {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +97,8 @@ func (u *Users) Get(ctx context.Context, key crypto.PubKey) (*User, error) {
 	return decodeUser(raw)
 }
 
-func (u *Users) Delete(ctx context.Context, key crypto.PubKey) error {
-	id, err := crypto.MarshalPublicKey(key)
+func (u *Users) Delete(ctx context.Context, key thread.PubKey) error {
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -112,11 +112,11 @@ func (u *Users) Delete(ctx context.Context, key crypto.PubKey) error {
 	return nil
 }
 
-func (u *Users) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newTotalSize int64) error {
+func (u *Users) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, newTotalSize int64) error {
 	if newTotalSize < 0 {
 		return fmt.Errorf("new size %d must be positive", newTotalSize)
 	}
-	id, err := crypto.MarshalPublicKey(key)
+	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,8 @@ func (u *Users) SetBucketsTotalSize(ctx context.Context, key crypto.PubKey, newT
 }
 
 func decodeUser(raw bson.M) (*User, error) {
-	key, err := crypto.UnmarshalPublicKey(raw["_id"].(primitive.Binary).Data)
+	key := &thread.Libp2pPubKey{}
+	err := key.UnmarshalBinary(raw["_id"].(primitive.Binary).Data)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ module github.com/textileio/textile
 go 1.14
 
 require (
+	cloud.google.com/go v0.56.0 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/blang/semver v3.5.1+incompatible
@@ -10,7 +11,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
@@ -22,7 +22,7 @@ require (
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
 	github.com/ipfs/go-cid v0.0.7
-	github.com/ipfs/go-datastore v0.4.4
+	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-flatfs v0.4.4
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -48,7 +48,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.0 // indirect
-	github.com/multiformats/go-multiaddr v0.3.0
+	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/oklog/ulid/v2 v2.0.2
@@ -66,8 +66,8 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v0.1.24-0.20200831040109-0d95d73fbdba
-	github.com/textileio/powergate v0.4.0
+	github.com/textileio/go-threads v0.1.24-0.20200916184629-5d3f3d5e7d0b
+	github.com/textileio/powergate v0.6.0-rc2
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.4.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
@@ -76,3 +76,5 @@ require (
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
+
+replace github.com/filecoin-project/filecoin-ffi => github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200904205544-405691046034

@@ -213,7 +213,8 @@ var rootCmd = &cobra.Command{
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
-			util.SetupDefaultLoggingConfig(logFile)
+			err = util.SetupDefaultLoggingConfig(logFile)
+			cmd.ErrCheck(err)
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())

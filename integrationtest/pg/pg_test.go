@@ -80,7 +80,7 @@ func TestArchiveTracker(t *testing.T) {
 		// ## Continue on as nothing "bad" happened and check for success...
 
 		// Wait for the archive to finish.
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 
 		// Verify that the current archive status is Done.
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
@@ -92,10 +92,10 @@ func TestArchiveTracker(t *testing.T) {
 		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive := ai.GetArchive()
-		require.Equal(t, rootCid1, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal := archive.Deals[0]
+		arc := ai.GetArchive()
+		require.Equal(t, rootCid1, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal := arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 	})
@@ -118,7 +118,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait for the archive to finish.
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 
 		// Verify that the current archive status is Done.
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
@@ -130,10 +130,10 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive := ai.GetArchive()
-		require.Equal(t, rootCid1, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal := archive.Deals[0]
+		arc := ai.GetArchive()
+		require.Equal(t, rootCid1, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal := arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 
@@ -143,7 +143,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		// Archive again.
 		_, err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 120*time.Second, 2*time.Second)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 		as, err = client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
@@ -151,10 +151,10 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		archive = ai.GetArchive()
-		require.Equal(t, rootCid2, archive.Cid)
-		require.Len(t, archive.Deals, 1)
-		deal = archive.Deals[0]
+		arc = ai.GetArchive()
+		require.Equal(t, rootCid2, arc.Cid)
+		require.Len(t, arc.Deals, 1)
+		deal = arc.Deals[0]
 		require.NotEmpty(t, deal.GetProposalCid())
 		require.NotEmpty(t, deal.GetMiner())
 	})
@@ -210,7 +210,7 @@ func TestFailingArchive(t *testing.T) {
 		_, err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 60*time.Second, 2*time.Second)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), time.Minute, 2*time.Second)
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatusResponse_STATUS_FAILED, as.GetStatus())

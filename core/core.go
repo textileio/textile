@@ -20,7 +20,6 @@ import (
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	dbapi "github.com/textileio/go-threads/api"
@@ -83,7 +82,7 @@ var (
 	ffsServiceName    = "ffs.rpc.RPCService"
 	walletServiceName = "wallet.rpc.RPCService"
 
-	// allow these methods to be directly proxied through to powergate service
+	// allowedPowMethods are methods allowed to be directly proxied through to powergate service.
 	allowedPowMethods = map[string][]string{
 		healthServiceName: {
 			"Check",
@@ -106,6 +105,26 @@ var (
 		walletServiceName: {
 			"Balance",
 		},
+	}
+
+	// allowedCrossUserMethods are methods allowed to be called by users who do not own the target thread.
+	allowedCrossUserMethods = []string{
+		"/threads.pb.API/Save",
+		"/threads.pb.API/Has",
+		"/threads.pb.API/Find",
+		"/threads.pb.API/FindByID",
+		"/threads.pb.API/ReadTransaction",
+		"/threads.pb.API/WriteTransaction",
+		"/threads.pb.API/Listen",
+		"/api.buckets.pb.APIService/Root",
+		"/api.buckets.pb.APIService/Links",
+		"/api.buckets.pb.APIService/ListPath",
+		"/api.buckets.pb.APIService/PushPath",
+		"/api.buckets.pb.APIService/PullPath",
+		"/api.buckets.pb.APIService/SetPath",
+		"/api.buckets.pb.APIService/RemovePath",
+		"/api.buckets.pb.APIService/PullPathAccessRoles",
+		"/api.buckets.pb.APIService/PushPathAccessRoles",
 	}
 
 	// WSPingInterval controls the WebSocket keepalive pinging interval. Must be >= 1s.
@@ -598,13 +617,13 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				if err = ukey.UnmarshalString(claims.Subject); err != nil {
 					return nil, err
 				}
-				user, err := t.collections.Users.Get(ctx, ukey.PubKey)
+				user, err := t.collections.Users.Get(ctx, ukey)
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 					return nil, err
 				}
 				if user == nil {
 					// Attach a temp user context that will be accessible in the next interceptor.
-					user = &mdb.User{Key: ukey.PubKey}
+					user = &mdb.User{Key: ukey}
 				}
 				ctx = mdb.NewUserContext(ctx, user)
 			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
@@ -660,7 +679,7 @@ func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, se
 		}
 
 		var powInfo *mdb.PowInfo
-		var owner crypto.PubKey
+		var owner thread.PubKey
 		var isAccount bool
 		if org, ok := mdb.OrgFromContext(ctx); ok {
 			powInfo = org.PowInfo
@@ -747,7 +766,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			return handler(ctx, req)
 		}
 
-		var owner crypto.PubKey
+		var owner thread.PubKey
 		if org, ok := mdb.OrgFromContext(ctx); ok {
 			owner = org.Key
 		} else if dev, ok := mdb.DevFromContext(ctx); ok {
@@ -796,22 +815,28 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			threadID, ok := common.ThreadIDFromContext(ctx)
 			if ok {
 				th, err := t.collections.Threads.Get(ctx, threadID, owner)
-				if err != nil {
-					if errors.Is(err, mongo.ErrNoDocuments) {
-						return nil, status.Error(codes.NotFound, "Thread not found")
-					} else {
-						return nil, err
+				if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
+					// Allow non-owners to interact with a limited set of APIs.
+					var isAllowed bool
+					for _, m := range allowedCrossUserMethods {
+						if method == m {
+							isAllowed = true
+							break
+						}
 					}
+					if !isAllowed {
+						return nil, status.Error(codes.PermissionDenied, "User does not own thread")
+					}
+				} else if err != nil {
+					return nil, err
 				}
-				if owner == nil || !owner.Equals(th.Owner) { // Linter can't see that owner can't be nil
-					return nil, status.Error(codes.PermissionDenied, "User does not own thread")
-
-				}
-				key, _ := mdb.APIKeyFromContext(ctx)
-				if key != nil && key.Type == mdb.UserKey {
-					// Extra user check for user API keys.
-					if key.Key != th.Key {
-						return nil, status.Error(codes.PermissionDenied, "Bad API key")
+				if th != nil {
+					key, _ := mdb.APIKeyFromContext(ctx)
+					if key != nil && key.Type == mdb.UserKey {
+						// Extra user check for user API keys.
+						if key.Key != th.Key {
+							return nil, status.Error(codes.PermissionDenied, "Bad API key")
+						}
 					}
 				}
 			}
