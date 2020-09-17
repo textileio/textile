@@ -627,6 +627,7 @@ func TestUserBuckets(t *testing.T) {
 	assert.False(t, file1Root2.Cid().Equals(file1Root.Cid()))
 
 	// Check that we now have two logs in the bucket thread
+	time.Sleep(time.Second)
 	info, err := net.GetThread(ctx, dbID, corenet.WithThreadToken(tok))
 	require.NoError(t, err)
 	assert.Len(t, info.Logs, 2)
