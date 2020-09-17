@@ -178,13 +178,16 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	roles, err := buckets.RolesFromPb(r.Metadata.Roles)
-	if err != nil {
-		return
-	}
-	md := Metadata{
-		Roles:     roles,
-		UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
+	md := Metadata{}
+	if r.Metadata != nil {
+		roles, err := buckets.RolesFromPb(r.Metadata.Roles)
+		if err != nil {
+			return info, err
+		}
+		md = Metadata{
+			Roles:     roles,
+			UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
+		}
 	}
 	return Info{
 		Key:       r.Key,
