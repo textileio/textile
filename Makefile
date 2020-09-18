@@ -1,11 +1,60 @@
 include .bingo/Variables.mk
 
-.DEFAULT_GOAL=textile
+.DEFAULT_GOAL=install
 
-GOVVV_FLAGS=$(shell $(GOVVV) -version git -flags -pkg $(shell go list ./buildinfo))
+TXTL_BUILD_FLAGS?=CGO_ENABLED=0
+TXTL_VERSION?="none"
+GOVVV_FLAGS=$(shell $(GOVVV) -flags -version $(TXTL_VERSION) -pkg $(shell go list ./buildinfo))
 
-textile: $(GOVVV)
-	go install -ldflags="${GOVVV_FLAGS}" ./...
+build: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./...
+.PHONY: build
+
+build-hub: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./cmd/hub
+.PHONY: build-hub
+
+build-buck: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./cmd/buck
+.PHONY: build-buck
+
+install: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
+.PHONY: install
+
+install-hub: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./cmd/hub
+.PHONY: install-hub
+
+install-buck: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./cmd/buck
+.PHONY: install-buck
+
+define gen_release_files
+	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)
+	mkdir -p build/dist; \
+	cd build/$(2); \
+	for release in *; do \
+		cp ../../LICENSE ../../README.md $${release}/; \
+		if [[ $${release} != *"windows"* ]]; then \
+  		TXTL_FILE=$(2) $(GOMPLATE) -f ../../dist/install.tmpl -o "$${release}/install"; \
+			tar -czvf ../dist/$${release}.tar.gz $${release}; \
+		else \
+			zip -r ../dist/$${release}.zip $${release}; \
+		fi; \
+	done
+endef
+
+build-hub-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/hub,hub,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-hub-release
+
+build-buck-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/buck,buck,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-buck-release
+
+build-releases: build-hub-release build-buck-release
+.PHONY: build-releases
 
 hub-up:
 	docker-compose -f cmd/hubd/docker-compose-dev.yml up --build

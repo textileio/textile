@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"strings"
 
 	"github.com/blang/semver"
 	"github.com/caarlos0/spin"
@@ -44,7 +43,7 @@ func getAPIVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Replace(res.GitSummary, "-dirty", "", 1), nil
+	return res.GitSummary, nil
 }
 
 var versionCmd = &cobra.Command{
@@ -78,7 +77,7 @@ var versionCmd = &cobra.Command{
 			}
 		}
 
-		if version == "git" {
+		if version == "none" {
 			cmd.Message("Custom version.")
 			cmd.RenderTable(
 				[]string{"GitBranch", "GitState", "GitSummary"},
