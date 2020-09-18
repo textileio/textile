@@ -3,6 +3,7 @@ package buckets
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/api/buckets/pb"
@@ -24,6 +25,38 @@ const (
 	Writer
 	Admin
 )
+
+// NewRoleFromString returns the role associated with the given string.
+func NewRoleFromString(s string) (Role, error) {
+	switch strings.ToLower(s) {
+	case "none":
+		return None, nil
+	case "reader":
+		return Reader, nil
+	case "writer":
+		return Writer, nil
+	case "admin":
+		return Admin, nil
+	default:
+		return None, fmt.Errorf("invalid role: %s", s)
+	}
+}
+
+// String returns the string representation of the role.
+func (r Role) String() string {
+	switch r {
+	case None:
+		return "None"
+	case Reader:
+		return "Reader"
+	case Writer:
+		return "Writer"
+	case Admin:
+		return "Admin"
+	default:
+		return "Invalid"
+	}
+}
 
 var (
 	// ErrNonFastForward is returned when an update in non-fast-forward.

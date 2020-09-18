@@ -70,11 +70,6 @@ func NewDefaultMetadata(owner thread.PubKey, key []byte, ts time.Time) Metadata 
 	return md
 }
 
-// GetFileEncryptionKey returns the file encryption key as bytes if present.
-func (m *Metadata) GetFileEncryptionKey() []byte {
-	return keyBytes(m.Key)
-}
-
 // SetFileEncryptionKey sets the file encryption key.
 func (m *Metadata) SetFileEncryptionKey(key []byte) {
 	if key != nil {

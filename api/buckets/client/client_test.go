@@ -861,6 +861,26 @@ func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Cont
 			Read:  true,
 			Write: true,
 		})
+
+		// Grant root
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "", map[string]bucks.Role{
+			user2.GetPublic().String(): bucks.Reader,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user2ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/f2",
+			Read:  true,
+			Write: true,
+		})
+
+		// Re-check nested access for user1
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
 	})
 }
 
