@@ -3,7 +3,6 @@ package pg
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
@@ -65,22 +64,6 @@ func TestPowClient(t *testing.T) {
 		res, err := client.NewAddr(ctx, "new one", "bls", false)
 		require.NoError(t, err)
 		require.NotNil(t, res)
-	})
-
-	t.Run("SendFil", func(t *testing.T) {
-		res0, err := client.NewAddr(ctx, "another new one", "bls", false)
-		require.NoError(t, err)
-		require.NotNil(t, res0)
-
-		time.Sleep(time.Second * 10)
-
-		res1, err := client.Addrs(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res1)
-		require.GreaterOrEqual(t, len(res1.Addrs), 2)
-
-		err = client.SendFil(ctx, res1.Addrs[0].Addr, res1.Addrs[1].Addr, 100)
-		require.NoError(t, err)
 	})
 
 	t.Run("Info", func(t *testing.T) {

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
@@ -117,22 +116,6 @@ var powNewAddrCmd = &cobra.Command{
 		res, err := clients.Pow.NewAddr(ctx, args[0], typ, def)
 		cmd.ErrCheck(err)
 		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powSendFilCmd = &cobra.Command{
-	Use:   "send-fil [from] [to] [amount]",
-	Short: "Send FIL from an address associated with the current account or org to any other account",
-	Long:  `Send FIL from an address associated with the current account or org to any other account.`,
-	Args:  cobra.ExactArgs(3),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		amt, err := strconv.ParseInt(args[2], 10, 64)
-		cmd.ErrCheck(err)
-		err = clients.Pow.SendFil(ctx, args[0], args[1], amt)
-		cmd.ErrCheck(err)
-		cmd.Success("%v FIL sent to: %v", amt, args[1])
 	},
 }
 
