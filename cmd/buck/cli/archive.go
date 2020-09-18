@@ -53,7 +53,7 @@ var archiveStatusCmd = &cobra.Command{
 				cmd.Warn(m.Message)
 			case local.ArchiveError:
 				if m.InactivityClose {
-					cmd.Warn("No news of this job for a long-time. Re-run the command if you're still interested!")
+					cmd.Warn("No news from this job for a long-time. Re-run the command if you're still interested!")
 					break
 				}
 				cmd.Fatal(m.Error)
