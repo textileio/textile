@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -28,9 +29,10 @@ func (b *Bucket) ArchiveRemote(ctx context.Context) error {
 
 // ArchiveStatusMessage is used to wrap an archive status message.
 type ArchiveStatusMessage struct {
-	Type    ArchiveMessageType
-	Message string
-	Error   error
+	Type            ArchiveMessageType
+	Message         string
+	Error           error
+	InactivityClose bool
 }
 
 // ArchiveMessageType is the type of status message.
@@ -102,22 +104,12 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 			}()
 			for msg := range ch {
 				msgs <- ArchiveStatusMessage{Type: ArchiveMessage, Message: "\t " + msg}
-				sctx, scancel := context.WithTimeout(wCtx, ArchiveStatusTimeout)
-				r, err := b.clients.Buckets.ArchiveStatus(sctx, key)
-				if err != nil {
-					msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
-					scancel()
-					cancel()
-					return
-				}
-				scancel()
-				_, err = isJobStatusFinal(r.GetStatus())
-				if err != nil {
-					msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
-					cancel()
-				}
 			}
 			if err != nil {
+				if strings.Contains(err.Error(), "RST_STREAM") {
+					msgs <- ArchiveStatusMessage{Type: ArchiveError, InactivityClose: true}
+					return
+				}
 				msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
 			}
 		}
