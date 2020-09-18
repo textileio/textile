@@ -23,8 +23,9 @@ func init() {
 }
 
 func Init(baseCmd *cobra.Command) {
-	baseCmd.AddCommand(initCmd, linksCmd, rootCmd, statusCmd, lsCmd, pushCmd, pullCmd, addCmd, watchCmd, catCmd, destroyCmd, encryptCmd, decryptCmd, archiveCmd)
+	baseCmd.AddCommand(initCmd, linksCmd, rootCmd, statusCmd, lsCmd, pushCmd, pullCmd, addCmd, watchCmd, catCmd, destroyCmd, encryptCmd, decryptCmd, archiveCmd, rolesCmd)
 	archiveCmd.AddCommand(archiveStatusCmd, archiveInfoCmd)
+	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
 
 	initCmd.PersistentFlags().String("key", "", "Bucket key")
 	initCmd.PersistentFlags().String("thread", "", "Thread ID")
@@ -48,6 +49,8 @@ func Init(baseCmd *cobra.Command) {
 	decryptCmd.Flags().StringP("password", "p", "", "Decryption password")
 
 	archiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
+
+	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 }
 
 func SetBucks(b *local.Buckets) {

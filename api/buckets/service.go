@@ -264,6 +264,10 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 	now := time.Now()
 	md := map[string]tdb.Metadata{
 		"": tdb.NewDefaultMetadata(owner, fileKey, now),
+		buckets.SeedName: {
+			Roles:     make(map[string]buckets.Role),
+			UpdatedAt: now.UnixNano(),
+		},
 	}
 
 	// Create a new IPNS key
