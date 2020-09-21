@@ -176,6 +176,7 @@ func pbArchiveInfoToArchiveInfo(pi *pb.ArchiveInfoResponse) (info ArchiveInfo, e
 				return
 			}
 		}
+		info.Archive.Deals = deals
 	}
 	return info, err
 }
