@@ -14,7 +14,7 @@ var (
 	// BuildDate  is set by govvv at build time.
 	BuildDate = ""
 	// Version  is set by govvv at build time.
-	Version = "development"
+	Version = "git"
 )
 
 // Summary prints a summary of all build info.
