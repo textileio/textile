@@ -1,9 +1,9 @@
 include .bingo/Variables.mk
 
-.DEFAULT_GOAL=install
+.DEFAULT_GOAL=build
 
 TXTL_BUILD_FLAGS?=CGO_ENABLED=0
-TXTL_VERSION?="none"
+TXTL_VERSION?="git"
 GOVVV_FLAGS=$(shell $(GOVVV) -flags -version $(TXTL_VERSION) -pkg $(shell go list ./buildinfo))
 
 build: $(GOVVV)
@@ -65,11 +65,19 @@ build-hub-release: $(GOX) $(GOVVV) $(GOMPLATE)
 	$(call gen_release_files,./cmd/hub,hub,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
 .PHONY: build-hub-release
 
+build-hubd-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/hubd,hubd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-hubd-release
+
 build-buck-release: $(GOX) $(GOVVV) $(GOMPLATE)
 	$(call gen_release_files,./cmd/buck,buck,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
 .PHONY: build-buck-release
 
-build-releases: build-hub-release build-buck-release
+build-buckd-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/buckd,buckd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-buckd-release
+
+build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release
 .PHONY: build-releases
 
 hub-up:

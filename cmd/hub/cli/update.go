@@ -34,7 +34,7 @@ var updateCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		version := bi.Version
 
-		latest, err := checkProduction()
+		latest, err := getLatestRelease()
 		if err != nil {
 			cmd.Error(err)
 			cmd.Warn("Unable to fetch latest public release.")

@@ -12,7 +12,7 @@ import (
 	"github.com/textileio/textile/cmd"
 )
 
-func checkProduction() (*su.Release, error) {
+func getLatestRelease() (*su.Release, error) {
 	s := spin.New("%s Checking latest Hub CLI release")
 	s.Start()
 	defer s.Stop()
@@ -52,7 +52,9 @@ var versionCmd = &cobra.Command{
 	Long:  `Shows the installed CLI version.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		version := bi.Version
+		version := bi.GitSummary
+
+		cmd.Message("%s", aurora.Green(version))
 
 		apiVersion, err := getAPIVersion()
 		if err != nil {
@@ -62,7 +64,7 @@ var versionCmd = &cobra.Command{
 			cmd.Message("The Hub API is running %s", apiVersion)
 		}
 
-		latest, err := checkProduction()
+		latest, err := getLatestRelease()
 		if err != nil {
 			cmd.Error(err)
 			cmd.Warn("Unable to get latest release.")
@@ -75,21 +77,6 @@ var versionCmd = &cobra.Command{
 				// Display warning if outdated
 				cmd.Warn("There is a new hub release. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
 			}
-		}
-
-		if version == "none" {
-			cmd.Message("Custom version.")
-			cmd.RenderTable(
-				[]string{"GitBranch", "GitState", "GitSummary"},
-				[][]string{{
-					bi.GitBranch,
-					bi.GitState,
-					bi.GitSummary,
-				}},
-			)
-			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
-		} else {
-			cmd.Message("%s", aurora.Green(version))
 		}
 	},
 }
