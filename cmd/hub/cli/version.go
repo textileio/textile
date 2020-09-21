@@ -64,7 +64,7 @@ var versionCmd = &cobra.Command{
 			cmd.Message("The Hub API is running %s", apiVersion)
 		}
 
-		latest, err := getLatestRelease()
+		latestRelease, err := getLatestRelease()
 		if err != nil {
 			cmd.Error(err)
 			cmd.Warn("Unable to get latest release.")
@@ -73,9 +73,9 @@ var versionCmd = &cobra.Command{
 			if err != nil {
 				// Display warning if off production
 				cmd.Warn("Running a custom hub build. Run `%s` to install the latest release.", aurora.White("hub update").Bold())
-			} else if current.LT(latest.Version) {
+			} else if current.LT(latestRelease.Version) {
 				// Display warning if outdated
-				cmd.Warn("There is a new hub release. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
+				cmd.Warn("There is a new hub release. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latestRelease.Version.String()))
 			}
 		}
 	},
