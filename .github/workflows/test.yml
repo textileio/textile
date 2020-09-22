@@ -90,6 +90,6 @@ jobs:
         with:
           go-version: 1.14
       - name: Check out code
-        uses: actions/checkout@v1 
+        uses: actions/checkout@v1
       - name: Test
         run: go test -timeout 45m -race ./integrationtest/...

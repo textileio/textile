@@ -50,7 +50,7 @@ func Init(rootCmd *cobra.Command) {
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
-	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powNewAddrCmd, powPeersCmd, powRetrievalsCmd, powSendFilCmd, powShowAllCmd, powShowCmd, powStorageCmd)
+	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powNewAddrCmd, powPeersCmd, powRetrievalsCmd, powShowAllCmd, powShowCmd, powStorageCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
 

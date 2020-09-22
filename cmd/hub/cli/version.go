@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"strings"
 
 	"github.com/blang/semver"
 	"github.com/caarlos0/spin"
@@ -13,7 +12,7 @@ import (
 	"github.com/textileio/textile/cmd"
 )
 
-func checkProduction() (*su.Release, error) {
+func getLatestRelease() (*su.Release, error) {
 	s := spin.New("%s Checking latest Hub CLI release")
 	s.Start()
 	defer s.Stop()
@@ -44,7 +43,7 @@ func getAPIVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Replace(res.GitSummary, "-dirty", "", 1), nil
+	return res.GitSummary, nil
 }
 
 var versionCmd = &cobra.Command{
@@ -53,7 +52,15 @@ var versionCmd = &cobra.Command{
 	Long:  `Shows the installed CLI version.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		version := bi.Version
+		isGovvvBuild := bi.GitSummary != ""
+		isReleaseBuild := bi.Version != "git"
+
+		displayVersion := bi.Version
+		if !isReleaseBuild && isGovvvBuild {
+			displayVersion = bi.GitSummary
+		}
+
+		cmd.Message("%s", aurora.Green(displayVersion))
 
 		apiVersion, err := getAPIVersion()
 		if err != nil {
@@ -63,34 +70,32 @@ var versionCmd = &cobra.Command{
 			cmd.Message("The Hub API is running %s", apiVersion)
 		}
 
-		latest, err := checkProduction()
+		latestRelease, err := getLatestRelease()
 		if err != nil {
 			cmd.Error(err)
 			cmd.Warn("Unable to get latest release.")
 		} else {
-			current, err := semver.ParseTolerant(version)
+			current, err := semver.ParseTolerant(bi.Version)
 			if err != nil {
-				// Display warning if off production
-				cmd.Warn("Running a custom hub build. Run `%s` to install the latest release.", aurora.White("hub update").Bold())
-			} else if current.LT(latest.Version) {
+				// Display warning if not using a release
+				cmd.Warn("Running a custom hub build. Run %s to install the latest release.", aurora.White("hub update").Bold())
+				if isGovvvBuild {
+					cmd.Message("Custom build info:")
+					cmd.RenderTable(
+						[]string{},
+						[][]string{
+							{"Git Branch", bi.GitBranch},
+							{"Git State", bi.GitState},
+							{"Git Commit", bi.GitCommit},
+							{"Git Summary", bi.GitSummary},
+							{"Build Date", bi.BuildDate},
+						},
+					)
+				}
+			} else if current.LT(latestRelease.Version) {
 				// Display warning if outdated
-				cmd.Warn("There is a new hub release. Run `%s` to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latest.Version.String()))
+				cmd.Warn("There is a new hub release. Run %s to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latestRelease.Version.String()))
 			}
-		}
-
-		if version == "git" {
-			cmd.Message("Custom version.")
-			cmd.RenderTable(
-				[]string{"GitBranch", "GitState", "GitSummary"},
-				[][]string{{
-					bi.GitBranch,
-					bi.GitState,
-					bi.GitSummary,
-				}},
-			)
-			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
-		} else {
-			cmd.Message("%s", aurora.Green(version))
 		}
 	},
 }

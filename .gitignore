@@ -29,3 +29,5 @@ node_modules/
 .hubd/
 .buckd/
 .env
+
+build/

@@ -69,16 +69,6 @@ func (c *Client) NewAddr(ctx context.Context, name, addrType string, makeDefault
 	return c.ffsC.NewAddr(ctx, req)
 }
 
-func (c *Client) SendFil(ctx context.Context, from, to string, amt int64) error {
-	req := &ffsRpc.SendFilRequest{
-		Amount: amt,
-		From:   from,
-		To:     to,
-	}
-	_, err := c.ffsC.SendFil(ctx, req)
-	return err
-}
-
 func (c *Client) Info(ctx context.Context) (*ffsRpc.InfoResponse, error) {
 	return c.ffsC.Info(ctx, &ffsRpc.InfoRequest{})
 }
