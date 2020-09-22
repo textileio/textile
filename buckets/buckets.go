@@ -68,7 +68,7 @@ var (
 
 	// ErrZeroBalance is returned when archiving a bucket which
 	// underlying Account/User FFS instance balance is zero.
-	ErrZeroBalance = errors.New("powergate wallet FIL balance is zero, if recently created wait 30s")
+	ErrZeroBalance = errors.New("wallet FIL balance is zero, if recently created wait 30s")
 )
 
 // RolesToPb maps native type roles to protobuf type roles.
