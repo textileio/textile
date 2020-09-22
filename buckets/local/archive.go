@@ -80,7 +80,7 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 		case pb.ArchiveStatusResponse_STATUS_EXECUTING:
 			msgs <- ArchiveStatusMessage{
 				Type:    ArchiveMessage,
-				Message: "Archive is currently executing, grab a coffee and be patient...",
+				Message: "Archive is currently executing, grab a coffee, and be patient...",
 			}
 		case pb.ArchiveStatusResponse_STATUS_DONE:
 			msgs <- ArchiveStatusMessage{
