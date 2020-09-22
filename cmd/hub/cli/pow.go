@@ -12,7 +12,7 @@ import (
 
 func init() {
 	powNewAddrCmd.Flags().StringP("type", "t", "bls", "Wallet address type to create - bls or secp256k1. Defaults to bls.")
-	powNewAddrCmd.Flags().BoolP("default", "d", false, "Whether to make the new addres the default. Defaults to false.")
+	powNewAddrCmd.Flags().BoolP("default", "d", false, "Whether to make the new address the default. Defaults to false.")
 
 	powStorageCmd.Flags().BoolP("ascending", "a", false, "sort records ascending, default is sort descending")
 	powStorageCmd.Flags().StringSlice("cids", []string{}, "limit the records to deals for the specified data cids, treated as and AND operation if --addrs is also provided")
