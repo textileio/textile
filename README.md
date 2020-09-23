@@ -201,10 +201,10 @@ BUCK_LOG_DEBUG=true
 Copy [this compose file](https://github.com/textileio/textile/blob/master/cmd/buckd/docker-compose.yml) and run it with the following command.
 
 ```
-docker-compose -f docker-compose.yml up 
+docker-compose -f docker-compose.yml up
 ```
 
-Congrats! You now have Buckets running locally.
+Congrats! Now you have Buckets running locally.
 
 The Docker Compose file starts an IPFS node, which is used to pin bucket files and folders. You could point `buckd` to a different (possibly remote) IPFS node by setting the `BUCK_ADDR_IPFS_API` variable to a different multiaddress.  
 
@@ -822,8 +822,6 @@ for s := range state {
 ```
 
 Similarly, use `WatchSentbox` to watch a sentbox.
-
-
 
 ## Developing
 

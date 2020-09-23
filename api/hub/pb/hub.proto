@@ -1,8 +1,7 @@
 syntax = "proto3";
 package api.hub.pb;
 
-message BuildInfoRequest {
-}
+message BuildInfoRequest {}
 
 message BuildInfoResponse {
     string git_commit = 1;
