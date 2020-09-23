@@ -68,10 +68,11 @@ func (c *Client) Root(ctx context.Context, key string) (*pb.RootResponse, error)
 	})
 }
 
-// Links returns a list of links that can be used to view the bucket.
-func (c *Client) Links(ctx context.Context, key string) (*pb.LinksResponse, error) {
+// Links returns a list of bucket path URL links.
+func (c *Client) Links(ctx context.Context, key, pth string) (*pb.LinksResponse, error) {
 	return c.c.Links(ctx, &pb.LinksRequest{
-		Key: key,
+		Key:  key,
+		Path: pth,
 	})
 }
 

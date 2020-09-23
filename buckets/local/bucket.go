@@ -235,7 +235,7 @@ type Links struct {
 }
 
 // RemoteLinks returns the remote links for the bucket.
-func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
+func (b *Bucket) RemoteLinks(ctx context.Context, pth string) (links Links, err error) {
 	if b.links != nil {
 		return *b.links, nil
 	}
@@ -243,7 +243,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 	if err != nil {
 		return
 	}
-	res, err := b.clients.Buckets.Links(ctx, b.Key())
+	res, err := b.clients.Buckets.Links(ctx, b.Key(), pth)
 	if err != nil {
 		return
 	}

@@ -47,6 +47,7 @@ message RootResponse {
 
 message LinksRequest {
     string key = 1;
+    string path = 2;
 }
 
 message LinksResponse {

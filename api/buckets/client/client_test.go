@@ -156,7 +156,7 @@ func TestClient_Links(t *testing.T) {
 	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
-	links, err := client.Links(ctx, buck.Root.Key)
+	links, err := client.Links(ctx, buck.Root.Key, "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, links.Url)
 	assert.NotEmpty(t, links.Ipns)

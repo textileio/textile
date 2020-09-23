@@ -152,7 +152,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		progress.Stop()
 		cmd.ErrCheck(err)
 
-		links, err := buck.RemoteLinks(ctx)
+		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
 		printLinks(links)
 
