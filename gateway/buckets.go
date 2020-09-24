@@ -36,7 +36,7 @@ func (f *fileSystem) Exists(prefix, path string) bool {
 	return ok
 }
 
-func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thread.ID) {
+func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thread.ID, token thread.Token) {
 	rep, err := g.buckets.List(ctx)
 	if err != nil {
 		renderError(c, http.StatusBadRequest, err)
@@ -50,9 +50,13 @@ func (g *Gateway) renderBucket(c *gin.Context, ctx context.Context, threadID thr
 		} else {
 			name = r.Key
 		}
+		p := path.Join("thread", threadID.String(), buckets.CollectionName, r.Key)
+		if token.Defined() {
+			p += "?token=" + string(token)
+		}
 		links[i] = link{
 			Name:  name,
-			Path:  path.Join("thread", threadID.String(), buckets.CollectionName, r.Key),
+			Path:  p,
 			Size:  "",
 			Links: "",
 		}
@@ -91,10 +95,13 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		}
 		var links []link
 		for _, item := range rep.Item.Items {
-			pth := strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1)
+			pth := path.Join(base, strings.Replace(item.Path, rep.Root.Path, rep.Root.Key, 1))
+			if token.Defined() {
+				pth += "?token=" + string(token)
+			}
 			links = append(links, link{
 				Name:  item.Name,
-				Path:  path.Join(base, pth),
+				Path:  pth,
 				Size:  byteCountDecimal(item.Size),
 				Links: strconv.Itoa(len(item.Items)),
 			})
@@ -107,6 +114,9 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		}
 		root := strings.Replace(rep.Item.Path, rep.Root.Path, name, 1)
 		back := path.Dir(path.Join(base, strings.Replace(rep.Item.Path, rep.Root.Path, rep.Root.Key, 1)))
+		if token.Defined() {
+			back += "?token=" + string(token)
+		}
 		c.HTML(http.StatusOK, "/public/html/unixfs.gohtml", gin.H{
 			"Title":   "Index of /" + root,
 			"Root":    "/" + root,
