@@ -7,7 +7,7 @@
 [![GitHub action](https://github.com/textileio/textile/workflows/Tests/badge.svg?style=popout-square)](https://github.com/textileio/textile/actions)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=popout-square)](https://github.com/RichardLitt/standard-readme)
 
-> Textile services and buckets lib written in Go
+> Textile hub services and buckets lib
 
 Textile connects and extends [Libp2p](https://libp2p.io/), [IPFS](https://ipfs.io/), and [Filecoin](https://filecoin.io/). Three interoperable technologies makeup Textile:
 
@@ -42,6 +42,7 @@ Join us on our [public Slack channel](https://slack.textile.io/) for news, discu
   * [Resetting bucket contents](#resetting-bucket-contents)
   * [Watching a bucket for changes](#watching-a-bucket-for-changes)
   * [Protecting a file with a password](#protecting-a-file-with-a-password)
+  * [Sharing bucket files and folders](#sharing-bucket-files-and-folders)
   * [Creating a Filecoin bucket archive](#creating-a-filecoin-bucket-archive)
   * [Multi-writer buckets](#multi-writer-buckets)
   * [Deleting a bucket](#deleting-a-bucket)
@@ -173,11 +174,14 @@ Available Commands:
   login       Login
   logout      Logout
   orgs        Org management
+  pow         Interact with Powergate
   threads     Thread management
+  update      Update the hub CLI
+  version     Show current version
   whoami      Show current user
 
 Flags:
-      --api string       API target (default "api.textile.io:443")
+      --api string       API target (default "api.hub.textile.io:443")
   -h, --help             help for hub
   -o, --org string       Org username
   -s, --session string   User session token
@@ -271,9 +275,9 @@ The first URL is the link to the ThreadDB instance. Internally, a collection nam
 
 The second URL is the bucket's unique IPNS address, which is auto-updated when you add, modify, or delete files.
 
-If you have configured the daemon with DNS settings, you will see a third URL that links to the bucket's WWW address, where it is rendered like as a static website / client-side application. See `buckd --help` for more info.
+If you have configured the daemon with DNS settings, you will see a third URL that links to the bucket's WWW address, where it is rendered as a static website / client-side application. See `buckd --help` for more info.
 
-**Note**: If your bucket is private (encrypted), these links will 404 on the gateway. This behavior is temporary while ThreadDB ACLs are [still under development](https://github.com/textileio/go-threads/issues/295).
+**Important**: If your bucket is private (encrypted), an access token (JWT) will be appended to these links. This token represents your _identity_ across ***all buckets*** and should not be shared without caution.
 
 `buck init` created a configuration folder in `mybucket` called `.textile`. This folder is somewhat like a `.git` folder, as it contains information about the bucket's remote address and local state.
 
@@ -562,7 +566,7 @@ buck encrypt hello.txt supersecret > secret.txt
 `encrypt` only works on local files. You'll have to use `push` to sync the new file to the remote.
 
 ```
-hub buck push --yes
+buck push --yes
 + secret.txt: bafkreiayymufgaut3wrfbzfdxiacxn64mxijj54g2osyk7qnco54iftovi
 > bafybeidhffwg5ucwktn7iwyvnkhxpz7b2yrh643bo74cjvsbquzpdgpcd4
 ```
@@ -575,6 +579,51 @@ hello world
 ```
 
 Looks like it worked!
+
+### Sharing bucket files and folders
+
+Bucket contents can be shared with other Hub accounts and users using the `buck roles` command. Each file and folder in a bucket maintains a set of public-key based access roles: `None`, `Reader`, `Writer`, and `Admin`. Only the `Admin` role can add and remove files and folders from a shared path. See `hub buck roles grant --help` for more about each role. For most applications, access roles only makes sense in the context of the Hub.
+
+By default, public buckets have two roles located at the top-level path:
+
+```
+hub buck roles ls
+
+  IDENTITY                                                     ROLE
+  *                                                            Reader
+  bbaareibzpb44ahd7oieqevvlqajidd4jajcvx2vdvti6bpw5wkqolwwerm  Admin
+
+> Found 2 access roles
+```
+
+Since access roles are inherited down a bucket path, the single admin role grants the owner full access to all current and future files and folders. The default (`*`) `Read` role indicates that the entire bucket is open to the world. This is merely a reflection of the fact that the underlying UnixFS directory behind public (non-encrypted) buckets are discoverable on the IPFS Network.
+
+Private buckets are not open to the world and are created with only the single admin role. However, we can still grant default (`*`) `Read` access to individual files, folders, or the entire bucket posteriori.
+
+```
+hub buck roles grant "*" myfolder
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Select a role:
+  None
+  ▸ Reader
+  Writer
+  Admin
+```
+
+We can now see a new role added to `myfolder`.
+
+```
+ hub buck roles ls myfolder
+
+  IDENTITY  ROLE
+  *         Reader
+
+> Found 1 access roles
+```
+
+Similarly, grant the `None` role to revoke access.
+
+Manipulating access roles for a single Hub account or user (public key) can be cumbersome with the `buck` CLI. Applications in need of this level of granular access control should do so programmatically using the [Go client](https://pkg.go.dev/github.com/textileio/textile/api/buckets/client), [JavaScript client](https://textileio.github.io/js-hub/docs/hub.buckets).
 
 ### Creating a Filecoin bucket archive
 
@@ -599,7 +648,7 @@ You should see a success message if you proceed.
 This means that archiving has been initiated. It may take some time to complete...
 
 ```
-hub buck archive status
+buck archive status
 > Archive is currently executing, grab a coffee and be patient...
 ```
 
