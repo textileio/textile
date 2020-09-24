@@ -102,7 +102,7 @@ go get ./cmd/hub
 
 **Note**: `hub` _includes_ `buck` as a subcommand: `hub buck`. This is because `hubd` hosts `buckd`, along with other services.
 
-`hub` is built in part on the gRPC client, which can be imported to an existing project:
+`hub` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/api/hub/client), which can be imported to an existing project:
 
 ```
 import "github.com/textileio/textile/api/hub/client"
@@ -133,7 +133,7 @@ cd textile
 go get ./cmd/buck
 ```
 
-`buck` is built in part on the gRPC client, which can be imported in an existing project:
+`buck` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/api/buckets/client), which can be imported in an existing project:
 
 ```
 import "github.com/textileio/textile/api/buckets/client"
@@ -144,6 +144,8 @@ import "github.com/textileio/textile/api/buckets/client"
 ```
 import "github.com/textileio/textile/buckets/local"
 ```
+
+The full spec is available [here](https://pkg.go.dev/github.com/textileio/textile/buckets/local).
 
 ## Getting Started
 
