@@ -206,7 +206,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 			return nil, err
 		}
 
-		if _, err = buck.RemoteLinks(ctx); err != nil {
+		if _, err = buck.RemoteLinks(ctx, ""); err != nil {
 			return nil, err
 		}
 	}

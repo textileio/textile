@@ -348,12 +348,11 @@ func formatError(err error) string {
 func (g *Gateway) subdomainHandler(c *gin.Context) {
 	c.Status(200)
 
-	host := strings.SplitN(c.Request.Host, ":", 2)[0]
-	parts := strings.Split(host, ".")
+	parts := strings.Split(c.Request.Host, ".")
 	key := parts[0]
 
 	// Render buckets if the domain matches
-	if g.bucketsDomain != "" && strings.HasSuffix(host, g.bucketsDomain) {
+	if g.bucketsDomain != "" && strings.HasSuffix(c.Request.Host, g.bucketsDomain) {
 		g.renderWWWBucket(c, key)
 		return
 	}

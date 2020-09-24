@@ -20,7 +20,6 @@ import (
 	pb "github.com/textileio/textile/api/hub/pb"
 	"github.com/textileio/textile/buckets"
 	bi "github.com/textileio/textile/buildinfo"
-	"github.com/textileio/textile/dns"
 	"github.com/textileio/textile/email"
 	"github.com/textileio/textile/ipns"
 	mdb "github.com/textileio/textile/mongodb"
@@ -48,12 +47,11 @@ type Service struct {
 	EmailSessionSecret string
 	IPFSClient         iface.CoreAPI
 	IPNSManager        *ipns.Manager
-	DNSManager         *dns.Manager
 	Pow                *powc.Client
 }
 
 // Info provides the currently running API's build information
-func (s *Service) BuildInfo(ctx context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
+func (s *Service) BuildInfo(_ context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
 	return &pb.BuildInfoResponse{
 		GitCommit:  bi.GitCommit,
 		GitBranch:  bi.GitBranch,

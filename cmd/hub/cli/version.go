@@ -43,6 +43,9 @@ func getAPIVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if res.GitSummary == "" {
+		res.GitSummary = "git"
+	}
 	return res.GitSummary, nil
 }
 

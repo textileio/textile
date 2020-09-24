@@ -75,7 +75,7 @@ func TestBucket(t *testing.T) {
 	})
 
 	t.Run("RemoteLinks", func(t *testing.T) {
-		links, err := buck.RemoteLinks(context.Background())
+		links, err := buck.RemoteLinks(context.Background(), "")
 		require.NoError(t, err)
 		assert.NotEmpty(t, links.URL)
 		assert.NotEmpty(t, links.IPNS)

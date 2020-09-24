@@ -306,7 +306,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			EmailSessionSecret: conf.EmailSessionSecret,
 			IPFSClient:         ic,
 			IPNSManager:        t.ipnsm,
-			DNSManager:         t.dnsm,
 			Pow:                t.powc,
 		}
 		us = &users.Service{
@@ -327,9 +326,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		BucketsTotalMaxSize:       conf.BucketsTotalMaxSize,
 		BucketsMaxNumberPerThread: conf.BucketsMaxNumberPerThread,
 		GatewayURL:                conf.AddrGatewayURL,
+		GatewayBucketsHost:        conf.DNSDomain,
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
-		DNSManager:                t.dnsm,
 		PGClient:                  t.powc,
 		ArchiveTracker:            t.archiveTracker,
 	}

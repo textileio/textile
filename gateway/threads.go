@@ -35,7 +35,7 @@ func (g *Gateway) renderCollection(c *gin.Context, threadID thread.ID, collectio
 
 	jsn := c.Query("json") == "true"
 	if collection == buckets.CollectionName && !jsn {
-		g.renderBucket(c, ctx, threadID)
+		g.renderBucket(c, ctx, threadID, token)
 		return
 	} else {
 		var dummy interface{}
