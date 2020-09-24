@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	gopath "path"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
+	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
@@ -60,6 +62,16 @@ var (
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
+
+	// baseArchiveStorageConfig is used as
+	baseArchiveStorageConfig = ffs.StorageConfig{
+		Hot: ffs.HotConfig{
+			Enabled: false,
+		},
+		Cold: ffs.ColdConfig{
+			Enabled: true,
+		},
+	}
 )
 
 const (
@@ -1973,6 +1985,50 @@ func (s *Service) PullPathAccessRoles(ctx context.Context, req *pb.PullPathAcces
 	}, nil
 }
 
+func (s *Service) DefaultArchiveConfig(ctx context.Context, req *pb.DefaultArchiveConfigRequest) (*pb.DefaultArchiveConfigResponse, error) {
+	log.Debug("received set default archive config request")
+
+	if !s.Buckets.IsArchivingEnabled() {
+		return nil, ErrArchivingFeatureDisabled
+	}
+
+	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
+	if err != nil {
+		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+	}
+	if ba.DefaultArchiveConfig == nil {
+		// The queried BucketArchive was created before we added .DefaultArchiveConfig, so create the default now
+		ba.DefaultArchiveConfig = &mdb.DefaultDefaultArchiveConfig
+		err := s.Collections.BucketArchives.Replace(ctx, ba)
+		if err != nil {
+			return nil, fmt.Errorf("saving default archive config: %s", err)
+		}
+	}
+	return &pb.DefaultArchiveConfigResponse{
+		ArchiveConfig: toPbArchiveConfig(ba.DefaultArchiveConfig),
+	}, nil
+}
+
+func (s *Service) SetDefaultArchiveConfig(ctx context.Context, req *pb.SetDefaultArchiveConfigRequest) (*pb.SetDefaultArchiveConfigResponse, error) {
+	log.Debug("received set default archive config request")
+
+	if !s.Buckets.IsArchivingEnabled() {
+		return nil, ErrArchivingFeatureDisabled
+	}
+
+	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
+	if err != nil {
+		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+	}
+
+	ba.DefaultArchiveConfig = fromPbArchiveConfig(req.ArchiveConfig)
+	err = s.Collections.BucketArchives.Replace(ctx, ba)
+	if err != nil {
+		return nil, fmt.Errorf("saving default archive config: %s", err)
+	}
+	return &pb.SetDefaultArchiveConfigResponse{}, nil
+}
+
 func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.ArchiveResponse, error) {
 	log.Debug("received archive request")
 
@@ -2054,8 +2110,33 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		}
 	}
 
+	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
+	if err != nil {
+		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+	}
+
+	var archiveConfig *mdb.ArchiveConfig
+	if req.ArchiveConfig != nil {
+		archiveConfig = fromPbArchiveConfig(req.ArchiveConfig)
+	} else if ba.DefaultArchiveConfig == nil {
+		// The queried BucketArchive was created before we added .DefaultArchiveConfig so just use the default default
+		// and defer saving the default until the user calls DefaultArchiveConfic or SetDefaultArchiveConfig.
+		archiveConfig = &mdb.DefaultDefaultArchiveConfig
+	} else {
+		archiveConfig = ba.DefaultArchiveConfig
+	}
+
+	storageConfig := baseArchiveStorageConfig
+	storageConfig.Cold.Filecoin = toFilConfig(archiveConfig)
+
+	if storageConfig.Cold.Filecoin.Addr == "" {
+		// We don't have an address to use, which is the case for a BucketArchive.DefaultArchiveConfig
+		// that is the default value, get the default address from the FFS instance
+		storageConfig.Cold.Filecoin.Addr = defConf.Cold.Filecoin.Addr
+	}
+
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := s.PGClient.Wallet.Balance(ctx, defConf.Cold.Filecoin.Addr)
+	bal, err := s.PGClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
 	}
@@ -2063,17 +2144,20 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, buckets.ErrZeroBalance
 	}
 
-	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.GetKey())
-	if err != nil {
-		return nil, fmt.Errorf("getting bucket archive data: %s", err)
-	}
-
+	// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
+	// The behaviour changes depending on different cases, depending on a previous archive.
+	// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
+	// 1. Last archive exists with the same Cid:
+	//   a. Last archive Successful: fails, there's nothing to do.
+	//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
+	//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
+	// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
 	var jid ffs.JobID
 	firstTimeArchive := ba.Archives.Current.JobID == ""
 	if firstTimeArchive || ba.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+		jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
 		if err != nil {
 			return nil, fmt.Errorf("pushing config: %s", err)
 		}
@@ -2083,14 +2167,6 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
-		// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
-		// The behaviour changes depending on different cases, depending on a previous archive.
-		// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
-		// 1. Last archive exists with the same Cid:
-		//   a. Last archive Successful: fails, there's nothing to do.
-		//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
-		//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
-		// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
 		if oldCid.Equals(p.Cid()) { // Case 1.
 			switch ffs.JobStatus(ba.Archives.Current.JobStatus) {
 			// Case 1.a.
@@ -2101,7 +2177,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
 			case ffs.Failed, ffs.Canceled:
-				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithOverride(true))
+				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
@@ -2109,10 +2185,38 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				return nil, fmt.Errorf("unexpected current archive status: %d", ba.Archives.Current.JobStatus)
 			}
 		} else { // Case 2.
-			jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
+			res, err := s.PGClient.FFS.GetStorageConfig(ctxFFS, oldCid)
 			if err != nil {
-				return nil, fmt.Errorf("replacing cid: %s", err)
+				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
+			// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+			var oldStorageConfig *ffs.StorageConfig
+			if res.Config != nil {
+				oldStorageConfig = &ffs.StorageConfig{
+					Repairable: res.Config.Repairable,
+					Cold:       fromRPCColdConfig(res.Config.Cold),
+					Hot:        fromRPCHotConfig(res.Config.Hot),
+				}
+			}
+
+			if reflect.DeepEqual(&storageConfig, oldStorageConfig) {
+				// Old storage config is the same as the new so use replace.
+				jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
+				if err != nil {
+					return nil, fmt.Errorf("replacing cid: %s", err)
+				}
+			} else {
+				// New storage config, so remove and push.
+				err = s.PGClient.FFS.Remove(ctxFFS, oldCid)
+				if err != nil {
+					return nil, fmt.Errorf("removing old cid storage: %s", err)
+				}
+				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
+				if err != nil {
+					return nil, fmt.Errorf("pushing config: %s", err)
+				}
+			}
+
 		}
 
 		// Include the existing archive in history,
@@ -2129,7 +2233,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
 	}
 
-	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.GetKey(), jid, p.Cid(), owner); err != nil {
+	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), owner); err != nil {
 		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
 	}
 
@@ -2160,7 +2264,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.Buckets.ArchiveWatch(ctx, req.GetKey(), powInfo.Token, ch)
+		err = s.Buckets.ArchiveWatch(ctx, req.Key, powInfo.Token, ch)
 		close(ch)
 	}()
 	for s := range ch {
@@ -2356,6 +2460,120 @@ func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
 		return 0, nil
 	}
 	return u.BucketsTotalSize, nil
+}
+
+func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
+	var pbConfig *pb.ArchiveConfig
+	if config != nil {
+		pbConfig = &pb.ArchiveConfig{
+			RepFactor:       int32(config.RepFactor),
+			DealMinDuration: config.DealMinDuration,
+			ExcludedMiners:  config.ExcludedMiners,
+			TrustedMiners:   config.TrustedMiners,
+			CountryCodes:    config.CountryCodes,
+			Renew: &pb.ArchiveRenew{
+				Enabled:   config.Renew.Enabled,
+				Threshold: int32(config.Renew.Threshold),
+			},
+			Addr:            config.Addr,
+			MaxPrice:        config.MaxPrice,
+			FastRetrieval:   config.FastRetrieval,
+			DealStartOffset: config.DealStartOffset,
+		}
+	}
+	return pbConfig
+}
+
+func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
+	var config *mdb.ArchiveConfig
+	if config != nil {
+		config = &mdb.ArchiveConfig{
+			RepFactor:       int(pbConfig.RepFactor),
+			DealMinDuration: pbConfig.DealMinDuration,
+			ExcludedMiners:  pbConfig.ExcludedMiners,
+			TrustedMiners:   pbConfig.TrustedMiners,
+			CountryCodes:    pbConfig.CountryCodes,
+			Addr:            pbConfig.Addr,
+			MaxPrice:        pbConfig.MaxPrice,
+			FastRetrieval:   pbConfig.FastRetrieval,
+			DealStartOffset: pbConfig.DealStartOffset,
+		}
+		if pbConfig.Renew != nil {
+			config.Renew = mdb.ArchiveRenew{
+				Enabled:   pbConfig.Renew.Enabled,
+				Threshold: int(pbConfig.Renew.Threshold),
+			}
+		}
+	}
+	return config
+}
+
+func toFilConfig(config *mdb.ArchiveConfig) ffs.FilConfig {
+	if config == nil {
+		return ffs.FilConfig{}
+	}
+	return ffs.FilConfig{
+		RepFactor:       config.RepFactor,
+		Addr:            config.Addr,
+		CountryCodes:    config.CountryCodes,
+		DealMinDuration: config.DealMinDuration,
+		DealStartOffset: config.DealStartOffset,
+		ExcludedMiners:  config.ExcludedMiners,
+		FastRetrieval:   config.FastRetrieval,
+		MaxPrice:        config.MaxPrice,
+		Renew: ffs.FilRenew{
+			Enabled:   config.Renew.Enabled,
+			Threshold: config.Renew.Threshold,
+		},
+		TrustedMiners: config.TrustedMiners,
+	}
+}
+
+// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
+	res := ffs.HotConfig{}
+	if config != nil {
+		res.Enabled = config.Enabled
+		res.AllowUnfreeze = config.AllowUnfreeze
+		res.UnfreezeMaxPrice = config.UnfreezeMaxPrice
+		if config.Ipfs != nil {
+			ipfs := ffs.IpfsConfig{
+				AddTimeout: int(config.Ipfs.AddTimeout),
+			}
+			res.Ipfs = ipfs
+		}
+	}
+	return res
+}
+
+// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+func fromRPCColdConfig(config *ffsRpc.ColdConfig) ffs.ColdConfig {
+	res := ffs.ColdConfig{}
+	if config != nil {
+		res.Enabled = config.Enabled
+		if config.Filecoin != nil {
+			filecoin := ffs.FilConfig{
+				RepFactor:       int(config.Filecoin.RepFactor),
+				DealMinDuration: config.Filecoin.DealMinDuration,
+				ExcludedMiners:  config.Filecoin.ExcludedMiners,
+				CountryCodes:    config.Filecoin.CountryCodes,
+				TrustedMiners:   config.Filecoin.TrustedMiners,
+				Addr:            config.Filecoin.Addr,
+				MaxPrice:        config.Filecoin.MaxPrice,
+				FastRetrieval:   config.Filecoin.FastRetrieval,
+				DealStartOffset: config.Filecoin.DealStartOffset,
+			}
+			if config.Filecoin.Renew != nil {
+				renew := ffs.FilRenew{
+					Enabled:   config.Filecoin.Renew.Enabled,
+					Threshold: int(config.Filecoin.Renew.Threshold),
+				}
+				filecoin.Renew = renew
+			}
+			res.Filecoin = filecoin
+		}
+	}
+	return res
 }
 
 func getAccountOrUserFromContext(ctx context.Context) thread.PubKey {
