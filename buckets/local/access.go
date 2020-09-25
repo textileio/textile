@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/v2/buckets"
 )
 
 // PushPathAccessRoles updates path access roles by merging the pushed roles with existing roles

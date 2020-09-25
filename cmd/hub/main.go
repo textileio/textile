@@ -7,10 +7,10 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cli"
-	hub "github.com/textileio/textile/cmd/hub/cli"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
+	buck "github.com/textileio/textile/v2/cmd/buck/cli"
+	hub "github.com/textileio/textile/v2/cmd/hub/cli"
 )
 
 var clients *cmd.Clients

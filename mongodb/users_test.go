@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
-	. "github.com/textileio/textile/mongodb"
+	. "github.com/textileio/textile/v2/mongodb"
 )
 
 func TestUsers_GetOrCreate(t *testing.T) {

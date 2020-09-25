@@ -102,10 +102,10 @@ go get ./cmd/hub
 
 **Note**: `hub` _includes_ `buck` as a subcommand: `hub buck`. This is because `hubd` hosts `buckd`, along with other services.
 
-`hub` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/api/hub/client), which can be imported to an existing project:
+`hub` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/v2/api/hub/client), which can be imported to an existing project:
 
 ```
-import "github.com/textileio/textile/api/hub/client"
+import "github.com/textileio/textile/v2/api/hub/client"
 ```
 
 ### Buckets
@@ -133,19 +133,19 @@ cd textile
 go get ./cmd/buck
 ```
 
-`buck` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/api/buckets/client), which can be imported in an existing project:
+`buck` is built in part on the [gRPC client](https://pkg.go.dev/github.com/textileio/textile/v2/api/buckets/client), which can be imported in an existing project:
 
 ```
-import "github.com/textileio/textile/api/buckets/client"
+import "github.com/textileio/textile/v2/api/buckets/client"
 ```
 
 ### The Buckets Library
 
 ```
-import "github.com/textileio/textile/buckets/local"
+import "github.com/textileio/textile/v2/buckets/local"
 ```
 
-The full spec is available [here](https://pkg.go.dev/github.com/textileio/textile/buckets/local).
+The full spec is available [here](https://pkg.go.dev/github.com/textileio/textile/v2/buckets/local).
 
 ## Getting Started
 
@@ -625,7 +625,7 @@ We can now see a new role added to `myfolder`.
 
 Similarly, grant the `None` role to revoke access.
 
-Manipulating access roles for a single Hub account or user (public key) can be cumbersome with the `buck` CLI. Applications in need of this level of granular access control should do so programmatically using the [Go client](https://pkg.go.dev/github.com/textileio/textile/api/buckets/client), [JavaScript client](https://textileio.github.io/js-hub/docs/hub.buckets).
+Manipulating access roles for a single Hub account or user (public key) can be cumbersome with the `buck` CLI. Applications in need of this level of granular access control should do so programmatically using the [Go client](https://pkg.go.dev/github.com/textileio/textile/v2/api/buckets/client), [JavaScript client](https://textileio.github.io/js-hub/docs/hub.buckets).
 
 ### Creating a Filecoin bucket archive
 
@@ -723,10 +723,10 @@ Deleting a bucket is easy... and permanent! `buck destroy` will delete your loca
 The `buckets/local` library powers both the `buck` and `hub buck` CLIs. Everything possible in `buck`, from bucket diffing, pushing, pulling, watching, archiving, etc., is available to you in existing projects by importing the Buckets Library.
 
 ```
-go get github.com/textileio/textile/buckets/local
+go get github.com/textileio/textile/v2/buckets/local
 ```
 
-Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/buckets/local) for a complete list of methods and more usage descriptions.
+Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/v2/buckets/local) for a complete list of methods and more usage descriptions.
 
 #### Creating a bucket
 
@@ -784,10 +784,10 @@ See `local.PathOption` for more options when pulling.
 The `mail/local` library provides mechanisms for sending and receiving messages between Hub users. Mailboxes are built on ThreadDB.
 
 ```
-go get github.com/textileio/textile/mail/local
+go get github.com/textileio/textile/v2/mail/local
 ```
 
-Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/mail/local) for a complete list of methods and more usage descriptions.
+Visit the [GoDoc](https://pkg.go.dev/github.com/textileio/textile/v2/mail/local) for a complete list of methods and more usage descriptions.
 
 #### Creating a mailbox
 

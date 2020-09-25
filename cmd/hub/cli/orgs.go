@@ -10,8 +10,8 @@ import (
 	"github.com/manifoldco/promptui"
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 var orgsCmd = &cobra.Command{

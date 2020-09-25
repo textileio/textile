@@ -9,7 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/textile/api/buckets/client"
+	"github.com/textileio/textile/v2/api/buckets/client"
 	"golang.org/x/sync/errgroup"
 )
 

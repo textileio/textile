@@ -16,11 +16,11 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/util"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/util"
 )
 
 var (

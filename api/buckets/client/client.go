@@ -8,9 +8,9 @@ import (
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/util"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/manifoldco/promptui"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/uiprogress"
 )
 

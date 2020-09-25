@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/textile/api/users/client"
-	. "github.com/textileio/textile/mail/local"
+	"github.com/textileio/textile/v2/api/users/client"
+	. "github.com/textileio/textile/v2/mail/local"
 )
 
 func TestMailbox_Identity(t *testing.T) {
