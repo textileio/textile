@@ -7,21 +7,156 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/textileio/textile/api/buckets/client"
 	pb "github.com/textileio/textile/api/buckets/pb"
 )
 
 // ArchiveStatusTimeout is the timeout used when requesting a single status message.
 var ArchiveStatusTimeout = time.Second * 5
 
-// ArchiveRemote requests an archive of the current remote bucket.
-func (b *Bucket) ArchiveRemote(ctx context.Context) error {
+// ArchiveConfig is the desired state of a Cid in the Filecoin network.
+type ArchiveConfig struct {
+	// RepFactor indicates the desired amount of active deals
+	// with different miners to store the data. While making deals
+	// the other attributes of FilConfig are considered for miner selection.
+	RepFactor int
+	// DealMinDuration indicates the duration to be used when making new deals.
+	DealMinDuration int64
+	// ExcludedMiners is a set of miner addresses won't be ever be selected
+	// when making new deals, even if they comply to other filters.
+	ExcludedMiners []string
+	// TrustedMiners is a set of miner addresses which will be forcibly used
+	// when making new deals. An empty/nil list disables this feature.
+	TrustedMiners []string
+	// CountryCodes indicates that new deals should select miners on specific
+	// countries.
+	CountryCodes []string
+	// Renew indicates deal-renewal configuration.
+	Renew ArchiveRenew
+	// Addr is the wallet address used to store the data in filecoin
+	Addr string
+	// MaxPrice is the maximum price that will be spent to store the data
+	MaxPrice uint64
+	// FastRetrieval indicates that created deals should enable the
+	// fast retrieval feature.
+	FastRetrieval bool
+	// DealStartOffset indicates how many epochs in the future impose a
+	// deadline to new deals being active on-chain. This value might influence
+	// if miners accept deals, since they should seal fast enough to satisfy
+	// this constraint.
+	DealStartOffset int64
+}
+
+// ArchiveRenew contains renew configuration for a ArchiveConfig.
+type ArchiveRenew struct {
+	// Enabled indicates that deal-renewal is enabled for this Cid.
+	Enabled bool
+	// Threshold indicates how many epochs before expiring should trigger
+	// deal renewal. e.g: 100 epoch before expiring.
+	Threshold int
+}
+
+func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig, err error) {
 	b.Lock()
 	defer b.Unlock()
+	ctx, err = b.context(ctx)
+	if err != nil {
+		return
+	}
+	pbConfig, err := b.clients.Buckets.DefaultArchiveConfig(ctx, b.Key())
+	if err != nil {
+		return
+	}
+	if pbConfig == nil {
+		return config, fmt.Errorf("no archive config in response")
+	}
+	config = fromPbArchiveConfig(*pbConfig)
+	return
+}
+
+func fromPbArchiveConfig(pbConfig pb.ArchiveConfig) ArchiveConfig {
+	config := ArchiveConfig{
+		RepFactor:       int(pbConfig.RepFactor),
+		DealMinDuration: pbConfig.DealMinDuration,
+		ExcludedMiners:  pbConfig.ExcludedMiners,
+		TrustedMiners:   pbConfig.TrustedMiners,
+		CountryCodes:    pbConfig.CountryCodes,
+		Addr:            pbConfig.Addr,
+		MaxPrice:        pbConfig.MaxPrice,
+		FastRetrieval:   pbConfig.FastRetrieval,
+		DealStartOffset: pbConfig.DealStartOffset,
+	}
+	if pbConfig.Renew != nil {
+		config.Renew = ArchiveRenew{
+			Enabled:   pbConfig.Renew.Enabled,
+			Threshold: int(pbConfig.Renew.Threshold),
+		}
+	}
+	return config
+}
+
+func (b *Bucket) SetDefaultArchiveConfig(ctx context.Context, config ArchiveConfig) (err error) {
+	b.Lock()
+	defer b.Unlock()
+	ctx, err = b.context(ctx)
+	if err != nil {
+		return
+	}
+	err = b.clients.Buckets.SetDefaultArchiveConfig(ctx, b.Key(), toPbArchiveConfig(config))
+	return
+}
+
+func toPbArchiveConfig(config ArchiveConfig) *pb.ArchiveConfig {
+	return &pb.ArchiveConfig{
+		RepFactor:       int32(config.RepFactor),
+		DealMinDuration: config.DealMinDuration,
+		ExcludedMiners:  config.ExcludedMiners,
+		TrustedMiners:   config.TrustedMiners,
+		CountryCodes:    config.CountryCodes,
+		Renew: &pb.ArchiveRenew{
+			Enabled:   config.Renew.Enabled,
+			Threshold: int32(config.Renew.Threshold),
+		},
+		Addr:            config.Addr,
+		MaxPrice:        config.MaxPrice,
+		FastRetrieval:   config.FastRetrieval,
+		DealStartOffset: config.DealStartOffset,
+	}
+}
+
+type archiveRemoteOptions struct {
+	archiveConfig *ArchiveConfig
+}
+
+type ArchiveRemoteOption func(*archiveRemoteOptions)
+
+func WithArchiveConfig(config ArchiveConfig) ArchiveRemoteOption {
+	return func(opts *archiveRemoteOptions) {
+		opts.archiveConfig = &config
+	}
+}
+
+// ArchiveRemote requests an archive of the current remote bucket.
+func (b *Bucket) ArchiveRemote(ctx context.Context, opts ...ArchiveRemoteOption) error {
+	b.Lock()
+	defer b.Unlock()
+
+	options := &archiveRemoteOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	var clientOpts []client.ArchiveOption
+	if options.archiveConfig != nil {
+		clientOpts = append(clientOpts, client.WithArchiveConfig(toPbArchiveConfig(*options.archiveConfig)))
+	}
+
 	ctx, err := b.context(ctx)
 	if err != nil {
 		return err
 	}
-	if _, err := b.clients.Buckets.Archive(ctx, b.Key()); err != nil {
+
+	if err := b.clients.Buckets.Archive(ctx, b.Key(), clientOpts...); err != nil {
 		return err
 	}
 	return nil
@@ -115,17 +250,6 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 		}
 	}()
 	return msgs, nil
-}
-
-func isJobStatusFinal(status pb.ArchiveStatusResponse_Status) (bool, error) {
-	switch status {
-	case pb.ArchiveStatusResponse_STATUS_FAILED, pb.ArchiveStatusResponse_STATUS_CANCELED, pb.ArchiveStatusResponse_STATUS_DONE:
-		return true, nil
-	case pb.ArchiveStatusResponse_STATUS_EXECUTING:
-		return false, nil
-	}
-	return true, fmt.Errorf("unknown job status")
-
 }
 
 // ArchiveInfo wraps info about an archive.

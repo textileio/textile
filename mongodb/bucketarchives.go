@@ -3,20 +3,8 @@ package mongodb
 import (
 	"context"
 
-	powUtil "github.com/textileio/powergate/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-)
-
-var (
-	// ToDo: Export the default storage config from powergate so we can create this from it.
-	DefaultDefaultArchiveConfig = ArchiveConfig{
-		RepFactor:       5,
-		TrustedMiners:   []string{"t016303", "t016304", "t016305", "t016306", "t016309"},
-		DealMinDuration: powUtil.MinDealDuration * 2,
-		FastRetrieval:   true,
-		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
-	}
 )
 
 type BucketArchive struct {
@@ -93,8 +81,7 @@ func NewBucketArchives(_ context.Context, db *mongo.Database) (*BucketArchives, 
 
 func (k *BucketArchives) Create(ctx context.Context, bucketKey string) (*BucketArchive, error) {
 	ba := &BucketArchive{
-		BucketKey:            bucketKey,
-		DefaultArchiveConfig: &DefaultDefaultArchiveConfig,
+		BucketKey: bucketKey,
 	}
 	_, err := k.col.InsertOne(ctx, ba)
 	return ba, err

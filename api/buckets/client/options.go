@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	pb "github.com/textileio/textile/api/buckets/pb"
 )
 
 type createOptions struct {
@@ -53,5 +54,13 @@ func WithFastForwardOnly(root path.Resolved) Option {
 func WithProgress(ch chan<- int64) Option {
 	return func(args *options) {
 		args.progress = ch
+	}
+}
+
+type ArchiveOption func(*pb.ArchiveRequest)
+
+func WithArchiveConfig(config *pb.ArchiveConfig) ArchiveOption {
+	return func(req *pb.ArchiveRequest) {
+		req.ArchiveConfig = config
 	}
 }

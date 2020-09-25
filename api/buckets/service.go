@@ -29,6 +29,7 @@ import (
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
+	powUtil "github.com/textileio/powergate/util"
 	pb "github.com/textileio/textile/api/buckets/pb"
 	"github.com/textileio/textile/api/common"
 	"github.com/textileio/textile/buckets"
@@ -71,6 +72,15 @@ var (
 		Cold: ffs.ColdConfig{
 			Enabled: true,
 		},
+	}
+
+	// ToDo: Export the default storage config from powergate so we can create this from it.
+	defaultDefaultArchiveConfig = mdb.ArchiveConfig{
+		RepFactor:       5,
+		TrustedMiners:   []string{"t016303", "t016304", "t016305", "t016306", "t016309"},
+		DealMinDuration: powUtil.MinDealDuration * 2,
+		FastRetrieval:   true,
+		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
 	}
 )
 
@@ -1996,16 +2006,13 @@ func (s *Service) DefaultArchiveConfig(ctx context.Context, req *pb.DefaultArchi
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket archive data: %s", err)
 	}
-	if ba.DefaultArchiveConfig == nil {
-		// The queried BucketArchive was created before we added .DefaultArchiveConfig, so create the default now
-		ba.DefaultArchiveConfig = &mdb.DefaultDefaultArchiveConfig
-		err := s.Collections.BucketArchives.Replace(ctx, ba)
-		if err != nil {
-			return nil, fmt.Errorf("saving default archive config: %s", err)
-		}
+	archiveConfig := ba.DefaultArchiveConfig
+	if archiveConfig == nil {
+		// The queried BucketArchive was created before we added .DefaultArchiveConfig, so just return the default
+		archiveConfig = &defaultDefaultArchiveConfig
 	}
 	return &pb.DefaultArchiveConfigResponse{
-		ArchiveConfig: toPbArchiveConfig(ba.DefaultArchiveConfig),
+		ArchiveConfig: toPbArchiveConfig(archiveConfig),
 	}, nil
 }
 
@@ -2118,12 +2125,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	var archiveConfig *mdb.ArchiveConfig
 	if req.ArchiveConfig != nil {
 		archiveConfig = fromPbArchiveConfig(req.ArchiveConfig)
-	} else if ba.DefaultArchiveConfig == nil {
+	} else if ba.DefaultArchiveConfig != nil {
+		archiveConfig = ba.DefaultArchiveConfig
+	} else {
 		// The queried BucketArchive was created before we added .DefaultArchiveConfig so just use the default default
 		// and defer saving the default until the user calls DefaultArchiveConfic or SetDefaultArchiveConfig.
-		archiveConfig = &mdb.DefaultDefaultArchiveConfig
-	} else {
-		archiveConfig = ba.DefaultArchiveConfig
+		archiveConfig = &defaultDefaultArchiveConfig
 	}
 
 	storageConfig := baseArchiveStorageConfig
@@ -2486,7 +2493,7 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 
 func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 	var config *mdb.ArchiveConfig
-	if config != nil {
+	if pbConfig != nil {
 		config = &mdb.ArchiveConfig{
 			RepFactor:       int(pbConfig.RepFactor),
 			DealMinDuration: pbConfig.DealMinDuration,
