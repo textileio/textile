@@ -8,7 +8,7 @@ import (
 
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/textileio/textile/api/buckets/client"
+	"github.com/textileio/textile/v2/api/buckets/client"
 )
 
 // PushRemote pushes local files.

@@ -8,7 +8,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 var destroyCmd = &cobra.Command{

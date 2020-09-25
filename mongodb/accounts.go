@@ -11,7 +11,7 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

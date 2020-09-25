@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	. "github.com/textileio/textile/mongodb"
+	. "github.com/textileio/textile/v2/mongodb"
 )
 
 func TestBucketArchives_Create(t *testing.T) {

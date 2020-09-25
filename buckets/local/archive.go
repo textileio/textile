@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	pb "github.com/textileio/textile/api/buckets/pb"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
 )
 
 // ArchiveStatusTimeout is the timeout used when requesting a single status message.

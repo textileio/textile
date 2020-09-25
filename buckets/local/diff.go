@@ -8,8 +8,8 @@ import (
 
 	"github.com/ipfs/go-merkledag/dagutils"
 	"github.com/logrusorgru/aurora"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 // Change describes a local bucket change.

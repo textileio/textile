@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/uiprogress"
 )
 

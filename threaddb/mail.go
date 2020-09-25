@@ -9,9 +9,9 @@ import (
 	dbc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/mail"
-	mdb "github.com/textileio/textile/mongodb"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/mail"
+	mdb "github.com/textileio/textile/v2/mongodb"
 )
 
 var (

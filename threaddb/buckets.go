@@ -18,8 +18,8 @@ import (
 	db "github.com/textileio/go-threads/db"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
-	"github.com/textileio/textile/buckets"
-	mdb "github.com/textileio/textile/mongodb"
+	"github.com/textileio/textile/v2/buckets"
+	mdb "github.com/textileio/textile/v2/mongodb"
 )
 
 const Version = 1

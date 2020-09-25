@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cli"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
+	buck "github.com/textileio/textile/v2/cmd/buck/cli"
 )
 
 const defaultTarget = "127.0.0.1:3006"

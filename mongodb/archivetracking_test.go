@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/powergate/ffs"
-	. "github.com/textileio/textile/mongodb"
+	. "github.com/textileio/textile/v2/mongodb"
 )
 
 func TestArchiveTracking_Create(t *testing.T) {

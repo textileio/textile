@@ -12,9 +12,9 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
-	"github.com/textileio/textile/api/common"
-	mdb "github.com/textileio/textile/mongodb"
-	tdb "github.com/textileio/textile/threaddb"
+	"github.com/textileio/textile/v2/api/common"
+	mdb "github.com/textileio/textile/v2/mongodb"
+	tdb "github.com/textileio/textile/v2/threaddb"
 )
 
 const (

@@ -6,7 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 func init() {

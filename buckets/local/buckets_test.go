@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/apitest"
-	. "github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/apitest"
+	. "github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/util"
 )
 
 func TestBuckets_NewBucket(t *testing.T) {

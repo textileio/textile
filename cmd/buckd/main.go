@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/core"
+	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/core"
 )
 
 const daemonName = "buckd"

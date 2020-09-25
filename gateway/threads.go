@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets"
 )
 
 // collectionHandler handles collection requests.
