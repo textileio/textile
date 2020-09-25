@@ -2026,7 +2026,7 @@ func (s *Service) PullPathAccessRoles(ctx context.Context, req *pb.PullPathAcces
 }
 
 func (s *Service) DefaultArchiveConfig(ctx context.Context, req *pb.DefaultArchiveConfigRequest) (*pb.DefaultArchiveConfigResponse, error) {
-	log.Debug("received set default archive config request")
+	log.Debug("received default archive config request")
 
 	if !s.Buckets.IsArchivingEnabled() {
 		return nil, ErrArchivingFeatureDisabled
