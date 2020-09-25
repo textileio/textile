@@ -21,15 +21,15 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/apitest"
-	"github.com/textileio/textile/api/buckets"
-	c "github.com/textileio/textile/api/buckets/client"
-	"github.com/textileio/textile/api/common"
-	hc "github.com/textileio/textile/api/hub/client"
-	hubpb "github.com/textileio/textile/api/hub/pb"
-	bucks "github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/core"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/apitest"
+	"github.com/textileio/textile/v2/api/buckets"
+	c "github.com/textileio/textile/v2/api/buckets/client"
+	"github.com/textileio/textile/v2/api/common"
+	hc "github.com/textileio/textile/v2/api/hub/client"
+	hubpb "github.com/textileio/textile/v2/api/hub/pb"
+	bucks "github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
@@ -156,7 +156,7 @@ func TestClient_Links(t *testing.T) {
 	buck, err := client.Create(ctx)
 	require.NoError(t, err)
 
-	links, err := client.Links(ctx, buck.Root.Key)
+	links, err := client.Links(ctx, buck.Root.Key, "")
 	require.NoError(t, err)
 	assert.NotEmpty(t, links.Url)
 	assert.NotEmpty(t, links.Ipns)

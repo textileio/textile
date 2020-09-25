@@ -14,8 +14,8 @@ import (
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	mdb "github.com/textileio/textile/mongodb"
-	"github.com/textileio/textile/util"
+	mdb "github.com/textileio/textile/v2/mongodb"
+	"github.com/textileio/textile/v2/util"
 )
 
 var log = logging.Logger("ipns")

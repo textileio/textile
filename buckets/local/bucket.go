@@ -16,11 +16,11 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/util"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/util"
 )
 
 var (
@@ -235,7 +235,7 @@ type Links struct {
 }
 
 // RemoteLinks returns the remote links for the bucket.
-func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
+func (b *Bucket) RemoteLinks(ctx context.Context, pth string) (links Links, err error) {
 	if b.links != nil {
 		return *b.links, nil
 	}
@@ -243,7 +243,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context) (links Links, err error) {
 	if err != nil {
 		return
 	}
-	res, err := b.clients.Buckets.Links(ctx, b.Key())
+	res, err := b.clients.Buckets.Links(ctx, b.Key(), pth)
 	if err != nil {
 		return
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 var threadsCmd = &cobra.Command{

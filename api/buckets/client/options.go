@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	pb "github.com/textileio/textile/api/buckets/pb"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
 )
 
 type createOptions struct {

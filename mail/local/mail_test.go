@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/apitest"
-	"github.com/textileio/textile/api/common"
-	hubpb "github.com/textileio/textile/api/hub/pb"
-	"github.com/textileio/textile/cmd"
-	. "github.com/textileio/textile/mail/local"
+	"github.com/textileio/textile/v2/api/apitest"
+	"github.com/textileio/textile/v2/api/common"
+	hubpb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/cmd"
+	. "github.com/textileio/textile/v2/mail/local"
 )
 
 func TestMail_NewMailbox(t *testing.T) {

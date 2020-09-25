@@ -9,10 +9,10 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/api/users/client"
-	"github.com/textileio/textile/cmd"
-	"github.com/textileio/textile/mail"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/api/users/client"
+	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/mail"
 )
 
 // Mailbox is a local-first messaging library built on ThreadDB and IPFS.

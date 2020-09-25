@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/uiprogress"
 )
 
@@ -152,7 +152,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		progress.Stop()
 		cmd.ErrCheck(err)
 
-		links, err := buck.RemoteLinks(ctx)
+		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
 		printLinks(links)
 

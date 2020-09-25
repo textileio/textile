@@ -12,11 +12,11 @@ import (
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/apitest"
-	"github.com/textileio/textile/api/common"
-	c "github.com/textileio/textile/api/hub/client"
-	pb "github.com/textileio/textile/api/hub/pb"
-	"github.com/textileio/textile/core"
+	"github.com/textileio/textile/v2/api/apitest"
+	"github.com/textileio/textile/v2/api/common"
+	c "github.com/textileio/textile/v2/api/hub/client"
+	pb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/core"
 	"google.golang.org/grpc"
 )
 

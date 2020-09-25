@@ -20,10 +20,10 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	tutil "github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/api/apitest"
-	bucks "github.com/textileio/textile/buckets"
-	. "github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/api/apitest"
+	bucks "github.com/textileio/textile/v2/buckets"
+	. "github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 func TestBucket(t *testing.T) {
@@ -75,7 +75,7 @@ func TestBucket(t *testing.T) {
 	})
 
 	t.Run("RemoteLinks", func(t *testing.T) {
-		links, err := buck.RemoteLinks(context.Background())
+		links, err := buck.RemoteLinks(context.Background(), "")
 		require.NoError(t, err)
 		assert.NotEmpty(t, links.URL)
 		assert.NotEmpty(t, links.IPNS)

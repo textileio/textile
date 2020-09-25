@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
-	"github.com/textileio/textile/api/apitest"
-	"github.com/textileio/textile/api/common"
-	hc "github.com/textileio/textile/api/hub/client"
-	pc "github.com/textileio/textile/api/pow/client"
-	"github.com/textileio/textile/core"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/apitest"
+	"github.com/textileio/textile/v2/api/common"
+	hc "github.com/textileio/textile/v2/api/hub/client"
+	pc "github.com/textileio/textile/v2/api/pow/client"
+	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 

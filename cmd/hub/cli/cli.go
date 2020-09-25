@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/cmd"
-	buck "github.com/textileio/textile/cmd/buck/cli"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/cmd"
+	buck "github.com/textileio/textile/v2/cmd/buck/cli"
 )
 
 const Name = "hub"

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/textileio/go-threads/core/thread"
-	pb "github.com/textileio/textile/api/users/pb"
-	"github.com/textileio/textile/threaddb"
+	pb "github.com/textileio/textile/v2/api/users/pb"
+	"github.com/textileio/textile/v2/threaddb"
 	"google.golang.org/grpc"
 )
 

@@ -14,10 +14,10 @@ import (
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/textile/api/hub/client"
-	pb "github.com/textileio/textile/api/hub/pb"
-	"github.com/textileio/textile/core"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/hub/client"
+	pb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 )
 
 const SessionSecret = "hubsession"

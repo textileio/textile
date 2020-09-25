@@ -37,21 +37,21 @@ import (
 	healthRpc "github.com/textileio/powergate/health/rpc"
 	netRpc "github.com/textileio/powergate/net/rpc"
 	walletRpc "github.com/textileio/powergate/wallet/rpc"
-	"github.com/textileio/textile/api/buckets"
-	bpb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/api/hub"
-	hpb "github.com/textileio/textile/api/hub/pb"
-	"github.com/textileio/textile/api/users"
-	upb "github.com/textileio/textile/api/users/pb"
-	"github.com/textileio/textile/buckets/archive"
-	"github.com/textileio/textile/dns"
-	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/gateway"
-	"github.com/textileio/textile/ipns"
-	mdb "github.com/textileio/textile/mongodb"
-	tdb "github.com/textileio/textile/threaddb"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/buckets"
+	bpb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/api/hub"
+	hpb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/api/users"
+	upb "github.com/textileio/textile/v2/api/users/pb"
+	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/dns"
+	"github.com/textileio/textile/v2/email"
+	"github.com/textileio/textile/v2/gateway"
+	"github.com/textileio/textile/v2/ipns"
+	mdb "github.com/textileio/textile/v2/mongodb"
+	tdb "github.com/textileio/textile/v2/threaddb"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -306,7 +306,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			EmailSessionSecret: conf.EmailSessionSecret,
 			IPFSClient:         ic,
 			IPNSManager:        t.ipnsm,
-			DNSManager:         t.dnsm,
 			Pow:                t.powc,
 		}
 		us = &users.Service{
@@ -327,9 +326,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		BucketsTotalMaxSize:       conf.BucketsTotalMaxSize,
 		BucketsMaxNumberPerThread: conf.BucketsMaxNumberPerThread,
 		GatewayURL:                conf.AddrGatewayURL,
+		GatewayBucketsHost:        conf.DNSDomain,
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
-		DNSManager:                t.dnsm,
 		PGClient:                  t.powc,
 		ArchiveTracker:            t.archiveTracker,
 	}

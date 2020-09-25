@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/api/common"
+	"github.com/textileio/textile/v2/api/common"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

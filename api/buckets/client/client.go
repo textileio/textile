@@ -8,9 +8,9 @@ import (
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/util"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -68,10 +68,11 @@ func (c *Client) Root(ctx context.Context, key string) (*pb.RootResponse, error)
 	})
 }
 
-// Links returns a list of links that can be used to view the bucket.
-func (c *Client) Links(ctx context.Context, key string) (*pb.LinksResponse, error) {
+// Links returns a list of bucket path URL links.
+func (c *Client) Links(ctx context.Context, key, pth string) (*pb.LinksResponse, error) {
 	return c.c.Links(ctx, &pb.LinksRequest{
-		Key: key,
+		Key:  key,
+		Path: pth,
 	})
 }
 

@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 
-	pb "github.com/textileio/textile/api/hub/pb"
+	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"google.golang.org/grpc"
 )
 

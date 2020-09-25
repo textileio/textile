@@ -8,8 +8,8 @@ import (
 	"github.com/logrusorgru/aurora"
 	su "github.com/rhysd/go-github-selfupdate/selfupdate"
 	"github.com/spf13/cobra"
-	bi "github.com/textileio/textile/buildinfo"
-	"github.com/textileio/textile/cmd"
+	bi "github.com/textileio/textile/v2/buildinfo"
+	"github.com/textileio/textile/v2/cmd"
 )
 
 func getLatestRelease() (*su.Release, error) {
@@ -42,6 +42,9 @@ func getAPIVersion() (string, error) {
 	res, err := clients.Hub.BuildInfo(ctx)
 	if err != nil {
 		return "", err
+	}
+	if res.GitSummary == "" {
+		res.GitSummary = "git"
 	}
 	return res.GitSummary, nil
 }

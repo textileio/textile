@@ -16,16 +16,15 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	powc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/textile/api/common"
-	pb "github.com/textileio/textile/api/hub/pb"
-	"github.com/textileio/textile/buckets"
-	bi "github.com/textileio/textile/buildinfo"
-	"github.com/textileio/textile/dns"
-	"github.com/textileio/textile/email"
-	"github.com/textileio/textile/ipns"
-	mdb "github.com/textileio/textile/mongodb"
-	tdb "github.com/textileio/textile/threaddb"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/api/common"
+	pb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/buckets"
+	bi "github.com/textileio/textile/v2/buildinfo"
+	"github.com/textileio/textile/v2/email"
+	"github.com/textileio/textile/v2/ipns"
+	mdb "github.com/textileio/textile/v2/mongodb"
+	tdb "github.com/textileio/textile/v2/threaddb"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,12 +47,11 @@ type Service struct {
 	EmailSessionSecret string
 	IPFSClient         iface.CoreAPI
 	IPNSManager        *ipns.Manager
-	DNSManager         *dns.Manager
 	Pow                *powc.Client
 }
 
 // Info provides the currently running API's build information
-func (s *Service) BuildInfo(ctx context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
+func (s *Service) BuildInfo(_ context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
 	return &pb.BuildInfoResponse{
 		GitCommit:  bi.GitCommit,
 		GitBranch:  bi.GitBranch,

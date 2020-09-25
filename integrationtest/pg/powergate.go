@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	pc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/health"
-	"github.com/textileio/textile/util"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 

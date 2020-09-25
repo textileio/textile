@@ -8,8 +8,8 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/buckets/local"
-	"github.com/textileio/textile/cmd"
+	"github.com/textileio/textile/v2/buckets/local"
+	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/uiprogress"
 )
 
@@ -102,19 +102,23 @@ var rootCmd = &cobra.Command{
 }
 
 var linksCmd = &cobra.Command{
-	Use: "links",
+	Use: "links [path]",
 	Aliases: []string{
 		"link",
 	},
-	Short: "Show links to where this bucket can be accessed",
-	Long:  `Displays a thread, IPNS, and website link to this bucket.`,
-	Args:  cobra.ExactArgs(0),
+	Short: "Display URL links to a bucket object.",
+	Long:  `Displays a thread, IPNS, and website link to a bucket object. Omit path to display the top-level links.`,
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		links, err := buck.RemoteLinks(ctx)
+		var pth string
+		if len(args) > 0 {
+			pth = args[0]
+		}
+		links, err := buck.RemoteLinks(ctx, pth)
 		cmd.ErrCheck(err)
 		printLinks(links)
 	},

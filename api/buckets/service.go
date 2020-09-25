@@ -30,15 +30,14 @@ import (
 	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	powUtil "github.com/textileio/powergate/util"
-	pb "github.com/textileio/textile/api/buckets/pb"
-	"github.com/textileio/textile/api/common"
-	"github.com/textileio/textile/buckets"
-	"github.com/textileio/textile/buckets/archive"
-	"github.com/textileio/textile/dns"
-	"github.com/textileio/textile/ipns"
-	mdb "github.com/textileio/textile/mongodb"
-	tdb "github.com/textileio/textile/threaddb"
-	"github.com/textileio/textile/util"
+	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets"
+	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/ipns"
+	mdb "github.com/textileio/textile/v2/mongodb"
+	tdb "github.com/textileio/textile/v2/threaddb"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -101,9 +100,9 @@ type Service struct {
 	BucketsTotalMaxSize       int64
 	BucketsMaxNumberPerThread int
 	GatewayURL                string
+	GatewayBucketsHost        string
 	IPFSClient                iface.CoreAPI
 	IPNSManager               *ipns.Manager
-	DNSManager                *dns.Manager
 	PGClient                  *powc.Client
 	ArchiveTracker            *archive.Tracker
 }
@@ -228,9 +227,13 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 	if err != nil {
 		return nil, err
 	}
+	links, err := s.createLinks(ctx, dbID, buck, "", dbToken)
+	if err != nil {
+		return nil, err
+	}
 	return &pb.CreateResponse{
 		Root:    root,
-		Links:   s.createLinks(dbID, buck),
+		Links:   links,
 		Seed:    seedData,
 		SeedCid: seed.Cid().String(),
 	}, nil
@@ -735,26 +738,53 @@ func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksRes
 	if err != nil {
 		return nil, err
 	}
-	return s.createLinks(dbID, buck), nil
+	return s.createLinks(ctx, dbID, buck, cleanPath(req.Path), dbToken)
 }
 
-func (s *Service) createLinks(dbID thread.ID, buck *tdb.Bucket) *pb.LinksResponse {
+func (s *Service) createLinks(ctx context.Context, dbID thread.ID, buck *tdb.Bucket, pth string, dbToken thread.Token) (*pb.LinksResponse, error) {
 	var threadLink, wwwLink, ipnsLink string
 	threadLink = fmt.Sprintf("%s/thread/%s/%s/%s", s.GatewayURL, dbID, buckets.CollectionName, buck.Key)
-	if s.DNSManager != nil && s.DNSManager.Domain != "" {
+	if s.GatewayBucketsHost != "" {
 		parts := strings.Split(s.GatewayURL, "://")
 		if len(parts) < 2 {
-			return nil
+			return nil, fmt.Errorf("failed to parse gateway URL: %s", s.GatewayURL)
 		}
-		scheme := parts[0]
-		wwwLink = fmt.Sprintf("%s://%s.%s", scheme, buck.Key, s.DNSManager.Domain)
+		wwwLink = fmt.Sprintf("%s://%s.%s", parts[0], buck.Key, s.GatewayBucketsHost)
 	}
 	ipnsLink = fmt.Sprintf("%s/ipns/%s", s.GatewayURL, buck.Key)
+
+	if _, _, ok := buck.GetMetadataForPath(pth, false); !ok {
+		return nil, fmt.Errorf("could not resolve path: %s", pth)
+	}
+	if pth != "" {
+		npth, err := inflateFilePath(buck, pth)
+		if err != nil {
+			return nil, err
+		}
+		linkKey := buck.GetLinkEncryptionKey()
+		if _, err := s.getNodeAtPath(ctx, npth, linkKey); err != nil {
+			return nil, err
+		}
+		pth = "/" + pth
+		threadLink += pth
+		if wwwLink != "" {
+			wwwLink += pth
+		}
+		ipnsLink += pth
+	}
+	if buck.IsPrivate() {
+		query := "?token=" + string(dbToken)
+		threadLink += query
+		if wwwLink != "" {
+			wwwLink += query
+		}
+		ipnsLink += query
+	}
 	return &pb.LinksResponse{
 		Url:  threadLink,
 		Www:  wwwLink,
 		Ipns: ipnsLink,
-	}
+	}, nil
 }
 
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {

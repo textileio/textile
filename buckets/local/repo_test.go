@@ -16,7 +16,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	. "github.com/textileio/textile/buckets/local"
+	. "github.com/textileio/textile/v2/buckets/local"
 )
 
 func TestNewRepo(t *testing.T) {
