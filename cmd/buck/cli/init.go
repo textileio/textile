@@ -33,6 +33,9 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		conf, err := bucks.NewConfigFromCmd(c, ".")
 		cmd.ErrCheck(err)
 
+		quiet, err := c.Flags().GetBool("quiet")
+		cmd.ErrCheck(err)
+
 		existing := conf.Thread.Defined() && conf.Key != ""
 		chooseExisting, err := c.Flags().GetBool("existing")
 		cmd.ErrCheck(err)
@@ -137,11 +140,16 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		events := make(chan local.PathEvent)
-		defer close(events)
-		progress := uiprogress.New()
-		progress.Start()
-		go handleProgressBars(progress, events)
+
+		var events chan local.PathEvent
+		var progress *uiprogress.Progress
+		if !quiet {
+			events = make(chan local.PathEvent)
+			defer close(events)
+			progress = uiprogress.New()
+			progress.Start()
+			go handleProgressBars(progress, events)
+		}
 		buck, err := bucks.NewBucket(
 			ctx,
 			conf,
@@ -149,7 +157,9 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			local.WithPrivate(private),
 			local.WithCid(xcid),
 			local.WithExistingPathEvents(events))
-		progress.Stop()
+		if progress != nil {
+			progress.Stop()
+		}
 		cmd.ErrCheck(err)
 
 		links, err := buck.RemoteLinks(ctx, "")
