@@ -30,6 +30,8 @@ var pushCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
+		quiet, err := c.Flags().GetBool("quiet")
+		cmd.ErrCheck(err)
 		maxSize, err := c.Flags().GetInt64("maxsize")
 		if err != nil {
 			cmd.Fatal(err)
@@ -46,17 +48,23 @@ var pushCmd = &cobra.Command{
 			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/MiB, maxSize))
 		}
 
-		events := make(chan local.PathEvent)
-		defer close(events)
-		progress := uiprogress.New()
-		progress.Start()
-		go handleProgressBars(progress, events)
+		var events chan local.PathEvent
+		var progress *uiprogress.Progress
+		if !quiet {
+			events = make(chan local.PathEvent)
+			defer close(events)
+			progress = uiprogress.New()
+			progress.Start()
+			go handleProgressBars(progress, events)
+		}
 		roots, err := buck.PushLocal(
 			ctx,
 			local.WithConfirm(getConfirm("Push %d changes", yes)),
 			local.WithForce(force),
 			local.WithPathEvents(events))
-		progress.Stop()
+		if progress != nil {
+			progress.Stop()
+		}
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {

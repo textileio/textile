@@ -70,13 +70,17 @@ var archiveCmd = &cobra.Command{
 	Short: "Create a Filecoin archive",
 	Long:  `Creates a Filecoin archive from the remote bucket root. Pass in a custom archive storage config via the --file flag or stdin to override the default archive storage configuration.`,
 	Run: func(c *cobra.Command, args []string) {
-		cmd.Warn("Archives are currently saved on an experimental test network. They may be lost at any time.")
-		prompt := promptui.Prompt{
-			Label:     "Proceed",
-			IsConfirm: true,
-		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
+		yes, err := c.Flags().GetBool("yes")
+		cmd.ErrCheck(err)
+		if !yes {
+			cmd.Warn("Archives are currently saved on an experimental test network. They may be lost at any time.")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
 		}
 
 		var reader io.Reader

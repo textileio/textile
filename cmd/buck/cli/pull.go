@@ -23,22 +23,30 @@ var pullCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
+		quiet, err := c.Flags().GetBool("quiet")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		events := make(chan local.PathEvent)
-		defer close(events)
-		progress := uiprogress.New()
-		progress.Start()
-		go handleProgressBars(progress, events)
+		var events chan local.PathEvent
+		var progress *uiprogress.Progress
+		if !quiet {
+			events = make(chan local.PathEvent)
+			defer close(events)
+			progress = uiprogress.New()
+			progress.Start()
+			go handleProgressBars(progress, events)
+		}
 		roots, err := buck.PullRemote(
 			ctx,
 			local.WithConfirm(getConfirm("Discard %d local changes", yes)),
 			local.WithForce(force),
 			local.WithHard(hard),
 			local.WithPathEvents(events))
-		progress.Stop()
+		if progress != nil {
+			progress.Stop()
+		}
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {
