@@ -75,8 +75,7 @@ var (
 
 	// ToDo: Export the default storage config from powergate so we can create this from it.
 	defaultDefaultArchiveConfig = mdb.ArchiveConfig{
-		RepFactor:       5,
-		TrustedMiners:   []string{"t016303", "t016304", "t016305", "t016306", "t016309"},
+		RepFactor:       1,
 		DealMinDuration: powUtil.MinDealDuration * 2,
 		FastRetrieval:   true,
 		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
