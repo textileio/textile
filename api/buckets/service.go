@@ -2243,6 +2243,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				}
 			} else {
 				// New storage config, so remove and push.
+				_, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, oldCid, powc.WithStorageConfig(ffs.StorageConfig{}), powc.WithOverride(true))
+				if err != nil {
+					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %s", err)
+				}
 				err = s.PGClient.FFS.Remove(ctxFFS, oldCid)
 				if err != nil {
 					return nil, fmt.Errorf("removing old cid storage: %s", err)
