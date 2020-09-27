@@ -102,62 +102,62 @@ func TestArchiveTracker(t *testing.T) {
 }
 
 func TestArchiveBucketWorkflow(t *testing.T) {
-	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
-		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+	// util.RunFlaky(t, func(t *util.FlakyT) {
+	_ = StartPowergate(t)
+	ctx, _, client, shutdown := setup(t)
+	defer shutdown(true)
 
-		// Create bucket with a file.
-		b, err := client.Create(ctx)
-		require.NoError(t, err)
-		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
-		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+	// Create bucket with a file.
+	b, err := client.Create(ctx)
+	require.NoError(t, err)
+	time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+	rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
-		// Archive it (push to PG)
-		err = client.Archive(ctx, b.Root.Key)
-		require.NoError(t, err)
+	// Archive it (push to PG)
+	err = client.Archive(ctx, b.Root.Key)
+	require.NoError(t, err)
 
-		// Wait for the archive to finish.
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+	// Wait for the archive to finish.
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 
-		// Verify that the current archive status is Done.
-		as, err := client.ArchiveStatus(ctx, b.Root.Key)
-		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
+	// Verify that the current archive status is Done.
+	as, err := client.ArchiveStatus(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus(), as.FailedMsg)
 
-		// Get ArchiveInfo, which has all successful pushs with
-		// its data about deals.
-		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
-		require.NoError(t, err)
+	// Get ArchiveInfo, which has all successful pushs with
+	// its data about deals.
+	ai, err := client.ArchiveInfo(ctx, b.Root.Key)
+	require.NoError(t, err)
 
-		arc := ai.GetArchive()
-		require.Equal(t, rootCid1, arc.Cid)
-		require.Len(t, arc.Deals, 1)
-		deal := arc.Deals[0]
-		require.NotEmpty(t, deal.GetProposalCid())
-		require.NotEmpty(t, deal.GetMiner())
+	arc := ai.GetArchive()
+	require.Equal(t, rootCid1, arc.Cid)
+	require.Len(t, arc.Deals, 1)
+	deal := arc.Deals[0]
+	require.NotEmpty(t, deal.GetProposalCid())
+	require.NotEmpty(t, deal.GetMiner())
 
-		// Add another file to the bucket.
-		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
+	// Add another file to the bucket.
+	rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
 
-		// Archive again.
-		err = client.Archive(ctx, b.Root.Key)
-		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		as, err = client.ArchiveStatus(ctx, b.Root.Key)
-		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
+	// Archive again.
+	err = client.Archive(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+	as, err = client.ArchiveStatus(ctx, b.Root.Key)
+	require.NoError(t, err)
+	require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
 
-		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
-		require.NoError(t, err)
+	ai, err = client.ArchiveInfo(ctx, b.Root.Key)
+	require.NoError(t, err)
 
-		arc = ai.GetArchive()
-		require.Equal(t, rootCid2, arc.Cid)
-		require.Len(t, arc.Deals, 1)
-		deal = arc.Deals[0]
-		require.NotEmpty(t, deal.GetProposalCid())
-		require.NotEmpty(t, deal.GetMiner())
-	})
+	arc = ai.GetArchive()
+	require.Equal(t, rootCid2, arc.Cid)
+	require.Len(t, arc.Deals, 1)
+	deal = arc.Deals[0]
+	require.NotEmpty(t, deal.GetProposalCid())
+	require.NotEmpty(t, deal.GetMiner())
+	// })
 }
 
 func TestArchiveWatch(t *testing.T) {
