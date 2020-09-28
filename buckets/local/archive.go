@@ -56,6 +56,7 @@ type ArchiveRenew struct {
 	Threshold int
 }
 
+// DefaultArchiveConfig gets the default archive config for the specified Bucket.
 func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig, err error) {
 	b.Lock()
 	defer b.Unlock()
@@ -95,6 +96,7 @@ func fromPbArchiveConfig(pbConfig pb.ArchiveConfig) ArchiveConfig {
 	return config
 }
 
+// SetDefaultArchiveConfig sets the default archive config for the specified Bucket.
 func (b *Bucket) SetDefaultArchiveConfig(ctx context.Context, config ArchiveConfig) (err error) {
 	b.Lock()
 	defer b.Unlock()
@@ -130,6 +132,7 @@ type archiveRemoteOptions struct {
 
 type ArchiveRemoteOption func(*archiveRemoteOptions)
 
+// WithArchiveConfig allows you to provide a custom ArchiveConfig for a single call to ArchiveRemote.
 func WithArchiveConfig(config ArchiveConfig) ArchiveRemoteOption {
 	return func(opts *archiveRemoteOptions) {
 		opts.archiveConfig = &config
@@ -156,10 +159,7 @@ func (b *Bucket) ArchiveRemote(ctx context.Context, opts ...ArchiveRemoteOption)
 		return err
 	}
 
-	if err := b.clients.Buckets.Archive(ctx, b.Key(), clientOpts...); err != nil {
-		return err
-	}
-	return nil
+	return b.clients.Buckets.Archive(ctx, b.Key(), clientOpts...)
 }
 
 // ArchiveStatusMessage is used to wrap an archive status message.

@@ -17,6 +17,7 @@ var defaultArchiveConfigCmd = &cobra.Command{
 	Use:   "default-config",
 	Short: "Print the default archive storage configuration for the specified Bucket.",
 	Long:  `Print the default archive storage configuration for the specified Bucket.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
@@ -34,6 +35,7 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 	Use:   "set-default-config [(optional)file]",
 	Short: "Set the default archive storage configuration for the specified Bucket from a file or stdin.",
 	Long:  `Set the default archive storage configuration for the specified Bucket from a file or stdin.`,
+	Args:  cobra.RangeArgs(0, 1),
 	Run: func(c *cobra.Command, args []string) {
 		var reader io.Reader
 		if len(args) > 0 {
@@ -69,6 +71,7 @@ var archiveCmd = &cobra.Command{
 	Use:   "archive",
 	Short: "Create a Filecoin archive",
 	Long:  `Creates a Filecoin archive from the remote bucket root. Pass in a custom archive storage config via the --file flag or stdin to override the default archive storage configuration.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
@@ -129,6 +132,7 @@ var archiveStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status of the latest archive",
 	Long:  `Shows the status of the most recent bucket archive.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		watch, err := c.Flags().GetBool("watch")
 		cmd.ErrCheck(err)
@@ -161,6 +165,7 @@ var archiveInfoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Show info about the current archive",
 	Long:  `Shows information about the current archive.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()

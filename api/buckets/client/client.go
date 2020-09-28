@@ -345,6 +345,7 @@ func (c *Client) PullPathAccessRoles(ctx context.Context, key, pth string) (map[
 	return buckets.RolesFromPb(res.Roles)
 }
 
+// DefaultArchiveConfig gets the default archive config for the specified Bucket.
 func (c *Client) DefaultArchiveConfig(ctx context.Context, key string) (*pb.ArchiveConfig, error) {
 	res, err := c.c.DefaultArchiveConfig(ctx, &pb.DefaultArchiveConfigRequest{Key: key})
 	if err != nil {
@@ -353,6 +354,7 @@ func (c *Client) DefaultArchiveConfig(ctx context.Context, key string) (*pb.Arch
 	return res.ArchiveConfig, nil
 }
 
+// SetDefaultArchiveConfig sets the default archive config for the specified Bucket.
 func (c *Client) SetDefaultArchiveConfig(ctx context.Context, key string, config *pb.ArchiveConfig) error {
 	req := &pb.SetDefaultArchiveConfigRequest{
 		Key:           key,

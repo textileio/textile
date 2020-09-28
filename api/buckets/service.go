@@ -2159,7 +2159,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		archiveConfig = ba.DefaultArchiveConfig
 	} else {
 		// The queried BucketArchive was created before we added .DefaultArchiveConfig so just use the default default
-		// and defer saving the default until the user calls DefaultArchiveConfic or SetDefaultArchiveConfig.
+		// and defer saving the default until the user calls DefaultArchiveConfig or SetDefaultArchiveConfig.
 		archiveConfig = &defaultDefaultArchiveConfig
 	}
 

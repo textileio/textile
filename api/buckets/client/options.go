@@ -59,6 +59,7 @@ func WithProgress(ch chan<- int64) Option {
 
 type ArchiveOption func(*pb.ArchiveRequest)
 
+// WithArchiveConfig allows you to provide a custom ArchiveConfig for a single call to Archive.
 func WithArchiveConfig(config *pb.ArchiveConfig) ArchiveOption {
 	return func(req *pb.ArchiveRequest) {
 		req.ArchiveConfig = config
