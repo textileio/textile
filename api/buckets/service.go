@@ -9,11 +9,11 @@ import (
 	"io"
 	"io/ioutil"
 	gopath "path"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/ipfs/go-cid"
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -2236,7 +2236,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				}
 			}
 
-			if reflect.DeepEqual(&storageConfig, oldStorageConfig) {
+			if cmp.Equal(&storageConfig, oldStorageConfig) {
 				// Old storage config is the same as the new so use replace.
 				jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
 				if err != nil {

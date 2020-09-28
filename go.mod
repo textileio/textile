@@ -17,6 +17,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/gogo/status v1.1.0
 	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.5.1
 	github.com/gosimple/slug v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
 	github.com/improbable-eng/grpc-web v0.13.0
