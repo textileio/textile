@@ -181,20 +181,20 @@ message PullPathAccessRolesResponse {
 
 message ArchiveConfig {
     int32 rep_factor = 1;
-	int64 deal_min_duration = 2;
-	repeated string excluded_miners = 3;
-	repeated string trusted_miners = 4;
-	repeated string country_codes = 5;
-	ArchiveRenew renew = 6;
-	string addr = 7;
-	uint64 max_price = 8;
-	bool fast_retrieval = 9;
-	int64 deal_start_offset = 10;
+    int64 deal_min_duration = 2;
+    repeated string excluded_miners = 3;
+    repeated string trusted_miners = 4;
+    repeated string country_codes = 5;
+    ArchiveRenew renew = 6;
+    string addr = 7;
+    uint64 max_price = 8;
+    bool fast_retrieval = 9;
+    int64 deal_start_offset = 10;
 }
 
 message ArchiveRenew {
-	bool enabled = 1;
-	int32 threshold = 2;
+    bool enabled = 1;
+    int32 threshold = 2;
 }
 
 message DefaultArchiveConfigRequest {

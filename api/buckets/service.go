@@ -63,7 +63,8 @@ var (
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
 
-	// baseArchiveStorageConfig is used as
+	// baseArchiveStorageConfig is used to build the final StorageConfig after being
+	// combined with information from the ArchiveConfig
 	baseArchiveStorageConfig = ffs.StorageConfig{
 		Hot: ffs.HotConfig{
 			Enabled: false,
@@ -76,7 +77,7 @@ var (
 	// ToDo: Export the default storage config from powergate so we can create this from it.
 	defaultDefaultArchiveConfig = mdb.ArchiveConfig{
 		RepFactor:       1,
-		DealMinDuration: powUtil.MinDealDuration * 2,
+		DealMinDuration: powUtil.MinDealDuration,
 		FastRetrieval:   true,
 		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
 	}
