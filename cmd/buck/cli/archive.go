@@ -97,6 +97,16 @@ var archiveCmd = &cobra.Command{
 			}()
 			cmd.ErrCheck(err)
 			reader = file
+			if !yes {
+				cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin testnet.")
+				prompt := promptui.Prompt{
+					Label:     "Proceed",
+					IsConfirm: true,
+				}
+				if _, err := prompt.Run(); err != nil {
+					cmd.End("")
+				}
+			}
 		} else {
 			stat, _ := os.Stdin.Stat()
 			// stdin is being piped in (not being read from terminal)
@@ -108,15 +118,6 @@ var archiveCmd = &cobra.Command{
 		var opts []local.ArchiveRemoteOption
 
 		if reader != nil {
-			cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin testnet.")
-			prompt := promptui.Prompt{
-				Label:     "Proceed",
-				IsConfirm: true,
-			}
-			if _, err := prompt.Run(); err != nil {
-				cmd.End("")
-			}
-
 			buf := new(bytes.Buffer)
 			_, err := buf.ReadFrom(reader)
 			cmd.ErrCheck(err)
