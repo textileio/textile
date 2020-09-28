@@ -1,4 +1,4 @@
-version: '3.7'
+version: "3.7"
 
 services:
   textile:
@@ -25,7 +25,7 @@ services:
       - powergate
 
   powergate:
-    image: textile/powergate:v0.6.0-rc2
+    image: textile/powergate:v0.6.7
     depends_on:
       - ipfs
       - ipfsbuckets

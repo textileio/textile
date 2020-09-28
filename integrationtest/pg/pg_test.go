@@ -62,7 +62,7 @@ func TestArchiveTracker(t *testing.T) {
 		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
 		// Archive it (push to PG)
-		_, err = client.Archive(ctx, b.Root.Key)
+		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give some time to push the archive to PG.
 
@@ -114,7 +114,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
 		// Archive it (push to PG)
-		_, err = client.Archive(ctx, b.Root.Key)
+		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 
 		// Wait for the archive to finish.
@@ -123,7 +123,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		// Verify that the current archive status is Done.
 		as, err := client.ArchiveStatus(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus(), as.FailedMsg)
 
 		// Get ArchiveInfo, which has all successful pushs with
 		// its data about deals.
@@ -141,7 +141,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
 
 		// Archive again.
-		_, err = client.Archive(ctx, b.Root.Key)
+		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 		as, err = client.ArchiveStatus(ctx, b.Root.Key)
@@ -171,7 +171,7 @@ func TestArchiveWatch(t *testing.T) {
 		time.Sleep(4 * time.Second)
 		addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
 
-		_, err = client.Archive(ctx, b.Root.Key)
+		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(ctx)
@@ -207,7 +207,7 @@ func TestFailingArchive(t *testing.T) {
 		// should lead to an error on the PG side.
 		addDataFileToBucket(ctx, t, client, b.Root.Key, "Data3.txt")
 
-		_, err = client.Archive(ctx, b.Root.Key)
+		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), time.Minute, 2*time.Second)

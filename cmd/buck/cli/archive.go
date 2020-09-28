@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"os"
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -9,10 +13,65 @@ import (
 	"github.com/textileio/textile/v2/cmd"
 )
 
+var defaultArchiveConfigCmd = &cobra.Command{
+	Use:   "default-config",
+	Short: "Print the default archive storage configuration for the specified Bucket.",
+	Long:  `Print the default archive storage configuration for the specified Bucket.`,
+	Args:  cobra.NoArgs,
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		config, err := buck.DefaultArchiveConfig(ctx)
+		cmd.ErrCheck(err)
+		bytes, err := json.MarshalIndent(config, "", "  ")
+		cmd.ErrCheck(err)
+		cmd.Message("%s", string(bytes))
+	},
+}
+
+var setDefaultArchiveConfigCmd = &cobra.Command{
+	Use:   "set-default-config [(optional)file]",
+	Short: "Set the default archive storage configuration for the specified Bucket from a file or stdin.",
+	Long:  `Set the default archive storage configuration for the specified Bucket from a file or stdin.`,
+	Args:  cobra.RangeArgs(0, 1),
+	Run: func(c *cobra.Command, args []string) {
+		var reader io.Reader
+		if len(args) > 0 {
+			file, err := os.Open(args[0])
+			defer func() {
+				err := file.Close()
+				cmd.ErrCheck(err)
+			}()
+			reader = file
+			cmd.ErrCheck(err)
+		} else {
+			reader = c.InOrStdin()
+		}
+
+		buf := new(bytes.Buffer)
+		_, err := buf.ReadFrom(reader)
+		cmd.ErrCheck(err)
+
+		config := local.ArchiveConfig{}
+		cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		err = buck.SetDefaultArchiveConfig(ctx, config)
+		cmd.ErrCheck(err)
+		cmd.Success("Bucket default archive config updated")
+	},
+}
+
 var archiveCmd = &cobra.Command{
 	Use:   "archive",
 	Short: "Create a Filecoin archive",
-	Long:  `Creates a Filecoin archive from the remote bucket root.`,
+	Long:  `Creates a Filecoin archive from the remote bucket root. Pass in a custom archive storage config via the --file flag or stdin to override the default archive storage configuration.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
@@ -26,11 +85,54 @@ var archiveCmd = &cobra.Command{
 				cmd.End("")
 			}
 		}
+
+		var reader io.Reader
+		if c.Flags().Changed("file") {
+			configPath, err := c.Flags().GetString("file")
+			cmd.ErrCheck(err)
+			file, err := os.Open(configPath)
+			defer func() {
+				err := file.Close()
+				cmd.ErrCheck(err)
+			}()
+			cmd.ErrCheck(err)
+			reader = file
+			if !yes {
+				cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin testnet.")
+				prompt := promptui.Prompt{
+					Label:     "Proceed",
+					IsConfirm: true,
+				}
+				if _, err := prompt.Run(); err != nil {
+					cmd.End("")
+				}
+			}
+		} else {
+			stat, _ := os.Stdin.Stat()
+			// stdin is being piped in (not being read from terminal)
+			if (stat.Mode() & os.ModeCharDevice) == 0 {
+				reader = c.InOrStdin()
+			}
+		}
+
+		var opts []local.ArchiveRemoteOption
+
+		if reader != nil {
+			buf := new(bytes.Buffer)
+			_, err := buf.ReadFrom(reader)
+			cmd.ErrCheck(err)
+
+			config := local.ArchiveConfig{}
+			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
+
+			opts = append(opts, local.WithArchiveConfig(config))
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		err = buck.ArchiveRemote(ctx)
+		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
 		cmd.Success("Archive queued successfully")
 	},
@@ -40,6 +142,7 @@ var archiveStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status of the latest archive",
 	Long:  `Shows the status of the most recent bucket archive.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		watch, err := c.Flags().GetBool("watch")
 		cmd.ErrCheck(err)
@@ -72,6 +175,7 @@ var archiveInfoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Show info about the current archive",
 	Long:  `Shows information about the current archive.`,
+	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()

@@ -24,7 +24,7 @@ func init() {
 
 func Init(baseCmd *cobra.Command) {
 	baseCmd.AddCommand(initCmd, linksCmd, rootCmd, statusCmd, lsCmd, pushCmd, pullCmd, addCmd, watchCmd, catCmd, destroyCmd, encryptCmd, decryptCmd, archiveCmd, rolesCmd)
-	archiveCmd.AddCommand(archiveStatusCmd, archiveInfoCmd)
+	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveStatusCmd, archiveInfoCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
 
 	initCmd.PersistentFlags().String("key", "", "Bucket key")
@@ -51,7 +51,9 @@ func Init(baseCmd *cobra.Command) {
 	encryptCmd.Flags().StringP("password", "p", "", "Encryption password")
 	decryptCmd.Flags().StringP("password", "p", "", "Decryption password")
 
+	archiveCmd.Flags().StringP("file", "f", "", "Optional path to a file containing archive config json that will override the default")
 	archiveCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+
 	archiveStatusCmd.Flags().BoolP("watch", "w", false, "Watch execution log")
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")

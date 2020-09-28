@@ -17,6 +17,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/gogo/status v1.1.0
 	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.5.1
 	github.com/gosimple/slug v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
 	github.com/improbable-eng/grpc-web v0.13.0
@@ -67,7 +68,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v1.0.0
-	github.com/textileio/powergate v0.6.0-rc2
+	github.com/textileio/powergate v0.6.7
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.4.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
