@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const uri = "mongodb://127.0.0.1:27017"
+const uri = "mongodb://localhost:27017/?replicaSet=rs0"
 
 func newDB(t *testing.T) *mongo.Database {
 	ctx, cancel := context.WithCancel(context.Background())

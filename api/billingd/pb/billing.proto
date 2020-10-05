@@ -1,0 +1,70 @@
+syntax = "proto3";
+package api.billing.pb;
+
+message CheckHealthRequest {}
+
+message CheckHealthResponse {}
+
+message CreateCustomerRequest {
+    string email = 1;
+}
+
+message CreateCustomerResponse {
+    string customer_id = 1;
+}
+
+message SetStoredDataRequest {
+    string customer_id = 1;
+    int64 byte_size = 2;
+}
+
+message SetStoredDataResponse {
+    int64 period_units = 1;
+    bool changed = 2;
+}
+
+message IncNetworkEgressRequest {
+    string customer_id = 1;
+    int64 byte_size = 2;
+}
+
+message IncNetworkEgressResponse {
+    int64 period_units = 1;
+    bool changed = 2;
+}
+
+message IncInstanceReadsRequest {
+    string customer_id = 1;
+    int64 count = 2;
+}
+
+message IncInstanceReadsResponse {
+    int64 period_units = 1;
+    bool changed = 2;
+}
+
+message IncInstanceWritesRequest {
+    string customer_id = 1;
+    int64 count = 2;
+}
+
+message IncInstanceWritesResponse {
+    int64 period_units = 1;
+    bool changed = 2;
+}
+
+message DeleteCustomerRequest {
+    string customer_id = 1;
+}
+
+message DeleteCustomerResponse {}
+
+service APIService {
+    rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
+    rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
+    rpc SetStoredData(SetStoredDataRequest) returns (SetStoredDataResponse) {}
+    rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
+    rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
+    rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
+    rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
+}

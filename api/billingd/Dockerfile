@@ -32,7 +32,7 @@ RUN cd $SRC_DIR \
 COPY . $SRC_DIR
 
 # Install the daemon
-RUN cd $SRC_DIR && TXTL_BUILD_FLAGS="CGO_ENABLED=0 GOOS=linux" make build-hubd
+RUN cd $SRC_DIR && TXTL_BUILD_FLAGS="CGO_ENABLED=0 GOOS=linux" make build-billingd
 
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1.31.0-glibc
@@ -40,7 +40,7 @@ LABEL maintainer="Textile <contact@textile.io>"
 
 # Get the textile binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /textile
-COPY --from=0 /textile/hubd /usr/local/bin/hubd
+COPY --from=0 /textile/billingd /usr/local/bin/billingd
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
@@ -49,30 +49,10 @@ COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 /lib/x86_64-linux-gnu/libdl.so.2 /lib/libdl.so.2
 
 # addrApi; should be exposed to the public
-EXPOSE 3006
-# addrApiProxy; should be exposed to the public
-EXPOSE 3007
-# addrThreadsHost; should be exposed to the public
-EXPOSE 4006
-# addrGatewayHost; should be exposed to the public
-EXPOSE 8006
-
-# Create the repo directory and switch to a non-privileged user.
-ENV TEXTILE_PATH /data/textile
-RUN mkdir -p $TEXTILE_PATH \
-  && mkdir -p $TEXTILE_PATH/logstore \
-  && mkdir -p $TEXTILE_PATH/eventstore \
-  && mkdir -p $TEXTILE_PATH/ipfslite \
-  && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
-  && chown -R textile:users $TEXTILE_PATH
+EXPOSE 10006
 
 # Switch to a non-privileged user.
+RUN addgroup textile && adduser -D -G textile textile
 USER textile
 
-# Expose the repo as a volume.
-# Important this happens after the USER directive so permission are correct.
-VOLUME $TEXTILE_PATH
-
-ENTRYPOINT ["/sbin/tini", "--", "hubd"]
-
-CMD ["--repo=/data/textile"]
+ENTRYPOINT ["/sbin/tini", "--", "billingd"]

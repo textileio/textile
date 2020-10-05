@@ -26,6 +26,10 @@ build-buckd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./cmd/buckd
 .PHONY: build-buckd
 
+build-billingd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/billingd
+.PHONY: build-billingd
+
 install: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
 .PHONY: install
@@ -45,6 +49,10 @@ install-buck: $(GOVVV)
 install-buckd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./cmd/buckd
 .PHONY: install-buckd
+
+install-billingd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/billingd
+.PHONY: install-billingd
 
 define gen_release_files
 	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)
@@ -97,6 +105,15 @@ buck-stop:
 
 buck-clean:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans
+
+billing-up:
+	docker-compose -f api/billingd/docker-compose-dev.yml up --build
+
+billing-stop:
+	docker-compose -f api/billingd/docker-compose-dev.yml stop
+
+billing-clean:
+	docker-compose -f api/billingd/docker-compose-dev.yml down -v --remove-orphans
 
 # local is what we run when testing locally.
 # This does breaking change detection against our local git repository.

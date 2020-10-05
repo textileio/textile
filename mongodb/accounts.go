@@ -37,9 +37,9 @@ type Account struct {
 	Email            string
 	Token            thread.Token
 	Members          []Member
+	PowInfo          *PowInfo
 	BucketsTotalSize int64
 	CreatedAt        time.Time
-	PowInfo          *PowInfo
 }
 
 type AccountType int
@@ -127,8 +127,8 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 		Secret:    thread.NewLibp2pIdentity(sk),
 		Email:     email,
 		Username:  username,
-		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
+		CreatedAt: time.Now(),
 	}
 	id, err := doc.Key.MarshalBinary()
 	if err != nil {
@@ -144,8 +144,8 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 		"secret":             secret,
 		"email":              doc.Email,
 		"username":           doc.Username,
-		"created_at":         doc.CreatedAt,
 		"buckets_total_size": int64(0),
+		"created_at":         doc.CreatedAt,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err := a.col.InsertOne(ctx, data); err != nil {
@@ -180,8 +180,8 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 		Name:      name,
 		Username:  slg,
 		Members:   members,
-		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
+		CreatedAt: time.Now(),
 	}
 	id, err := doc.Key.MarshalBinary()
 	if err != nil {
@@ -204,13 +204,14 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 		}
 	}
 	data := bson.M{
-		"_id":        id,
-		"type":       doc.Type,
-		"secret":     secret,
-		"name":       doc.Name,
-		"username":   doc.Username,
-		"members":    rmems,
-		"created_at": doc.CreatedAt,
+		"_id":                id,
+		"type":               doc.Type,
+		"secret":             secret,
+		"name":               doc.Name,
+		"username":           doc.Username,
+		"members":            rmems,
+		"buckets_total_size": int64(0),
+		"created_at":         doc.CreatedAt,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err = a.col.InsertOne(ctx, data); err != nil {
@@ -269,7 +270,16 @@ func (a *Accounts) GetByUsername(ctx context.Context, username string) (*Account
 }
 
 func (a *Accounts) GetByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (*Account, error) {
-	res := a.col.FindOne(ctx, bson.D{{"$or", bson.A{bson.D{{"username", usernameOrEmail}}, bson.D{{"email", usernameOrEmail}}}}})
+	res := a.col.FindOne(ctx, bson.D{
+		{"$or", bson.A{
+			bson.D{
+				{"username", usernameOrEmail},
+			},
+			bson.D{
+				{"email", usernameOrEmail},
+			},
+		}},
+	})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -607,7 +617,7 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		Token:            token,
 		Members:          mems,
 		BucketsTotalSize: totalSize,
-		CreatedAt:        created,
 		PowInfo:          decodePowInfo(raw),
+		CreatedAt:        created,
 	}, nil
 }

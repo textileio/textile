@@ -87,7 +87,7 @@ func NewUsername() string {
 }
 
 func NewEmail() string {
-	return fmt.Sprintf("%s@doe.com", NewUsername())
+	return fmt.Sprintf("%s@test.com", NewUsername())
 }
 
 func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config, username, email string) *pb.SignupResponse {

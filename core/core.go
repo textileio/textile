@@ -6,18 +6,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/golang/protobuf/proto"
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
 	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,7 +23,6 @@ import (
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
 	tc "github.com/textileio/go-threads/common"
-	"github.com/textileio/go-threads/core/thread"
 	netapi "github.com/textileio/go-threads/net/api"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
@@ -53,10 +48,7 @@ import (
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
-	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -366,10 +358,11 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
-				generatePowUnaryInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.powc, t.collections),
-				generatePowUnaryInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.powc, t.collections),
-				generatePowUnaryInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.powc, t.collections),
-				generatePowUnaryInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.powc, t.collections),
+				t.billingInterceptor(),
+				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.powc, t.collections),
+				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.powc, t.collections),
+				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.powc, t.collections),
+				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.powc, t.collections),
 			),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
@@ -503,430 +496,6 @@ func (t *Textile) Close(force bool) error {
 
 func (t *Textile) HostID() peer.ID {
 	return t.ts.Host().ID()
-}
-
-func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
-	method, _ := grpc.Method(ctx)
-	for _, ignored := range ignoreMethods {
-		if method == ignored {
-			return ctx, nil
-		}
-	}
-	for _, block := range blockMethods {
-		if method == block {
-			return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
-		}
-	}
-
-	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
-		ctx = common.NewThreadIDContext(ctx, threadID)
-	}
-	if threadName, ok := common.ThreadNameFromMD(ctx); ok {
-		ctx = common.NewThreadNameContext(ctx, threadName)
-	}
-	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
-		return nil, err
-	} else {
-		ctx = thread.NewTokenContext(ctx, threadToken)
-	}
-
-	sid, ok := common.SessionFromMD(ctx)
-	if ok {
-		ctx = common.NewSessionContext(ctx, sid)
-		if sid == t.internalHubSession {
-			return ctx, nil
-		}
-		session, err := t.collections.Sessions.Get(ctx, sid)
-		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "Invalid session")
-		}
-		if time.Now().After(session.ExpiresAt) {
-			return nil, status.Error(codes.Unauthenticated, "Expired session")
-		}
-		if err := t.collections.Sessions.Touch(ctx, session.ID); err != nil {
-			return nil, err
-		}
-		ctx = mdb.NewSessionContext(ctx, session)
-
-		dev, err := t.collections.Accounts.Get(ctx, session.Owner)
-		if err != nil {
-			return nil, status.Error(codes.NotFound, "User not found")
-		}
-		ctx = mdb.NewDevContext(ctx, dev)
-
-		orgSlug, ok := common.OrgSlugFromMD(ctx)
-		if ok {
-			isMember, err := t.collections.Accounts.IsMember(ctx, orgSlug, dev.Key)
-			if err != nil {
-				return nil, err
-			}
-			if !isMember {
-				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
-			} else {
-				org, err := t.collections.Accounts.GetByUsername(ctx, orgSlug)
-				if err != nil {
-					return nil, status.Error(codes.NotFound, "Org not found")
-				}
-				ctx = mdb.NewOrgContext(ctx, org)
-				ctx = common.NewOrgSlugContext(ctx, orgSlug)
-				ctx = thread.NewTokenContext(ctx, org.Token)
-			}
-		} else {
-			ctx = thread.NewTokenContext(ctx, dev.Token)
-		}
-	} else if k, ok := common.APIKeyFromMD(ctx); ok {
-		key, err := t.collections.APIKeys.Get(ctx, k)
-		if err != nil || !key.Valid {
-			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
-		}
-		ctx = common.NewAPIKeyContext(ctx, k)
-		if key.Secure {
-			msg, sig, ok := common.APISigFromMD(ctx)
-			if !ok {
-				return nil, status.Error(codes.Unauthenticated, "API key signature required")
-			} else {
-				ctx = common.NewAPISigContext(ctx, msg, sig)
-				if !common.ValidateAPISigContext(ctx, key.Secret) {
-					return nil, status.Error(codes.Unauthenticated, "Bad API key signature")
-				}
-			}
-		}
-		switch key.Type {
-		case mdb.AccountKey:
-			acc, err := t.collections.Accounts.Get(ctx, key.Owner)
-			if err != nil {
-				return nil, status.Error(codes.NotFound, "Account not found")
-			}
-			switch acc.Type {
-			case mdb.Dev:
-				ctx = mdb.NewDevContext(ctx, acc)
-			case mdb.Org:
-				ctx = mdb.NewOrgContext(ctx, acc)
-			}
-			ctx = thread.NewTokenContext(ctx, acc.Token)
-		case mdb.UserKey:
-			token, ok := thread.TokenFromContext(ctx)
-			if ok {
-				var claims jwt.StandardClaims
-				if _, _, err = new(jwt.Parser).ParseUnverified(string(token), &claims); err != nil {
-					return nil, status.Error(codes.PermissionDenied, "Bad authorization")
-				}
-				ukey := &thread.Libp2pPubKey{}
-				if err = ukey.UnmarshalString(claims.Subject); err != nil {
-					return nil, err
-				}
-				user, err := t.collections.Users.Get(ctx, ukey)
-				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-					return nil, err
-				}
-				if user == nil {
-					// Attach a temp user context that will be accessible in the next interceptor.
-					user = &mdb.User{Key: ukey}
-				}
-				ctx = mdb.NewUserContext(ctx, user)
-			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
-				return nil, status.Error(codes.Unauthenticated, "Token required")
-			}
-		}
-		ctx = mdb.NewAPIKeyContext(ctx, key)
-	} else {
-		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
-	}
-	return ctx, nil
-}
-
-func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
-	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
-		ctx = common.NewThreadIDContext(ctx, threadID)
-	}
-	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
-		return nil, err
-	} else {
-		ctx = thread.NewTokenContext(ctx, threadToken)
-	}
-	return ctx, nil
-}
-
-func generatePowUnaryInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, pc *powc.Client, c *mdb.Collections) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		methodParts := strings.Split(info.FullMethod, "/")
-		if len(methodParts) != 3 {
-			return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
-		}
-		methodServiceName := methodParts[1]
-		methodName := methodParts[2]
-
-		if methodServiceName != serviceName {
-			return handler(ctx, req)
-		}
-
-		if pc == nil {
-			return nil, status.Error(codes.Internal, "Powergate isn't enabled in Hub")
-		}
-
-		isAllowedMethod := false
-		for _, method := range allowedMethods {
-			if method == methodName {
-				isAllowedMethod = true
-				break
-			}
-		}
-
-		if !isAllowedMethod {
-			return nil, status.Errorf(codes.PermissionDenied, "method not allowed: %s", info.FullMethod)
-		}
-
-		var powInfo *mdb.PowInfo
-		var owner thread.PubKey
-		var isAccount bool
-		if org, ok := mdb.OrgFromContext(ctx); ok {
-			powInfo = org.PowInfo
-			owner = org.Key
-			isAccount = true
-		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			powInfo = dev.PowInfo
-			owner = dev.Key
-			isAccount = true
-		} else if user, ok := mdb.UserFromContext(ctx); ok {
-			powInfo = user.PowInfo
-			owner = user.Key
-			isAccount = false
-		}
-
-		createNewFFS := func() error {
-			id, token, err := pc.FFS.Create(ctx)
-			if err != nil {
-				return fmt.Errorf("creating new powergate integration: %v", err)
-			}
-			if isAccount {
-				_, err = c.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-			} else {
-				_, err = c.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-			}
-			if err != nil {
-				return fmt.Errorf("updating user/account with new powergate information: %v", err)
-			}
-			return nil
-		}
-
-		tryAgain := fmt.Errorf("powergate newly integrated into your account, please try again in 30 seconds to allow time for setup to complete")
-
-		// case where account/user was created before powergate was enabled.
-		// create a ffs instance for them.
-		if powInfo == nil {
-			if err := createNewFFS(); err != nil {
-				return nil, err
-			}
-			return nil, tryAgain
-		}
-
-		ffsCtx := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
-
-		methodDesc := serviceDesc.FindMethodByName(methodName)
-		if methodDesc == nil {
-			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
-		}
-
-		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
-		if err != nil {
-			if !strings.Contains(err.Error(), "auth token not found") {
-				return nil, err
-			} else {
-				// case where the ffs token is no longer valid because powergate was reset.
-				// create a new ffs instance for them.
-				if err := createNewFFS(); err != nil {
-					return nil, err
-				}
-				return nil, tryAgain
-			}
-		}
-		return res, nil
-	}
-}
-
-// threadInterceptor monitors for thread creation and deletion.
-// Textile tracks threads against dev, org, and user accounts.
-// Users must supply a valid API key from a dev/org.
-func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		method, _ := grpc.Method(ctx)
-		for _, ignored := range ignoreMethods {
-			if method == ignored {
-				return handler(ctx, req)
-			}
-		}
-		for _, block := range blockMethods {
-			if method == block {
-				return nil, status.Error(codes.PermissionDenied, "Method is not accessible")
-			}
-		}
-		if sid, ok := common.SessionFromContext(ctx); ok && sid == t.internalHubSession {
-			return handler(ctx, req)
-		}
-
-		var owner thread.PubKey
-		if org, ok := mdb.OrgFromContext(ctx); ok {
-			owner = org.Key
-		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			owner = dev.Key
-		} else if user, ok := mdb.UserFromContext(ctx); ok {
-			owner = user.Key
-		}
-
-		var newID thread.ID
-		var isDB bool
-		var err error
-		switch method {
-		case "/threads.pb.API/NewDB":
-			newID, err = thread.Cast(req.(*dbpb.NewDBRequest).DbID)
-			if err != nil {
-				return nil, err
-			}
-			isDB = true
-		case "/threads.pb.API/NewDBFromAddr":
-			addr, err := ma.NewMultiaddrBytes(req.(*dbpb.NewDBFromAddrRequest).Addr)
-			if err != nil {
-				return nil, err
-			}
-			newID, err = thread.FromAddr(addr)
-			if err != nil {
-				return nil, err
-			}
-			isDB = true
-		case "/threads.net.pb.API/CreateThread":
-			newID, err = thread.Cast(req.(*netpb.CreateThreadRequest).ThreadID)
-			if err != nil {
-				return nil, err
-			}
-		case "/threads.net.pb.API/AddThread":
-			addr, err := ma.NewMultiaddrBytes(req.(*netpb.AddThreadRequest).Addr)
-			if err != nil {
-				return nil, err
-			}
-			newID, err = thread.FromAddr(addr)
-			if err != nil {
-				return nil, err
-			}
-		default:
-			// If we're dealing with an existing thread, make sure that the owner
-			// owns the thread directly or via an API key.
-			threadID, ok := common.ThreadIDFromContext(ctx)
-			if ok {
-				th, err := t.collections.Threads.Get(ctx, threadID, owner)
-				if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
-					// Allow non-owners to interact with a limited set of APIs.
-					var isAllowed bool
-					for _, m := range allowedCrossUserMethods {
-						if method == m {
-							isAllowed = true
-							break
-						}
-					}
-					if !isAllowed {
-						return nil, status.Error(codes.PermissionDenied, "User does not own thread")
-					}
-				} else if err != nil {
-					return nil, err
-				}
-				if th != nil {
-					key, _ := mdb.APIKeyFromContext(ctx)
-					if key != nil && key.Type == mdb.UserKey {
-						// Extra user check for user API keys.
-						if key.Key != th.Key {
-							return nil, status.Error(codes.PermissionDenied, "Bad API key")
-						}
-					}
-				}
-			}
-		}
-
-		// Collect the user if we haven't seen them before.
-		user, ok := mdb.UserFromContext(ctx)
-		if ok && user.CreatedAt.IsZero() {
-			var powInfo *mdb.PowInfo
-			if t.powc != nil {
-				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
-				if err != nil {
-					return nil, err
-				}
-				powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
-			}
-			if err := t.collections.Users.Create(ctx, owner, powInfo); err != nil {
-				return nil, err
-			}
-		}
-		if !ok && owner != nil {
-			// Add the dev/org as the user for the user API.
-			ctx = mdb.NewUserContext(ctx, &mdb.User{Key: owner})
-		}
-
-		// Preemptively track the new thread ID for the owner.
-		// This needs to happen before the request is handled in case there's a conflict
-		// with the owner and thread name.
-		if newID.Defined() {
-			thds, err := t.collections.Threads.ListByOwner(ctx, owner)
-			if err != nil {
-				return nil, err
-			}
-			if t.conf.ThreadsMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadsMaxNumberPerOwner {
-				return nil, ErrTooManyThreadsPerOwner
-			}
-			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {
-				return nil, err
-			}
-		}
-
-		// Track the thread ID marked for deletion.
-		var deleteID thread.ID
-		switch method {
-		case "/threads.pb.API/DeleteDB":
-			deleteID, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
-			if err != nil {
-				return nil, err
-			}
-			keys, err := t.collections.IPNSKeys.ListByThreadID(ctx, deleteID)
-			if err != nil {
-				return nil, err
-			}
-			if len(keys) != 0 {
-				return nil, status.Error(codes.FailedPrecondition, "DB not empty (delete buckets first)")
-			}
-		case "/threads.net.pb.API/DeleteThread":
-			deleteID, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// Let the request pass through.
-		res, err := handler(ctx, req)
-		if err != nil {
-			// Clean up the new thread if there was an error.
-			if newID.Defined() {
-				if err := t.collections.Threads.Delete(ctx, newID, owner); err != nil {
-					log.Errorf("error deleting thread %s: %v", newID, err)
-				}
-			}
-			return res, err
-		}
-
-		// Clean up the tracked thread if it was deleted.
-		if deleteID.Defined() {
-			if err := t.collections.Threads.Delete(ctx, deleteID, owner); err != nil {
-				return nil, err
-			}
-		}
-		return res, nil
-	}
-}
-
-func createPowStub(target string) (*grpcdynamic.Stub, error) {
-	pgConn, err := powc.CreateClientConn(target)
-	if err != nil {
-		return &grpcdynamic.Stub{}, err
-	}
-	s := grpcdynamic.NewStubWithMessageFactory(pgConn, dynamic.NewMessageFactoryWithDefaults())
-	return &s, nil
 }
 
 func createServiceDesciptor(file string, serviceName string) (*desc.ServiceDescriptor, error) {
