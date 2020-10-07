@@ -2410,18 +2410,7 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
 		return fmt.Errorf("getting size of removed node: %s", err)
 	}
 
-	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return fmt.Errorf("getting current buckets total size: %s", err)
-	}
-
-	deltaSize := int64(-stat.CumulativeSize)
-	if 0 > currentBucketsSize+deltaSize {
-		log.Debugf("sub-zero delta size: %s %s %s", deltaSize, currentBucketsSize, path)
-		deltaSize = -currentBucketsSize
-	}
-
-	if err := s.sumBytesPinned(ctx, deltaSize); err != nil {
+	if err := s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)); err != nil {
 		return fmt.Errorf("substracting unpinned node from quota: %s", err)
 	}
 	return nil

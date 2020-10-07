@@ -330,12 +330,13 @@ func (a *Accounts) SetToken(ctx context.Context, key thread.PubKey, token thread
 }
 
 func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, newTotalSize int64) error {
-	if newTotalSize < 0 {
-		return fmt.Errorf("new size %d must be positive", newTotalSize)
-	}
 	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
+	}
+	// Note: temporary fix for ensuring accounts don't go below zero. see #376
+	if 0 > newTotalSize {
+		newTotalSize = 0
 	}
 	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"buckets_total_size": newTotalSize}})
 	if err != nil {
