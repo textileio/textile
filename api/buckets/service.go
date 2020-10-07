@@ -1533,6 +1533,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 	if err != nil {
 		return fmt.Errorf("getting current buckets total size: %s", err)
 	}
+
 	deltaSize := -fromSize + toSize
 	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
 		return ErrBucketsTotalSizeExceedsMaxSize
@@ -2408,6 +2409,7 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
 	if err != nil {
 		return fmt.Errorf("getting size of removed node: %s", err)
 	}
+
 	if err := s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)); err != nil {
 		return fmt.Errorf("substracting unpinned node from quota: %s", err)
 	}
