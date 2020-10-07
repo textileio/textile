@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"time"
@@ -333,7 +334,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 			bin := doc.NetworkEgress.UnitBin % NetworkEgressUnitSize
 
 			// Record stripe usage
-			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.NetworkEgress.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -342,18 +343,18 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 			if err != nil {
 				return err
 			}
-			res.PeriodUnits = rec.Quantity
 
 			if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
 				"$set": bson.M{"network_egress.unit_bin": bin},
 			}); err != nil {
 				return err
 			}
+			res.AddedUnits = units
 			res.Changed = true
 		}
 		return sess.CommitTransaction(sctx)
 	})
-	log.Debugf("customer %s has %d network egress units this period", req.CustomerId, res.PeriodUnits)
+	log.Debugf("customer %s added %d network egress units to period", req.CustomerId, res.AddedUnits)
 	return res, err
 }
 
@@ -386,7 +387,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 			bin := doc.InstanceReads.UnitBin % InstanceReadsUnitSize
 
 			// Record stripe usage
-			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.InstanceReads.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -395,18 +396,18 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 			if err != nil {
 				return err
 			}
-			res.PeriodUnits = rec.Quantity
 
 			if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
 				"$set": bson.M{"instance_reads.unit_bin": bin},
 			}); err != nil {
 				return err
 			}
+			res.AddedUnits = units
 			res.Changed = true
 		}
 		return sess.CommitTransaction(sctx)
 	})
-	log.Debugf("customer %s has %d instance read units this period", req.CustomerId, res.PeriodUnits)
+	log.Debugf("customer %s added %d instance read units to period", req.CustomerId, res.AddedUnits)
 	return res, err
 }
 
@@ -439,7 +440,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 			bin := doc.InstanceWrites.UnitBin % InstanceWritesUnitSize
 
 			// Record stripe usage
-			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.InstanceWrites.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -449,19 +450,78 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 				return err
 			}
 
-			res.PeriodUnits = rec.Quantity
-
 			if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
 				"$set": bson.M{"instance_writes.unit_bin": bin},
 			}); err != nil {
 				return err
 			}
+			res.AddedUnits = units
 			res.Changed = true
 		}
 		return sess.CommitTransaction(sctx)
 	})
-	log.Debugf("customer %s has %d instance write units this period", req.CustomerId, res.PeriodUnits)
+	log.Debugf("customer %s added %d instance write units to period", req.CustomerId, res.AddedUnits)
 	return res, err
+}
+
+func (s *Service) GetPeriodUsage(ctx context.Context, req *pb.GetPeriodUsageRequest) (
+	*pb.GetPeriodUsageResponse, error) {
+	log.Debugf("received get period usage request")
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+
+	res := &pb.GetPeriodUsageResponse{}
+	var err error
+	res.StoredData, err = s.getPeriodUsageItem("Stored Data", doc.StoredData.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	res.NetworkEgress, err = s.getPeriodUsageItem("Network Egress", doc.NetworkEgress.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	res.InstanceReads, err = s.getPeriodUsageItem("Instance Reads", doc.InstanceReads.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	res.InstanceWrites, err = s.getPeriodUsageItem("Network Writes", doc.InstanceWrites.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (s *Service) getPeriodUsageItem(name, id string) (*pb.GetPeriodUsageResponse_Item, error) {
+	var sum *stripe.UsageRecordSummary
+	params := &stripe.UsageRecordSummaryListParams{
+		SubscriptionItem: stripe.String(id),
+	}
+	params.Filters.AddFilter("limit", "", "1")
+	i := s.stripe.UsageRecordSummaries.List(params)
+	if i.Err() != nil {
+		return nil, i.Err()
+	}
+	for i.Next() {
+		sum = i.UsageRecordSummary()
+	}
+	if sum != nil && sum.Period != nil {
+		return &pb.GetPeriodUsageResponse_Item{
+			Name:  name,
+			Units: sum.TotalUsage,
+			Period: &pb.GetPeriodUsageResponse_Period{
+				Start: sum.Period.Start,
+				End:   sum.Period.End,
+			},
+		}, nil
+	}
+	return nil, fmt.Errorf("subscription item %s not found", id)
 }
 
 func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (

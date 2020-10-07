@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	"google.golang.org/grpc"
@@ -72,7 +73,7 @@ func (c *Client) IncNetworkEgress(ctx context.Context, customerID string, byteSi
 	if err != nil {
 		return 0, false, err
 	}
-	return res.PeriodUnits, res.Changed, nil
+	return res.AddedUnits, res.Changed, nil
 }
 
 func (c *Client) IncInstanceReads(ctx context.Context, customerID string, count int64) (units int64, changed bool, err error) {
@@ -83,7 +84,7 @@ func (c *Client) IncInstanceReads(ctx context.Context, customerID string, count 
 	if err != nil {
 		return 0, false, err
 	}
-	return res.PeriodUnits, res.Changed, nil
+	return res.AddedUnits, res.Changed, nil
 }
 
 func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, count int64) (units int64, changed bool, err error) {
@@ -94,7 +95,51 @@ func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, count
 	if err != nil {
 		return 0, false, err
 	}
-	return res.PeriodUnits, res.Changed, nil
+	return res.AddedUnits, res.Changed, nil
+}
+
+type PeriodUsage struct {
+	StoredData     PeriodUsageItem
+	NetworkEgress  PeriodUsageItem
+	InstanceReads  PeriodUsageItem
+	InstanceWrites PeriodUsageItem
+}
+
+type PeriodUsageItem struct {
+	Name   string
+	Units  int64
+	Period Period
+}
+
+type Period struct {
+	Start time.Time
+	End   time.Time
+}
+
+func (c *Client) GetPeriodUsage(ctx context.Context, customerID string) (*PeriodUsage, error) {
+	res, err := c.c.GetPeriodUsage(ctx, &pb.GetPeriodUsageRequest{
+		CustomerId: customerID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &PeriodUsage{
+		StoredData:     usageItemFromPb(res.StoredData),
+		NetworkEgress:  usageItemFromPb(res.NetworkEgress),
+		InstanceReads:  usageItemFromPb(res.InstanceReads),
+		InstanceWrites: usageItemFromPb(res.InstanceWrites),
+	}, nil
+}
+
+func usageItemFromPb(item *pb.GetPeriodUsageResponse_Item) PeriodUsageItem {
+	return PeriodUsageItem{
+		Name:  item.Name,
+		Units: item.Units,
+		Period: Period{
+			Start: time.Unix(item.Period.Start, 0),
+			End:   time.Unix(item.Period.End, 0),
+		},
+	}
 }
 
 func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
