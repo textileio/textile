@@ -2,21 +2,20 @@ package service
 
 import (
 	stripe "github.com/stripe/stripe-go/v72"
-	"github.com/stripe/stripe-go/v72/price"
-	"github.com/stripe/stripe-go/v72/product"
+	stripec "github.com/stripe/stripe-go/v72/client"
 )
 
-func setupStoredData() (string, error) {
-	pro, err := product.New(&stripe.ProductParams{
+func setupStoredData(client *stripec.API) (string, error) {
+	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Stored Data"),
 		UnitLabel: stripe.String("50 MiB"),
 	})
 	if err != nil {
 		return "", err
 	}
-	pri, err := price.New(&stripe.PriceParams{
+	price, err := client.Prices.New(&stripe.PriceParams{
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Product:  stripe.String(pro.ID),
+		Product:  stripe.String(product.ID),
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageLastEver)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
@@ -39,20 +38,20 @@ func setupStoredData() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pri.ID, nil
+	return price.ID, nil
 }
 
-func setupNetworkEgress() (string, error) {
-	pro, err := product.New(&stripe.ProductParams{
+func setupNetworkEgress(client *stripec.API) (string, error) {
+	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Network Egress"),
 		UnitLabel: stripe.String("100 MiB"),
 	})
 	if err != nil {
 		return "", err
 	}
-	pri, err := price.New(&stripe.PriceParams{
+	price, err := client.Prices.New(&stripe.PriceParams{
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Product:  stripe.String(pro.ID),
+		Product:  stripe.String(product.ID),
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
@@ -75,20 +74,20 @@ func setupNetworkEgress() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pri.ID, nil
+	return price.ID, nil
 }
 
-func setupInstanceReads() (string, error) {
-	pro, err := product.New(&stripe.ProductParams{
+func setupInstanceReads(client *stripec.API) (string, error) {
+	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Instance Reads"),
 		UnitLabel: stripe.String("10,000"),
 	})
 	if err != nil {
 		return "", err
 	}
-	pri, err := price.New(&stripe.PriceParams{
+	price, err := client.Prices.New(&stripe.PriceParams{
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Product:  stripe.String(pro.ID),
+		Product:  stripe.String(product.ID),
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
@@ -111,20 +110,20 @@ func setupInstanceReads() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pri.ID, nil
+	return price.ID, nil
 }
 
-func setupInstanceWrites() (string, error) {
-	pro, err := product.New(&stripe.ProductParams{
+func setupInstanceWrites(client *stripec.API) (string, error) {
+	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Instance Writes"),
 		UnitLabel: stripe.String("5,000"),
 	})
 	if err != nil {
 		return "", err
 	}
-	pri, err := price.New(&stripe.PriceParams{
+	price, err := client.Prices.New(&stripe.PriceParams{
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Product:  stripe.String(pro.ID),
+		Product:  stripe.String(product.ID),
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
@@ -147,5 +146,5 @@ func setupInstanceWrites() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pri.ID, nil
+	return price.ID, nil
 }

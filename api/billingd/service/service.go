@@ -10,11 +10,10 @@ import (
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 	stripe "github.com/stripe/stripe-go/v72"
-	cus "github.com/stripe/stripe-go/v72/customer"
-	"github.com/stripe/stripe-go/v72/sub"
-	"github.com/stripe/stripe-go/v72/usagerecord"
+	stripec "github.com/stripe/stripe-go/v72/client"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
+	"github.com/textileio/textile/v2/api/common"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -28,6 +27,7 @@ var (
 type Service struct {
 	config Config
 	server *grpc.Server
+	stripe *stripec.API
 	db     *mongo.Collection
 }
 
@@ -36,7 +36,8 @@ var _ pb.APIServiceServer = (*Service)(nil)
 type Config struct {
 	ListenAddr ma.Multiaddr
 
-	StripeKey string
+	StripeAPIURL string
+	StripeKey    string
 
 	DBURI  string
 	DBName string
@@ -50,7 +51,10 @@ type Config struct {
 }
 
 func NewService(ctx context.Context, config Config, setupPrices bool) (*Service, error) {
-	stripe.Key = config.StripeKey
+	sc, err := common.NewStripeClient(config.StripeAPIURL, config.StripeKey)
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
 	if err != nil {
@@ -73,22 +77,23 @@ func NewService(ctx context.Context, config Config, setupPrices bool) (*Service,
 	s := &Service{
 		config: config,
 		db:     customers,
+		stripe: sc,
 	}
 
 	if setupPrices {
-		s.config.StoredDataPriceID, err = setupStoredData()
+		s.config.StoredDataPriceID, err = setupStoredData(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.NetworkEgressPriceID, err = setupNetworkEgress()
+		s.config.NetworkEgressPriceID, err = setupNetworkEgress(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceReadsPriceID, err = setupInstanceReads()
+		s.config.InstanceReadsPriceID, err = setupInstanceReads(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceWritesPriceID, err = setupInstanceWrites()
+		s.config.InstanceWritesPriceID, err = setupInstanceWrites(sc)
 		if err != nil {
 			return nil, err
 		}
@@ -176,13 +181,13 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	*pb.CreateCustomerResponse, error) {
 	log.Debugf("received create customer request")
 
-	customer, err := cus.New(&stripe.CustomerParams{
+	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
 		Email: stripe.String(req.Email),
 	})
 	if err != nil {
 		return nil, err
 	}
-	subscription, err := sub.New(&stripe.SubscriptionParams{
+	subscription, err := s.stripe.Subscriptions.New(&stripe.SubscriptionParams{
 		Customer: stripe.String(customer.ID),
 		Items: []*stripe.SubscriptionItemsParams{
 			{
@@ -202,32 +207,53 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	if err != nil {
 		return nil, err
 	}
-	info := &Customer{
-		ID:             customer.ID,
-		SubscriptionID: subscription.ID,
-	}
-	for _, item := range subscription.Items.Data {
-		switch item.Price.ID {
-		case s.config.StoredDataPriceID:
-			info.StoredData.ItemID = item.ID
-		case s.config.NetworkEgressPriceID:
-			info.NetworkEgress.ItemID = item.ID
-		case s.config.InstanceReadsPriceID:
-			info.InstanceReads.ItemID = item.ID
-		case s.config.InstanceWritesPriceID:
-			info.InstanceWrites.ItemID = item.ID
-		}
-	}
-
-	if _, err := s.db.InsertOne(ctx, &Customer{
+	doc := &Customer{
 		ID:             customer.ID,
 		Email:          customer.Email,
 		SubscriptionID: subscription.ID,
 		CreatedAt:      time.Now().UnixNano(),
-	}); err != nil {
+	}
+	for _, item := range subscription.Items.Data {
+		switch item.Price.ID {
+		case s.config.StoredDataPriceID:
+			doc.StoredData.ItemID = item.ID
+		case s.config.NetworkEgressPriceID:
+			doc.NetworkEgress.ItemID = item.ID
+		case s.config.InstanceReadsPriceID:
+			doc.InstanceReads.ItemID = item.ID
+		case s.config.InstanceWritesPriceID:
+			doc.InstanceWrites.ItemID = item.ID
+		}
+	}
+
+	if _, err := s.db.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
 	return &pb.CreateCustomerResponse{CustomerId: customer.ID}, nil
+}
+
+func (s *Service) AddCard(ctx context.Context, req *pb.AddCardRequest) (
+	*pb.AddCardResponse, error) {
+	log.Debugf("received add card request")
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+
+	crd, err := s.stripe.Cards.New(&stripe.CardParams{
+		Customer: stripe.String(doc.ID),
+		Token:    stripe.String(req.Token),
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("added card %s for customer %s", crd.ID, doc.ID)
+	return &pb.AddCardResponse{}, nil
 }
 
 func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataRequest) (
@@ -257,7 +283,7 @@ func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataReques
 		if res.PeriodUnits != doc.StoredData.Units {
 
 			// Record stripe usage
-			if _, err := usagerecord.New(&stripe.UsageRecordParams{
+			if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.StoredData.ItemID),
 				Quantity:         stripe.Int64(res.PeriodUnits),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -307,7 +333,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 			bin := doc.NetworkEgress.UnitBin % NetworkEgressUnitSize
 
 			// Record stripe usage
-			rec, err := usagerecord.New(&stripe.UsageRecordParams{
+			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.NetworkEgress.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -360,7 +386,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 			bin := doc.InstanceReads.UnitBin % InstanceReadsUnitSize
 
 			// Record stripe usage
-			rec, err := usagerecord.New(&stripe.UsageRecordParams{
+			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.InstanceReads.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -413,7 +439,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 			bin := doc.InstanceWrites.UnitBin % InstanceWritesUnitSize
 
 			// Record stripe usage
-			rec, err := usagerecord.New(&stripe.UsageRecordParams{
+			rec, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.InstanceWrites.ItemID),
 				Quantity:         stripe.Int64(units),
 				Timestamp:        stripe.Int64(time.Now().Unix()),
@@ -422,6 +448,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 			if err != nil {
 				return err
 			}
+
 			res.PeriodUnits = rec.Quantity
 
 			if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
@@ -441,7 +468,7 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	*pb.DeleteCustomerResponse, error) {
 	log.Debugf("received delete customer request")
 
-	if _, err := cus.Del(req.CustomerId, nil); err != nil {
+	if _, err := s.stripe.Customers.Del(req.CustomerId, nil); err != nil {
 		return nil, err
 	}
 	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.CustomerId}); err != nil {

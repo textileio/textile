@@ -45,9 +45,13 @@ var (
 				Key:      "addr.mongo_name",
 				DefValue: "hub_billing",
 			},
+			"stripeApiUrl": {
+				Key:      "stripe.api_url",
+				DefValue: "http://127.0.0.1:12111",
+			},
 			"stripeKey": {
 				Key:      "stripe.key",
-				DefValue: "",
+				DefValue: "sk_test_123",
 			},
 			"stripeStoredDataPrice": {
 				Key:      "stripe.stored_data.price",
@@ -106,6 +110,10 @@ func init() {
 
 	// Stripe settings
 	rootCmd.PersistentFlags().String(
+		"stripeApiUrl",
+		config.Flags["stripeApiUrl"].DefValue.(string),
+		"Stripe API URL")
+	rootCmd.PersistentFlags().String(
 		"stripeKey",
 		config.Flags["stripeKey"].DefValue.(string),
 		"Stripe secret key")
@@ -158,6 +166,7 @@ var rootCmd = &cobra.Command{
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 		addrMongoName := config.Viper.GetString("addr.mongo_name")
 
+		stripeApiUrl := config.Viper.GetString("stripe.api_url")
 		stripeKey := config.Viper.GetString("stripe.key")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
@@ -174,6 +183,7 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 		api, err := service.NewService(ctx, service.Config{
 			ListenAddr:            addrApi,
+			StripeAPIURL:          stripeApiUrl,
 			StripeKey:             stripeKey,
 			DBURI:                 addrMongoUri,
 			DBName:                addrMongoName,

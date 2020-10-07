@@ -116,8 +116,8 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		user, ok := mdb.UserFromContext(ctx)
 		if ok && user.CreatedAt.IsZero() {
 			var powInfo *mdb.PowInfo
-			if t.powc != nil {
-				ffsId, ffsToken, err := t.powc.FFS.Create(ctx)
+			if t.pc != nil {
+				ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
 				if err != nil {
 					return nil, err
 				}

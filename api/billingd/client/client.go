@@ -45,6 +45,14 @@ func (c *Client) CreateCustomer(ctx context.Context, email string) (string, erro
 	return res.CustomerId, nil
 }
 
+func (c *Client) AddCard(ctx context.Context, customerID, token string) error {
+	_, err := c.c.AddCard(ctx, &pb.AddCardRequest{
+		CustomerId: customerID,
+		Token:      token,
+	})
+	return err
+}
+
 func (c *Client) SetStoredData(ctx context.Context, customerID string, byteSize int64) (units int64, changed bool, err error) {
 	res, err := c.c.SetStoredData(ctx, &pb.SetStoredDataRequest{
 		CustomerId: customerID,

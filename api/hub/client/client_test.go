@@ -7,22 +7,25 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
+	"github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/common"
 	c "github.com/textileio/textile/v2/api/hub/client"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
 func TestClient_Signup(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	assert.NotEmpty(t, user.Key)
@@ -31,7 +34,7 @@ func TestClient_Signup(t *testing.T) {
 
 func TestClient_Signin(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	username := apitest.NewUsername()
 	email := apitest.NewEmail()
@@ -53,7 +56,7 @@ func TestClient_Signin(t *testing.T) {
 
 func TestClient_Signout(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -71,7 +74,7 @@ func TestClient_Signout(t *testing.T) {
 
 func TestClient_GetSessionInfo(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -94,7 +97,7 @@ func TestClient_GetSessionInfo(t *testing.T) {
 
 func TestClient_GetIdentity(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -121,7 +124,7 @@ func TestClient_GetIdentity(t *testing.T) {
 
 func TestClient_CreateKey(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	t.Run("without session", func(t *testing.T) {
@@ -143,7 +146,7 @@ func TestClient_CreateKey(t *testing.T) {
 
 func TestClient_InvalidateKey(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -169,7 +172,7 @@ func TestClient_InvalidateKey(t *testing.T) {
 
 func TestClient_ListKeys(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -194,7 +197,7 @@ func TestClient_ListKeys(t *testing.T) {
 
 func TestClient_CreateOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 	ctx := context.Background()
 
 	name := apitest.NewUsername()
@@ -216,7 +219,7 @@ func TestClient_CreateOrg(t *testing.T) {
 
 func TestClient_GetOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -238,7 +241,7 @@ func TestClient_GetOrg(t *testing.T) {
 
 func TestClient_ListOrgs(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -263,7 +266,7 @@ func TestClient_ListOrgs(t *testing.T) {
 
 func TestClient_RemoveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -295,7 +298,7 @@ func TestClient_RemoveOrg(t *testing.T) {
 
 func TestClient_InviteToOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -318,7 +321,7 @@ func TestClient_InviteToOrg(t *testing.T) {
 
 func TestClient_LeaveOrg(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	name := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -352,9 +355,29 @@ func TestClient_LeaveOrg(t *testing.T) {
 	})
 }
 
+func TestClient_SetupBilling(t *testing.T) {
+	t.Parallel()
+	conf, client, _ := setupWithBilling(t)
+	ctx := context.Background()
+
+	token := apitest.NewCardToken(t)
+
+	t.Run("without session", func(t *testing.T) {
+		err := client.SetupBilling(ctx, token)
+		require.Error(t, err)
+	})
+
+	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
+
+	t.Run("with session", func(t *testing.T) {
+		err := client.SetupBilling(common.NewSessionContext(ctx, user.Session), token)
+		require.NoError(t, err)
+	})
+}
+
 func TestClient_IsUsernameAvailable(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	username := apitest.NewUsername()
 	err := client.IsUsernameAvailable(context.Background(), username)
@@ -368,7 +391,7 @@ func TestClient_IsUsernameAvailable(t *testing.T) {
 
 func TestClient_IsOrgNameAvailable(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
@@ -388,7 +411,7 @@ func TestClient_IsOrgNameAvailable(t *testing.T) {
 
 func TestClient_DestroyAccount(t *testing.T) {
 	t.Parallel()
-	conf, client, _ := setup(t)
+	conf, client, _ := setup(t, nil)
 
 	username := apitest.NewUsername()
 	user := apitest.Signup(t, client, conf, username, apitest.NewEmail())
@@ -420,8 +443,12 @@ func TestClose(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func setup(t *testing.T) (core.Config, *c.Client, *tc.Client) {
-	conf := apitest.MakeTextile(t)
+func setup(t *testing.T, conf *core.Config) (core.Config, *c.Client, *tc.Client) {
+	if conf == nil {
+		tmp := apitest.DefaultTextileConfig(t)
+		conf = &tmp
+	}
+	apitest.MakeTextileWithConfig(t, *conf, true)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -436,5 +463,31 @@ func setup(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 		err = threadsclient.Close()
 		require.NoError(t, err)
 	})
-	return conf, client, threadsclient
+	return *conf, client, threadsclient
+}
+
+func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
+	billingPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api, err := service.NewService(ctx, service.Config{
+		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
+		StripeAPIURL: "http://127.0.0.1:12111",
+		StripeKey:    "sk_test_123",
+		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName:       util.MakeToken(8),
+		Debug:        true,
+	}, true)
+	require.NoError(t, err)
+	err = api.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := api.Stop(true)
+		require.NoError(t, err)
+	})
+
+	conf := apitest.DefaultTextileConfig(t)
+	conf.AddrBillingAPI = fmt.Sprintf("127.0.0.1:%d", billingPort)
+	return setup(t, &conf)
 }

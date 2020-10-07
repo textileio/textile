@@ -1,5 +1,5 @@
 syntax = "proto3";
-package api.billing.pb;
+package api.billingd.pb;
 
 message CheckHealthRequest {}
 
@@ -12,6 +12,13 @@ message CreateCustomerRequest {
 message CreateCustomerResponse {
     string customer_id = 1;
 }
+
+message AddCardRequest {
+    string customer_id = 1;
+    string token = 2;
+}
+
+message AddCardResponse {}
 
 message SetStoredDataRequest {
     string customer_id = 1;
@@ -62,6 +69,7 @@ message DeleteCustomerResponse {}
 service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
+    rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
     rpc SetStoredData(SetStoredDataRequest) returns (SetStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
     rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}

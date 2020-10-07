@@ -27,10 +27,11 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	nutil "github.com/textileio/go-threads/net/util"
-	powc "github.com/textileio/powergate/api/client"
+	pow "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	powUtil "github.com/textileio/powergate/util"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	pb "github.com/textileio/textile/v2/api/buckets/pb"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
@@ -104,7 +105,8 @@ type Service struct {
 	GatewayBucketsHost        string
 	IPFSClient                iface.CoreAPI
 	IPNSManager               *ipns.Manager
-	PGClient                  *powc.Client
+	BillingClient             *billing.Client
+	PowergateClient           *pow.Client
 	ArchiveTracker            *archive.Tracker
 	Semaphores                *nutil.SemaphorePool
 }
@@ -2142,7 +2144,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	createNewFFS := func() error {
-		id, token, err := s.PGClient.FFS.Create(ctx)
+		id, token, err := s.PowergateClient.FFS.Create(ctx)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
@@ -2168,9 +2170,9 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, tryAgain
 	}
 
-	ctxFFS := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
+	ctxFFS := context.WithValue(ctx, pow.AuthKey, powInfo.Token)
 
-	defConf, err := s.PGClient.FFS.DefaultStorageConfig(ctxFFS)
+	defConf, err := s.PowergateClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
 		if !strings.Contains(err.Error(), "auth token not found") {
 			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
@@ -2210,7 +2212,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := s.PGClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Addr)
+	bal, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
 	}
@@ -2231,7 +2233,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if firstTimeArchive || ba.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
+		jid, err = s.PowergateClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), pow.WithStorageConfig(storageConfig), pow.WithOverride(true))
 		if err != nil {
 			return nil, fmt.Errorf("pushing config: %s", err)
 		}
@@ -2251,7 +2253,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
 			case ffs.Failed, ffs.Canceled:
-				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
+				jid, err = s.PowergateClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), pow.WithStorageConfig(storageConfig), pow.WithOverride(true))
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
@@ -2259,11 +2261,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				return nil, fmt.Errorf("unexpected current archive status: %d", ba.Archives.Current.JobStatus)
 			}
 		} else { // Case 2.
-			res, err := s.PGClient.FFS.GetStorageConfig(ctxFFS, oldCid)
+			res, err := s.PowergateClient.FFS.GetStorageConfig(ctxFFS, oldCid)
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
-			// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+			// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 			var oldStorageConfig *ffs.StorageConfig
 			if res.Config != nil {
 				oldStorageConfig = &ffs.StorageConfig{
@@ -2275,21 +2277,21 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 			if cmp.Equal(&storageConfig, oldStorageConfig) {
 				// Old storage config is the same as the new so use replace.
-				jid, err = s.PGClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
+				jid, err = s.PowergateClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
 				if err != nil {
 					return nil, fmt.Errorf("replacing cid: %s", err)
 				}
 			} else {
 				// New storage config, so remove and push.
-				_, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, oldCid, powc.WithStorageConfig(ffs.StorageConfig{}), powc.WithOverride(true))
+				_, err = s.PowergateClient.FFS.PushStorageConfig(ctxFFS, oldCid, pow.WithStorageConfig(ffs.StorageConfig{}), pow.WithOverride(true))
 				if err != nil {
 					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %s", err)
 				}
-				err = s.PGClient.FFS.Remove(ctxFFS, oldCid)
+				err = s.PowergateClient.FFS.Remove(ctxFFS, oldCid)
 				if err != nil {
 					return nil, fmt.Errorf("removing old cid storage: %s", err)
 				}
-				jid, err = s.PGClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), powc.WithStorageConfig(storageConfig), powc.WithOverride(true))
+				jid, err = s.PowergateClient.FFS.PushStorageConfig(ctxFFS, p.Cid(), pow.WithStorageConfig(storageConfig), pow.WithOverride(true))
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
@@ -2607,7 +2609,7 @@ func toFilConfig(config *mdb.ArchiveConfig) ffs.FilConfig {
 	}
 }
 
-// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
 	res := ffs.HotConfig{}
 	if config != nil {
@@ -2624,7 +2626,7 @@ func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
 	return res
 }
 
-// ToDo: Remove this once .PGClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 func fromRPCColdConfig(config *ffsRpc.ColdConfig) ffs.ColdConfig {
 	res := ffs.ColdConfig{}
 	if config != nil {

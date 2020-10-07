@@ -2,20 +2,17 @@ package client_test
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net/http"
 	"testing"
+	"time"
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/util"
-	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 )
 
@@ -80,17 +77,19 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(units))
 	assert.True(t, changed)
+	time.Sleep(time.Minute)
 
 	// Add a bunch of egress
 	units, changed, err = c.IncNetworkEgress(context.Background(), id, 1234*mib)
 	require.NoError(t, err)
 	assert.Equal(t, 12, int(units))
 	assert.True(t, changed)
+	time.Sleep(time.Minute)
 
 	// Check remainder by adding enough egress to reach one more unit
 	units, changed, err = c.IncNetworkEgress(context.Background(), id, 66*mib)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(units))
+	assert.Equal(t, 13, int(units))
 	assert.True(t, changed)
 }
 
@@ -100,28 +99,28 @@ func TestClient_IncInstanceReads(t *testing.T) {
 	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
 	require.NoError(t, err)
 
-	// Add some egress under unit size
+	// Add some reads under unit size
 	units, changed, err := c.IncInstanceReads(context.Background(), id, 1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(units))
 	assert.False(t, changed)
 
-	// Add some egress to reach unit size
+	// Add some reads to reach unit size
 	units, changed, err = c.IncInstanceReads(context.Background(), id, 9999)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(units))
 	assert.True(t, changed)
 
-	// Add a bunch of egress
+	// Add a bunch of reads
 	units, changed, err = c.IncInstanceReads(context.Background(), id, 123456)
 	require.NoError(t, err)
 	assert.Equal(t, 12, int(units))
 	assert.True(t, changed)
 
-	// Check remainder by adding enough egress to reach one more unit
+	// Check remainder by adding enough reads to reach one more unit
 	units, changed, err = c.IncInstanceReads(context.Background(), id, 6544)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(units))
+	assert.Equal(t, 13, int(units))
 	assert.True(t, changed)
 }
 
@@ -131,29 +130,33 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
 	require.NoError(t, err)
 
-	// Add some egress under unit size
+	// Add some writes under unit size
 	units, changed, err := c.IncInstanceWrites(context.Background(), id, 1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(units))
 	assert.False(t, changed)
+	time.Sleep(time.Second)
 
-	// Add some egress to reach unit size
+	// Add some writes to reach unit size
 	units, changed, err = c.IncInstanceWrites(context.Background(), id, 4999)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(units))
 	assert.True(t, changed)
+	time.Sleep(time.Second)
 
-	// Add a bunch of egress
+	// Add a bunch of writes
 	units, changed, err = c.IncInstanceWrites(context.Background(), id, 123456)
 	require.NoError(t, err)
-	assert.Equal(t, 24, int(units))
+	assert.Equal(t, 25, int(units))
 	assert.True(t, changed)
+	time.Sleep(time.Second)
 
-	// Check remainder by adding enough egress to reach one more unit
+	// Check remainder by adding enough writes to reach one more unit
 	units, changed, err = c.IncInstanceWrites(context.Background(), id, 3456)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(units))
+	assert.Equal(t, 26, int(units))
 	assert.True(t, changed)
+	time.Sleep(time.Second)
 }
 
 func TestClient_DeleteCustomer(t *testing.T) {
@@ -167,18 +170,19 @@ func TestClient_DeleteCustomer(t *testing.T) {
 }
 
 func setup(t *testing.T) *client.Client {
-	mockStripe(t)
-
 	apiPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	api, err := service.NewService(ctx, service.Config{
 		ListenAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		StripeKey:  "sk_test_123",
-		DBURI:      "mongodb://127.0.0.1:27017/?replicaSet=rs0",
-		DBName:     util.MakeToken(8),
-		Debug:      true,
+		//StripeAPIURL: "http://127.0.0.1:8420",
+		//StripeKey:    "sk_test_123",
+		StripeAPIURL: "https://api.stripe.com",
+		StripeKey:    "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName:       util.MakeToken(8),
+		Debug:        true,
 	}, true)
 	require.NoError(t, err)
 	err = api.Start()
@@ -196,27 +200,4 @@ func setup(t *testing.T) *client.Client {
 		require.NoError(t, err)
 	})
 	return c
-}
-
-func mockStripe(t *testing.T) {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	err := http2.ConfigureTransport(transport)
-	require.NoError(t, err)
-
-	httpClient := &http.Client{
-		Transport: transport,
-	}
-	stripeMockBackend := stripe.GetBackendWithConfig(
-		stripe.APIBackend,
-		&stripe.BackendConfig{
-			URL:           stripe.String("http://127.0.0.1:12111"),
-			HTTPClient:    httpClient,
-			LeveledLogger: stripe.DefaultLeveledLogger,
-		},
-	)
-	stripe.SetBackend(stripe.APIBackend, stripeMockBackend)
 }

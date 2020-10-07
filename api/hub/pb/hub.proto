@@ -136,6 +136,12 @@ message LeaveOrgRequest {}
 
 message LeaveOrgResponse {}
 
+message SetupBillingRequest {
+    string card_token = 1;
+}
+
+message SetupBillingResponse {}
+
 message IsUsernameAvailableRequest {
     string username = 1;
 }
@@ -175,6 +181,8 @@ service APIService {
     rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgResponse) {}
     rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgResponse) {}
     rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgResponse) {}
+
+    rpc SetupBilling(SetupBillingRequest) returns (SetupBillingResponse) {}
 
     rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableResponse) {}
     rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}

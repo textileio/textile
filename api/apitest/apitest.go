@@ -2,6 +2,7 @@ package apitest
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -12,12 +13,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stripe/stripe-go/v72/token"
+
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/textile/v2/api/hub/client"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
+	"golang.org/x/net/http2"
 )
 
 const SessionSecret = "hubsession"
@@ -46,7 +51,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		AddrIPFSAPI:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		AddrMongoURI:    "mongodb://127.0.0.1:27017",
+		AddrMongoURI:    "mongodb://127.0.0.1:27017/?replicaSet=rs0",
 
 		MongoName: util.MakeToken(12),
 
@@ -130,4 +135,39 @@ func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 	_, err := http.Get(url)
 	require.NoError(t, err)
 	time.Sleep(time.Second)
+}
+
+func ConfigureStripe(t *testing.T, url, key string) {
+	stripe.Key = key
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	err := http2.ConfigureTransport(transport)
+	require.NoError(t, err)
+	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(
+		stripe.APIBackend,
+		&stripe.BackendConfig{
+			URL: stripe.String(url),
+			HTTPClient: &http.Client{
+				Transport: transport,
+			},
+			LeveledLogger: stripe.DefaultLeveledLogger,
+		},
+	))
+}
+
+func NewCardToken(t *testing.T) string {
+	ConfigureStripe(t, "http://127.0.0.1:12111", "sk_test_123")
+	tok, err := token.New(&stripe.TokenParams{
+		Card: &stripe.CardParams{
+			Number:   stripe.String("4242424242424242"),
+			ExpMonth: stripe.String("12"),
+			ExpYear:  stripe.String("2021"),
+			CVC:      stripe.String("123"),
+		},
+	})
+	require.NoError(t, err)
+	return tok.ID
 }

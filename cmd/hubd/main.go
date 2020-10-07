@@ -59,13 +59,17 @@ var (
 				Key:      "addr.ipfs.api",
 				DefValue: "/ip4/127.0.0.1/tcp/5001",
 			},
+			"addrBillingApi": {
+				Key:      "addr.billing.api",
+				DefValue: "",
+			},
 			"addrPowergateApi": {
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017",
+				DefValue: "mongodb://127.0.0.1:27017/?replicaSet=rs0",
 			},
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
@@ -98,6 +102,14 @@ var (
 			"emailSessionSecret": {
 				Key:      "email.session_secret",
 				DefValue: "",
+			},
+			"stripeApiUrl": {
+				Key:      "stripe.api_url",
+				DefValue: "http://127.0.0.1:12111",
+			},
+			"stripeKey": {
+				Key:      "stripe.key",
+				DefValue: "sk_test_123",
 			},
 			"bucketsMaxSize": {
 				Key:      "buckets.max_size",
@@ -171,6 +183,10 @@ func init() {
 		config.Flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 	rootCmd.PersistentFlags().String(
+		"addrBillingApi",
+		config.Flags["addrBillingApi"].DefValue.(string),
+		"Powergate API address")
+	rootCmd.PersistentFlags().String(
 		"addrPowergateApi",
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
@@ -216,6 +232,16 @@ func init() {
 		"emailSessionSecret",
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
+
+	// Stripe settings
+	rootCmd.PersistentFlags().String(
+		"stripeApiUrl",
+		config.Flags["stripeApiUrl"].DefValue.(string),
+		"Stripe API URL")
+	rootCmd.PersistentFlags().String(
+		"stripeKey",
+		config.Flags["stripeKey"].DefValue.(string),
+		"Stripe secret key")
 
 	// Bucket settings
 	rootCmd.PersistentFlags().Int64(
@@ -270,6 +296,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 
+		addrBillingApi := config.Viper.GetString("addr.billing.api")
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
@@ -285,6 +312,9 @@ var rootCmd = &cobra.Command{
 		emailDomain := config.Viper.GetString("email.domain")
 		emailApiKey := config.Viper.GetString("email.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
+
+		stripeApiUrl := config.Viper.GetString("stripe.api_url")
+		stripeKey := config.Viper.GetString("stripe.key")
 
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
 		bucketsTotalMaxSize := config.Viper.GetInt64("buckets.total_max_size")
@@ -309,6 +339,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:      addrIpfsApi,
 			AddrGatewayHost:  addrGatewayHost,
 			AddrGatewayURL:   addrGatewayUrl,
+			AddrBillingAPI:   addrBillingApi,
 			AddrPowergateAPI: addrPowergateApi,
 			AddrMongoURI:     addrMongoUri,
 
@@ -324,6 +355,9 @@ var rootCmd = &cobra.Command{
 			EmailDomain:        emailDomain,
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
+
+			StripeAPIURL: stripeApiUrl,
+			StripeKey:    stripeKey,
 
 			BucketsMaxSize:            bucketsMaxSize,
 			BucketsTotalMaxSize:       bucketsTotalMaxSize,

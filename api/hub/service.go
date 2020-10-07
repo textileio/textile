@@ -15,7 +15,8 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
-	powc "github.com/textileio/powergate/api/client"
+	pow "github.com/textileio/powergate/api/client"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"github.com/textileio/textile/v2/buckets"
@@ -47,7 +48,8 @@ type Service struct {
 	EmailSessionSecret string
 	IPFSClient         iface.CoreAPI
 	IPNSManager        *ipns.Manager
-	Pow                *powc.Client
+	BillingClient      *billing.Client
+	PowergateClient    *pow.Client
 }
 
 // Info provides the currently running API's build information
@@ -83,8 +85,8 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 
 	var powInfo *mdb.PowInfo
-	if s.Pow != nil {
-		ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+	if s.PowergateClient != nil {
+		ffsId, ffsToken, err := s.PowergateClient.FFS.Create(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
 		}
@@ -106,6 +108,17 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
 		return nil, err
+	}
+
+	// Create a customer
+	if s.BillingClient != nil {
+		cusID, err := s.BillingClient.CreateCustomer(ctx, req.Email)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.Collections.Accounts.SetCustomerID(ctx, dev.Key, cusID); err != nil {
+			return nil, err
+		}
 	}
 
 	// Check for pending invites
@@ -262,8 +275,6 @@ func (s *Service) GetIdentity(ctx context.Context, _ *pb.GetIdentityRequest) (*p
 func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.CreateKeyResponse, error) {
 	log.Debugf("received create key request")
 
-	owner := ownerFromContext(ctx)
-
 	var keyType mdb.APIKeyType
 	switch req.Type {
 	case pb.KeyType_KEY_TYPE_ACCOUNT:
@@ -275,7 +286,8 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		return nil, status.Errorf(codes.InvalidArgument, "invalid key type: %v", req.Type.String())
 	}
 
-	key, err := s.Collections.APIKeys.Create(ctx, owner, keyType, req.Secure)
+	account := accountFromContext(ctx)
+	key, err := s.Collections.APIKeys.Create(ctx, account.Key, keyType, req.Secure)
 	if err != nil {
 		return nil, err
 	}
@@ -302,8 +314,8 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 	if err != nil {
 		return nil, err
 	}
-	owner := ownerFromContext(ctx)
-	if !owner.Equals(key.Owner) {
+	account := accountFromContext(ctx)
+	if !account.Key.Equals(key.Owner) {
 		return nil, status.Error(codes.PermissionDenied, "User does not own key")
 	}
 	if err := s.Collections.APIKeys.Invalidate(ctx, req.Key); err != nil {
@@ -315,8 +327,8 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
 	log.Debugf("received list keys request")
 
-	owner := ownerFromContext(ctx)
-	keys, err := s.Collections.APIKeys.ListByOwner(ctx, owner)
+	account := accountFromContext(ctx)
+	keys, err := s.Collections.APIKeys.ListByOwner(ctx, account.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -348,8 +360,8 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	dev, _ := mdb.DevFromContext(ctx)
 
 	var powInfo *mdb.PowInfo
-	if s.Pow != nil {
-		ffsId, ffsToken, err := s.Pow.FFS.Create(ctx)
+	if s.PowergateClient != nil {
+		ffsId, ffsToken, err := s.PowergateClient.FFS.Create(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
 		}
@@ -370,6 +382,18 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err := s.Collections.Accounts.SetToken(ctx, org.Key, tok); err != nil {
 		return nil, err
 	}
+
+	// Create a customer using the dev's email address
+	if s.BillingClient != nil {
+		cusID, err := s.BillingClient.CreateCustomer(ctx, dev.Email)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.Collections.Accounts.SetCustomerID(ctx, org.Key, cusID); err != nil {
+			return nil, err
+		}
+	}
+
 	orgInfo, err := s.orgToPbOrg(org)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
@@ -504,6 +528,20 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	return &pb.LeaveOrgResponse{}, nil
 }
 
+func (s *Service) SetupBilling(ctx context.Context, req *pb.SetupBillingRequest) (*pb.SetupBillingResponse, error) {
+	log.Debugf("received setup billing request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+
+	account := accountFromContext(ctx)
+	if err := s.BillingClient.AddCard(ctx, account.CustomerID, req.CardToken); err != nil {
+		return nil, err
+	}
+	return &pb.SetupBillingResponse{}, nil
+}
+
 func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {
 	log.Debugf("received is username available request")
 
@@ -536,13 +574,13 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	return &pb.DestroyAccountResponse{}, nil
 }
 
-func ownerFromContext(ctx context.Context) thread.PubKey {
+func accountFromContext(ctx context.Context) *mdb.Account {
 	org, ok := mdb.OrgFromContext(ctx)
 	if !ok {
 		dev, _ := mdb.DevFromContext(ctx)
-		return dev.Key
+		return dev
 	}
-	return org.Key
+	return org
 }
 
 func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {

@@ -65,7 +65,7 @@ var (
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017",
+				DefValue: "mongodb://127.0.0.1:27017/?replicaSet=rs0",
 			},
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
@@ -228,8 +228,8 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:      addrIpfsApi,
 			AddrGatewayHost:  addrGatewayHost,
 			AddrGatewayURL:   addrGatewayUrl,
-			AddrPowergateAPI: addrPowergateApi,
 			AddrMongoURI:     addrMongoUri,
+			AddrPowergateAPI: addrPowergateApi,
 
 			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
 

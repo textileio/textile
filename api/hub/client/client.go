@@ -122,6 +122,16 @@ func (c *Client) LeaveOrg(ctx context.Context) error {
 	return err
 }
 
+// SetupBilling sets up billing for an account, enabling
+// usage beyond the free quotas.
+// Currently, only cards are accepted.
+func (c *Client) SetupBilling(ctx context.Context, cardToken string) error {
+	_, err := c.c.SetupBilling(ctx, &pb.SetupBillingRequest{
+		CardToken: cardToken,
+	})
+	return err
+}
+
 // IsUsernameAvailable returns a nil error if the username is valid and available.
 func (c *Client) IsUsernameAvailable(ctx context.Context, username string) error {
 	_, err := c.c.IsUsernameAvailable(ctx, &pb.IsUsernameAvailableRequest{

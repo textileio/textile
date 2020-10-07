@@ -28,11 +28,12 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
-	powc "github.com/textileio/powergate/api/client"
+	pow "github.com/textileio/powergate/api/client"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	healthRpc "github.com/textileio/powergate/health/rpc"
 	netRpc "github.com/textileio/powergate/net/rpc"
 	walletRpc "github.com/textileio/powergate/wallet/rpc"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/buckets"
 	bpb "github.com/textileio/textile/v2/api/buckets/pb"
 	"github.com/textileio/textile/v2/api/common"
@@ -122,12 +123,16 @@ var (
 type Textile struct {
 	collections *mdb.Collections
 
-	ts             tc.NetBoostrapper
-	th             *threads.Client
-	thn            *netclient.Client
-	bucks          *tdb.Buckets
-	mail           *tdb.Mail
-	powc           *powc.Client
+	ts tc.NetBoostrapper
+
+	th  *threads.Client
+	thn *netclient.Client
+	bc  *billing.Client
+	pc  *pow.Client
+
+	bucks *tdb.Buckets
+	mail  *tdb.Mail
+
 	archiveTracker *archive.Tracker
 	buckLocks      *nutil.SemaphorePool
 
@@ -153,6 +158,7 @@ type Config struct {
 	AddrIPFSAPI      ma.Multiaddr
 	AddrGatewayHost  ma.Multiaddr
 	AddrGatewayURL   string
+	AddrBillingAPI   string
 	AddrPowergateAPI string
 	AddrMongoURI     string
 
@@ -168,6 +174,9 @@ type Config struct {
 	EmailDomain        string
 	EmailAPIKey        string
 	EmailSessionSecret string
+
+	StripeAPIURL string
+	StripeKey    string
 
 	BucketsMaxSize            int64
 	BucketsTotalMaxSize       int64
@@ -204,7 +213,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 	if conf.AddrPowergateAPI != "" {
-		if t.powc, err = powc.NewClient(conf.AddrPowergateAPI); err != nil {
+		if t.pc, err = pow.NewClient(conf.AddrPowergateAPI); err != nil {
 			return nil, err
 		}
 	}
@@ -254,7 +263,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.bucks, err = tdb.NewBuckets(t.th, t.powc, t.collections.BucketArchives)
+	t.bucks, err = tdb.NewBuckets(t.th, t.pc, t.collections.BucketArchives)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +295,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
+		if conf.AddrBillingAPI != "" {
+			t.bc, err = billing.NewClient(conf.AddrBillingAPI, grpc.WithInsecure())
+			if err != nil {
+				return nil, err
+			}
+		}
 		hs = &hub.Service{
 			Collections:        t.collections,
 			Threads:            t.th,
@@ -296,7 +311,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			EmailSessionSecret: conf.EmailSessionSecret,
 			IPFSClient:         ic,
 			IPNSManager:        t.ipnsm,
-			Pow:                t.powc,
+			BillingClient:      t.bc,
+			PowergateClient:    t.pc,
 		}
 		us = &users.Service{
 			Collections: t.collections,
@@ -304,7 +320,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	if conf.Hub {
-		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.powc, t.internalHubSession)
+		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.pc, t.internalHubSession)
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +336,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		GatewayBucketsHost:        conf.DNSDomain,
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
-		PGClient:                  t.powc,
+		BillingClient:             t.bc,
+		PowergateClient:           t.pc,
 		ArchiveTracker:            t.archiveTracker,
 		Semaphores:                t.buckLocks,
 	}
@@ -359,10 +376,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
 				t.billingInterceptor(),
-				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.powc, t.collections),
-				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.powc, t.collections),
-				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.powc, t.collections),
-				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.powc, t.collections),
+				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
+				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
+				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),
+				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.pc, t.collections),
 			),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
 		}
@@ -482,8 +499,13 @@ func (t *Textile) Close(force bool) error {
 	if err := t.ts.Close(); err != nil {
 		return err
 	}
-	if t.powc != nil {
-		if err := t.powc.Close(); err != nil {
+	if t.bc != nil {
+		if err := t.bc.Close(); err != nil {
+			return err
+		}
+	}
+	if t.pc != nil {
+		if err := t.pc.Close(); err != nil {
 			return err
 		}
 	}
