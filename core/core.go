@@ -31,6 +31,7 @@ import (
 	netapi "github.com/textileio/go-threads/net/api"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
+	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
 	powc "github.com/textileio/powergate/api/client"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
@@ -137,6 +138,7 @@ type Textile struct {
 	mail           *tdb.Mail
 	powc           *powc.Client
 	archiveTracker *archive.Tracker
+	buckLocks      *nutil.SemaphorePool
 
 	ipnsm *ipns.Manager
 	dnsm  *dns.Manager
@@ -316,6 +318,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
+	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &buckets.Service{
 		Collections:               t.collections,
 		Buckets:                   t.bucks,
@@ -328,6 +331,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPNSManager:               t.ipnsm,
 		PGClient:                  t.powc,
 		ArchiveTracker:            t.archiveTracker,
+		Semaphores:                t.buckLocks,
 	}
 
 	// Start serving
@@ -461,6 +465,7 @@ func (t *Textile) Close(force bool) error {
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
+	t.buckLocks.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := t.proxy.Shutdown(ctx); err != nil {
