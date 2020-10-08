@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -338,6 +339,29 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	rep3, err := client.ListPath(ctx, buck.Root.Key, "")
 	require.NoError(t, err)
 	assert.Len(t, rep3.Item.Items, 3)
+
+	// Concurrent writes should result in one being rejected due to the fast-forward-only rule
+	root, err := util.NewResolvedPath(rep3.Root.Path)
+	require.NoError(t, err)
+	var err1, err2 error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		_, _, err1 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
+		wg.Done()
+	}()
+	go func() {
+		_, _, err2 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
+		wg.Done()
+	}()
+	wg.Wait()
+	// We should have one and only one error
+	assert.False(t, (err1 != nil && err2 != nil) && (err1 == nil && err2 == nil))
+	if err1 != nil {
+		assert.True(t, strings.Contains(err1.Error(), "update is non-fast-forward"))
+	} else if err2 != nil {
+		assert.True(t, strings.Contains(err2.Error(), "update is non-fast-forward"))
+	}
 }
 
 func TestClient_PushPathBucketExceedLimit(t *testing.T) {

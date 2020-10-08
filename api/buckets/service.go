@@ -26,6 +26,7 @@ import (
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
+	nutil "github.com/textileio/go-threads/net/util"
 	powc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
@@ -105,6 +106,17 @@ type Service struct {
 	IPNSManager               *ipns.Manager
 	PGClient                  *powc.Client
 	ArchiveTracker            *archive.Tracker
+	Semaphores                *nutil.SemaphorePool
+}
+
+var (
+	_ nutil.SemaphoreKey = (*buckLock)(nil)
+)
+
+type buckLock string
+
+func (l buckLock) Key() string {
+	return string(l)
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse, error) {
@@ -802,6 +814,10 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 		return nil, fmt.Errorf("invalid remote cid: %s", err)
 	}
 
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
 	buck := &tdb.Bucket{}
 	if err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("get bucket: %s", err)
@@ -1163,6 +1179,10 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	if err != nil {
 		return err
 	}
+
+	lck := s.Semaphores.Get(buckLock(buckKey))
+	lck.Acquire()
+	defer lck.Release()
 
 	buck := &tdb.Bucket{}
 	err = s.Buckets.GetSafe(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
@@ -1533,7 +1553,6 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error 
 	if err != nil {
 		return fmt.Errorf("getting current buckets total size: %s", err)
 	}
-
 	deltaSize := -fromSize + toSize
 	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
 		return ErrBucketsTotalSizeExceedsMaxSize
@@ -1696,6 +1715,10 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
 	buck := &tdb.Bucket{}
 	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
 	if err != nil {
@@ -1748,6 +1771,10 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	if err != nil {
 		return nil, err
 	}
+
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
 
 	buck := &tdb.Bucket{}
 	err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
@@ -1886,6 +1913,11 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 	if err != nil {
 		return nil, err
 	}
+
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
 	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, reqPath, dbToken)
 	if err != nil {
 		return nil, err
@@ -2079,6 +2111,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("db required")
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
+
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
 
 	buck := &tdb.Bucket{}
 	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
@@ -2409,7 +2445,6 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
 	if err != nil {
 		return fmt.Errorf("getting size of removed node: %s", err)
 	}
-
 	if err := s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)); err != nil {
 		return fmt.Errorf("substracting unpinned node from quota: %s", err)
 	}
