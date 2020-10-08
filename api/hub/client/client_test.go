@@ -14,7 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
-	"github.com/textileio/textile/v2/api/billingd/service"
+	billing "github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/common"
 	c "github.com/textileio/textile/v2/api/hub/client"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
@@ -471,10 +471,10 @@ func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	api, err := service.NewService(ctx, service.Config{
+	api, err := billing.NewService(ctx, billing.Config{
 		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
-		StripeAPIURL: "http://127.0.0.1:12111",
-		StripeKey:    "sk_test_123",
+		StripeAPIURL: "https://api.stripe.com",
+		StripeKey:    "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
 		DBName:       util.MakeToken(8),
 		Debug:        true,

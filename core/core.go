@@ -175,9 +175,6 @@ type Config struct {
 	EmailAPIKey        string
 	EmailSessionSecret string
 
-	StripeAPIURL string
-	StripeKey    string
-
 	BucketsMaxSize            int64
 	BucketsTotalMaxSize       int64
 	BucketsMaxNumberPerThread int
@@ -287,6 +284,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		return nil, err
 	}
 
+	// Configure a billing client
+	if conf.AddrBillingAPI != "" {
+		t.bc, err = billing.NewClient(conf.AddrBillingAPI, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var hs *hub.Service
 	var us *users.Service
 	if conf.Hub {
@@ -295,12 +300,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
-		if conf.AddrBillingAPI != "" {
-			t.bc, err = billing.NewClient(conf.AddrBillingAPI, grpc.WithInsecure())
-			if err != nil {
-				return nil, err
-			}
-		}
 		hs = &hub.Service{
 			Collections:        t.collections,
 			Threads:            t.th,
@@ -375,13 +374,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
-				t.billingInterceptor(),
+				//t.billingInterceptor(),
 				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.pc, t.collections),
 			),
-			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc)),
+			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc), streamBillingInterceptor()),
+			grpc.StatsHandler(&BillingHandler{}),
 		}
 	} else {
 		opts = []grpc.ServerOption{

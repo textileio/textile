@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,12 +18,14 @@ import (
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
+	billing "github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/buckets"
 	c "github.com/textileio/textile/v2/api/buckets/client"
 	"github.com/textileio/textile/v2/api/common"
@@ -996,7 +999,28 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
+	billingPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api, err := billing.NewService(ctx, billing.Config{
+		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
+		StripeAPIURL: "https://api.stripe.com",
+		StripeKey:    "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName:       util.MakeToken(8),
+		Debug:        true,
+	}, true)
+	require.NoError(t, err)
+	err = api.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := api.Stop(true)
+		require.NoError(t, err)
+	})
+
 	conf := apitest.DefaultTextileConfig(t)
+	conf.AddrBillingAPI = fmt.Sprintf("127.0.0.1:%d", billingPort)
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }

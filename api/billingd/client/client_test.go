@@ -188,9 +188,7 @@ func setup(t *testing.T) *client.Client {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	api, err := service.NewService(ctx, service.Config{
-		ListenAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		//StripeAPIURL: "http://127.0.0.1:8420",
-		//StripeKey:    "sk_test_123",
+		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
 		StripeAPIURL: "https://api.stripe.com",
 		StripeKey:    "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",

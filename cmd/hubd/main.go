@@ -103,14 +103,6 @@ var (
 				Key:      "email.session_secret",
 				DefValue: "",
 			},
-			"stripeApiUrl": {
-				Key:      "stripe.api_url",
-				DefValue: "http://127.0.0.1:12111",
-			},
-			"stripeKey": {
-				Key:      "stripe.key",
-				DefValue: "sk_test_123",
-			},
 			"bucketsMaxSize": {
 				Key:      "buckets.max_size",
 				DefValue: int64(1073741824),
@@ -233,16 +225,6 @@ func init() {
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
 
-	// Stripe settings
-	rootCmd.PersistentFlags().String(
-		"stripeApiUrl",
-		config.Flags["stripeApiUrl"].DefValue.(string),
-		"Stripe API URL")
-	rootCmd.PersistentFlags().String(
-		"stripeKey",
-		config.Flags["stripeKey"].DefValue.(string),
-		"Stripe secret key")
-
 	// Bucket settings
 	rootCmd.PersistentFlags().Int64(
 		"bucketsMaxSize",
@@ -313,9 +295,6 @@ var rootCmd = &cobra.Command{
 		emailApiKey := config.Viper.GetString("email.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
-		stripeApiUrl := config.Viper.GetString("stripe.api_url")
-		stripeKey := config.Viper.GetString("stripe.key")
-
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
 		bucketsTotalMaxSize := config.Viper.GetInt64("buckets.total_max_size")
 		bucketsMaxNumberPerThread := config.Viper.GetInt("buckets.max_number_per_thread")
@@ -355,9 +334,6 @@ var rootCmd = &cobra.Command{
 			EmailDomain:        emailDomain,
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
-
-			StripeAPIURL: stripeApiUrl,
-			StripeKey:    stripeKey,
 
 			BucketsMaxSize:            bucketsMaxSize,
 			BucketsTotalMaxSize:       bucketsTotalMaxSize,
