@@ -1,6 +1,7 @@
 package buckets
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,6 +16,35 @@ const (
 	// SeedName is the file name reserved for a random bucket seed.
 	SeedName = ".textileseed"
 )
+
+var (
+	// ErrNonFastForward is returned when an update in non-fast-forward.
+	ErrNonFastForward = fmt.Errorf("update is non-fast-forward")
+
+	// ErrNoCurrentArchive is returned when not status about the last archive
+	// can be retrieved, since the bucket was never archived.
+	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
+
+	// ErrZeroBalance is returned when archiving a bucket which
+	// underlying Account/User FFS instance balance is zero.
+	ErrZeroBalance = errors.New("wallet FIL balance is zero, if recently created wait 30s")
+)
+
+type ctxKey string
+
+type BucketOwner struct {
+	ID               string
+	StorageTotalSize int64
+}
+
+func NewBucketOwnerContext(ctx context.Context, owner *BucketOwner) context.Context {
+	return context.WithValue(ctx, ctxKey("bucketOwner"), owner)
+}
+
+func BucketOwnerFromContext(ctx context.Context) (*BucketOwner, bool) {
+	owner, ok := ctx.Value(ctxKey("bucketOwner")).(*BucketOwner)
+	return owner, ok
+}
 
 // Role describes an access role for a bucket item.
 type Role int
@@ -57,19 +87,6 @@ func (r Role) String() string {
 		return "Invalid"
 	}
 }
-
-var (
-	// ErrNonFastForward is returned when an update in non-fast-forward.
-	ErrNonFastForward = fmt.Errorf("update is non-fast-forward")
-
-	// ErrNoCurrentArchive is returned when not status about the last archive
-	// can be retrieved, since the bucket was never archived.
-	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
-
-	// ErrZeroBalance is returned when archiving a bucket which
-	// underlying Account/User FFS instance balance is zero.
-	ErrZeroBalance = errors.New("wallet FIL balance is zero, if recently created wait 30s")
-)
 
 // RolesToPb maps native type roles to protobuf type roles.
 func RolesToPb(in map[string]Role) (map[string]pb.PathAccessRole, error) {

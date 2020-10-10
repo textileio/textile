@@ -40,6 +40,22 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		ctx = thread.NewTokenContext(ctx, threadToken)
 	}
 
+	return t.newAuthCtx(ctx, method, true)
+}
+
+func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
+	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
+		ctx = common.NewThreadIDContext(ctx, threadID)
+	}
+	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
+		return nil, err
+	} else {
+		ctx = thread.NewTokenContext(ctx, threadToken)
+	}
+	return ctx, nil
+}
+
+func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bool) (context.Context, error) {
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {
 		ctx = common.NewSessionContext(ctx, sid)
@@ -48,19 +64,21 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		}
 		session, err := t.collections.Sessions.Get(ctx, sid)
 		if err != nil {
-			return nil, status.Error(codes.Unauthenticated, "Invalid session")
+			return ctx, status.Error(codes.Unauthenticated, "Invalid session")
 		}
 		if time.Now().After(session.ExpiresAt) {
-			return nil, status.Error(codes.Unauthenticated, "Expired session")
+			return ctx, status.Error(codes.Unauthenticated, "Expired session")
 		}
-		if err := t.collections.Sessions.Touch(ctx, session.ID); err != nil {
-			return nil, err
+		if touchSession {
+			if err := t.collections.Sessions.Touch(ctx, session.ID); err != nil {
+				return ctx, err
+			}
 		}
 		ctx = mdb.NewSessionContext(ctx, session)
 
 		dev, err := t.collections.Accounts.Get(ctx, session.Owner)
 		if err != nil {
-			return nil, status.Error(codes.NotFound, "User not found")
+			return ctx, status.Error(codes.NotFound, "User not found")
 		}
 		ctx = mdb.NewDevContext(ctx, dev)
 
@@ -68,14 +86,14 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		if ok {
 			isMember, err := t.collections.Accounts.IsMember(ctx, orgSlug, dev.Key)
 			if err != nil {
-				return nil, err
+				return ctx, err
 			}
 			if !isMember {
-				return nil, status.Error(codes.PermissionDenied, "User is not an org member")
+				return ctx, status.Error(codes.PermissionDenied, "User is not an org member")
 			} else {
 				org, err := t.collections.Accounts.GetByUsername(ctx, orgSlug)
 				if err != nil {
-					return nil, status.Error(codes.NotFound, "Org not found")
+					return ctx, status.Error(codes.NotFound, "Org not found")
 				}
 				ctx = mdb.NewOrgContext(ctx, org)
 				ctx = common.NewOrgSlugContext(ctx, orgSlug)
@@ -87,17 +105,17 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	} else if k, ok := common.APIKeyFromMD(ctx); ok {
 		key, err := t.collections.APIKeys.Get(ctx, k)
 		if err != nil || !key.Valid {
-			return nil, status.Error(codes.NotFound, "API key not found or is invalid")
+			return ctx, status.Error(codes.NotFound, "API key not found or is invalid")
 		}
 		ctx = common.NewAPIKeyContext(ctx, k)
 		if key.Secure {
 			msg, sig, ok := common.APISigFromMD(ctx)
 			if !ok {
-				return nil, status.Error(codes.Unauthenticated, "API key signature required")
+				return ctx, status.Error(codes.Unauthenticated, "API key signature required")
 			} else {
 				ctx = common.NewAPISigContext(ctx, msg, sig)
 				if !common.ValidateAPISigContext(ctx, key.Secret) {
-					return nil, status.Error(codes.Unauthenticated, "Bad API key signature")
+					return ctx, status.Error(codes.Unauthenticated, "Bad API key signature")
 				}
 			}
 		}
@@ -105,7 +123,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 		case mdb.AccountKey:
 			acc, err := t.collections.Accounts.Get(ctx, key.Owner)
 			if err != nil {
-				return nil, status.Error(codes.NotFound, "Account not found")
+				return ctx, status.Error(codes.NotFound, "Account not found")
 			}
 			switch acc.Type {
 			case mdb.Dev:
@@ -119,15 +137,15 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 			if ok {
 				var claims jwt.StandardClaims
 				if _, _, err = new(jwt.Parser).ParseUnverified(string(token), &claims); err != nil {
-					return nil, status.Error(codes.PermissionDenied, "Bad authorization")
+					return ctx, status.Error(codes.PermissionDenied, "Bad authorization")
 				}
 				ukey := &thread.Libp2pPubKey{}
 				if err = ukey.UnmarshalString(claims.Subject); err != nil {
-					return nil, err
+					return ctx, err
 				}
 				user, err := t.collections.Users.Get(ctx, ukey)
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-					return nil, err
+					return ctx, err
 				}
 				if user == nil {
 					// Attach a temp user context that will be accessible in the next interceptor.
@@ -135,24 +153,12 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 				}
 				ctx = mdb.NewUserContext(ctx, user)
 			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
-				return nil, status.Error(codes.Unauthenticated, "Token required")
+				return ctx, status.Error(codes.Unauthenticated, "Token required")
 			}
 		}
 		ctx = mdb.NewAPIKeyContext(ctx, key)
 	} else {
-		return nil, status.Error(codes.Unauthenticated, "Session or API key required")
-	}
-	return ctx, nil
-}
-
-func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
-	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
-		ctx = common.NewThreadIDContext(ctx, threadID)
-	}
-	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
-		return nil, err
-	} else {
-		ctx = thread.NewTokenContext(ctx, threadToken)
+		return ctx, status.Error(codes.Unauthenticated, "Session or API key required")
 	}
 	return ctx, nil
 }

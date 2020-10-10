@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"time"
 
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	"google.golang.org/grpc"
@@ -54,92 +53,38 @@ func (c *Client) AddCard(ctx context.Context, customerID, token string) error {
 	return err
 }
 
-func (c *Client) SetStoredData(ctx context.Context, customerID string, byteSize int64) (units int64, changed bool, err error) {
-	res, err := c.c.SetStoredData(ctx, &pb.SetStoredDataRequest{
+func (c *Client) SetStoredData(ctx context.Context, customerID string, totalSize int64) (*pb.SetStoredDataResponse, error) {
+	return c.c.SetStoredData(ctx, &pb.SetStoredDataRequest{
 		CustomerId: customerID,
-		ByteSize:   byteSize,
+		TotalSize:  totalSize,
 	})
-	if err != nil {
-		return 0, false, err
-	}
-	return res.PeriodUnits, res.Changed, nil
 }
 
-func (c *Client) IncNetworkEgress(ctx context.Context, customerID string, byteSize int64) (units int64, changed bool, err error) {
-	res, err := c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
+func (c *Client) IncNetworkEgress(ctx context.Context, customerID string, incSize int64) (*pb.IncNetworkEgressResponse, error) {
+	return c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
 		CustomerId: customerID,
-		ByteSize:   byteSize,
+		IncSize:    incSize,
 	})
-	if err != nil {
-		return 0, false, err
-	}
-	return res.AddedUnits, res.Changed, nil
 }
 
-func (c *Client) IncInstanceReads(ctx context.Context, customerID string, count int64) (units int64, changed bool, err error) {
-	res, err := c.c.IncInstanceReads(ctx, &pb.IncInstanceReadsRequest{
+func (c *Client) IncInstanceReads(ctx context.Context, customerID string, incCount int64) (*pb.IncInstanceReadsResponse, error) {
+	return c.c.IncInstanceReads(ctx, &pb.IncInstanceReadsRequest{
 		CustomerId: customerID,
-		Count:      count,
+		IncCount:   incCount,
 	})
-	if err != nil {
-		return 0, false, err
-	}
-	return res.AddedUnits, res.Changed, nil
 }
 
-func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, count int64) (units int64, changed bool, err error) {
-	res, err := c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
+func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, incCount int64) (*pb.IncInstanceWritesResponse, error) {
+	return c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
 		CustomerId: customerID,
-		Count:      count,
+		IncCount:   incCount,
 	})
-	if err != nil {
-		return 0, false, err
-	}
-	return res.AddedUnits, res.Changed, nil
 }
 
-type PeriodUsage struct {
-	StoredData     PeriodUsageItem
-	NetworkEgress  PeriodUsageItem
-	InstanceReads  PeriodUsageItem
-	InstanceWrites PeriodUsageItem
-}
-
-type PeriodUsageItem struct {
-	Name   string
-	Units  int64
-	Period Period
-}
-
-type Period struct {
-	Start time.Time
-	End   time.Time
-}
-
-func (c *Client) GetPeriodUsage(ctx context.Context, customerID string) (*PeriodUsage, error) {
-	res, err := c.c.GetPeriodUsage(ctx, &pb.GetPeriodUsageRequest{
+func (c *Client) GetPeriodUsage(ctx context.Context, customerID string) (*pb.GetPeriodUsageResponse, error) {
+	return c.c.GetPeriodUsage(ctx, &pb.GetPeriodUsageRequest{
 		CustomerId: customerID,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &PeriodUsage{
-		StoredData:     usageItemFromPb(res.StoredData),
-		NetworkEgress:  usageItemFromPb(res.NetworkEgress),
-		InstanceReads:  usageItemFromPb(res.InstanceReads),
-		InstanceWrites: usageItemFromPb(res.InstanceWrites),
-	}, nil
-}
-
-func usageItemFromPb(item *pb.GetPeriodUsageResponse_Item) PeriodUsageItem {
-	return PeriodUsageItem{
-		Name:  item.Name,
-		Units: item.Units,
-		Period: Period{
-			Start: time.Unix(item.Period.Start, 0),
-			End:   time.Unix(item.Period.End, 0),
-		},
-	}
 }
 
 func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {

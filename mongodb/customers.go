@@ -36,17 +36,17 @@ type StoredData struct {
 
 type NetworkEgress struct {
 	ItemID  string `bson:"item_id"`
-	UnitBin int64  `bson:"unit_bin"`
+	UnitBin int64  `bson:"sub_units"`
 }
 
 type InstanceReads struct {
 	ItemID  string `bson:"item_id"`
-	UnitBin int64  `bson:"unit_bin"`
+	UnitBin int64  `bson:"sub_units"`
 }
 
 type InstanceWrites struct {
 	ItemID  string `bson:"item_id"`
-	UnitBin int64  `bson:"unit_bin"`
+	UnitBin int64  `bson:"sub_units"`
 }
 
 type Customers struct {
@@ -145,7 +145,7 @@ func (c *Customers) IncNetworkEgressSize(ctx context.Context, id string, size in
 	}
 	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
 		res := c.col.FindOneAndUpdate(ctx, bson.M{"_id": id}, bson.M{
-			"$inc": bson.M{"network_egress.unit_bin": size},
+			"$inc": bson.M{"network_egress.sub_units": size},
 		}, options.FindOneAndUpdate().SetReturnDocument(options.After))
 		if res.Err() != nil {
 			return res.Err()
@@ -158,7 +158,7 @@ func (c *Customers) IncNetworkEgressSize(ctx context.Context, id string, size in
 			units = doc.NetworkEgress.UnitBin / NetworkEgressBinSize
 			binSize := doc.NetworkEgress.UnitBin % NetworkEgressBinSize
 			_, err := c.col.UpdateOne(sctx, bson.M{"_id": id}, bson.M{
-				"$set": bson.M{"network_egress.unit_bin": binSize},
+				"$set": bson.M{"network_egress.sub_units": binSize},
 			})
 			if err != nil {
 				return err
@@ -180,7 +180,7 @@ func (c *Customers) IncInstanceReadsCount(ctx context.Context, id string, count 
 	}
 	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
 		res := c.col.FindOneAndUpdate(sctx, bson.M{"_id": id}, bson.M{
-			"$inc": bson.M{"instance_reads.unit_bin": count},
+			"$inc": bson.M{"instance_reads.sub_units": count},
 		}, options.FindOneAndUpdate().SetReturnDocument(options.After))
 		if res.Err() != nil {
 			return res.Err()
@@ -193,7 +193,7 @@ func (c *Customers) IncInstanceReadsCount(ctx context.Context, id string, count 
 			units = doc.InstanceReads.UnitBin / InstanceReadsBinSize
 			binCount := doc.InstanceReads.UnitBin % InstanceReadsBinSize
 			_, err := c.col.UpdateOne(sctx, bson.M{"_id": id}, bson.M{
-				"$set": bson.M{"instance_reads.unit_bin": binCount},
+				"$set": bson.M{"instance_reads.sub_units": binCount},
 			})
 			if err != nil {
 				return err
@@ -215,7 +215,7 @@ func (c *Customers) IncInstanceWritesCount(ctx context.Context, id string, count
 	}
 	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
 		res := c.col.FindOneAndUpdate(sctx, bson.M{"_id": id}, bson.M{
-			"$inc": bson.M{"instance_writes.unit_bin": count},
+			"$inc": bson.M{"instance_writes.sub_units": count},
 		}, options.FindOneAndUpdate().SetReturnDocument(options.After))
 		if res.Err() != nil {
 			return res.Err()
@@ -228,7 +228,7 @@ func (c *Customers) IncInstanceWritesCount(ctx context.Context, id string, count
 			units = doc.InstanceWrites.UnitBin / InstanceWritesBinSize
 			binCount := doc.InstanceWrites.UnitBin % InstanceWritesBinSize
 			if _, err := c.col.UpdateOne(sctx, bson.M{"_id": id}, bson.M{
-				"$set": bson.M{"instance_writes.unit_bin": binCount},
+				"$set": bson.M{"instance_writes.sub_units": binCount},
 			}); err != nil {
 				return err
 			}

@@ -335,7 +335,6 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		GatewayBucketsHost:        conf.DNSDomain,
 		IPFSClient:                ic,
 		IPNSManager:               t.ipnsm,
-		BillingClient:             t.bc,
 		PowergateClient:           t.pc,
 		ArchiveTracker:            t.archiveTracker,
 		Semaphores:                t.buckLocks,
@@ -374,14 +373,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
-				//t.billingInterceptor(),
 				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.pc, t.collections),
 			),
-			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc), streamBillingInterceptor()),
-			grpc.StatsHandler(&BillingHandler{}),
+			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc), t.bucketInterceptor()),
+			grpc.StatsHandler(&StatsHandler{t: t}),
 		}
 	} else {
 		opts = []grpc.ServerOption{

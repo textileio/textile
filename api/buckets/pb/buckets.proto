@@ -110,6 +110,7 @@ message PushPathResponse {
         int64 bytes = 3;
         string size = 4;
         Root root = 5;
+        int64 pinned = 6;
     }
 }
 

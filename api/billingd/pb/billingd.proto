@@ -22,42 +22,42 @@ message AddCardResponse {}
 
 message SetStoredDataRequest {
     string customer_id = 1;
-    int64 byte_size = 2;
+    int64 total_size = 2;
 }
 
 message SetStoredDataResponse {
-    int64 period_units = 1;
-    bool changed = 2;
+    int64 units = 1;
+    bool units_changed = 2;
 }
 
 message IncNetworkEgressRequest {
     string customer_id = 1;
-    int64 byte_size = 2;
+    int64 inc_size = 2;
 }
 
 message IncNetworkEgressResponse {
     int64 added_units = 1;
-    bool changed = 2;
+    int64 sub_units = 2;
 }
 
 message IncInstanceReadsRequest {
     string customer_id = 1;
-    int64 count = 2;
+    int64 inc_count = 2;
 }
 
 message IncInstanceReadsResponse {
     int64 added_units = 1;
-    bool changed = 2;
+    int64 sub_units = 2;
 }
 
 message IncInstanceWritesRequest {
     string customer_id = 1;
-    int64 count = 2;
+    int64 inc_count = 2;
 }
 
 message IncInstanceWritesResponse {
     int64 added_units = 1;
-    bool changed = 2;
+    int64 sub_units = 2;
 }
 
 message GetPeriodUsageRequest {
@@ -65,14 +65,32 @@ message GetPeriodUsageRequest {
 }
 
 message GetPeriodUsageResponse {
-    Item stored_data = 1;
-    Item network_egress = 2;
-    Item instance_reads = 3;
-    Item instance_writes = 4;
+    StoredData stored_data = 1;
+    NetworkEgress network_egress = 2;
+    InstanceReads instance_reads = 3;
+    InstanceWrites instance_writes = 4;
 
-    message Item {
-        string name = 1;
-        int64 units = 2;
+    message StoredData {
+        int64 units = 1;
+        int64 total_size = 2;
+        Period period = 3;
+    }
+
+    message NetworkEgress {
+        int64 units = 1;
+        int64 sub_units = 2;
+        Period period = 3;
+    }
+
+    message InstanceReads {
+        int64 units = 1;
+        int64 sub_units = 2;
+        Period period = 3;
+    }
+
+    message InstanceWrites {
+        int64 units = 1;
+        int64 sub_units = 2;
         Period period = 3;
     }
 

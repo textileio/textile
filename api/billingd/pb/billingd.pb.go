@@ -244,7 +244,7 @@ var xxx_messageInfo_AddCardResponse proto.InternalMessageInfo
 
 type SetStoredDataRequest struct {
 	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	ByteSize             int64    `protobuf:"varint,2,opt,name=byte_size,json=byteSize,proto3" json:"byte_size,omitempty"`
+	TotalSize            int64    `protobuf:"varint,2,opt,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -282,16 +282,16 @@ func (m *SetStoredDataRequest) GetCustomerId() string {
 	return ""
 }
 
-func (m *SetStoredDataRequest) GetByteSize() int64 {
+func (m *SetStoredDataRequest) GetTotalSize() int64 {
 	if m != nil {
-		return m.ByteSize
+		return m.TotalSize
 	}
 	return 0
 }
 
 type SetStoredDataResponse struct {
-	PeriodUnits          int64    `protobuf:"varint,1,opt,name=period_units,json=periodUnits,proto3" json:"period_units,omitempty"`
-	Changed              bool     `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	Units                int64    `protobuf:"varint,1,opt,name=units,proto3" json:"units,omitempty"`
+	UnitsChanged         bool     `protobuf:"varint,2,opt,name=units_changed,json=unitsChanged,proto3" json:"units_changed,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -322,23 +322,23 @@ func (m *SetStoredDataResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SetStoredDataResponse proto.InternalMessageInfo
 
-func (m *SetStoredDataResponse) GetPeriodUnits() int64 {
+func (m *SetStoredDataResponse) GetUnits() int64 {
 	if m != nil {
-		return m.PeriodUnits
+		return m.Units
 	}
 	return 0
 }
 
-func (m *SetStoredDataResponse) GetChanged() bool {
+func (m *SetStoredDataResponse) GetUnitsChanged() bool {
 	if m != nil {
-		return m.Changed
+		return m.UnitsChanged
 	}
 	return false
 }
 
 type IncNetworkEgressRequest struct {
 	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	ByteSize             int64    `protobuf:"varint,2,opt,name=byte_size,json=byteSize,proto3" json:"byte_size,omitempty"`
+	IncSize              int64    `protobuf:"varint,2,opt,name=inc_size,json=incSize,proto3" json:"inc_size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -376,16 +376,16 @@ func (m *IncNetworkEgressRequest) GetCustomerId() string {
 	return ""
 }
 
-func (m *IncNetworkEgressRequest) GetByteSize() int64 {
+func (m *IncNetworkEgressRequest) GetIncSize() int64 {
 	if m != nil {
-		return m.ByteSize
+		return m.IncSize
 	}
 	return 0
 }
 
 type IncNetworkEgressResponse struct {
 	AddedUnits           int64    `protobuf:"varint,1,opt,name=added_units,json=addedUnits,proto3" json:"added_units,omitempty"`
-	Changed              bool     `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	SubUnits             int64    `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -423,16 +423,16 @@ func (m *IncNetworkEgressResponse) GetAddedUnits() int64 {
 	return 0
 }
 
-func (m *IncNetworkEgressResponse) GetChanged() bool {
+func (m *IncNetworkEgressResponse) GetSubUnits() int64 {
 	if m != nil {
-		return m.Changed
+		return m.SubUnits
 	}
-	return false
+	return 0
 }
 
 type IncInstanceReadsRequest struct {
 	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	Count                int64    `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -470,16 +470,16 @@ func (m *IncInstanceReadsRequest) GetCustomerId() string {
 	return ""
 }
 
-func (m *IncInstanceReadsRequest) GetCount() int64 {
+func (m *IncInstanceReadsRequest) GetIncCount() int64 {
 	if m != nil {
-		return m.Count
+		return m.IncCount
 	}
 	return 0
 }
 
 type IncInstanceReadsResponse struct {
 	AddedUnits           int64    `protobuf:"varint,1,opt,name=added_units,json=addedUnits,proto3" json:"added_units,omitempty"`
-	Changed              bool     `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	SubUnits             int64    `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -517,16 +517,16 @@ func (m *IncInstanceReadsResponse) GetAddedUnits() int64 {
 	return 0
 }
 
-func (m *IncInstanceReadsResponse) GetChanged() bool {
+func (m *IncInstanceReadsResponse) GetSubUnits() int64 {
 	if m != nil {
-		return m.Changed
+		return m.SubUnits
 	}
-	return false
+	return 0
 }
 
 type IncInstanceWritesRequest struct {
 	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	Count                int64    `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -564,16 +564,16 @@ func (m *IncInstanceWritesRequest) GetCustomerId() string {
 	return ""
 }
 
-func (m *IncInstanceWritesRequest) GetCount() int64 {
+func (m *IncInstanceWritesRequest) GetIncCount() int64 {
 	if m != nil {
-		return m.Count
+		return m.IncCount
 	}
 	return 0
 }
 
 type IncInstanceWritesResponse struct {
 	AddedUnits           int64    `protobuf:"varint,1,opt,name=added_units,json=addedUnits,proto3" json:"added_units,omitempty"`
-	Changed              bool     `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	SubUnits             int64    `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -611,11 +611,11 @@ func (m *IncInstanceWritesResponse) GetAddedUnits() int64 {
 	return 0
 }
 
-func (m *IncInstanceWritesResponse) GetChanged() bool {
+func (m *IncInstanceWritesResponse) GetSubUnits() int64 {
 	if m != nil {
-		return m.Changed
+		return m.SubUnits
 	}
-	return false
+	return 0
 }
 
 type GetPeriodUsageRequest struct {
@@ -658,13 +658,13 @@ func (m *GetPeriodUsageRequest) GetCustomerId() string {
 }
 
 type GetPeriodUsageResponse struct {
-	StoredData           *GetPeriodUsageResponse_Item `protobuf:"bytes,1,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
-	NetworkEgress        *GetPeriodUsageResponse_Item `protobuf:"bytes,2,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
-	InstanceReads        *GetPeriodUsageResponse_Item `protobuf:"bytes,3,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
-	InstanceWrites       *GetPeriodUsageResponse_Item `protobuf:"bytes,4,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
-	XXX_unrecognized     []byte                       `json:"-"`
-	XXX_sizecache        int32                        `json:"-"`
+	StoredData           *GetPeriodUsageResponse_StoredData     `protobuf:"bytes,1,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
+	NetworkEgress        *GetPeriodUsageResponse_NetworkEgress  `protobuf:"bytes,2,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
+	InstanceReads        *GetPeriodUsageResponse_InstanceReads  `protobuf:"bytes,3,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
+	InstanceWrites       *GetPeriodUsageResponse_InstanceWrites `protobuf:"bytes,4,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                               `json:"-"`
+	XXX_unrecognized     []byte                                 `json:"-"`
+	XXX_sizecache        int32                                  `json:"-"`
 }
 
 func (m *GetPeriodUsageResponse) Reset()         { *m = GetPeriodUsageResponse{} }
@@ -692,83 +692,248 @@ func (m *GetPeriodUsageResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetPeriodUsageResponse proto.InternalMessageInfo
 
-func (m *GetPeriodUsageResponse) GetStoredData() *GetPeriodUsageResponse_Item {
+func (m *GetPeriodUsageResponse) GetStoredData() *GetPeriodUsageResponse_StoredData {
 	if m != nil {
 		return m.StoredData
 	}
 	return nil
 }
 
-func (m *GetPeriodUsageResponse) GetNetworkEgress() *GetPeriodUsageResponse_Item {
+func (m *GetPeriodUsageResponse) GetNetworkEgress() *GetPeriodUsageResponse_NetworkEgress {
 	if m != nil {
 		return m.NetworkEgress
 	}
 	return nil
 }
 
-func (m *GetPeriodUsageResponse) GetInstanceReads() *GetPeriodUsageResponse_Item {
+func (m *GetPeriodUsageResponse) GetInstanceReads() *GetPeriodUsageResponse_InstanceReads {
 	if m != nil {
 		return m.InstanceReads
 	}
 	return nil
 }
 
-func (m *GetPeriodUsageResponse) GetInstanceWrites() *GetPeriodUsageResponse_Item {
+func (m *GetPeriodUsageResponse) GetInstanceWrites() *GetPeriodUsageResponse_InstanceWrites {
 	if m != nil {
 		return m.InstanceWrites
 	}
 	return nil
 }
 
-type GetPeriodUsageResponse_Item struct {
-	Name                 string                         `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Units                int64                          `protobuf:"varint,2,opt,name=units,proto3" json:"units,omitempty"`
+type GetPeriodUsageResponse_StoredData struct {
+	Units                int64                          `protobuf:"varint,1,opt,name=units,proto3" json:"units,omitempty"`
+	TotalSize            int64                          `protobuf:"varint,2,opt,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
 	Period               *GetPeriodUsageResponse_Period `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                       `json:"-"`
 	XXX_unrecognized     []byte                         `json:"-"`
 	XXX_sizecache        int32                          `json:"-"`
 }
 
-func (m *GetPeriodUsageResponse_Item) Reset()         { *m = GetPeriodUsageResponse_Item{} }
-func (m *GetPeriodUsageResponse_Item) String() string { return proto.CompactTextString(m) }
-func (*GetPeriodUsageResponse_Item) ProtoMessage()    {}
-func (*GetPeriodUsageResponse_Item) Descriptor() ([]byte, []int) {
+func (m *GetPeriodUsageResponse_StoredData) Reset()         { *m = GetPeriodUsageResponse_StoredData{} }
+func (m *GetPeriodUsageResponse_StoredData) String() string { return proto.CompactTextString(m) }
+func (*GetPeriodUsageResponse_StoredData) ProtoMessage()    {}
+func (*GetPeriodUsageResponse_StoredData) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68f8d6015d3759a6, []int{15, 0}
 }
 
-func (m *GetPeriodUsageResponse_Item) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetPeriodUsageResponse_Item.Unmarshal(m, b)
+func (m *GetPeriodUsageResponse_StoredData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetPeriodUsageResponse_StoredData.Unmarshal(m, b)
 }
-func (m *GetPeriodUsageResponse_Item) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetPeriodUsageResponse_Item.Marshal(b, m, deterministic)
+func (m *GetPeriodUsageResponse_StoredData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetPeriodUsageResponse_StoredData.Marshal(b, m, deterministic)
 }
-func (m *GetPeriodUsageResponse_Item) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetPeriodUsageResponse_Item.Merge(m, src)
+func (m *GetPeriodUsageResponse_StoredData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetPeriodUsageResponse_StoredData.Merge(m, src)
 }
-func (m *GetPeriodUsageResponse_Item) XXX_Size() int {
-	return xxx_messageInfo_GetPeriodUsageResponse_Item.Size(m)
+func (m *GetPeriodUsageResponse_StoredData) XXX_Size() int {
+	return xxx_messageInfo_GetPeriodUsageResponse_StoredData.Size(m)
 }
-func (m *GetPeriodUsageResponse_Item) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetPeriodUsageResponse_Item.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetPeriodUsageResponse_Item proto.InternalMessageInfo
-
-func (m *GetPeriodUsageResponse_Item) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
+func (m *GetPeriodUsageResponse_StoredData) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetPeriodUsageResponse_StoredData.DiscardUnknown(m)
 }
 
-func (m *GetPeriodUsageResponse_Item) GetUnits() int64 {
+var xxx_messageInfo_GetPeriodUsageResponse_StoredData proto.InternalMessageInfo
+
+func (m *GetPeriodUsageResponse_StoredData) GetUnits() int64 {
 	if m != nil {
 		return m.Units
 	}
 	return 0
 }
 
-func (m *GetPeriodUsageResponse_Item) GetPeriod() *GetPeriodUsageResponse_Period {
+func (m *GetPeriodUsageResponse_StoredData) GetTotalSize() int64 {
+	if m != nil {
+		return m.TotalSize
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_StoredData) GetPeriod() *GetPeriodUsageResponse_Period {
+	if m != nil {
+		return m.Period
+	}
+	return nil
+}
+
+type GetPeriodUsageResponse_NetworkEgress struct {
+	Units                int64                          `protobuf:"varint,1,opt,name=units,proto3" json:"units,omitempty"`
+	SubUnits             int64                          `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
+	Period               *GetPeriodUsageResponse_Period `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                       `json:"-"`
+	XXX_unrecognized     []byte                         `json:"-"`
+	XXX_sizecache        int32                          `json:"-"`
+}
+
+func (m *GetPeriodUsageResponse_NetworkEgress) Reset()         { *m = GetPeriodUsageResponse_NetworkEgress{} }
+func (m *GetPeriodUsageResponse_NetworkEgress) String() string { return proto.CompactTextString(m) }
+func (*GetPeriodUsageResponse_NetworkEgress) ProtoMessage()    {}
+func (*GetPeriodUsageResponse_NetworkEgress) Descriptor() ([]byte, []int) {
+	return fileDescriptor_68f8d6015d3759a6, []int{15, 1}
+}
+
+func (m *GetPeriodUsageResponse_NetworkEgress) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress.Unmarshal(m, b)
+}
+func (m *GetPeriodUsageResponse_NetworkEgress) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress.Marshal(b, m, deterministic)
+}
+func (m *GetPeriodUsageResponse_NetworkEgress) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress.Merge(m, src)
+}
+func (m *GetPeriodUsageResponse_NetworkEgress) XXX_Size() int {
+	return xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress.Size(m)
+}
+func (m *GetPeriodUsageResponse_NetworkEgress) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetPeriodUsageResponse_NetworkEgress proto.InternalMessageInfo
+
+func (m *GetPeriodUsageResponse_NetworkEgress) GetUnits() int64 {
+	if m != nil {
+		return m.Units
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_NetworkEgress) GetSubUnits() int64 {
+	if m != nil {
+		return m.SubUnits
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_NetworkEgress) GetPeriod() *GetPeriodUsageResponse_Period {
+	if m != nil {
+		return m.Period
+	}
+	return nil
+}
+
+type GetPeriodUsageResponse_InstanceReads struct {
+	Units                int64                          `protobuf:"varint,1,opt,name=units,proto3" json:"units,omitempty"`
+	SubUnits             int64                          `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
+	Period               *GetPeriodUsageResponse_Period `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                       `json:"-"`
+	XXX_unrecognized     []byte                         `json:"-"`
+	XXX_sizecache        int32                          `json:"-"`
+}
+
+func (m *GetPeriodUsageResponse_InstanceReads) Reset()         { *m = GetPeriodUsageResponse_InstanceReads{} }
+func (m *GetPeriodUsageResponse_InstanceReads) String() string { return proto.CompactTextString(m) }
+func (*GetPeriodUsageResponse_InstanceReads) ProtoMessage()    {}
+func (*GetPeriodUsageResponse_InstanceReads) Descriptor() ([]byte, []int) {
+	return fileDescriptor_68f8d6015d3759a6, []int{15, 2}
+}
+
+func (m *GetPeriodUsageResponse_InstanceReads) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceReads.Unmarshal(m, b)
+}
+func (m *GetPeriodUsageResponse_InstanceReads) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceReads.Marshal(b, m, deterministic)
+}
+func (m *GetPeriodUsageResponse_InstanceReads) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetPeriodUsageResponse_InstanceReads.Merge(m, src)
+}
+func (m *GetPeriodUsageResponse_InstanceReads) XXX_Size() int {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceReads.Size(m)
+}
+func (m *GetPeriodUsageResponse_InstanceReads) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetPeriodUsageResponse_InstanceReads.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetPeriodUsageResponse_InstanceReads proto.InternalMessageInfo
+
+func (m *GetPeriodUsageResponse_InstanceReads) GetUnits() int64 {
+	if m != nil {
+		return m.Units
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_InstanceReads) GetSubUnits() int64 {
+	if m != nil {
+		return m.SubUnits
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_InstanceReads) GetPeriod() *GetPeriodUsageResponse_Period {
+	if m != nil {
+		return m.Period
+	}
+	return nil
+}
+
+type GetPeriodUsageResponse_InstanceWrites struct {
+	Units                int64                          `protobuf:"varint,1,opt,name=units,proto3" json:"units,omitempty"`
+	SubUnits             int64                          `protobuf:"varint,2,opt,name=sub_units,json=subUnits,proto3" json:"sub_units,omitempty"`
+	Period               *GetPeriodUsageResponse_Period `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                       `json:"-"`
+	XXX_unrecognized     []byte                         `json:"-"`
+	XXX_sizecache        int32                          `json:"-"`
+}
+
+func (m *GetPeriodUsageResponse_InstanceWrites) Reset()         { *m = GetPeriodUsageResponse_InstanceWrites{} }
+func (m *GetPeriodUsageResponse_InstanceWrites) String() string { return proto.CompactTextString(m) }
+func (*GetPeriodUsageResponse_InstanceWrites) ProtoMessage()    {}
+func (*GetPeriodUsageResponse_InstanceWrites) Descriptor() ([]byte, []int) {
+	return fileDescriptor_68f8d6015d3759a6, []int{15, 3}
+}
+
+func (m *GetPeriodUsageResponse_InstanceWrites) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites.Unmarshal(m, b)
+}
+func (m *GetPeriodUsageResponse_InstanceWrites) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites.Marshal(b, m, deterministic)
+}
+func (m *GetPeriodUsageResponse_InstanceWrites) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites.Merge(m, src)
+}
+func (m *GetPeriodUsageResponse_InstanceWrites) XXX_Size() int {
+	return xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites.Size(m)
+}
+func (m *GetPeriodUsageResponse_InstanceWrites) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetPeriodUsageResponse_InstanceWrites proto.InternalMessageInfo
+
+func (m *GetPeriodUsageResponse_InstanceWrites) GetUnits() int64 {
+	if m != nil {
+		return m.Units
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_InstanceWrites) GetSubUnits() int64 {
+	if m != nil {
+		return m.SubUnits
+	}
+	return 0
+}
+
+func (m *GetPeriodUsageResponse_InstanceWrites) GetPeriod() *GetPeriodUsageResponse_Period {
 	if m != nil {
 		return m.Period
 	}
@@ -787,7 +952,7 @@ func (m *GetPeriodUsageResponse_Period) Reset()         { *m = GetPeriodUsageRes
 func (m *GetPeriodUsageResponse_Period) String() string { return proto.CompactTextString(m) }
 func (*GetPeriodUsageResponse_Period) ProtoMessage()    {}
 func (*GetPeriodUsageResponse_Period) Descriptor() ([]byte, []int) {
-	return fileDescriptor_68f8d6015d3759a6, []int{15, 1}
+	return fileDescriptor_68f8d6015d3759a6, []int{15, 4}
 }
 
 func (m *GetPeriodUsageResponse_Period) XXX_Unmarshal(b []byte) error {
@@ -909,7 +1074,10 @@ func init() {
 	proto.RegisterType((*IncInstanceWritesResponse)(nil), "api.billingd.pb.IncInstanceWritesResponse")
 	proto.RegisterType((*GetPeriodUsageRequest)(nil), "api.billingd.pb.GetPeriodUsageRequest")
 	proto.RegisterType((*GetPeriodUsageResponse)(nil), "api.billingd.pb.GetPeriodUsageResponse")
-	proto.RegisterType((*GetPeriodUsageResponse_Item)(nil), "api.billingd.pb.GetPeriodUsageResponse.Item")
+	proto.RegisterType((*GetPeriodUsageResponse_StoredData)(nil), "api.billingd.pb.GetPeriodUsageResponse.StoredData")
+	proto.RegisterType((*GetPeriodUsageResponse_NetworkEgress)(nil), "api.billingd.pb.GetPeriodUsageResponse.NetworkEgress")
+	proto.RegisterType((*GetPeriodUsageResponse_InstanceReads)(nil), "api.billingd.pb.GetPeriodUsageResponse.InstanceReads")
+	proto.RegisterType((*GetPeriodUsageResponse_InstanceWrites)(nil), "api.billingd.pb.GetPeriodUsageResponse.InstanceWrites")
 	proto.RegisterType((*GetPeriodUsageResponse_Period)(nil), "api.billingd.pb.GetPeriodUsageResponse.Period")
 	proto.RegisterType((*DeleteCustomerRequest)(nil), "api.billingd.pb.DeleteCustomerRequest")
 	proto.RegisterType((*DeleteCustomerResponse)(nil), "api.billingd.pb.DeleteCustomerResponse")
@@ -918,51 +1086,55 @@ func init() {
 func init() { proto.RegisterFile("billingd.proto", fileDescriptor_68f8d6015d3759a6) }
 
 var fileDescriptor_68f8d6015d3759a6 = []byte{
-	// 698 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x4f, 0x53, 0x13, 0x4f,
-	0x10, 0x85, 0x5f, 0xf2, 0xe3, 0x4f, 0x47, 0x02, 0x8c, 0x04, 0xd7, 0xf5, 0x00, 0xae, 0x8a, 0x68,
-	0x69, 0xca, 0xc2, 0x8b, 0x1e, 0xa9, 0xa0, 0x98, 0x83, 0x14, 0x6e, 0x44, 0xaa, 0xbc, 0xc4, 0xc9,
-	0x4e, 0x57, 0x98, 0x22, 0xd9, 0x8d, 0x3b, 0x13, 0x51, 0xbe, 0x83, 0x37, 0x3f, 0xb0, 0xb5, 0x33,
-	0xc3, 0x92, 0xdd, 0x1d, 0x48, 0x20, 0xde, 0x76, 0xba, 0xba, 0xdf, 0x7b, 0x93, 0x7e, 0xd3, 0x1d,
-	0xa8, 0x76, 0x78, 0xaf, 0xc7, 0xc3, 0x2e, 0xab, 0x0f, 0xe2, 0x48, 0x46, 0x64, 0x99, 0x0e, 0x78,
-	0xfd, 0x32, 0xd6, 0xf1, 0xd6, 0x80, 0x34, 0x4e, 0x30, 0x38, 0xfd, 0x80, 0xb4, 0x27, 0x4f, 0x7c,
-	0xfc, 0x3e, 0x44, 0x21, 0xbd, 0x1a, 0xdc, 0xcd, 0x44, 0xc5, 0x20, 0x0a, 0x05, 0x7a, 0x2f, 0xa1,
-	0xd6, 0x88, 0x91, 0x4a, 0x6c, 0x0c, 0x85, 0x8c, 0xfa, 0x18, 0x9b, 0x7c, 0xb2, 0x06, 0xff, 0x63,
-	0x9f, 0xf2, 0x9e, 0x33, 0xbb, 0x39, 0xbb, 0xbd, 0xe8, 0xeb, 0x83, 0xf7, 0x16, 0xd6, 0xf3, 0xe9,
-	0x1a, 0x88, 0x6c, 0x40, 0x25, 0x30, 0xb1, 0x36, 0x67, 0xa6, 0x0a, 0x2e, 0x42, 0x4d, 0xe6, 0xed,
-	0x43, 0x75, 0x97, 0xb1, 0x06, 0x8d, 0xd9, 0x05, 0xc5, 0xb8, 0x92, 0x44, 0x83, 0x8c, 0x4e, 0x31,
-	0x74, 0xfe, 0xd3, 0x1a, 0xd4, 0xc1, 0x5b, 0x85, 0xe5, 0x14, 0xc8, 0xdc, 0xe2, 0x33, 0xac, 0xb5,
-	0x50, 0xb6, 0x64, 0x14, 0x23, 0xdb, 0xa3, 0x92, 0x4e, 0xcc, 0xf0, 0x00, 0x16, 0x3b, 0xbf, 0x24,
-	0xb6, 0x05, 0x3f, 0x47, 0xc5, 0x52, 0xf2, 0x17, 0x92, 0x40, 0x8b, 0x9f, 0x27, 0xa8, 0xb5, 0x1c,
-	0xaa, 0xb9, 0xeb, 0x43, 0xb8, 0x33, 0xc0, 0x98, 0x47, 0xac, 0x3d, 0x0c, 0xb9, 0x14, 0x0a, 0xb7,
-	0xe4, 0x57, 0x74, 0xec, 0x28, 0x09, 0x11, 0x07, 0xe6, 0x83, 0x13, 0x1a, 0x76, 0x91, 0x29, 0xd8,
-	0x05, 0xff, 0xe2, 0xe8, 0x1d, 0xc3, 0xbd, 0x66, 0x18, 0x1c, 0xa0, 0x3c, 0x8b, 0xe2, 0xd3, 0x77,
-	0xdd, 0x18, 0x85, 0xf8, 0x37, 0x72, 0x8f, 0xc0, 0x29, 0x02, 0x5f, 0x76, 0x87, 0x32, 0x86, 0x59,
-	0xc1, 0xa0, 0x42, 0xe3, 0xf4, 0x1e, 0x2a, 0xbd, 0xcd, 0x50, 0x48, 0x1a, 0x06, 0xe8, 0x23, 0x65,
-	0xe2, 0x26, 0x0d, 0x0c, 0xa2, 0x61, 0x28, 0x8d, 0x56, 0x7d, 0x30, 0x42, 0x73, 0x88, 0xd3, 0x0b,
-	0xfd, 0x94, 0x81, 0x3d, 0x8e, 0xb9, 0xc4, 0x69, 0x95, 0x7e, 0x81, 0xfb, 0x16, 0xc8, 0xe9, 0xa5,
-	0xbe, 0x81, 0xda, 0x3e, 0xca, 0x43, 0xed, 0x17, 0x41, 0xbb, 0x38, 0xa9, 0x4e, 0xef, 0x4f, 0x19,
-	0xd6, 0xf3, 0xa5, 0x46, 0xcf, 0x47, 0xa8, 0x08, 0xe5, 0xd5, 0x36, 0xa3, 0x92, 0xaa, 0xda, 0xca,
-	0xce, 0x8b, 0x7a, 0x6e, 0x3c, 0xd4, 0xed, 0xd5, 0xf5, 0xa6, 0xc4, 0xbe, 0x0f, 0x22, 0x35, 0x3b,
-	0x69, 0x41, 0x35, 0xd4, 0x5e, 0x6a, 0xa3, 0x32, 0x93, 0xba, 0xc4, 0x4d, 0x11, 0x97, 0xc2, 0x51,
-	0x3f, 0x26, 0xa0, 0xdc, 0xfc, 0x9a, 0xed, 0x38, 0x69, 0xbc, 0x53, 0xba, 0x0d, 0x28, 0x1f, 0xf5,
-	0x0e, 0x39, 0x82, 0xe5, 0x14, 0xf4, 0x4c, 0xf5, 0xc8, 0x29, 0xdf, 0x02, 0x35, 0x55, 0xa6, 0xfb,
-	0xec, 0xfe, 0x84, 0x72, 0x12, 0x27, 0x04, 0xca, 0x21, 0xed, 0xa3, 0x69, 0x86, 0xfa, 0x4e, 0xec,
-	0xa2, 0xbb, 0x6e, 0xec, 0xa2, 0x0e, 0xe4, 0x3d, 0xcc, 0xe9, 0x19, 0x60, 0x6e, 0x55, 0x9f, 0x94,
-	0x5f, 0xc7, 0x7c, 0x53, 0xed, 0xbe, 0x82, 0x39, 0x1d, 0x49, 0x78, 0x84, 0xa4, 0xb1, 0x34, 0xee,
-	0xd2, 0x07, 0xb2, 0x02, 0x25, 0x0c, 0x99, 0xe1, 0x4e, 0x3e, 0x13, 0x43, 0xed, 0x61, 0x0f, 0x8b,
-	0x63, 0x7c, 0xac, 0xa1, 0x1c, 0x58, 0xcf, 0x57, 0x6a, 0x51, 0x3b, 0xbf, 0xe7, 0x01, 0x76, 0x0f,
-	0x9b, 0x2d, 0x8c, 0x7f, 0xf0, 0x00, 0xc9, 0x57, 0xa8, 0x8c, 0x2c, 0x10, 0xf2, 0xa8, 0x70, 0xb7,
-	0xe2, 0xd2, 0x71, 0x1f, 0x5f, 0x9f, 0x64, 0xa6, 0xf7, 0x0c, 0x09, 0xa0, 0x9a, 0x5d, 0x2b, 0x64,
-	0xab, 0x58, 0x69, 0x5b, 0x53, 0xee, 0xd3, 0xb1, 0x79, 0x29, 0xc9, 0x01, 0xcc, 0x9b, 0xbd, 0x41,
-	0x36, 0x0a, 0x55, 0xd9, 0xd5, 0xe4, 0x6e, 0x5e, 0x9d, 0x90, 0xe2, 0x7d, 0x83, 0xa5, 0xcc, 0x7a,
-	0x20, 0x4f, 0x0a, 0x45, 0xb6, 0xa5, 0xe4, 0x6e, 0x8d, 0x4b, 0x4b, 0x19, 0x38, 0xac, 0xe4, 0x27,
-	0x3a, 0xd9, 0x2e, 0x54, 0x5f, 0xb1, 0x4d, 0xdc, 0x67, 0x13, 0x64, 0xe6, 0xa8, 0x32, 0x33, 0xd9,
-	0x4e, 0x65, 0x5b, 0x04, 0x76, 0x2a, 0xeb, 0x80, 0xf7, 0x66, 0x48, 0x0f, 0x56, 0x0b, 0x43, 0x95,
-	0x5c, 0x8b, 0x90, 0x99, 0xe5, 0xee, 0xf3, 0x49, 0x52, 0x47, 0xad, 0x95, 0x7d, 0x74, 0x16, 0x6b,
-	0x59, 0x67, 0xb1, 0xc5, 0x5a, 0xf6, 0xd7, 0xab, 0x49, 0xb2, 0x8f, 0xc8, 0x42, 0x62, 0x7d, 0x9f,
-	0x16, 0x12, 0xfb, 0x6b, 0xf4, 0x66, 0x3a, 0x73, 0xea, 0xff, 0xde, 0xeb, 0xbf, 0x01, 0x00, 0x00,
-	0xff, 0xff, 0x9e, 0x71, 0x07, 0x55, 0x01, 0x0a, 0x00, 0x00,
+	// 767 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x56, 0xe1, 0x4e, 0xdb, 0x48,
+	0x10, 0x26, 0x97, 0x83, 0x90, 0xc9, 0x25, 0xc0, 0x5e, 0xc2, 0x05, 0xa3, 0x13, 0xc8, 0xb4, 0x94,
+	0x56, 0x6a, 0x54, 0xa5, 0x6a, 0xd5, 0xfe, 0x44, 0xa1, 0xa5, 0xf9, 0x83, 0x90, 0x23, 0x4a, 0x5b,
+	0x55, 0x72, 0x37, 0xf6, 0x28, 0xac, 0x08, 0x76, 0xea, 0xdd, 0x14, 0x89, 0x37, 0x68, 0xab, 0xbe,
+	0x6b, 0x1f, 0xa1, 0xf2, 0x7a, 0x13, 0x62, 0x7b, 0x93, 0x18, 0x29, 0x12, 0xff, 0x3c, 0xe3, 0x99,
+	0xef, 0xfb, 0x76, 0x77, 0x76, 0x67, 0xa0, 0xd2, 0x65, 0xfd, 0x3e, 0xf3, 0x7a, 0x6e, 0x63, 0x10,
+	0xf8, 0xc2, 0x27, 0x6b, 0x74, 0xc0, 0x1a, 0xb7, 0xbe, 0xae, 0x59, 0x05, 0xd2, 0xba, 0x40, 0xe7,
+	0xf2, 0x1d, 0xd2, 0xbe, 0xb8, 0xb0, 0xf0, 0xeb, 0x10, 0xb9, 0x30, 0x6b, 0xf0, 0x6f, 0xcc, 0xcb,
+	0x07, 0xbe, 0xc7, 0xd1, 0x7c, 0x0a, 0xb5, 0x56, 0x80, 0x54, 0x60, 0x6b, 0xc8, 0x85, 0x7f, 0x85,
+	0x81, 0x8a, 0x27, 0x55, 0x58, 0xc6, 0x2b, 0xca, 0xfa, 0xf5, 0xdc, 0x6e, 0xee, 0xa0, 0x68, 0x45,
+	0x86, 0xf9, 0x1a, 0x36, 0x93, 0xe1, 0x11, 0x10, 0xd9, 0x81, 0x92, 0xa3, 0x7c, 0x36, 0x73, 0x55,
+	0x16, 0x8c, 0x5c, 0x6d, 0xd7, 0x3c, 0x86, 0xca, 0xa1, 0xeb, 0xb6, 0x68, 0xe0, 0x8e, 0x28, 0xe6,
+	0xa5, 0x84, 0x1a, 0x84, 0x7f, 0x89, 0x5e, 0xfd, 0xaf, 0x48, 0x83, 0x34, 0xcc, 0x0d, 0x58, 0x1b,
+	0x03, 0xa9, 0x55, 0xbc, 0x87, 0x6a, 0x07, 0x45, 0x47, 0xf8, 0x01, 0xba, 0x47, 0x54, 0xd0, 0xcc,
+	0x0c, 0xff, 0x03, 0x08, 0x5f, 0xd0, 0xbe, 0xcd, 0xd9, 0x0d, 0x4a, 0x9a, 0xbc, 0x55, 0x94, 0x9e,
+	0x0e, 0xbb, 0x41, 0xd3, 0x82, 0x5a, 0x02, 0x57, 0xad, 0xb6, 0x0a, 0xcb, 0x43, 0x8f, 0x09, 0x2e,
+	0x21, 0xf3, 0x56, 0x64, 0x90, 0x3d, 0x28, 0xcb, 0x0f, 0xdb, 0xb9, 0xa0, 0x5e, 0x0f, 0x5d, 0x09,
+	0xb8, 0x6a, 0xfd, 0x23, 0x9d, 0xad, 0xc8, 0x67, 0x9e, 0xc1, 0x7f, 0x6d, 0xcf, 0x39, 0x41, 0x71,
+	0xed, 0x07, 0x97, 0x6f, 0x7a, 0x01, 0x72, 0x9e, 0x59, 0xee, 0x16, 0xac, 0x32, 0xcf, 0x99, 0x14,
+	0x5b, 0x60, 0x9e, 0x23, 0xa5, 0x7e, 0x80, 0x7a, 0x1a, 0xf6, 0xf6, 0x6c, 0xa8, 0xeb, 0xa2, 0x6b,
+	0x4f, 0x6a, 0x06, 0xe9, 0x3a, 0x93, 0xc2, 0xb7, 0xa1, 0xc8, 0x87, 0x5d, 0xf5, 0x3b, 0x02, 0x5e,
+	0xe5, 0xc3, 0xae, 0xfc, 0x69, 0x9e, 0x4b, 0xc1, 0x6d, 0x8f, 0x0b, 0xea, 0x39, 0x68, 0x21, 0x75,
+	0xb3, 0x0b, 0xde, 0x86, 0x62, 0x28, 0xd8, 0xf1, 0x87, 0x9e, 0x18, 0x01, 0x33, 0xcf, 0x69, 0x85,
+	0xb6, 0x92, 0x9c, 0x00, 0x5e, 0x88, 0xe4, 0x38, 0xf2, 0x79, 0xc0, 0x04, 0x2e, 0x48, 0xf3, 0x47,
+	0xd8, 0xd2, 0x20, 0x2f, 0x44, 0xf4, 0x2b, 0xa8, 0x1d, 0xa3, 0x38, 0xc5, 0x80, 0xf9, 0xee, 0x19,
+	0xa7, 0x3d, 0xcc, 0xaa, 0xd8, 0xfc, 0x5d, 0x80, 0xcd, 0x64, 0xaa, 0x92, 0xd4, 0x81, 0x12, 0x97,
+	0xe5, 0x6b, 0xbb, 0x54, 0x50, 0x99, 0x5b, 0x6a, 0x36, 0x1b, 0x89, 0x37, 0xa3, 0xa1, 0xcf, 0x6e,
+	0x4c, 0x54, 0x3e, 0xf0, 0xf1, 0x37, 0xf9, 0x0c, 0x15, 0x2f, 0x2a, 0x34, 0x1b, 0x65, 0xa5, 0xc9,
+	0xb5, 0x94, 0x9a, 0x2f, 0xb2, 0xe2, 0xc6, 0xcb, 0xb4, 0xec, 0x4d, 0x9a, 0x21, 0x3a, 0x53, 0xfb,
+	0x6b, 0x07, 0x61, 0x51, 0xd4, 0xf3, 0x77, 0x43, 0x8f, 0x57, 0x54, 0x99, 0x4d, 0x9a, 0xc4, 0x86,
+	0xb5, 0x31, 0xfa, 0xb5, 0x3c, 0xbe, 0xfa, 0xdf, 0x12, 0xfe, 0xe5, 0x5d, 0xe1, 0xd5, 0xe1, 0x8f,
+	0xc5, 0x46, 0xb6, 0xf1, 0x3d, 0x07, 0x70, 0xbb, 0x6f, 0x53, 0x5e, 0x8a, 0xd9, 0xef, 0x0e, 0x79,
+	0x0b, 0x2b, 0x03, 0xc9, 0xac, 0x96, 0xde, 0xc8, 0xaa, 0x2d, 0xf2, 0x59, 0x2a, 0xdb, 0xf8, 0x91,
+	0x83, 0x72, 0x6c, 0xaf, 0xa7, 0xc8, 0x99, 0x55, 0x97, 0x0b, 0x15, 0x13, 0x3b, 0x9a, 0xfb, 0x14,
+	0xf3, 0x33, 0x07, 0x95, 0xf8, 0x41, 0xde, 0xa7, 0x9a, 0x67, 0xb0, 0x12, 0x79, 0x42, 0x11, 0x5c,
+	0xd0, 0x40, 0x8c, 0x44, 0x48, 0x83, 0xac, 0x43, 0x1e, 0x3d, 0x57, 0xd1, 0x87, 0x9f, 0xe1, 0x63,
+	0x71, 0x84, 0x7d, 0x4c, 0xf7, 0xed, 0xb9, 0x8f, 0x45, 0x1d, 0x36, 0x93, 0x99, 0x91, 0xa8, 0xe6,
+	0xaf, 0x02, 0xc0, 0xe1, 0x69, 0xbb, 0x83, 0xc1, 0x37, 0xe6, 0x20, 0xf9, 0x04, 0xa5, 0x89, 0x89,
+	0x81, 0xec, 0xa5, 0xd6, 0x96, 0x9e, 0x32, 0x8c, 0x07, 0xb3, 0x83, 0x54, 0xbb, 0x5e, 0x22, 0x0e,
+	0x54, 0xe2, 0x73, 0x04, 0xd9, 0x4f, 0x67, 0xea, 0xe6, 0x12, 0xe3, 0xd1, 0xdc, 0xb8, 0x31, 0xc9,
+	0x09, 0x14, 0xd4, 0xa0, 0x40, 0x76, 0x52, 0x59, 0xf1, 0x59, 0xc4, 0xd8, 0x9d, 0x1e, 0x30, 0xc6,
+	0xfb, 0x02, 0xe5, 0xd8, 0x34, 0x40, 0x1e, 0xa6, 0x92, 0x74, 0x53, 0x88, 0xb1, 0x3f, 0x2f, 0x6c,
+	0xcc, 0xc0, 0x60, 0x3d, 0xd9, 0xc4, 0xc9, 0x41, 0x2a, 0x7b, 0xca, 0xf8, 0x60, 0x3c, 0xce, 0x10,
+	0x99, 0xa0, 0x8a, 0xdf, 0x47, 0x2d, 0x95, 0xae, 0xf1, 0xeb, 0xa9, 0xb4, 0x9d, 0xdc, 0x5c, 0x22,
+	0x7d, 0xd8, 0x48, 0xf5, 0x4c, 0x32, 0x13, 0x21, 0xd6, 0xb1, 0x8d, 0x27, 0x59, 0x42, 0x27, 0x4b,
+	0x2b, 0x7e, 0xe9, 0x34, 0xa5, 0xa5, 0xed, 0xb3, 0x9a, 0xd2, 0xd2, 0xdf, 0xde, 0x88, 0x24, 0x7e,
+	0x89, 0x34, 0x24, 0xda, 0xfb, 0xa9, 0x21, 0xd1, 0xdf, 0x46, 0x73, 0xa9, 0xbb, 0x22, 0x07, 0xfc,
+	0xe7, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0x10, 0xf3, 0xe1, 0x3e, 0xf2, 0x0b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.

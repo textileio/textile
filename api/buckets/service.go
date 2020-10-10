@@ -31,7 +31,6 @@ import (
 	"github.com/textileio/powergate/ffs"
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	powUtil "github.com/textileio/powergate/util"
-	billing "github.com/textileio/textile/v2/api/billingd/client"
 	pb "github.com/textileio/textile/v2/api/buckets/pb"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
@@ -40,7 +39,6 @@ import (
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -105,7 +103,6 @@ type Service struct {
 	GatewayBucketsHost        string
 	IPFSClient                iface.CoreAPI
 	IPNSManager               *ipns.Manager
-	BillingClient             *billing.Client
 	PowergateClient           *pow.Client
 	ArchiveTracker            *archive.Tracker
 	Semaphores                *nutil.SemaphorePool
@@ -293,7 +290,8 @@ func (s *Service) createBucket(ctx context.Context, dbID thread.ID, dbToken thre
 			return nil, nil, fmt.Errorf("creating prepared bucket: %s", err)
 		}
 	} else {
-		buckPath, err = s.createPristinePath(ctx, seed, linkKey)
+		// @todo
+		_, buckPath, err = s.createPristinePath(ctx, seed, linkKey)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating pristine bucket: %s", err)
 		}
@@ -370,23 +368,24 @@ func encryptData(data, currentKey, newKey []byte) ([]byte, error) {
 
 // createPristinePath creates an IPFS path which only contains the seed file.
 // The returned path will be pinned.
-func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []byte) (path.Resolved, error) {
+func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []byte) (context.Context, path.Resolved, error) {
 	// Create the initial bucket directory
 	n, err := newDirWithNode(seed, buckets.SeedName, key)
 	if err != nil {
-		return nil, err
+		return ctx, nil, err
 	}
 	if err = s.IPFSClient.Dag().AddMany(ctx, []ipld.Node{n, seed}); err != nil {
-		return nil, err
+		return ctx, nil, err
 	}
 	pins := []ipld.Node{n}
 	if key != nil {
 		pins = append(pins, seed)
 	}
-	if err = s.pinBlocks(ctx, pins); err != nil {
-		return nil, err
+	ctx, err = s.pinBlocks(ctx, pins)
+	if err != nil {
+		return ctx, nil, err
 	}
-	return path.IpfsPath(n.Cid()), nil
+	return ctx, path.IpfsPath(n.Cid()), nil
 }
 
 // createBootstrapedPath creates an IPFS path which is the bootCid UnixFS DAG,
@@ -395,17 +394,17 @@ func (s *Service) createPristinePath(ctx context.Context, seed ipld.Node, key []
 func (s *Service) createBootstrappedPath(ctx context.Context, destPath string, seed ipld.Node, bootCid cid.Cid, linkKey, fileKey []byte) (path.Resolved, error) {
 	// Check early if we're about to pin some very big Cid exceeding the quota.
 	pth := path.IpfsPath(bootCid)
-	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
-	if err != nil {
-		return nil, fmt.Errorf("resolving boot cid node: %s", err)
-	}
-	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting current buckets total size: %s", err)
-	}
-	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+int64(bootStatn.CumulativeSize) > s.BucketsTotalMaxSize {
-		return nil, ErrBucketsTotalSizeExceedsMaxSize
-	}
+	//bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
+	//if err != nil {
+	//	return nil, fmt.Errorf("resolving boot cid node: %s", err)
+	//}
+	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	//if err != nil {
+	//	return nil, fmt.Errorf("getting current buckets total size: %s", err)
+	//}
+	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+int64(bootStatn.CumulativeSize) > s.BucketsTotalMaxSize {
+	//	return nil, ErrBucketsTotalSizeExceedsMaxSize
+	//}
 
 	// Here we have to walk and possibly encrypt the boot path dag
 	n, nodes, err := s.newDirFromExistingPath(ctx, pth, destPath, linkKey, fileKey, seed, buckets.SeedName)
@@ -421,7 +420,7 @@ func (s *Service) createBootstrappedPath(ctx context.Context, destPath string, s
 	} else {
 		pins = []ipld.Node{n}
 	}
-	if err = s.pinBlocks(ctx, pins); err != nil {
+	if _, err = s.pinBlocks(ctx, pins); err != nil {
 		return nil, err
 	}
 	return path.IpfsPath(n.Cid()), nil
@@ -867,7 +866,6 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 }
 
 func (s *Service) setPathFromExistingCid(ctx context.Context, buck *tdb.Bucket, buckPath path.Path, destPath string, bootCid cid.Cid, linkKey, fileKey []byte) (path.Resolved, error) {
-	ctx = context.WithValue(ctx, ctxKey("owner"), buck.Owner)
 	var dirPath path.Resolved
 	if destPath == "" {
 		sn, err := makeSeed(fileKey)
@@ -883,11 +881,11 @@ func (s *Service) setPathFromExistingCid(ctx context.Context, buck *tdb.Bucket, 
 			if err != nil {
 				return nil, fmt.Errorf("resolving path: %s", err)
 			}
-			if err = s.unpinNodeAndBranch(ctx, buckPathResolved, linkKey); err != nil {
+			if _, err = s.unpinNodeAndBranch(ctx, buckPathResolved, linkKey); err != nil {
 				return nil, fmt.Errorf("unpinning pinned root: %s", err)
 			}
 		} else {
-			if err = s.unpinPath(ctx, buckPath); err != nil {
+			if _, err = s.unpinPath(ctx, buckPath); err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
 		}
@@ -902,7 +900,7 @@ func (s *Service) setPathFromExistingCid(ctx context.Context, buck *tdb.Bucket, 
 			if err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
-			if err := s.addAndPinNodes(ctx, nodes); err != nil {
+			if _, err := s.addAndPinNodes(ctx, nodes); err != nil {
 				return nil, err
 			}
 		} else {
@@ -911,7 +909,7 @@ func (s *Service) setPathFromExistingCid(ctx context.Context, buck *tdb.Bucket, 
 			if err != nil {
 				return nil, fmt.Errorf("adding folder: %s", err)
 			}
-			if err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
+			if _, err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
 		}
@@ -919,9 +917,9 @@ func (s *Service) setPathFromExistingCid(ctx context.Context, buck *tdb.Bucket, 
 	return dirPath, nil
 }
 
-func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) error {
+func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) (context.Context, error) {
 	if err := s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
-		return err
+		return ctx, err
 	}
 	return s.pinBlocks(ctx, nodes)
 }
@@ -1163,6 +1161,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		return fmt.Errorf("db required")
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
+	//owner, _ := buckets.BucketOwnerFromContext(server.Context())
 
 	req, err := server.Recv()
 	if err != nil {
@@ -1325,7 +1324,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}
 
 	ctx := server.Context()
-	ctx = context.WithValue(ctx, ctxKey("owner"), buck.Owner)
 	var dirPath path.Resolved
 	if buck.IsPrivate() {
 		dirPath, err = s.insertNodeAtPath(ctx, fn, path.Join(buckPath, filePath), buck.GetLinkEncryptionKey())
@@ -1337,7 +1335,8 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		if err != nil {
 			return err
 		}
-		if err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
+		ctx, err = s.updateOrAddPin(ctx, buckPath, dirPath)
+		if err != nil {
 			return err
 		}
 	}
@@ -1352,10 +1351,12 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	if err != nil {
 		return err
 	}
+	pinned, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
 	if err = sendEvent(&pb.PushPathResponse_Event{
-		Path: newPath.String(),
-		Size: size,
-		Root: pbroot,
+		Path:   newPath.String(),
+		Size:   size,
+		Root:   pbroot,
+		Pinned: pinned,
 	}); err != nil {
 		return err
 	}
@@ -1448,7 +1449,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 		return nil, err
 	}
 	// Pin brand new nodes
-	if err := s.pinBlocks(ctx, news); err != nil {
+	if _, err := s.pinBlocks(ctx, news); err != nil {
 		return nil, err
 	}
 
@@ -1459,7 +1460,7 @@ func (s *Service) insertNodeAtPath(ctx context.Context, child ipld.Node, pth pat
 				return nil, err
 			}
 		}
-		if err = s.updateOrAddPin(ctx, n.old, path.IpfsPath(n.new.Cid())); err != nil {
+		if _, err = s.updateOrAddPin(ctx, n.old, path.IpfsPath(n.new.Cid())); err != nil {
 			return nil, err
 		}
 	}
@@ -1477,7 +1478,7 @@ func (s *Service) unpinBranch(ctx context.Context, p path.Resolved, key []byte) 
 			continue // Data nodes will never be pinned directly
 		}
 		lp := path.IpfsPath(l.Cid)
-		if err := s.unpinPath(ctx, lp); err != nil {
+		if _, err := s.unpinPath(ctx, lp); err != nil {
 			return err
 		}
 		if err = s.unpinBranch(ctx, lp, key); err != nil {
@@ -1535,48 +1536,45 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 
 // updateOrAddPin moves the pin at from to to.
 // If from is nil, a new pin as placed at to.
-func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) error {
+func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (context.Context, error) {
 	toSize, err := s.dagSize(ctx, to)
 	if err != nil {
-		return fmt.Errorf("getting size of destination dag: %s", err)
+		return ctx, fmt.Errorf("getting size of destination dag: %s", err)
 	}
 	if s.BucketsMaxSize > 0 && toSize > s.BucketsMaxSize {
-		return fmt.Errorf("bucket size is greater than max allowed size")
+		return ctx, fmt.Errorf("bucket size is greater than max allowed size")
 	}
 
 	fromSize, err := s.dagSize(ctx, from)
 	if err != nil {
-		return fmt.Errorf("getting size of current dag: %s", err)
+		return ctx, fmt.Errorf("getting size of current dag: %s", err)
 	}
 
-	// Calculate if adding or moving the pin leads to a violation of
-	// total buckets size allowed in configuration.
-	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return fmt.Errorf("getting current buckets total size: %s", err)
-	}
+	//// Calculate if adding or moving the pin leads to a violation of
+	//// total buckets size allowed in configuration.
+	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	//if err != nil {
+	//	return fmt.Errorf("getting current buckets total size: %s", err)
+	//}
 	deltaSize := -fromSize + toSize
-	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
-		return ErrBucketsTotalSizeExceedsMaxSize
-	}
+	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
+	//	return ErrBucketsTotalSizeExceedsMaxSize
+	//}
 
 	if from == nil {
 		if err := s.IPFSClient.Pin().Add(ctx, to); err != nil {
-			return err
+			return ctx, err
 		}
 	} else {
 		if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
 			if err.Error() == pinNotRecursiveMsg {
-				return s.IPFSClient.Pin().Add(ctx, to)
+				return nil, s.IPFSClient.Pin().Add(ctx, to)
 			}
-			return err
+			return ctx, err
 		}
 	}
 
-	if err := s.sumBytesPinned(ctx, deltaSize); err != nil {
-		return fmt.Errorf("updating new buckets total size: %s", err)
-	}
-	return nil
+	return s.sumBytesPinned(ctx, deltaSize), nil
 }
 
 // dagSize returns the cummulative size of root. If root is nil, it returns 0.
@@ -1737,11 +1735,11 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 	linkKey := buck.GetLinkEncryptionKey()
 	if linkKey != nil {
-		if err = s.unpinNodeAndBranch(ctx, buckPath, linkKey); err != nil {
+		if _, err = s.unpinNodeAndBranch(ctx, buckPath, linkKey); err != nil {
 			return nil, err
 		}
 	} else {
-		if err = s.unpinPath(ctx, buckPath); err != nil {
+		if _, err = s.unpinPath(ctx, buckPath); err != nil {
 			return nil, err
 		}
 	}
@@ -1753,9 +1751,9 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	return &pb.RemoveResponse{}, nil
 }
 
-func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key []byte) error {
+func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key []byte) (context.Context, error) {
 	if err := s.unpinBranch(ctx, pth, key); err != nil {
-		return err
+		return ctx, err
 	}
 	return s.unpinPath(ctx, pth)
 }
@@ -1815,7 +1813,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 		if err != nil {
 			return nil, err
 		}
-		if err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
+		if _, err = s.updateOrAddPin(ctx, buckPath, dirPath); err != nil {
 			return nil, err
 		}
 	}
@@ -1890,11 +1888,11 @@ func (s *Service) removeNodeAtPath(ctx context.Context, pth path.Path, key []byt
 	// Update / remove node pins
 	for _, n := range np {
 		if n.isJoint {
-			if err = s.unpinNodeAndBranch(ctx, n.old, key); err != nil {
+			if _, err = s.unpinNodeAndBranch(ctx, n.old, key); err != nil {
 				return nil, err
 			}
 		} else {
-			if err = s.updateOrAddPin(ctx, n.old, path.IpfsPath(n.new.Cid())); err != nil {
+			if _, err = s.updateOrAddPin(ctx, n.old, path.IpfsPath(n.new.Cid())); err != nil {
 				return nil, err
 			}
 		}
@@ -2014,7 +2012,7 @@ func (s *Service) PushPathAccessRoles(ctx context.Context, req *pb.PushPathAcces
 			if err != nil {
 				return nil, fmt.Errorf("updating pinned root: %s", err)
 			}
-			if err := s.addAndPinNodes(ctx, nodes); err != nil {
+			if _, err := s.addAndPinNodes(ctx, nodes); err != nil {
 				return nil, err
 			}
 			buck.Path = dirPath.String()
@@ -2439,107 +2437,46 @@ func (s *Service) getGatewayHost() (host string, ok bool) {
 	return
 }
 
-func (s *Service) unpinPath(ctx context.Context, path path.Path) error {
+func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Context, error) {
 	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
-		return err
+		return ctx, err
 	}
 	stat, err := s.IPFSClient.Object().Stat(ctx, path)
 	if err != nil {
-		return fmt.Errorf("getting size of removed node: %s", err)
+		return ctx, fmt.Errorf("getting size of removed node: %s", err)
 	}
-	if err := s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)); err != nil {
-		return fmt.Errorf("substracting unpinned node from quota: %s", err)
-	}
-	return nil
+	return s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)), nil
 }
 
 // pinBlocks pin the provided blocks to the IPFS node, and accounts to the
 // account/user buckets total size quota.
-func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) error {
+func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Context, error) {
 	var totalAddedSize int64
 	for _, n := range nodes {
 		s, err := n.Stat()
 		if err != nil {
-			return fmt.Errorf("getting size of node: %s", err)
+			return ctx, fmt.Errorf("getting size of node: %s", err)
 		}
 		totalAddedSize += int64(s.CumulativeSize)
 	}
-	currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	if err != nil {
-		return fmt.Errorf("getting current buckets total size: %s", err)
-	}
-
-	if s.BucketsTotalMaxSize > 0 && currentBucketsSize+totalAddedSize > s.BucketsTotalMaxSize {
-		return ErrBucketsTotalSizeExceedsMaxSize
-	}
-
+	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
+	//if err != nil {
+	//	return fmt.Errorf("getting current buckets total size: %s", err)
+	//}
+	//
+	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+totalAddedSize > s.BucketsTotalMaxSize {
+	//	return ErrBucketsTotalSizeExceedsMaxSize
+	//}
 	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
-		return fmt.Errorf("pinning set of nodes: %s", err)
+		return ctx, fmt.Errorf("pinning set of nodes: %s", err)
 	}
-
-	if err := s.sumBytesPinned(ctx, totalAddedSize); err != nil {
-		return fmt.Errorf("adding pinned size to account quota: %s", err)
-	}
-	return nil
+	return s.sumBytesPinned(ctx, totalAddedSize), nil
 }
 
-// sumBytesPinned adds the provided delta to the buckets total size from
-// the account/user.
-func (s *Service) sumBytesPinned(ctx context.Context, delta int64) error {
-	var a *mdb.Account
-	var u *mdb.User
-	if owner, ok := ctx.Value(ctxKey("owner")).(string); ok && owner != "" {
-		pk := &thread.Libp2pPubKey{}
-		err := pk.UnmarshalString(owner)
-		if err != nil {
-			return err
-		}
-		a, err = s.Collections.Accounts.Get(ctx, pk)
-		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-			return err
-		}
-		if a == nil {
-			u, err = s.Collections.Users.Get(ctx, pk)
-			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-				return err
-			}
-		}
-	}
-	if a == nil {
-		a = accountFromContext(ctx)
-	}
-	if a != nil {
-		a.BucketsTotalSize = a.BucketsTotalSize + delta
-		if err := s.Collections.Accounts.SetBucketsTotalSize(ctx, a.Key, a.BucketsTotalSize); err != nil {
-			return fmt.Errorf("updating new account buckets total size: %s", err)
-		}
-		return nil
-	}
-	if u == nil {
-		u = userFromContext(ctx)
-	}
-	if u == nil {
-		return nil
-	}
-	u.BucketsTotalSize = u.BucketsTotalSize + delta
-	if err := s.Collections.Users.SetBucketsTotalSize(ctx, u.Key, u.BucketsTotalSize); err != nil {
-		return fmt.Errorf("updating new users buckets total size: %s", err)
-	}
-	return nil
-}
-
-// getBucketsTotalSize returns the current buckets total size usage of the account/user
-// logged in the context.
-func (s *Service) getBucketsTotalSize(ctx context.Context) (int64, error) {
-	a := accountFromContext(ctx)
-	if a != nil {
-		return a.BucketsTotalSize, nil
-	}
-	u := userFromContext(ctx)
-	if u == nil {
-		return 0, nil
-	}
-	return u.BucketsTotalSize, nil
+// sumBytesPinned adds the provided delta to a running total for the context.
+func (s *Service) sumBytesPinned(ctx context.Context, delta int64) context.Context {
+	total, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
+	return context.WithValue(ctx, ctxKey("sumBytesPinned"), total+delta)
 }
 
 func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
