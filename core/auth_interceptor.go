@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// authFunc is used by hubd's auth interceptor.
 func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	method, _ := grpc.Method(ctx)
 	for _, ignored := range ignoreMethods {
@@ -43,6 +44,7 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	return t.newAuthCtx(ctx, method, true)
 }
 
+// noAuthFunc is used by buckd's auth interceptor.
 func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	if threadID, ok := common.ThreadIDFromMD(ctx); ok {
 		ctx = common.NewThreadIDContext(ctx, threadID)
@@ -55,6 +57,8 @@ func (t *Textile) noAuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+// authFunc ensures requests are authorized and attaches account
+// information for downstream handlers.
 func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bool) (context.Context, error) {
 	sid, ok := common.SessionFromMD(ctx)
 	if ok {

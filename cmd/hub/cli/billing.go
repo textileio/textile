@@ -13,13 +13,6 @@ import (
 	"golang.org/x/net/http2"
 )
 
-/*
-
-hub billing setup
-  1. check that we don't have an existing customer for this account
-
-*/
-
 var billingCmd = &cobra.Command{
 	Use:   "billing",
 	Short: "Billing management",
@@ -35,7 +28,7 @@ var billingSetupCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		api, err := c.Flags().GetString("stripeApiUrl")
 		cmd.ErrCheck(err)
-		configureStripe(api) // "http://127.0.0.1:12111"
+		configureStripe(api)
 		key, err := c.Flags().GetString("stripeKey")
 		cmd.ErrCheck(err)
 		stripe.Key = key

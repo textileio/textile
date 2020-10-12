@@ -13,6 +13,16 @@ message CreateCustomerResponse {
     string customer_id = 1;
 }
 
+message GetCustomerRequest {
+    string customer_id = 1;
+}
+
+message GetCustomerResponse {
+    int64 balance = 1;
+    bool billable = 2;
+    bool delinquent = 3;
+}
+
 message AddCardRequest {
     string customer_id = 1;
     string token = 2;
@@ -73,25 +83,29 @@ message GetPeriodUsageResponse {
     message StoredData {
         int64 units = 1;
         int64 total_size = 2;
-        Period period = 3;
+        int64 free_size = 3;
+        Period period = 4;
     }
 
     message NetworkEgress {
         int64 units = 1;
         int64 sub_units = 2;
-        Period period = 3;
+        int64 free_units = 3;
+        Period period = 4;
     }
 
     message InstanceReads {
         int64 units = 1;
         int64 sub_units = 2;
-        Period period = 3;
+        int64 free_units = 3;
+        Period period = 4;
     }
 
     message InstanceWrites {
         int64 units = 1;
         int64 sub_units = 2;
-        Period period = 3;
+        int64 free_units = 3;
+        Period period = 4;
     }
 
     message Period {
@@ -109,6 +123,7 @@ message DeleteCustomerResponse {}
 service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
+    rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
     rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
     rpc SetStoredData(SetStoredDataRequest) returns (SetStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}

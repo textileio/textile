@@ -8,7 +8,7 @@ import (
 func setupStoredData(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Stored Data"),
-		UnitLabel: stripe.String("50 MiB"),
+		UnitLabel: stripe.String("51.2 MiB"),
 	})
 	if err != nil {
 		return "", err
@@ -24,7 +24,7 @@ func setupStoredData(client *stripec.API) (string, error) {
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(500),
+				UpTo:       stripe.Int64(100),
 				UnitAmount: stripe.Int64(0),
 			},
 			{
@@ -44,7 +44,7 @@ func setupStoredData(client *stripec.API) (string, error) {
 func setupNetworkEgress(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Network Egress"),
-		UnitLabel: stripe.String("100 MiB"),
+		UnitLabel: stripe.String("102.4 MiB"),
 	})
 	if err != nil {
 		return "", err
@@ -60,7 +60,7 @@ func setupNetworkEgress(client *stripec.API) (string, error) {
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(3),
+				UpTo:       stripe.Int64(4),
 				UnitAmount: stripe.Int64(0),
 			},
 			{

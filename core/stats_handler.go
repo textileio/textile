@@ -15,6 +15,7 @@ type StatsHandler struct {
 
 var _ stats.Handler = (*StatsHandler)(nil)
 
+// HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 	switch st := st.(type) {
 	case *stats.OutHeader:
@@ -26,6 +27,7 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		} else if dev, ok := mdb.DevFromContext(ctx); ok {
 			account = dev
 		}
+		// @todo: Account for users after User -> Account migration
 		// else if user, ok := mdb.UserFromContext(ctx); ok {}
 		if account == nil || account.CustomerID == "" {
 			return

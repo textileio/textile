@@ -17,8 +17,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func powInterceptor(serviceName string, allowedMethods []string, serviceDesc *desc.ServiceDescriptor, stub *grpcdynamic.Stub, pc *powc.Client, c *mdb.Collections) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+// powInterceptor handles hubd-proxied Powergate requests.
+func powInterceptor(
+	serviceName string,
+	allowedMethods []string,
+	serviceDesc *desc.ServiceDescriptor,
+	stub *grpcdynamic.Stub,
+	pc *powc.Client,
+	c *mdb.Collections,
+) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		methodParts := strings.Split(info.FullMethod, "/")
 		if len(methodParts) != 3 {
 			return nil, status.Errorf(codes.Internal, "error parsing method string %s", info.FullMethod)
@@ -79,7 +92,8 @@ func powInterceptor(serviceName string, allowedMethods []string, serviceDesc *de
 			return nil
 		}
 
-		tryAgain := fmt.Errorf("powergate newly integrated into your account, please try again in 30 seconds to allow time for setup to complete")
+		tryAgain := fmt.Errorf("powergate newly integrated into your account, " +
+			"please try again in 30 seconds to allow time for setup to complete")
 
 		// case where account/user was created before powergate was enabled.
 		// create a ffs instance for them.

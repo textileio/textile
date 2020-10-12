@@ -13,11 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stripe/stripe-go/v72/token"
-
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	stripe "github.com/stripe/stripe-go/v72"
+	"github.com/stripe/stripe-go/v72/token"
 	"github.com/textileio/textile/v2/api/hub/client"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"github.com/textileio/textile/v2/core"
@@ -159,7 +158,7 @@ func ConfigureStripe(t *testing.T, url, key string) {
 }
 
 func NewCardToken(t *testing.T) string {
-	ConfigureStripe(t, "http://127.0.0.1:12111", "sk_test_123")
+	ConfigureStripe(t, "https://api.stripe.com", "sk_test_RuU6Lq65WP23ykDSI9N9nRbC")
 	tok, err := token.New(&stripe.TokenParams{
 		Card: &stripe.CardParams{
 			Number:   stripe.String("4242424242424242"),

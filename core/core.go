@@ -175,11 +175,8 @@ type Config struct {
 	EmailAPIKey        string
 	EmailSessionSecret string
 
-	BucketsMaxSize            int64
-	BucketsTotalMaxSize       int64
-	BucketsMaxNumberPerThread int
-
-	ThreadsMaxNumberPerOwner int
+	MaxBucketSize            int64
+	MaxNumberThreadsPerOwner int
 
 	Hub   bool
 	Debug bool
@@ -326,18 +323,16 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &buckets.Service{
-		Collections:               t.collections,
-		Buckets:                   t.bucks,
-		BucketsMaxSize:            conf.BucketsMaxSize,
-		BucketsTotalMaxSize:       conf.BucketsTotalMaxSize,
-		BucketsMaxNumberPerThread: conf.BucketsMaxNumberPerThread,
-		GatewayURL:                conf.AddrGatewayURL,
-		GatewayBucketsHost:        conf.DNSDomain,
-		IPFSClient:                ic,
-		IPNSManager:               t.ipnsm,
-		PowergateClient:           t.pc,
-		ArchiveTracker:            t.archiveTracker,
-		Semaphores:                t.buckLocks,
+		Collections:        t.collections,
+		Buckets:            t.bucks,
+		GatewayURL:         conf.AddrGatewayURL,
+		GatewayBucketsHost: conf.DNSDomain,
+		IPFSClient:         ic,
+		IPNSManager:        t.ipnsm,
+		PowergateClient:    t.pc,
+		ArchiveTracker:     t.archiveTracker,
+		Semaphores:         t.buckLocks,
+		MaxBucketSize:      conf.MaxBucketSize,
 	}
 
 	// Start serving

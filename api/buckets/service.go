@@ -50,15 +50,11 @@ var (
 	// ErrArchivingFeatureDisabled indicates an archive was requested with archiving disabled.
 	ErrArchivingFeatureDisabled = errors.New("archiving feature is disabled")
 
-	// ErrBucketExceedsMaxSize indicates the bucket exceeds the max allowed size.
-	ErrBucketExceedsMaxSize = errors.New("bucket size exceeds quota")
+	// ErrMaxBucketSizeExceeded indicates the requested operation exceeds the max bucket size.
+	ErrMaxBucketSizeExceeded = errors.New("max bucket size exceeded")
 
-	// ErrBucketsTotalSizeExceedsMaxSize indicates the sum of bucket sizes of the account
-	// exceeds the maximum allowed size.
-	ErrBucketsTotalSizeExceedsMaxSize = errors.New("total size of buckets exceeds quota")
-
-	// ErrTooManyBucketsInThread indicates that there is the maximum number of buckets in a thread.
-	ErrTooManyBucketsInThread = errors.New("number of buckets in thread exceeds quota")
+	// ErrStorageAllowanceExceeded indicates the requested operation exceeds a storage allowance.
+	ErrStorageAllowanceExceeded = errors.New("storage allowance exceeded")
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
@@ -74,7 +70,7 @@ var (
 		},
 	}
 
-	// ToDo: Export the default storage config from powergate so we can create this from it.
+	// @todo: Export the default storage config from powergate so we can create this from it.
 	defaultDefaultArchiveConfig = mdb.ArchiveConfig{
 		RepFactor:       1,
 		DealMinDuration: powUtil.MinDealDuration,
@@ -94,18 +90,16 @@ type ctxKey string
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections               *mdb.Collections
-	Buckets                   *tdb.Buckets
-	BucketsMaxSize            int64
-	BucketsTotalMaxSize       int64
-	BucketsMaxNumberPerThread int
-	GatewayURL                string
-	GatewayBucketsHost        string
-	IPFSClient                iface.CoreAPI
-	IPNSManager               *ipns.Manager
-	PowergateClient           *pow.Client
-	ArchiveTracker            *archive.Tracker
-	Semaphores                *nutil.SemaphorePool
+	Collections        *mdb.Collections
+	Buckets            *tdb.Buckets
+	GatewayURL         string
+	GatewayBucketsHost string
+	IPFSClient         iface.CoreAPI
+	IPNSManager        *ipns.Manager
+	PowergateClient    *pow.Client
+	ArchiveTracker     *archive.Tracker
+	Semaphores         *nutil.SemaphorePool
+	MaxBucketSize      int64
 }
 
 var (
@@ -198,19 +192,9 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	// Control if the user has reached max number of created buckets.
-	list, err := s.Buckets.List(ctx, dbID, &db.Query{}, &tdb.Bucket{}, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, fmt.Errorf("getting existing buckets: %s", err)
-	}
-	bucks := list.([]*tdb.Bucket)
-
-	if s.BucketsMaxNumberPerThread > 0 && len(bucks) >= s.BucketsMaxNumberPerThread {
-		return nil, ErrTooManyBucketsInThread
-	}
-
 	var bootCid cid.Cid
 	if req.BootstrapCid != "" {
+		var err error
 		bootCid, err = cid.Decode(req.BootstrapCid)
 		if err != nil {
 			return nil, fmt.Errorf("invalid bootstrap cid: %s", err)
@@ -265,8 +249,6 @@ func (s *Service) createBucket(
 		if err != nil {
 			return ctx, nil, nil, fmt.Errorf("creating bucket: invalid token public key")
 		}
-	} else {
-		owner = getAccountOrUserFromContext(ctx)
 	}
 
 	// Create bucket keys if private
@@ -357,6 +339,7 @@ func makeSeed(key []byte) (ipld.Node, error) {
 	return dag.NewRawNode(seed), nil
 }
 
+// encryptData encrypts data with the new key, decrypting with current key if needed.
 func encryptData(data, currentKey, newKey []byte) ([]byte, error) {
 	if currentKey != nil {
 		var err error
@@ -398,6 +381,37 @@ func (s *Service) createPristinePath(
 	return ctx, path.IpfsPath(n.Cid()), nil
 }
 
+// pinBlocks pins blocks, accounting for sum bytes pinned for context.
+func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Context, error) {
+	var totalAddedSize int64
+	for _, n := range nodes {
+		s, err := n.Stat()
+		if err != nil {
+			return ctx, fmt.Errorf("getting size of node: %s", err)
+		}
+		totalAddedSize += int64(s.CumulativeSize)
+	}
+
+	// Check context owner's storage allowance
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok && owner.FreeQuotaOnly {
+		if totalAddedSize > owner.FreeStorageAllowance {
+			return ctx, ErrStorageAllowanceExceeded
+		}
+	}
+
+	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
+		return ctx, fmt.Errorf("pinning set of nodes: %s", err)
+	}
+	return s.sumBytesPinned(ctx, totalAddedSize), nil
+}
+
+// sumBytesPinned adds the provided delta to a running total for the context.
+func (s *Service) sumBytesPinned(ctx context.Context, delta int64) context.Context {
+	total, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
+	return context.WithValue(ctx, ctxKey("sumBytesPinned"), total+delta)
+}
+
 // createBootstrapedPath creates an IPFS path which is the bootCid UnixFS DAG,
 // with tdb.SeedName seed file added to the root of the DAG. The returned path will
 // be pinned.
@@ -409,19 +423,19 @@ func (s *Service) createBootstrappedPath(
 	linkKey,
 	fileKey []byte,
 ) (context.Context, path.Resolved, error) {
-	// Check early if we're about to pin some very big Cid exceeding the quota.
 	pth := path.IpfsPath(bootCid)
-	//bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
-	//if err != nil {
-	//	return nil, fmt.Errorf("resolving boot cid node: %s", err)
-	//}
-	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	//if err != nil {
-	//	return nil, fmt.Errorf("getting current buckets total size: %s", err)
-	//}
-	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+int64(bootStatn.CumulativeSize) > s.BucketsTotalMaxSize {
-	//	return nil, ErrBucketsTotalSizeExceedsMaxSize
-	//}
+	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("resolving boot cid node: %s", err)
+	}
+
+	// Check context owner's storage allowance
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok && owner.FreeQuotaOnly {
+		if int64(bootStatn.CumulativeSize) > owner.FreeStorageAllowance {
+			return ctx, nil, ErrStorageAllowanceExceeded
+		}
+	}
 
 	// Here we have to walk and possibly encrypt the boot path dag
 	n, nodes, err := s.newDirFromExistingPath(ctx, pth, destPath, linkKey, fileKey, seed, buckets.SeedName)
@@ -726,6 +740,7 @@ func getFileKey(key []byte, pathKeys map[string][]byte, pth string) []byte {
 	return key
 }
 
+// encryptFileNode encrypts node with the new key, decrypting with current key if needed.
 func (s *Service) encryptFileNode(ctx context.Context, n ipld.Node, currentKey, newKey []byte) (ipld.Node, error) {
 	fn, err := s.IPFSClient.Unixfs().Get(ctx, path.IpfsPath(n.Cid()))
 	if err != nil {
@@ -916,6 +931,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	return &pb.SetPathResponse{}, nil
 }
 
+// setPathFromExistingCid sets the path with a cid from the network, encrypting with file key if present.
 func (s *Service) setPathFromExistingCid(
 	ctx context.Context,
 	buck *tdb.Bucket,
@@ -986,6 +1002,19 @@ func (s *Service) setPathFromExistingCid(
 	return ctx, dirPath, nil
 }
 
+// unpinPath unpins path and accounts for sum bytes pinned for context.
+func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Context, error) {
+	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
+		return ctx, err
+	}
+	stat, err := s.IPFSClient.Object().Stat(ctx, path)
+	if err != nil {
+		return ctx, fmt.Errorf("getting size of removed node: %s", err)
+	}
+	return s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)), nil
+}
+
+// addAndPinNodes adds and pins nodes, accounting for sum bytes pinned for context.
 func (s *Service) addAndPinNodes(ctx context.Context, nodes []ipld.Node) (context.Context, error) {
 	if err := s.IPFSClient.Dag().AddMany(ctx, nodes); err != nil {
 		return ctx, err
@@ -1112,6 +1141,7 @@ func decryptNode(cn ipld.Node, key []byte) (ipld.Node, bool, error) {
 	}
 }
 
+// decryptData decrypts data with key.
 func decryptData(data, key []byte) ([]byte, error) {
 	r, err := dcrypto.NewDecrypter(bytes.NewReader(data), key)
 	if err != nil {
@@ -1121,6 +1151,7 @@ func decryptData(data, key []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
+// nodeToItem returns a path item from an IPLD node.
 func (s *Service) nodeToItem(
 	ctx context.Context,
 	buck *tdb.Bucket,
@@ -1254,7 +1285,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		return fmt.Errorf("db required")
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
-	//owner, _ := buckets.BucketOwnerFromContext(server.Context())
 
 	req, err := server.Recv()
 	if err != nil {
@@ -1358,8 +1388,8 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 					return
 				}
 				cummSize += int64(n)
-				if s.BucketsMaxSize > 0 && currentSize+cummSize > s.BucketsMaxSize {
-					sendErr(ErrBucketExceedsMaxSize)
+				if s.MaxBucketSize > 0 && currentSize+cummSize > s.MaxBucketSize {
+					sendErr(ErrMaxBucketSizeExceeded)
 				}
 			default:
 				sendErr(fmt.Errorf("invalid request"))
@@ -1655,7 +1685,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	if err != nil {
 		return ctx, fmt.Errorf("getting size of destination dag: %s", err)
 	}
-	if s.BucketsMaxSize > 0 && toSize > s.BucketsMaxSize {
+	if s.MaxBucketSize > 0 && toSize > s.MaxBucketSize {
 		return ctx, fmt.Errorf("bucket size is greater than max allowed size")
 	}
 
@@ -1663,17 +1693,15 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	if err != nil {
 		return ctx, fmt.Errorf("getting size of current dag: %s", err)
 	}
-
-	//// Calculate if adding or moving the pin leads to a violation of
-	//// total buckets size allowed in configuration.
-	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	//if err != nil {
-	//	return fmt.Errorf("getting current buckets total size: %s", err)
-	//}
 	deltaSize := -fromSize + toSize
-	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+deltaSize > s.BucketsTotalMaxSize {
-	//	return ErrBucketsTotalSizeExceedsMaxSize
-	//}
+
+	// Check context owner's storage allowance
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok && owner.FreeQuotaOnly {
+		if deltaSize > owner.FreeStorageAllowance {
+			return ctx, ErrStorageAllowanceExceeded
+		}
+	}
 
 	if from == nil {
 		if err := s.IPFSClient.Pin().Add(ctx, to); err != nil {
@@ -1867,6 +1895,7 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	return &pb.RemoveResponse{}, nil
 }
 
+// unpinNodeAndBranch unpins a node and its entire branch, accounting for sum bytes pinned for context.
 func (s *Service) unpinNodeAndBranch(ctx context.Context, pth path.Resolved, key []byte) (context.Context, error) {
 	ctx, err := s.unpinBranch(ctx, pth, key)
 	if err != nil {
@@ -2426,7 +2455,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
-			// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+			// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 			var oldStorageConfig *ffs.StorageConfig
 			if res.Config != nil {
 				oldStorageConfig = &ffs.StorageConfig{
@@ -2490,6 +2519,23 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	log.Debug("archived bucket")
 	return &pb.ArchiveResponse{}, nil
+}
+
+func accountFromContext(ctx context.Context) *mdb.Account {
+	if org, ok := mdb.OrgFromContext(ctx); ok {
+		return org
+	}
+	if dev, ok := mdb.DevFromContext(ctx); ok {
+		return dev
+	}
+	return nil
+}
+
+func userFromContext(ctx context.Context) *mdb.User {
+	if user, ok := mdb.UserFromContext(ctx); ok {
+		return user
+	}
+	return nil
 }
 
 func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService_ArchiveWatchServer) error {
@@ -2602,56 +2648,6 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 	}, nil
 }
 
-func (s *Service) getGatewayHost() (host string, ok bool) {
-	parts := strings.SplitN(s.GatewayURL, "//", 2)
-	if len(parts) > 1 {
-		return parts[1], true
-	}
-	return
-}
-
-func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Context, error) {
-	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
-		return ctx, err
-	}
-	stat, err := s.IPFSClient.Object().Stat(ctx, path)
-	if err != nil {
-		return ctx, fmt.Errorf("getting size of removed node: %s", err)
-	}
-	return s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)), nil
-}
-
-// pinBlocks pin the provided blocks to the IPFS node, and accounts to the
-// account/user buckets total size quota.
-func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Context, error) {
-	var totalAddedSize int64
-	for _, n := range nodes {
-		s, err := n.Stat()
-		if err != nil {
-			return ctx, fmt.Errorf("getting size of node: %s", err)
-		}
-		totalAddedSize += int64(s.CumulativeSize)
-	}
-	//currentBucketsSize, err := s.getBucketsTotalSize(ctx)
-	//if err != nil {
-	//	return fmt.Errorf("getting current buckets total size: %s", err)
-	//}
-	//
-	//if s.BucketsTotalMaxSize > 0 && currentBucketsSize+totalAddedSize > s.BucketsTotalMaxSize {
-	//	return ErrBucketsTotalSizeExceedsMaxSize
-	//}
-	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
-		return ctx, fmt.Errorf("pinning set of nodes: %s", err)
-	}
-	return s.sumBytesPinned(ctx, totalAddedSize), nil
-}
-
-// sumBytesPinned adds the provided delta to a running total for the context.
-func (s *Service) sumBytesPinned(ctx context.Context, delta int64) context.Context {
-	total, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
-	return context.WithValue(ctx, ctxKey("sumBytesPinned"), total+delta)
-}
-
 func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 	var pbConfig *pb.ArchiveConfig
 	if config != nil {
@@ -2719,7 +2715,7 @@ func toFilConfig(config *mdb.ArchiveConfig) ffs.FilConfig {
 	}
 }
 
-// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
 	res := ffs.HotConfig{}
 	if config != nil {
@@ -2736,7 +2732,7 @@ func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
 	return res
 }
 
-// ToDo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
+// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
 func fromRPCColdConfig(config *ffsRpc.ColdConfig) ffs.ColdConfig {
 	res := ffs.ColdConfig{}
 	if config != nil {
@@ -2764,31 +2760,4 @@ func fromRPCColdConfig(config *ffsRpc.ColdConfig) ffs.ColdConfig {
 		}
 	}
 	return res
-}
-
-func getAccountOrUserFromContext(ctx context.Context) thread.PubKey {
-	if a := accountFromContext(ctx); a != nil {
-		return a.Key
-	} else if u := userFromContext(ctx); u != nil {
-		return u.Key
-	} else {
-		return nil
-	}
-}
-
-func accountFromContext(ctx context.Context) *mdb.Account {
-	if org, ok := mdb.OrgFromContext(ctx); ok {
-		return org
-	}
-	if dev, ok := mdb.DevFromContext(ctx); ok {
-		return dev
-	}
-	return nil
-}
-
-func userFromContext(ctx context.Context) *mdb.User {
-	if user, ok := mdb.UserFromContext(ctx); ok {
-		return user
-	}
-	return nil
 }

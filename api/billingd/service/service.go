@@ -141,10 +141,18 @@ func (s *Service) Stop(force bool) error {
 }
 
 const (
-	StoredDataUnitSize     = 50 * 1048576  // 50 MiB
-	NetworkEgressUnitSize  = 100 * 1048576 // 100 MiB
+	mib = 1024 * 1024
+	gib = 1024 * mib
+
+	StoredDataUnitSize     = 5 * gib / 100
+	NetworkEgressUnitSize  = 10 * gib / 100
 	InstanceReadsUnitSize  = 10000
 	InstanceWritesUnitSize = 5000
+
+	FreeStoredDataUnits    = 100                               // 5 Gib
+	FreeNetworkEgressUnits = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
+	FreeInstanceReadUnits  = 1                                 // 10,000 per day
+	FreeInstanceWriteUnits = 1                                 // 5,000 per day
 )
 
 type Customer struct {
@@ -236,6 +244,32 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	}
 	log.Debugf("created customer %s", customer.ID)
 	return &pb.CreateCustomerResponse{CustomerId: customer.ID}, nil
+}
+
+func (s *Service) GetCustomer(_ context.Context, req *pb.GetCustomerRequest) (
+	*pb.GetCustomerResponse, error) {
+	cus, err := s.stripe.Customers.Get(req.CustomerId, nil)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("got customer %s: %s", req.CustomerId, cus)
+	return &pb.GetCustomerResponse{
+		Balance:    cus.Balance,
+		Billable:   !cus.Deleted && cus.DefaultSource != nil,
+		Delinquent: cus.Delinquent,
+	}, nil
+}
+
+func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (
+	*pb.DeleteCustomerResponse, error) {
+	if _, err := s.stripe.Customers.Del(req.CustomerId, nil); err != nil {
+		return nil, err
+	}
+	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.CustomerId}); err != nil {
+		return nil, err
+	}
+	log.Debugf("deleted customer %s", req.CustomerId)
+	return &pb.DeleteCustomerResponse{}, nil
 }
 
 func (s *Service) AddCard(ctx context.Context, req *pb.AddCardRequest) (*pb.AddCardResponse, error) {
@@ -485,6 +519,7 @@ func (s *Service) GetPeriodUsage(ctx context.Context, req *pb.GetPeriodUsageRequ
 	res.StoredData = &pb.GetPeriodUsageResponse_StoredData{
 		Units:     sum.TotalUsage,
 		TotalSize: doc.StoredData.TotalSize,
+		FreeSize:  (FreeStoredDataUnits * StoredDataUnitSize) - doc.StoredData.TotalSize,
 		Period: &pb.GetPeriodUsageResponse_Period{
 			Start: sum.Period.Start,
 			End:   sum.Period.End,
@@ -495,8 +530,9 @@ func (s *Service) GetPeriodUsage(ctx context.Context, req *pb.GetPeriodUsageRequ
 		return nil, err
 	}
 	res.NetworkEgress = &pb.GetPeriodUsageResponse_NetworkEgress{
-		Units:    sum.TotalUsage,
-		SubUnits: doc.NetworkEgress.SubUnits,
+		Units:     sum.TotalUsage,
+		SubUnits:  doc.NetworkEgress.SubUnits,
+		FreeUnits: FreeNetworkEgressUnits - sum.TotalUsage,
 		Period: &pb.GetPeriodUsageResponse_Period{
 			Start: sum.Period.Start,
 			End:   sum.Period.End,
@@ -507,8 +543,9 @@ func (s *Service) GetPeriodUsage(ctx context.Context, req *pb.GetPeriodUsageRequ
 		return nil, err
 	}
 	res.InstanceReads = &pb.GetPeriodUsageResponse_InstanceReads{
-		Units:    sum.TotalUsage,
-		SubUnits: doc.InstanceReads.SubUnits,
+		Units:     sum.TotalUsage,
+		SubUnits:  doc.InstanceReads.SubUnits,
+		FreeUnits: FreeInstanceReadUnits - sum.TotalUsage,
 		Period: &pb.GetPeriodUsageResponse_Period{
 			Start: sum.Period.Start,
 			End:   sum.Period.End,
@@ -519,8 +556,9 @@ func (s *Service) GetPeriodUsage(ctx context.Context, req *pb.GetPeriodUsageRequ
 		return nil, err
 	}
 	res.InstanceWrites = &pb.GetPeriodUsageResponse_InstanceWrites{
-		Units:    sum.TotalUsage,
-		SubUnits: doc.InstanceWrites.SubUnits,
+		Units:     sum.TotalUsage,
+		SubUnits:  doc.InstanceWrites.SubUnits,
+		FreeUnits: FreeInstanceWriteUnits - sum.TotalUsage,
 		Period: &pb.GetPeriodUsageResponse_Period{
 			Start: sum.Period.Start,
 			End:   sum.Period.End,
@@ -546,16 +584,4 @@ func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary,
 		return sum, nil
 	}
 	return nil, fmt.Errorf("subscription item %s not found", id)
-}
-
-func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (
-	*pb.DeleteCustomerResponse, error) {
-	if _, err := s.stripe.Customers.Del(req.CustomerId, nil); err != nil {
-		return nil, err
-	}
-	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.CustomerId}); err != nil {
-		return nil, err
-	}
-	log.Debugf("deleted customer %s", req.CustomerId)
-	return &pb.DeleteCustomerResponse{}, nil
 }

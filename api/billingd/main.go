@@ -47,11 +47,11 @@ var (
 			},
 			"stripeApiUrl": {
 				Key:      "stripe.api_url",
-				DefValue: "http://127.0.0.1:12111",
+				DefValue: "https://api.stripe.com",
 			},
 			"stripeKey": {
 				Key:      "stripe.key",
-				DefValue: "sk_test_123",
+				DefValue: "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 			},
 			"stripeStoredDataPrice": {
 				Key:      "stripe.stored_data.price",

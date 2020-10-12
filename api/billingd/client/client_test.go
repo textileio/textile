@@ -3,6 +3,7 @@ package client_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/phayes/freeport"
@@ -16,8 +17,13 @@ import (
 )
 
 const (
-	mib = 1048576
+	mib = 1024 * 1024
 )
+
+func TestMain(m *testing.M) {
+
+	os.Exit(m.Run())
+}
 
 func TestClient_CheckHealth(t *testing.T) {
 	t.Parallel()
@@ -32,6 +38,45 @@ func TestClient_CreateCustomer(t *testing.T) {
 	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
 	require.NoError(t, err)
 	assert.NotEmpty(t, id)
+}
+
+func TestClient_GetCustomer(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	cus, err := c.GetCustomer(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, 0, int(cus.Balance))
+	assert.False(t, cus.Billable)
+	assert.False(t, cus.Delinquent)
+}
+
+func TestClient_DeleteCustomer(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	err = c.DeleteCustomer(context.Background(), id)
+	require.NoError(t, err)
+}
+
+func TestClient_AddCard(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	err = c.AddCard(context.Background(), id, apitest.NewCardToken(t))
+	require.NoError(t, err)
+
+	cus, err := c.GetCustomer(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, 0, int(cus.Balance))
+	assert.True(t, cus.Billable)
+	assert.False(t, cus.Delinquent)
 }
 
 func TestClient_SetStoredData(t *testing.T) {
@@ -174,16 +219,6 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 26, int(usage.InstanceWrites.Units))
 	assert.Equal(t, 0, int(usage.InstanceWrites.SubUnits))
-}
-
-func TestClient_DeleteCustomer(t *testing.T) {
-	t.Parallel()
-	c := setup(t)
-	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
-	require.NoError(t, err)
-
-	err = c.DeleteCustomer(context.Background(), id)
-	require.NoError(t, err)
 }
 
 func setup(t *testing.T) *client.Client {

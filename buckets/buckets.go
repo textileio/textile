@@ -32,9 +32,10 @@ var (
 
 type ctxKey string
 
+// BucketOwner provides owner context to the bucket service.
 type BucketOwner struct {
-	ID               string
-	StorageTotalSize int64
+	FreeQuotaOnly        bool
+	FreeStorageAllowance int64
 }
 
 func NewBucketOwnerContext(ctx context.Context, owner *BucketOwner) context.Context {

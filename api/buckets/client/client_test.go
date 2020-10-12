@@ -381,7 +381,7 @@ func TestClient_PushPathBucketExceedLimit(t *testing.T) {
 	maxBucketSize := stat.Size() + 1024
 
 	conf := apitest.DefaultTextileConfig(t)
-	conf.BucketsMaxSize = maxBucketSize
+	conf.MaxBucketSize = maxBucketSize
 	ctx, _, _, client := setupWithConf(t, conf)
 
 	buck, err := client.Create(ctx)

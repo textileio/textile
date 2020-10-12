@@ -107,14 +107,6 @@ var (
 				Key:      "buckets.max_size",
 				DefValue: int64(1073741824),
 			},
-			"bucketsTotalMaxSize": {
-				Key:      "buckets.total_max_size",
-				DefValue: int64(1073741824),
-			},
-			"bucketsMaxNumberPerThread": {
-				Key:      "buckets.max_number_per_thread",
-				DefValue: 10000,
-			},
 			"threadsMaxNumberPerOwner": {
 				Key:      "threads.max_number_per_owner",
 				DefValue: 100,
@@ -230,14 +222,6 @@ func init() {
 		"bucketsMaxSize",
 		config.Flags["bucketsMaxSize"].DefValue.(int64),
 		"Bucket max size in bytes")
-	rootCmd.PersistentFlags().Int64(
-		"bucketsTotalMaxSize",
-		config.Flags["bucketsTotalMaxSize"].DefValue.(int64),
-		"Total max size of buckets per account")
-	rootCmd.PersistentFlags().Int(
-		"bucketsMaxNumberPerThread",
-		config.Flags["bucketsMaxNumberPerThread"].DefValue.(int),
-		"Max number of buckets per thread")
 
 	// Thread settings
 	rootCmd.PersistentFlags().Int(
@@ -296,9 +280,6 @@ var rootCmd = &cobra.Command{
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
-		bucketsTotalMaxSize := config.Viper.GetInt64("buckets.total_max_size")
-		bucketsMaxNumberPerThread := config.Viper.GetInt("buckets.max_number_per_thread")
-
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
 
 		logFile := config.Viper.GetString("log.file")
@@ -335,11 +316,8 @@ var rootCmd = &cobra.Command{
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
 
-			BucketsMaxSize:            bucketsMaxSize,
-			BucketsTotalMaxSize:       bucketsTotalMaxSize,
-			BucketsMaxNumberPerThread: bucketsMaxNumberPerThread,
-
-			ThreadsMaxNumberPerOwner: threadsMaxNumberPerOwner,
+			MaxBucketSize:            bucketsMaxSize,
+			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
 
 			Hub:   true,
 			Debug: config.Viper.GetBool("log.debug"),

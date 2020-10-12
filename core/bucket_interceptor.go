@@ -2,6 +2,10 @@ package core
 
 import (
 	"context"
+	"errors"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/textileio/textile/v2/buckets"
@@ -9,6 +13,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	// ErrAccountDelinquent indicates the latest charge to the account failed.
+	ErrAccountDelinquent = errors.New("payment required")
+)
+
+// bucketInterceptor adds context info needed to account for bucket usage.
 func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		var account *mdb.Account
@@ -17,9 +27,17 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 		} else if dev, ok := mdb.DevFromContext(stream.Context()); ok {
 			account = dev
 		}
+		// @todo: Account for users after User -> Account migration
 		// else if user, ok := mdb.UserFromContext(ctx); ok {}
 		if account == nil || account.CustomerID == "" {
 			return handler(srv, stream)
+		}
+		cus, err := t.bc.GetCustomer(stream.Context(), account.CustomerID)
+		if err != nil {
+			return err
+		}
+		if cus.Delinquent {
+			return status.Error(codes.FailedPrecondition, ErrAccountDelinquent.Error())
 		}
 
 		var newCtx context.Context
@@ -29,13 +47,13 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 			if err != nil {
 				return err
 			}
-			// @todo: Usage should return a bool indicating if the push should be allowed,
-			//        e.g., an invoice charge failed, etc.
-
-			newCtx = buckets.NewBucketOwnerContext(stream.Context(), &buckets.BucketOwner{
-				ID:               account.CustomerID,
-				StorageTotalSize: usage.StoredData.TotalSize,
-			})
+			owner := &buckets.BucketOwner{}
+			if !cus.Billable {
+				// Customer is not billable (no payment source), limit to free quota
+				owner.FreeQuotaOnly = true
+				owner.FreeStorageAllowance = usage.StoredData.FreeSize
+			}
+			newCtx = buckets.NewBucketOwnerContext(stream.Context(), owner)
 		default:
 			return handler(srv, stream)
 		}

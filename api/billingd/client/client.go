@@ -45,6 +45,19 @@ func (c *Client) CreateCustomer(ctx context.Context, email string) (string, erro
 	return res.CustomerId, nil
 }
 
+func (c *Client) GetCustomer(ctx context.Context, customerID string) (*pb.GetCustomerResponse, error) {
+	return c.c.GetCustomer(ctx, &pb.GetCustomerRequest{
+		CustomerId: customerID,
+	})
+}
+
+func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
+	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
+		CustomerId: customerID,
+	})
+	return err
+}
+
 func (c *Client) AddCard(ctx context.Context, customerID, token string) error {
 	_, err := c.c.AddCard(ctx, &pb.AddCardRequest{
 		CustomerId: customerID,
@@ -85,11 +98,4 @@ func (c *Client) GetPeriodUsage(ctx context.Context, customerID string) (*pb.Get
 	return c.c.GetPeriodUsage(ctx, &pb.GetPeriodUsageRequest{
 		CustomerId: customerID,
 	})
-}
-
-func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
-	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
-		CustomerId: customerID,
-	})
-	return err
 }
