@@ -51,11 +51,13 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 			if err != nil {
 				return err
 			}
-			owner := &buckets.BucketOwner{}
-			if !cus.Billable {
-				// Customer is not billable (no payment source), limit to free quota
-				owner.StorageLimitedToQuota = true
-				owner.StorageQuota = usage.FreeSize
+			owner := &buckets.BucketOwner{
+				StorageUsed: usage.TotalSize,
+			}
+			if cus.Billable {
+				owner.StorageAvailable = -1
+			} else {
+				owner.StorageAvailable = usage.FreeSize
 			}
 			newCtx = buckets.NewBucketOwnerContext(stream.Context(), owner)
 		default:

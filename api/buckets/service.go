@@ -395,8 +395,8 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageLimitedToQuota {
-		if totalAddedSize > owner.StorageQuota {
+	if ok && owner.StorageAvailable != -1 {
+		if totalAddedSize > owner.StorageAvailable {
 			return ctx, ErrStorageQuotaSizeExceeded
 		}
 	}
@@ -412,8 +412,8 @@ func (s *Service) addPinnedBytes(ctx context.Context, delta int64) context.Conte
 	total, _ := ctx.Value(ctxKey("pinnedBytes")).(int64)
 	ctx = context.WithValue(ctx, ctxKey("pinnedBytes"), total+delta)
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageLimitedToQuota {
-		owner.StorageQuota -= delta
+	if ok && owner.StorageAvailable != -1 {
+		owner.StorageAvailable -= delta
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
 	}
 	return ctx
@@ -444,8 +444,8 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageLimitedToQuota {
-		if int64(bootStatn.CumulativeSize) > owner.StorageQuota {
+	if ok && owner.StorageAvailable != -1 {
+		if int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
 			return ctx, nil, ErrStorageQuotaSizeExceeded
 		}
 	}
@@ -1713,8 +1713,8 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageLimitedToQuota {
-		if deltaSize > owner.StorageQuota {
+	if ok && owner.StorageAvailable != -1 {
+		if deltaSize > owner.StorageAvailable {
 			return ctx, ErrStorageQuotaSizeExceeded
 		}
 	}

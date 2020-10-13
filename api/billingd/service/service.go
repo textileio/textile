@@ -295,7 +295,7 @@ func (s *Service) AddCard(ctx context.Context, req *pb.AddCardRequest) (*pb.AddC
 	return &pb.AddCardResponse{}, nil
 }
 
-func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataRequest) (*pb.SetStoredDataResponse, error) {
+func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataRequest) (*pb.IncStoredDataResponse, error) {
 	sess, err := s.db.Database().Client().StartSession()
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataReques
 	if err = sess.StartTransaction(); err != nil {
 		return nil, err
 	}
-	res := &pb.SetStoredDataResponse{}
+	res := &pb.IncStoredDataResponse{}
 	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
 		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
 		if r.Err() != nil {
@@ -314,14 +314,16 @@ func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataReques
 		if err := r.Decode(&doc); err != nil {
 			return err
 		}
-		update := bson.M{"stored_data.total_size": req.TotalSize}
-		res.Units = int64(math.Round(float64(req.TotalSize) / float64(StoredDataUnitSize)))
+		res.TotalSize = doc.StoredData.TotalSize + req.IncSize
+		if res.TotalSize < 0 {
+			res.TotalSize = 0
+		}
+		update := bson.M{"stored_data.total_size": res.TotalSize}
+		res.Units = int64(math.Round(float64(res.TotalSize) / float64(StoredDataUnitSize)))
 		if res.Units > FreeStoredDataUnits && !doc.Billable {
 			return ErrExceedsFreeUnits
 		}
 		if res.Units != doc.StoredData.Units {
-
-			// Record stripe usage
 			if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 				SubscriptionItem: stripe.String(doc.StoredData.ItemID),
 				Quantity:         stripe.Int64(res.Units),
@@ -330,9 +332,7 @@ func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataReques
 			}); err != nil {
 				return err
 			}
-
 			update["stored_data.units"] = res.Units
-			res.UnitsChanged = true
 		}
 		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{"$set": update}); err != nil {
 			return err
@@ -346,11 +346,10 @@ func (s *Service) SetStoredData(ctx context.Context, req *pb.SetStoredDataReques
 		return nil, err
 	}
 	log.Debugf(
-		"%s period data: units=%d units_changed=%v total_size=%d",
+		"%s period data: units=%d total_size=%d",
 		req.CustomerId,
 		res.Units,
-		res.UnitsChanged,
-		req.TotalSize,
+		res.TotalSize,
 	)
 	return res, nil
 }

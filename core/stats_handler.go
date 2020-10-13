@@ -45,24 +45,68 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			if pl.InstanceIDs != nil {
 				writes = int64(len(pl.InstanceIDs))
 			}
+		case *tpb.WriteTransactionReply_CreateReply:
+			if pl.CreateReply.TransactionError == "" {
+				writes = 1
+			}
+		case *tpb.VerifyReply:
+			if pl.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.WriteTransactionReply_VerifyReply:
+			if pl.VerifyReply.TransactionError == "" {
+				reads = 1
+			}
 		case *tpb.SaveReply:
 			if pl.TransactionError == "" {
+				writes = 1
+			}
+		case *tpb.WriteTransactionReply_SaveReply:
+			if pl.SaveReply.TransactionError == "" {
 				writes = 1
 			}
 		case *tpb.DeleteReply:
 			if pl.TransactionError == "" {
 				writes = 1
 			}
+		case *tpb.WriteTransactionReply_DeleteReply:
+			if pl.DeleteReply.TransactionError == "" {
+				writes = 1
+			}
 		case *tpb.FindReply:
 			if pl.Instances != nil {
 				reads = int64(len(pl.Instances))
+			}
+		case *tpb.ReadTransactionReply_FindReply:
+			if pl.FindReply.Instances != nil {
+				reads = int64(len(pl.FindReply.Instances))
+			}
+		case *tpb.WriteTransactionReply_FindReply:
+			if pl.FindReply.Instances != nil {
+				reads = int64(len(pl.FindReply.Instances))
 			}
 		case *tpb.FindByIDReply:
 			if pl.TransactionError == "" {
 				reads = 1
 			}
+		case *tpb.ReadTransactionReply_FindByIDReply:
+			if pl.FindByIDReply.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.WriteTransactionReply_FindByIDReply:
+			if pl.FindByIDReply.TransactionError == "" {
+				reads = 1
+			}
 		case *tpb.HasReply:
 			if pl.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.ReadTransactionReply_HasReply:
+			if pl.HasReply.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.WriteTransactionReply_HasReply:
+			if pl.HasReply.TransactionError == "" {
 				reads = 1
 			}
 		case *tpb.ListenReply:
@@ -88,20 +132,17 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		}
 
 		if stored > 0 {
-			_, err := h.t.bc.SetStoredData(ctx, account.CustomerID, stored)
-			if err != nil {
-				log.Errorf("stats: set stored data: %v", err)
+			if _, err := h.t.bc.IncStoredData(ctx, account.CustomerID, stored); err != nil {
+				log.Errorf("stats: inc stored data: %v", err)
 			}
 		}
 		if reads > 0 {
-			_, err := h.t.bc.IncInstanceReads(ctx, account.CustomerID, reads)
-			if err != nil {
+			if _, err := h.t.bc.IncInstanceReads(ctx, account.CustomerID, reads); err != nil {
 				log.Errorf("stats: inc instance reads: %v", err)
 			}
 		}
 		if writes > 0 {
-			_, err := h.t.bc.IncInstanceWrites(ctx, account.CustomerID, writes)
-			if err != nil {
+			if _, err := h.t.bc.IncInstanceWrites(ctx, account.CustomerID, writes); err != nil {
 				log.Errorf("stats: inc instance writes: %v", err)
 			}
 		}

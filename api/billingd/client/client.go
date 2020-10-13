@@ -66,10 +66,10 @@ func (c *Client) AddCard(ctx context.Context, customerID, token string) error {
 	return err
 }
 
-func (c *Client) SetStoredData(ctx context.Context, customerID string, totalSize int64) (*pb.SetStoredDataResponse, error) {
-	return c.c.SetStoredData(ctx, &pb.SetStoredDataRequest{
+func (c *Client) IncStoredData(ctx context.Context, customerID string, incSize int64) (*pb.IncStoredDataResponse, error) {
+	return c.c.IncStoredData(ctx, &pb.IncStoredDataRequest{
 		CustomerId: customerID,
-		TotalSize:  totalSize,
+		IncSize:    incSize,
 	})
 }
 

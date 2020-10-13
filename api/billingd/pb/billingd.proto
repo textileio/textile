@@ -36,14 +36,14 @@ message AddCardRequest {
 
 message AddCardResponse {}
 
-message SetStoredDataRequest {
+message IncStoredDataRequest {
     string customer_id = 1;
-    int64 total_size = 2;
+    int64 inc_size = 2;
 }
 
-message SetStoredDataResponse {
+message IncStoredDataResponse {
     int64 units = 1;
-    bool units_changed = 2;
+    int64 total_size = 2;
 }
 
 message GetStoredDataRequest {
@@ -131,7 +131,7 @@ service APIService {
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
     rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
-    rpc SetStoredData(SetStoredDataRequest) returns (SetStoredDataResponse) {}
+    rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
     rpc GetStoredData(GetStoredDataRequest) returns (GetStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
     rpc GetNetworkEgress(GetNetworkEgressRequest) returns (GetNetworkEgressResponse) {}

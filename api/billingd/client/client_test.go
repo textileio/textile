@@ -73,35 +73,35 @@ func TestClient_AddCard(t *testing.T) {
 	assert.False(t, cus.Delinquent)
 }
 
-func TestClient_SetStoredData(t *testing.T) {
+func TestClient_IncStoredData(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
 	require.NoError(t, err)
 
 	// Units should round down
-	res, err := c.SetStoredData(context.Background(), id, mib)
+	res, err := c.IncStoredData(context.Background(), id, mib)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.Units))
-	assert.False(t, res.UnitsChanged)
+	assert.Equal(t, mib, int(res.TotalSize))
 
 	// Units should round up
-	res, err = c.SetStoredData(context.Background(), id, 30*mib)
+	res, err = c.IncStoredData(context.Background(), id, 30*mib)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.Units))
-	assert.True(t, res.UnitsChanged)
+	assert.Equal(t, 31*mib, int(res.TotalSize))
 
 	// Units should round down
-	res, err = c.SetStoredData(context.Background(), id, 260*mib)
+	res, err = c.IncStoredData(context.Background(), id, 289*mib)
 	require.NoError(t, err)
-	assert.Equal(t, 5, int(res.Units))
-	assert.True(t, res.UnitsChanged)
+	assert.Equal(t, 6, int(res.Units))
+	assert.Equal(t, 320*mib, int(res.TotalSize))
 
 	// Check total usage
 	usage, err := c.GetStoredData(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 5, int(usage.Units))
-	assert.Equal(t, 260*mib, int(usage.TotalSize))
+	assert.Equal(t, 6, int(usage.Units))
+	assert.Equal(t, 320*mib, int(usage.TotalSize))
 }
 
 func TestClient_IncNetworkEgress(t *testing.T) {
