@@ -35,6 +35,7 @@ message CreateResponse {
     LinksResponse links = 2;
     bytes seed = 3;
     string seed_cid = 4;
+    int64 pinned = 5;
 }
 
 message RootRequest {
@@ -138,13 +139,17 @@ message SetPathRequest {
     string cid = 3;
 }
 
-message SetPathResponse {}
+message SetPathResponse {
+    int64 pinned = 1;
+}
 
 message RemoveRequest {
     string key = 1;
 }
 
-message RemoveResponse {}
+message RemoveResponse {
+    int64 pinned = 1;
+}
 
 message RemovePathRequest {
     string key = 1;
@@ -154,6 +159,7 @@ message RemovePathRequest {
 
 message RemovePathResponse {
     Root root = 1;
+    int64 pinned = 2;
 }
 
 enum PathAccessRole {
@@ -169,7 +175,9 @@ message PushPathAccessRolesRequest {
     map<string, PathAccessRole> roles = 3;
 }
 
-message PushPathAccessRolesResponse {}
+message PushPathAccessRolesResponse {
+    int64 pinned = 1;
+}
 
 message PullPathAccessRolesRequest {
     string key = 1;
@@ -211,8 +219,7 @@ message SetDefaultArchiveConfigRequest {
     ArchiveConfig archive_config = 2;
 }
 
-message SetDefaultArchiveConfigResponse {
-}
+message SetDefaultArchiveConfigResponse {}
 
 message ArchiveRequest {
     string key = 1;

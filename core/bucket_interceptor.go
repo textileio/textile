@@ -39,19 +39,23 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 		if cus.Delinquent {
 			return status.Error(codes.FailedPrecondition, ErrAccountDelinquent.Error())
 		}
-
 		var newCtx context.Context
 		switch info.FullMethod {
-		case "/api.buckets.pb.APIService/PushPath":
-			usage, err := t.bc.GetPeriodUsage(stream.Context(), account.CustomerID)
+		case "/api.buckets.pb.APIService/Create",
+			"/api.buckets.pb.APIService/PushPath",
+			"/api.buckets.pb.APIService/SetPath",
+			"/api.buckets.pb.APIService/Remove",
+			"/api.buckets.pb.APIService/RemovePath",
+			"/api.buckets.pb.APIService/PushPathAccessRoles":
+			usage, err := t.bc.GetStoredData(stream.Context(), account.CustomerID)
 			if err != nil {
 				return err
 			}
 			owner := &buckets.BucketOwner{}
 			if !cus.Billable {
 				// Customer is not billable (no payment source), limit to free quota
-				owner.FreeQuotaOnly = true
-				owner.FreeStorageAllowance = usage.StoredData.FreeSize
+				owner.StorageLimitedToQuota = true
+				owner.StorageQuota = usage.FreeSize
 			}
 			newCtx = buckets.NewBucketOwnerContext(stream.Context(), owner)
 		default:

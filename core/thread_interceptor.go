@@ -140,7 +140,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
-			if t.conf.ThreadsMaxNumberPerOwner > 0 && len(thds) >= t.conf.ThreadsMaxNumberPerOwner {
+			if t.conf.MaxNumberThreadsPerOwner > 0 && len(thds) >= t.conf.MaxNumberThreadsPerOwner {
 				return nil, ErrTooManyThreadsPerOwner
 			}
 			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {

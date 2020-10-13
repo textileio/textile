@@ -73,10 +73,22 @@ func (c *Client) SetStoredData(ctx context.Context, customerID string, totalSize
 	})
 }
 
+func (c *Client) GetStoredData(ctx context.Context, customerID string) (*pb.GetStoredDataResponse, error) {
+	return c.c.GetStoredData(ctx, &pb.GetStoredDataRequest{
+		CustomerId: customerID,
+	})
+}
+
 func (c *Client) IncNetworkEgress(ctx context.Context, customerID string, incSize int64) (*pb.IncNetworkEgressResponse, error) {
 	return c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
 		CustomerId: customerID,
 		IncSize:    incSize,
+	})
+}
+
+func (c *Client) GetNetworkEgress(ctx context.Context, customerID string) (*pb.GetNetworkEgressResponse, error) {
+	return c.c.GetNetworkEgress(ctx, &pb.GetNetworkEgressRequest{
+		CustomerId: customerID,
 	})
 }
 
@@ -87,6 +99,12 @@ func (c *Client) IncInstanceReads(ctx context.Context, customerID string, incCou
 	})
 }
 
+func (c *Client) GetInstanceReads(ctx context.Context, customerID string) (*pb.GetInstanceReadsResponse, error) {
+	return c.c.GetInstanceReads(ctx, &pb.GetInstanceReadsRequest{
+		CustomerId: customerID,
+	})
+}
+
 func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, incCount int64) (*pb.IncInstanceWritesResponse, error) {
 	return c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
 		CustomerId: customerID,
@@ -94,8 +112,8 @@ func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, incCo
 	})
 }
 
-func (c *Client) GetPeriodUsage(ctx context.Context, customerID string) (*pb.GetPeriodUsageResponse, error) {
-	return c.c.GetPeriodUsage(ctx, &pb.GetPeriodUsageRequest{
+func (c *Client) GetInstanceWrites(ctx context.Context, customerID string) (*pb.GetInstanceWritesResponse, error) {
+	return c.c.GetInstanceWrites(ctx, &pb.GetInstanceWritesRequest{
 		CustomerId: customerID,
 	})
 }

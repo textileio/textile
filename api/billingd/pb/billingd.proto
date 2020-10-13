@@ -23,6 +23,12 @@ message GetCustomerResponse {
     bool delinquent = 3;
 }
 
+message DeleteCustomerRequest {
+    string customer_id = 1;
+}
+
+message DeleteCustomerResponse {}
+
 message AddCardRequest {
     string customer_id = 1;
     string token = 2;
@@ -40,6 +46,17 @@ message SetStoredDataResponse {
     bool units_changed = 2;
 }
 
+message GetStoredDataRequest {
+    string customer_id = 1;
+}
+
+message GetStoredDataResponse {
+    int64 units = 1;
+    int64 total_size = 2;
+    int64 free_size = 3;
+    UsagePeriod period = 4;
+}
+
 message IncNetworkEgressRequest {
     string customer_id = 1;
     int64 inc_size = 2;
@@ -48,6 +65,17 @@ message IncNetworkEgressRequest {
 message IncNetworkEgressResponse {
     int64 added_units = 1;
     int64 sub_units = 2;
+}
+
+message GetNetworkEgressRequest {
+    string customer_id = 1;
+}
+
+message GetNetworkEgressResponse {
+    int64 units = 1;
+    int64 sub_units = 2;
+    int64 free_units = 3;
+    UsagePeriod period = 4;
 }
 
 message IncInstanceReadsRequest {
@@ -60,6 +88,17 @@ message IncInstanceReadsResponse {
     int64 sub_units = 2;
 }
 
+message GetInstanceReadsRequest {
+    string customer_id = 1;
+}
+
+message GetInstanceReadsResponse {
+    int64 units = 1;
+    int64 sub_units = 2;
+    int64 free_units = 3;
+    UsagePeriod period = 4;
+}
+
 message IncInstanceWritesRequest {
     string customer_id = 1;
     int64 inc_count = 2;
@@ -70,65 +109,34 @@ message IncInstanceWritesResponse {
     int64 sub_units = 2;
 }
 
-message GetPeriodUsageRequest {
+message GetInstanceWritesRequest {
     string customer_id = 1;
 }
 
-message GetPeriodUsageResponse {
-    StoredData stored_data = 1;
-    NetworkEgress network_egress = 2;
-    InstanceReads instance_reads = 3;
-    InstanceWrites instance_writes = 4;
-
-    message StoredData {
-        int64 units = 1;
-        int64 total_size = 2;
-        int64 free_size = 3;
-        Period period = 4;
-    }
-
-    message NetworkEgress {
-        int64 units = 1;
-        int64 sub_units = 2;
-        int64 free_units = 3;
-        Period period = 4;
-    }
-
-    message InstanceReads {
-        int64 units = 1;
-        int64 sub_units = 2;
-        int64 free_units = 3;
-        Period period = 4;
-    }
-
-    message InstanceWrites {
-        int64 units = 1;
-        int64 sub_units = 2;
-        int64 free_units = 3;
-        Period period = 4;
-    }
-
-    message Period {
-        int64 start = 1;
-        int64 end = 2;
-    }
+message GetInstanceWritesResponse {
+    int64 units = 1;
+    int64 sub_units = 2;
+    int64 free_units = 3;
+    UsagePeriod period = 4;
 }
 
-message DeleteCustomerRequest {
-    string customer_id = 1;
+message UsagePeriod {
+    int64 start = 1;
+    int64 end = 2;
 }
-
-message DeleteCustomerResponse {}
 
 service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
+    rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
     rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
     rpc SetStoredData(SetStoredDataRequest) returns (SetStoredDataResponse) {}
+    rpc GetStoredData(GetStoredDataRequest) returns (GetStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
+    rpc GetNetworkEgress(GetNetworkEgressRequest) returns (GetNetworkEgressResponse) {}
     rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
+    rpc GetInstanceReads(GetInstanceReadsRequest) returns (GetInstanceReadsResponse) {}
     rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
-    rpc GetPeriodUsage(GetPeriodUsageRequest) returns (GetPeriodUsageResponse) {}
-    rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
+    rpc GetInstanceWrites(GetInstanceWritesRequest) returns (GetInstanceWritesResponse) {}
 }

@@ -18,8 +18,6 @@ var _ stats.Handler = (*StatsHandler)(nil)
 // HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 	switch st := st.(type) {
-	case *stats.OutHeader:
-		// Account for header size?
 	case *stats.OutPayload:
 		var account *mdb.Account
 		if org, ok := mdb.OrgFromContext(ctx); ok {
@@ -74,14 +72,19 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 
 		// Account for bucket storage
 		case *bpb.CreateResponse:
-			// @todo
+			stored = pl.Pinned
 		case *bpb.PushPathResponse:
-			// @todo
 			if pl, ok := pl.Payload.(*bpb.PushPathResponse_Event_); ok && pl.Event.Pinned != 0 {
 				stored = pl.Event.Pinned
 			}
 		case *bpb.SetPathResponse:
-			// @todo
+			stored = pl.Pinned
+		case *bpb.RemoveResponse:
+			stored = pl.Pinned
+		case *bpb.RemovePathResponse:
+			stored = pl.Pinned
+		case *bpb.PushPathAccessRolesResponse:
+			stored = pl.Pinned
 		}
 
 		if stored > 0 {
@@ -102,8 +105,6 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 				log.Errorf("stats: inc instance writes: %v", err)
 			}
 		}
-	case *stats.OutTrailer:
-		// Account for trailer size?
 	}
 }
 

@@ -53,8 +53,8 @@ var (
 	// ErrMaxBucketSizeExceeded indicates the requested operation exceeds the max bucket size.
 	ErrMaxBucketSizeExceeded = errors.New("max bucket size exceeded")
 
-	// ErrStorageAllowanceExceeded indicates the requested operation exceeds a storage allowance.
-	ErrStorageAllowanceExceeded = errors.New("storage allowance exceeded")
+	// ErrStorageQuotaSizeExceeded indicates the requested operation exceeds a storage allowance.
+	ErrStorageQuotaSizeExceeded = errors.New("storage quota size exceeded")
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
@@ -231,6 +231,7 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		Links:   links,
 		Seed:    seedData,
 		SeedCid: seed.Cid().String(),
+		Pinned:  s.getPinnedBytes(ctx),
 	}, nil
 }
 
@@ -394,22 +395,34 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.FreeQuotaOnly {
-		if totalAddedSize > owner.FreeStorageAllowance {
-			return ctx, ErrStorageAllowanceExceeded
+	if ok && owner.StorageLimitedToQuota {
+		if totalAddedSize > owner.StorageQuota {
+			return ctx, ErrStorageQuotaSizeExceeded
 		}
 	}
 
 	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
 		return ctx, fmt.Errorf("pinning set of nodes: %s", err)
 	}
-	return s.sumBytesPinned(ctx, totalAddedSize), nil
+	return s.addPinnedBytes(ctx, totalAddedSize), nil
 }
 
-// sumBytesPinned adds the provided delta to a running total for the context.
-func (s *Service) sumBytesPinned(ctx context.Context, delta int64) context.Context {
-	total, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
-	return context.WithValue(ctx, ctxKey("sumBytesPinned"), total+delta)
+// addPinnedBytes adds the provided delta to a running total for context.
+func (s *Service) addPinnedBytes(ctx context.Context, delta int64) context.Context {
+	total, _ := ctx.Value(ctxKey("pinnedBytes")).(int64)
+	ctx = context.WithValue(ctx, ctxKey("pinnedBytes"), total+delta)
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok && owner.StorageLimitedToQuota {
+		owner.StorageQuota -= delta
+		ctx = buckets.NewBucketOwnerContext(ctx, owner)
+	}
+	return ctx
+}
+
+// getPinnedBytes returns the total pinned bytes for context.
+func (s *Service) getPinnedBytes(ctx context.Context) int64 {
+	pinned, _ := ctx.Value(ctxKey("pinnedBytes")).(int64)
+	return pinned
 }
 
 // createBootstrapedPath creates an IPFS path which is the bootCid UnixFS DAG,
@@ -431,9 +444,9 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.FreeQuotaOnly {
-		if int64(bootStatn.CumulativeSize) > owner.FreeStorageAllowance {
-			return ctx, nil, ErrStorageAllowanceExceeded
+	if ok && owner.StorageLimitedToQuota {
+		if int64(bootStatn.CumulativeSize) > owner.StorageQuota {
+			return ctx, nil, ErrStorageQuotaSizeExceeded
 		}
 	}
 
@@ -768,7 +781,8 @@ func (s *Service) encryptFileNode(ctx context.Context, n ipld.Node, currentKey, 
 		ctx,
 		ipfsfiles.NewReaderFile(r2),
 		options.Unixfs.CidVersion(1),
-		options.Unixfs.Pin(false))
+		options.Unixfs.Pin(false),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -928,7 +942,9 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	if err = txn.Save(ctx, buck); err != nil {
 		return nil, err
 	}
-	return &pb.SetPathResponse{}, nil
+	return &pb.SetPathResponse{
+		Pinned: s.getPinnedBytes(ctx),
+	}, nil
 }
 
 // setPathFromExistingCid sets the path with a cid from the network, encrypting with file key if present.
@@ -1011,7 +1027,7 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Contex
 	if err != nil {
 		return ctx, fmt.Errorf("getting size of removed node: %s", err)
 	}
-	return s.sumBytesPinned(ctx, int64(-stat.CumulativeSize)), nil
+	return s.addPinnedBytes(ctx, int64(-stat.CumulativeSize)), nil
 }
 
 // addAndPinNodes adds and pins nodes, accounting for sum bytes pinned for context.
@@ -1437,7 +1453,8 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		options.Unixfs.CidVersion(1),
 		options.Unixfs.Pin(false),
 		options.Unixfs.Progress(true),
-		options.Unixfs.Events(eventCh))
+		options.Unixfs.Events(eventCh),
+	)
 	if err != nil {
 		return err
 	}
@@ -1480,12 +1497,11 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	if err != nil {
 		return err
 	}
-	pinned, _ := ctx.Value(ctxKey("sumBytesPinned")).(int64)
 	if err = sendEvent(&pb.PushPathResponse_Event{
 		Path:   newPath.String(),
 		Size:   size,
 		Root:   pbroot,
-		Pinned: pinned,
+		Pinned: s.getPinnedBytes(ctx),
 	}); err != nil {
 		return err
 	}
@@ -1697,9 +1713,9 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.FreeQuotaOnly {
-		if deltaSize > owner.FreeStorageAllowance {
-			return ctx, ErrStorageAllowanceExceeded
+	if ok && owner.StorageLimitedToQuota {
+		if deltaSize > owner.StorageQuota {
+			return ctx, ErrStorageQuotaSizeExceeded
 		}
 	}
 
@@ -1715,8 +1731,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 			return ctx, err
 		}
 	}
-
-	return s.sumBytesPinned(ctx, deltaSize), nil
+	return s.addPinnedBytes(ctx, deltaSize), nil
 }
 
 // dagSize returns the cummulative size of root. If root is nil, it returns 0.
@@ -1892,7 +1907,9 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 	}
 
 	log.Debugf("removed bucket: %s", buck.Key)
-	return &pb.RemoveResponse{}, nil
+	return &pb.RemoveResponse{
+		Pinned: s.getPinnedBytes(ctx),
+	}, nil
 }
 
 // unpinNodeAndBranch unpins a node and its entire branch, accounting for sum bytes pinned for context.
@@ -1982,7 +1999,8 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 		return nil, err
 	}
 	return &pb.RemovePathResponse{
-		Root: root,
+		Root:   root,
+		Pinned: s.getPinnedBytes(ctx),
 	}, nil
 }
 
@@ -2194,7 +2212,9 @@ func (s *Service) PushPathAccessRoles(
 			return nil, err
 		}
 	}
-	return &pb.PushPathAccessRolesResponse{}, nil
+	return &pb.PushPathAccessRolesResponse{
+		Pinned: s.getPinnedBytes(ctx),
+	}, nil
 }
 
 func (s *Service) PullPathAccessRoles(
