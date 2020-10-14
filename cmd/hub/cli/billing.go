@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"context"
 	"crypto/tls"
-	"fmt"
 	"net/http"
 
 	"github.com/manifoldco/promptui"
@@ -29,11 +29,12 @@ var billingSetupCmd = &cobra.Command{
 		api, err := c.Flags().GetString("stripeApiUrl")
 		cmd.ErrCheck(err)
 		configureStripe(api)
-		key, err := c.Flags().GetString("stripeKey")
+		key, err := c.Flags().GetString("stripeApiKey")
 		cmd.ErrCheck(err)
 		stripe.Key = key
 
-		cmd.Message("By enabling billing you're opting into a recurring subscription. You will be asked for credit card details.")
+		cmd.Message("By setting up billing you're opting into a recurring subscription. " +
+			"You will be asked for credit card details.")
 		prompt := promptui.Prompt{
 			Label:     "Proceed",
 			IsConfirm: true,
@@ -80,13 +81,11 @@ var billingSetupCmd = &cobra.Command{
 			},
 		})
 		cmd.ErrCheck(err)
-		fmt.Println(tok.ID)
-
-		//ctx, cancel := context.WithTimeout(Auth(context.Background()), confirmTimeout)
-		//defer cancel()
-		//res, err := clients.Hub.Signin(ctx, usernameOrEmail)
-		//cmd.ErrCheck(err)
-		//cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+		err = clients.Hub.SetupBilling(ctx, tok.ID)
+		cmd.ErrCheck(err)
+		cmd.Success("You have setup metered usage billing. See <insert link> for more billing details.")
 	},
 }
 

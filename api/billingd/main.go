@@ -49,9 +49,13 @@ var (
 				Key:      "stripe.api_url",
 				DefValue: "https://api.stripe.com",
 			},
-			"stripeKey": {
-				Key:      "stripe.key",
-				DefValue: "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+			"stripeApiKey": {
+				Key:      "stripe.api_key",
+				DefValue: "",
+			},
+			"stripeCreatePrices": {
+				Key:      "stripe.create_prices",
+				DefValue: false,
 			},
 			"stripeStoredDataPrice": {
 				Key:      "stripe.stored_data.price",
@@ -114,9 +118,13 @@ func init() {
 		config.Flags["stripeApiUrl"].DefValue.(string),
 		"Stripe API URL")
 	rootCmd.PersistentFlags().String(
-		"stripeKey",
-		config.Flags["stripeKey"].DefValue.(string),
-		"Stripe secret key")
+		"stripeApiKey",
+		config.Flags["stripeApiKey"].DefValue.(string),
+		"Stripe API secret key")
+	rootCmd.PersistentFlags().Bool(
+		"stripeCreatePrices",
+		config.Flags["stripeCreatePrices"].DefValue.(bool),
+		"Create Stripe subscription prices (overrides explicitly given price IDs)")
 	rootCmd.PersistentFlags().String(
 		"stripeStoredDataPrice",
 		config.Flags["stripeStoredDataPrice"].DefValue.(string),
@@ -167,7 +175,8 @@ var rootCmd = &cobra.Command{
 		addrMongoName := config.Viper.GetString("addr.mongo_name")
 
 		stripeApiUrl := config.Viper.GetString("stripe.api_url")
-		stripeKey := config.Viper.GetString("stripe.key")
+		stripeApiKey := config.Viper.GetString("stripe.api_key")
+		stripeCreatePrices := config.Viper.GetBool("stripe.create_prices")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
 		stripeInstanceReadsPrice := config.Viper.GetString("stripe.instance_reads.price")
@@ -184,7 +193,7 @@ var rootCmd = &cobra.Command{
 		api, err := service.NewService(ctx, service.Config{
 			ListenAddr:            addrApi,
 			StripeAPIURL:          stripeApiUrl,
-			StripeKey:             stripeKey,
+			StripeAPIKey:          stripeApiKey,
 			DBURI:                 addrMongoUri,
 			DBName:                addrMongoName,
 			StoredDataPriceID:     stripeStoredDataPrice,
@@ -192,13 +201,13 @@ var rootCmd = &cobra.Command{
 			InstanceReadsPriceID:  stripeInstanceReadsPrice,
 			InstanceWritesPriceID: stripeInstanceWritesPrice,
 			Debug: config.Viper.GetBool("log.debug"),
-		}, false)
+		}, stripeCreatePrices)
 		cmd.ErrCheck(err)
 
 		err = api.Start()
 		cmd.ErrCheck(err)
 
-		fmt.Println("Hub billing started.")
+		fmt.Println("Welcome to Hub Billing!")
 
 		quit := make(chan os.Signal)
 		signal.Notify(quit, os.Interrupt)

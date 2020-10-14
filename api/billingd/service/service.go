@@ -56,7 +56,7 @@ type Config struct {
 	ListenAddr ma.Multiaddr
 
 	StripeAPIURL string
-	StripeKey    string
+	StripeAPIKey string
 
 	DBURI  string
 	DBName string
@@ -69,7 +69,7 @@ type Config struct {
 	Debug bool
 }
 
-func NewService(ctx context.Context, config Config, setupPrices bool) (*Service, error) {
+func NewService(ctx context.Context, config Config, createPrices bool) (*Service, error) {
 	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"billing": logging.LevelDebug,
@@ -78,7 +78,7 @@ func NewService(ctx context.Context, config Config, setupPrices bool) (*Service,
 		}
 	}
 
-	sc, err := common.NewStripeClient(config.StripeAPIURL, config.StripeKey)
+	sc, err := common.NewStripeClient(config.StripeAPIURL, config.StripeAPIKey)
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +107,20 @@ func NewService(ctx context.Context, config Config, setupPrices bool) (*Service,
 		stripe: sc,
 	}
 
-	if setupPrices {
-		s.config.StoredDataPriceID, err = setupStoredData(sc)
+	if createPrices {
+		s.config.StoredDataPriceID, err = createStoredData(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.NetworkEgressPriceID, err = setupNetworkEgress(sc)
+		s.config.NetworkEgressPriceID, err = createNetworkEgress(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceReadsPriceID, err = setupInstanceReads(sc)
+		s.config.InstanceReadsPriceID, err = createInstanceReads(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceWritesPriceID, err = setupInstanceWrites(sc)
+		s.config.InstanceWritesPriceID, err = createInstanceWrites(sc)
 		if err != nil {
 			return nil, err
 		}
@@ -254,15 +254,15 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 
 func (s *Service) GetCustomer(_ context.Context, req *pb.GetCustomerRequest) (
 	*pb.GetCustomerResponse, error) {
-	cus, err := s.stripe.Customers.Get(req.CustomerId, nil)
+	customer, err := s.stripe.Customers.Get(req.CustomerId, nil)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("got customer %s: %s", req.CustomerId, cus)
+	log.Debugf("got customer %s", customer.ID)
 	return &pb.GetCustomerResponse{
-		Balance:    cus.Balance,
-		Billable:   !cus.Deleted && cus.DefaultSource != nil,
-		Delinquent: cus.Delinquent,
+		Balance:    customer.Balance,
+		Billable:   !customer.Deleted && customer.DefaultSource != nil,
+		Delinquent: customer.Delinquent,
 	}, nil
 }
 
@@ -377,7 +377,7 @@ func (s *Service) GetStoredData(ctx context.Context, req *pb.GetStoredDataReques
 			End:   sum.Period.End,
 		},
 	}
-	log.Debugf("stored data for %s: %s", req.CustomerId, res)
+	log.Debugf("got stored data for %s", req.CustomerId)
 	return res, nil
 }
 
@@ -462,7 +462,7 @@ func (s *Service) GetNetworkEgress(ctx context.Context, req *pb.GetNetworkEgress
 			End:   sum.Period.End,
 		},
 	}
-	log.Debugf("network egress for %s: %s", req.CustomerId, res)
+	log.Debugf("got network egress for %s", req.CustomerId)
 	return res, nil
 }
 
@@ -547,7 +547,7 @@ func (s *Service) GetInstanceReads(ctx context.Context, req *pb.GetInstanceReads
 			End:   sum.Period.End,
 		},
 	}
-	log.Debugf("instance reads for %s: %s", req.CustomerId, res)
+	log.Debugf("got instance reads for %s", req.CustomerId)
 	return res, nil
 }
 
@@ -632,7 +632,7 @@ func (s *Service) GetInstanceWrites(ctx context.Context, req *pb.GetInstanceWrit
 			End:   sum.Period.End,
 		},
 	}
-	log.Debugf("instance writes for %s: %s", req.CustomerId, res)
+	log.Debugf("got instance writes for %s", req.CustomerId)
 	return res, nil
 }
 

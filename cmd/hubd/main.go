@@ -169,7 +169,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"addrBillingApi",
 		config.Flags["addrBillingApi"].DefValue.(string),
-		"Powergate API address")
+		"Billing API address")
 	rootCmd.PersistentFlags().String(
 		"addrPowergateApi",
 		config.Flags["addrPowergateApi"].DefValue.(string),

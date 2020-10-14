@@ -5,7 +5,7 @@ import (
 	stripec "github.com/stripe/stripe-go/v72/client"
 )
 
-func setupStoredData(client *stripec.API) (string, error) {
+func createStoredData(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Stored Data"),
 		UnitLabel: stripe.String("51.2 MiB"),
@@ -41,7 +41,7 @@ func setupStoredData(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func setupNetworkEgress(client *stripec.API) (string, error) {
+func createNetworkEgress(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Network Egress"),
 		UnitLabel: stripe.String("102.4 MiB"),
@@ -77,7 +77,7 @@ func setupNetworkEgress(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func setupInstanceReads(client *stripec.API) (string, error) {
+func createInstanceReads(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Instance Reads"),
 		UnitLabel: stripe.String("10,000"),
@@ -113,7 +113,7 @@ func setupInstanceReads(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func setupInstanceWrites(client *stripec.API) (string, error) {
+func createInstanceWrites(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Instance Writes"),
 		UnitLabel: stripe.String("5,000"),
