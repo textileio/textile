@@ -15,14 +15,6 @@ services:
 #      - BILLING_LOG_DEBUG=true
 #    ports:
 #      - "127.0.0.1:10006:10006"
-  stripe:
-    container_name: stripe
-    image: adrienverge/localstripe:latest
-    expose:
-      - "8420"
-    ports:
-      - "8420:8420"
-    restart: always
   mongo:
     hostname: mongodb
     container_name: mongodb

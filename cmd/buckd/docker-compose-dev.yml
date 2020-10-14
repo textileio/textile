@@ -25,7 +25,7 @@ services:
     ports:
       - "127.0.0.1:27017:27017"
   ipfs:
-    image: ipfs/go-ipfs:v0.6.0
+    image: ipfs/go-ipfs:v0.7.0
     ports:
       - "4001:4001"
       - "127.0.0.1:5001:5001"
