@@ -1702,7 +1702,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 		return ctx, fmt.Errorf("getting size of destination dag: %s", err)
 	}
 	if s.MaxBucketSize > 0 && toSize > s.MaxBucketSize {
-		return ctx, fmt.Errorf("bucket size is greater than max allowed size")
+		return ctx, ErrMaxBucketSizeExceeded
 	}
 
 	fromSize, err := s.dagSize(ctx, from)

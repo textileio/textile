@@ -131,6 +131,7 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			stored = pl.Pinned
 		}
 
+		// Record usage
 		if stored > 0 {
 			if _, err := h.t.bc.IncStoredData(ctx, account.CustomerID, stored); err != nil {
 				log.Errorf("stats: inc stored data: %v", err)

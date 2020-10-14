@@ -21,7 +21,27 @@ import (
 	"google.golang.org/grpc"
 )
 
-var log = logging.Logger("billing")
+const (
+	mib = 1024 * 1024
+	gib = 1024 * mib
+
+	StoredDataUnitSize     = 5 * gib / 100
+	NetworkEgressUnitSize  = 10 * gib / 100
+	InstanceReadsUnitSize  = 10000
+	InstanceWritesUnitSize = 5000
+
+	FreeStoredDataUnits    = 100                               // 5 Gib
+	FreeNetworkEgressUnits = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
+	FreeInstanceReadUnits  = 1                                 // 10,000 per day
+	FreeInstanceWriteUnits = 1                                 // 5,000 per day
+)
+
+var (
+	log = logging.Logger("billing")
+
+	// ErrExceedsFreeUnits indicates the requested operation exceeds the free unit quota.
+	ErrExceedsFreeUnits = errors.New("request exceeds free unit quota")
+)
 
 type Service struct {
 	config Config
@@ -137,26 +157,6 @@ func (s *Service) Stop(force bool) error {
 	defer cancel()
 	return s.db.Database().Client().Disconnect(ctx)
 }
-
-const (
-	mib = 1024 * 1024
-	gib = 1024 * mib
-
-	StoredDataUnitSize     = 5 * gib / 100
-	NetworkEgressUnitSize  = 10 * gib / 100
-	InstanceReadsUnitSize  = 10000
-	InstanceWritesUnitSize = 5000
-
-	FreeStoredDataUnits    = 100                               // 5 Gib
-	FreeNetworkEgressUnits = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
-	FreeInstanceReadUnits  = 1                                 // 10,000 per day
-	FreeInstanceWriteUnits = 1                                 // 5,000 per day
-)
-
-var (
-	// ErrExceedsFreeUnits indicates the requested operation exceeds the free unit quota.
-	ErrExceedsFreeUnits = errors.New("request exceeds free unit quota")
-)
 
 type Customer struct {
 	ID             string `bson:"_id"`

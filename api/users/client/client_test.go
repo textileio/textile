@@ -127,31 +127,6 @@ func TestClient_GetThread(t *testing.T) {
 	})
 }
 
-func TestClient_CreateThreadsLimit(t *testing.T) {
-	t.Parallel()
-	conf := apitest.DefaultTextileConfig(t)
-	conf.ThreadsMaxNumberPerOwner = 1
-	conf, _, hub, _, net, _ := setupWithConf(t, conf)
-
-	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
-
-	ctx := context.Background()
-	res, err := hub.CreateKey(common.NewSessionContext(ctx, dev.Session), hubpb.KeyType_KEY_TYPE_ACCOUNT, true)
-	require.NoError(t, err)
-	ctx = common.NewAPIKeyContext(ctx, res.KeyInfo.Key)
-	ctx, err = common.CreateAPISigContext(ctx, time.Now().Add(time.Minute), res.KeyInfo.Secret)
-	require.NoError(t, err)
-
-	// First thread allowed.
-	_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
-	require.NoError(t, err)
-
-	// Second one should exceed limit.
-	_, err = net.CreateThread(ctx, thread.NewIDV1(thread.Raw, 32))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), core.ErrTooManyThreadsPerOwner.Error())
-}
-
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
 	conf, client, hub, threads, net, _ := setup(t)
