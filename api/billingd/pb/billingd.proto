@@ -23,6 +23,14 @@ message GetCustomerResponse {
     bool delinquent = 3;
 }
 
+message GetCustomerSessionRequest {
+    string customer_id = 1;
+}
+
+message GetCustomerSessionResponse {
+    string url = 1;
+}
+
 message DeleteCustomerRequest {
     string customer_id = 1;
 }
@@ -129,6 +137,7 @@ service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
+    rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
     rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
     rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}

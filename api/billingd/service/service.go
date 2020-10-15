@@ -55,8 +55,9 @@ var _ pb.APIServiceServer = (*Service)(nil)
 type Config struct {
 	ListenAddr ma.Multiaddr
 
-	StripeAPIURL string
-	StripeAPIKey string
+	StripeAPIURL           string
+	StripeAPIKey           string
+	StripeSessionReturnURL string
 
 	DBURI  string
 	DBName string
@@ -263,6 +264,20 @@ func (s *Service) GetCustomer(_ context.Context, req *pb.GetCustomerRequest) (
 		Balance:    customer.Balance,
 		Billable:   !customer.Deleted && customer.DefaultSource != nil,
 		Delinquent: customer.Delinquent,
+	}, nil
+}
+
+func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessionRequest) (
+	*pb.GetCustomerSessionResponse, error) {
+	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(req.CustomerId),
+		ReturnURL: stripe.String(s.config.StripeSessionReturnURL),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetCustomerSessionResponse{
+		Url: session.URL,
 	}, nil
 }
 

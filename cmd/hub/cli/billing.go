@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	stripe "github.com/stripe/stripe-go/v72"
@@ -18,6 +19,17 @@ var billingCmd = &cobra.Command{
 	Short: "Billing management",
 	Long:  `Manages your billing preferences.`,
 	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		configureStripe(c)
+
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+		session, err := clients.Hub.GetBillingSession(ctx)
+		cmd.ErrCheck(err)
+
+		cmd.Message("Please visit the following URL to manage Hub billing:")
+		cmd.Message("%s", aurora.White(session.Url).Bold())
+	},
 }
 
 var billingSetupCmd = &cobra.Command{
@@ -26,12 +38,7 @@ var billingSetupCmd = &cobra.Command{
 	Long:  `Sets up billing preferences.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		api, err := c.Flags().GetString("stripeApiUrl")
-		cmd.ErrCheck(err)
-		configureStripe(api)
-		key, err := c.Flags().GetString("stripeApiKey")
-		cmd.ErrCheck(err)
-		stripe.Key = key
+		configureStripe(c)
 
 		cmd.Message("By setting up billing you're opting into a recurring subscription. " +
 			"You will be asked for credit card details.")
@@ -89,13 +96,15 @@ var billingSetupCmd = &cobra.Command{
 	},
 }
 
-func configureStripe(api string) {
+func configureStripe(c *cobra.Command) {
+	api, err := c.Flags().GetString("stripeApiUrl")
+	cmd.ErrCheck(err)
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
-	err := http2.ConfigureTransport(transport)
+	err = http2.ConfigureTransport(transport)
 	cmd.ErrCheck(err)
 	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(
 		stripe.APIBackend,
@@ -107,4 +116,7 @@ func configureStripe(api string) {
 			LeveledLogger: stripe.DefaultLeveledLogger,
 		},
 	))
+	key, err := c.Flags().GetString("stripeApiKey")
+	cmd.ErrCheck(err)
+	stripe.Key = key
 }

@@ -534,12 +534,39 @@ func (s *Service) SetupBilling(ctx context.Context, req *pb.SetupBillingRequest)
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
-
-	account := accountFromContext(ctx)
+	account, _ := mdb.DevFromContext(ctx)
+	cusEmail := account.Email
+	org, ok := mdb.OrgFromContext(ctx)
+	if ok {
+		account = org
+	}
+	if account.CustomerID == "" {
+		cusID, err := s.BillingClient.CreateCustomer(ctx, cusEmail)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Key, cusID); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.BillingClient.AddCard(ctx, account.CustomerID, req.CardToken); err != nil {
 		return nil, err
 	}
 	return &pb.SetupBillingResponse{}, nil
+}
+
+func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSessionRequest) (*pb.GetBillingSessionResponse, error) {
+	log.Debugf("received get billing session request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+	account := accountFromContext(ctx)
+	session, err := s.BillingClient.GetCustomerSession(ctx, account.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
 func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {

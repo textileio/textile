@@ -47,6 +47,17 @@ func TestClient_GetCustomer(t *testing.T) {
 	assert.False(t, cus.Delinquent)
 }
 
+func TestClient_GetCustomerSession(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	session, err := c.GetCustomerSession(context.Background(), id)
+	require.NoError(t, err)
+	assert.NotEmpty(t, session.Url)
+}
+
 func TestClient_DeleteCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
@@ -227,12 +238,13 @@ func setup(t *testing.T) *client.Client {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	api, err := service.NewService(ctx, service.Config{
-		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		StripeAPIURL: "https://api.stripe.com",
-		StripeAPIKey: "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
-		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
-		DBName:       util.MakeToken(8),
-		Debug:        true,
+		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		StripeAPIURL:           "https://api.stripe.com",
+		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
+		DBURI:  "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName: util.MakeToken(8),
+		Debug:  true,
 	}, true)
 	require.NoError(t, err)
 	err = api.Start()

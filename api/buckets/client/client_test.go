@@ -925,12 +925,13 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	api, err := billing.NewService(ctx, billing.Config{
-		ListenAddr:   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
-		StripeAPIURL: "https://api.stripe.com",
-		StripeAPIKey: "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
-		DBURI:        "mongodb://127.0.0.1:27017/?replicaSet=rs0",
-		DBName:       util.MakeToken(8),
-		Debug:        true,
+		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
+		StripeAPIURL:           "https://api.stripe.com",
+		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
+		DBURI:  "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName: util.MakeToken(8),
+		Debug:  true,
 	}, true)
 	require.NoError(t, err)
 	err = api.Start()

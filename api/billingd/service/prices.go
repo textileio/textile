@@ -7,7 +7,7 @@ import (
 
 func createStoredData(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
-		Name:      stripe.String("Stored Data"),
+		Name:      stripe.String("Data Storage"),
 		UnitLabel: stripe.String("51.2 MiB"),
 	})
 	if err != nil {
@@ -79,7 +79,7 @@ func createNetworkEgress(client *stripec.API) (string, error) {
 
 func createInstanceReads(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
-		Name:      stripe.String("Instance Reads"),
+		Name:      stripe.String("ThreadDB Reads"),
 		UnitLabel: stripe.String("10,000"),
 	})
 	if err != nil {
@@ -115,7 +115,7 @@ func createInstanceReads(client *stripec.API) (string, error) {
 
 func createInstanceWrites(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
-		Name:      stripe.String("Instance Writes"),
+		Name:      stripe.String("ThreadDB Writes"),
 		UnitLabel: stripe.String("5,000"),
 	})
 	if err != nil {

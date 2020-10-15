@@ -51,6 +51,12 @@ func (c *Client) GetCustomer(ctx context.Context, customerID string) (*pb.GetCus
 	})
 }
 
+func (c *Client) GetCustomerSession(ctx context.Context, customerID string) (*pb.GetCustomerSessionResponse, error) {
+	return c.c.GetCustomerSession(ctx, &pb.GetCustomerSessionRequest{
+		CustomerId: customerID,
+	})
+}
+
 func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
 	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
 		CustomerId: customerID,

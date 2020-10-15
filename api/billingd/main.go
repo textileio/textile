@@ -53,6 +53,10 @@ var (
 				Key:      "stripe.api_key",
 				DefValue: "",
 			},
+			"stripeSessionReturnUrl": {
+				Key:      "stripe.session_return_url",
+				DefValue: "http://127.0.0.1:8006/dashboard",
+			},
 			"stripeCreatePrices": {
 				Key:      "stripe.create_prices",
 				DefValue: false,
@@ -121,6 +125,10 @@ func init() {
 		"stripeApiKey",
 		config.Flags["stripeApiKey"].DefValue.(string),
 		"Stripe API secret key")
+	rootCmd.PersistentFlags().String(
+		"stripeSessionReturnUrl",
+		config.Flags["stripeSessionReturnUrl"].DefValue.(string),
+		"Stripe portal sessoin return URL")
 	rootCmd.PersistentFlags().Bool(
 		"stripeCreatePrices",
 		config.Flags["stripeCreatePrices"].DefValue.(bool),
@@ -176,6 +184,7 @@ var rootCmd = &cobra.Command{
 
 		stripeApiUrl := config.Viper.GetString("stripe.api_url")
 		stripeApiKey := config.Viper.GetString("stripe.api_key")
+		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
 		stripeCreatePrices := config.Viper.GetBool("stripe.create_prices")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
@@ -191,9 +200,10 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		api, err := service.NewService(ctx, service.Config{
-			ListenAddr:            addrApi,
-			StripeAPIURL:          stripeApiUrl,
-			StripeAPIKey:          stripeApiKey,
+			ListenAddr:             addrApi,
+			StripeAPIURL:           stripeApiUrl,
+			StripeAPIKey:           stripeApiKey,
+			StripeSessionReturnURL: stripeSessionReturnUrl,
 			DBURI:                 addrMongoUri,
 			DBName:                addrMongoName,
 			StoredDataPriceID:     stripeStoredDataPrice,

@@ -132,6 +132,11 @@ func (c *Client) SetupBilling(ctx context.Context, cardToken string) error {
 	return err
 }
 
+// GetBillingSession returns a billing portal session url.
+func (c *Client) GetBillingSession(ctx context.Context) (*pb.GetBillingSessionResponse, error) {
+	return c.c.GetBillingSession(ctx, &pb.GetBillingSessionRequest{})
+}
+
 // IsUsernameAvailable returns a nil error if the username is valid and available.
 func (c *Client) IsUsernameAvailable(ctx context.Context, username string) error {
 	_, err := c.c.IsUsernameAvailable(ctx, &pb.IsUsernameAvailableRequest{
