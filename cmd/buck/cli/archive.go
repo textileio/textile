@@ -76,7 +76,7 @@ var archiveCmd = &cobra.Command{
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
 		if !yes {
-			cmd.Warn("Archives are currently saved on an experimental test network. They may be lost at any time.")
+			cmd.Warn("Archives are Filecoin Mainnet. Use with caution.")
 			prompt := promptui.Prompt{
 				Label:     "Proceed",
 				IsConfirm: true,
@@ -98,7 +98,7 @@ var archiveCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 			reader = file
 			if !yes {
-				cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin testnet.")
+				cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin mainnet.")
 				prompt := promptui.Prompt{
 					Label:     "Proceed",
 					IsConfirm: true,
