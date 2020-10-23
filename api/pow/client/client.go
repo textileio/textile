@@ -60,15 +60,6 @@ func (c *Client) Addrs(ctx context.Context) (*ffsRpc.AddrsResponse, error) {
 	return c.ffsC.Addrs(ctx, &ffsRpc.AddrsRequest{})
 }
 
-func (c *Client) NewAddr(ctx context.Context, name, addrType string, makeDefault bool) (*ffsRpc.NewAddrResponse, error) {
-	req := &ffsRpc.NewAddrRequest{
-		Name:        name,
-		AddressType: addrType,
-		MakeDefault: makeDefault,
-	}
-	return c.ffsC.NewAddr(ctx, req)
-}
-
 func (c *Client) Info(ctx context.Context) (*ffsRpc.InfoResponse, error) {
 	return c.ffsC.Info(ctx, &ffsRpc.InfoRequest{})
 }
