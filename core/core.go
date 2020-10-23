@@ -95,7 +95,6 @@ var (
 		},
 		ffsServiceName: {
 			"Addrs",
-			"NewAddr",
 			"Info",
 			"Show",
 			"ShowAll",

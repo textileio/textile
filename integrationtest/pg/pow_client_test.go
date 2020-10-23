@@ -60,12 +60,6 @@ func TestPowClient(t *testing.T) {
 		require.NotNil(t, res)
 	})
 
-	t.Run("NewAddr", func(t *testing.T) {
-		res, err := client.NewAddr(ctx, "new one", "bls", false)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
 	t.Run("Info", func(t *testing.T) {
 		res, err := client.Info(ctx)
 		require.NoError(t, err)
