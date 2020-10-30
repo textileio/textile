@@ -5,6 +5,7 @@ import (
 
 	tpb "github.com/textileio/go-threads/api/pb"
 	bpb "github.com/textileio/textile/v2/api/buckets/pb"
+	hpb "github.com/textileio/textile/v2/api/hub/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc/stats"
 )
@@ -31,14 +32,13 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			return
 		}
 
-		// Account for network egress from all payloads
-		_, err := h.t.bc.IncNetworkEgress(ctx, account.CustomerID, int64(st.WireLength))
-		if err != nil {
-			log.Errorf("stats: inc network egress: %v", err)
-		}
-
+		recordEgress := true
 		var stored, reads, writes int64
 		switch pl := st.Payload.(type) {
+
+		// Don't charge for usage when customer is trying to add a payment method, cancel subscription, etc.
+		case *hpb.GetBillingSessionResponse:
+			recordEgress = false
 
 		// Account for threaddb reads and writes
 		case *tpb.CreateReply:
@@ -132,6 +132,11 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		}
 
 		// Record usage
+		if recordEgress {
+			if _, err := h.t.bc.IncNetworkEgress(ctx, account.CustomerID, int64(st.WireLength)); err != nil {
+				log.Errorf("stats: inc network egress: %v", err)
+			}
+		}
 		if stored > 0 {
 			if _, err := h.t.bc.IncStoredData(ctx, account.CustomerID, stored); err != nil {
 				log.Errorf("stats: inc stored data: %v", err)

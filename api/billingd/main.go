@@ -45,6 +45,10 @@ var (
 				Key:      "addr.mongo_name",
 				DefValue: "hub_billing",
 			},
+			"addrGatewayHost": {
+				Key:      "addr.gateway.host",
+				DefValue: "/ip4/127.0.0.1/tcp/8010",
+			},
 			"stripeApiUrl": {
 				Key:      "stripe.api_url",
 				DefValue: "https://api.stripe.com",
@@ -56,6 +60,10 @@ var (
 			"stripeSessionReturnUrl": {
 				Key:      "stripe.session_return_url",
 				DefValue: "http://127.0.0.1:8006/dashboard",
+			},
+			"stripeWebhookSecret": {
+				Key:      "stripe.webhook_secret",
+				DefValue: "",
 			},
 			"stripeCreatePrices": {
 				Key:      "stripe.create_prices",
@@ -115,6 +123,10 @@ func init() {
 		"addrMongoName",
 		config.Flags["addrMongoName"].DefValue.(string),
 		"MongoDB database name")
+	rootCmd.PersistentFlags().String(
+		"addrGatewayHost",
+		config.Flags["addrGatewayHost"].DefValue.(string),
+		"Local gateway host address")
 
 	// Stripe settings
 	rootCmd.PersistentFlags().String(
@@ -129,6 +141,10 @@ func init() {
 		"stripeSessionReturnUrl",
 		config.Flags["stripeSessionReturnUrl"].DefValue.(string),
 		"Stripe portal sessoin return URL")
+	rootCmd.PersistentFlags().String(
+		"stripeWebhookSecret",
+		config.Flags["stripeWebhookSecret"].DefValue.(string),
+		"Stripe webhook endpoint secret")
 	rootCmd.PersistentFlags().Bool(
 		"stripeCreatePrices",
 		config.Flags["stripeCreatePrices"].DefValue.(bool),
@@ -182,9 +198,12 @@ var rootCmd = &cobra.Command{
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 		addrMongoName := config.Viper.GetString("addr.mongo_name")
 
+		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
+
 		stripeApiUrl := config.Viper.GetString("stripe.api_url")
 		stripeApiKey := config.Viper.GetString("stripe.api_key")
 		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
+		stripeWebhookSecret := config.Viper.GetString("stripe.webhook_secret")
 		stripeCreatePrices := config.Viper.GetBool("stripe.create_prices")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
@@ -204,12 +223,14 @@ var rootCmd = &cobra.Command{
 			StripeAPIURL:           stripeApiUrl,
 			StripeAPIKey:           stripeApiKey,
 			StripeSessionReturnURL: stripeSessionReturnUrl,
-			DBURI:                 addrMongoUri,
-			DBName:                addrMongoName,
-			StoredDataPriceID:     stripeStoredDataPrice,
-			NetworkEgressPriceID:  stripeNetworkEgressPrice,
-			InstanceReadsPriceID:  stripeInstanceReadsPrice,
-			InstanceWritesPriceID: stripeInstanceWritesPrice,
+			StripeWebhookSecret:    stripeWebhookSecret,
+			DBURI:                  addrMongoUri,
+			DBName:                 addrMongoName,
+			GatewayHostAddr:        addrGatewayHost,
+			StoredDataPriceID:      stripeStoredDataPrice,
+			NetworkEgressPriceID:   stripeNetworkEgressPrice,
+			InstanceReadsPriceID:   stripeInstanceReadsPrice,
+			InstanceWritesPriceID:  stripeInstanceWritesPrice,
 			Debug: config.Viper.GetBool("log.debug"),
 		}, stripeCreatePrices)
 		cmd.ErrCheck(err)

@@ -2,20 +2,14 @@ package core
 
 import (
 	"context"
-	"errors"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
-)
-
-var (
-	// ErrAccountDelinquent indicates the latest charge to the account failed.
-	ErrAccountDelinquent = errors.New("payment required")
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // bucketInterceptor adds context info needed to account for bucket usage.
@@ -36,8 +30,10 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 		if err != nil {
 			return err
 		}
-		if cus.Delinquent {
-			return status.Error(codes.FailedPrecondition, ErrAccountDelinquent.Error())
+		if info.FullMethod != "/api.hub.pb.APIService/GetBillingSession" {
+			if err := common.StatusCheck(cus.Status); err != nil {
+				return status.Error(codes.FailedPrecondition, err.Error())
+			}
 		}
 		var newCtx context.Context
 		switch info.FullMethod {
@@ -47,17 +43,13 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 			"/api.buckets.pb.APIService/Remove",
 			"/api.buckets.pb.APIService/RemovePath",
 			"/api.buckets.pb.APIService/PushPathAccessRoles":
-			usage, err := t.bc.GetStoredData(stream.Context(), account.CustomerID)
-			if err != nil {
-				return err
-			}
 			owner := &buckets.BucketOwner{
-				StorageUsed: usage.TotalSize,
+				StorageUsed: cus.StoredData.TotalSize,
 			}
 			if cus.Billable {
 				owner.StorageAvailable = -1
 			} else {
-				owner.StorageAvailable = usage.FreeSize
+				owner.StorageAvailable = cus.StoredData.FreeSize
 			}
 			newCtx = buckets.NewBucketOwnerContext(stream.Context(), owner)
 		default:

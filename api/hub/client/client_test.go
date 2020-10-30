@@ -469,6 +469,8 @@ func setup(t *testing.T, conf *core.Config) (core.Config, *c.Client, *tc.Client)
 func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 	billingPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
+	billingGwPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	api, err := billing.NewService(ctx, billing.Config{
@@ -476,9 +478,10 @@ func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 		StripeAPIURL:           "https://api.stripe.com",
 		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		DBURI:  "mongodb://127.0.0.1:27017/?replicaSet=rs0",
-		DBName: util.MakeToken(8),
-		Debug:  true,
+		DBURI:           "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName:          util.MakeToken(8),
+		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
+		Debug:           true,
 	}, true)
 	require.NoError(t, err)
 	err = api.Start()

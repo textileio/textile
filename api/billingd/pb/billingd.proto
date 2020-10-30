@@ -1,6 +1,23 @@
 syntax = "proto3";
 package api.billingd.pb;
 
+message AggregateStoredDataUsage {
+    int64 units = 1;
+    int64 total_size = 2;
+    int64 free_size = 3;
+}
+
+message AggregateSumUsage {
+    int64 units = 1;
+    int64 sub_units = 2;
+    int64 free_units = 3;
+}
+
+message UsagePeriod {
+    int64 start = 1;
+    int64 end = 2;
+}
+
 message CheckHealthRequest {}
 
 message CheckHealthResponse {}
@@ -18,9 +35,18 @@ message GetCustomerRequest {
 }
 
 message GetCustomerResponse {
-    int64 balance = 1;
-    bool billable = 2;
-    bool delinquent = 3;
+    string email = 1;
+    string status = 2;
+    int64 balance = 3;
+    bool billable = 4;
+    bool delinquent = 5;
+    int64 created_at = 6;
+
+    UsagePeriod period = 7;
+    AggregateStoredDataUsage stored_data = 8;
+    AggregateSumUsage network_egress = 9;
+    AggregateSumUsage instance_writes = 10;
+    AggregateSumUsage instance_reads = 11;
 }
 
 message GetCustomerSessionRequest {
@@ -31,18 +57,34 @@ message GetCustomerSessionResponse {
     string url = 1;
 }
 
+message UpdateCustomerRequest {
+    string customer_id = 1;
+    int64 balance = 2;
+    bool billable = 3;
+    bool delinquent = 4;
+}
+
+message UpdateCustomerResponse {}
+
+message UpdateCustomerSubscriptionRequest {
+    string customer_id = 1;
+    string status = 2;
+    UsagePeriod period = 3;
+}
+
+message UpdateCustomerSubscriptionResponse {}
+
+message RecreateCustomerSubscriptionRequest {
+    string customer_id = 1;
+}
+
+message RecreateCustomerSubscriptionResponse {}
+
 message DeleteCustomerRequest {
     string customer_id = 1;
 }
 
 message DeleteCustomerResponse {}
-
-message AddCardRequest {
-    string customer_id = 1;
-    string token = 2;
-}
-
-message AddCardResponse {}
 
 message IncStoredDataRequest {
     string customer_id = 1;
@@ -50,19 +92,8 @@ message IncStoredDataRequest {
 }
 
 message IncStoredDataResponse {
-    int64 units = 1;
-    int64 total_size = 2;
-}
-
-message GetStoredDataRequest {
-    string customer_id = 1;
-}
-
-message GetStoredDataResponse {
-    int64 units = 1;
-    int64 total_size = 2;
-    int64 free_size = 3;
-    UsagePeriod period = 4;
+    UsagePeriod period = 1;
+    AggregateStoredDataUsage stored_data = 2;
 }
 
 message IncNetworkEgressRequest {
@@ -71,19 +102,8 @@ message IncNetworkEgressRequest {
 }
 
 message IncNetworkEgressResponse {
-    int64 added_units = 1;
-    int64 sub_units = 2;
-}
-
-message GetNetworkEgressRequest {
-    string customer_id = 1;
-}
-
-message GetNetworkEgressResponse {
-    int64 units = 1;
-    int64 sub_units = 2;
-    int64 free_units = 3;
-    UsagePeriod period = 4;
+    UsagePeriod period = 1;
+    AggregateSumUsage network_egress = 2;
 }
 
 message IncInstanceReadsRequest {
@@ -92,19 +112,8 @@ message IncInstanceReadsRequest {
 }
 
 message IncInstanceReadsResponse {
-    int64 added_units = 1;
-    int64 sub_units = 2;
-}
-
-message GetInstanceReadsRequest {
-    string customer_id = 1;
-}
-
-message GetInstanceReadsResponse {
-    int64 units = 1;
-    int64 sub_units = 2;
-    int64 free_units = 3;
-    UsagePeriod period = 4;
+    UsagePeriod period = 1;
+    AggregateSumUsage instance_reads = 2;
 }
 
 message IncInstanceWritesRequest {
@@ -113,24 +122,8 @@ message IncInstanceWritesRequest {
 }
 
 message IncInstanceWritesResponse {
-    int64 added_units = 1;
-    int64 sub_units = 2;
-}
-
-message GetInstanceWritesRequest {
-    string customer_id = 1;
-}
-
-message GetInstanceWritesResponse {
-    int64 units = 1;
-    int64 sub_units = 2;
-    int64 free_units = 3;
-    UsagePeriod period = 4;
-}
-
-message UsagePeriod {
-    int64 start = 1;
-    int64 end = 2;
+    UsagePeriod period = 1;
+    AggregateSumUsage instance_writes = 2;
 }
 
 service APIService {
@@ -138,14 +131,12 @@ service APIService {
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
     rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
+    rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {}
+    rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
+    rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
-    rpc AddCard(AddCardRequest) returns (AddCardResponse) {}
     rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
-    rpc GetStoredData(GetStoredDataRequest) returns (GetStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
-    rpc GetNetworkEgress(GetNetworkEgressRequest) returns (GetNetworkEgressResponse) {}
     rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
-    rpc GetInstanceReads(GetInstanceReadsRequest) returns (GetInstanceReadsResponse) {}
     rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
-    rpc GetInstanceWrites(GetInstanceWritesRequest) returns (GetInstanceWritesResponse) {}
 }

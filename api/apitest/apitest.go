@@ -2,7 +2,6 @@ package apitest
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -15,13 +14,10 @@ import (
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
-	stripe "github.com/stripe/stripe-go/v72"
-	"github.com/stripe/stripe-go/v72/token"
 	"github.com/textileio/textile/v2/api/hub/client"
 	pb "github.com/textileio/textile/v2/api/hub/pb"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
-	"golang.org/x/net/http2"
 )
 
 const SessionSecret = "hubsession"
@@ -134,39 +130,4 @@ func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 	_, err := http.Get(url)
 	require.NoError(t, err)
 	time.Sleep(time.Second)
-}
-
-func ConfigureStripe(t *testing.T, url, key string) {
-	stripe.Key = key
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	err := http2.ConfigureTransport(transport)
-	require.NoError(t, err)
-	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(
-		stripe.APIBackend,
-		&stripe.BackendConfig{
-			URL: stripe.String(url),
-			HTTPClient: &http.Client{
-				Transport: transport,
-			},
-			LeveledLogger: stripe.DefaultLeveledLogger,
-		},
-	))
-}
-
-func NewCardToken(t *testing.T) string {
-	ConfigureStripe(t, "https://api.stripe.com", "sk_test_RuU6Lq65WP23ykDSI9N9nRbC")
-	tok, err := token.New(&stripe.TokenParams{
-		Card: &stripe.CardParams{
-			Number:   stripe.String("4242424242424242"),
-			ExpMonth: stripe.String("12"),
-			ExpYear:  stripe.String("2021"),
-			CVC:      stripe.String("123"),
-		},
-	})
-	require.NoError(t, err)
-	return tok.ID
 }

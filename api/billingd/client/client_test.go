@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/service"
@@ -68,20 +70,58 @@ func TestClient_DeleteCustomer(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClient_AddCard(t *testing.T) {
+func TestClient_UpdateCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
 	require.NoError(t, err)
 
-	err = c.AddCard(context.Background(), id, apitest.NewCardToken(t))
+	err = c.UpdateCustomer(context.Background(), id, 100, true, true)
 	require.NoError(t, err)
 
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 0, int(cus.Balance))
+	assert.Equal(t, 100, int(cus.Balance))
 	assert.True(t, cus.Billable)
-	assert.False(t, cus.Delinquent)
+	assert.True(t, cus.Delinquent)
+}
+
+func TestClient_UpdateCustomerSubscription(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	start := time.Now().Add(-time.Hour).Unix()
+	end := time.Now().Add(time.Hour).Unix()
+	err = c.UpdateCustomerSubscription(context.Background(), id, stripe.SubscriptionStatusCanceled, start, end)
+	require.NoError(t, err)
+
+	cus, err := c.GetCustomer(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, string(stripe.SubscriptionStatusCanceled), cus.Status)
+}
+
+func TestClient_RecreateCustomerSubscription(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	id, err := c.CreateCustomer(context.Background(), apitest.NewEmail())
+	require.NoError(t, err)
+
+	err = c.RecreateCustomerSubscription(context.Background(), id)
+	require.Error(t, err)
+
+	start := time.Now().Add(-time.Hour).Unix()
+	end := time.Now().Add(time.Hour).Unix()
+	err = c.UpdateCustomerSubscription(context.Background(), id, stripe.SubscriptionStatusCanceled, start, end)
+	require.NoError(t, err)
+
+	err = c.RecreateCustomerSubscription(context.Background(), id)
+	require.NoError(t, err)
+
+	cus, err := c.GetCustomer(context.Background(), id)
+	require.NoError(t, err)
+	assert.Equal(t, string(stripe.SubscriptionStatusActive), cus.Status)
 }
 
 func TestClient_IncStoredData(t *testing.T) {
@@ -93,26 +133,26 @@ func TestClient_IncStoredData(t *testing.T) {
 	// Units should round down
 	res, err := c.IncStoredData(context.Background(), id, mib)
 	require.NoError(t, err)
-	assert.Equal(t, 0, int(res.Units))
-	assert.Equal(t, mib, int(res.TotalSize))
+	assert.Equal(t, 0, int(res.StoredData.Units))
+	assert.Equal(t, mib, int(res.StoredData.TotalSize))
 
 	// Units should round up
 	res, err = c.IncStoredData(context.Background(), id, 30*mib)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(res.Units))
-	assert.Equal(t, 31*mib, int(res.TotalSize))
+	assert.Equal(t, 1, int(res.StoredData.Units))
+	assert.Equal(t, 31*mib, int(res.StoredData.TotalSize))
 
 	// Units should round down
 	res, err = c.IncStoredData(context.Background(), id, 289*mib)
 	require.NoError(t, err)
-	assert.Equal(t, 6, int(res.Units))
-	assert.Equal(t, 320*mib, int(res.TotalSize))
+	assert.Equal(t, 6, int(res.StoredData.Units))
+	assert.Equal(t, 320*mib, int(res.StoredData.TotalSize))
 
 	// Check total usage
-	usage, err := c.GetStoredData(context.Background(), id)
+	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 6, int(usage.Units))
-	assert.Equal(t, 320*mib, int(usage.TotalSize))
+	assert.Equal(t, 6, int(cus.StoredData.Units))
+	assert.Equal(t, 320*mib, int(cus.StoredData.TotalSize))
 }
 
 func TestClient_IncNetworkEgress(t *testing.T) {
@@ -124,34 +164,34 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	// Add some under unit size
 	res, err := c.IncNetworkEgress(context.Background(), id, mib)
 	require.NoError(t, err)
-	assert.Equal(t, 0, int(res.AddedUnits))
-	assert.Equal(t, mib, int(res.SubUnits))
+	assert.Equal(t, 0, int(res.NetworkEgress.Units))
+	assert.Equal(t, mib, int(res.NetworkEgress.SubUnits))
 
 	// Add more to reach unit size
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize-mib)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(res.AddedUnits))
-	assert.Equal(t, 0, int(res.SubUnits))
+	assert.Equal(t, 1, int(res.NetworkEgress.Units))
+	assert.Equal(t, 0, int(res.NetworkEgress.SubUnits))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize*200+mib)
 	require.Error(t, err)
 
-	// Add a card to remove the free quota limit
-	err = c.AddCard(context.Background(), id, apitest.NewCardToken(t))
+	// Flag as billable to remove the free quota limit
+	err = c.UpdateCustomer(context.Background(), id, 0, true, false)
 	require.NoError(t, err)
 
 	// Try again
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize*200+mib)
 	require.NoError(t, err)
-	assert.Equal(t, 200, int(res.AddedUnits))
-	assert.Equal(t, mib, int(res.SubUnits))
+	assert.Equal(t, 201, int(res.NetworkEgress.Units))
+	assert.Equal(t, mib, int(res.NetworkEgress.SubUnits))
 
 	// Check total usage
-	usage, err := c.GetNetworkEgress(context.Background(), id)
+	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 201, int(usage.Units))
-	assert.Equal(t, mib, int(usage.SubUnits))
+	assert.Equal(t, 201, int(cus.NetworkEgress.Units))
+	assert.Equal(t, mib, int(cus.NetworkEgress.SubUnits))
 }
 
 func TestClient_IncInstanceReads(t *testing.T) {
@@ -163,34 +203,34 @@ func TestClient_IncInstanceReads(t *testing.T) {
 	// Add some under unit size
 	res, err := c.IncInstanceReads(context.Background(), id, 1)
 	require.NoError(t, err)
-	assert.Equal(t, 0, int(res.AddedUnits))
-	assert.Equal(t, 1, int(res.SubUnits))
+	assert.Equal(t, 0, int(res.InstanceReads.Units))
+	assert.Equal(t, 1, int(res.InstanceReads.SubUnits))
 
 	// Add more to reach unit size
 	res, err = c.IncInstanceReads(context.Background(), id, 9999)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(res.AddedUnits))
-	assert.Equal(t, 0, int(res.SubUnits))
+	assert.Equal(t, 1, int(res.InstanceReads.Units))
+	assert.Equal(t, 0, int(res.InstanceReads.SubUnits))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncInstanceReads(context.Background(), id, 123456)
 	require.Error(t, err)
 
-	// Add a card to remove the free quota limit
-	err = c.AddCard(context.Background(), id, apitest.NewCardToken(t))
+	// Flag as billable to remove the free quota limit
+	err = c.UpdateCustomer(context.Background(), id, 0, true, false)
 	require.NoError(t, err)
 
 	// Try again
 	res, err = c.IncInstanceReads(context.Background(), id, 123456)
 	require.NoError(t, err)
-	assert.Equal(t, 12, int(res.AddedUnits))
-	assert.Equal(t, 3456, int(res.SubUnits))
+	assert.Equal(t, 13, int(res.InstanceReads.Units))
+	assert.Equal(t, 3456, int(res.InstanceReads.SubUnits))
 
 	// Check total usage
-	usage, err := c.GetInstanceReads(context.Background(), id)
+	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 13, int(usage.Units))
-	assert.Equal(t, 3456, int(usage.SubUnits))
+	assert.Equal(t, 13, int(cus.InstanceReads.Units))
+	assert.Equal(t, 3456, int(cus.InstanceReads.SubUnits))
 }
 
 func TestClient_IncInstanceWrites(t *testing.T) {
@@ -202,38 +242,40 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	// Add some under unit size
 	res, err := c.IncInstanceWrites(context.Background(), id, 1)
 	require.NoError(t, err)
-	assert.Equal(t, 0, int(res.AddedUnits))
-	assert.Equal(t, 1, int(res.SubUnits))
+	assert.Equal(t, 0, int(res.InstanceWrites.Units))
+	assert.Equal(t, 1, int(res.InstanceWrites.SubUnits))
 
 	// Add more to reach unit size
 	res, err = c.IncInstanceWrites(context.Background(), id, 4999)
 	require.NoError(t, err)
-	assert.Equal(t, 1, int(res.AddedUnits))
-	assert.Equal(t, 0, int(res.SubUnits))
+	assert.Equal(t, 1, int(res.InstanceWrites.Units))
+	assert.Equal(t, 0, int(res.InstanceWrites.SubUnits))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncInstanceWrites(context.Background(), id, 123456)
 	require.Error(t, err)
 
 	// Add a card to remove the free quota limit
-	err = c.AddCard(context.Background(), id, apitest.NewCardToken(t))
+	err = c.UpdateCustomer(context.Background(), id, 0, true, false)
 	require.NoError(t, err)
 
 	// Try again
 	res, err = c.IncInstanceWrites(context.Background(), id, 123456)
 	require.NoError(t, err)
-	assert.Equal(t, 24, int(res.AddedUnits))
-	assert.Equal(t, 3456, int(res.SubUnits))
+	assert.Equal(t, 25, int(res.InstanceWrites.Units))
+	assert.Equal(t, 3456, int(res.InstanceWrites.SubUnits))
 
 	// Check total usage
-	usage, err := c.GetInstanceWrites(context.Background(), id)
+	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 25, int(usage.Units))
-	assert.Equal(t, 3456, int(usage.SubUnits))
+	assert.Equal(t, 25, int(cus.InstanceWrites.Units))
+	assert.Equal(t, 3456, int(cus.InstanceWrites.SubUnits))
 }
 
 func setup(t *testing.T) *client.Client {
 	apiPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	gwPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -242,9 +284,10 @@ func setup(t *testing.T) *client.Client {
 		StripeAPIURL:           "https://api.stripe.com",
 		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		DBURI:  "mongodb://127.0.0.1:27017/?replicaSet=rs0",
-		DBName: util.MakeToken(8),
-		Debug:  true,
+		DBURI:           "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBName:          util.MakeToken(8),
+		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),
+		Debug:           true,
 	}, true)
 	require.NoError(t, err)
 	err = api.Start()

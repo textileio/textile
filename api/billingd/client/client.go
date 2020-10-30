@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	stripe "github.com/stripe/stripe-go/v72"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	"google.golang.org/grpc"
 )
@@ -57,6 +58,46 @@ func (c *Client) GetCustomerSession(ctx context.Context, customerID string) (*pb
 	})
 }
 
+func (c *Client) UpdateCustomer(
+	ctx context.Context,
+	customerID string,
+	balance int64,
+	billable,
+	delinquent bool,
+) error {
+	_, err := c.c.UpdateCustomer(ctx, &pb.UpdateCustomerRequest{
+		CustomerId: customerID,
+		Balance:    balance,
+		Billable:   billable,
+		Delinquent: delinquent,
+	})
+	return err
+}
+
+func (c *Client) UpdateCustomerSubscription(
+	ctx context.Context,
+	customerID string,
+	status stripe.SubscriptionStatus,
+	periodStart, periodEnd int64,
+) error {
+	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
+		CustomerId: customerID,
+		Status:     string(status),
+		Period: &pb.UsagePeriod{
+			Start: periodStart,
+			End:   periodEnd,
+		},
+	})
+	return err
+}
+
+func (c *Client) RecreateCustomerSubscription(ctx context.Context, customerID string) error {
+	_, err := c.c.RecreateCustomerSubscription(ctx, &pb.RecreateCustomerSubscriptionRequest{
+		CustomerId: customerID,
+	})
+	return err
+}
+
 func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
 	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
 		CustomerId: customerID,
@@ -64,62 +105,46 @@ func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
 	return err
 }
 
-func (c *Client) AddCard(ctx context.Context, customerID, token string) error {
-	_, err := c.c.AddCard(ctx, &pb.AddCardRequest{
-		CustomerId: customerID,
-		Token:      token,
-	})
-	return err
-}
-
-func (c *Client) IncStoredData(ctx context.Context, customerID string, incSize int64) (*pb.IncStoredDataResponse, error) {
+func (c *Client) IncStoredData(
+	ctx context.Context,
+	customerID string,
+	incSize int64,
+) (*pb.IncStoredDataResponse, error) {
 	return c.c.IncStoredData(ctx, &pb.IncStoredDataRequest{
 		CustomerId: customerID,
 		IncSize:    incSize,
 	})
 }
 
-func (c *Client) GetStoredData(ctx context.Context, customerID string) (*pb.GetStoredDataResponse, error) {
-	return c.c.GetStoredData(ctx, &pb.GetStoredDataRequest{
-		CustomerId: customerID,
-	})
-}
-
-func (c *Client) IncNetworkEgress(ctx context.Context, customerID string, incSize int64) (*pb.IncNetworkEgressResponse, error) {
+func (c *Client) IncNetworkEgress(
+	ctx context.Context,
+	customerID string,
+	incSize int64,
+) (*pb.IncNetworkEgressResponse, error) {
 	return c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
 		CustomerId: customerID,
 		IncSize:    incSize,
 	})
 }
 
-func (c *Client) GetNetworkEgress(ctx context.Context, customerID string) (*pb.GetNetworkEgressResponse, error) {
-	return c.c.GetNetworkEgress(ctx, &pb.GetNetworkEgressRequest{
-		CustomerId: customerID,
-	})
-}
-
-func (c *Client) IncInstanceReads(ctx context.Context, customerID string, incCount int64) (*pb.IncInstanceReadsResponse, error) {
+func (c *Client) IncInstanceReads(
+	ctx context.Context,
+	customerID string,
+	incCount int64,
+) (*pb.IncInstanceReadsResponse, error) {
 	return c.c.IncInstanceReads(ctx, &pb.IncInstanceReadsRequest{
 		CustomerId: customerID,
 		IncCount:   incCount,
 	})
 }
 
-func (c *Client) GetInstanceReads(ctx context.Context, customerID string) (*pb.GetInstanceReadsResponse, error) {
-	return c.c.GetInstanceReads(ctx, &pb.GetInstanceReadsRequest{
-		CustomerId: customerID,
-	})
-}
-
-func (c *Client) IncInstanceWrites(ctx context.Context, customerID string, incCount int64) (*pb.IncInstanceWritesResponse, error) {
+func (c *Client) IncInstanceWrites(
+	ctx context.Context,
+	customerID string,
+	incCount int64,
+) (*pb.IncInstanceWritesResponse, error) {
 	return c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
 		CustomerId: customerID,
 		IncCount:   incCount,
-	})
-}
-
-func (c *Client) GetInstanceWrites(ctx context.Context, customerID string) (*pb.GetInstanceWritesResponse, error) {
-	return c.c.GetInstanceWrites(ctx, &pb.GetInstanceWritesRequest{
-		CustomerId: customerID,
 	})
 }

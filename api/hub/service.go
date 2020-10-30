@@ -549,9 +549,9 @@ func (s *Service) SetupBilling(ctx context.Context, req *pb.SetupBillingRequest)
 			return nil, err
 		}
 	}
-	if err := s.BillingClient.AddCard(ctx, account.CustomerID, req.CardToken); err != nil {
-		return nil, err
-	}
+	//if err := s.BillingClient.AddCard(ctx, account.CustomerID, req.CardToken); err != nil {
+	//	return nil, err
+	//}
 	return &pb.SetupBillingResponse{}, nil
 }
 

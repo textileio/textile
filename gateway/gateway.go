@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-contrib/location"
@@ -53,8 +52,6 @@ type link struct {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
-	sync.Mutex
-
 	server        *http.Server
 	addr          ma.Multiaddr
 	url           string
