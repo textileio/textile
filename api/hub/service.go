@@ -528,7 +528,7 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	return &pb.LeaveOrgResponse{}, nil
 }
 
-func (s *Service) SetupBilling(ctx context.Context, req *pb.SetupBillingRequest) (*pb.SetupBillingResponse, error) {
+func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (*pb.SetupBillingResponse, error) {
 	log.Debugf("received setup billing request")
 
 	if s.BillingClient == nil {
@@ -548,10 +548,11 @@ func (s *Service) SetupBilling(ctx context.Context, req *pb.SetupBillingRequest)
 		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Key, cusID); err != nil {
 			return nil, err
 		}
+	} else {
+		if err := s.BillingClient.RecreateCustomerSubscription(ctx, account.CustomerID); err != nil {
+			return nil, err
+		}
 	}
-	//if err := s.BillingClient.AddCard(ctx, account.CustomerID, req.CardToken); err != nil {
-	//	return nil, err
-	//}
 	return &pb.SetupBillingResponse{}, nil
 }
 

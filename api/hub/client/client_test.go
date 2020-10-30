@@ -360,17 +360,15 @@ func TestClient_SetupBilling(t *testing.T) {
 	conf, client, _ := setupWithBilling(t)
 	ctx := context.Background()
 
-	token := apitest.NewCardToken(t)
-
 	t.Run("without session", func(t *testing.T) {
-		err := client.SetupBilling(ctx, token)
+		err := client.SetupBilling(ctx)
 		require.Error(t, err)
 	})
 
 	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
 
 	t.Run("with session", func(t *testing.T) {
-		err := client.SetupBilling(common.NewSessionContext(ctx, user.Session), token)
+		err := client.SetupBilling(common.NewSessionContext(ctx, user.Session))
 		require.NoError(t, err)
 	})
 }

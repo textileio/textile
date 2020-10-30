@@ -6,10 +6,8 @@ import (
 	"net/http"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	stripe "github.com/stripe/stripe-go/v72"
-	"github.com/stripe/stripe-go/v72/token"
 	"github.com/textileio/textile/v2/cmd"
 	"golang.org/x/net/http2"
 )
@@ -19,6 +17,31 @@ var billingCmd = &cobra.Command{
 	Short: "Billing management",
 	Long:  `Manages your billing preferences.`,
 	Args:  cobra.ExactArgs(0),
+}
+
+var billingSetupCmd = &cobra.Command{
+	Use:   "setup",
+	Short: "Setup usage billing",
+	Long:  `Sets up metered usage billing.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		configureStripe(c)
+
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+		err := clients.Hub.SetupBilling(ctx)
+		cmd.ErrCheck(err)
+
+		cmd.Success("You have setup metered usage billing. " +
+			"Use `hub billing portal` to manage your subscripton and payment methods.")
+	},
+}
+
+var billingPortalCmd = &cobra.Command{
+	Use:   "portal",
+	Short: "Open billing web portal",
+	Long:  `Opens a web portal for managing billing preferences.`,
+	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		configureStripe(c)
 
@@ -27,72 +50,8 @@ var billingCmd = &cobra.Command{
 		session, err := clients.Hub.GetBillingSession(ctx)
 		cmd.ErrCheck(err)
 
-		cmd.Message("Please visit the following URL to manage Hub billing:")
+		cmd.Message("Please visit the following URL to manage usage billing:")
 		cmd.Message("%s", aurora.White(session.Url).Bold())
-	},
-}
-
-var billingSetupCmd = &cobra.Command{
-	Use:   "setup",
-	Short: "Setup billing preferences",
-	Long:  `Sets up billing preferences.`,
-	Args:  cobra.ExactArgs(0),
-	Run: func(c *cobra.Command, args []string) {
-		configureStripe(c)
-
-		cmd.Message("By setting up billing you're opting into a recurring subscription. " +
-			"You will be asked for credit card details.")
-		prompt := promptui.Prompt{
-			Label:     "Proceed",
-			IsConfirm: true,
-		}
-		if _, err := prompt.Run(); err != nil {
-			cmd.End("")
-		}
-
-		prompt = promptui.Prompt{
-			Label: "Card number",
-		}
-		cardNumber, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		prompt = promptui.Prompt{
-			Label: "Card expiration month",
-		}
-		cardExpMonth, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		prompt = promptui.Prompt{
-			Label: "Card expiration year",
-		}
-		cardExpYear, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		prompt = promptui.Prompt{
-			Label: "Card CVC",
-			Mask:  '*',
-		}
-		cardCVC, err := prompt.Run()
-		if err != nil {
-			cmd.End("")
-		}
-		tok, err := token.New(&stripe.TokenParams{
-			Card: &stripe.CardParams{
-				Number:   stripe.String(cardNumber),
-				ExpMonth: stripe.String(cardExpMonth),
-				ExpYear:  stripe.String(cardExpYear),
-				CVC:      stripe.String(cardCVC),
-			},
-		})
-		cmd.ErrCheck(err)
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		err = clients.Hub.SetupBilling(ctx, tok.ID)
-		cmd.ErrCheck(err)
-		cmd.Success("You have setup metered usage billing. See <insert link> for more billing details.")
 	},
 }
 

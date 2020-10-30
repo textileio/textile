@@ -136,9 +136,7 @@ message LeaveOrgRequest {}
 
 message LeaveOrgResponse {}
 
-message SetupBillingRequest {
-    string card_token = 1;
-}
+message SetupBillingRequest {}
 
 message SetupBillingResponse {}
 

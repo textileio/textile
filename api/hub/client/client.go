@@ -122,13 +122,10 @@ func (c *Client) LeaveOrg(ctx context.Context) error {
 	return err
 }
 
-// SetupBilling sets up billing for an account, enabling
+// SetupBilling (re-)enables billing for an account, enabling
 // usage beyond the free quotas.
-// Currently, only cards are accepted.
-func (c *Client) SetupBilling(ctx context.Context, cardToken string) error {
-	_, err := c.c.SetupBilling(ctx, &pb.SetupBillingRequest{
-		CardToken: cardToken,
-	})
+func (c *Client) SetupBilling(ctx context.Context) error {
+	_, err := c.c.SetupBilling(ctx, &pb.SetupBillingRequest{})
 	return err
 }
 
