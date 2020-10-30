@@ -60,9 +60,6 @@ func Init(rootCmd *cobra.Command) {
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
-
-	billingCmd.Flags().String("stripeApiUrl", "https://api.stripe.com", "Stipe API URL")
-	billingCmd.Flags().String("stripeApiKey", "pk_live_SqHLyylpoWbiLQskE6sHnbKX", "Stipe API URL")
 }
 
 func Config() *cmd.Config {

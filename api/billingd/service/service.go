@@ -12,6 +12,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	stripe "github.com/stripe/stripe-go/v72"
 	stripec "github.com/stripe/stripe-go/v72/client"
+	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
@@ -32,23 +33,32 @@ const (
 	InstanceReadsUnitSize  = 10000
 	InstanceWritesUnitSize = 5000
 
-	FreeStoredDataUnits    = 100                               // 5 Gib
-	FreeNetworkEgressUnits = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
-	FreeInstanceReadUnits  = 1                                 // 10,000 per day
-	FreeInstanceWriteUnits = 1                                 // 5,000 per day
+	StoredDataFreeUnits     = 100                               // 5 Gib
+	NetworkEgressFreeUnits  = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
+	InstanceReadsFreeUnits  = 1                                 // 10,000 per day
+	InstanceWritesFreeUnits = 1                                 // 5,000 per day
 )
 
 var log = logging.Logger("billing")
 
 type Service struct {
-	config  Config
-	server  *grpc.Server
-	stripe  *stripec.API
-	db      *mongo.Collection
-	gateway *gateway.Gateway
+	config     Config
+	server     *grpc.Server
+	stripe     *stripec.API
+	db         *mongo.Collection
+	gateway    *gateway.Gateway
+	semaphores *nutil.SemaphorePool
 }
 
 var _ pb.APIServiceServer = (*Service)(nil)
+
+var _ nutil.SemaphoreKey = (*customerLock)(nil)
+
+type customerLock string
+
+func (l customerLock) Key() string {
+	return string(l)
+}
 
 type Config struct {
 	ListenAddr ma.Multiaddr
@@ -149,6 +159,7 @@ func (s *Service) Start() error {
 	if err != nil {
 		return err
 	}
+	s.semaphores = nutil.NewSemaphorePool(1)
 	go func() {
 		pb.RegisterAPIServiceServer(s.server, s)
 		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
@@ -165,6 +176,7 @@ func (s *Service) Stop(force bool) error {
 	} else {
 		s.server.GracefulStop()
 	}
+	s.semaphores.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := s.gateway.Stop(); err != nil {
@@ -182,11 +194,11 @@ type Customer struct {
 	Delinquent bool   `bson:"delinquent"`
 	CreatedAt  int64  `bson:"created_at"`
 
-	Period         UsagePeriod    `bson:"period"`
-	StoredData     StoredData     `bson:"stored_data"`
-	NetworkEgress  NetworkEgress  `bson:"network_egress"`
-	InstanceReads  InstanceReads  `bson:"instance_reads"`
-	InstanceWrites InstanceWrites `bson:"instance_writes"`
+	Period         UsagePeriod              `bson:"period"`
+	StoredData     AggregateStoredDataUsage `bson:"stored_data"`
+	NetworkEgress  AggregateSumUsage        `bson:"network_egress"`
+	InstanceReads  AggregateSumUsage        `bson:"instance_reads"`
+	InstanceWrites AggregateSumUsage        `bson:"instance_writes"`
 }
 
 type UsagePeriod struct {
@@ -194,25 +206,13 @@ type UsagePeriod struct {
 	End   int64 `bson:"end"`
 }
 
-type StoredData struct {
+type AggregateStoredDataUsage struct {
 	ItemID    string `bson:"item_id"`
 	Units     int64  `bson:"units"`
 	TotalSize int64  `bson:"total_size"`
 }
 
-type NetworkEgress struct {
-	ItemID   string `bson:"item_id"`
-	Units    int64  `bson:"units"`
-	SubUnits int64  `bson:"sub_units"`
-}
-
-type InstanceReads struct {
-	ItemID   string `bson:"item_id"`
-	Units    int64  `bson:"units"`
-	SubUnits int64  `bson:"sub_units"`
-}
-
-type InstanceWrites struct {
+type AggregateSumUsage struct {
 	ItemID   string `bson:"item_id"`
 	Units    int64  `bson:"units"`
 	SubUnits int64  `bson:"sub_units"`
@@ -277,11 +277,11 @@ func (s *Service) createSubscription(cus *Customer) error {
 		case s.config.StoredDataPriceID:
 			cus.StoredData.ItemID = item.ID // Retain existing units since this is "last ever" usage
 		case s.config.NetworkEgressPriceID:
-			cus.NetworkEgress = NetworkEgress{ItemID: item.ID}
+			cus.NetworkEgress = AggregateSumUsage{ItemID: item.ID}
 		case s.config.InstanceReadsPriceID:
-			cus.InstanceReads = InstanceReads{ItemID: item.ID}
+			cus.InstanceReads = AggregateSumUsage{ItemID: item.ID}
 		case s.config.InstanceWritesPriceID:
-			cus.InstanceWrites = InstanceWrites{ItemID: item.ID}
+			cus.InstanceWrites = AggregateSumUsage{ItemID: item.ID}
 		}
 	}
 	return nil
@@ -289,6 +289,10 @@ func (s *Service) createSubscription(cus *Customer) error {
 
 func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	*pb.GetCustomerResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
 	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
 	if r.Err() != nil {
 		return nil, r.Err()
@@ -312,28 +316,32 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 		StoredData: &pb.AggregateStoredDataUsage{
 			Units:     doc.StoredData.Units,
 			TotalSize: doc.StoredData.TotalSize,
-			FreeSize:  (FreeStoredDataUnits * StoredDataUnitSize) - doc.StoredData.TotalSize,
+			FreeSize:  (StoredDataFreeUnits * StoredDataUnitSize) - doc.StoredData.TotalSize,
 		},
 		NetworkEgress: &pb.AggregateSumUsage{
 			Units:     doc.NetworkEgress.Units,
 			SubUnits:  doc.NetworkEgress.SubUnits,
-			FreeUnits: FreeNetworkEgressUnits - doc.NetworkEgress.Units,
+			FreeUnits: NetworkEgressFreeUnits - doc.NetworkEgress.Units,
 		},
 		InstanceReads: &pb.AggregateSumUsage{
 			Units:     doc.InstanceReads.Units,
 			SubUnits:  doc.InstanceReads.SubUnits,
-			FreeUnits: FreeInstanceReadUnits - doc.InstanceReads.Units,
+			FreeUnits: InstanceReadsFreeUnits - doc.InstanceReads.Units,
 		},
 		InstanceWrites: &pb.AggregateSumUsage{
 			Units:     doc.InstanceWrites.Units,
 			SubUnits:  doc.InstanceWrites.SubUnits,
-			FreeUnits: FreeInstanceWriteUnits - doc.InstanceWrites.Units,
+			FreeUnits: InstanceWritesFreeUnits - doc.InstanceWrites.Units,
 		},
 	}, nil
 }
 
 func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessionRequest) (
 	*pb.GetCustomerSessionResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
 	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(req.CustomerId),
 		ReturnURL: stripe.String(s.config.StripeSessionReturnURL),
@@ -348,6 +356,10 @@ func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessi
 
 func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequest) (
 	*pb.UpdateCustomerResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
 		"$set": bson.M{"balance": req.Balance, "billable": req.Billable, "delinquent": req.Delinquent},
 	}); err != nil {
@@ -359,106 +371,86 @@ func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequ
 
 func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.UpdateCustomerSubscriptionRequest) (
 	*pb.UpdateCustomerSubscriptionResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
-	if err != nil {
-		return nil, err
-	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
-		return nil, err
-	}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOneAndUpdate(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-			"$set": bson.M{
-				"status":       req.Status,
-				"period.start": req.Period.Start,
-				"period.end":   req.Period.End,
-			},
-		})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var pre Customer
-		if err := r.Decode(&pre); err != nil {
-			return err
-		}
-		if pre.Period.End < req.Period.End {
-			if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-				"$set": bson.M{
-					"network_egress.units":      0,
-					"network_egress.sub_units":  0,
-					"instance_reads.units":      0,
-					"instance_reads.sub_units":  0,
-					"instance_writes.units":     0,
-					"instance_writes.sub_units": 0,
-				}}); err != nil {
-				return err
-			}
-		}
-		return sess.CommitTransaction(sctx)
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+		"$set": bson.M{
+			"status":       req.Status,
+			"period.start": req.Period.Start,
+			"period.end":   req.Period.End,
+		},
 	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var pre Customer
+	if err := r.Decode(&pre); err != nil {
 		return nil, err
 	}
+	if pre.Period.End < req.Period.End {
+		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+			"$set": bson.M{
+				"network_egress.units":      0,
+				"network_egress.sub_units":  0,
+				"instance_reads.units":      0,
+				"instance_reads.sub_units":  0,
+				"instance_writes.units":     0,
+				"instance_writes.sub_units": 0,
+			}}); err != nil {
+			return nil, err
+		}
+	}
+
 	log.Debugf("updated subscription with status '%s' for %s", req.Status, req.CustomerId)
 	return &pb.UpdateCustomerSubscriptionResponse{}, nil
 }
 
 func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.RecreateCustomerSubscriptionRequest) (
 	*pb.RecreateCustomerSubscriptionResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
-	if err != nil {
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
 		return nil, err
 	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
+	if err := common.StatusCheck(doc.Status); err == nil {
+		return nil, common.ErrSubscriptionExists
+	} else if !errors.Is(err, common.ErrSubscriptionCanceled) {
 		return nil, err
 	}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var doc Customer
-		if err := r.Decode(&doc); err != nil {
-			return err
-		}
-		if err := common.StatusCheck(doc.Status); err == nil {
-			return common.ErrSubscriptionExists
-		} else if !errors.Is(err, common.ErrSubscriptionCanceled) {
-			return err
-		}
-		if err := s.createSubscription(&doc); err != nil {
-			return err
-		}
-		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-			"$set": bson.M{
-				"status":          doc.Status,
-				"period":          doc.Period,
-				"stored_data":     doc.StoredData,
-				"network_egress":  doc.NetworkEgress,
-				"instance_reads":  doc.InstanceReads,
-				"instance_writes": doc.InstanceWrites,
-			}}); err != nil {
-			return err
-		}
-		return sess.CommitTransaction(sctx)
-	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
+	if err := s.createSubscription(&doc); err != nil {
 		return nil, err
 	}
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+		"$set": bson.M{
+			"status":          doc.Status,
+			"period":          doc.Period,
+			"stored_data":     doc.StoredData,
+			"network_egress":  doc.NetworkEgress,
+			"instance_reads":  doc.InstanceReads,
+			"instance_writes": doc.InstanceWrites,
+		}}); err != nil {
+		return nil, err
+	}
+
 	log.Debugf("recreated subscription for %s", req.CustomerId)
 	return &pb.RecreateCustomerSubscriptionResponse{}, nil
 }
 
 func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (
 	*pb.DeleteCustomerResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
 	if _, err := s.stripe.Customers.Del(req.CustomerId, nil); err != nil {
 		return nil, err
 	}
@@ -470,304 +462,245 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 }
 
 func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataRequest) (*pb.IncStoredDataResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+	if err := common.StatusCheck(doc.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleAggregateStoredDataUsage(ctx, doc.ID, doc.StoredData, req.IncSize, doc.Billable)
 	if err != nil {
 		return nil, err
 	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
-		return nil, err
-	}
-	res := &pb.IncStoredDataResponse{}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var doc Customer
-		if err := r.Decode(&doc); err != nil {
-			return err
-		}
-		if err := common.StatusCheck(doc.Status); err != nil {
-			return err
-		}
-		totalSize := doc.StoredData.TotalSize + req.IncSize
-		if totalSize < 0 {
-			totalSize = 0
-		}
-		update := bson.M{"stored_data.total_size": totalSize}
-		units := int64(math.Round(float64(totalSize) / float64(StoredDataUnitSize)))
-		if units > FreeStoredDataUnits && !doc.Billable {
-			return common.ErrExceedsFreeUnits
-		}
-		if units != doc.StoredData.Units {
-			if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-				SubscriptionItem: stripe.String(doc.StoredData.ItemID),
-				Quantity:         stripe.Int64(units),
-				Timestamp:        stripe.Int64(time.Now().Unix()),
-				Action:           stripe.String(stripe.UsageRecordActionSet),
-			}); err != nil {
-				return err
-			}
-			update["stored_data.units"] = units
-		}
-		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{"$set": update}); err != nil {
-			return err
-		}
-		res = &pb.IncStoredDataResponse{
-			Period: &pb.UsagePeriod{
-				Start: doc.Period.Start,
-				End:   doc.Period.End,
-			},
-			StoredData: &pb.AggregateStoredDataUsage{
-				Units:     units,
-				TotalSize: totalSize,
-				FreeSize:  (FreeStoredDataUnits * StoredDataUnitSize) - totalSize,
-			},
-		}
-		return sess.CommitTransaction(sctx)
-	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
-		return nil, err
-	}
+
 	log.Debugf(
 		"%s period data: units=%d total_size=%d free_size=%d",
 		req.CustomerId,
-		res.StoredData.Units,
-		res.StoredData.TotalSize,
-		res.StoredData.FreeSize,
+		usage.Units,
+		usage.TotalSize,
+		usage.FreeSize,
 	)
-	return res, nil
+	return &pb.IncStoredDataResponse{
+		Period:     periodFromPb(doc.Period),
+		StoredData: usage,
+	}, nil
+}
+
+func (s *Service) handleAggregateStoredDataUsage(
+	ctx context.Context,
+	customerID string,
+	usage AggregateStoredDataUsage,
+	inc int64,
+	billable bool,
+) (*pb.AggregateStoredDataUsage, error) {
+	totalSize := usage.TotalSize + inc
+	if totalSize < 0 {
+		totalSize = 0
+	}
+	update := bson.M{"stored_data.total_size": totalSize}
+	units := int64(math.Round(float64(totalSize) / float64(StoredDataUnitSize)))
+	if units > StoredDataFreeUnits && !billable {
+		return nil, common.ErrExceedsFreeUnits
+	}
+	if units != usage.Units {
+		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			SubscriptionItem: stripe.String(usage.ItemID),
+			Quantity:         stripe.Int64(units),
+			Timestamp:        stripe.Int64(time.Now().Unix()),
+			Action:           stripe.String(stripe.UsageRecordActionSet),
+		}); err != nil {
+			return nil, err
+		}
+		update["stored_data.units"] = units
+	}
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
+		return nil, err
+	}
+	return &pb.AggregateStoredDataUsage{
+		Units:     units,
+		TotalSize: totalSize,
+		FreeSize:  (StoredDataFreeUnits * StoredDataUnitSize) - totalSize,
+	}, nil
 }
 
 func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgressRequest) (
 	*pb.IncNetworkEgressResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+	if err := common.StatusCheck(doc.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleAggregateSumUsage(
+		ctx,
+		doc.ID,
+		doc.NetworkEgress,
+		"network_egress",
+		req.IncSize,
+		NetworkEgressUnitSize,
+		NetworkEgressFreeUnits,
+		doc.Billable,
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
-		return nil, err
-	}
-	res := &pb.IncNetworkEgressResponse{}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var doc Customer
-		if err := r.Decode(&doc); err != nil {
-			return err
-		}
-		if err := common.StatusCheck(doc.Status); err != nil {
-			return err
-		}
-		var units, subUnits int64
-		subUnits = doc.NetworkEgress.SubUnits + req.IncSize
-		if subUnits >= NetworkEgressUnitSize {
-			addedUnits := subUnits / NetworkEgressUnitSize
-			units = addedUnits + doc.NetworkEgress.Units
-			if units > FreeNetworkEgressUnits && !doc.Billable {
-				return common.ErrExceedsFreeUnits
-			}
-			subUnits = subUnits % NetworkEgressUnitSize
-			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-				SubscriptionItem: stripe.String(doc.NetworkEgress.ItemID),
-				Quantity:         stripe.Int64(units),
-				Timestamp:        stripe.Int64(time.Now().Unix()),
-				Action:           stripe.String(stripe.UsageRecordActionSet),
-			})
-			if err != nil {
-				return err
-			}
-		}
-		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-			"$set": bson.M{"network_egress.units": units, "network_egress.sub_units": subUnits},
-		}); err != nil {
-			return err
-		}
-		res = &pb.IncNetworkEgressResponse{
-			Period: &pb.UsagePeriod{
-				Start: doc.Period.Start,
-				End:   doc.Period.End,
-			},
-			NetworkEgress: &pb.AggregateSumUsage{
-				Units:     units,
-				SubUnits:  subUnits,
-				FreeUnits: FreeNetworkEgressUnits - units,
-			},
-		}
-		return sess.CommitTransaction(sctx)
-	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
-		return nil, err
-	}
+
 	log.Debugf("%s period egress: units=%d sub_units=%d free_units=%d",
 		req.CustomerId,
-		res.NetworkEgress.Units,
-		res.NetworkEgress.SubUnits,
-		res.NetworkEgress.FreeUnits,
+		usage.Units,
+		usage.SubUnits,
+		usage.FreeUnits,
 	)
+	res := &pb.IncNetworkEgressResponse{
+		Period:        periodFromPb(doc.Period),
+		NetworkEgress: usage,
+	}
 	return res, nil
 }
 
 func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReadsRequest) (
 	*pb.IncInstanceReadsResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+	if err := common.StatusCheck(doc.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleAggregateSumUsage(
+		ctx,
+		doc.ID,
+		doc.InstanceReads,
+		"instance_reads",
+		req.IncCount,
+		InstanceReadsUnitSize,
+		InstanceReadsFreeUnits,
+		doc.Billable,
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
-		return nil, err
-	}
-	res := &pb.IncInstanceReadsResponse{}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var doc Customer
-		if err := r.Decode(&doc); err != nil {
-			return err
-		}
-		if err := common.StatusCheck(doc.Status); err != nil {
-			return err
-		}
-		var units, subUnits int64
-		subUnits = doc.InstanceReads.SubUnits + req.IncCount
-		if subUnits >= InstanceReadsUnitSize {
-			addedUnits := subUnits / InstanceReadsUnitSize
-			units = addedUnits + doc.InstanceReads.Units
-			if units > FreeInstanceReadUnits && !doc.Billable {
-				return common.ErrExceedsFreeUnits
-			}
-			subUnits = subUnits % InstanceReadsUnitSize
-			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-				SubscriptionItem: stripe.String(doc.InstanceReads.ItemID),
-				Quantity:         stripe.Int64(units),
-				Timestamp:        stripe.Int64(time.Now().Unix()),
-				Action:           stripe.String(stripe.UsageRecordActionSet),
-			})
-			if err != nil {
-				return err
-			}
-		}
-		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-			"$set": bson.M{"instance_reads.units": units, "instance_reads.sub_units": subUnits},
-		}); err != nil {
-			return err
-		}
-		res = &pb.IncInstanceReadsResponse{
-			Period: &pb.UsagePeriod{
-				Start: doc.Period.Start,
-				End:   doc.Period.End,
-			},
-			InstanceReads: &pb.AggregateSumUsage{
-				Units:     units,
-				SubUnits:  subUnits,
-				FreeUnits: FreeInstanceReadUnits - units,
-			},
-		}
-		return sess.CommitTransaction(sctx)
-	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
-		return nil, err
-	}
+
 	log.Debugf(
 		"%s period reads: units=%d sub_units=%d free_units=%d",
 		req.CustomerId,
-		res.InstanceReads.Units,
-		res.InstanceReads.SubUnits,
-		res.InstanceReads.FreeUnits,
+		usage.Units,
+		usage.SubUnits,
+		usage.FreeUnits,
 	)
-	return res, nil
+	return &pb.IncInstanceReadsResponse{
+		Period:        periodFromPb(doc.Period),
+		InstanceReads: usage,
+	}, nil
 }
 
 func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWritesRequest) (
 	*pb.IncInstanceWritesResponse, error) {
-	sess, err := s.db.Database().Client().StartSession()
+	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck.Acquire()
+	defer lck.Release()
+
+	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
+	if err := common.StatusCheck(doc.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleAggregateSumUsage(
+		ctx,
+		doc.ID,
+		doc.InstanceWrites,
+		"instance_writes",
+		req.IncCount,
+		InstanceWritesUnitSize,
+		InstanceWritesFreeUnits,
+		doc.Billable,
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer sess.EndSession(ctx)
-	if err = sess.StartTransaction(); err != nil {
-		return nil, err
-	}
-	res := &pb.IncInstanceWritesResponse{}
-	err = mongo.WithSession(ctx, sess, func(sctx mongo.SessionContext) error {
-		r := s.db.FindOne(sctx, bson.M{"_id": req.CustomerId})
-		if r.Err() != nil {
-			return r.Err()
-		}
-		var doc Customer
-		if err := r.Decode(&doc); err != nil {
-			return err
-		}
-		if err := common.StatusCheck(doc.Status); err != nil {
-			return err
-		}
-		var units, subUnits int64
-		subUnits = doc.InstanceWrites.SubUnits + req.IncCount
-		if subUnits >= InstanceWritesUnitSize {
-			addedUnits := subUnits / InstanceWritesUnitSize
-			units = addedUnits + doc.InstanceWrites.Units
-			if units > FreeInstanceWriteUnits && !doc.Billable {
-				return common.ErrExceedsFreeUnits
-			}
-			subUnits = subUnits % InstanceWritesUnitSize
-			_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-				SubscriptionItem: stripe.String(doc.InstanceWrites.ItemID),
-				Quantity:         stripe.Int64(units),
-				Timestamp:        stripe.Int64(time.Now().Unix()),
-				Action:           stripe.String(stripe.UsageRecordActionSet),
-			})
-			if err != nil {
-				return err
-			}
-		}
-		if _, err := s.db.UpdateOne(sctx, bson.M{"_id": req.CustomerId}, bson.M{
-			"$set": bson.M{"instance_writes.units": units, "instance_writes.sub_units": subUnits},
-		}); err != nil {
-			return err
-		}
-		res = &pb.IncInstanceWritesResponse{
-			Period: &pb.UsagePeriod{
-				Start: doc.Period.Start,
-				End:   doc.Period.End,
-			},
-			InstanceWrites: &pb.AggregateSumUsage{
-				Units:     units,
-				SubUnits:  subUnits,
-				FreeUnits: FreeInstanceWriteUnits - units,
-			},
-		}
-		return sess.CommitTransaction(sctx)
-	})
-	if err != nil {
-		if err := sess.AbortTransaction(ctx); err != nil {
-			log.Errorf("aborting txn: %v", err)
-		}
-		return nil, err
-	}
+
 	log.Debugf(
 		"%s period writes: units=%d sub_units=%d free_units=%d",
 		req.CustomerId,
-		res.InstanceWrites.Units,
-		res.InstanceWrites.SubUnits,
-		res.InstanceWrites.FreeUnits,
+		usage.Units,
+		usage.SubUnits,
+		usage.FreeUnits,
 	)
-	return res, nil
+	return &pb.IncInstanceWritesResponse{
+		Period:         periodFromPb(doc.Period),
+		InstanceWrites: usage,
+	}, nil
+}
+
+func (s *Service) handleAggregateSumUsage(
+	ctx context.Context,
+	customerID string,
+	usage AggregateSumUsage,
+	key string,
+	inc, unitSize, freeUnits int64,
+	billable bool,
+) (*pb.AggregateSumUsage, error) {
+	units := usage.Units
+	subUnits := usage.SubUnits + inc
+	update := bson.M{key + ".sub_units": subUnits}
+	if subUnits >= unitSize {
+		units += subUnits / unitSize
+		if units > freeUnits && !billable {
+			return nil, common.ErrExceedsFreeUnits
+		}
+		_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			SubscriptionItem: stripe.String(usage.ItemID),
+			Quantity:         stripe.Int64(units),
+			Timestamp:        stripe.Int64(time.Now().Unix()),
+			Action:           stripe.String(stripe.UsageRecordActionSet),
+		})
+		if err != nil {
+			return nil, err
+		}
+		update[key+".units"] = units
+		subUnits = subUnits % unitSize
+		update[key+".sub_units"] = subUnits
+	}
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
+		return nil, err
+	}
+	return &pb.AggregateSumUsage{
+		Units:     units,
+		SubUnits:  subUnits,
+		FreeUnits: freeUnits - units,
+	}, nil
 }
 
 func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary, err error) {
@@ -786,4 +719,11 @@ func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary,
 		return sum, nil
 	}
 	return nil, fmt.Errorf("subscription item %s not found", id)
+}
+
+func periodFromPb(period UsagePeriod) *pb.UsagePeriod {
+	return &pb.UsagePeriod{
+		Start: period.Start,
+		End:   period.End,
+	}
 }
