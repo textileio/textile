@@ -50,7 +50,7 @@ func Init(rootCmd *cobra.Command) {
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
 	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powPeersCmd, powRetrievalsCmd, powShowAllCmd, powShowCmd, powStorageCmd)
-	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd)
+	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingStatusCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
 

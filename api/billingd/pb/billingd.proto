@@ -1,21 +1,16 @@
 syntax = "proto3";
 package api.billingd.pb;
+option go_package = "github.com/textileio/textile/v2/api/billingd/pb";
 
-message AggregateStoredDataUsage {
-    int64 units = 1;
-    int64 total_size = 2;
-    int64 free_size = 3;
-}
-
-message AggregateSumUsage {
-    int64 units = 1;
-    int64 sub_units = 2;
-    int64 free_units = 3;
-}
-
-message UsagePeriod {
+message Period {
     int64 start = 1;
     int64 end = 2;
+}
+
+message Usage {
+    int64 units = 1;
+    int64 total = 2;
+    int64 free = 3;
 }
 
 message CheckHealthRequest {}
@@ -42,11 +37,11 @@ message GetCustomerResponse {
     bool delinquent = 5;
     int64 created_at = 6;
 
-    UsagePeriod period = 7;
-    AggregateStoredDataUsage stored_data = 8;
-    AggregateSumUsage network_egress = 9;
-    AggregateSumUsage instance_writes = 10;
-    AggregateSumUsage instance_reads = 11;
+    Period period = 7;
+    Usage stored_data = 8;
+    Usage network_egress = 9;
+    Usage instance_writes = 10;
+    Usage instance_reads = 11;
 }
 
 message GetCustomerSessionRequest {
@@ -69,7 +64,7 @@ message UpdateCustomerResponse {}
 message UpdateCustomerSubscriptionRequest {
     string customer_id = 1;
     string status = 2;
-    UsagePeriod period = 3;
+    Period period = 3;
 }
 
 message UpdateCustomerSubscriptionResponse {}
@@ -92,8 +87,8 @@ message IncStoredDataRequest {
 }
 
 message IncStoredDataResponse {
-    UsagePeriod period = 1;
-    AggregateStoredDataUsage stored_data = 2;
+    Period period = 1;
+    Usage stored_data = 2;
 }
 
 message IncNetworkEgressRequest {
@@ -102,8 +97,8 @@ message IncNetworkEgressRequest {
 }
 
 message IncNetworkEgressResponse {
-    UsagePeriod period = 1;
-    AggregateSumUsage network_egress = 2;
+    Period period = 1;
+    Usage network_egress = 2;
 }
 
 message IncInstanceReadsRequest {
@@ -112,8 +107,8 @@ message IncInstanceReadsRequest {
 }
 
 message IncInstanceReadsResponse {
-    UsagePeriod period = 1;
-    AggregateSumUsage instance_reads = 2;
+    Period period = 1;
+    Usage instance_reads = 2;
 }
 
 message IncInstanceWritesRequest {
@@ -122,8 +117,8 @@ message IncInstanceWritesRequest {
 }
 
 message IncInstanceWritesResponse {
-    UsagePeriod period = 1;
-    AggregateSumUsage instance_writes = 2;
+    Period period = 1;
+    Usage instance_writes = 2;
 }
 
 service APIService {

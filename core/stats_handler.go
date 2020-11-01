@@ -4,8 +4,8 @@ import (
 	"context"
 
 	tpb "github.com/textileio/go-threads/api/pb"
-	bpb "github.com/textileio/textile/v2/api/buckets/pb"
-	hpb "github.com/textileio/textile/v2/api/hub/pb"
+	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
+	hpb "github.com/textileio/textile/v2/api/hubd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc/stats"
 )
@@ -34,7 +34,17 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 
 		recordEgress := true
 		var stored, reads, writes int64
-		switch pl := st.Payload.(type) {
+
+		var pl interface{}
+		switch spl := st.Payload.(type) {
+		case *tpb.ReadTransactionReply:
+			pl = spl.Option
+		case *tpb.WriteTransactionReply:
+			pl = spl.Option
+		default:
+			pl = spl
+		}
+		switch pl := pl.(type) {
 
 		// Don't charge for usage when customer is trying to add a payment method, cancel subscription, etc.
 		case *hpb.GetBillingSessionResponse:

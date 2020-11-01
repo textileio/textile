@@ -44,12 +44,12 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 			"/api.buckets.pb.APIService/RemovePath",
 			"/api.buckets.pb.APIService/PushPathAccessRoles":
 			owner := &buckets.BucketOwner{
-				StorageUsed: cus.StoredData.TotalSize,
+				StorageUsed: cus.StoredData.Total,
 			}
 			if cus.Billable {
 				owner.StorageAvailable = -1
 			} else {
-				owner.StorageAvailable = cus.StoredData.FreeSize
+				owner.StorageAvailable = cus.StoredData.Free
 			}
 			newCtx = buckets.NewBucketOwnerContext(stream.Context(), owner)
 		default:

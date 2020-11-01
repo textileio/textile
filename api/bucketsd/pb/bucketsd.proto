@@ -1,0 +1,300 @@
+syntax = "proto3";
+package api.bucketsd.pb;
+option go_package = "github.com/textileio/textile/v2/api/bucketsd/pb";
+
+message Metadata {
+    map<string, PathAccessRole> roles = 1;
+    int64 updated_at = 2;
+}
+
+message Root {
+    string key = 1;
+    string name = 2;
+    string path = 3;
+    int64 created_at = 4;
+    int64 updated_at = 5;
+    string thread = 6;
+    string owner = 7;
+    int32 version = 8;
+    Metadata metadata = 9;
+}
+
+message ListRequest {}
+
+message ListResponse {
+    repeated Root roots = 1;
+}
+
+message CreateRequest {
+    string name = 1;
+    string bootstrap_cid = 2;
+    bool private = 3;
+}
+
+message CreateResponse {
+    Root root = 1;
+    LinksResponse links = 2;
+    bytes seed = 3;
+    string seed_cid = 4;
+    int64 pinned = 5;
+}
+
+message RootRequest {
+    string key = 1;
+}
+
+message RootResponse {
+    Root root = 1;
+}
+
+message LinksRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message LinksResponse {
+    string url = 1;
+    string www = 2;
+    string ipns = 3;
+}
+
+message ListPathRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message ListPathResponse {
+    PathItem item = 1;
+    Root root = 2;
+}
+
+message PathItem {
+    string cid = 1;
+    string name = 2;
+    string path = 3;
+    int64 size = 4;
+    bool is_dir = 5;
+    repeated PathItem items = 6;
+    int32 items_count = 7;
+    Metadata metadata = 9;
+}
+
+message ListIpfsPathRequest {
+    string path = 1;
+}
+
+message ListIpfsPathResponse {
+    PathItem item = 1;
+}
+
+message PushPathRequest {
+    oneof payload {
+        Header header = 1;
+        bytes chunk = 2;
+    }
+
+    message Header {
+        string key = 1;
+        string path = 2;
+        string root = 3;
+    }
+}
+
+message PushPathResponse {
+    oneof payload {
+        Event event = 1;
+        string error = 2;
+    }
+
+    message Event {
+        string name = 1;
+        string path = 2;
+        int64 bytes = 3;
+        string size = 4;
+        Root root = 5;
+        int64 pinned = 6;
+    }
+}
+
+message PullPathRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message PullPathResponse {
+    bytes chunk = 1;
+}
+
+
+message PullIpfsPathRequest {
+    string path = 1;
+}
+
+message PullIpfsPathResponse {
+    bytes chunk = 1;
+}
+
+message SetPathRequest {
+    string key = 1;
+    string path = 2;
+    string cid = 3;
+}
+
+message SetPathResponse {
+    int64 pinned = 1;
+}
+
+message RemoveRequest {
+    string key = 1;
+}
+
+message RemoveResponse {
+    int64 pinned = 1;
+}
+
+message RemovePathRequest {
+    string key = 1;
+    string path = 2;
+    string root = 3;
+}
+
+message RemovePathResponse {
+    Root root = 1;
+    int64 pinned = 2;
+}
+
+enum PathAccessRole {
+    PATH_ACCESS_ROLE_UNSPECIFIED = 0;
+    PATH_ACCESS_ROLE_READER = 1;
+    PATH_ACCESS_ROLE_WRITER = 2;
+    PATH_ACCESS_ROLE_ADMIN = 3;
+}
+
+message PushPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+    map<string, PathAccessRole> roles = 3;
+}
+
+message PushPathAccessRolesResponse {
+    int64 pinned = 1;
+}
+
+message PullPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+}
+
+message PullPathAccessRolesResponse {
+    map<string, PathAccessRole> roles = 1;
+}
+
+message ArchiveConfig {
+    int32 rep_factor = 1;
+    int64 deal_min_duration = 2;
+    repeated string excluded_miners = 3;
+    repeated string trusted_miners = 4;
+    repeated string country_codes = 5;
+    ArchiveRenew renew = 6;
+    string addr = 7;
+    uint64 max_price = 8;
+    bool fast_retrieval = 9;
+    int64 deal_start_offset = 10;
+}
+
+message ArchiveRenew {
+    bool enabled = 1;
+    int32 threshold = 2;
+}
+
+message DefaultArchiveConfigRequest {
+    string key = 1;
+}
+
+message DefaultArchiveConfigResponse {
+    ArchiveConfig archive_config = 1;
+}
+
+message SetDefaultArchiveConfigRequest {
+    string key = 1;
+    ArchiveConfig archive_config = 2;
+}
+
+message SetDefaultArchiveConfigResponse {}
+
+message ArchiveRequest {
+    string key = 1;
+    ArchiveConfig archive_config = 2;
+}
+
+message ArchiveResponse {}
+
+message ArchiveStatusRequest {
+    string key = 1;
+}
+
+message ArchiveStatusResponse {
+    string key = 1;
+    Status status = 2;
+    string failed_msg = 3;
+
+    enum Status {
+        STATUS_UNSPECIFIED = 0;
+        STATUS_EXECUTING = 1;
+        STATUS_FAILED = 2;
+        STATUS_DONE = 3;
+        STATUS_CANCELED = 4;
+    }
+}
+
+message ArchiveInfoRequest {
+    string key = 1;
+}
+
+message ArchiveInfoResponse {
+    string key = 1;
+    Archive archive = 2;
+
+    message Archive {
+        string cid = 1;
+        repeated Deal deals = 2;
+
+        message Deal {
+            string proposal_cid = 1;
+            string miner = 2;
+        }
+    }
+}
+
+message ArchiveWatchRequest {
+    string key = 1;
+}
+
+message ArchiveWatchResponse {
+    string msg = 1;
+}
+
+service APIService {
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Create(CreateRequest) returns (CreateResponse) {}
+    rpc Root(RootRequest) returns (RootResponse) {}
+    rpc Links(LinksRequest) returns (LinksResponse) {}
+    rpc ListPath(ListPathRequest) returns (ListPathResponse) {}
+    rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathResponse) {}
+    rpc PushPath(stream PushPathRequest) returns (stream PushPathResponse) {}
+    rpc PullPath(PullPathRequest) returns (stream PullPathResponse) {}
+    rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathResponse) {}
+    rpc SetPath(SetPathRequest) returns (SetPathResponse) {}
+    rpc Remove(RemoveRequest) returns (RemoveResponse) {}
+    rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
+    rpc PushPathAccessRoles(PushPathAccessRolesRequest) returns (PushPathAccessRolesResponse) {}
+    rpc PullPathAccessRoles(PullPathAccessRolesRequest) returns (PullPathAccessRolesResponse) {}
+
+    // Archive
+    rpc DefaultArchiveConfig(DefaultArchiveConfigRequest) returns (DefaultArchiveConfigResponse) {}
+    rpc SetDefaultArchiveConfig(SetDefaultArchiveConfigRequest) returns (SetDefaultArchiveConfigResponse) {}
+    rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
+    rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusResponse) {}
+    rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoResponse) {}
+    rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchResponse) {}
+}

@@ -14,8 +14,8 @@ import (
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/textile/v2/api/hub/client"
-	pb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/api/hubd/client"
+	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
 )

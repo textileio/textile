@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/textileio/go-threads/core/thread"
-	pb "github.com/textileio/textile/v2/api/buckets/pb"
+	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 )
 
 const (

@@ -1,0 +1,109 @@
+syntax = "proto3";
+package api.usersd.pb;
+option go_package = "github.com/textileio/textile/v2/api/usersd/pb";
+
+message ListThreadsRequest {}
+
+message ListThreadsResponse {
+    repeated GetThreadResponse list = 1;
+}
+
+message GetThreadRequest {
+    string name = 1;
+}
+
+message GetThreadResponse {
+    bytes id = 1;
+    string name = 2;
+    bool is_db = 3;
+}
+
+message SetupMailboxRequest {}
+
+message SetupMailboxResponse {
+    bytes mailbox_id = 1;
+}
+
+message Message {
+    string id = 1;
+    string from = 2;
+    string to = 3;
+    bytes body = 4;
+    bytes signature = 5;
+    int64 created_at = 6;
+    int64 read_at = 7;
+}
+
+message SendMessageRequest {
+    string to = 1;
+    bytes to_body = 2;
+    bytes to_signature = 3;
+    bytes from_body = 4;
+    bytes from_signature = 5;
+}
+
+message SendMessageResponse {
+    string id = 1;
+    int64 created_at = 2;
+}
+
+message ListInboxMessagesRequest {
+    string seek = 1;
+    int64 limit = 2;
+    bool ascending = 3;
+    Status status = 4;
+
+    enum Status {
+        STATUS_UNSPECIFIED = 0;
+        STATUS_ALL = 1;
+        STATUS_READ = 2;
+        STATUS_UNREAD = 3;
+    }
+}
+
+message ListInboxMessagesResponse {
+    repeated Message messages = 1;
+}
+
+message ListSentboxMessagesRequest {
+    string seek = 1;
+    int64 limit = 2;
+    bool ascending = 3;
+}
+
+message ListSentboxMessagesResponse {
+    repeated Message messages = 1;
+}
+
+message ReadInboxMessageRequest {
+    string id = 1;
+}
+
+message ReadInboxMessageResponse {
+    int64 read_at = 1;
+}
+
+message DeleteInboxMessageRequest {
+    string id = 1;
+}
+
+message DeleteInboxMessageResponse {}
+
+message DeleteSentboxMessageRequest {
+    string id = 1;
+}
+
+message DeleteSentboxMessageResponse {}
+
+service APIService {
+    rpc GetThread(GetThreadRequest) returns (GetThreadResponse) {}
+    rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {}
+
+    rpc SetupMailbox(SetupMailboxRequest) returns (SetupMailboxResponse) {}
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {}
+    rpc ListInboxMessages(ListInboxMessagesRequest) returns (ListInboxMessagesResponse) {}
+    rpc ListSentboxMessages(ListSentboxMessagesRequest) returns (ListSentboxMessagesResponse) {}
+    rpc ReadInboxMessage(ReadInboxMessageRequest) returns (ReadInboxMessageResponse) {}
+    rpc DeleteInboxMessage(DeleteInboxMessageRequest) returns (DeleteInboxMessageResponse) {}
+    rpc DeleteSentboxMessage(DeleteSentboxMessageRequest) returns (DeleteSentboxMessageResponse) {}
+}

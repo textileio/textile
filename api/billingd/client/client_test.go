@@ -44,9 +44,14 @@ func TestClient_GetCustomer(t *testing.T) {
 
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
+	assert.NotEmpty(t, cus.Status)
 	assert.Equal(t, 0, int(cus.Balance))
 	assert.False(t, cus.Billable)
 	assert.False(t, cus.Delinquent)
+	assert.NotEmpty(t, cus.StoredData)
+	assert.NotEmpty(t, cus.NetworkEgress)
+	assert.NotEmpty(t, cus.InstanceReads)
+	assert.NotEmpty(t, cus.InstanceWrites)
 }
 
 func TestClient_GetCustomerSession(t *testing.T) {
@@ -134,25 +139,25 @@ func TestClient_IncStoredData(t *testing.T) {
 	res, err := c.IncStoredData(context.Background(), id, mib)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.StoredData.Units))
-	assert.Equal(t, mib, int(res.StoredData.TotalSize))
+	assert.Equal(t, mib, int(res.StoredData.Total))
 
 	// Units should round up
 	res, err = c.IncStoredData(context.Background(), id, 30*mib)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.StoredData.Units))
-	assert.Equal(t, 31*mib, int(res.StoredData.TotalSize))
+	assert.Equal(t, 31*mib, int(res.StoredData.Total))
 
 	// Units should round down
 	res, err = c.IncStoredData(context.Background(), id, 289*mib)
 	require.NoError(t, err)
 	assert.Equal(t, 6, int(res.StoredData.Units))
-	assert.Equal(t, 320*mib, int(res.StoredData.TotalSize))
+	assert.Equal(t, 320*mib, int(res.StoredData.Total))
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, 6, int(cus.StoredData.Units))
-	assert.Equal(t, 320*mib, int(cus.StoredData.TotalSize))
+	assert.Equal(t, 320*mib, int(cus.StoredData.Total))
 }
 
 func TestClient_IncNetworkEgress(t *testing.T) {
@@ -165,13 +170,15 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	res, err := c.IncNetworkEgress(context.Background(), id, mib)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.NetworkEgress.Units))
-	assert.Equal(t, mib, int(res.NetworkEgress.SubUnits))
+	total := mib
+	assert.Equal(t, total, int(res.NetworkEgress.Total))
 
 	// Add more to reach unit size
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize-mib)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.NetworkEgress.Units))
-	assert.Equal(t, 0, int(res.NetworkEgress.SubUnits))
+	total += service.NetworkEgressUnitSize - mib
+	assert.Equal(t, total, int(res.NetworkEgress.Total))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize*200+mib)
@@ -185,13 +192,14 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	res, err = c.IncNetworkEgress(context.Background(), id, service.NetworkEgressUnitSize*200+mib)
 	require.NoError(t, err)
 	assert.Equal(t, 201, int(res.NetworkEgress.Units))
-	assert.Equal(t, mib, int(res.NetworkEgress.SubUnits))
+	total += service.NetworkEgressUnitSize*200 + mib
+	assert.Equal(t, total, int(res.NetworkEgress.Total))
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, 201, int(cus.NetworkEgress.Units))
-	assert.Equal(t, mib, int(cus.NetworkEgress.SubUnits))
+	assert.Equal(t, total, int(cus.NetworkEgress.Total))
 }
 
 func TestClient_IncInstanceReads(t *testing.T) {
@@ -204,13 +212,13 @@ func TestClient_IncInstanceReads(t *testing.T) {
 	res, err := c.IncInstanceReads(context.Background(), id, 1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.InstanceReads.Units))
-	assert.Equal(t, 1, int(res.InstanceReads.SubUnits))
+	assert.Equal(t, 1, int(res.InstanceReads.Total))
 
 	// Add more to reach unit size
 	res, err = c.IncInstanceReads(context.Background(), id, 9999)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.InstanceReads.Units))
-	assert.Equal(t, 0, int(res.InstanceReads.SubUnits))
+	assert.Equal(t, 10000, int(res.InstanceReads.Total))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncInstanceReads(context.Background(), id, 123456)
@@ -224,13 +232,13 @@ func TestClient_IncInstanceReads(t *testing.T) {
 	res, err = c.IncInstanceReads(context.Background(), id, 123456)
 	require.NoError(t, err)
 	assert.Equal(t, 13, int(res.InstanceReads.Units))
-	assert.Equal(t, 3456, int(res.InstanceReads.SubUnits))
+	assert.Equal(t, 133456, int(res.InstanceReads.Total))
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, 13, int(cus.InstanceReads.Units))
-	assert.Equal(t, 3456, int(cus.InstanceReads.SubUnits))
+	assert.Equal(t, 133456, int(cus.InstanceReads.Total))
 }
 
 func TestClient_IncInstanceWrites(t *testing.T) {
@@ -243,13 +251,13 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	res, err := c.IncInstanceWrites(context.Background(), id, 1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.InstanceWrites.Units))
-	assert.Equal(t, 1, int(res.InstanceWrites.SubUnits))
+	assert.Equal(t, 1, int(res.InstanceWrites.Total))
 
 	// Add more to reach unit size
 	res, err = c.IncInstanceWrites(context.Background(), id, 4999)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.InstanceWrites.Units))
-	assert.Equal(t, 0, int(res.InstanceWrites.SubUnits))
+	assert.Equal(t, 5000, int(res.InstanceWrites.Total))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncInstanceWrites(context.Background(), id, 123456)
@@ -262,14 +270,14 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	// Try again
 	res, err = c.IncInstanceWrites(context.Background(), id, 123456)
 	require.NoError(t, err)
-	assert.Equal(t, 25, int(res.InstanceWrites.Units))
-	assert.Equal(t, 3456, int(res.InstanceWrites.SubUnits))
+	assert.Equal(t, 26, int(res.InstanceWrites.Units))
+	assert.Equal(t, 128456, int(res.InstanceWrites.Total))
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), id)
 	require.NoError(t, err)
-	assert.Equal(t, 25, int(cus.InstanceWrites.Units))
-	assert.Equal(t, 3456, int(cus.InstanceWrites.SubUnits))
+	assert.Equal(t, 26, int(cus.InstanceWrites.Units))
+	assert.Equal(t, 128456, int(cus.InstanceWrites.Total))
 }
 
 func setup(t *testing.T) *client.Client {

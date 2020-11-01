@@ -27,7 +27,7 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	bucketsclient "github.com/textileio/textile/v2/api/buckets/client"
+	bucketsclient "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"

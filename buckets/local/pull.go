@@ -10,7 +10,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-merkledag/dagutils"
-	"github.com/textileio/textile/v2/api/buckets/client"
+	"github.com/textileio/textile/v2/api/bucketsd/client"
 	"golang.org/x/sync/errgroup"
 )
 

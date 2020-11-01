@@ -34,13 +34,13 @@ import (
 	netRpc "github.com/textileio/powergate/net/rpc"
 	walletRpc "github.com/textileio/powergate/wallet/rpc"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
-	"github.com/textileio/textile/v2/api/buckets"
-	bpb "github.com/textileio/textile/v2/api/buckets/pb"
+	"github.com/textileio/textile/v2/api/bucketsd"
+	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
-	"github.com/textileio/textile/v2/api/hub"
-	hpb "github.com/textileio/textile/v2/api/hub/pb"
-	"github.com/textileio/textile/v2/api/users"
-	upb "github.com/textileio/textile/v2/api/users/pb"
+	"github.com/textileio/textile/v2/api/hubd"
+	hpb "github.com/textileio/textile/v2/api/hubd/pb"
+	"github.com/textileio/textile/v2/api/usersd"
+	upb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/buckets/archive"
 	"github.com/textileio/textile/v2/dns"
 	"github.com/textileio/textile/v2/email"
@@ -289,15 +289,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 
-	var hs *hub.Service
-	var us *users.Service
+	var hs *hubd.Service
+	var us *usersd.Service
 	if conf.Hub {
 		ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
 		if err != nil {
 			return nil, err
 		}
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
-		hs = &hub.Service{
+		hs = &hubd.Service{
 			Collections:        t.collections,
 			Threads:            t.th,
 			ThreadsNet:         t.thn,
@@ -310,7 +310,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			BillingClient:      t.bc,
 			PowergateClient:    t.pc,
 		}
-		us = &users.Service{
+		us = &usersd.Service{
 			Collections: t.collections,
 			Mail:        t.mail,
 		}
@@ -322,7 +322,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	t.buckLocks = nutil.NewSemaphorePool(1)
-	bs := &buckets.Service{
+	bs := &bucketsd.Service{
 		Collections:        t.collections,
 		Buckets:            t.bucks,
 		GatewayURL:         conf.AddrGatewayURL,

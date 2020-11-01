@@ -16,7 +16,7 @@ import (
 	assets "github.com/textileio/go-assets"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
-	"github.com/textileio/textile/v2/api/buckets/client"
+	"github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"

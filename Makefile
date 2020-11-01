@@ -85,7 +85,11 @@ build-buckd-release: $(GOX) $(GOVVV) $(GOMPLATE)
 	$(call gen_release_files,./cmd/buckd,buckd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
 .PHONY: build-buckd-release
 
-build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release
+build-billingd-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-billingd-release
+
+build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release build-billingd-release
 .PHONY: build-releases
 
 hub-up:
@@ -106,14 +110,22 @@ buck-stop:
 buck-clean:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans
 
-billing-up:
-	docker-compose -f api/billingd/docker-compose-dev.yml up --build
+test:
+	go test -race -timeout 45m ./...
+.PHONY: test
 
-billing-stop:
-	docker-compose -f api/billingd/docker-compose-dev.yml stop
+clean-protos:
+	find . -type f -name '*.pb.go' -delete
+	find . -type f -name '*pb_test.go' -delete
+.PHONY: clean-protos
 
-billing-clean:
-	docker-compose -f api/billingd/docker-compose-dev.yml down -v --remove-orphans
+install-protoc:
+	cd buildtools && ./protocInstall.sh
+
+PROTOCGENGO=$(shell pwd)/buildtools/protoc-gen-go
+protos: install-protoc clean-protos
+	PATH=$(PROTOCGENGO):$(PATH) ./scripts/protoc_gen_plugin.bash --proto_path=. --plugin_name=go --plugin_out=. --plugin_opt=plugins=grpc,paths=source_relative
+.PHONY: protos
 
 # local is what we run when testing locally.
 # This does breaking change detection against our local git repository.

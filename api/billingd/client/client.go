@@ -83,7 +83,7 @@ func (c *Client) UpdateCustomerSubscription(
 	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
 		CustomerId: customerID,
 		Status:     string(status),
-		Period: &pb.UsagePeriod{
+		Period: &pb.Period{
 			Start: periodStart,
 			End:   periodEnd,
 		},

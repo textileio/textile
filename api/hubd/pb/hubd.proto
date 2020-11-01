@@ -1,0 +1,206 @@
+syntax = "proto3";
+package api.hubd.pb;
+option go_package = "github.com/textileio/textile/v2/api/hubd/pb";
+
+import "api/billingd/pb/billingd.proto";
+
+message BuildInfoRequest {}
+
+message BuildInfoResponse {
+    string git_commit = 1;
+    string git_branch = 2;
+    string git_state = 3;
+    string git_summary = 4;
+    string build_date = 5;
+    string version = 6;
+}
+
+message SignupRequest {
+    string username = 1;
+    string email = 2;
+}
+
+message SignupResponse {
+    bytes key = 1;
+    string session = 2;
+}
+
+message SigninRequest {
+    string username_or_email = 1;
+}
+
+message SigninResponse {
+    bytes key = 1;
+    string session = 2;
+}
+
+message SignoutRequest {}
+
+message SignoutResponse {}
+
+message GetSessionInfoRequest {}
+
+message GetSessionInfoResponse {
+    bytes key = 1;
+    string username = 2;
+    string email = 3;
+}
+
+message GetIdentityRequest {}
+
+message GetIdentityResponse {
+    bytes identity = 1;
+}
+
+enum KeyType {
+    KEY_TYPE_UNSPECIFIED = 0;
+    KEY_TYPE_ACCOUNT = 1;
+    KEY_TYPE_USER = 2;
+}
+
+message KeyInfo {
+    string key = 1;
+    string secret = 2;
+    KeyType type = 3;
+    bool valid = 4;
+    int32 threads = 5;
+    bool secure = 6;
+}
+
+message CreateKeyRequest {
+    KeyType type = 1;
+    bool secure = 2;
+}
+
+message CreateKeyResponse {
+    KeyInfo key_info = 1;
+}
+
+message InvalidateKeyRequest {
+    string key = 1;
+}
+
+message InvalidateKeyResponse {}
+
+message ListKeysRequest {}
+
+message ListKeysResponse {
+    repeated KeyInfo list = 1;
+}
+
+message OrgInfo {
+    bytes key = 1;
+    string name = 2;
+    string slug = 3;
+    string host = 4;
+    repeated Member members = 5;
+    int64 created_at = 6;
+
+    message Member {
+        bytes key = 1;
+        string username = 2;
+        string role = 3;
+    }
+}
+
+message CreateOrgRequest {
+    string name = 1;
+}
+
+message CreateOrgResponse {
+    OrgInfo org_info = 1;
+}
+
+message GetOrgRequest {}
+
+message GetOrgResponse {
+    OrgInfo org_info = 1;
+}
+
+message ListOrgsRequest {}
+
+message ListOrgsResponse {
+    repeated OrgInfo list = 1;
+}
+
+message RemoveOrgRequest {}
+
+message RemoveOrgResponse {}
+
+message InviteToOrgRequest {
+    string email = 1;
+}
+
+message InviteToOrgResponse {
+    string token = 1;
+}
+
+message LeaveOrgRequest {}
+
+message LeaveOrgResponse {}
+
+message SetupBillingRequest {}
+
+message SetupBillingResponse {}
+
+message GetBillingSessionRequest {}
+
+message GetBillingSessionResponse {
+    string url = 1;
+}
+
+message GetBillingInfoRequest {}
+
+//message GetBillingInfoResponse {
+//    string url = 1;
+//}
+
+message IsUsernameAvailableRequest {
+    string username = 1;
+}
+
+message IsUsernameAvailableResponse {}
+
+message IsOrgNameAvailableRequest {
+    string name = 1;
+}
+
+message IsOrgNameAvailableResponse {
+    string slug = 1;
+    string host = 2;
+}
+
+message DestroyAccountRequest {}
+
+message DestroyAccountResponse {}
+
+service APIService {
+    rpc BuildInfo(BuildInfoRequest) returns (BuildInfoResponse) {}
+
+    rpc Signup(SignupRequest) returns (SignupResponse) {}
+    rpc Signin(SigninRequest) returns (SigninResponse) {}
+    rpc Signout(SignoutRequest) returns (SignoutResponse) {}
+
+    rpc GetSessionInfo(GetSessionInfoRequest) returns (GetSessionInfoResponse) {}
+    rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse) {}
+
+    rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+    rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+    rpc InvalidateKey(InvalidateKeyRequest) returns (InvalidateKeyResponse) {}
+
+    rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse) {}
+    rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {}
+    rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse) {}
+    rpc RemoveOrg(RemoveOrgRequest) returns (RemoveOrgResponse) {}
+    rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgResponse) {}
+    rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgResponse) {}
+
+    rpc SetupBilling(SetupBillingRequest) returns (SetupBillingResponse) {}
+    rpc GetBillingSession(GetBillingSessionRequest) returns (GetBillingSessionResponse) {}
+    rpc GetBillingInfo(GetBillingInfoRequest) returns (api.billingd.pb.GetCustomerResponse) {}
+
+    rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableResponse) {}
+    rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}
+
+    rpc DestroyAccount(DestroyAccountRequest) returns (DestroyAccountResponse) {}
+}

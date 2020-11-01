@@ -194,28 +194,22 @@ type Customer struct {
 	Delinquent bool   `bson:"delinquent"`
 	CreatedAt  int64  `bson:"created_at"`
 
-	Period         UsagePeriod              `bson:"period"`
-	StoredData     AggregateStoredDataUsage `bson:"stored_data"`
-	NetworkEgress  AggregateSumUsage        `bson:"network_egress"`
-	InstanceReads  AggregateSumUsage        `bson:"instance_reads"`
-	InstanceWrites AggregateSumUsage        `bson:"instance_writes"`
+	Period         Period `bson:"period"`
+	StoredData     Usage  `bson:"stored_data"`
+	NetworkEgress  Usage  `bson:"network_egress"`
+	InstanceReads  Usage  `bson:"instance_reads"`
+	InstanceWrites Usage  `bson:"instance_writes"`
 }
 
-type UsagePeriod struct {
+type Period struct {
 	Start int64 `bson:"start"`
 	End   int64 `bson:"end"`
 }
 
-type AggregateStoredDataUsage struct {
-	ItemID    string `bson:"item_id"`
-	Units     int64  `bson:"units"`
-	TotalSize int64  `bson:"total_size"`
-}
-
-type AggregateSumUsage struct {
-	ItemID   string `bson:"item_id"`
-	Units    int64  `bson:"units"`
-	SubUnits int64  `bson:"sub_units"`
+type Usage struct {
+	ItemID string `bson:"item_id"`
+	Units  int64  `bson:"units"`
+	Total  int64  `bson:"total"`
 }
 
 func (s *Service) CheckHealth(_ context.Context, _ *pb.CheckHealthRequest) (*pb.CheckHealthResponse, error) {
@@ -268,7 +262,7 @@ func (s *Service) createSubscription(cus *Customer) error {
 		return err
 	}
 	cus.Status = string(sub.Status)
-	cus.Period = UsagePeriod{
+	cus.Period = Period{
 		Start: sub.CurrentPeriodStart,
 		End:   sub.CurrentPeriodEnd,
 	}
@@ -277,11 +271,11 @@ func (s *Service) createSubscription(cus *Customer) error {
 		case s.config.StoredDataPriceID:
 			cus.StoredData.ItemID = item.ID // Retain existing units since this is "last ever" usage
 		case s.config.NetworkEgressPriceID:
-			cus.NetworkEgress = AggregateSumUsage{ItemID: item.ID}
+			cus.NetworkEgress = Usage{ItemID: item.ID}
 		case s.config.InstanceReadsPriceID:
-			cus.InstanceReads = AggregateSumUsage{ItemID: item.ID}
+			cus.InstanceReads = Usage{ItemID: item.ID}
 		case s.config.InstanceWritesPriceID:
-			cus.InstanceWrites = AggregateSumUsage{ItemID: item.ID}
+			cus.InstanceWrites = Usage{ItemID: item.ID}
 		}
 	}
 	return nil
@@ -303,37 +297,33 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	}
 	log.Debugf("got customer %s", doc.ID)
 	return &pb.GetCustomerResponse{
-		Email:      doc.Email,
-		Status:     doc.Status,
-		Balance:    doc.Balance,
-		Billable:   doc.Billable,
-		Delinquent: doc.Delinquent,
-		CreatedAt:  doc.CreatedAt,
-		Period: &pb.UsagePeriod{
-			Start: doc.Period.Start,
-			End:   doc.Period.End,
-		},
-		StoredData: &pb.AggregateStoredDataUsage{
-			Units:     doc.StoredData.Units,
-			TotalSize: doc.StoredData.TotalSize,
-			FreeSize:  (StoredDataFreeUnits * StoredDataUnitSize) - doc.StoredData.TotalSize,
-		},
-		NetworkEgress: &pb.AggregateSumUsage{
-			Units:     doc.NetworkEgress.Units,
-			SubUnits:  doc.NetworkEgress.SubUnits,
-			FreeUnits: NetworkEgressFreeUnits - doc.NetworkEgress.Units,
-		},
-		InstanceReads: &pb.AggregateSumUsage{
-			Units:     doc.InstanceReads.Units,
-			SubUnits:  doc.InstanceReads.SubUnits,
-			FreeUnits: InstanceReadsFreeUnits - doc.InstanceReads.Units,
-		},
-		InstanceWrites: &pb.AggregateSumUsage{
-			Units:     doc.InstanceWrites.Units,
-			SubUnits:  doc.InstanceWrites.SubUnits,
-			FreeUnits: InstanceWritesFreeUnits - doc.InstanceWrites.Units,
-		},
+		Email:          doc.Email,
+		Status:         doc.Status,
+		Balance:        doc.Balance,
+		Billable:       doc.Billable,
+		Delinquent:     doc.Delinquent,
+		CreatedAt:      doc.CreatedAt,
+		Period:         periodToPb(doc.Period),
+		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnits),
+		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnits),
+		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnits),
+		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnits),
 	}, nil
+}
+
+func periodToPb(period Period) *pb.Period {
+	return &pb.Period{
+		Start: period.Start,
+		End:   period.End,
+	}
+}
+
+func usageToPb(usage Usage, unitSize, freeUnits int64) *pb.Usage {
+	return &pb.Usage{
+		Units: usage.Units,
+		Total: usage.Total,
+		Free:  (freeUnits * unitSize) - usage.Total,
+	}
 }
 
 func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessionRequest) (
@@ -477,38 +467,48 @@ func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataReques
 	if err := common.StatusCheck(doc.Status); err != nil {
 		return nil, err
 	}
-	usage, err := s.handleAggregateStoredDataUsage(ctx, doc.ID, doc.StoredData, req.IncSize, doc.Billable)
+	usage, err := s.handleUsage(
+		ctx,
+		doc.ID,
+		doc.StoredData,
+		"stored_data",
+		req.IncSize,
+		StoredDataUnitSize,
+		StoredDataFreeUnits,
+		doc.Billable,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Debugf(
-		"%s period data: units=%d total_size=%d free_size=%d",
+		"%s period data: units=%d total=%d free=%d",
 		req.CustomerId,
 		usage.Units,
-		usage.TotalSize,
-		usage.FreeSize,
+		usage.Total,
+		usage.Free,
 	)
 	return &pb.IncStoredDataResponse{
-		Period:     periodFromPb(doc.Period),
+		Period:     periodToPb(doc.Period),
 		StoredData: usage,
 	}, nil
 }
 
-func (s *Service) handleAggregateStoredDataUsage(
+func (s *Service) handleUsage(
 	ctx context.Context,
 	customerID string,
-	usage AggregateStoredDataUsage,
-	inc int64,
+	usage Usage,
+	key string,
+	inc, unitSize, freeUnits int64,
 	billable bool,
-) (*pb.AggregateStoredDataUsage, error) {
-	totalSize := usage.TotalSize + inc
-	if totalSize < 0 {
-		totalSize = 0
+) (*pb.Usage, error) {
+	total := usage.Total + inc
+	if total < 0 {
+		total = 0
 	}
-	update := bson.M{"stored_data.total_size": totalSize}
-	units := int64(math.Round(float64(totalSize) / float64(StoredDataUnitSize)))
-	if units > StoredDataFreeUnits && !billable {
+	update := bson.M{key + ".total": total}
+	units := int64(math.Round(float64(total) / float64(unitSize)))
+	if units > freeUnits && !billable {
 		return nil, common.ErrExceedsFreeUnits
 	}
 	if units != usage.Units {
@@ -520,15 +520,15 @@ func (s *Service) handleAggregateStoredDataUsage(
 		}); err != nil {
 			return nil, err
 		}
-		update["stored_data.units"] = units
+		update[key+".units"] = units
 	}
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
-	return &pb.AggregateStoredDataUsage{
-		Units:     units,
-		TotalSize: totalSize,
-		FreeSize:  (StoredDataFreeUnits * StoredDataUnitSize) - totalSize,
+	return &pb.Usage{
+		Units: units,
+		Total: total,
+		Free:  (freeUnits * unitSize) - total,
 	}, nil
 }
 
@@ -549,7 +549,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 	if err := common.StatusCheck(doc.Status); err != nil {
 		return nil, err
 	}
-	usage, err := s.handleAggregateSumUsage(
+	usage, err := s.handleUsage(
 		ctx,
 		doc.ID,
 		doc.NetworkEgress,
@@ -563,14 +563,14 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 		return nil, err
 	}
 
-	log.Debugf("%s period egress: units=%d sub_units=%d free_units=%d",
+	log.Debugf("%s period egress: units=%d total=%d free=%d",
 		req.CustomerId,
 		usage.Units,
-		usage.SubUnits,
-		usage.FreeUnits,
+		usage.Total,
+		usage.Free,
 	)
 	res := &pb.IncNetworkEgressResponse{
-		Period:        periodFromPb(doc.Period),
+		Period:        periodToPb(doc.Period),
 		NetworkEgress: usage,
 	}
 	return res, nil
@@ -593,7 +593,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 	if err := common.StatusCheck(doc.Status); err != nil {
 		return nil, err
 	}
-	usage, err := s.handleAggregateSumUsage(
+	usage, err := s.handleUsage(
 		ctx,
 		doc.ID,
 		doc.InstanceReads,
@@ -608,14 +608,14 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 	}
 
 	log.Debugf(
-		"%s period reads: units=%d sub_units=%d free_units=%d",
+		"%s period reads: units=%d total=%d free=%d",
 		req.CustomerId,
 		usage.Units,
-		usage.SubUnits,
-		usage.FreeUnits,
+		usage.Total,
+		usage.Free,
 	)
 	return &pb.IncInstanceReadsResponse{
-		Period:        periodFromPb(doc.Period),
+		Period:        periodToPb(doc.Period),
 		InstanceReads: usage,
 	}, nil
 }
@@ -637,7 +637,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 	if err := common.StatusCheck(doc.Status); err != nil {
 		return nil, err
 	}
-	usage, err := s.handleAggregateSumUsage(
+	usage, err := s.handleUsage(
 		ctx,
 		doc.ID,
 		doc.InstanceWrites,
@@ -652,54 +652,15 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 	}
 
 	log.Debugf(
-		"%s period writes: units=%d sub_units=%d free_units=%d",
+		"%s period writes: units=%d total=%d free=%d",
 		req.CustomerId,
 		usage.Units,
-		usage.SubUnits,
-		usage.FreeUnits,
+		usage.Total,
+		usage.Free,
 	)
 	return &pb.IncInstanceWritesResponse{
-		Period:         periodFromPb(doc.Period),
+		Period:         periodToPb(doc.Period),
 		InstanceWrites: usage,
-	}, nil
-}
-
-func (s *Service) handleAggregateSumUsage(
-	ctx context.Context,
-	customerID string,
-	usage AggregateSumUsage,
-	key string,
-	inc, unitSize, freeUnits int64,
-	billable bool,
-) (*pb.AggregateSumUsage, error) {
-	units := usage.Units
-	subUnits := usage.SubUnits + inc
-	update := bson.M{key + ".sub_units": subUnits}
-	if subUnits >= unitSize {
-		units += subUnits / unitSize
-		if units > freeUnits && !billable {
-			return nil, common.ErrExceedsFreeUnits
-		}
-		_, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-			SubscriptionItem: stripe.String(usage.ItemID),
-			Quantity:         stripe.Int64(units),
-			Timestamp:        stripe.Int64(time.Now().Unix()),
-			Action:           stripe.String(stripe.UsageRecordActionSet),
-		})
-		if err != nil {
-			return nil, err
-		}
-		update[key+".units"] = units
-		subUnits = subUnits % unitSize
-		update[key+".sub_units"] = subUnits
-	}
-	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
-		return nil, err
-	}
-	return &pb.AggregateSumUsage{
-		Units:     units,
-		SubUnits:  subUnits,
-		FreeUnits: freeUnits - units,
 	}, nil
 }
 
@@ -719,11 +680,4 @@ func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary,
 		return sum, nil
 	}
 	return nil, fmt.Errorf("subscription item %s not found", id)
-}
-
-func periodFromPb(period UsagePeriod) *pb.UsagePeriod {
-	return &pb.UsagePeriod{
-		Start: period.Start,
-		End:   period.End,
-	}
 }

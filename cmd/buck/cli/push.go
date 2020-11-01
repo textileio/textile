@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -11,11 +10,6 @@ import (
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/uiprogress"
-)
-
-var (
-	buckMaxSizeMiB = int64(1024)
-	MiB            = int64(1024 * 1024)
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
@@ -32,21 +26,10 @@ var pushCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
-		maxSize, err := c.Flags().GetInt64("maxsize")
-		if err != nil {
-			cmd.Fatal(err)
-		}
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PushTimeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-
-		// Check total bucket size limit.
-		size, err := buck.LocalSize()
-		cmd.ErrCheck(err)
-		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/MiB, maxSize))
-		}
 
 		var events chan local.PathEvent
 		var progress *uiprogress.Progress

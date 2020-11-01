@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/v2/api/buckets/client"
+	"github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/cmd"

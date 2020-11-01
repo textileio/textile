@@ -9,7 +9,7 @@ import (
 	ffsRpc "github.com/textileio/powergate/ffs/rpc"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
-	hc "github.com/textileio/textile/v2/api/hub/client"
+	hc "github.com/textileio/textile/v2/api/hubd/client"
 	pc "github.com/textileio/textile/v2/api/pow/client"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
