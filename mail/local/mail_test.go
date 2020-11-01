@@ -16,7 +16,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
-	hubpb "github.com/textileio/textile/v2/api/hub/pb"
+	hubpb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/cmd"
 	. "github.com/textileio/textile/v2/mail/local"
 )
