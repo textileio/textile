@@ -151,9 +151,9 @@ message GetBillingSessionResponse {
 
 message GetBillingInfoRequest {}
 
-//message GetBillingInfoResponse {
-//    string url = 1;
-//}
+message GetBillingInfoResponse {
+    api.billingd.pb.GetCustomerResponse customer = 1;
+}
 
 message IsUsernameAvailableRequest {
     string username = 1;
@@ -197,7 +197,7 @@ service APIService {
 
     rpc SetupBilling(SetupBillingRequest) returns (SetupBillingResponse) {}
     rpc GetBillingSession(GetBillingSessionRequest) returns (GetBillingSessionResponse) {}
-    rpc GetBillingInfo(GetBillingInfoRequest) returns (api.billingd.pb.GetCustomerResponse) {}
+    rpc GetBillingInfo(GetBillingInfoRequest) returns (GetBillingInfoResponse) {}
 
     rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableResponse) {}
     rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}

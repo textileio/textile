@@ -46,7 +46,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		AddrIPFSAPI:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
 		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		AddrMongoURI:    "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		AddrMongoURI:    "mongodb://127.0.0.1:27017",
 
 		MongoName: util.MakeToken(12),
 

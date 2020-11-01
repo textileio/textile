@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 
-	billingdpb "github.com/textileio/textile/v2/api/billingd/pb"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"google.golang.org/grpc"
 )
@@ -136,7 +135,7 @@ func (c *Client) GetBillingSession(ctx context.Context) (*pb.GetBillingSessionRe
 }
 
 // GetBillingInfo returns current billing and usage information.
-func (c *Client) GetBillingInfo(ctx context.Context) (*billingdpb.GetCustomerResponse, error) {
+func (c *Client) GetBillingInfo(ctx context.Context) (*pb.GetBillingInfoResponse, error) {
 	return c.c.GetBillingInfo(ctx, &pb.GetBillingInfoRequest{})
 }
 

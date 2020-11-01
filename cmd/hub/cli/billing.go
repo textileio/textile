@@ -62,14 +62,14 @@ var billingStatusCmd = &cobra.Command{
 		info, err := clients.Hub.GetBillingInfo(ctx)
 		cmd.ErrCheck(err)
 
-		cmd.Message("Subscription status: %s", aurora.White(info.Status).Bold())
+		cmd.Message("Subscription status: %s", aurora.White(info.Customer.Status).Bold())
 		cmd.RenderTable(
 			[]string{"", "usage", "free", "start", "end"},
 			[][]string{
-				getUsageRow("Stored data (bytes)", info.StoredData, info.Period),
-				getUsageRow("Network egress (bytes)", info.NetworkEgress, info.Period),
-				getUsageRow("ThreadDB reads", info.InstanceReads, info.Period),
-				getUsageRow("ThreadDB writes", info.InstanceWrites, info.Period),
+				getUsageRow("Stored data (bytes)", info.Customer.StoredData, info.Customer.Period),
+				getUsageRow("Network egress (bytes)", info.Customer.NetworkEgress, info.Customer.Period),
+				getUsageRow("ThreadDB reads", info.Customer.InstanceReads, info.Customer.Period),
+				getUsageRow("ThreadDB writes", info.Customer.InstanceWrites, info.Customer.Period),
 			},
 		)
 	},

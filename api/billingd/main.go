@@ -39,7 +39,7 @@ var (
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+				DefValue: "mongodb://127.0.0.1:27017",
 			},
 			"addrMongoName": {
 				Key:      "addr.mongo_name",

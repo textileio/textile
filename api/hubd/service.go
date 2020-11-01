@@ -17,7 +17,6 @@ import (
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/api/client"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
-	billingdpb "github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/buckets"
@@ -571,14 +570,20 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
-func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoRequest) (*billingdpb.GetCustomerResponse, error) {
+func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoRequest) (*pb.GetBillingInfoResponse, error) {
 	log.Debugf("received get billing info request")
 
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
 	account := accountFromContext(ctx)
-	return s.BillingClient.GetCustomer(ctx, account.CustomerID)
+	customer, err := s.BillingClient.GetCustomer(ctx, account.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetBillingInfoResponse{
+		Customer: customer,
+	}, nil
 }
 
 func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {

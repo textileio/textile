@@ -407,7 +407,7 @@ func TestClient_GetBillingInfo(t *testing.T) {
 	t.Run("with session", func(t *testing.T) {
 		res, err := client.GetBillingInfo(common.NewSessionContext(ctx, user.Session))
 		require.NoError(t, err)
-		assert.NotEmpty(t, res)
+		assert.NotEmpty(t, res.Customer)
 	})
 }
 
@@ -514,7 +514,7 @@ func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 		StripeAPIURL:           "https://api.stripe.com",
 		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		DBURI:           "mongodb://127.0.0.1:27017/?replicaSet=rs0",
+		DBURI:           "mongodb://127.0.0.1:27017",
 		DBName:          util.MakeToken(8),
 		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
 		Debug:           true,
