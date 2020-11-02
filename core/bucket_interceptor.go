@@ -30,19 +30,19 @@ func (t *Textile) bucketInterceptor() grpc.StreamServerInterceptor {
 		if err != nil {
 			return err
 		}
-		if info.FullMethod != "/api.hub.pb.APIService/GetBillingSession" {
+		if info.FullMethod != "/api.hubd.pb.APIService/GetBillingSession" {
 			if err := common.StatusCheck(cus.Status); err != nil {
 				return status.Error(codes.FailedPrecondition, err.Error())
 			}
 		}
 		var newCtx context.Context
 		switch info.FullMethod {
-		case "/api.buckets.pb.APIService/Create",
-			"/api.buckets.pb.APIService/PushPath",
-			"/api.buckets.pb.APIService/SetPath",
-			"/api.buckets.pb.APIService/Remove",
-			"/api.buckets.pb.APIService/RemovePath",
-			"/api.buckets.pb.APIService/PushPathAccessRoles":
+		case "/api.bucketsd.pb.APIService/Create",
+			"/api.bucketsd.pb.APIService/PushPath",
+			"/api.bucketsd.pb.APIService/SetPath",
+			"/api.bucketsd.pb.APIService/Remove",
+			"/api.bucketsd.pb.APIService/RemovePath",
+			"/api.bucketsd.pb.APIService/PushPathAccessRoles":
 			owner := &buckets.BucketOwner{
 				StorageUsed: cus.StoredData.Total,
 			}

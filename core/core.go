@@ -61,9 +61,9 @@ var (
 
 	// ignoreMethods are not intercepted by the auth.
 	ignoreMethods = []string{
-		"/api.hub.pb.APIService/Signup",
-		"/api.hub.pb.APIService/Signin",
-		"/api.hub.pb.APIService/IsUsernameAvailable",
+		"/api.hubd.pb.APIService/Signup",
+		"/api.hubd.pb.APIService/Signin",
+		"/api.hubd.pb.APIService/IsUsernameAvailable",
 	}
 
 	// blockMethods are always blocked by auth.
@@ -108,15 +108,15 @@ var (
 		"/threads.pb.API/ReadTransaction",
 		"/threads.pb.API/WriteTransaction",
 		"/threads.pb.API/Listen",
-		"/api.buckets.pb.APIService/Root",
-		"/api.buckets.pb.APIService/Links",
-		"/api.buckets.pb.APIService/ListPath",
-		"/api.buckets.pb.APIService/PushPath",
-		"/api.buckets.pb.APIService/PullPath",
-		"/api.buckets.pb.APIService/SetPath",
-		"/api.buckets.pb.APIService/RemovePath",
-		"/api.buckets.pb.APIService/PullPathAccessRoles",
-		"/api.buckets.pb.APIService/PushPathAccessRoles",
+		"/api.bucketsd.pb.APIService/Root",
+		"/api.bucketsd.pb.APIService/Links",
+		"/api.bucketsd.pb.APIService/ListPath",
+		"/api.bucketsd.pb.APIService/PushPath",
+		"/api.bucketsd.pb.APIService/PullPath",
+		"/api.bucketsd.pb.APIService/SetPath",
+		"/api.bucketsd.pb.APIService/RemovePath",
+		"/api.bucketsd.pb.APIService/PullPathAccessRoles",
+		"/api.bucketsd.pb.APIService/PushPathAccessRoles",
 	}
 )
 

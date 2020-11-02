@@ -1302,6 +1302,12 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
+	storageAvailable := int64(-1)
+	owner, ok := buckets.BucketOwnerFromContext(server.Context())
+	if ok {
+		storageAvailable = owner.StorageAvailable
+	}
+
 	req, err := server.Recv()
 	if err != nil {
 		return err
@@ -1380,10 +1386,9 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	if err != nil {
 		return fmt.Errorf("get stat of current bucket: %s", err)
 	}
-	currentSize := int64(stat.CumulativeSize)
 	reader, writer := io.Pipe()
 	go func() {
-		var cummSize int64
+		cummSize := int64(stat.CumulativeSize)
 		for {
 			req, err := server.Recv()
 			if err == io.EOF {
@@ -1403,8 +1408,12 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 					return
 				}
 				cummSize += int64(n)
-				if s.MaxBucketSize > 0 && currentSize+cummSize > s.MaxBucketSize {
+				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
 					sendErr(ErrMaxBucketSizeExceeded)
+					_ = writer.CloseWithError(err)
+					return
+				} else if storageAvailable > 0 && cummSize > storageAvailable {
+					sendErr(ErrStorageQuotaSizeExceeded)
 					_ = writer.CloseWithError(err)
 					return
 				}

@@ -166,6 +166,11 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 }
 
 func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	for _, ignored := range ignoreMethods {
+		if info.FullMethodName == ignored {
+			return ctx
+		}
+	}
 	ctx, _ = h.t.newAuthCtx(ctx, info.FullMethodName, false)
 	return ctx
 }
