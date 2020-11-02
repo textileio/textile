@@ -28,15 +28,35 @@ const (
 	mib = 1024 * 1024
 	gib = 1024 * mib
 
-	StoredDataUnitSize     = 5 * gib / 100
-	NetworkEgressUnitSize  = 10 * gib / 100
-	InstanceReadsUnitSize  = 10000
+	// BillingInterval for subscription invoices.
+	BillingInterval = 30
+
+	// StoredDataUnitSize in bytes.
+	StoredDataUnitSize = 5 * gib / 100
+	// NetworkEgressUnitSize in bytes.
+	NetworkEgressUnitSize = 10 * gib / 100
+	// InstanceReadsUnitSize in bytes.
+	InstanceReadsUnitSize = 10000
+	// InstanceWritesUnitSize in bytes.
 	InstanceWritesUnitSize = 5000
 
-	StoredDataFreeUnits     = 100                               // 5 Gib
-	NetworkEgressFreeUnits  = 500 * mib / NetworkEgressUnitSize // 500 Mib per day
-	InstanceReadsFreeUnits  = 1                                 // 10,000 per day
-	InstanceWritesFreeUnits = 1                                 // 5,000 per day
+	// StoredDataUnitCost in cents.
+	StoredDataUnitCost = 1
+	// NetworkEgressUnitCost in cents.
+	NetworkEgressUnitCost = 1
+	// InstanceReadsUnitCost in cents.
+	InstanceReadsUnitCost = 1
+	// InstanceWritesUnitCost in cents.
+	InstanceWritesUnitCost = 1
+
+	// StoredDataFreeUnits after which payment is required (5 Gib).
+	StoredDataFreeUnits = 100
+	// NetworkEgressFreeUnits after which payment is required (500 Mib per day).
+	NetworkEgressFreeUnits = 500 * mib / NetworkEgressUnitSize
+	// InstanceReadsFreeUnits after which payment is required (10,000 per day).
+	InstanceReadsFreeUnits = 1
+	// InstanceWritesFreeUnits after which payment is required (5,000 per day).
+	InstanceWritesFreeUnits = 1
 )
 
 var log = logging.Logger("billing")
@@ -129,19 +149,19 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 	}
 
 	if createPrices {
-		s.config.StoredDataPriceID, err = createStoredData(sc)
+		s.config.StoredDataPriceID, err = s.createStoredData(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.NetworkEgressPriceID, err = createNetworkEgress(sc)
+		s.config.NetworkEgressPriceID, err = s.createNetworkEgress(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceReadsPriceID, err = createInstanceReads(sc)
+		s.config.InstanceReadsPriceID, err = s.createInstanceReads(sc)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceWritesPriceID, err = createInstanceWrites(sc)
+		s.config.InstanceWritesPriceID, err = s.createInstanceWrites(sc)
 		if err != nil {
 			return nil, err
 		}

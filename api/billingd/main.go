@@ -140,7 +140,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"stripeSessionReturnUrl",
 		config.Flags["stripeSessionReturnUrl"].DefValue.(string),
-		"Stripe portal sessoin return URL")
+		"Stripe portal session return URL")
 	rootCmd.PersistentFlags().String(
 		"stripeWebhookSecret",
 		config.Flags["stripeWebhookSecret"].DefValue.(string),

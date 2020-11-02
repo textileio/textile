@@ -5,7 +5,7 @@ import (
 	stripec "github.com/stripe/stripe-go/v72/client"
 )
 
-func createStoredData(client *stripec.API) (string, error) {
+func (s *Service) createStoredData(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Data Storage"),
 		UnitLabel: stripe.String("51.2 MiB"),
@@ -19,17 +19,17 @@ func createStoredData(client *stripec.API) (string, error) {
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageLastEver)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
-			IntervalCount:  stripe.Int64(30),
+			IntervalCount:  stripe.Int64(BillingInterval),
 			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(100),
+				UpTo:       stripe.Int64(StoredDataFreeUnits),
 				UnitAmount: stripe.Int64(0),
 			},
 			{
 				UpToInf:    stripe.Bool(true),
-				UnitAmount: stripe.Int64(1),
+				UnitAmount: stripe.Int64(StoredDataUnitCost),
 			},
 		},
 		TiersMode:     stripe.String(string(stripe.PriceTiersModeGraduated)),
@@ -41,7 +41,7 @@ func createStoredData(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func createNetworkEgress(client *stripec.API) (string, error) {
+func (s *Service) createNetworkEgress(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("Network Egress"),
 		UnitLabel: stripe.String("102.4 MiB"),
@@ -55,17 +55,17 @@ func createNetworkEgress(client *stripec.API) (string, error) {
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
-			IntervalCount:  stripe.Int64(30),
+			IntervalCount:  stripe.Int64(BillingInterval),
 			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(4),
+				UpTo:       stripe.Int64(NetworkEgressFreeUnits),
 				UnitAmount: stripe.Int64(0),
 			},
 			{
 				UpToInf:    stripe.Bool(true),
-				UnitAmount: stripe.Int64(1),
+				UnitAmount: stripe.Int64(NetworkEgressUnitCost),
 			},
 		},
 		TiersMode:     stripe.String(string(stripe.PriceTiersModeGraduated)),
@@ -77,7 +77,7 @@ func createNetworkEgress(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func createInstanceReads(client *stripec.API) (string, error) {
+func (s *Service) createInstanceReads(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("ThreadDB Reads"),
 		UnitLabel: stripe.String("10,000"),
@@ -91,17 +91,17 @@ func createInstanceReads(client *stripec.API) (string, error) {
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
-			IntervalCount:  stripe.Int64(30),
+			IntervalCount:  stripe.Int64(BillingInterval),
 			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(1),
+				UpTo:       stripe.Int64(InstanceReadsFreeUnits),
 				UnitAmount: stripe.Int64(0),
 			},
 			{
 				UpToInf:    stripe.Bool(true),
-				UnitAmount: stripe.Int64(1),
+				UnitAmount: stripe.Int64(InstanceReadsUnitCost),
 			},
 		},
 		TiersMode:     stripe.String(string(stripe.PriceTiersModeGraduated)),
@@ -113,7 +113,7 @@ func createInstanceReads(client *stripec.API) (string, error) {
 	return price.ID, nil
 }
 
-func createInstanceWrites(client *stripec.API) (string, error) {
+func (s *Service) createInstanceWrites(client *stripec.API) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name:      stripe.String("ThreadDB Writes"),
 		UnitLabel: stripe.String("5,000"),
@@ -127,17 +127,17 @@ func createInstanceWrites(client *stripec.API) (string, error) {
 		Recurring: &stripe.PriceRecurringParams{
 			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(stripe.PriceRecurringIntervalDay)),
-			IntervalCount:  stripe.Int64(30),
+			IntervalCount:  stripe.Int64(BillingInterval),
 			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
 		},
 		Tiers: []*stripe.PriceTierParams{
 			{
-				UpTo:       stripe.Int64(1),
+				UpTo:       stripe.Int64(InstanceWritesFreeUnits),
 				UnitAmount: stripe.Int64(0),
 			},
 			{
 				UpToInf:    stripe.Bool(true),
-				UnitAmount: stripe.Int64(1),
+				UnitAmount: stripe.Int64(InstanceWritesUnitCost),
 			},
 		},
 		TiersMode:     stripe.String(string(stripe.PriceTiersModeGraduated)),
