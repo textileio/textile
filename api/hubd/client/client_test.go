@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -369,7 +370,11 @@ func TestClient_SetupBilling(t *testing.T) {
 
 	t.Run("with session", func(t *testing.T) {
 		err := client.SetupBilling(common.NewSessionContext(ctx, user.Session))
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.True(t, strings.Contains(err.Error(), "subscription exists"))
+		// Note: There's no way API for canceling the subscription since users
+		// will do that via the Stripe customer portal. So, for now we're not able
+		// to have a test for re-enabling billing after they cancel.
 	})
 }
 
