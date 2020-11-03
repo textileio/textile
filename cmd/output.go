@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/textileio/textile/v2/api/bucketsd"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
 	"github.com/textileio/textile/v2/api/billingd/common"
@@ -47,12 +49,14 @@ func Error(err error, args ...interface{}) {
 	words := strings.SplitN(msg, " ", 2)
 	words[0] = strings.Title(words[0])
 	msg = strings.Join(words, " ")
-	if strings.Contains(msg, common.ErrExceedsFreeUnits.Error()) {
+	if strings.Contains(msg, common.ErrExceedsFreeUnits.Error()) ||
+		strings.Contains(strings.ToLower(msg), bucketsd.ErrStorageQuotaExhausted.Error()) {
 		fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s %s"),
 			aurora.Sprintf(aurora.BrightBlack(msg), args...),
 			aurora.Sprintf(aurora.BrightBlack("(Use `%s` to add a payment method)"),
 				aurora.Cyan("hub billing portal"))))
 	} else {
+		fmt.Println(msg)
 		fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
 			aurora.Sprintf(aurora.BrightBlack(msg), args...)))
 	}

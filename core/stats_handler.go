@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"time"
 
 	tpb "github.com/textileio/go-threads/api/pb"
 	hpb "github.com/textileio/textile/v2/api/hubd/pb"
@@ -14,6 +15,8 @@ type StatsHandler struct {
 }
 
 var _ stats.Handler = (*StatsHandler)(nil)
+
+var incTimeout = time.Second * 10
 
 // HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
@@ -124,17 +127,19 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 
 		// Record usage
 		go func() {
+			incCtx, cancel := context.WithTimeout(context.Background(), incTimeout)
+			defer cancel()
 			if recordEgress {
-				if _, err := h.t.bc.IncNetworkEgress(ctx, account.CustomerID, int64(st.WireLength)); err != nil {
+				if _, err := h.t.bc.IncNetworkEgress(incCtx, account.CustomerID, int64(st.WireLength)); err != nil {
 					log.Errorf("stats: inc network egress: %v", err)
 				}
 			}
 			if reads > 0 {
-				if _, err := h.t.bc.IncInstanceReads(ctx, account.CustomerID, reads); err != nil {
+				if _, err := h.t.bc.IncInstanceReads(incCtx, account.CustomerID, reads); err != nil {
 					log.Errorf("stats: inc instance reads: %v", err)
 				}
 			} else if writes > 0 {
-				if _, err := h.t.bc.IncInstanceWrites(ctx, account.CustomerID, writes); err != nil {
+				if _, err := h.t.bc.IncInstanceWrites(incCtx, account.CustomerID, writes); err != nil {
 					log.Errorf("stats: inc instance writes: %v", err)
 				}
 			}

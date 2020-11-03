@@ -68,6 +68,8 @@ var (
 
 	// usageIgnoredMethods are not intercepted by the usage interceptor.
 	usageIgnoredMethods = []string{
+		"/api.hubd.pb.APIService/Signout",
+		"/api.hubd.pb.APIService/DestroyAccount",
 		"/api.hubd.pb.APIService/SetupBilling",
 		"/api.hubd.pb.APIService/GetBillingSession",
 		"/api.hubd.pb.APIService/GetBillingInfo",

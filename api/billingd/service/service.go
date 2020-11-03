@@ -47,7 +47,7 @@ const (
 	InstanceWritesUnitCost = 1
 
 	// StoredDataFreeUnits after which payment is required (5 Gib).
-	StoredDataFreeUnits = 100
+	StoredDataFreeUnits = 1
 	// NetworkEgressFreeUnits after which payment is required (500 Mib per day).
 	NetworkEgressFreeUnits = 500 * mib / NetworkEgressUnitSize
 	// InstanceReadsFreeUnits after which payment is required (10,000 per day).

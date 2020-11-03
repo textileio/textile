@@ -101,10 +101,7 @@ message PushPathRequest {
 }
 
 message PushPathResponse {
-    oneof payload {
-        Event event = 1;
-        string error = 2;
-    }
+    Event event = 1;
 
     message Event {
         string name = 1;

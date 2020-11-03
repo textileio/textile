@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/gogo/status"
@@ -151,35 +150,33 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 				waitCh <- pushPathResult{err: err}
 				return
 			}
-			switch payload := rep.Payload.(type) {
-			case *pb.PushPathResponse_Event_:
-				if payload.Event.Path != "" {
-					id, err := cid.Parse(payload.Event.Path)
-					if err != nil {
-						waitCh <- pushPathResult{err: err}
-						return
-					}
-					r, err := util.NewResolvedPath(payload.Event.Root.Path)
-					if err != nil {
-						waitCh <- pushPathResult{err: err}
-						return
-					}
-					waitCh <- pushPathResult{
-						path: path.IpfsPath(id),
-						root: r,
-					}
-				} else if args.progress != nil {
-					args.progress <- payload.Event.Bytes
+			if rep.Event.Path != "" {
+				id, err := cid.Parse(rep.Event.Path)
+				if err != nil {
+					waitCh <- pushPathResult{err: err}
+					return
 				}
-			case *pb.PushPathResponse_Error:
-				waitCh <- pushPathResult{err: fmt.Errorf(payload.Error)}
-				return
-			default:
-				waitCh <- pushPathResult{err: fmt.Errorf("invalid reply")}
-				return
+				r, err := util.NewResolvedPath(rep.Event.Root.Path)
+				if err != nil {
+					waitCh <- pushPathResult{err: err}
+					return
+				}
+				waitCh <- pushPathResult{
+					path: path.IpfsPath(id),
+					root: r,
+				}
+			} else if args.progress != nil {
+				args.progress <- rep.Event.Bytes
 			}
 		}
 	}()
+
+	end := func(err error) error {
+		if err := stream.CloseSend(); err != nil {
+			return err
+		}
+		return err
+	}
 
 	buf := make([]byte, chunkSize)
 	for {
@@ -192,18 +189,15 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 			}); err == io.EOF {
 				break
 			} else if err != nil {
-				_ = stream.CloseSend()
-				return nil, nil, err
+				return nil, nil, end(err)
 			}
-		}
-		if err == io.EOF {
+		} else if err == io.EOF {
 			break
 		} else if err != nil {
-			_ = stream.CloseSend()
-			return nil, nil, err
+			return nil, nil, end(err)
 		}
 	}
-	if err = stream.CloseSend(); err != nil {
+	if err := end(nil); err != nil {
 		return nil, nil, err
 	}
 	res := <-waitCh

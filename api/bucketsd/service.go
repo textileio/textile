@@ -53,8 +53,8 @@ var (
 	// ErrMaxBucketSizeExceeded indicates the requested operation exceeds the max bucket size.
 	ErrMaxBucketSizeExceeded = errors.New("max bucket size exceeded")
 
-	// ErrStorageQuotaSizeExceeded indicates the requested operation exceeds a storage allowance.
-	ErrStorageQuotaSizeExceeded = errors.New("storage quota size exceeded")
+	// ErrStorageQuotaExhausted indicates the requested operation exceeds the storage allowance.
+	ErrStorageQuotaExhausted = errors.New("storage quota exhausted")
 
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
@@ -397,7 +397,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok && owner.StorageAvailable != -1 {
 		if totalAddedSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaSizeExceeded
+			return ctx, ErrStorageQuotaExhausted
 		}
 	}
 
@@ -448,7 +448,7 @@ func (s *Service) createBootstrappedPath(
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok && owner.StorageAvailable != -1 {
 		if int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
-			return ctx, nil, ErrStorageQuotaSizeExceeded
+			return ctx, nil, ErrStorageQuotaExhausted
 		}
 	}
 
@@ -1365,24 +1365,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		return err
 	}
 
-	sendEvent := func(event *pb.PushPathResponse_Event) error {
-		return server.Send(&pb.PushPathResponse{
-			Payload: &pb.PushPathResponse_Event_{
-				Event: event,
-			},
-		})
-	}
-
-	sendErr := func(err error) {
-		if err2 := server.Send(&pb.PushPathResponse{
-			Payload: &pb.PushPathResponse_Error{
-				Error: err.Error(),
-			},
-		}); err2 != nil {
-			log.Errorf("error sending error: %v (%v)", err, err2)
-		}
-	}
-
 	buckPath := path.New(buck.Path)
 	stat, err := s.IPFSClient.Object().Stat(server.Context(), buckPath)
 	if err != nil {
@@ -1390,6 +1372,10 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}
 	reader, writer := io.Pipe()
 	var writerErr error
+	assignErr := func(err error) {
+		writerErr = err
+		_ = writer.CloseWithError(err)
+	}
 	go func() {
 		cummSize := int64(stat.CumulativeSize)
 		for {
@@ -1398,36 +1384,26 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 				_ = writer.Close()
 				return
 			} else if err != nil {
-				sendErr(fmt.Errorf("error on receive: %v", err))
-				_ = writer.CloseWithError(err)
-				writerErr = err
+				assignErr(fmt.Errorf("error on receive: %v", err))
 				return
 			}
 			switch payload := req.Payload.(type) {
 			case *pb.PushPathRequest_Chunk:
 				n, err := writer.Write(payload.Chunk)
 				if err != nil {
-					sendErr(fmt.Errorf("error writing chunk: %v", err))
-					_ = writer.CloseWithError(err)
-					writerErr = err
+					assignErr(fmt.Errorf("error writing chunk: %v", err))
 					return
 				}
 				cummSize += int64(n)
 				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
-					sendErr(ErrMaxBucketSizeExceeded)
-					_ = writer.CloseWithError(err)
-					writerErr = err
+					assignErr(ErrMaxBucketSizeExceeded)
 					return
 				} else if storageAvailable > 0 && cummSize > storageAvailable {
-					sendErr(ErrStorageQuotaSizeExceeded)
-					_ = writer.CloseWithError(err)
-					writerErr = err
+					assignErr(ErrStorageQuotaExhausted)
 					return
 				}
 			default:
-				sendErr(fmt.Errorf("invalid request"))
-				_ = writer.CloseWithError(err)
-				writerErr = err
+				assignErr(fmt.Errorf("invalid request"))
 				return
 			}
 		}
@@ -1444,9 +1420,11 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 				continue
 			}
 			if event.Path == nil { // This is a progress event
-				if err := sendEvent(&pb.PushPathResponse_Event{
-					Name:  event.Name,
-					Bytes: event.Bytes,
+				if err := server.Send(&pb.PushPathResponse{
+					Event: &pb.PushPathResponse_Event{
+						Name:  event.Name,
+						Bytes: event.Bytes,
+					},
 				}); err != nil {
 					log.Errorf("error sending event: %v", err)
 				}
@@ -1465,7 +1443,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	} else {
 		r = reader
 	}
-
 	newPath, err := s.IPFSClient.Unixfs().Add(
 		server.Context(),
 		ipfsfiles.NewReaderFile(r),
@@ -1474,11 +1451,11 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		options.Unixfs.Progress(true),
 		options.Unixfs.Events(eventCh),
 	)
-	if err != nil {
-		return err
-	}
 	if writerErr != nil {
 		return writerErr
+	}
+	if err != nil {
+		return err
 	}
 	fn, err := s.IPFSClient.ResolveNode(server.Context(), newPath)
 	if err != nil {
@@ -1519,11 +1496,13 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	if err != nil {
 		return err
 	}
-	if err = sendEvent(&pb.PushPathResponse_Event{
-		Path:   newPath.String(),
-		Size:   size,
-		Root:   pbroot,
-		Pinned: s.getPinnedBytes(ctx),
+	if err = server.Send(&pb.PushPathResponse{
+		Event: &pb.PushPathResponse_Event{
+			Path:   newPath.String(),
+			Size:   size,
+			Root:   pbroot,
+			Pinned: s.getPinnedBytes(ctx),
+		},
 	}); err != nil {
 		return err
 	}
@@ -1737,7 +1716,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok && owner.StorageAvailable != -1 {
 		if deltaSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaSizeExceeded
+			return ctx, ErrStorageQuotaExhausted
 		}
 	}
 
