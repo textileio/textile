@@ -5,7 +5,6 @@ build:
     - api/bucketsd/pb/javascript
     - api/hubd/pb/javascript
     - api/usersd/pb/javascript
-    - api/billingd/pb/javascript
 lint:
   use:
     - DEFAULT

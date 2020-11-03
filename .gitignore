@@ -16,8 +16,6 @@ vendor/
 
 # JS
 node_modules/
-**/javascript/*.js
-**/javascript/*.d.ts
 
 # IDEs
 .idea/
@@ -31,3 +29,4 @@ node_modules/
 buildtools/protoc
 buildtools/protoc-gen-go
 build/
+**/javascript/api

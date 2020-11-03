@@ -119,13 +119,27 @@ clean-protos:
 	find . -type f -name '*pb_test.go' -delete
 .PHONY: clean-protos
 
+clean-js-protos:
+	find . -type f -name '*pb.js' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb.d.ts' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb_service.js' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb_service.d.ts' ! -path "*/node_modules/*" -delete
+.PHONY: clean-js-protos
+
 install-protoc:
-	cd buildtools && ./protocInstall.sh
+	cd buildtools && ./install_protoc.bash
 
 PROTOCGENGO=$(shell pwd)/buildtools/protoc-gen-go
 protos: install-protoc clean-protos
-	PATH=$(PROTOCGENGO):$(PATH) ./scripts/protoc_gen_plugin.bash --proto_path=. --plugin_name=go --plugin_out=. --plugin_opt=plugins=grpc,paths=source_relative
+	./scripts/protoc_gen_plugin.bash \
+	--proto_path=. \
+	--plugin_name=go \
+	--plugin_out=. \
+	--plugin_opt=plugins=grpc,paths=source_relative
 .PHONY: protos
+
+js-protos: install-protoc clean-js-protos
+	./scripts/gen_js_protos.bash
 
 # local is what we run when testing locally.
 # This does breaking change detection against our local git repository.

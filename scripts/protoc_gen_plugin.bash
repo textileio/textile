@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
+set -eo pipefail
 
 # From https://github.com/bufbuild/buf/blob/master/make/go/scripts/protoc_gen_plugin.bash
-
-set -eo pipefail
 
 fail() {
   echo "$@" >&2
@@ -83,8 +82,8 @@ fi
 
 mkdir -p "${PLUGIN_OUT}"
 for proto_path in "${PROTO_PATHS[@]}"; do
-  for dir in $(find "${proto_path}" -type f ! -path './buildtools/*' -name '*.proto' -print0  | xargs -0 -n1 dirname | sort | uniq); do
-    echo protoc "${PROTOC_FLAGS[@]}" $(find "${dir}" -name '*.proto')
-    ./buildtools/protoc/bin/protoc "${PROTOC_FLAGS[@]}" $(find "${dir}" -name '*.proto')
+  for dir in $(find "${proto_path}" -type f ! -path './buildtools/*' ! -path '*/node_modules/*' -name '*.proto' -print0  | xargs -0 -n1 dirname | sort | uniq); do
+    echo protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*')"
+    ./buildtools/protoc/bin/protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*')"
   done
 done

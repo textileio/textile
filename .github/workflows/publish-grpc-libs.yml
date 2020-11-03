@@ -31,59 +31,10 @@ jobs:
         with:
           node-version: '12.x'
           registry-url: 'https://registry.npmjs.org'
-      - name: Install protoc
-        uses: arduino/setup-protoc@master
-        with:
-          version: '3.12.1'
-      - name: Install Go protoc plugins
+      - name: Generate gRPC libs
         run: |
-          export GO111MODULE=off
-          go get github.com/golang/protobuf/protoc-gen-go
-      - name: Get Hub gRPC dependencies
-        run: |
-          npm install
           npm install -g json
-        working-directory: ./api/hub/pb/javascript
-      - name: Protoc generate Hub gRPC
+          make js-protos
+      - name: Publish gRPC libs
         run: |
-          make clean && make
-        working-directory: ./api/hub/pb
-      - name: Publish Hub gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/hub/pb/javascript
-      - name: Get Buckets gRPC dependencies
-        run: |
-          npm install
-          npm install -g json
-        working-directory: ./api/buckets/pb/javascript
-      - name: Protoc generate Buckets gRPC
-        run: |
-          make clean && make
-        working-directory: ./api/buckets/pb
-      - name: Publish Buckets gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/buckets/pb/javascript
-      - name: Get Users gRPC dependencies
-        run: |
-          npm install
-          npm install -g json
-        working-directory: ./api/users/pb/javascript
-      - name: Protoc generate Users gRPC
-        run: |
-          make clean && make
-        working-directory: ./api/users/pb
-      - name: Publish Users gRPC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-        run: |
-          json -I -f package.json -e 'this.version=("${{ steps.latesttag.outputs.tag }}").replace("v", "")'
-          npm publish --access=public
-        working-directory: ./api/users/pb/javascript
+          ./scripts/publish_js_protos.bash -v ${{ steps.latesttag.outputs.tag }} -t ${{ secrets.NPM_AUTH_TOKEN }}

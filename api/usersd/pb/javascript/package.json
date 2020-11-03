@@ -9,17 +9,17 @@
   "author": "Textile",
   "license": "MIT",
   "files": [
-    "users_pb.js",
-    "users_pb_service.js",
-    "users_pb.d.ts",
-    "users_pb_service.d.ts"
+    "api/usersd/pb/usersd_pb.js",
+    "api/usersd/pb/usersd_pb_service.js",
+    "api/usersd/pb/usersd_pb.d.ts",
+    "api/usersd/pb/usersd_pb_service.d.ts"
   ],
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.13.0",
-    "@types/google-protobuf": "^3.7.3",
+    "@types/google-protobuf": "^3.7.4",
     "google-protobuf": "^3.13.0"
   },
   "devDependencies": {
-    "ts-protoc-gen": "^0.12.0"
+    "ts-protoc-gen": "^0.13.0"
   }
 }
