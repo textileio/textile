@@ -4,7 +4,6 @@ import (
 	"context"
 
 	tpb "github.com/textileio/go-threads/api/pb"
-	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	hpb "github.com/textileio/textile/v2/api/hubd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc/stats"
@@ -27,14 +26,12 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			account = dev
 		}
 		// @todo: Account for users after User -> Account migration
-		// else if user, ok := mdb.UserFromContext(ctx); ok {}
 		if account == nil || account.CustomerID == "" {
 			return
 		}
 
 		recordEgress := true
-		var stored, reads, writes int64
-
+		var reads, writes int64
 		var pl interface{}
 		switch spl := st.Payload.(type) {
 		case *tpb.ReadTransactionReply:
@@ -123,50 +120,30 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			if pl.Instance != nil {
 				reads = 1
 			}
-
-		// Account for bucket storage
-		case *bpb.CreateResponse:
-			stored = pl.Pinned
-		case *bpb.PushPathResponse:
-			if pl, ok := pl.Payload.(*bpb.PushPathResponse_Event_); ok && pl.Event.Pinned != 0 {
-				stored = pl.Event.Pinned
-			}
-		case *bpb.SetPathResponse:
-			stored = pl.Pinned
-		case *bpb.RemoveResponse:
-			stored = pl.Pinned
-		case *bpb.RemovePathResponse:
-			stored = pl.Pinned
-		case *bpb.PushPathAccessRolesResponse:
-			stored = pl.Pinned
 		}
 
 		// Record usage
-		if recordEgress {
-			if _, err := h.t.bc.IncNetworkEgress(ctx, account.CustomerID, int64(st.WireLength)); err != nil {
-				log.Errorf("stats: inc network egress: %v", err)
+		go func() {
+			if recordEgress {
+				if _, err := h.t.bc.IncNetworkEgress(ctx, account.CustomerID, int64(st.WireLength)); err != nil {
+					log.Errorf("stats: inc network egress: %v", err)
+				}
 			}
-		}
-		if stored > 0 {
-			if _, err := h.t.bc.IncStoredData(ctx, account.CustomerID, stored); err != nil {
-				log.Errorf("stats: inc stored data: %v", err)
+			if reads > 0 {
+				if _, err := h.t.bc.IncInstanceReads(ctx, account.CustomerID, reads); err != nil {
+					log.Errorf("stats: inc instance reads: %v", err)
+				}
+			} else if writes > 0 {
+				if _, err := h.t.bc.IncInstanceWrites(ctx, account.CustomerID, writes); err != nil {
+					log.Errorf("stats: inc instance writes: %v", err)
+				}
 			}
-		}
-		if reads > 0 {
-			if _, err := h.t.bc.IncInstanceReads(ctx, account.CustomerID, reads); err != nil {
-				log.Errorf("stats: inc instance reads: %v", err)
-			}
-		}
-		if writes > 0 {
-			if _, err := h.t.bc.IncInstanceWrites(ctx, account.CustomerID, writes); err != nil {
-				log.Errorf("stats: inc instance writes: %v", err)
-			}
-		}
+		}()
 	}
 }
 
 func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
-	for _, ignored := range ignoreMethods {
+	for _, ignored := range authIgnoredMethods {
 		if info.FullMethodName == ignored {
 			return ctx
 		}

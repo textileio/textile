@@ -7,6 +7,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
+	"github.com/textileio/textile/v2/api/billingd/common"
 	"google.golang.org/grpc/status"
 )
 
@@ -46,8 +47,15 @@ func Error(err error, args ...interface{}) {
 	words := strings.SplitN(msg, " ", 2)
 	words[0] = strings.Title(words[0])
 	msg = strings.Join(words, " ")
-	fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
-		aurora.Sprintf(aurora.BrightBlack(msg), args...)))
+	if strings.Contains(msg, common.ErrExceedsFreeUnits.Error()) {
+		fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s %s"),
+			aurora.Sprintf(aurora.BrightBlack(msg), args...),
+			aurora.Sprintf(aurora.BrightBlack("(Use `%s` to add a payment method)"),
+				aurora.Cyan("hub billing portal"))))
+	} else {
+		fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s"),
+			aurora.Sprintf(aurora.BrightBlack(msg), args...)))
+	}
 }
 
 func Fatal(err error, args ...interface{}) {

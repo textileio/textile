@@ -22,7 +22,7 @@ import (
 func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		method, _ := grpc.Method(ctx)
-		for _, ignored := range ignoreMethods {
+		for _, ignored := range authIgnoredMethods {
 			if method == ignored {
 				return handler(ctx, req)
 			}

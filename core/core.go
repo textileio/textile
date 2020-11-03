@@ -59,11 +59,18 @@ var (
 
 	log = logging.Logger("core")
 
-	// ignoreMethods are not intercepted by the auth.
-	ignoreMethods = []string{
+	// authIgnoredMethods are not intercepted by the auth interceptor.
+	authIgnoredMethods = []string{
 		"/api.hubd.pb.APIService/Signup",
 		"/api.hubd.pb.APIService/Signin",
 		"/api.hubd.pb.APIService/IsUsernameAvailable",
+	}
+
+	// usageIgnoredMethods are not intercepted by the usage interceptor.
+	usageIgnoredMethods = []string{
+		"/api.hubd.pb.APIService/SetupBilling",
+		"/api.hubd.pb.APIService/GetBillingSession",
+		"/api.hubd.pb.APIService/GetBillingInfo",
 	}
 
 	// blockMethods are always blocked by auth.
@@ -101,7 +108,10 @@ var (
 
 	// allowedCrossUserMethods are methods allowed to be called by users who do not own the target thread.
 	allowedCrossUserMethods = []string{
+		"/threads.pb.API/Create",
+		"/threads.pb.API/Verify",
 		"/threads.pb.API/Save",
+		"/threads.pb.API/Delete",
 		"/threads.pb.API/Has",
 		"/threads.pb.API/Find",
 		"/threads.pb.API/FindByID",
@@ -368,12 +378,16 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
+				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
 				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.pc, t.collections),
 			),
-			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.authFunc), t.bucketInterceptor()),
+			grpcm.WithStreamServerChain(
+				auth.StreamServerInterceptor(t.authFunc),
+				streamServerInterceptor(t.preUsageFunc, t.postUsageFunc),
+			),
 			grpc.StatsHandler(&StatsHandler{t: t}),
 		}
 	} else {

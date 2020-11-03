@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -61,15 +63,16 @@ var billingStatusCmd = &cobra.Command{
 		defer cancel()
 		info, err := clients.Hub.GetBillingInfo(ctx)
 		cmd.ErrCheck(err)
+		cus := info.Customer
 
-		cmd.Message("Subscription status: %s", aurora.White(info.Customer.Status).Bold())
+		cmd.Message("Subscription status: %s", aurora.White(cus.Status).Bold())
 		cmd.RenderTable(
-			[]string{"", "usage", "free", "start", "end"},
+			[]string{"", "usage", "free quota", "start", "end"},
 			[][]string{
-				getUsageRow("Stored data (bytes)", info.Customer.StoredData, info.Customer.Period),
-				getUsageRow("Network egress (bytes)", info.Customer.NetworkEgress, info.Customer.Period),
-				getUsageRow("ThreadDB reads", info.Customer.InstanceReads, info.Customer.Period),
-				getUsageRow("ThreadDB writes", info.Customer.InstanceWrites, info.Customer.Period),
+				getUsageRow("Stored data (bytes)", cus.StoredData, cus.Period),
+				getUsageRow("Network egress (bytes)", cus.NetworkEgress, cus.Period),
+				getUsageRow("ThreadDB reads", cus.InstanceReads, cus.Period),
+				getUsageRow("ThreadDB writes", cus.InstanceWrites, cus.Period),
 			},
 		)
 	},
@@ -79,7 +82,10 @@ func getUsageRow(name string, usage *pb.Usage, period *pb.Period) []string {
 	return []string{
 		name,
 		strconv.Itoa(int(usage.Total)),
-		strconv.Itoa(int(usage.Free)),
+		fmt.Sprintf(
+			"%s (%d%%)",
+			strconv.Itoa(int(usage.Free)),
+			int(math.Round(100*float64(usage.Free)/float64(usage.Total+usage.Free)))),
 		time.Unix(period.Start, 0).Format("02-Jan-06"),
 		time.Unix(period.End, 0).Format("02-Jan-06"),
 	}

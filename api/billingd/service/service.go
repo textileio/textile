@@ -28,9 +28,6 @@ const (
 	mib = 1024 * 1024
 	gib = 1024 * mib
 
-	// BillingInterval for subscription invoices.
-	BillingInterval = 30
-
 	// StoredDataUnitSize in bytes.
 	StoredDataUnitSize = 5 * gib / 100
 	// NetworkEgressUnitSize in bytes.
@@ -339,10 +336,14 @@ func periodToPb(period Period) *pb.Period {
 }
 
 func usageToPb(usage Usage, unitSize, freeUnits int64) *pb.Usage {
+	free := (freeUnits * unitSize) - usage.Total
+	if free < 0 {
+		free = 0
+	}
 	return &pb.Usage{
 		Units: usage.Units,
 		Total: usage.Total,
-		Free:  (freeUnits * unitSize) - usage.Total,
+		Free:  free,
 	}
 }
 
@@ -545,10 +546,14 @@ func (s *Service) handleUsage(
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
+	free := (freeUnits * unitSize) - total
+	if free < 0 {
+		free = 0
+	}
 	return &pb.Usage{
 		Units: units,
 		Total: total,
-		Free:  (freeUnits * unitSize) - total,
+		Free:  free,
 	}, nil
 }
 

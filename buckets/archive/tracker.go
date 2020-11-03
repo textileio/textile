@@ -76,7 +76,7 @@ func (t *Tracker) run() {
 					log.Errorf("getting tracked archives: %s", err)
 					break
 				}
-				log.Infof("get %d ready archive tracking to be processed", len(archives))
+				log.Debugf("got %d ready archives to check", len(archives))
 				if len(archives) == 0 {
 					break
 				}

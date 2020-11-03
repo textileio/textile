@@ -13,7 +13,12 @@ import (
 	"github.com/textileio/textile/v2/core"
 )
 
-const daemonName = "hubd"
+const (
+	daemonName = "hubd"
+
+	mib = 1024 * 1024
+	gib = 1024 * mib
+)
 
 var (
 	log = logging.Logger(daemonName)
@@ -105,7 +110,7 @@ var (
 			},
 			"bucketsMaxSize": {
 				Key:      "buckets.max_size",
-				DefValue: int64(1073741824),
+				DefValue: int64(4 * gib),
 			},
 			"threadsMaxNumberPerOwner": {
 				Key:      "threads.max_number_per_owner",

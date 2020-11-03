@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// authFunc is used by hubd's auth interceptor.
+// authFunc is used by hubd's authentication interceptor.
 func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	method, _ := grpc.Method(ctx)
-	for _, ignored := range ignoreMethods {
+	for _, ignored := range authIgnoredMethods {
 		if method == ignored {
 			return ctx, nil
 		}

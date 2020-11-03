@@ -413,7 +413,9 @@ func (s *Service) addPinnedBytes(ctx context.Context, delta int64) context.Conte
 	ctx = context.WithValue(ctx, ctxKey("pinnedBytes"), total+delta)
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok && owner.StorageAvailable != -1 {
+		owner.StorageUsed += delta
 		owner.StorageAvailable -= delta
+		owner.StorageDelta += delta
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
 	}
 	return ctx
@@ -1387,6 +1389,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 		return fmt.Errorf("get stat of current bucket: %s", err)
 	}
 	reader, writer := io.Pipe()
+	var writerErr error
 	go func() {
 		cummSize := int64(stat.CumulativeSize)
 		for {
@@ -1397,6 +1400,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 			} else if err != nil {
 				sendErr(fmt.Errorf("error on receive: %v", err))
 				_ = writer.CloseWithError(err)
+				writerErr = err
 				return
 			}
 			switch payload := req.Payload.(type) {
@@ -1405,21 +1409,25 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 				if err != nil {
 					sendErr(fmt.Errorf("error writing chunk: %v", err))
 					_ = writer.CloseWithError(err)
+					writerErr = err
 					return
 				}
 				cummSize += int64(n)
 				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
 					sendErr(ErrMaxBucketSizeExceeded)
 					_ = writer.CloseWithError(err)
+					writerErr = err
 					return
 				} else if storageAvailable > 0 && cummSize > storageAvailable {
 					sendErr(ErrStorageQuotaSizeExceeded)
 					_ = writer.CloseWithError(err)
+					writerErr = err
 					return
 				}
 			default:
 				sendErr(fmt.Errorf("invalid request"))
 				_ = writer.CloseWithError(err)
+				writerErr = err
 				return
 			}
 		}
@@ -1468,6 +1476,9 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	)
 	if err != nil {
 		return err
+	}
+	if writerErr != nil {
+		return writerErr
 	}
 	fn, err := s.IPFSClient.ResolveNode(server.Context(), newPath)
 	if err != nil {

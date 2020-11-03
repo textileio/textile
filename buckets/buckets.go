@@ -36,6 +36,7 @@ type ctxKey string
 type BucketOwner struct {
 	StorageUsed      int64
 	StorageAvailable int64
+	StorageDelta     int64
 }
 
 func NewBucketOwnerContext(ctx context.Context, owner *BucketOwner) context.Context {
