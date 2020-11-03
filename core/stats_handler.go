@@ -80,6 +80,18 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			if pl.DeleteReply.TransactionError == "" {
 				writes = 1
 			}
+		case *tpb.HasReply:
+			if pl.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.ReadTransactionReply_HasReply:
+			if pl.HasReply.TransactionError == "" {
+				reads = 1
+			}
+		case *tpb.WriteTransactionReply_HasReply:
+			if pl.HasReply.TransactionError == "" {
+				reads = 1
+			}
 		case *tpb.FindReply:
 			if pl.Instances != nil {
 				reads = int64(len(pl.Instances))
@@ -102,18 +114,6 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			}
 		case *tpb.WriteTransactionReply_FindByIDReply:
 			if pl.FindByIDReply.TransactionError == "" {
-				reads = 1
-			}
-		case *tpb.HasReply:
-			if pl.TransactionError == "" {
-				reads = 1
-			}
-		case *tpb.ReadTransactionReply_HasReply:
-			if pl.HasReply.TransactionError == "" {
-				reads = 1
-			}
-		case *tpb.WriteTransactionReply_HasReply:
-			if pl.HasReply.TransactionError == "" {
 				reads = 1
 			}
 		case *tpb.ListenReply:

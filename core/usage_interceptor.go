@@ -78,18 +78,9 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if err := common.StatusCheck(cus.Status); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	if !cus.Billable {
-		var err error
-		if cus.NetworkEgress.Free == 0 {
-			err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeUnits)
-		} else if cus.InstanceReads.Free == 0 {
-			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeUnits)
-		} else if cus.InstanceWrites.Free == 0 {
-			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeUnits)
-		}
-		if err != nil {
-			return ctx, status.Error(codes.ResourceExhausted, err.Error())
-		}
+	if !cus.Billable && cus.NetworkEgress.Free == 0 {
+		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeUnits)
+		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
 
 	switch method {
@@ -108,6 +99,25 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			owner.StorageAvailable = cus.StoredData.Free
 		}
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
+	case
+		"/threads.pb.API/Verify",
+		"/threads.pb.API/Has",
+		"/threads.pb.API/Find",
+		"/threads.pb.API/FindByID",
+		"/threads.pb.API/ReadTransaction",
+		"/threads.pb.API/Listen":
+		if !cus.Billable && cus.InstanceReads.Free == 0 {
+			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeUnits)
+			return ctx, status.Error(codes.ResourceExhausted, err.Error())
+		}
+	case "/threads.pb.API/Create",
+		"/threads.pb.API/Save",
+		"/threads.pb.API/Delete",
+		"/threads.pb.API/WriteTransaction":
+		if !cus.Billable && cus.InstanceWrites.Free == 0 {
+			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeUnits)
+			return ctx, status.Error(codes.ResourceExhausted, err.Error())
+		}
 	}
 	return ctx, nil
 }
