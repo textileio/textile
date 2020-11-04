@@ -5,11 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/textileio/textile/v2/api/bucketsd"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
 	"github.com/textileio/textile/v2/api/billingd/common"
+	"github.com/textileio/textile/v2/api/bucketsd"
 	"google.golang.org/grpc/status"
 )
 

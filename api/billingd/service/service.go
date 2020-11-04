@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
 	"net"
+	"net/http"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -17,10 +19,10 @@ import (
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
-	apicommon "github.com/textileio/textile/v2/api/common"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 )
 
@@ -107,7 +109,7 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 		}
 	}
 
-	sc, err := apicommon.NewStripeClient(config.StripeAPIURL, config.StripeAPIKey)
+	sc, err := newStripeClient(config.StripeAPIURL, config.StripeAPIKey)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +166,31 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 		}
 	}
 	return s, nil
+}
+
+func newStripeClient(url, key string) (*stripec.API, error) {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	if err := http2.ConfigureTransport(transport); err != nil {
+		return nil, err
+	}
+	client := &stripec.API{}
+	client.Init(key, &stripe.Backends{
+		API: stripe.GetBackendWithConfig(
+			stripe.APIBackend,
+			&stripe.BackendConfig{
+				URL: stripe.String(url),
+				HTTPClient: &http.Client{
+					Transport: transport,
+				},
+				LeveledLogger: stripe.DefaultLeveledLogger,
+			},
+		),
+	})
+	return client, nil
 }
 
 func (s *Service) Start() error {

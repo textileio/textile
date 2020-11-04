@@ -39,6 +39,7 @@ func Init(baseCmd *cobra.Command) {
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	pushCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
+	pushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
 
 	pullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
 	pullCmd.Flags().Bool("hard", false, "Pulls and prunes local changes if true")

@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/textileio/textile/v2/api/billingd/pb"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
+	"github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/cmd"
 )
 
@@ -65,6 +64,7 @@ var billingStatusCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		cus := info.Customer
 
+		// @todo: Move this account status to the customer object? Seems useful.
 		var status string
 		if cus.Delinquent {
 			status = "delinquent"

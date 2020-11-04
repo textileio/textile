@@ -83,6 +83,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
 
+	// @todo: Attach egress info that can be used to fail-fast in PullPath?
 	switch method {
 	case "/api.bucketsd.pb.APIService/Create",
 		"/api.bucketsd.pb.APIService/PushPath",

@@ -78,22 +78,6 @@ func TestAccounts_Get(t *testing.T) {
 	assert.Equal(t, "token", created.PowInfo.Token)
 }
 
-func TestAccounts_BucketsTotalSize(t *testing.T) {
-	db := newDB(t)
-	col, err := NewAccounts(context.Background(), db)
-	require.NoError(t, err)
-
-	created, err := col.CreateDev(context.Background(), "jon", "jon@doe.com", nil)
-	require.NoError(t, err)
-
-	err = col.SetBucketsTotalSize(context.Background(), created.Key, 1234)
-	require.NoError(t, err)
-
-	got, err := col.Get(context.Background(), created.Key)
-	require.NoError(t, err)
-	assert.Equal(t, int64(1234), got.BucketsTotalSize)
-}
-
 func TestAccounts_GetByUsernameOrEmail(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)

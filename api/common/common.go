@@ -4,16 +4,11 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/tls"
-	"net/http"
 	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	mbase "github.com/multiformats/go-multibase"
-	stripe "github.com/stripe/stripe-go/v72"
-	stripec "github.com/stripe/stripe-go/v72/client"
 	"github.com/textileio/go-threads/core/thread"
-	"golang.org/x/net/http2"
 )
 
 type ctxKey string
@@ -273,29 +268,4 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 
 func (c Credentials) RequireTransportSecurity() bool {
 	return c.Secure
-}
-
-func NewStripeClient(url, key string) (*stripec.API, error) {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	if err := http2.ConfigureTransport(transport); err != nil {
-		return nil, err
-	}
-	client := &stripec.API{}
-	client.Init(key, &stripe.Backends{
-		API: stripe.GetBackendWithConfig(
-			stripe.APIBackend,
-			&stripe.BackendConfig{
-				URL: stripe.String(url),
-				HTTPClient: &http.Client{
-					Transport: transport,
-				},
-				LeveledLogger: stripe.DefaultLeveledLogger,
-			},
-		),
-	})
-	return client, nil
 }

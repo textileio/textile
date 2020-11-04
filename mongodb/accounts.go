@@ -29,18 +29,17 @@ func init() {
 }
 
 type Account struct {
-	Type             AccountType
-	Key              thread.PubKey
-	Secret           thread.Identity
-	Name             string
-	Username         string
-	Email            string
-	Token            thread.Token
-	Members          []Member
-	CustomerID       string
-	PowInfo          *PowInfo
-	BucketsTotalSize int64
-	CreatedAt        time.Time
+	Type       AccountType
+	Key        thread.PubKey
+	Secret     thread.Identity
+	Name       string
+	Username   string
+	Email      string
+	Token      thread.Token
+	Members    []Member
+	CustomerID string
+	PowInfo    *PowInfo
+	CreatedAt  time.Time
 }
 
 type AccountType int
@@ -140,13 +139,12 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 		return nil, err
 	}
 	data := bson.M{
-		"_id":                id,
-		"type":               int32(doc.Type),
-		"secret":             secret,
-		"email":              doc.Email,
-		"username":           doc.Username,
-		"buckets_total_size": int64(0),
-		"created_at":         doc.CreatedAt,
+		"_id":        id,
+		"type":       int32(doc.Type),
+		"secret":     secret,
+		"email":      doc.Email,
+		"username":   doc.Username,
+		"created_at": doc.CreatedAt,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err := a.col.InsertOne(ctx, data); err != nil {
@@ -205,14 +203,13 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 		}
 	}
 	data := bson.M{
-		"_id":                id,
-		"type":               doc.Type,
-		"secret":             secret,
-		"name":               doc.Name,
-		"username":           doc.Username,
-		"members":            rmems,
-		"buckets_total_size": int64(0),
-		"created_at":         doc.CreatedAt,
+		"_id":        id,
+		"type":       doc.Type,
+		"secret":     secret,
+		"name":       doc.Name,
+		"username":   doc.Username,
+		"members":    rmems,
+		"created_at": doc.CreatedAt,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err = a.col.InsertOne(ctx, data); err != nil {
@@ -325,25 +322,6 @@ func (a *Accounts) SetCustomerID(ctx context.Context, key thread.PubKey, custome
 		return err
 	}
 	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"customer_id": customerID}})
-	if err != nil {
-		return err
-	}
-	if res.MatchedCount == 0 {
-		return mongo.ErrNoDocuments
-	}
-	return nil
-}
-
-func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, newTotalSize int64) error {
-	id, err := key.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	// Note: temporary fix for ensuring accounts don't go below zero. see #376
-	if 0 > newTotalSize {
-		newTotalSize = 0
-	}
-	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"buckets_total_size": newTotalSize}})
 	if err != nil {
 		return err
 	}
@@ -590,10 +568,6 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if v, ok := raw["customer_id"]; ok {
 		customerID = v.(string)
 	}
-	var totalSize int64
-	if v, ok := raw["buckets_total_size"]; ok {
-		totalSize = v.(int64)
-	}
 	secret := &thread.Libp2pIdentity{}
 	err := secret.UnmarshalBinary(raw["secret"].(primitive.Binary).Data)
 	if err != nil {
@@ -627,17 +601,16 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &Account{
-		Type:             AccountType(raw["type"].(int32)),
-		Key:              secret.GetPublic(),
-		Secret:           secret,
-		Name:             name,
-		Username:         raw["username"].(string),
-		Email:            email,
-		Token:            token,
-		Members:          mems,
-		CustomerID:       customerID,
-		BucketsTotalSize: totalSize,
-		PowInfo:          decodePowInfo(raw),
-		CreatedAt:        created,
+		Type:       AccountType(raw["type"].(int32)),
+		Key:        secret.GetPublic(),
+		Secret:     secret,
+		Name:       name,
+		Username:   raw["username"].(string),
+		Email:      email,
+		Token:      token,
+		Members:    mems,
+		CustomerID: customerID,
+		PowInfo:    decodePowInfo(raw),
+		CreatedAt:  created,
 	}, nil
 }

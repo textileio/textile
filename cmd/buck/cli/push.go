@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
@@ -13,6 +14,11 @@ import (
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
+
+var (
+	buckMaxSizeMiB = 4 * int64(1024)
+	MiB            = int64(1024 * 1024)
+)
 
 var pushCmd = &cobra.Command{
 	Use:   "push",
@@ -26,10 +32,22 @@ var pushCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
+		maxSize, err := c.Flags().GetInt64("maxsize")
+		if err != nil {
+			cmd.Fatal(err)
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PushTimeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
+
+		// Check total bucket size limit.
+		size, err := buck.LocalSize()
+		cmd.ErrCheck(err)
+		if size > maxSize*MiB {
+			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMB): %dMB",
+				maxSize, size/MiB))
+		}
 
 		var events chan local.PathEvent
 		var progress *uiprogress.Progress
