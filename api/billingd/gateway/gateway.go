@@ -160,6 +160,8 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			return
 		}
 		log.Debugf("%s was updated", cus.ID)
+	case "customer.deleted":
+		// @todo: Does this need to be handled?
 	case "customer.subscription.updated",
 		"customer.subscription.deleted":
 		var sub stripe.Subscription
