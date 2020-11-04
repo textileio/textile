@@ -16,24 +16,18 @@ type StatsHandler struct {
 
 var _ stats.Handler = (*StatsHandler)(nil)
 
-var incTimeout = time.Second * 10
+var statsTimeout = time.Second * 10
 
 // HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 	switch st := st.(type) {
 	case *stats.OutPayload:
-		var account *mdb.Account
-		if org, ok := mdb.OrgFromContext(ctx); ok {
-			account = org
-		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			account = dev
-		}
-		// @todo: Account for users after User -> Account migration
-		if account == nil || account.CustomerID == "" {
+		if getStats(ctx) == nil {
 			return
 		}
 
-		recordEgress := true
+		// Handle payload types.
+		egress := int64(st.WireLength)
 		var reads, writes int64
 		var pl interface{}
 		switch spl := st.Payload.(type) {
@@ -48,7 +42,7 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 
 		// Don't charge for usage when customer is trying to add a payment method, cancel subscription, etc.
 		case *hpb.GetBillingSessionResponse:
-			recordEgress = false
+			egress = 0
 
 		// Account for threaddb reads and writes
 		case *tpb.CreateReply:
@@ -124,27 +118,44 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 				reads = 1
 			}
 		}
+		ctx = handleStats(ctx, egress, reads, writes)
 
+	case *stats.End:
 		// Record usage
+		rs := getStats(ctx)
+		if rs == nil {
+			return
+		}
 		go func() {
-			incCtx, cancel := context.WithTimeout(context.Background(), incTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
 			defer cancel()
-			if recordEgress {
-				if _, err := h.t.bc.IncNetworkEgress(incCtx, account.CustomerID, int64(st.WireLength)); err != nil {
+			// @todo: Probably makes sense to consolidate these calls to one IncStats call.
+			if rs.egress > 0 {
+				if _, err := h.t.bc.IncNetworkEgress(ctx, rs.customerID, rs.egress); err != nil {
 					log.Errorf("stats: inc network egress: %v", err)
 				}
 			}
-			if reads > 0 {
-				if _, err := h.t.bc.IncInstanceReads(incCtx, account.CustomerID, reads); err != nil {
+			if rs.reads > 0 {
+				if _, err := h.t.bc.IncInstanceReads(ctx, rs.customerID, rs.reads); err != nil {
 					log.Errorf("stats: inc instance reads: %v", err)
 				}
-			} else if writes > 0 {
-				if _, err := h.t.bc.IncInstanceWrites(incCtx, account.CustomerID, writes); err != nil {
+			}
+			if rs.writes > 0 {
+				if _, err := h.t.bc.IncInstanceWrites(ctx, rs.customerID, rs.writes); err != nil {
 					log.Errorf("stats: inc instance writes: %v", err)
 				}
 			}
 		}()
 	}
+}
+
+type statsCtxKey string
+
+type requestStats struct {
+	customerID string
+	egress     int64
+	reads      int64
+	writes     int64
 }
 
 func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
@@ -154,7 +165,35 @@ func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) conte
 		}
 	}
 	ctx, _ = h.t.newAuthCtx(ctx, info.FullMethodName, false)
-	return ctx
+	var account *mdb.Account
+	if org, ok := mdb.OrgFromContext(ctx); ok {
+		account = org
+	} else if dev, ok := mdb.DevFromContext(ctx); ok {
+		account = dev
+	}
+	// @todo: Account for users after User -> Account migration
+	if account == nil || account.CustomerID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, statsCtxKey("requestStats"), &requestStats{
+		customerID: account.CustomerID,
+	})
+}
+
+func handleStats(ctx context.Context, egress, reads, writes int64) context.Context {
+	rs := getStats(ctx)
+	if rs == nil {
+		return ctx
+	}
+	rs.egress += egress
+	rs.reads += reads
+	rs.writes += writes
+	return context.WithValue(ctx, statsCtxKey("requestStats"), rs)
+}
+
+func getStats(ctx context.Context) *requestStats {
+	rs, _ := ctx.Value(statsCtxKey("requestStats")).(*requestStats)
+	return rs
 }
 
 func (h *StatsHandler) HandleConn(context.Context, stats.ConnStats) {}
