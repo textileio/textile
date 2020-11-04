@@ -129,7 +129,7 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
 			defer cancel()
-			// @todo: Probably makes sense to consolidate these calls to one IncStats call.
+			// @todo: Consolidate these to one IncStats call.
 			if rs.egress > 0 {
 				if _, err := h.t.bc.IncNetworkEgress(ctx, rs.customerID, rs.egress); err != nil {
 					log.Errorf("stats: inc network egress: %v", err)

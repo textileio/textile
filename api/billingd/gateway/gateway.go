@@ -26,7 +26,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 }
 
-// Gateway provides HTTP-based access to Textile.
+// Gateway provides an endpoint for Stripe webhooks.
 type Gateway struct {
 	addr                ma.Multiaddr
 	server              *http.Server
@@ -160,7 +160,8 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			return
 		}
 		log.Debugf("%s was updated", cus.ID)
-	case "customer.subscription.updated":
+	case "customer.subscription.updated",
+		"customer.subscription.deleted":
 		var sub stripe.Subscription
 		err := json.Unmarshal(event.Data.Raw, &sub)
 		if err != nil {

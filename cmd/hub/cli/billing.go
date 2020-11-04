@@ -65,6 +65,18 @@ var billingStatusCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		cus := info.Customer
 
+		var status string
+		if cus.Delinquent {
+			status = "delinquent"
+		} else if cus.Billable {
+			status = "pay-as-you-go"
+		} else {
+			status = "free-quota-only"
+		}
+		cmd.Message("Account status: %s", aurora.White(status).Bold())
+		balance := float64(cus.Balance) / 100
+		cmd.Message("Account balance: %s%.2f", aurora.White("$").Bold(), aurora.White(balance).Bold())
+
 		cmd.Message("Subscription status: %s", aurora.White(cus.Status).Bold())
 		cmd.RenderTable(
 			[]string{"", "usage", "free quota", "start", "end"},
