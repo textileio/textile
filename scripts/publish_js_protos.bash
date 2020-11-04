@@ -26,8 +26,8 @@ npm install -g json >/dev/null 2>&1
 for path in "${js_paths[@]}"; do
   cd "${path}"
   json -I -f package.json -e "this.version=('$version').replace('v', '')" >/dev/null 2>&1
-  echo publishing js-protos in "${path}" with version "${version}"
-  NODE_AUTH_TOKEN="${token}" npm publish --access=public
+  echo publishing js-protos in "${path}" with version "${version}" and token "${token}"
+  # NODE_AUTH_TOKEN="${token}" npm publish --access=public
   json -I -f package.json -e "this.version=('0.0.0')" >/dev/null 2>&1
   cd "${wd}"
 done

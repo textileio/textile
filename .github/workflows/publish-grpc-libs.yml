@@ -2,6 +2,9 @@ name: Publish gRPC Libs
 on:
   release:
     types: [published]
+  pull_request:
+    branches:
+      - master
 jobs:
   publish_grpc_libs:
     name: Publish gRPC Libs
@@ -33,7 +36,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Generate gRPC libs
         run: |
-          npm install -g json
           make js-protos
       - name: Publish gRPC libs
         run: |
