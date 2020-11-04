@@ -1,13 +1,10 @@
-name: Publish gRPC Libs
+name: Publish JS Libs
 on:
   release:
     types: [published]
-  pull_request:
-    branches:
-      - master
 jobs:
-  publish_grpc_libs:
-    name: Publish gRPC Libs
+  publish_js_libs:
+    name: Publish JS libs
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -34,9 +31,9 @@ jobs:
         with:
           node-version: '12.x'
           registry-url: 'https://registry.npmjs.org'
-      - name: Generate gRPC libs
+      - name: Generate JS libs
         run: |
           make js-protos
-      - name: Publish gRPC libs
+      - name: Publish JS libs
         run: |
           ./scripts/publish_js_protos.bash -v ${{ steps.latesttag.outputs.tag }} -t ${{ secrets.NPM_AUTH_TOKEN }}

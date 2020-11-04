@@ -3,6 +3,7 @@ package client_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -290,7 +291,7 @@ func setup(t *testing.T) *client.Client {
 	api, err := service.NewService(ctx, service.Config{
 		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
 		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		DBURI:           "mongodb://127.0.0.1:27017",
 		DBName:          util.MakeToken(8),

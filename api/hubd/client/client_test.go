@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -517,7 +518,7 @@ func setupWithBilling(t *testing.T) (core.Config, *c.Client, *tc.Client) {
 	api, err := billing.NewService(ctx, billing.Config{
 		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
 		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           "sk_test_RuU6Lq65WP23ykDSI9N9nRbC",
+		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		DBURI:           "mongodb://127.0.0.1:27017",
 		DBName:          util.MakeToken(8),
