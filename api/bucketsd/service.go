@@ -59,6 +59,9 @@ var (
 	// errInvalidNodeType indicates a node with type other than raw of proto was encountered.
 	errInvalidNodeType = errors.New("invalid node type")
 
+	// errDBRequired indicates the request requires a thread ID.
+	errDBRequired = errors.New("db required")
+
 	// baseArchiveStorageConfig is used to build the final StorageConfig after being
 	// combined with information from the ArchiveConfig
 	baseArchiveStorageConfig = ffs.StorageConfig{
@@ -117,7 +120,7 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -188,7 +191,7 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -796,7 +799,7 @@ func (s *Service) Root(ctx context.Context, req *pb.RootRequest) (*pb.RootRespon
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -819,7 +822,7 @@ func (s *Service) Links(ctx context.Context, req *pb.LinksRequest) (*pb.LinksRes
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -888,7 +891,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -1045,7 +1048,7 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -1300,7 +1303,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 
 	dbID, ok := common.ThreadIDFromContext(server.Context())
 	if !ok {
-		return fmt.Errorf("db required")
+		return errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
@@ -1752,7 +1755,7 @@ func (s *Service) PullPath(req *pb.PullPathRequest, server pb.APIService_PullPat
 
 	dbID, ok := common.ThreadIDFromContext(server.Context())
 	if !ok {
-		return fmt.Errorf("db required")
+		return errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
@@ -1869,7 +1872,7 @@ func (s *Service) Remove(ctx context.Context, req *pb.RemoveRequest) (*pb.Remove
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -1927,7 +1930,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -2084,7 +2087,7 @@ func (s *Service) PushPathAccessRoles(
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -2226,7 +2229,7 @@ func (s *Service) PullPathAccessRoles(
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
@@ -2310,9 +2313,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
+	account, _ := mdb.AccountFromContext(ctx)
 
 	lck := s.Semaphores.Get(buckLock(req.Key))
 	lck.Acquire()
@@ -2328,31 +2332,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
 
-	var powInfo *mdb.PowInfo
-	var owner thread.PubKey
-	var isAccount bool
-	if acct := accountFromContext(ctx); acct != nil {
-		powInfo = acct.PowInfo
-		owner = acct.Key
-		isAccount = true
-	} else if user := userFromContext(ctx); user != nil {
-		powInfo = user.PowInfo
-		owner = user.Key
-		isAccount = false
-	} else {
-		return nil, fmt.Errorf("no user/account found in request context")
-	}
-
 	createNewFFS := func() error {
 		id, token, err := s.PowergateClient.FFS.Create(ctx)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
-		if isAccount {
-			_, err = s.Collections.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-		} else {
-			_, err = s.Collections.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-		}
+		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: id, Token: token})
 		if err != nil {
 			return fmt.Errorf("updating user/account with new powergate information: %v", err)
 		}
@@ -2362,16 +2347,16 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	tryAgain := fmt.Errorf(
 		"new powergate integration created, please try again in 30 seconds to allow time for wallet funding")
 
-	// case where account/user was created before bucket archives were enabled.
+	// Case where account/user was created before bucket archives were enabled.
 	// create a ffs instance for them.
-	if powInfo == nil {
+	if account.Owner().PowInfo == nil {
 		if err := createNewFFS(); err != nil {
 			return nil, err
 		}
 		return nil, tryAgain
 	}
 
-	ctxFFS := context.WithValue(ctx, pow.AuthKey, powInfo.Token)
+	ctxFFS := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
 
 	defConf, err := s.PowergateClient.FFS.DefaultStorageConfig(ctxFFS)
 	if err != nil {
@@ -2534,29 +2519,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
 	}
 
-	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), owner); err != nil {
+	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
 		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
 	}
 
 	log.Debug("archived bucket")
 	return &pb.ArchiveResponse{}, nil
-}
-
-func accountFromContext(ctx context.Context) *mdb.Account {
-	if org, ok := mdb.OrgFromContext(ctx); ok {
-		return org
-	}
-	if dev, ok := mdb.DevFromContext(ctx); ok {
-		return dev
-	}
-	return nil
-}
-
-func userFromContext(ctx context.Context) *mdb.User {
-	if user, ok := mdb.UserFromContext(ctx); ok {
-		return user
-	}
-	return nil
 }
 
 func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService_ArchiveWatchServer) error {
@@ -2566,15 +2534,9 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 		return ErrArchivingFeatureDisabled
 	}
 
-	var powInfo *mdb.PowInfo
-	if acct := accountFromContext(server.Context()); acct != nil {
-		powInfo = acct.PowInfo
-	} else if user := userFromContext(server.Context()); user != nil {
-		powInfo = user.PowInfo
-	}
-
-	if powInfo == nil {
-		return fmt.Errorf("no user/account or no powergate info associated with user/account")
+	account, _ := mdb.AccountFromContext(server.Context())
+	if account.Owner().PowInfo == nil {
+		return fmt.Errorf("no powergate info associated with account")
 	}
 
 	var err error
@@ -2582,7 +2544,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.Buckets.ArchiveWatch(ctx, req.Key, powInfo.Token, ch)
+		err = s.Buckets.ArchiveWatch(ctx, req.Key, account.Owner().PowInfo.Token, ch)
 		close(ch)
 	}()
 	for s := range ch {
@@ -2638,7 +2600,7 @@ func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
-		return nil, fmt.Errorf("db required")
+		return nil, errDBRequired
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 

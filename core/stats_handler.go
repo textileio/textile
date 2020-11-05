@@ -165,18 +165,12 @@ func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) conte
 		}
 	}
 	ctx, _ = h.t.newAuthCtx(ctx, info.FullMethodName, false)
-	var account *mdb.Account
-	if org, ok := mdb.OrgFromContext(ctx); ok {
-		account = org
-	} else if dev, ok := mdb.DevFromContext(ctx); ok {
-		account = dev
-	}
-	// @todo: Account for users after User -> Account migration
-	if account == nil || account.CustomerID == "" {
+	account, ok := mdb.AccountFromContext(ctx)
+	if !ok || account.Owner().CustomerID == "" {
 		return ctx
 	}
 	return context.WithValue(ctx, statsCtxKey("requestStats"), &requestStats{
-		customerID: account.CustomerID,
+		customerID: account.Owner().CustomerID,
 	})
 }
 

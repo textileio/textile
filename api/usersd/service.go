@@ -32,11 +32,8 @@ type Service struct {
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadResponse, error) {
 	log.Debugf("received get thread request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
-	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, user.Key)
+	account, _ := mdb.AccountFromContext(ctx)
+	thrd, err := s.Collections.Threads.GetByName(ctx, req.Name, account.Owner().Key)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Error(codes.NotFound, "Thread not found")
@@ -53,11 +50,8 @@ func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.
 func (s *Service) ListThreads(ctx context.Context, _ *pb.ListThreadsRequest) (*pb.ListThreadsResponse, error) {
 	log.Debugf("received list threads request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
-	list, err := s.Collections.Threads.ListByOwner(ctx, user.Key)
+	account, _ := mdb.AccountFromContext(ctx)
+	list, err := s.Collections.Threads.ListByOwner(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -88,13 +82,10 @@ var (
 func (s *Service) SetupMailbox(ctx context.Context, _ *pb.SetupMailboxRequest) (*pb.SetupMailboxResponse, error) {
 	log.Debugf("received setup mailbox request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getOrCreateMailbox(ctx, user.Key, tdb.WithToken(dbToken))
+	box, err := s.getOrCreateMailbox(ctx, account.Owner().Key, tdb.WithToken(dbToken))
 	if err != nil {
 		return nil, err
 	}
@@ -106,17 +97,14 @@ func (s *Service) SetupMailbox(ctx context.Context, _ *pb.SetupMailboxRequest) (
 func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
 	log.Debugf("received send message request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	ok, err := user.Key.Verify(req.ToBody, req.ToSignature)
+	ok, err := account.Owner().Key.Verify(req.ToBody, req.ToSignature)
 	if !ok || err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Bad message signature")
 	}
-	ok, err = user.Key.Verify(req.FromBody, req.FromSignature)
+	ok, err = account.Owner().Key.Verify(req.FromBody, req.FromSignature)
 	if !ok || err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Bad message signature")
 	}
@@ -129,14 +117,14 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 	if err != nil {
 		return nil, err
 	}
-	sentbox, err := s.getMailbox(ctx, user.Key)
+	sentbox, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
 
 	msgID := coredb.NewInstanceID().String()
 	now := time.Now().UnixNano()
-	from := user.Key
+	from := account.Owner().Key
 	toMsg := tdb.InboxMessage{
 		ID:        msgID,
 		From:      from.String(),
@@ -168,13 +156,10 @@ func (s *Service) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (
 func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessagesRequest) (*pb.ListInboxMessagesResponse, error) {
 	log.Debugf("received list inbox messages request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getMailbox(ctx, user.Key)
+	box, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -200,13 +185,10 @@ func (s *Service) ListInboxMessages(ctx context.Context, req *pb.ListInboxMessag
 func (s *Service) ListSentboxMessages(ctx context.Context, req *pb.ListSentboxMessagesRequest) (*pb.ListSentboxMessagesResponse, error) {
 	log.Debugf("received list sentbox messages request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getMailbox(ctx, user.Key)
+	box, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -304,13 +286,10 @@ func getMailboxQuery(seek string, limit int64, asc bool, stat pb.ListInboxMessag
 func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessageRequest) (*pb.ReadInboxMessageResponse, error) {
 	log.Debugf("received read inbox message request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getMailbox(ctx, user.Key)
+	box, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -331,13 +310,10 @@ func (s *Service) ReadInboxMessage(ctx context.Context, req *pb.ReadInboxMessage
 func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteInboxMessageRequest) (*pb.DeleteInboxMessageResponse, error) {
 	log.Debugf("received delete inbox message request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getMailbox(ctx, user.Key)
+	box, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -350,13 +326,10 @@ func (s *Service) DeleteInboxMessage(ctx context.Context, req *pb.DeleteInboxMes
 func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentboxMessageRequest) (*pb.DeleteSentboxMessageResponse, error) {
 	log.Debugf("received delete sentbox message request")
 
-	user, ok := mdb.UserFromContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "User not found")
-	}
+	account, _ := mdb.AccountFromContext(ctx)
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	box, err := s.getMailbox(ctx, user.Key)
+	box, err := s.getMailbox(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
