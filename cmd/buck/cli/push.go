@@ -45,7 +45,7 @@ var pushCmd = &cobra.Command{
 		size, err := buck.LocalSize()
 		cmd.ErrCheck(err)
 		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMB): %dMB",
+			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMiB): %dMiB",
 				maxSize, size/MiB))
 		}
 
