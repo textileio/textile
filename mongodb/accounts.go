@@ -106,20 +106,20 @@ func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
 	a := &Accounts{col: db.Collection("accounts")}
 	_, err := a.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"username", 1}},
+			Keys: bson.D{primitive.E{Key: "username", Value: 1}},
 			Options: options.Index().
 				SetUnique(true).
 				SetCollation(&options.Collation{Locale: "en", Strength: 2}).
 				SetSparse(true),
 		},
 		{
-			Keys: bson.D{{"email", 1}},
+			Keys: bson.D{primitive.E{Key: "email", Value: 1}},
 			Options: options.Index().
 				SetUnique(true).
 				SetSparse(true),
 		},
 		{
-			Keys: bson.D{{"members._id", 1}},
+			Keys: bson.D{primitive.E{Key: "members._id", Value: 1}},
 		},
 	})
 	return a, err
@@ -283,12 +283,12 @@ func (a *Accounts) GetByUsername(ctx context.Context, username string) (*Account
 
 func (a *Accounts) GetByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (*Account, error) {
 	res := a.col.FindOne(ctx, bson.D{
-		{"$or", bson.A{
+		primitive.E{Key: "$or", Value: bson.A{
 			bson.D{
-				{"username", usernameOrEmail},
+				primitive.E{Key: "username", Value: usernameOrEmail},
 			},
 			bson.D{
-				{"email", usernameOrEmail},
+				primitive.E{Key: "email", Value: usernameOrEmail},
 			},
 		}},
 	})
@@ -535,8 +535,8 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member thr
 	}
 	if isOwner { // Ensure there will still be at least one owner left
 		cursor, err := a.col.Aggregate(ctx, mongo.Pipeline{
-			bson.D{{"$match", bson.M{"username": username}}},
-			bson.D{{"$project", bson.M{
+			bson.D{primitive.E{Key: "$match", Value: bson.M{"username": username}}},
+			bson.D{primitive.E{Key: "$project", Value: bson.M{
 				"members": bson.M{
 					"$filter": bson.M{
 						"input": "$members",
@@ -545,8 +545,8 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member thr
 					},
 				},
 			}}},
-			bson.D{{"$count", "members"}},
-		}, options.Aggregate().SetHint(bson.D{{"username", 1}}))
+			bson.D{primitive.E{Key: "$count", Value: "members"}},
+		}, options.Aggregate().SetHint(bson.D{primitive.E{Key: "username", Value: 1}}))
 		if err != nil {
 			return err
 		}

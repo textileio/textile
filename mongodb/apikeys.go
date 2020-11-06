@@ -50,7 +50,7 @@ func NewAPIKeys(ctx context.Context, db *mongo.Database) (*APIKeys, error) {
 	k := &APIKeys{col: db.Collection("apikeys")}
 	_, err := k.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"owner_id", 1}},
+			Keys: bson.D{primitive.E{Key: "owner_id", Value: 1}},
 		},
 	})
 	return k, err
