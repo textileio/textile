@@ -174,6 +174,8 @@ type Config struct {
 	AddrPowergateAPI string
 	AddrMongoURI     string
 
+	ThreadsConnManager connmgr.ConnManager
+
 	UseSubdomains bool
 
 	MongoName string
@@ -192,8 +194,6 @@ type Config struct {
 
 	Hub   bool
 	Debug bool
-
-	ThreadsConnManager connmgr.ConnManager
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {

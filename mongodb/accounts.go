@@ -599,7 +599,10 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	var name, email, customerID string
+	var username, name, email, customerID string
+	if v, ok := raw["username"]; ok {
+		username = v.(string)
+	}
 	if v, ok := raw["name"]; ok {
 		name = v.(string)
 	}
@@ -611,7 +614,7 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	}
 	var secret *thread.Libp2pIdentity
 	if v, ok := raw["secret"]; ok {
-		secret := &thread.Libp2pIdentity{}
+		secret = &thread.Libp2pIdentity{}
 		err := secret.UnmarshalBinary(v.(primitive.Binary).Data)
 		if err != nil {
 			return nil, err
@@ -649,7 +652,7 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		Key:        key,
 		Secret:     secret,
 		Name:       name,
-		Username:   raw["username"].(string),
+		Username:   username,
 		Email:      email,
 		Token:      token,
 		Members:    mems,
