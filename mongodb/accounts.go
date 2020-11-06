@@ -107,12 +107,16 @@ func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
 	_, err := a.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"username", 1}},
-			Options: options.Index().SetUnique(true).
-				SetCollation(&options.Collation{Locale: "en", Strength: 2}),
+			Options: options.Index().
+				SetUnique(true).
+				SetCollation(&options.Collation{Locale: "en", Strength: 2}).
+				SetSparse(true),
 		},
 		{
-			Keys:    bson.D{{"email", 1}},
-			Options: options.Index().SetUnique(true).SetSparse(true),
+			Keys: bson.D{{"email", 1}},
+			Options: options.Index().
+				SetUnique(true).
+				SetSparse(true),
 		},
 		{
 			Keys: bson.D{{"members._id", 1}},
