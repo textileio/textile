@@ -26,6 +26,10 @@ build-buckd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./cmd/buckd
 .PHONY: build-buckd
 
+build-billingd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/billingd
+.PHONY: build-billingd
+
 install: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
 .PHONY: install
@@ -45,6 +49,10 @@ install-buck: $(GOVVV)
 install-buckd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./cmd/buckd
 .PHONY: install-buckd
+
+install-billingd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/billingd
+.PHONY: install-billingd
 
 define gen_release_files
 	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)
@@ -77,7 +85,11 @@ build-buckd-release: $(GOX) $(GOVVV) $(GOMPLATE)
 	$(call gen_release_files,./cmd/buckd,buckd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
 .PHONY: build-buckd-release
 
-build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release
+build-billingd-release: $(GOX) $(GOVVV) $(GOMPLATE)
+	$(call gen_release_files,./cmd/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+.PHONY: build-billingd-release
+
+build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release build-billingd-release
 .PHONY: build-releases
 
 hub-up:
@@ -97,6 +109,37 @@ buck-stop:
 
 buck-clean:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans
+
+test:
+	go test -race -timeout 45m ./...
+.PHONY: test
+
+clean-protos:
+	find . -type f -name '*.pb.go' -delete
+	find . -type f -name '*pb_test.go' -delete
+.PHONY: clean-protos
+
+clean-js-protos:
+	find . -type f -name '*pb.js' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb.d.ts' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb_service.js' ! -path "*/node_modules/*" -delete
+	find . -type f -name '*pb_service.d.ts' ! -path "*/node_modules/*" -delete
+.PHONY: clean-js-protos
+
+install-protoc:
+	cd buildtools && ./install_protoc.bash
+
+PROTOCGENGO=$(shell pwd)/buildtools/protoc-gen-go
+protos: install-protoc clean-protos
+	./scripts/protoc_gen_plugin.bash \
+	--proto_path=. \
+	--plugin_name=go \
+	--plugin_out=. \
+	--plugin_opt=plugins=grpc,paths=source_relative
+.PHONY: protos
+
+js-protos: install-protoc clean-js-protos
+	./scripts/gen_js_protos.bash
 
 # local is what we run when testing locally.
 # This does breaking change detection against our local git repository.

@@ -14,8 +14,8 @@ import (
 
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/textile/v2/api/hub/client"
-	pb "github.com/textileio/textile/v2/api/hub/pb"
+	"github.com/textileio/textile/v2/api/hubd/client"
+	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
 )
@@ -87,7 +87,7 @@ func NewUsername() string {
 }
 
 func NewEmail() string {
-	return fmt.Sprintf("%s@doe.com", NewUsername())
+	return fmt.Sprintf("%s@test.com", NewUsername())
 }
 
 func Signup(t util.TestingTWithCleanup, client *client.Client, conf core.Config, username, email string) *pb.SignupResponse {

@@ -65,15 +65,17 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
+	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v1.0.0
 	github.com/textileio/powergate v0.6.7
 	github.com/textileio/uiprogress v0.0.4
-	go.mongodb.org/mongo-driver v1.4.0
+	go.mongodb.org/mongo-driver v1.4.1
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )

@@ -13,7 +13,12 @@ import (
 	"github.com/textileio/textile/v2/core"
 )
 
-const daemonName = "hubd"
+const (
+	daemonName = "hubd"
+
+	mib = 1024 * 1024
+	gib = 1024 * mib
+)
 
 var (
 	log = logging.Logger(daemonName)
@@ -59,6 +64,10 @@ var (
 				Key:      "addr.ipfs.api",
 				DefValue: "/ip4/127.0.0.1/tcp/5001",
 			},
+			"addrBillingApi": {
+				Key:      "addr.billing.api",
+				DefValue: "",
+			},
 			"addrPowergateApi": {
 				Key:      "addr.powergate.api",
 				DefValue: "",
@@ -101,15 +110,7 @@ var (
 			},
 			"bucketsMaxSize": {
 				Key:      "buckets.max_size",
-				DefValue: int64(1073741824),
-			},
-			"bucketsTotalMaxSize": {
-				Key:      "buckets.total_max_size",
-				DefValue: int64(1073741824),
-			},
-			"bucketsMaxNumberPerThread": {
-				Key:      "buckets.max_number_per_thread",
-				DefValue: 10000,
+				DefValue: int64(4 * gib),
 			},
 			"threadsMaxNumberPerOwner": {
 				Key:      "threads.max_number_per_owner",
@@ -171,6 +172,10 @@ func init() {
 		config.Flags["addrIpfsApi"].DefValue.(string),
 		"IPFS API address")
 	rootCmd.PersistentFlags().String(
+		"addrBillingApi",
+		config.Flags["addrBillingApi"].DefValue.(string),
+		"Billing API address")
+	rootCmd.PersistentFlags().String(
 		"addrPowergateApi",
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
@@ -222,14 +227,6 @@ func init() {
 		"bucketsMaxSize",
 		config.Flags["bucketsMaxSize"].DefValue.(int64),
 		"Bucket max size in bytes")
-	rootCmd.PersistentFlags().Int64(
-		"bucketsTotalMaxSize",
-		config.Flags["bucketsTotalMaxSize"].DefValue.(int64),
-		"Total max size of buckets per account")
-	rootCmd.PersistentFlags().Int(
-		"bucketsMaxNumberPerThread",
-		config.Flags["bucketsMaxNumberPerThread"].DefValue.(int),
-		"Max number of buckets per thread")
 
 	// Thread settings
 	rootCmd.PersistentFlags().Int(
@@ -270,6 +267,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 
+		addrBillingApi := config.Viper.GetString("addr.billing.api")
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
@@ -287,9 +285,6 @@ var rootCmd = &cobra.Command{
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
-		bucketsTotalMaxSize := config.Viper.GetInt64("buckets.total_max_size")
-		bucketsMaxNumberPerThread := config.Viper.GetInt("buckets.max_number_per_thread")
-
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
 
 		logFile := config.Viper.GetString("log.file")
@@ -309,6 +304,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:      addrIpfsApi,
 			AddrGatewayHost:  addrGatewayHost,
 			AddrGatewayURL:   addrGatewayUrl,
+			AddrBillingAPI:   addrBillingApi,
 			AddrPowergateAPI: addrPowergateApi,
 			AddrMongoURI:     addrMongoUri,
 
@@ -325,11 +321,8 @@ var rootCmd = &cobra.Command{
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
 
-			BucketsMaxSize:            bucketsMaxSize,
-			BucketsTotalMaxSize:       bucketsTotalMaxSize,
-			BucketsMaxNumberPerThread: bucketsMaxNumberPerThread,
-
-			ThreadsMaxNumberPerOwner: threadsMaxNumberPerOwner,
+			MaxBucketSize:            bucketsMaxSize,
+			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
 
 			Hub:   true,
 			Debug: config.Viper.GetBool("log.debug"),

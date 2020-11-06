@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-contrib/location"
@@ -28,7 +27,7 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
-	bucketsclient "github.com/textileio/textile/v2/api/buckets/client"
+	bucketsclient "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -53,8 +52,6 @@ type link struct {
 
 // Gateway provides HTTP-based access to Textile.
 type Gateway struct {
-	sync.Mutex
-
 	server        *http.Server
 	addr          ma.Multiaddr
 	url           string

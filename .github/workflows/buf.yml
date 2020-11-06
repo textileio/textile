@@ -25,4 +25,3 @@ jobs:
       - name: make local
         if: success()
         run: make buf-local
-        

@@ -13,12 +13,12 @@ import (
 	"github.com/textileio/uiprogress"
 )
 
+const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
+
 var (
-	buckMaxSizeMiB = int64(1024)
+	buckMaxSizeMiB = 4 * int64(1024)
 	MiB            = int64(1024 * 1024)
 )
-
-const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
 
 var pushCmd = &cobra.Command{
 	Use:   "push",
@@ -45,7 +45,8 @@ var pushCmd = &cobra.Command{
 		size, err := buck.LocalSize()
 		cmd.ErrCheck(err)
 		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("the bucket size is %dMB which is bigger than accepted limit %dMB", size/MiB, maxSize))
+			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMiB): %dMiB",
+				maxSize, size/MiB))
 		}
 
 		var events chan local.PathEvent

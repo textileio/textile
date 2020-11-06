@@ -1,0 +1,137 @@
+syntax = "proto3";
+package api.billingd.pb;
+option go_package = "github.com/textileio/textile/v2/api/billingd/pb";
+
+message Period {
+    int64 start = 1;
+    int64 end = 2;
+}
+
+message Usage {
+    int64 units = 1;
+    int64 total = 2;
+    int64 free = 3;
+}
+
+message CheckHealthRequest {}
+
+message CheckHealthResponse {}
+
+message CreateCustomerRequest {
+    string email = 1;
+}
+
+message CreateCustomerResponse {
+    string customer_id = 1;
+}
+
+message GetCustomerRequest {
+    string customer_id = 1;
+}
+
+message GetCustomerResponse {
+    string email = 1;
+    string status = 2;
+    int64 balance = 3;
+    bool billable = 4;
+    bool delinquent = 5;
+    int64 created_at = 6;
+
+    Period period = 7;
+    Usage stored_data = 8;
+    Usage network_egress = 9;
+    Usage instance_writes = 10;
+    Usage instance_reads = 11;
+}
+
+message GetCustomerSessionRequest {
+    string customer_id = 1;
+}
+
+message GetCustomerSessionResponse {
+    string url = 1;
+}
+
+message UpdateCustomerRequest {
+    string customer_id = 1;
+    int64 balance = 2;
+    bool billable = 3;
+    bool delinquent = 4;
+}
+
+message UpdateCustomerResponse {}
+
+message UpdateCustomerSubscriptionRequest {
+    string customer_id = 1;
+    string status = 2;
+    Period period = 3;
+}
+
+message UpdateCustomerSubscriptionResponse {}
+
+message RecreateCustomerSubscriptionRequest {
+    string customer_id = 1;
+}
+
+message RecreateCustomerSubscriptionResponse {}
+
+message DeleteCustomerRequest {
+    string customer_id = 1;
+}
+
+message DeleteCustomerResponse {}
+
+message IncStoredDataRequest {
+    string customer_id = 1;
+    int64 inc_size = 2;
+}
+
+message IncStoredDataResponse {
+    Period period = 1;
+    Usage stored_data = 2;
+}
+
+message IncNetworkEgressRequest {
+    string customer_id = 1;
+    int64 inc_size = 2;
+}
+
+message IncNetworkEgressResponse {
+    Period period = 1;
+    Usage network_egress = 2;
+}
+
+message IncInstanceReadsRequest {
+    string customer_id = 1;
+    int64 inc_count = 2;
+}
+
+message IncInstanceReadsResponse {
+    Period period = 1;
+    Usage instance_reads = 2;
+}
+
+message IncInstanceWritesRequest {
+    string customer_id = 1;
+    int64 inc_count = 2;
+}
+
+message IncInstanceWritesResponse {
+    Period period = 1;
+    Usage instance_writes = 2;
+}
+
+service APIService {
+    rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
+    rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
+    rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
+    rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
+    rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {}
+    rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
+    rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
+    rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
+    rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
+    rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
+    rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
+    rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
+}

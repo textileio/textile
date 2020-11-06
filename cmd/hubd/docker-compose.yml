@@ -38,7 +38,7 @@ services:
     ports:
       - "127.0.0.1:27017:27017"
   ipfs:
-    image: ipfs/go-ipfs:v0.6.0
+    image: ipfs/go-ipfs:v0.7.0
     restart: always
     volumes:
       - "${REPO_PATH}/ipfs:/data/ipfs"

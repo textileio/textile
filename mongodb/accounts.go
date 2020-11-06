@@ -29,17 +29,17 @@ func init() {
 }
 
 type Account struct {
-	Type             AccountType
-	Key              thread.PubKey
-	Secret           thread.Identity
-	Name             string
-	Username         string
-	Email            string
-	Token            thread.Token
-	Members          []Member
-	BucketsTotalSize int64
-	CreatedAt        time.Time
-	PowInfo          *PowInfo
+	Type       AccountType
+	Key        thread.PubKey
+	Secret     thread.Identity
+	Name       string
+	Username   string
+	Email      string
+	Token      thread.Token
+	Members    []Member
+	CustomerID string
+	PowInfo    *PowInfo
+	CreatedAt  time.Time
 }
 
 type AccountType int
@@ -127,8 +127,8 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 		Secret:    thread.NewLibp2pIdentity(sk),
 		Email:     email,
 		Username:  username,
-		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
+		CreatedAt: time.Now(),
 	}
 	id, err := doc.Key.MarshalBinary()
 	if err != nil {
@@ -139,13 +139,12 @@ func (a *Accounts) CreateDev(ctx context.Context, username, email string, powInf
 		return nil, err
 	}
 	data := bson.M{
-		"_id":                id,
-		"type":               int32(doc.Type),
-		"secret":             secret,
-		"email":              doc.Email,
-		"username":           doc.Username,
-		"created_at":         doc.CreatedAt,
-		"buckets_total_size": int64(0),
+		"_id":        id,
+		"type":       int32(doc.Type),
+		"secret":     secret,
+		"email":      doc.Email,
+		"username":   doc.Username,
+		"created_at": doc.CreatedAt,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err := a.col.InsertOne(ctx, data); err != nil {
@@ -180,8 +179,8 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 		Name:      name,
 		Username:  slg,
 		Members:   members,
-		CreatedAt: time.Now(),
 		PowInfo:   powInfo,
+		CreatedAt: time.Now(),
 	}
 	id, err := doc.Key.MarshalBinary()
 	if err != nil {
@@ -219,27 +218,6 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	return doc, nil
 }
 
-func (a *Accounts) UpdatePowInfo(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*Account, error) {
-	id, err := key.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	update := bson.M{}
-	encodePowInfo(update, powInfo)
-	res, err := a.col.UpdateOne(
-		ctx,
-		bson.M{"_id": id},
-		bson.M{"$set": update},
-	)
-	if err != nil {
-		return nil, err
-	}
-	if res.ModifiedCount != 1 {
-		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
-	}
-	return a.Get(ctx, key)
-}
-
 func (a *Accounts) Get(ctx context.Context, key thread.PubKey) (*Account, error) {
 	id, err := key.MarshalBinary()
 	if err != nil {
@@ -269,7 +247,16 @@ func (a *Accounts) GetByUsername(ctx context.Context, username string) (*Account
 }
 
 func (a *Accounts) GetByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (*Account, error) {
-	res := a.col.FindOne(ctx, bson.D{{"$or", bson.A{bson.D{{"username", usernameOrEmail}}, bson.D{{"email", usernameOrEmail}}}}})
+	res := a.col.FindOne(ctx, bson.D{
+		{"$or", bson.A{
+			bson.D{
+				{"username", usernameOrEmail},
+			},
+			bson.D{
+				{"email", usernameOrEmail},
+			},
+		}},
+	})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -329,16 +316,12 @@ func (a *Accounts) SetToken(ctx context.Context, key thread.PubKey, token thread
 	return nil
 }
 
-func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, newTotalSize int64) error {
+func (a *Accounts) SetCustomerID(ctx context.Context, key thread.PubKey, customerID string) error {
 	id, err := key.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	// Note: temporary fix for ensuring accounts don't go below zero. see #376
-	if 0 > newTotalSize {
-		newTotalSize = 0
-	}
-	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"buckets_total_size": newTotalSize}})
+	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"customer_id": customerID}})
 	if err != nil {
 		return err
 	}
@@ -346,6 +329,27 @@ func (a *Accounts) SetBucketsTotalSize(ctx context.Context, key thread.PubKey, n
 		return mongo.ErrNoDocuments
 	}
 	return nil
+}
+
+func (a *Accounts) UpdatePowInfo(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*Account, error) {
+	id, err := key.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	update := bson.M{}
+	encodePowInfo(update, powInfo)
+	res, err := a.col.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": update},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if res.ModifiedCount != 1 {
+		return nil, fmt.Errorf("should have modified 1 record but updated %v", res.ModifiedCount)
+	}
+	return a.Get(ctx, key)
 }
 
 func (a *Accounts) ListByMember(ctx context.Context, member thread.PubKey) ([]Account, error) {
@@ -554,16 +558,15 @@ func (a *Accounts) Delete(ctx context.Context, key thread.PubKey) error {
 }
 
 func decodeAccount(raw bson.M) (*Account, error) {
-	var name, email string
+	var name, email, customerID string
 	if v, ok := raw["name"]; ok {
 		name = v.(string)
 	}
 	if v, ok := raw["email"]; ok {
 		email = v.(string)
 	}
-	var totalSize int64
-	if v, ok := raw["buckets_total_size"]; ok {
-		totalSize = v.(int64)
+	if v, ok := raw["customer_id"]; ok {
+		customerID = v.(string)
 	}
 	secret := &thread.Libp2pIdentity{}
 	err := secret.UnmarshalBinary(raw["secret"].(primitive.Binary).Data)
@@ -598,16 +601,16 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &Account{
-		Type:             AccountType(raw["type"].(int32)),
-		Key:              secret.GetPublic(),
-		Secret:           secret,
-		Name:             name,
-		Username:         raw["username"].(string),
-		Email:            email,
-		Token:            token,
-		Members:          mems,
-		BucketsTotalSize: totalSize,
-		CreatedAt:        created,
-		PowInfo:          decodePowInfo(raw),
+		Type:       AccountType(raw["type"].(int32)),
+		Key:        secret.GetPublic(),
+		Secret:     secret,
+		Name:       name,
+		Username:   raw["username"].(string),
+		Email:      email,
+		Token:      token,
+		Members:    mems,
+		CustomerID: customerID,
+		PowInfo:    decodePowInfo(raw),
+		CreatedAt:  created,
 	}, nil
 }

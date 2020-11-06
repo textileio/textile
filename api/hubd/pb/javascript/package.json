@@ -1,0 +1,29 @@
+{
+  "name": "@textile/hub-grpc",
+  "version": "0.0.0",
+  "description": "A client for interacting with the Textile Hub gRPC API.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/textileio/textile.git"
+  },
+  "author": "Textile",
+  "license": "MIT",
+  "files": [
+    "api/hubd/pb/hubd_pb.js",
+    "api/hubd/pb/hubd_pb_service.js",
+    "api/hubd/pb/hubd_pb.d.ts",
+    "api/hubd/pb/hubd_pb_service.d.ts",
+    "api/billingd/pb/billingd_pb.js",
+    "api/billingd/pb/billingd_pb_service.js",
+    "api/billingd/pb/billingd_pb.d.ts",
+    "api/billingd/pb/billingd_pb_service.d.ts"
+  ],
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.13.0",
+    "@types/google-protobuf": "^3.7.4",
+    "google-protobuf": "^3.13.0"
+  },
+  "devDependencies": {
+    "ts-protoc-gen": "^0.13.0"
+  }
+}

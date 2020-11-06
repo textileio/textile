@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/textile/v2/api/users/client"
+	"github.com/textileio/textile/v2/api/usersd/client"
 	. "github.com/textileio/textile/v2/mail/local"
 )
 

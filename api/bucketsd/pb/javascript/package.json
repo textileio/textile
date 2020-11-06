@@ -1,0 +1,25 @@
+{
+  "name": "@textile/buckets-grpc",
+  "version": "0.0.0",
+  "description": "A client for interacting with the Textile Buckets gRPC API.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/textileio/textile.git"
+  },
+  "author": "Textile",
+  "license": "MIT",
+  "files": [
+    "api/bucketsd/pb/bucketsd_pb.js",
+    "api/bucketsd/pb/bucketsd_pb_service.js",
+    "api/bucketsd/pb/bucketsd_pb.d.ts",
+    "api/bucketsd/pb/bucketsd_pb_service.d.ts"
+  ],
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.13.0",
+    "@types/google-protobuf": "^3.7.4",
+    "google-protobuf": "^3.13.0"
+  },
+  "devDependencies": {
+    "ts-protoc-gen": "^0.13.0"
+  }
+}

@@ -37,10 +37,10 @@ services:
     restart: unless-stopped
 
   ipfs:
-    image: ipfs/go-ipfs:v0.6.0
+    image: ipfs/go-ipfs:v0.7.0
 
   ipfsbuckets:
-    image: ipfs/go-ipfs:v0.6.0
+    image: ipfs/go-ipfs:v0.7.0
 
   mongo:
     image: mongo:latest

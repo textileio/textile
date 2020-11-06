@@ -10,7 +10,7 @@ import (
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/v2/api/common"
-	"github.com/textileio/textile/v2/api/users/client"
+	"github.com/textileio/textile/v2/api/usersd/client"
 	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/textile/v2/mail"
 )

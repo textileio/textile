@@ -45,31 +45,18 @@ var (
 func Init(rootCmd *cobra.Command) {
 	config.Viper.SetConfigType("yaml")
 
-	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, updateCmd, versionCmd)
-	rootCmd.AddCommand(orgsCmd, keysCmd, threadsCmd, powCmd)
+	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, updateCmd, versionCmd, orgsCmd, keysCmd, threadsCmd, powCmd, billingCmd)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
 	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powPeersCmd, powRetrievalsCmd, powShowAllCmd, powShowCmd, powStorageCmd)
+	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingStatusCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
 
-	rootCmd.PersistentFlags().String(
-		"api",
-		config.Flags["api"].DefValue.(string),
-		"API target")
-
-	rootCmd.PersistentFlags().StringP(
-		"session",
-		"s",
-		config.Flags["session"].DefValue.(string),
-		"User session token")
-
-	rootCmd.PersistentFlags().StringP(
-		"org",
-		"o",
-		config.Flags["org"].DefValue.(string),
-		"Org username")
+	rootCmd.PersistentFlags().String("api", config.Flags["api"].DefValue.(string), "API target")
+	rootCmd.PersistentFlags().StringP("session", "s", config.Flags["session"].DefValue.(string), "User session token")
+	rootCmd.PersistentFlags().StringP("org", "o", config.Flags["org"].DefValue.(string), "Org username")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)

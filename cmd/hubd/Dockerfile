@@ -66,7 +66,7 @@ RUN mkdir -p $TEXTILE_PATH \
   && adduser -D -h $TEXTILE_PATH -u 1000 -G users textile \
   && chown -R textile:users $TEXTILE_PATH
 
-# Switch to a non-privileged user
+# Switch to a non-privileged user.
 USER textile
 
 # Expose the repo as a volume.
