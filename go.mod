@@ -71,6 +71,7 @@ require (
 	github.com/textileio/go-threads v1.0.0
 	github.com/textileio/powergate v0.6.7
 	github.com/textileio/uiprogress v0.0.4
+	github.com/xakep666/mongo-migrate v0.2.1
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
