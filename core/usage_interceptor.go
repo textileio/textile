@@ -60,18 +60,11 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			return ctx, nil
 		}
 	}
-	var account *mdb.Account
-	if org, ok := mdb.OrgFromContext(ctx); ok {
-		account = org
-	} else if dev, ok := mdb.DevFromContext(ctx); ok {
-		account = dev
-	}
-	// @todo: Account for users after User -> Account migration
-	if account == nil || account.CustomerID == "" {
+	account, ok := mdb.AccountFromContext(ctx)
+	if !ok || account.Owner().CustomerID == "" {
 		return ctx, nil
 	}
-
-	cus, err := t.bc.GetCustomer(ctx, account.CustomerID)
+	cus, err := t.bc.GetCustomer(ctx, account.Owner().CustomerID)
 	if err != nil {
 		return ctx, err
 	}
@@ -129,14 +122,8 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 			return nil
 		}
 	}
-	var account *mdb.Account
-	if org, ok := mdb.OrgFromContext(ctx); ok {
-		account = org
-	} else if dev, ok := mdb.DevFromContext(ctx); ok {
-		account = dev
-	}
-	// @todo: Account for users after User -> Account migration
-	if account == nil || account.CustomerID == "" {
+	account, ok := mdb.AccountFromContext(ctx)
+	if !ok || account.Owner().CustomerID == "" {
 		return nil
 	}
 	switch method {
@@ -148,7 +135,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
 		owner, ok := buckets.BucketOwnerFromContext(ctx)
 		if ok {
-			_, err := t.bc.IncStoredData(ctx, account.CustomerID, owner.StorageDelta)
+			_, err := t.bc.IncStoredData(ctx, account.Owner().CustomerID, owner.StorageDelta)
 			if err != nil {
 				return err
 			}

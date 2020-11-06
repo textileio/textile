@@ -28,8 +28,6 @@ type Collections struct {
 	IPNSKeys        *IPNSKeys
 	BucketArchives  *BucketArchives
 	ArchiveTracking *ArchiveTracking
-
-	Users *Users
 }
 
 // NewCollections gets or create store instances for active collections.
@@ -59,10 +57,6 @@ func NewCollections(ctx context.Context, uri, dbName string, hub bool) (*Collect
 			return nil, err
 		}
 		c.APIKeys, err = NewAPIKeys(ctx, db)
-		if err != nil {
-			return nil, err
-		}
-		c.Users, err = NewUsers(ctx, db)
 		if err != nil {
 			return nil, err
 		}

@@ -9,7 +9,6 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
-	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
@@ -59,21 +58,10 @@ func powInterceptor(
 			return nil, status.Errorf(codes.PermissionDenied, "method not allowed: %s", info.FullMethod)
 		}
 
-		var powInfo *mdb.PowInfo
-		var owner thread.PubKey
-		var isAccount bool
-		if org, ok := mdb.OrgFromContext(ctx); ok {
-			powInfo = org.PowInfo
-			owner = org.Key
-			isAccount = true
-		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			powInfo = dev.PowInfo
-			owner = dev.Key
-			isAccount = true
-		} else if user, ok := mdb.UserFromContext(ctx); ok {
-			powInfo = user.PowInfo
-			owner = user.Key
-			isAccount = false
+		account, ok := mdb.AccountFromContext(ctx)
+		if !ok {
+			// Should not happen at this point in the interceptor chain
+			return nil, status.Errorf(codes.FailedPrecondition, "account is required")
 		}
 
 		createNewFFS := func() error {
@@ -81,11 +69,7 @@ func powInterceptor(
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
-			if isAccount {
-				_, err = c.Accounts.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-			} else {
-				_, err = c.Users.UpdatePowInfo(ctx, owner, &mdb.PowInfo{ID: id, Token: token})
-			}
+			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: id, Token: token})
 			if err != nil {
 				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}
@@ -95,16 +79,16 @@ func powInterceptor(
 		tryAgain := fmt.Errorf("powergate newly integrated into your account, " +
 			"please try again in 30 seconds to allow time for setup to complete")
 
-		// case where account/user was created before powergate was enabled.
+		// Case where account/user was created before powergate was enabled.
 		// create a ffs instance for them.
-		if powInfo == nil {
+		if account.Owner().PowInfo == nil {
 			if err := createNewFFS(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
 		}
 
-		ffsCtx := context.WithValue(ctx, powc.AuthKey, powInfo.Token)
+		ffsCtx := context.WithValue(ctx, powc.AuthKey, account.Owner().PowInfo.Token)
 
 		methodDesc := serviceDesc.FindMethodByName(methodName)
 		if methodDesc == nil {

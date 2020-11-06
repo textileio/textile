@@ -84,8 +84,8 @@ func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bo
 		if err != nil {
 			return ctx, status.Error(codes.NotFound, "User not found")
 		}
-		ctx = mdb.NewDevContext(ctx, dev)
 
+		var org *mdb.Account
 		orgSlug, ok := common.OrgSlugFromMD(ctx)
 		if ok {
 			isMember, err := t.collections.Accounts.IsMember(ctx, orgSlug, dev.Key)
@@ -95,17 +95,18 @@ func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bo
 			if !isMember {
 				return ctx, status.Error(codes.PermissionDenied, "User is not an org member")
 			} else {
-				org, err := t.collections.Accounts.GetByUsername(ctx, orgSlug)
+				var err error
+				org, err = t.collections.Accounts.GetByUsername(ctx, orgSlug)
 				if err != nil {
 					return ctx, status.Error(codes.NotFound, "Org not found")
 				}
-				ctx = mdb.NewOrgContext(ctx, org)
 				ctx = common.NewOrgSlugContext(ctx, orgSlug)
 				ctx = thread.NewTokenContext(ctx, org.Token)
 			}
 		} else {
 			ctx = thread.NewTokenContext(ctx, dev.Token)
 		}
+		ctx = mdb.NewAccountContext(ctx, dev, org)
 	} else if k, ok := common.APIKeyFromMD(ctx); ok {
 		key, err := t.collections.APIKeys.Get(ctx, k)
 		if err != nil || !key.Valid {
@@ -131,9 +132,9 @@ func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bo
 			}
 			switch acc.Type {
 			case mdb.Dev:
-				ctx = mdb.NewDevContext(ctx, acc)
+				ctx = mdb.NewAccountContext(ctx, acc, nil)
 			case mdb.Org:
-				ctx = mdb.NewOrgContext(ctx, acc)
+				ctx = mdb.NewAccountContext(ctx, nil, acc)
 			}
 			ctx = thread.NewTokenContext(ctx, acc.Token)
 		case mdb.UserKey:
@@ -147,15 +148,15 @@ func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bo
 				if err = ukey.UnmarshalString(claims.Subject); err != nil {
 					return ctx, err
 				}
-				user, err := t.collections.Users.Get(ctx, ukey)
+				user, err := t.collections.Accounts.Get(ctx, ukey)
 				if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 					return ctx, err
 				}
 				if user == nil {
 					// Attach a temp user context that will be accessible in the next interceptor.
-					user = &mdb.User{Key: ukey}
+					user = &mdb.Account{Key: ukey}
 				}
-				ctx = mdb.NewUserContext(ctx, user)
+				ctx = mdb.NewAccountContext(ctx, user, nil)
 			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {
 				return ctx, status.Error(codes.Unauthenticated, "Token required")
 			}

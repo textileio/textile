@@ -21,7 +21,8 @@ import (
 var (
 	usernameRx *regexp.Regexp
 
-	ErrInvalidUsername = fmt.Errorf("username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen")
+	ErrInvalidUsername = fmt.Errorf("username may only contain alphanumeric characters or single hyphens, " +
+		"and cannot begin or end with a hyphen")
 )
 
 func init() {
@@ -47,6 +48,7 @@ type AccountType int
 const (
 	Dev AccountType = iota
 	Org
+	User
 )
 
 type Member struct {
@@ -72,22 +74,28 @@ func (r Role) String() (s string) {
 	return
 }
 
-func NewDevContext(ctx context.Context, dev *Account) context.Context {
-	return context.WithValue(ctx, ctxKey("developer"), dev)
+type AccountCtx struct {
+	User *Account
+	Org  *Account
 }
 
-func DevFromContext(ctx context.Context) (*Account, bool) {
-	dev, ok := ctx.Value(ctxKey("developer")).(*Account)
-	return dev, ok
+func NewAccountContext(ctx context.Context, user, org *Account) context.Context {
+	return context.WithValue(ctx, ctxKey("account"), &AccountCtx{
+		User: user,
+		Org:  org,
+	})
 }
 
-func NewOrgContext(ctx context.Context, org *Account) context.Context {
-	return context.WithValue(ctx, ctxKey("org"), org)
+func AccountFromContext(ctx context.Context) (*AccountCtx, bool) {
+	acc, ok := ctx.Value(ctxKey("account")).(*AccountCtx)
+	return acc, ok
 }
 
-func OrgFromContext(ctx context.Context) (*Account, bool) {
-	org, ok := ctx.Value(ctxKey("org")).(*Account)
-	return org, ok
+func (ac *AccountCtx) Owner() *Account {
+	if ac.Org != nil {
+		return ac.Org
+	}
+	return ac.User
 }
 
 type Accounts struct {
@@ -99,12 +107,16 @@ func NewAccounts(ctx context.Context, db *mongo.Database) (*Accounts, error) {
 	_, err := a.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{{"username", 1}},
-			Options: options.Index().SetUnique(true).
-				SetCollation(&options.Collation{Locale: "en", Strength: 2}),
+			Options: options.Index().
+				SetUnique(true).
+				SetCollation(&options.Collation{Locale: "en", Strength: 2}).
+				SetSparse(true),
 		},
 		{
-			Keys:    bson.D{{"email", 1}},
-			Options: options.Index().SetUnique(true).SetSparse(true),
+			Keys: bson.D{{"email", 1}},
+			Options: options.Index().
+				SetUnique(true).
+				SetSparse(true),
 		},
 		{
 			Keys: bson.D{{"members._id", 1}},
@@ -213,6 +225,29 @@ func (a *Accounts) CreateOrg(ctx context.Context, name string, members []Member,
 	}
 	encodePowInfo(data, doc.PowInfo)
 	if _, err = a.col.InsertOne(ctx, data); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
+func (a *Accounts) CreateUser(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*Account, error) {
+	doc := &Account{
+		Type:      User,
+		Key:       key,
+		PowInfo:   powInfo,
+		CreatedAt: time.Now(),
+	}
+	id, err := doc.Key.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	data := bson.M{
+		"_id":        id,
+		"type":       int32(doc.Type),
+		"created_at": doc.CreatedAt,
+	}
+	encodePowInfo(data, doc.PowInfo)
+	if _, err := a.col.InsertOne(ctx, data); err != nil {
 		return nil, err
 	}
 	return doc, nil
@@ -486,7 +521,10 @@ func (a *Accounts) AddMember(ctx context.Context, username string, member Member
 		"username": member.Username,
 		"role":     int(member.Role),
 	}
-	_, err = a.col.UpdateOne(ctx, bson.M{"username": username, "members._id": bson.M{"$ne": mk}}, bson.M{"$push": bson.M{"members": raw}})
+	_, err = a.col.UpdateOne(ctx, bson.M{
+		"username":    username,
+		"members._id": bson.M{"$ne": mk},
+	}, bson.M{"$push": bson.M{"members": raw}})
 	return err
 }
 
@@ -532,7 +570,9 @@ func (a *Accounts) RemoveMember(ctx context.Context, username string, member thr
 	if err != nil {
 		return err
 	}
-	res, err := a.col.UpdateOne(ctx, bson.M{"username": username}, bson.M{"$pull": bson.M{"members": bson.M{"_id": mid}}})
+	res, err := a.col.UpdateOne(ctx, bson.M{
+		"username": username,
+	}, bson.M{"$pull": bson.M{"members": bson.M{"_id": mid}}})
 	if err != nil {
 		return err
 	}
@@ -558,7 +598,15 @@ func (a *Accounts) Delete(ctx context.Context, key thread.PubKey) error {
 }
 
 func decodeAccount(raw bson.M) (*Account, error) {
-	var name, email, customerID string
+	key := &thread.Libp2pPubKey{}
+	err := key.UnmarshalBinary(raw["_id"].(primitive.Binary).Data)
+	if err != nil {
+		return nil, err
+	}
+	var username, name, email, customerID string
+	if v, ok := raw["username"]; ok {
+		username = v.(string)
+	}
 	if v, ok := raw["name"]; ok {
 		name = v.(string)
 	}
@@ -568,10 +616,13 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if v, ok := raw["customer_id"]; ok {
 		customerID = v.(string)
 	}
-	secret := &thread.Libp2pIdentity{}
-	err := secret.UnmarshalBinary(raw["secret"].(primitive.Binary).Data)
-	if err != nil {
-		return nil, err
+	var secret *thread.Libp2pIdentity
+	if v, ok := raw["secret"]; ok {
+		secret = &thread.Libp2pIdentity{}
+		err := secret.UnmarshalBinary(v.(primitive.Binary).Data)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var token thread.Token
 	if v, ok := raw["token"]; ok {
@@ -602,10 +653,10 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	}
 	return &Account{
 		Type:       AccountType(raw["type"].(int32)),
-		Key:        secret.GetPublic(),
+		Key:        key,
 		Secret:     secret,
 		Name:       name,
-		Username:   raw["username"].(string),
+		Username:   username,
 		Email:      email,
 		Token:      token,
 		Members:    mems,

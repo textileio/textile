@@ -2,6 +2,7 @@ package hubd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/mail"
 	"time"
@@ -12,7 +13,6 @@ import (
 	threads "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/broadcast"
 	net "github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/api/client"
@@ -33,6 +33,9 @@ import (
 
 var (
 	log = logging.Logger("hubapi")
+
+	errDevRequired = errors.New("developer account required")
+	errOrgRequired = errors.New("organization account required")
 
 	loginTimeout = time.Minute * 30
 	emailTimeout = time.Second * 10
@@ -230,7 +233,10 @@ func getSessionSecret(secret string) string {
 func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.SignoutResponse, error) {
 	log.Debugf("received signout request")
 
-	session, _ := mdb.SessionFromContext(ctx)
+	session, ok := mdb.SessionFromContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
 	if err := s.Collections.Sessions.Delete(ctx, session.ID); err != nil {
 		return nil, err
 	}
@@ -240,30 +246,32 @@ func (s *Service) Signout(ctx context.Context, _ *pb.SignoutRequest) (*pb.Signou
 func (s *Service) GetSessionInfo(ctx context.Context, _ *pb.GetSessionInfoRequest) (*pb.GetSessionInfoResponse, error) {
 	log.Debugf("received get session info request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	key, err := dev.Key.MarshalBinary()
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	key, err := account.User.Key.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
 	return &pb.GetSessionInfoResponse{
 		Key:      key,
-		Username: dev.Username,
-		Email:    dev.Email,
+		Username: account.User.Username,
+		Email:    account.User.Email,
 	}, nil
 }
 
 func (s *Service) GetIdentity(ctx context.Context, _ *pb.GetIdentityRequest) (*pb.GetIdentityResponse, error) {
 	log.Debugf("received get identity request")
 
-	var identity thread.Identity
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		dev, _ := mdb.DevFromContext(ctx)
-		identity = dev.Secret
-	} else {
-		identity = org.Secret
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
 	}
-	data, err := identity.MarshalBinary()
+	data, err := account.Owner().Secret.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +283,10 @@ func (s *Service) GetIdentity(ctx context.Context, _ *pb.GetIdentityRequest) (*p
 func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.CreateKeyResponse, error) {
 	log.Debugf("received create key request")
 
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var keyType mdb.APIKeyType
 	switch req.Type {
 	case pb.KeyType_KEY_TYPE_ACCOUNT:
@@ -285,9 +297,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "invalid key type: %v", req.Type.String())
 	}
-
-	account := accountFromContext(ctx)
-	key, err := s.Collections.APIKeys.Create(ctx, account.Key, keyType, req.Secure)
+	key, err := s.Collections.APIKeys.Create(ctx, account.Owner().Key, keyType, req.Secure)
 	if err != nil {
 		return nil, err
 	}
@@ -310,12 +320,15 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyRequest) (*pb.InvalidateKeyResponse, error) {
 	log.Debugf("received invalidate key request")
 
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
 	key, err := s.Collections.APIKeys.Get(ctx, req.Key)
 	if err != nil {
 		return nil, err
 	}
-	account := accountFromContext(ctx)
-	if !account.Key.Equals(key.Owner) {
+	if !account.Owner().Key.Equals(key.Owner) {
 		return nil, status.Error(codes.PermissionDenied, "User does not own key")
 	}
 	if err := s.Collections.APIKeys.Invalidate(ctx, req.Key); err != nil {
@@ -327,8 +340,11 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
 	log.Debugf("received list keys request")
 
-	account := accountFromContext(ctx)
-	keys, err := s.Collections.APIKeys.ListByOwner(ctx, account.Key)
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := s.Collections.APIKeys.ListByOwner(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -357,8 +373,13 @@ func (s *Service) ListKeys(ctx context.Context, _ *pb.ListKeysRequest) (*pb.List
 func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.CreateOrgResponse, error) {
 	log.Debugf("received create org request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
 		ffsId, ffsToken, err := s.PowergateClient.FFS.Create(ctx)
@@ -368,8 +389,8 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
 	}
 	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
-		Key:      dev.Key,
-		Username: dev.Username,
+		Key:      account.User.Key,
+		Username: account.User.Username,
 		Role:     mdb.OrgOwner,
 	}}, powInfo)
 	if err != nil {
@@ -385,7 +406,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 
 	// Create a customer using the dev's email address
 	if s.BillingClient != nil {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, dev.Email)
+		cusID, err := s.BillingClient.CreateCustomer(ctx, account.User.Email)
 		if err != nil {
 			return nil, err
 		}
@@ -406,11 +427,14 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 func (s *Service) GetOrg(ctx context.Context, _ *pb.GetOrgRequest) (*pb.GetOrgResponse, error) {
 	log.Debugf("received get org request")
 
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("org required")
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
 	}
-	orgInfo, err := s.orgToPbOrg(org)
+	if account.Org == nil {
+		return nil, status.Errorf(codes.FailedPrecondition, errOrgRequired.Error())
+	}
+	orgInfo, err := s.orgToPbOrg(account.Org)
 	if err != nil {
 		return nil, fmt.Errorf("encoding org: %v", err)
 	}
@@ -449,8 +473,14 @@ func (s *Service) orgToPbOrg(org *mdb.Account) (*pb.OrgInfo, error) {
 func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.ListOrgsResponse, error) {
 	log.Debugf("received list orgs request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	orgs, err := s.Collections.Accounts.ListByMember(ctx, dev.Key)
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	orgs, err := s.Collections.Accounts.ListByMember(ctx, account.User.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -467,12 +497,17 @@ func (s *Service) ListOrgs(ctx context.Context, _ *pb.ListOrgsRequest) (*pb.List
 func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.RemoveOrgResponse, error) {
 	log.Debugf("received remove org request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("org required")
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
 	}
-	isOwner, err := s.Collections.Accounts.IsOwner(ctx, org.Username, dev.Key)
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	if account.Org == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errOrgRequired.Error())
+	}
+	isOwner, err := s.Collections.Accounts.IsOwner(ctx, account.Org.Username, account.User.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +515,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 		return nil, status.Error(codes.PermissionDenied, "User must be an org owner")
 	}
 
-	if err = s.destroyAccount(ctx, org); err != nil {
+	if err = s.destroyAccount(ctx, account.Org); err != nil {
 		return nil, err
 	}
 	return &pb.RemoveOrgResponse{}, nil
@@ -489,15 +524,20 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (*pb.InviteToOrgResponse, error) {
 	log.Debugf("received invite to org request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("org required")
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	if account.Org == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errOrgRequired.Error())
 	}
 	if _, err := mail.ParseAddress(req.Email); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
 	}
-	invite, err := s.Collections.Invites.Create(ctx, dev.Key, org.Username, req.Email)
+	invite, err := s.Collections.Invites.Create(ctx, account.User.Key, account.Org.Username, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +545,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.InviteAddress(
-		ectx, org.Name, dev.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
+		ectx, account.Org.Name, account.User.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
 	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
@@ -514,15 +554,20 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.LeaveOrgResponse, error) {
 	log.Debugf("received leave org request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("org required")
-	}
-	if err := s.Collections.Accounts.RemoveMember(ctx, org.Username, dev.Key); err != nil {
+	account, err := getAccount(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if err := s.Collections.Invites.DeleteByFromAndOrg(ctx, dev.Key, org.Username); err != nil {
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	if account.Org == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errOrgRequired.Error())
+	}
+	if err := s.Collections.Accounts.RemoveMember(ctx, account.Org.Username, account.User.Key); err != nil {
+		return nil, err
+	}
+	if err := s.Collections.Invites.DeleteByFromAndOrg(ctx, account.User.Key, account.Org.Username); err != nil {
 		return nil, err
 	}
 	return &pb.LeaveOrgResponse{}, nil
@@ -534,22 +579,20 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
-	account, _ := mdb.DevFromContext(ctx)
-	cusEmail := account.Email
-	org, ok := mdb.OrgFromContext(ctx)
-	if ok {
-		account = org
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if account.CustomerID == "" {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, cusEmail)
+	if account.Owner().CustomerID == "" {
+		cusID, err := s.BillingClient.CreateCustomer(ctx, account.Owner().Email)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Key, cusID); err != nil {
+		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Owner().Key, cusID); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := s.BillingClient.RecreateCustomerSubscription(ctx, account.CustomerID); err != nil {
+		if err := s.BillingClient.RecreateCustomerSubscription(ctx, account.Owner().CustomerID); err != nil {
 			return nil, err
 		}
 	}
@@ -562,8 +605,11 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
-	account := accountFromContext(ctx)
-	session, err := s.BillingClient.GetCustomerSession(ctx, account.CustomerID)
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.BillingClient.GetCustomerSession(ctx, account.Owner().CustomerID)
 	if err != nil {
 		return nil, err
 	}
@@ -576,8 +622,11 @@ func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoReques
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
-	account := accountFromContext(ctx)
-	customer, err := s.BillingClient.GetCustomer(ctx, account.CustomerID)
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().CustomerID)
 	if err != nil {
 		return nil, err
 	}
@@ -611,20 +660,17 @@ func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvail
 func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountRequest) (*pb.DestroyAccountResponse, error) {
 	log.Debugf("received destroy account request")
 
-	dev, _ := mdb.DevFromContext(ctx)
-	if err := s.destroyAccount(ctx, dev); err != nil {
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if account.User == nil {
+		return nil, status.Errorf(codes.InvalidArgument, errDevRequired.Error())
+	}
+	if err := s.destroyAccount(ctx, account.User); err != nil {
 		return nil, err
 	}
 	return &pb.DestroyAccountResponse{}, nil
-}
-
-func accountFromContext(ctx context.Context) *mdb.Account {
-	org, ok := mdb.OrgFromContext(ctx)
-	if !ok {
-		dev, _ := mdb.DevFromContext(ctx)
-		return dev
-	}
-	return org
 }
 
 func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
@@ -706,6 +752,14 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 
 	// Finally, delete the account.
 	return s.Collections.Accounts.Delete(ctx, a.Key)
+}
+
+func getAccount(ctx context.Context) (*mdb.AccountCtx, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	if account.Owner().Type == mdb.User {
+		return nil, status.Errorf(codes.InvalidArgument, "account type not supported")
+	}
+	return account, nil
 }
 
 func keyTypeToPb(t mdb.APIKeyType) (pb.KeyType, error) {

@@ -36,13 +36,10 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			return handler(ctx, req)
 		}
 
-		var owner thread.PubKey
-		if org, ok := mdb.OrgFromContext(ctx); ok {
-			owner = org.Key
-		} else if dev, ok := mdb.DevFromContext(ctx); ok {
-			owner = dev.Key
-		} else if user, ok := mdb.UserFromContext(ctx); ok {
-			owner = user.Key
+		account, ok := mdb.AccountFromContext(ctx)
+		if !ok {
+			// Should not happen at this point in the interceptor chain
+			return nil, status.Errorf(codes.FailedPrecondition, "account is required")
 		}
 
 		var newID thread.ID
@@ -84,7 +81,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			// owns the thread directly or via an API key.
 			threadID, ok := common.ThreadIDFromContext(ctx)
 			if ok {
-				th, err := t.collections.Threads.Get(ctx, threadID, owner)
+				th, err := t.collections.Threads.Get(ctx, threadID, account.Owner().Key)
 				if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
 					// Allow non-owners to interact with a limited set of APIs.
 					var isAllowed bool
@@ -113,8 +110,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		// Collect the user if we haven't seen them before.
-		user, ok := mdb.UserFromContext(ctx)
-		if ok && user.CreatedAt.IsZero() {
+		if ok && account.User.CreatedAt.IsZero() {
 			var powInfo *mdb.PowInfo
 			if t.pc != nil {
 				ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
@@ -123,27 +119,25 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 				}
 				powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
 			}
-			if err := t.collections.Users.Create(ctx, owner, powInfo); err != nil {
+			user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
+			if err != nil {
 				return nil, err
 			}
-		}
-		if !ok && owner != nil {
-			// Add the dev/org as the user for the user API.
-			ctx = mdb.NewUserContext(ctx, &mdb.User{Key: owner})
+			ctx = mdb.NewAccountContext(ctx, user, account.Org)
 		}
 
 		// Preemptively track the new thread ID for the owner.
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.
 		if newID.Defined() {
-			thds, err := t.collections.Threads.ListByOwner(ctx, owner)
+			thds, err := t.collections.Threads.ListByOwner(ctx, account.Owner().Key)
 			if err != nil {
 				return nil, err
 			}
 			if t.conf.MaxNumberThreadsPerOwner > 0 && len(thds) >= t.conf.MaxNumberThreadsPerOwner {
 				return nil, ErrTooManyThreadsPerOwner
 			}
-			if _, err := t.collections.Threads.Create(ctx, newID, owner, isDB); err != nil {
+			if _, err := t.collections.Threads.Create(ctx, newID, account.Owner().Key, isDB); err != nil {
 				return nil, err
 			}
 		}
@@ -175,7 +169,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		if err != nil {
 			// Clean up the new thread if there was an error.
 			if newID.Defined() {
-				if err := t.collections.Threads.Delete(ctx, newID, owner); err != nil {
+				if err := t.collections.Threads.Delete(ctx, newID, account.Owner().Key); err != nil {
 					log.Errorf("error deleting thread %s: %v", newID, err)
 				}
 			}
@@ -184,7 +178,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 
 		// Clean up the tracked thread if it was deleted.
 		if deleteID.Defined() {
-			if err := t.collections.Threads.Delete(ctx, deleteID, owner); err != nil {
+			if err := t.collections.Threads.Delete(ctx, deleteID, account.Owner().Key); err != nil {
 				return nil, err
 			}
 		}

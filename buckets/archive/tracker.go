@@ -40,7 +40,12 @@ type Tracker struct {
 	pgClient        *powc.Client
 }
 
-func New(colls *mdb.Collections, buckets *tdb.Buckets, pgClient *powc.Client, internalSession string) (*Tracker, error) {
+func New(
+	colls *mdb.Collections,
+	buckets *tdb.Buckets,
+	pgClient *powc.Client,
+	internalSession string,
+) (*Tracker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &Tracker{
 		ctx:    ctx,
@@ -89,21 +94,29 @@ func (t *Tracker) run() {
 						ctx, cancel := context.WithTimeout(t.ctx, time.Second*10)
 						defer cancel()
 
-						var powInfo *mdb.PowInfo
-						if account, err := t.colls.Accounts.Get(ctx, a.Owner); err == nil {
-							powInfo = account.PowInfo
-						} else if user, err := t.colls.Users.Get(ctx, a.Owner); err == nil {
-							powInfo = user.PowInfo
+						account, err := t.colls.Accounts.Get(ctx, a.Owner)
+						if err != nil {
+							log.Errorf("getting account: %s", err)
+							return
 						}
 
-						if powInfo == nil {
-							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "no powergate info found"); err != nil {
+						if account.PowInfo == nil {
+							err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "no powergate info found")
+							if err != nil {
 								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
 							}
 							return
 						}
 
-						reschedule, cause, err := t.trackArchiveProgress(ctx, a.BucketKey, a.DbID, a.DbToken, a.JID, a.BucketRoot, powInfo)
+						reschedule, cause, err := t.trackArchiveProgress(
+							ctx,
+							a.BucketKey,
+							a.DbID,
+							a.DbToken,
+							a.JID,
+							a.BucketRoot,
+							account.PowInfo,
+						)
 						if err != nil || !reschedule {
 							if err != nil {
 								cause = err.Error()
@@ -115,7 +128,8 @@ func (t *Tracker) run() {
 							return
 						}
 						log.Infof("rescheduling tracking archive with job %s, cause %s", a.JID, cause)
-						if err := t.colls.ArchiveTracking.Reschedule(ctx, a.JID, JobStatusPollInterval, cause); err != nil {
+						err = t.colls.ArchiveTracking.Reschedule(ctx, a.JID, JobStatusPollInterval, cause)
+						if err != nil {
 							log.Errorf("rescheduling tracked archive: %s", err)
 						}
 					}(a)
@@ -127,7 +141,15 @@ func (t *Tracker) run() {
 	}
 }
 
-func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner thread.PubKey) error {
+func (t *Tracker) Track(
+	ctx context.Context,
+	dbID thread.ID,
+	dbToken thread.Token,
+	bucketKey string,
+	jid ffs.JobID,
+	bucketRoot cid.Cid,
+	owner thread.PubKey,
+) error {
 	if err := t.colls.ArchiveTracking.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, owner); err != nil {
 		return fmt.Errorf("saving tracking information: %s", err)
 	}
@@ -136,9 +158,18 @@ func (t *Tracker) Track(ctx context.Context, dbID thread.ID, dbToken thread.Toke
 
 // trackArchiveProgress queries the current archive status.
 // If a fatal error in tracking happens, it will return an error, which indicates the archive should be untracked.
-// If the archive didn't reach a final status yet, or a possibly recoverable error (by retrying) happens, it will return (true, "retry cause", nil).
+// If the archive didn't reach a final status yet, or a possibly recoverable error (by retrying) happens,
+// it will return (true, "retry cause", nil).
 // If the archive reach final status, it will return (false, "", nil) and the tracking can be considered done.
-func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID thread.ID, dbToken thread.Token, jid ffs.JobID, bucketRoot cid.Cid, powInfo *mdb.PowInfo) (bool, string, error) {
+func (t *Tracker) trackArchiveProgress(
+	ctx context.Context,
+	buckKey string,
+	dbID thread.ID,
+	dbToken thread.Token,
+	jid ffs.JobID,
+	bucketRoot cid.Cid,
+	powInfo *mdb.PowInfo,
+) (bool, string, error) {
 	log.Infof("querying archive status of job %s", jid)
 	defer log.Infof("finished querying archive status of job %s", jid)
 	// Step 1: watch for the Job status, and keep updating on Mongo until
@@ -207,7 +238,13 @@ func (t *Tracker) trackArchiveProgress(ctx context.Context, buckKey string, dbID
 // To track for this situation, we use the _aborted_ and _abortMsg_ parameters.
 // An archive with _aborted_ true should eventually be re-queried to understand
 // how it finished (if wanted).
-func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job ffs.StorageJob, aborted bool, abortMsg string) error {
+func (t *Tracker) updateArchiveStatus(
+	ctx context.Context,
+	buckKey string,
+	job ffs.StorageJob,
+	aborted bool,
+	abortMsg string,
+) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	ba, err := t.colls.BucketArchives.GetOrCreate(ctx, buckKey)
@@ -233,7 +270,14 @@ func (t *Tracker) updateArchiveStatus(ctx context.Context, buckKey string, job f
 	return nil
 }
 
-func (t *Tracker) saveDealsInArchive(ctx context.Context, buckKey string, dbID thread.ID, dbToken thread.Token, ffsToken string, c cid.Cid) error {
+func (t *Tracker) saveDealsInArchive(
+	ctx context.Context,
+	buckKey string,
+	dbID thread.ID,
+	dbToken thread.Token,
+	ffsToken string,
+	c cid.Cid,
+) error {
 	opts := tdb.WithToken(dbToken)
 	ctx = common.NewSessionContext(ctx, t.internalSession)
 	buck := &tdb.Bucket{}
@@ -273,7 +317,8 @@ func prepareFailureMsg(job ffs.StorageJob) string {
 	var b strings.Builder
 	_, _ = b.WriteString(job.ErrCause)
 	for i, de := range job.DealErrors {
-		_, _ = b.WriteString(fmt.Sprintf("\nDeal error %d: Proposal %s with miner %s, %s", i, de.ProposalCid, de.Miner, de.Message))
+		_, _ = b.WriteString(fmt.Sprintf(
+			"\nDeal error %d: Proposal %s with miner %s, %s", i, de.ProposalCid, de.Miner, de.Message))
 	}
 	return b.String()
 }
