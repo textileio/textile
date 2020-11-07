@@ -18,7 +18,14 @@ var m001 = migrate.Migration{
 	Up: func(db *mongo.Database) error {
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
-		_, err := db.Collection("accounts").Indexes().DropOne(ctx, "username_1")
+		count, err := db.Collection("accounts").CountDocuments(ctx, bson.M{})
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return nil // namespace doesn't exist
+		}
+		_, err = db.Collection("accounts").Indexes().DropOne(ctx, "username_1")
 		if err != nil {
 			return err
 		}
@@ -34,7 +41,14 @@ var m001 = migrate.Migration{
 	Down: func(db *mongo.Database) error {
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
-		_, err := db.Collection("accounts").Indexes().DropOne(ctx, "username_1")
+		count, err := db.Collection("accounts").CountDocuments(ctx, bson.M{})
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return nil // namespace doesn't exist
+		}
+		_, err = db.Collection("accounts").Indexes().DropOne(ctx, "username_1")
 		if err != nil {
 			return err
 		}
