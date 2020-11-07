@@ -79,6 +79,7 @@ require (
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
+	gotest.tools v2.2.0+incompatible
 )
 
 replace github.com/filecoin-project/filecoin-ffi => github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200904205544-405691046034

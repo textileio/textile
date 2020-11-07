@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	migrate "github.com/xakep666/mongo-migrate"
@@ -66,13 +65,15 @@ var m002 = migrate.Migration{
 				return err
 			}
 			user["type"] = 2
-			fmt.Println(user)
 			_, err := db.Collection("accounts").InsertOne(ctx, user)
 			if err != nil {
 				return err
 			}
 		}
-		return cursor.Err()
+		if cursor.Err() != nil {
+			return cursor.Err()
+		}
+		return db.Collection("users").Drop(ctx)
 	},
 	Down: func(db *mongo.Database) error {
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
@@ -87,17 +88,16 @@ var m002 = migrate.Migration{
 			if err := cursor.Decode(&account); err != nil {
 				return err
 			}
-			fmt.Println(account)
-			if v, ok := account["type"]; ok && v == 2 {
+			if v, ok := account["type"]; ok && v.(int32) == 2 {
 				delete(account, "type")
 				_, err := db.Collection("users").InsertOne(ctx, account)
 				if err != nil {
 					return err
 				}
-			}
-			_, err := db.Collection("accounts").DeleteOne(ctx, account)
-			if err != nil {
-				return err
+				_, err = db.Collection("accounts").DeleteOne(ctx, bson.M{"_id": account["_id"]})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return cursor.Err()
