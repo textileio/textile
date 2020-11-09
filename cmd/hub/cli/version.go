@@ -18,7 +18,7 @@ func getLatestRelease() (*su.Release, error) {
 	defer s.Stop()
 	config := su.Config{
 		Filters: []string{
-			"hub",
+			"hub_v",
 		},
 	}
 	updater, err := su.NewUpdater(config)
