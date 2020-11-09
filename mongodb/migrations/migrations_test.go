@@ -87,6 +87,9 @@ func TestMigrations_m002(t *testing.T) {
 	count, err = db.Collection("accounts").CountDocuments(ctx, bson.M{"type": 2})
 	require.NoError(t, err)
 	assert.Equal(t, 3, int(count))
+	count, err = db.Collection("users").CountDocuments(ctx, bson.M{})
+	require.NoError(t, err)
+	assert.Equal(t, 0, int(count))
 
 	// Run down
 	err = migrate.NewMigrate(db, m002).Down(migrate.AllAvailable)
