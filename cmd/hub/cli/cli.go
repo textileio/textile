@@ -49,7 +49,7 @@ func Init(rootCmd *cobra.Command) {
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
-	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powPeersCmd, powRetrievalsCmd, powShowAllCmd, powShowCmd, powStorageCmd)
+	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powInfoCmd, powStorageCmd, powRetrievalsCmd)
 	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingStatusCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)

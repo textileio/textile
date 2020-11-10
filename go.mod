@@ -16,10 +16,10 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/gogo/status v1.1.0
-	github.com/golang/protobuf v1.4.2
-	github.com/google/go-cmp v0.5.1
+	github.com/golang/protobuf v1.4.3
+	github.com/google/go-cmp v0.5.2
 	github.com/gosimple/slug v1.9.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
 	github.com/ipfs/go-cid v0.0.7
@@ -45,7 +45,6 @@ require (
 	github.com/mailgun/mailgun-go/v3 v3.6.4
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/manifoldco/promptui v0.7.0
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.0 // indirect
@@ -61,7 +60,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
@@ -69,7 +68,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v1.0.0
-	github.com/textileio/powergate v0.6.7
+	github.com/textileio/powergate v1.0.0
 	github.com/textileio/uiprogress v0.0.4
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
@@ -77,6 +76,7 @@ require (
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
 

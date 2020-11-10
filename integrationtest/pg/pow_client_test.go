@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
-	ffsRpc "github.com/textileio/powergate/ffs/rpc"
+	pbPow "github.com/textileio/powergate/proto/powergate/v1"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
@@ -20,81 +20,39 @@ func TestPowClient(t *testing.T) {
 	_ = StartPowergate(t)
 	ctx, _, client, cleanup := setupPowClient(t)
 
-	t.Run("Health", func(t *testing.T) {
-		res, err := client.Health(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	t.Run("Peers", func(t *testing.T) {
-		res, err := client.Peers(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	t.Run("FindPeer", func(t *testing.T) {
-		res0, err := client.Peers(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res0)
-		require.Len(t, res0.Peers, 1)
-
-		res1, err := client.FindPeer(ctx, res0.Peers[0].AddrInfo.Id)
-		require.NoError(t, err)
-		require.NotNil(t, res1)
-	})
-
-	t.Run("Connectedness", func(t *testing.T) {
-		res0, err := client.Peers(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res0)
-		require.Len(t, res0.Peers, 1)
-
-		res1, err := client.Connectedness(ctx, res0.Peers[0].AddrInfo.Id)
-		require.NoError(t, err)
-		require.NotNil(t, res1)
-	})
-
-	t.Run("Addrs", func(t *testing.T) {
-		res, err := client.Addrs(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	t.Run("Info", func(t *testing.T) {
-		res, err := client.Info(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	// ToDo: Test Show, but need to add data to ffs to do that
-
-	t.Run("ShowAll", func(t *testing.T) {
-		res, err := client.ShowAll(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	t.Run("ListStorageDealRecords", func(t *testing.T) {
-		res, err := client.ListStorageDealRecords(ctx, &ffsRpc.ListDealRecordsConfig{IncludeFinal: true})
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
-	t.Run("ListRetrievalDealRecords", func(t *testing.T) {
-		res, err := client.ListRetrievalDealRecords(ctx, nil)
+	t.Run("Addresses", func(t *testing.T) {
+		res, err := client.Addresses(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, res)
 	})
 
 	t.Run("Balance", func(t *testing.T) {
-		res0, err := client.Addrs(ctx)
+		res0, err := client.Addresses(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, res0)
-		require.GreaterOrEqual(t, len(res0.Addrs), 1)
+		require.GreaterOrEqual(t, len(res0.Addresses), 1)
 
-		res1, err := client.Balance(ctx, res0.Addrs[0].Addr)
+		res1, err := client.Balance(ctx, res0.Addresses[0].Address)
 		require.NoError(t, err)
 		require.NotNil(t, res1)
+	})
+
+	t.Run("CidInfo", func(t *testing.T) {
+		res, err := client.CidInfo(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
+
+	t.Run("StorageDealRecords", func(t *testing.T) {
+		res, err := client.StorageDealRecords(ctx, &pbPow.DealRecordsConfig{IncludeFinal: true})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
+
+	t.Run("RetrievalDealRecords", func(t *testing.T) {
+		res, err := client.RetrievalDealRecords(ctx, nil)
+		require.NoError(t, err)
+		require.NotNil(t, res)
 	})
 
 	cleanup(true)

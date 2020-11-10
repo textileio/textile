@@ -89,11 +89,11 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		ffsId, ffsToken, err := s.PowergateClient.FFS.Create(ctx)
+		res, err := s.PowergateClient.Admin.Profiles.CreateStorageProfile(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
 		}
-		powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
+		powInfo = &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token}
 	}
 
 	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, powInfo)
@@ -382,11 +382,11 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	}
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		ffsId, ffsToken, err := s.PowergateClient.FFS.Create(ctx)
+		res, err := s.PowergateClient.Admin.Profiles.CreateStorageProfile(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to create FFS instance: %v", err)
+			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
 		}
-		powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
+		powInfo = &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token}
 	}
 	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
 		Key:      account.User.Key,

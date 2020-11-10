@@ -35,18 +35,18 @@ func TestCreateBucket(t *testing.T) {
 	ctx, _, client, shutdown := setup(t)
 	defer shutdown(true)
 
-	// FFS is now created for the user, so it should exist after spinup
-	lst, err := powc.FFS.ListAPI(ctx)
+	// Storage profile is now created for the user, so it should exist after spinup
+	res, err := powc.Admin.Profiles.StorageProfiles(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(lst))
+	require.Equal(t, 1, len(res.AuthEntries))
 
 	_, err = client.Create(ctx)
 	require.NoError(t, err)
 
-	// No new FFS instance should be created for the bucket
-	lst, err = powc.FFS.ListAPI(ctx)
+	// No new storage profile should be created for the bucket
+	res, err = powc.Admin.Profiles.StorageProfiles(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(lst))
+	require.Equal(t, 1, len(res.AuthEntries))
 }
 
 func TestArchiveTracker(t *testing.T) {

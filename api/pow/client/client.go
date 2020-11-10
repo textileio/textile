@@ -3,20 +3,14 @@ package client
 import (
 	"context"
 
-	ffsRpc "github.com/textileio/powergate/ffs/rpc"
-	healthRpc "github.com/textileio/powergate/health/rpc"
-	netRpc "github.com/textileio/powergate/net/rpc"
-	walletRpc "github.com/textileio/powergate/wallet/rpc"
+	pbPow "github.com/textileio/powergate/proto/powergate/v1"
 	"google.golang.org/grpc"
 )
 
 // Client provides the client api.
 type Client struct {
-	healthC healthRpc.RPCServiceClient
-	netC    netRpc.RPCServiceClient
-	ffsC    ffsRpc.RPCServiceClient
-	walletC walletRpc.RPCServiceClient
-	conn    *grpc.ClientConn
+	powC pbPow.PowergateServiceClient
+	conn *grpc.ClientConn
 }
 
 // NewClient starts the client.
@@ -26,74 +20,39 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		healthC: healthRpc.NewRPCServiceClient(conn),
-		netC:    netRpc.NewRPCServiceClient(conn),
-		ffsC:    ffsRpc.NewRPCServiceClient(conn),
-		walletC: walletRpc.NewRPCServiceClient(conn),
-		conn:    conn,
+		powC: pbPow.NewPowergateServiceClient(conn),
+		conn: conn,
 	}, nil
 }
 
-func (c *Client) Health(ctx context.Context) (*healthRpc.CheckResponse, error) {
-	return c.healthC.Check(ctx, &healthRpc.CheckRequest{})
+func (c *Client) Addresses(ctx context.Context) (*pbPow.AddressesResponse, error) {
+	return c.powC.Addresses(ctx, &pbPow.AddressesRequest{})
 }
 
-func (c *Client) Peers(ctx context.Context) (*netRpc.PeersResponse, error) {
-	return c.netC.Peers(ctx, &netRpc.PeersRequest{})
-}
-
-func (c *Client) FindPeer(ctx context.Context, peerID string) (*netRpc.FindPeerResponse, error) {
-	req := &netRpc.FindPeerRequest{
-		PeerId: peerID,
-	}
-	return c.netC.FindPeer(ctx, req)
-}
-
-func (c *Client) Connectedness(ctx context.Context, peerID string) (*netRpc.ConnectednessResponse, error) {
-	req := &netRpc.ConnectednessRequest{
-		PeerId: peerID,
-	}
-	return c.netC.Connectedness(ctx, req)
-}
-
-func (c *Client) Addrs(ctx context.Context) (*ffsRpc.AddrsResponse, error) {
-	return c.ffsC.Addrs(ctx, &ffsRpc.AddrsRequest{})
-}
-
-func (c *Client) Info(ctx context.Context) (*ffsRpc.InfoResponse, error) {
-	return c.ffsC.Info(ctx, &ffsRpc.InfoRequest{})
-}
-
-func (c *Client) Show(ctx context.Context, cid string) (*ffsRpc.ShowResponse, error) {
-	req := &ffsRpc.ShowRequest{
-		Cid: cid,
-	}
-	return c.ffsC.Show(ctx, req)
-}
-
-func (c *Client) ShowAll(ctx context.Context) (*ffsRpc.ShowAllResponse, error) {
-	return c.ffsC.ShowAll(ctx, &ffsRpc.ShowAllRequest{})
-}
-
-func (c *Client) ListStorageDealRecords(ctx context.Context, config *ffsRpc.ListDealRecordsConfig) (*ffsRpc.ListStorageDealRecordsResponse, error) {
-	req := &ffsRpc.ListStorageDealRecordsRequest{
-		Config: config,
-	}
-	return c.ffsC.ListStorageDealRecords(ctx, req)
-}
-
-func (c *Client) ListRetrievalDealRecords(ctx context.Context, config *ffsRpc.ListDealRecordsConfig) (*ffsRpc.ListRetrievalDealRecordsResponse, error) {
-	req := &ffsRpc.ListRetrievalDealRecordsRequest{
-		Config: config,
-	}
-	return c.ffsC.ListRetrievalDealRecords(ctx, req)
-}
-
-func (c *Client) Balance(ctx context.Context, addr string) (*walletRpc.BalanceResponse, error) {
-	req := &walletRpc.BalanceRequest{
+func (c *Client) Balance(ctx context.Context, addr string) (*pbPow.BalanceResponse, error) {
+	req := &pbPow.BalanceRequest{
 		Address: addr,
 	}
-	return c.walletC.Balance(ctx, req)
+	return c.powC.Balance(ctx, req)
+}
+
+func (c *Client) CidInfo(ctx context.Context, cids ...string) (*pbPow.CidInfoResponse, error) {
+	req := &pbPow.CidInfoRequest{Cids: cids}
+	return c.powC.CidInfo(ctx, req)
+}
+
+func (c *Client) StorageDealRecords(ctx context.Context, config *pbPow.DealRecordsConfig) (*pbPow.StorageDealRecordsResponse, error) {
+	req := &pbPow.StorageDealRecordsRequest{
+		Config: config,
+	}
+	return c.powC.StorageDealRecords(ctx, req)
+}
+
+func (c *Client) RetrievalDealRecords(ctx context.Context, config *pbPow.DealRecordsConfig) (*pbPow.RetrievalDealRecordsResponse, error) {
+	req := &pbPow.RetrievalDealRecordsRequest{
+		Config: config,
+	}
+	return c.powC.RetrievalDealRecords(ctx, req)
 }
 
 // Close closes the client's grpc connection and cancels any active requests.

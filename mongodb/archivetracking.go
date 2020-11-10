@@ -7,14 +7,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/ffs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TrackedArchive struct {
-	JID        ffs.JobID
+	JID        string
 	DbID       thread.ID
 	DbToken    thread.Token
 	BucketKey  string
@@ -28,7 +27,7 @@ type TrackedArchive struct {
 // trackedArchive is an internal representation for storage.
 // Any field modifications should be reflected in the cast() func.
 type trackedArchive struct {
-	JID        ffs.JobID    `bson:"_id"`
+	JID        string       `bson:"_id"`
 	DbID       thread.ID    `bson:"db_id"`
 	DbToken    thread.Token `bson:"db_token"`
 	BucketKey  string       `bson:"bucket_key"`
@@ -50,7 +49,7 @@ func NewArchiveTracking(_ context.Context, db *mongo.Database) (*ArchiveTracking
 	return s, nil
 }
 
-func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid ffs.JobID, bucketRoot cid.Cid, owner thread.PubKey) error {
+func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid string, bucketRoot cid.Cid, owner thread.PubKey) error {
 	ownerBytes, err := owner.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("marshaling owner to bytes: %v", err)
@@ -96,7 +95,7 @@ func (at *ArchiveTracking) GetReadyToCheck(ctx context.Context, n int64) ([]*Tra
 	return castSlice(tas)
 }
 
-func (at *ArchiveTracking) Get(ctx context.Context, jid ffs.JobID) (*TrackedArchive, error) {
+func (at *ArchiveTracking) Get(ctx context.Context, jid string) (*TrackedArchive, error) {
 	filter := bson.M{"_id": jid}
 	res := at.col.FindOne(ctx, filter)
 	if res.Err() != nil {
@@ -109,7 +108,7 @@ func (at *ArchiveTracking) Get(ctx context.Context, jid ffs.JobID) (*TrackedArch
 	return cast(&ta)
 }
 
-func (at *ArchiveTracking) Finalize(ctx context.Context, jid ffs.JobID, cause string) error {
+func (at *ArchiveTracking) Finalize(ctx context.Context, jid string, cause string) error {
 	res, err := at.col.UpdateOne(ctx, bson.M{"_id": jid}, bson.M{
 		"$set": bson.M{
 			"active": false,
@@ -125,7 +124,7 @@ func (at *ArchiveTracking) Finalize(ctx context.Context, jid ffs.JobID, cause st
 	return nil
 }
 
-func (at *ArchiveTracking) Reschedule(ctx context.Context, jid ffs.JobID, dur time.Duration, cause string) error {
+func (at *ArchiveTracking) Reschedule(ctx context.Context, jid string, dur time.Duration, cause string) error {
 	readyAt := time.Now().Add(dur)
 	res, err := at.col.UpdateOne(ctx, bson.M{"_id": jid}, bson.M{
 		"$set": bson.M{

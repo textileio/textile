@@ -29,10 +29,7 @@ import (
 	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
 	pow "github.com/textileio/powergate/api/client"
-	ffsRpc "github.com/textileio/powergate/ffs/rpc"
-	healthRpc "github.com/textileio/powergate/health/rpc"
-	netRpc "github.com/textileio/powergate/net/rpc"
-	walletRpc "github.com/textileio/powergate/wallet/rpc"
+	pbPow "github.com/textileio/powergate/proto/powergate/v1"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -80,31 +77,18 @@ var (
 		"/threads.pb.API/ListDBs",
 	}
 
-	healthServiceName = "health.rpc.RPCService"
-	netServiceName    = "net.rpc.RPCService"
-	ffsServiceName    = "ffs.rpc.RPCService"
-	walletServiceName = "wallet.rpc.RPCService"
+	powergateServiceName = "proto.powergate.v1.PowergateService"
+
+	// ToDo: Add support for streaming methods and double check the list for completeness.
 
 	// allowedPowMethods are methods allowed to be directly proxied through to powergate service.
 	allowedPowMethods = map[string][]string{
-		healthServiceName: {
-			"Check",
-		},
-		netServiceName: {
-			"Peers",
-			"FindPeer",
-			"Connectedness",
-		},
-		ffsServiceName: {
-			"Addrs",
-			"Info",
-			"Show",
-			"ShowAll",
-			"ListStorageDealRecords",
-			"ListRetrievalDealRecords",
-		},
-		walletServiceName: {
+		powergateServiceName: {
+			"Addresses",
 			"Balance",
+			"CidInfo",
+			"StorageDealRecords",
+			"RetrievalDealRecords",
 		},
 	}
 
@@ -355,24 +339,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var opts []grpc.ServerOption
 	if conf.Hub {
 		var powStub *grpcdynamic.Stub
-		var healthServiceDesc *desc.ServiceDescriptor
-		var netServiceDesc *desc.ServiceDescriptor
-		var ffsServiceDesc *desc.ServiceDescriptor
-		var walletServiceDesc *desc.ServiceDescriptor
+		var powergateServiceDesc *desc.ServiceDescriptor
 		if conf.AddrPowergateAPI != "" {
 			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
 			}
-			if healthServiceDesc, err = createServiceDesciptor("health/rpc/rpc.proto", healthServiceName); err != nil {
-				return nil, err
-			}
-			if netServiceDesc, err = createServiceDesciptor("net/rpc/rpc.proto", netServiceName); err != nil {
-				return nil, err
-			}
-			if ffsServiceDesc, err = createServiceDesciptor("ffs/rpc/rpc.proto", ffsServiceName); err != nil {
-				return nil, err
-			}
-			if walletServiceDesc, err = createServiceDesciptor("wallet/rpc/rpc.proto", walletServiceName); err != nil {
+			if powergateServiceDesc, err = createServiceDesciptor("proto/powergate/v1/powergate.proto", powergateServiceName); err != nil {
 				return nil, err
 			}
 		}
@@ -381,10 +353,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
-				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
-				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
-				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),
-				powInterceptor(walletServiceName, allowedPowMethods[walletServiceName], walletServiceDesc, powStub, t.pc, t.collections),
+				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, t.collections),
 			),
 			grpcm.WithStreamServerChain(
 				auth.StreamServerInterceptor(t.authFunc),
@@ -409,10 +378,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if conf.Hub {
 			hpb.RegisterAPIServiceServer(t.server, hs)
 			upb.RegisterAPIServiceServer(t.server, us)
-			healthRpc.RegisterRPCServiceServer(t.server, &healthRpc.UnimplementedRPCServiceServer{})
-			netRpc.RegisterRPCServiceServer(t.server, &netRpc.UnimplementedRPCServiceServer{})
-			ffsRpc.RegisterRPCServiceServer(t.server, &ffsRpc.UnimplementedRPCServiceServer{})
-			walletRpc.RegisterRPCServiceServer(t.server, &walletRpc.UnimplementedRPCServiceServer{})
+			pbPow.RegisterPowergateServiceServer(t.server, &pbPow.UnimplementedPowergateServiceServer{})
 		}
 		bpb.RegisterAPIServiceServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {

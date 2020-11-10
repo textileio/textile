@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	pc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/health"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
@@ -54,9 +53,8 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 		powc, err = pc.NewClient(powAddr, grpc.WithInsecure())
 		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		s, _, err := powc.Health.Check(ctx)
+		_, err = powc.BuildInfo(ctx)
 		if err == nil {
-			require.Equal(t, health.Ok, s)
 			cancel()
 			break
 		}

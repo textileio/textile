@@ -564,15 +564,15 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ffsToken string,
 	ctx = context.WithValue(ctx, powc.AuthKey, ffsToken)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ffsCh := make(chan powc.LogEvent)
-	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, powc.WithJidFilter(ffs.JobID(current.JobID)), powc.WithHistory(true)); err != nil {
+	ffsCh := make(chan powc.WatchLogsEvent)
+	if err := b.pgClient.Data.WatchLogs(ctx, ffsCh, c.String(), powc.WithJobIDFilter(current.JobID), powc.WithHistory(true)); err != nil {
 		return fmt.Errorf("watching log events in Powergate: %s", err)
 	}
 	for le := range ffsCh {
 		if le.Err != nil {
 			return le.Err
 		}
-		ch <- le.LogEntry.Msg
+		ch <- le.Res.LogEntry.Message
 	}
 	return nil
 }

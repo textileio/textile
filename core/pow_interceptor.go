@@ -64,12 +64,12 @@ func powInterceptor(
 			return nil, status.Errorf(codes.FailedPrecondition, "account is required")
 		}
 
-		createNewFFS := func() error {
-			id, token, err := pc.FFS.Create(ctx)
+		createNewProfile := func() error {
+			res, err := pc.Admin.Profiles.CreateStorageProfile(ctx)
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
-			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: id, Token: token})
+			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token})
 			if err != nil {
 				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}
@@ -80,9 +80,9 @@ func powInterceptor(
 			"please try again in 30 seconds to allow time for setup to complete")
 
 		// Case where account/user was created before powergate was enabled.
-		// create a ffs instance for them.
+		// create a storage profile for them.
 		if account.Owner().PowInfo == nil {
-			if err := createNewFFS(); err != nil {
+			if err := createNewProfile(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
@@ -100,9 +100,9 @@ func powInterceptor(
 			if !strings.Contains(err.Error(), "auth token not found") {
 				return nil, err
 			} else {
-				// case where the ffs token is no longer valid because powergate was reset.
-				// create a new ffs instance for them.
-				if err := createNewFFS(); err != nil {
+				// case where the profile token is no longer valid because powergate was reset.
+				// create a new storage profile for them.
+				if err := createNewProfile(); err != nil {
 					return nil, err
 				}
 				return nil, tryAgain
