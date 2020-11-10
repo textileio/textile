@@ -29,7 +29,6 @@ import (
 	"github.com/textileio/go-threads/db"
 	nutil "github.com/textileio/go-threads/net/util"
 	pow "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
 	pbPow "github.com/textileio/powergate/proto/powergate/v1"
 	powUtil "github.com/textileio/powergate/util"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -44,11 +43,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// TODO!!!!
-// Figure out use of ffs job status in this file...
-// It should be using the client rpc representation
-// TODO!!!!
 
 var (
 	log = logging.Logger("bucketsapi")
@@ -2354,7 +2348,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		"new powergate integration created, please try again in 30 seconds to allow time for wallet funding")
 
 	// Case where account/user was created before bucket archives were enabled.
-	// create a ffs instance for them.
+	// create a storage profile for them.
 	if account.Owner().PowInfo == nil {
 		if err := createNewProfile(); err != nil {
 			return nil, err
@@ -2362,15 +2356,15 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, tryAgain
 	}
 
-	ctxFFS := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
+	ctxPow := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
 
-	defConfRes, err := s.PowergateClient.StorageConfig.Default(ctxFFS)
+	defConfRes, err := s.PowergateClient.StorageConfig.Default(ctxPow)
 	if err != nil {
 		if !strings.Contains(err.Error(), "auth token not found") {
 			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
 		} else {
-			// case where the ffs token is no longer valid because powergate was reset.
-			// create a new ffs instance for them.
+			// case where the storage profile token is no longer valid because powergate was reset.
+			// create a new storage profile for them.
 			if err := createNewProfile(); err != nil {
 				return nil, err
 			}
@@ -2399,11 +2393,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	if storageConfig.Cold.Filecoin.Address == "" {
 		// We don't have an address to use, which is the case for a BucketArchive.DefaultArchiveConfig
-		// that is the default value, get the default address from the FFS instance
+		// that is the default value, get the default address from the storage profile
 		storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 	}
 
-	// Check that FFS wallet addr balance is > 0, if not, fail fast.
+	// Check that storage profile wallet addr balance is > 0, if not, fail fast.
 	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
 	if err != nil {
 		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
@@ -2416,21 +2410,21 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, buckets.ErrZeroBalance
 	}
 
-	// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
+	// Archive pushes the current root Cid to the corresponding storage profile of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.
-	// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
+	// 0. No previous archive or last one aborted: simply pushes the Cid to Powergate.
 	// 1. Last archive exists with the same Cid:
 	//   a. Last archive Successful: fails, there's nothing to do.
 	//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
 	//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
-	// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
+	// 2. Archiving on new Cid: work to do, it will always call Replace(,).
 	var jid string
 	firstTimeArchive := ba.Archives.Current.JobID == ""
 	if firstTimeArchive || ba.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
 		res, err := s.PowergateClient.StorageConfig.Apply(
-			ctxFFS,
+			ctxPow,
 			p.Cid().String(),
 			pow.WithStorageConfig(storageConfig),
 			pow.WithOverride(true),
@@ -2445,18 +2439,25 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
+		statusName, found := pbPow.JobStatus_name[int32(ba.Archives.Current.JobStatus)]
+		if !found {
+			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.JobStatus)
+		}
+
+		status := pbPow.JobStatus(ba.Archives.Current.JobStatus)
+
 		if oldCid.Equals(p.Cid()) { // Case 1.
-			switch ffs.JobStatus(ba.Archives.Current.JobStatus) {
+			switch status {
 			// Case 1.a.
-			case ffs.Success:
+			case pbPow.JobStatus_JOB_STATUS_SUCCESS:
 				return nil, fmt.Errorf("the same bucket cid is already archived successfully")
 			// Case 1.b.
-			case ffs.Executing, ffs.Queued:
+			case pbPow.JobStatus_JOB_STATUS_EXECUTING, pbPow.JobStatus_JOB_STATUS_QUEUED:
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
-			case ffs.Failed, ffs.Canceled:
+			case pbPow.JobStatus_JOB_STATUS_FAILED, pbPow.JobStatus_JOB_STATUS_CANCELED:
 				res, err := s.PowergateClient.StorageConfig.Apply(
-					ctxFFS,
+					ctxPow,
 					p.Cid().String(),
 					pow.WithStorageConfig(storageConfig),
 					pow.WithOverride(true),
@@ -2466,10 +2467,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				}
 				jid = res.JobId
 			default:
-				return nil, fmt.Errorf("unexpected current archive status: %d", ba.Archives.Current.JobStatus)
+				return nil, fmt.Errorf("unexpected current archive status: %s", statusName)
 			}
 		} else { // Case 2.
-			res, err := s.PowergateClient.Data.CidInfo(ctxFFS, oldCid.String())
+			res, err := s.PowergateClient.Data.CidInfo(ctxPow, oldCid.String())
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
@@ -2479,7 +2480,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 			if cmp.Equal(&storageConfig, res.CidInfos[0].LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
-				res, err := s.PowergateClient.Data.ReplaceData(ctxFFS, oldCid.String(), p.Cid().String())
+				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
 					return nil, fmt.Errorf("replacing cid: %s", err)
 				}
@@ -2487,7 +2488,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			} else {
 				// New storage config, so remove and push.
 				_, err = s.PowergateClient.StorageConfig.Apply(
-					ctxFFS,
+					ctxPow,
 					oldCid.String(),
 					pow.WithStorageConfig(&pbPow.StorageConfig{}),
 					pow.WithOverride(true),
@@ -2495,12 +2496,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				if err != nil {
 					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %s", err)
 				}
-				_, err = s.PowergateClient.StorageConfig.Remove(ctxFFS, oldCid.String())
+				_, err = s.PowergateClient.StorageConfig.Remove(ctxPow, oldCid.String())
 				if err != nil {
 					return nil, fmt.Errorf("removing old cid storage: %s", err)
 				}
 				res, err := s.PowergateClient.StorageConfig.Apply(
-					ctxFFS,
+					ctxPow,
 					p.Cid().String(),
 					pow.WithStorageConfig(storageConfig),
 					pow.WithOverride(true),
@@ -2521,7 +2522,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		Cid:       p.Cid().Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid,
-		JobStatus: int(ffs.Queued),
+		JobStatus: int(pbPow.JobStatus_JOB_STATUS_QUEUED),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
@@ -2579,13 +2580,13 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	}
 	var st pb.ArchiveStatusResponse_Status
 	switch jstatus {
-	case ffs.Success:
+	case pbPow.JobStatus_JOB_STATUS_SUCCESS:
 		st = pb.ArchiveStatusResponse_STATUS_DONE
-	case ffs.Queued, ffs.Executing:
+	case pbPow.JobStatus_JOB_STATUS_QUEUED, pbPow.JobStatus_JOB_STATUS_EXECUTING:
 		st = pb.ArchiveStatusResponse_STATUS_EXECUTING
-	case ffs.Failed:
+	case pbPow.JobStatus_JOB_STATUS_FAILED:
 		st = pb.ArchiveStatusResponse_STATUS_FAILED
-	case ffs.Canceled:
+	case pbPow.JobStatus_JOB_STATUS_CANCELED:
 		st = pb.ArchiveStatusResponse_STATUS_CANCELED
 	default:
 		return nil, fmt.Errorf("unknown job status %d", jstatus)

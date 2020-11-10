@@ -88,14 +88,14 @@ func powInterceptor(
 			return nil, tryAgain
 		}
 
-		ffsCtx := context.WithValue(ctx, powc.AuthKey, account.Owner().PowInfo.Token)
+		powCtx := context.WithValue(ctx, powc.AuthKey, account.Owner().PowInfo.Token)
 
 		methodDesc := serviceDesc.FindMethodByName(methodName)
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
 		}
 
-		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		res, err := stub.InvokeRpc(powCtx, methodDesc, req.(proto.Message))
 		if err != nil {
 			if !strings.Contains(err.Error(), "auth token not found") {
 				return nil, err

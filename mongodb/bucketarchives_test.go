@@ -66,7 +66,7 @@ func TestBucketArchives_Replace(t *testing.T) {
 	err = col.Replace(ctx, ba)
 	require.NoError(t, err)
 
-	ffs2, err := col.GetOrCreate(context.Background(), "buckkey1")
+	ba2, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
-	require.Equal(t, ba, ffs2)
+	require.Equal(t, ba, ba2)
 }
