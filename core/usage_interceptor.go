@@ -61,12 +61,12 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		}
 	}
 	account, ok := mdb.AccountFromContext(ctx)
-	if !ok || account.Owner().CustomerID == "" {
+	if !ok {
 		return ctx, nil
 	}
-	cus, err := t.bc.GetCustomer(ctx, account.Owner().CustomerID)
+	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
-		return ctx, err
+		return ctx, nil // Bail if no customer exists for this account
 	}
 	if err := common.StatusCheck(cus.Status); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
@@ -123,7 +123,11 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		}
 	}
 	account, ok := mdb.AccountFromContext(ctx)
-	if !ok || account.Owner().CustomerID == "" {
+	if !ok {
+		return nil
+	}
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if !ok {
 		return nil
 	}
 	switch method {
@@ -133,12 +137,9 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
-		owner, ok := buckets.BucketOwnerFromContext(ctx)
-		if ok {
-			_, err := t.bc.IncStoredData(ctx, account.Owner().CustomerID, owner.StorageDelta)
-			if err != nil {
-				return err
-			}
+		_, err := t.bc.IncStoredData(ctx, account.Owner().Key, owner.StorageDelta)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

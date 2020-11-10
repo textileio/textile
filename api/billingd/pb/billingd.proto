@@ -18,34 +18,36 @@ message CheckHealthRequest {}
 message CheckHealthResponse {}
 
 message CreateCustomerRequest {
-    string email = 1;
+    string key = 1;
+    string parent_key = 2;
+    string email = 3;
 }
 
-message CreateCustomerResponse {
-    string customer_id = 1;
-}
+message CreateCustomerResponse {}
 
 message GetCustomerRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message GetCustomerResponse {
-    string email = 1;
-    string status = 2;
-    int64 balance = 3;
-    bool billable = 4;
-    bool delinquent = 5;
-    int64 created_at = 6;
+    string stripe_id = 1;
+    string parent_key = 2;
+    string email = 3;
+    string status = 4;
+    int64 balance = 5;
+    bool billable = 6;
+    bool delinquent = 7;
+    int64 created_at = 8;
 
-    Period period = 7;
-    Usage stored_data = 8;
-    Usage network_egress = 9;
-    Usage instance_writes = 10;
-    Usage instance_reads = 11;
+    Period period = 9;
+    Usage stored_data = 10;
+    Usage network_egress = 11;
+    Usage instance_writes = 12;
+    Usage instance_reads = 13;
 }
 
 message GetCustomerSessionRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message GetCustomerSessionResponse {
@@ -53,7 +55,7 @@ message GetCustomerSessionResponse {
 }
 
 message UpdateCustomerRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 balance = 2;
     bool billable = 3;
     bool delinquent = 4;
@@ -62,7 +64,7 @@ message UpdateCustomerRequest {
 message UpdateCustomerResponse {}
 
 message UpdateCustomerSubscriptionRequest {
-    string customer_id = 1;
+    string key = 1;
     string status = 2;
     Period period = 3;
 }
@@ -70,19 +72,19 @@ message UpdateCustomerSubscriptionRequest {
 message UpdateCustomerSubscriptionResponse {}
 
 message RecreateCustomerSubscriptionRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message RecreateCustomerSubscriptionResponse {}
 
 message DeleteCustomerRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message DeleteCustomerResponse {}
 
 message IncStoredDataRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_size = 2;
 }
 
@@ -92,7 +94,7 @@ message IncStoredDataResponse {
 }
 
 message IncNetworkEgressRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_size = 2;
 }
 
@@ -102,7 +104,7 @@ message IncNetworkEgressResponse {
 }
 
 message IncInstanceReadsRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_count = 2;
 }
 
@@ -112,7 +114,7 @@ message IncInstanceReadsResponse {
 }
 
 message IncInstanceWritesRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_count = 2;
 }
 

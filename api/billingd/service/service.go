@@ -124,6 +124,9 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 		{
 			Keys: bson.D{{"email", 1}},
 		},
+		{
+			Keys: bson.D{{"parent_key", 1}},
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -230,7 +233,9 @@ func (s *Service) Stop(force bool) error {
 }
 
 type Customer struct {
-	ID         string `bson:"_id"`
+	Key        string `bson:"_id"`
+	StripeID   string `bson:"stripe_id"`
+	ParentKey  string `bson:"parent_key"`
 	Email      string `bson:"email"`
 	Status     string `bson:"status"`
 	Balance    int64  `bson:"balance"`
@@ -269,8 +274,16 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	if err != nil {
 		return nil, err
 	}
+	if req.ParentKey != "" {
+		r := s.db.FindOne(ctx, bson.M{"_id": req.ParentKey})
+		if r.Err() != nil {
+			return nil, r.Err()
+		}
+	}
 	doc := &Customer{
-		ID:        customer.ID,
+		Key:       req.Key,
+		StripeID:  customer.ID,
+		ParentKey: req.ParentKey,
 		Email:     customer.Email,
 		CreatedAt: time.Now().Unix(),
 	}
@@ -280,13 +293,13 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	if _, err := s.db.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
-	log.Debugf("created customer %s", customer.ID)
-	return &pb.CreateCustomerResponse{CustomerId: customer.ID}, nil
+	log.Debugf("created customer %s with stripe id %s", doc.Key, doc.StripeID)
+	return &pb.CreateCustomerResponse{}, nil
 }
 
 func (s *Service) createSubscription(cus *Customer) error {
 	sub, err := s.stripe.Subscriptions.New(&stripe.SubscriptionParams{
-		Customer: stripe.String(cus.ID),
+		Customer: stripe.String(cus.StripeID),
 		Items: []*stripe.SubscriptionItemsParams{
 			{
 				Price: stripe.String(s.config.StoredDataPriceID),
@@ -327,11 +340,11 @@ func (s *Service) createSubscription(cus *Customer) error {
 
 func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	*pb.GetCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -339,8 +352,10 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	if err := r.Decode(&doc); err != nil {
 		return nil, err
 	}
-	log.Debugf("got customer %s", doc.ID)
+	log.Debugf("got customer %s", doc.Key)
 	return &pb.GetCustomerResponse{
+		StripeId:       doc.StripeID,
+		ParentKey:      doc.ParentKey,
 		Email:          doc.Email,
 		Status:         doc.Status,
 		Balance:        doc.Balance,
@@ -374,14 +389,22 @@ func usageToPb(usage Usage, unitSize, freeUnits int64) *pb.Usage {
 	}
 }
 
-func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessionRequest) (
+func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSessionRequest) (
 	*pb.GetCustomerSessionResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
+		return nil, err
+	}
 	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(req.CustomerId),
+		Customer:  stripe.String(doc.StripeID),
 		ReturnURL: stripe.String(s.config.StripeSessionReturnURL),
 	})
 	if err != nil {
@@ -394,26 +417,26 @@ func (s *Service) GetCustomerSession(_ context.Context, req *pb.GetCustomerSessi
 
 func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequest) (
 	*pb.UpdateCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
 		"$set": bson.M{"balance": req.Balance, "billable": req.Billable, "delinquent": req.Delinquent},
 	}); err != nil {
 		return nil, err
 	}
-	log.Debugf("updated customer %s", req.CustomerId)
+	log.Debugf("updated customer %s", req.Key)
 	return &pb.UpdateCustomerResponse{}, nil
 }
 
 func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.UpdateCustomerSubscriptionRequest) (
 	*pb.UpdateCustomerSubscriptionResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": req.Key}, bson.M{
 		"$set": bson.M{
 			"status":       req.Status,
 			"period.start": req.Period.Start,
@@ -428,7 +451,7 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 		return nil, err
 	}
 	if pre.Period.End < req.Period.End {
-		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
 			"$set": bson.M{
 				"network_egress.units":      0,
 				"network_egress.sub_units":  0,
@@ -441,17 +464,17 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 		}
 	}
 
-	log.Debugf("updated subscription with status '%s' for %s", req.Status, req.CustomerId)
+	log.Debugf("updated subscription with status '%s' for %s", req.Status, req.Key)
 	return &pb.UpdateCustomerSubscriptionResponse{}, nil
 }
 
 func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.RecreateCustomerSubscriptionRequest) (
 	*pb.RecreateCustomerSubscriptionResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -467,7 +490,7 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 	if err := s.createSubscription(&doc); err != nil {
 		return nil, err
 	}
-	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.CustomerId}, bson.M{
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
 		"$set": bson.M{
 			"status":          doc.Status,
 			"period":          doc.Period,
@@ -479,32 +502,40 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 		return nil, err
 	}
 
-	log.Debugf("recreated subscription for %s", req.CustomerId)
+	log.Debugf("recreated subscription for %s", req.Key)
 	return &pb.RecreateCustomerSubscriptionResponse{}, nil
 }
 
 func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (
 	*pb.DeleteCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	if _, err := s.stripe.Customers.Del(req.CustomerId, nil); err != nil {
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	if err := r.Decode(&doc); err != nil {
 		return nil, err
 	}
-	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.CustomerId}); err != nil {
+	if _, err := s.stripe.Customers.Del(doc.StripeID, nil); err != nil {
 		return nil, err
 	}
-	log.Debugf("deleted customer %s", req.CustomerId)
+	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.Key}); err != nil {
+		return nil, err
+	}
+	log.Debugf("deleted customer %s", req.Key)
 	return &pb.DeleteCustomerResponse{}, nil
 }
 
 func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataRequest) (*pb.IncStoredDataResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -517,7 +548,7 @@ func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataReques
 	}
 	usage, err := s.handleUsage(
 		ctx,
-		doc.ID,
+		doc.Key,
 		doc.StoredData,
 		"stored_data",
 		req.IncSize,
@@ -531,7 +562,7 @@ func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataReques
 
 	log.Debugf(
 		"%s period data: units=%d total=%d free=%d",
-		req.CustomerId,
+		req.Key,
 		usage.Units,
 		usage.Total,
 		usage.Free,
@@ -544,9 +575,9 @@ func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataReques
 
 func (s *Service) handleUsage(
 	ctx context.Context,
-	customerID string,
-	usage Usage,
 	key string,
+	usage Usage,
+	usageKey string,
 	inc, unitSize, freeUnits int64,
 	billable bool,
 ) (*pb.Usage, error) {
@@ -554,7 +585,7 @@ func (s *Service) handleUsage(
 	if total < 0 {
 		total = 0
 	}
-	update := bson.M{key + ".total": total}
+	update := bson.M{usageKey + ".total": total}
 	units := int64(math.Round(float64(total) / float64(unitSize)))
 	if units > freeUnits && !billable {
 		return nil, common.ErrExceedsFreeUnits
@@ -568,9 +599,9 @@ func (s *Service) handleUsage(
 		}); err != nil {
 			return nil, err
 		}
-		update[key+".units"] = units
+		update[usageKey+".units"] = units
 	}
-	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": customerID}, bson.M{"$set": update}); err != nil {
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
 	free := (freeUnits * unitSize) - total
@@ -586,11 +617,11 @@ func (s *Service) handleUsage(
 
 func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgressRequest) (
 	*pb.IncNetworkEgressResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -603,7 +634,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 	}
 	usage, err := s.handleUsage(
 		ctx,
-		doc.ID,
+		doc.Key,
 		doc.NetworkEgress,
 		"network_egress",
 		req.IncSize,
@@ -616,7 +647,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 	}
 
 	log.Debugf("%s period egress: units=%d total=%d free=%d",
-		req.CustomerId,
+		req.Key,
 		usage.Units,
 		usage.Total,
 		usage.Free,
@@ -630,11 +661,11 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 
 func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReadsRequest) (
 	*pb.IncInstanceReadsResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -647,7 +678,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 	}
 	usage, err := s.handleUsage(
 		ctx,
-		doc.ID,
+		doc.Key,
 		doc.InstanceReads,
 		"instance_reads",
 		req.IncCount,
@@ -661,7 +692,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 
 	log.Debugf(
 		"%s period reads: units=%d total=%d free=%d",
-		req.CustomerId,
+		req.Key,
 		usage.Units,
 		usage.Total,
 		usage.Free,
@@ -674,11 +705,11 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 
 func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWritesRequest) (
 	*pb.IncInstanceWritesResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.CustomerId))
+	lck := s.semaphores.Get(customerLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.CustomerId})
+	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
 	if r.Err() != nil {
 		return nil, r.Err()
 	}
@@ -691,7 +722,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 	}
 	usage, err := s.handleUsage(
 		ctx,
-		doc.ID,
+		doc.Key,
 		doc.InstanceWrites,
 		"instance_writes",
 		req.IncCount,
@@ -705,7 +736,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 
 	log.Debugf(
 		"%s period writes: units=%d total=%d free=%d",
-		req.CustomerId,
+		req.Key,
 		usage.Units,
 		usage.Total,
 		usage.Free,

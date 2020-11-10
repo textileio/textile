@@ -8,6 +8,7 @@ import (
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/core/thread"
 	netpb "github.com/textileio/go-threads/net/api/pb"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -111,6 +112,10 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 
 		// Collect the user if we haven't seen them before.
 		if ok && account.User.CreatedAt.IsZero() {
+			key, ok := mdb.APIKeyFromContext(ctx)
+			if !ok {
+				return nil, status.Error(codes.PermissionDenied, "Bad API key")
+			}
 			var powInfo *mdb.PowInfo
 			if t.pc != nil {
 				ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
@@ -121,6 +126,9 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			}
 			user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
 			if err != nil {
+				return nil, err
+			}
+			if err := t.bc.CreateCustomer(ctx, user.Key, billing.WithParentKey(key.Owner)); err != nil {
 				return nil, err
 			}
 			ctx = mdb.NewAccountContext(ctx, user, account.Org)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -115,11 +116,11 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	// Create a customer
 	if s.BillingClient != nil {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, req.Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, dev.Key, cusID); err != nil {
+		if err := s.BillingClient.CreateCustomer(
+			ctx,
+			dev.Key,
+			billing.WithEmail(dev.Email),
+		); err != nil {
 			return nil, err
 		}
 	}
@@ -406,11 +407,11 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 
 	// Create a customer using the dev's email address
 	if s.BillingClient != nil {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, account.User.Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, org.Key, cusID); err != nil {
+		if err := s.BillingClient.CreateCustomer(
+			ctx,
+			org.Key,
+			billing.WithEmail(account.User.Email),
+		); err != nil {
 			return nil, err
 		}
 	}
@@ -583,16 +584,20 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	if err != nil {
 		return nil, err
 	}
-	if account.Owner().CustomerID == "" {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, account.Owner().Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Owner().Key, cusID); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := s.BillingClient.RecreateCustomerSubscription(ctx, account.Owner().CustomerID); err != nil {
+
+	if err := s.BillingClient.CreateCustomer(
+		ctx,
+		account.Owner().Key,
+		billing.WithEmail(account.Owner().Email),
+	); err != nil {
+		if strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
+			if err := s.BillingClient.RecreateCustomerSubscription(
+				ctx,
+				account.Owner().Key,
+			); err != nil {
+				return nil, err
+			}
+		} else {
 			return nil, err
 		}
 	}
@@ -609,7 +614,7 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.BillingClient.GetCustomerSession(ctx, account.Owner().CustomerID)
+	session, err := s.BillingClient.GetCustomerSession(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
@@ -626,7 +631,7 @@ func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoReques
 	if err != nil {
 		return nil, err
 	}
-	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().CustomerID)
+	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}

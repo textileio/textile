@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tpb "github.com/textileio/go-threads/api/pb"
+	"github.com/textileio/go-threads/core/thread"
 	hpb "github.com/textileio/textile/v2/api/hubd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc/stats"
@@ -131,17 +132,17 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 			defer cancel()
 			// @todo: Consolidate these to one IncStats call.
 			if rs.egress > 0 {
-				if _, err := h.t.bc.IncNetworkEgress(ctx, rs.customerID, rs.egress); err != nil {
+				if _, err := h.t.bc.IncNetworkEgress(ctx, rs.key, rs.egress); err != nil {
 					log.Errorf("stats: inc network egress: %v", err)
 				}
 			}
 			if rs.reads > 0 {
-				if _, err := h.t.bc.IncInstanceReads(ctx, rs.customerID, rs.reads); err != nil {
+				if _, err := h.t.bc.IncInstanceReads(ctx, rs.key, rs.reads); err != nil {
 					log.Errorf("stats: inc instance reads: %v", err)
 				}
 			}
 			if rs.writes > 0 {
-				if _, err := h.t.bc.IncInstanceWrites(ctx, rs.customerID, rs.writes); err != nil {
+				if _, err := h.t.bc.IncInstanceWrites(ctx, rs.key, rs.writes); err != nil {
 					log.Errorf("stats: inc instance writes: %v", err)
 				}
 			}
@@ -152,10 +153,10 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 type statsCtxKey string
 
 type requestStats struct {
-	customerID string
-	egress     int64
-	reads      int64
-	writes     int64
+	key    thread.PubKey
+	egress int64
+	reads  int64
+	writes int64
 }
 
 func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
@@ -166,11 +167,14 @@ func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) conte
 	}
 	ctx, _ = h.t.newAuthCtx(ctx, info.FullMethodName, false)
 	account, ok := mdb.AccountFromContext(ctx)
-	if !ok || account.Owner().CustomerID == "" {
+	if !ok {
 		return ctx
 	}
+	if _, err := h.t.bc.GetCustomer(ctx, account.Owner().Key); err != nil {
+		return ctx // Bail if no customer exists for this account
+	}
 	return context.WithValue(ctx, statsCtxKey("requestStats"), &requestStats{
-		customerID: account.Owner().CustomerID,
+		key: account.Owner().Key,
 	})
 }
 

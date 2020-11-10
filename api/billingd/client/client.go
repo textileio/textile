@@ -4,6 +4,7 @@ import (
 	"context"
 
 	stripe "github.com/stripe/stripe-go/v72"
+	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	"google.golang.org/grpc"
 )
@@ -36,37 +37,40 @@ func (c *Client) CheckHealth(ctx context.Context) error {
 	return err
 }
 
-func (c *Client) CreateCustomer(ctx context.Context, email string) (string, error) {
-	res, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
-		Email: email,
-	})
-	if err != nil {
-		return "", err
+func (c *Client) CreateCustomer(ctx context.Context, key thread.PubKey, opts ...Option) error {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
 	}
-	return res.CustomerId, nil
+	_, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
+		Key:       key.String(),
+		ParentKey: args.parentKey.String(),
+		Email:     args.email,
+	})
+	return err
 }
 
-func (c *Client) GetCustomer(ctx context.Context, customerID string) (*pb.GetCustomerResponse, error) {
+func (c *Client) GetCustomer(ctx context.Context, key thread.PubKey) (*pb.GetCustomerResponse, error) {
 	return c.c.GetCustomer(ctx, &pb.GetCustomerRequest{
-		CustomerId: customerID,
+		Key: key.String(),
 	})
 }
 
-func (c *Client) GetCustomerSession(ctx context.Context, customerID string) (*pb.GetCustomerSessionResponse, error) {
+func (c *Client) GetCustomerSession(ctx context.Context, key thread.PubKey) (*pb.GetCustomerSessionResponse, error) {
 	return c.c.GetCustomerSession(ctx, &pb.GetCustomerSessionRequest{
-		CustomerId: customerID,
+		Key: key.String(),
 	})
 }
 
 func (c *Client) UpdateCustomer(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	balance int64,
 	billable,
 	delinquent bool,
 ) error {
 	_, err := c.c.UpdateCustomer(ctx, &pb.UpdateCustomerRequest{
-		CustomerId: customerID,
+		Key:        key.String(),
 		Balance:    balance,
 		Billable:   billable,
 		Delinquent: delinquent,
@@ -76,13 +80,13 @@ func (c *Client) UpdateCustomer(
 
 func (c *Client) UpdateCustomerSubscription(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	status stripe.SubscriptionStatus,
 	periodStart, periodEnd int64,
 ) error {
 	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
-		CustomerId: customerID,
-		Status:     string(status),
+		Key:    key.String(),
+		Status: string(status),
 		Period: &pb.Period{
 			Start: periodStart,
 			End:   periodEnd,
@@ -91,60 +95,60 @@ func (c *Client) UpdateCustomerSubscription(
 	return err
 }
 
-func (c *Client) RecreateCustomerSubscription(ctx context.Context, customerID string) error {
+func (c *Client) RecreateCustomerSubscription(ctx context.Context, key thread.PubKey) error {
 	_, err := c.c.RecreateCustomerSubscription(ctx, &pb.RecreateCustomerSubscriptionRequest{
-		CustomerId: customerID,
+		Key: key.String(),
 	})
 	return err
 }
 
-func (c *Client) DeleteCustomer(ctx context.Context, customerID string) error {
+func (c *Client) DeleteCustomer(ctx context.Context, key thread.PubKey) error {
 	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
-		CustomerId: customerID,
+		Key: key.String(),
 	})
 	return err
 }
 
 func (c *Client) IncStoredData(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	incSize int64,
 ) (*pb.IncStoredDataResponse, error) {
 	return c.c.IncStoredData(ctx, &pb.IncStoredDataRequest{
-		CustomerId: customerID,
-		IncSize:    incSize,
+		Key:     key.String(),
+		IncSize: incSize,
 	})
 }
 
 func (c *Client) IncNetworkEgress(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	incSize int64,
 ) (*pb.IncNetworkEgressResponse, error) {
 	return c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
-		CustomerId: customerID,
-		IncSize:    incSize,
+		Key:     key.String(),
+		IncSize: incSize,
 	})
 }
 
 func (c *Client) IncInstanceReads(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	incCount int64,
 ) (*pb.IncInstanceReadsResponse, error) {
 	return c.c.IncInstanceReads(ctx, &pb.IncInstanceReadsRequest{
-		CustomerId: customerID,
-		IncCount:   incCount,
+		Key:      key.String(),
+		IncCount: incCount,
 	})
 }
 
 func (c *Client) IncInstanceWrites(
 	ctx context.Context,
-	customerID string,
+	key thread.PubKey,
 	incCount int64,
 ) (*pb.IncInstanceWritesResponse, error) {
 	return c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
-		CustomerId: customerID,
-		IncCount:   incCount,
+		Key:      key.String(),
+		IncCount: incCount,
 	})
 }
