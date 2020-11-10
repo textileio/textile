@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"net/http"
@@ -30,32 +29,32 @@ const (
 	mib = 1024 * 1024
 	gib = 1024 * mib
 
-	// StoredDataUnitSize in bytes.
-	StoredDataUnitSize = 5 * gib / 100
-	// NetworkEgressUnitSize in bytes.
-	NetworkEgressUnitSize = 10 * gib / 100
-	// InstanceReadsUnitSize in bytes.
-	InstanceReadsUnitSize = 10000
-	// InstanceWritesUnitSize in bytes.
-	InstanceWritesUnitSize = 5000
+	Interval      = stripe.PriceRecurringIntervalMonth
+	IntervalCount = 1
 
-	// StoredDataUnitCost in cents.
-	StoredDataUnitCost = 1
-	// NetworkEgressUnitCost in cents.
-	NetworkEgressUnitCost = 1
-	// InstanceReadsUnitCost in cents.
-	InstanceReadsUnitCost = 1
-	// InstanceWritesUnitCost in cents.
-	InstanceWritesUnitCost = 1
+	StoredDataCostPerInterval      = 0.03 / gib
+	StoredDataFreePerInterval      = 5 * gib
+	StoredDataUnitSize             = 8 * mib
+	StoredDataFreeUnitsPerInterval = StoredDataFreePerInterval / StoredDataUnitSize
+	StoredDataUnitCostPerInterval  = StoredDataUnitSize * StoredDataCostPerInterval
 
-	// StoredDataFreeUnits after which payment is required (5 Gib).
-	StoredDataFreeUnits = 100
-	// NetworkEgressFreeUnits after which payment is required (500 Mib per day).
-	NetworkEgressFreeUnits = 500 * mib / NetworkEgressUnitSize
-	// InstanceReadsFreeUnits after which payment is required (10,000 per day).
-	InstanceReadsFreeUnits = 1
-	// InstanceWritesFreeUnits after which payment is required (5,000 per day).
-	InstanceWritesFreeUnits = 1
+	NetworkEgressCostPerInterval      = 0.1 / gib
+	NetworkEgressFreePerInterval      = 10 * gib
+	NetworkEgressUnitSize             = 8 * mib
+	NetworkEgressFreeUnitsPerInterval = NetworkEgressFreePerInterval / NetworkEgressUnitSize
+	NetworkEgressUnitCostPerInterval  = NetworkEgressUnitSize * NetworkEgressCostPerInterval
+
+	InstanceReadsCostPerInterval      = 0.1 / 100000
+	InstanceReadsFreePerInterval      = 500000
+	InstanceReadsUnitSize             = 500
+	InstanceReadsFreeUnitsPerInterval = InstanceReadsFreePerInterval / InstanceReadsUnitSize
+	InstanceReadsUnitCostPerInterval  = InstanceReadsUnitSize * InstanceReadsCostPerInterval
+
+	InstanceWritesCostPerInterval      = 0.2 / 100000
+	InstanceWritesFreePerInterval      = 200000
+	InstanceWritesUnitSize             = 500
+	InstanceWritesFreeUnitsPerInterval = InstanceWritesFreePerInterval / InstanceWritesUnitSize
+	InstanceWritesUnitCostPerInterval  = InstanceWritesUnitSize * InstanceWritesCostPerInterval
 )
 
 var log = logging.Logger("billing")
@@ -100,7 +99,7 @@ type Config struct {
 	Debug bool
 }
 
-func NewService(ctx context.Context, config Config, createPrices bool) (*Service, error) {
+func NewService(ctx context.Context, config Config) (*Service, error) {
 	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"billing": logging.LevelDebug,
@@ -122,7 +121,8 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 	customers := client.Database(config.DBName).Collection("customers")
 	indexes, err := customers.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"email", 1}},
+			Keys:    bson.D{{"customer_id", 1}},
+			Options: options.Index().SetUnique(true),
 		},
 		{
 			Keys: bson.D{{"parent_key", 1}},
@@ -150,20 +150,50 @@ func NewService(ctx context.Context, config Config, createPrices bool) (*Service
 		return nil, err
 	}
 
-	if createPrices {
-		s.config.StoredDataPriceID, err = s.createStoredData(sc)
+	if s.config.StoredDataPriceID == "" {
+		s.config.StoredDataPriceID, err = s.createPrice(
+			sc,
+			"Stored data",
+			stripe.PriceRecurringAggregateUsageLastEver,
+			StoredDataFreeUnitsPerInterval,
+			StoredDataUnitCostPerInterval,
+		)
 		if err != nil {
 			return nil, err
 		}
-		s.config.NetworkEgressPriceID, err = s.createNetworkEgress(sc)
+	}
+	if s.config.NetworkEgressPriceID == "" {
+		s.config.NetworkEgressPriceID, err = s.createPrice(
+			sc,
+			"Network egress",
+			stripe.PriceRecurringAggregateUsageSum,
+			NetworkEgressFreeUnitsPerInterval,
+			NetworkEgressUnitCostPerInterval,
+		)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceReadsPriceID, err = s.createInstanceReads(sc)
+	}
+	if s.config.InstanceReadsPriceID == "" {
+		s.config.InstanceReadsPriceID, err = s.createPrice(
+			sc,
+			"ThreadDB reads",
+			stripe.PriceRecurringAggregateUsageSum,
+			InstanceReadsFreeUnitsPerInterval,
+			InstanceReadsUnitCostPerInterval,
+		)
 		if err != nil {
 			return nil, err
 		}
-		s.config.InstanceWritesPriceID, err = s.createInstanceWrites(sc)
+	}
+	if s.config.InstanceWritesPriceID == "" {
+		s.config.InstanceWritesPriceID, err = s.createPrice(
+			sc,
+			"ThreadDB writes",
+			stripe.PriceRecurringAggregateUsageSum,
+			InstanceWritesFreeUnitsPerInterval,
+			InstanceWritesUnitCostPerInterval,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -194,6 +224,47 @@ func newStripeClient(url, key string) (*stripec.API, error) {
 		),
 	})
 	return client, nil
+}
+
+func (s *Service) createPrice(
+	client *stripec.API,
+	productName string,
+	priceAggregateUsage stripe.PriceRecurringAggregateUsage,
+	freeUnitsPerInterval int64,
+	unitCost float64,
+) (string, error) {
+	product, err := client.Products.New(&stripe.ProductParams{
+		Name: stripe.String(productName),
+	})
+	if err != nil {
+		return "", err
+	}
+	price, err := client.Prices.New(&stripe.PriceParams{
+		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Product:  stripe.String(product.ID),
+		Recurring: &stripe.PriceRecurringParams{
+			AggregateUsage: stripe.String(string(priceAggregateUsage)),
+			Interval:       stripe.String(string(Interval)),
+			IntervalCount:  stripe.Int64(IntervalCount),
+			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
+		},
+		Tiers: []*stripe.PriceTierParams{
+			{
+				UpTo:       stripe.Int64(freeUnitsPerInterval),
+				UnitAmount: stripe.Int64(0),
+			},
+			{
+				UpToInf:           stripe.Bool(true),
+				UnitAmountDecimal: stripe.Float64(unitCost),
+			},
+		},
+		TiersMode:     stripe.String(string(stripe.PriceTiersModeGraduated)),
+		BillingScheme: stripe.String(string(stripe.PriceBillingSchemeTiered)),
+	})
+	if err != nil {
+		return "", err
+	}
+	return price.ID, nil
 }
 
 func (s *Service) Start() error {
@@ -234,7 +305,7 @@ func (s *Service) Stop(force bool) error {
 
 type Customer struct {
 	Key        string `bson:"_id"`
-	StripeID   string `bson:"stripe_id"`
+	CustomerID string `bson:"customer_id"`
 	ParentKey  string `bson:"parent_key"`
 	Email      string `bson:"email"`
 	Status     string `bson:"status"`
@@ -275,17 +346,16 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 		return nil, err
 	}
 	if req.ParentKey != "" {
-		r := s.db.FindOne(ctx, bson.M{"_id": req.ParentKey})
-		if r.Err() != nil {
+		if r := s.db.FindOne(ctx, bson.M{"_id": req.ParentKey}); r.Err() != nil {
 			return nil, r.Err()
 		}
 	}
 	doc := &Customer{
-		Key:       req.Key,
-		StripeID:  customer.ID,
-		ParentKey: req.ParentKey,
-		Email:     customer.Email,
-		CreatedAt: time.Now().Unix(),
+		Key:        req.Key,
+		CustomerID: customer.ID,
+		ParentKey:  req.ParentKey,
+		Email:      customer.Email,
+		CreatedAt:  time.Now().Unix(),
 	}
 	if err := s.createSubscription(doc); err != nil {
 		return nil, err
@@ -293,13 +363,15 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	if _, err := s.db.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
-	log.Debugf("created customer %s with stripe id %s", doc.Key, doc.StripeID)
-	return &pb.CreateCustomerResponse{}, nil
+	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
+	return &pb.CreateCustomerResponse{
+		CustomerId: doc.CustomerID,
+	}, nil
 }
 
 func (s *Service) createSubscription(cus *Customer) error {
 	sub, err := s.stripe.Subscriptions.New(&stripe.SubscriptionParams{
-		Customer: stripe.String(cus.StripeID),
+		Customer: stripe.String(cus.CustomerID),
 		Items: []*stripe.SubscriptionItemsParams{
 			{
 				Price: stripe.String(s.config.StoredDataPriceID),
@@ -354,7 +426,7 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	}
 	log.Debugf("got customer %s", doc.Key)
 	return &pb.GetCustomerResponse{
-		StripeId:       doc.StripeID,
+		CustomerId:     doc.CustomerID,
 		ParentKey:      doc.ParentKey,
 		Email:          doc.Email,
 		Status:         doc.Status,
@@ -363,10 +435,10 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 		Delinquent:     doc.Delinquent,
 		CreatedAt:      doc.CreatedAt,
 		Period:         periodToPb(doc.Period),
-		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnits),
-		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnits),
-		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnits),
-		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnits),
+		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
+		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
+		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
+		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
 	}, nil
 }
 
@@ -404,7 +476,7 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 		return nil, err
 	}
 	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(doc.StripeID),
+		Customer:  stripe.String(doc.CustomerID),
 		ReturnURL: stripe.String(s.config.StripeSessionReturnURL),
 	})
 	if err != nil {
@@ -417,26 +489,34 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 
 func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequest) (
 	*pb.UpdateCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
+	doc, err := s.getCustomer(ctx, "customer_id", req.CustomerId)
+	if err != nil {
+		return nil, err
+	}
+	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
 		"$set": bson.M{"balance": req.Balance, "billable": req.Billable, "delinquent": req.Delinquent},
 	}); err != nil {
 		return nil, err
 	}
-	log.Debugf("updated customer %s", req.Key)
+	log.Debugf("updated customer %s", doc.Key)
 	return &pb.UpdateCustomerResponse{}, nil
 }
 
 func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.UpdateCustomerSubscriptionRequest) (
 	*pb.UpdateCustomerSubscriptionResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
+	doc, err := s.getCustomer(ctx, "customer_id", req.CustomerId)
+	if err != nil {
+		return nil, err
+	}
+	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": req.Key}, bson.M{
+	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": doc.Key}, bson.M{
 		"$set": bson.M{
 			"status":       req.Status,
 			"period.start": req.Period.Start,
@@ -451,7 +531,7 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 		return nil, err
 	}
 	if pre.Period.End < req.Period.End {
-		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
+		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": pre.Key}, bson.M{
 			"$set": bson.M{
 				"network_egress.units":      0,
 				"network_egress.sub_units":  0,
@@ -464,7 +544,7 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 		}
 	}
 
-	log.Debugf("updated subscription with status '%s' for %s", req.Status, req.Key)
+	log.Debugf("updated subscription with status '%s' for %s", req.Status, pre.Key)
 	return &pb.UpdateCustomerSubscriptionResponse{}, nil
 }
 
@@ -520,7 +600,7 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	if err := r.Decode(&doc); err != nil {
 		return nil, err
 	}
-	if _, err := s.stripe.Customers.Del(doc.StripeID, nil); err != nil {
+	if _, err := s.stripe.Customers.Del(doc.CustomerID, nil); err != nil {
 		return nil, err
 	}
 	if _, err := s.db.DeleteOne(ctx, bson.M{"_id": req.Key}); err != nil {
@@ -553,7 +633,7 @@ func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataReques
 		"stored_data",
 		req.IncSize,
 		StoredDataUnitSize,
-		StoredDataFreeUnits,
+		StoredDataFreeUnitsPerInterval,
 		doc.Billable,
 	)
 	if err != nil {
@@ -639,7 +719,7 @@ func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgress
 		"network_egress",
 		req.IncSize,
 		NetworkEgressUnitSize,
-		NetworkEgressFreeUnits,
+		NetworkEgressFreeUnitsPerInterval,
 		doc.Billable,
 	)
 	if err != nil {
@@ -683,7 +763,7 @@ func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReads
 		"instance_reads",
 		req.IncCount,
 		InstanceReadsUnitSize,
-		InstanceReadsFreeUnits,
+		InstanceReadsFreeUnitsPerInterval,
 		doc.Billable,
 	)
 	if err != nil {
@@ -727,7 +807,7 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 		"instance_writes",
 		req.IncCount,
 		InstanceWritesUnitSize,
-		InstanceWritesFreeUnits,
+		InstanceWritesFreeUnitsPerInterval,
 		doc.Billable,
 	)
 	if err != nil {
@@ -747,20 +827,11 @@ func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWrit
 	}, nil
 }
 
-func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary, err error) {
-	params := &stripe.UsageRecordSummaryListParams{
-		SubscriptionItem: stripe.String(id),
+func (s *Service) getCustomer(ctx context.Context, key, val string) (*Customer, error) {
+	r := s.db.FindOne(ctx, bson.M{key: val})
+	if r.Err() != nil {
+		return nil, r.Err()
 	}
-	params.Filters.AddFilter("limit", "", "1")
-	i := s.stripe.UsageRecordSummaries.List(params)
-	if i.Err() != nil {
-		return nil, i.Err()
-	}
-	for i.Next() {
-		sum = i.UsageRecordSummary()
-	}
-	if sum != nil && sum.Period != nil {
-		return sum, nil
-	}
-	return nil, fmt.Errorf("subscription item %s not found", id)
+	var doc Customer
+	return &doc, r.Decode(&doc)
 }

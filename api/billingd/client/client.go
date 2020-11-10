@@ -37,17 +37,24 @@ func (c *Client) CheckHealth(ctx context.Context) error {
 	return err
 }
 
-func (c *Client) CreateCustomer(ctx context.Context, key thread.PubKey, opts ...Option) error {
+func (c *Client) CreateCustomer(ctx context.Context, key thread.PubKey, opts ...Option) (string, error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	_, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
+	var parentKey string
+	if args.parentKey != nil {
+		parentKey = args.parentKey.String()
+	}
+	res, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
 		Key:       key.String(),
-		ParentKey: args.parentKey.String(),
+		ParentKey: parentKey,
 		Email:     args.email,
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return res.CustomerId, nil
 }
 
 func (c *Client) GetCustomer(ctx context.Context, key thread.PubKey) (*pb.GetCustomerResponse, error) {
@@ -64,13 +71,13 @@ func (c *Client) GetCustomerSession(ctx context.Context, key thread.PubKey) (*pb
 
 func (c *Client) UpdateCustomer(
 	ctx context.Context,
-	key thread.PubKey,
+	customerID string,
 	balance int64,
 	billable,
 	delinquent bool,
 ) error {
 	_, err := c.c.UpdateCustomer(ctx, &pb.UpdateCustomerRequest{
-		Key:        key.String(),
+		CustomerId: customerID,
 		Balance:    balance,
 		Billable:   billable,
 		Delinquent: delinquent,
@@ -80,13 +87,13 @@ func (c *Client) UpdateCustomer(
 
 func (c *Client) UpdateCustomerSubscription(
 	ctx context.Context,
-	key thread.PubKey,
+	customerID string,
 	status stripe.SubscriptionStatus,
 	periodStart, periodEnd int64,
 ) error {
 	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
-		Key:    key.String(),
-		Status: string(status),
+		CustomerId: customerID,
+		Status:     string(status),
 		Period: &pb.Period{
 			Start: periodStart,
 			End:   periodEnd,

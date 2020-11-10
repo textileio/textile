@@ -128,7 +128,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			if err != nil {
 				return nil, err
 			}
-			if err := t.bc.CreateCustomer(ctx, user.Key, billing.WithParentKey(key.Owner)); err != nil {
+			if _, err := t.bc.CreateCustomer(ctx, user.Key, billing.WithParentKey(key.Owner)); err != nil {
 				return nil, err
 			}
 			ctx = mdb.NewAccountContext(ctx, user, account.Org)

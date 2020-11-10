@@ -23,14 +23,16 @@ message CreateCustomerRequest {
     string email = 3;
 }
 
-message CreateCustomerResponse {}
+message CreateCustomerResponse {
+    string customer_id = 1;
+}
 
 message GetCustomerRequest {
     string key = 1;
 }
 
 message GetCustomerResponse {
-    string stripe_id = 1;
+    string customer_id = 1;
     string parent_key = 2;
     string email = 3;
     string status = 4;
@@ -55,7 +57,7 @@ message GetCustomerSessionResponse {
 }
 
 message UpdateCustomerRequest {
-    string key = 1;
+    string customer_id = 1;
     int64 balance = 2;
     bool billable = 3;
     bool delinquent = 4;
@@ -64,7 +66,7 @@ message UpdateCustomerRequest {
 message UpdateCustomerResponse {}
 
 message UpdateCustomerSubscriptionRequest {
-    string key = 1;
+    string customer_id = 1;
     string status = 2;
     Period period = 3;
 }

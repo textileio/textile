@@ -65,10 +65,6 @@ var (
 				Key:      "stripe.webhook_secret",
 				DefValue: "",
 			},
-			"stripeCreatePrices": {
-				Key:      "stripe.create_prices",
-				DefValue: false,
-			},
 			"stripeStoredDataPrice": {
 				Key:      "stripe.stored_data.price",
 				DefValue: "",
@@ -145,10 +141,6 @@ func init() {
 		"stripeWebhookSecret",
 		config.Flags["stripeWebhookSecret"].DefValue.(string),
 		"Stripe webhook endpoint secret")
-	rootCmd.PersistentFlags().Bool(
-		"stripeCreatePrices",
-		config.Flags["stripeCreatePrices"].DefValue.(bool),
-		"Create Stripe subscription prices (overrides explicitly given price IDs)")
 	rootCmd.PersistentFlags().String(
 		"stripeStoredDataPrice",
 		config.Flags["stripeStoredDataPrice"].DefValue.(string),
@@ -204,7 +196,6 @@ var rootCmd = &cobra.Command{
 		stripeApiKey := config.Viper.GetString("stripe.api_key")
 		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
 		stripeWebhookSecret := config.Viper.GetString("stripe.webhook_secret")
-		stripeCreatePrices := config.Viper.GetBool("stripe.create_prices")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
 		stripeInstanceReadsPrice := config.Viper.GetString("stripe.instance_reads.price")
@@ -232,7 +223,7 @@ var rootCmd = &cobra.Command{
 			InstanceReadsPriceID:   stripeInstanceReadsPrice,
 			InstanceWritesPriceID:  stripeInstanceWritesPrice,
 			Debug: config.Viper.GetBool("log.debug"),
-		}, stripeCreatePrices)
+		})
 		cmd.ErrCheck(err)
 
 		err = api.Start()

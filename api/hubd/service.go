@@ -116,7 +116,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	// Create a customer
 	if s.BillingClient != nil {
-		if err := s.BillingClient.CreateCustomer(
+		if _, err := s.BillingClient.CreateCustomer(
 			ctx,
 			dev.Key,
 			billing.WithEmail(dev.Email),
@@ -407,7 +407,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 
 	// Create a customer using the dev's email address
 	if s.BillingClient != nil {
-		if err := s.BillingClient.CreateCustomer(
+		if _, err := s.BillingClient.CreateCustomer(
 			ctx,
 			org.Key,
 			billing.WithEmail(account.User.Email),
@@ -585,7 +585,7 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 		return nil, err
 	}
 
-	if err := s.BillingClient.CreateCustomer(
+	if _, err := s.BillingClient.CreateCustomer(
 		ctx,
 		account.Owner().Key,
 		billing.WithEmail(account.Owner().Email),
