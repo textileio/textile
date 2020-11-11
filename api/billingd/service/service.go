@@ -346,8 +346,8 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 		return nil, err
 	}
 	if req.ParentKey != "" {
-		if r := s.db.FindOne(ctx, bson.M{"_id": req.ParentKey}); r.Err() != nil {
-			return nil, r.Err()
+		if _, err := s.getCustomer(ctx, "_id", req.ParentKey); err != nil {
+			return nil, err
 		}
 	}
 	doc := &Customer{
@@ -416,12 +416,8 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
 		return nil, err
 	}
 	log.Debugf("got customer %s", doc.Key)
@@ -467,12 +463,8 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
 		return nil, err
 	}
 	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
@@ -554,12 +546,8 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
 		return nil, err
 	}
 	if err := common.StatusCheck(doc.Status); err == nil {
@@ -567,7 +555,7 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 	} else if !errors.Is(err, common.ErrSubscriptionCanceled) {
 		return nil, err
 	}
-	if err := s.createSubscription(&doc); err != nil {
+	if err := s.createSubscription(doc); err != nil {
 		return nil, err
 	}
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
@@ -592,12 +580,8 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
 		return nil, err
 	}
 	if _, err := s.stripe.Customers.Del(doc.CustomerID, nil); err != nil {
@@ -611,46 +595,218 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 }
 
 func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataRequest) (*pb.IncStoredDataResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
+	return s.handleStoredData(ctx, req.Key, req.IncSize)
+}
+
+func (s *Service) handleStoredData(
+	ctx context.Context,
+	key string,
+	incSize int64,
+) (*pb.IncStoredDataResponse, error) {
+	lck := s.semaphores.Get(customerLock(key))
 	lck.Acquire()
 	defer lck.Release()
 
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
+	cus, err := s.getCustomer(ctx, "_id", key)
+	if err != nil {
 		return nil, err
 	}
-	if err := common.StatusCheck(doc.Status); err != nil {
+	if cus.ParentKey != "" {
+		if _, err := s.handleStoredData(ctx, cus.ParentKey, incSize); err != nil {
+			return nil, err
+		}
+	}
+	if err := common.StatusCheck(cus.Status); err != nil {
 		return nil, err
 	}
 	usage, err := s.handleUsage(
 		ctx,
-		doc.Key,
-		doc.StoredData,
+		cus.Key,
+		cus.StoredData,
 		"stored_data",
-		req.IncSize,
+		incSize,
 		StoredDataUnitSize,
 		StoredDataFreeUnitsPerInterval,
-		doc.Billable,
+		cus.Billable,
 	)
 	if err != nil {
 		return nil, err
 	}
-
 	log.Debugf(
 		"%s period data: units=%d total=%d free=%d",
-		req.Key,
+		cus.Key,
 		usage.Units,
 		usage.Total,
 		usage.Free,
 	)
 	return &pb.IncStoredDataResponse{
-		Period:     periodToPb(doc.Period),
+		Period:     periodToPb(cus.Period),
 		StoredData: usage,
 	}, nil
+}
+
+func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgressRequest) (
+	*pb.IncNetworkEgressResponse, error) {
+	return s.handleNetworkEgress(ctx, req.Key, req.IncSize)
+}
+
+func (s *Service) handleNetworkEgress(
+	ctx context.Context,
+	key string,
+	incSize int64,
+) (*pb.IncNetworkEgressResponse, error) {
+	lck := s.semaphores.Get(customerLock(key))
+	lck.Acquire()
+	defer lck.Release()
+
+	cus, err := s.getCustomer(ctx, "_id", key)
+	if err != nil {
+		return nil, err
+	}
+	if cus.ParentKey != "" {
+		if _, err := s.handleNetworkEgress(ctx, cus.ParentKey, incSize); err != nil {
+			return nil, err
+		}
+	}
+	if err := common.StatusCheck(cus.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleUsage(
+		ctx,
+		cus.Key,
+		cus.NetworkEgress,
+		"network_egress",
+		incSize,
+		NetworkEgressUnitSize,
+		NetworkEgressFreeUnitsPerInterval,
+		cus.Billable,
+	)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("%s period egress: units=%d total=%d free=%d",
+		cus.Key,
+		usage.Units,
+		usage.Total,
+		usage.Free,
+	)
+	return &pb.IncNetworkEgressResponse{
+		Period:        periodToPb(cus.Period),
+		NetworkEgress: usage,
+	}, nil
+}
+
+func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReadsRequest) (
+	*pb.IncInstanceReadsResponse, error) {
+	return s.handleInstanceReads(ctx, req.Key, req.IncCount)
+}
+
+func (s *Service) handleInstanceReads(
+	ctx context.Context,
+	key string,
+	incCount int64,
+) (*pb.IncInstanceReadsResponse, error) {
+	lck := s.semaphores.Get(customerLock(key))
+	lck.Acquire()
+	defer lck.Release()
+
+	cus, err := s.getCustomer(ctx, "_id", key)
+	if err != nil {
+		return nil, err
+	}
+	if cus.ParentKey != "" {
+		if _, err := s.handleInstanceReads(ctx, cus.ParentKey, incCount); err != nil {
+			return nil, err
+		}
+	}
+	if err := common.StatusCheck(cus.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleUsage(
+		ctx,
+		cus.Key,
+		cus.InstanceReads,
+		"instance_reads",
+		incCount,
+		InstanceReadsUnitSize,
+		InstanceReadsFreeUnitsPerInterval,
+		cus.Billable,
+	)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf(
+		"%s period reads: units=%d total=%d free=%d",
+		cus.Key,
+		usage.Units,
+		usage.Total,
+		usage.Free,
+	)
+	return &pb.IncInstanceReadsResponse{
+		Period:        periodToPb(cus.Period),
+		InstanceReads: usage,
+	}, nil
+}
+
+func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWritesRequest) (
+	*pb.IncInstanceWritesResponse, error) {
+	return s.handleInstanceWrites(ctx, req.Key, req.IncCount)
+}
+
+func (s *Service) handleInstanceWrites(
+	ctx context.Context,
+	key string,
+	incCount int64,
+) (*pb.IncInstanceWritesResponse, error) {
+	lck := s.semaphores.Get(customerLock(key))
+	lck.Acquire()
+	defer lck.Release()
+
+	cus, err := s.getCustomer(ctx, "_id", key)
+	if err != nil {
+		return nil, err
+	}
+	if cus.ParentKey != "" {
+		if _, err := s.handleInstanceWrites(ctx, cus.ParentKey, incCount); err != nil {
+			return nil, err
+		}
+	}
+	if err := common.StatusCheck(cus.Status); err != nil {
+		return nil, err
+	}
+	usage, err := s.handleUsage(
+		ctx,
+		cus.Key,
+		cus.InstanceWrites,
+		"instance_writes",
+		incCount,
+		InstanceWritesUnitSize,
+		InstanceWritesFreeUnitsPerInterval,
+		cus.Billable,
+	)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf(
+		"%s period writes: units=%d total=%d free=%d",
+		cus.Key,
+		usage.Units,
+		usage.Total,
+		usage.Free,
+	)
+	return &pb.IncInstanceWritesResponse{
+		Period:         periodToPb(cus.Period),
+		InstanceWrites: usage,
+	}, nil
+}
+
+func (s *Service) getCustomer(ctx context.Context, key, val string) (*Customer, error) {
+	r := s.db.FindOne(ctx, bson.M{key: val})
+	if r.Err() != nil {
+		return nil, r.Err()
+	}
+	var doc Customer
+	return &doc, r.Decode(&doc)
 }
 
 func (s *Service) handleUsage(
@@ -693,145 +849,4 @@ func (s *Service) handleUsage(
 		Total: total,
 		Free:  free,
 	}, nil
-}
-
-func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgressRequest) (
-	*pb.IncNetworkEgressResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
-		return nil, err
-	}
-	if err := common.StatusCheck(doc.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
-		ctx,
-		doc.Key,
-		doc.NetworkEgress,
-		"network_egress",
-		req.IncSize,
-		NetworkEgressUnitSize,
-		NetworkEgressFreeUnitsPerInterval,
-		doc.Billable,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("%s period egress: units=%d total=%d free=%d",
-		req.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
-	)
-	res := &pb.IncNetworkEgressResponse{
-		Period:        periodToPb(doc.Period),
-		NetworkEgress: usage,
-	}
-	return res, nil
-}
-
-func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReadsRequest) (
-	*pb.IncInstanceReadsResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
-		return nil, err
-	}
-	if err := common.StatusCheck(doc.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
-		ctx,
-		doc.Key,
-		doc.InstanceReads,
-		"instance_reads",
-		req.IncCount,
-		InstanceReadsUnitSize,
-		InstanceReadsFreeUnitsPerInterval,
-		doc.Billable,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf(
-		"%s period reads: units=%d total=%d free=%d",
-		req.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
-	)
-	return &pb.IncInstanceReadsResponse{
-		Period:        periodToPb(doc.Period),
-		InstanceReads: usage,
-	}, nil
-}
-
-func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWritesRequest) (
-	*pb.IncInstanceWritesResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
-	r := s.db.FindOne(ctx, bson.M{"_id": req.Key})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	if err := r.Decode(&doc); err != nil {
-		return nil, err
-	}
-	if err := common.StatusCheck(doc.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
-		ctx,
-		doc.Key,
-		doc.InstanceWrites,
-		"instance_writes",
-		req.IncCount,
-		InstanceWritesUnitSize,
-		InstanceWritesFreeUnitsPerInterval,
-		doc.Billable,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf(
-		"%s period writes: units=%d total=%d free=%d",
-		req.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
-	)
-	return &pb.IncInstanceWritesResponse{
-		Period:         periodToPb(doc.Period),
-		InstanceWrites: usage,
-	}, nil
-}
-
-func (s *Service) getCustomer(ctx context.Context, key, val string) (*Customer, error) {
-	r := s.db.FindOne(ctx, bson.M{key: val})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var doc Customer
-	return &doc, r.Decode(&doc)
 }

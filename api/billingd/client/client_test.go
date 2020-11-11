@@ -155,29 +155,17 @@ func TestClient_IncStoredData(t *testing.T) {
 	id, err := c.CreateCustomer(context.Background(), key)
 	require.NoError(t, err)
 
-	// Units should round down
+	// Add some under unit size
 	res, err := c.IncStoredData(context.Background(), key, mib)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.StoredData.Units))
 	assert.Equal(t, mib, int(res.StoredData.Total))
 
-	// Units should round up
-	res, err = c.IncStoredData(context.Background(), key, 30*mib)
+	// Add more to reach unit size
+	res, err = c.IncStoredData(context.Background(), key, service.StoredDataUnitSize-mib)
 	require.NoError(t, err)
-	assert.Equal(t, 4, int(res.StoredData.Units))
-	assert.Equal(t, 31*mib, int(res.StoredData.Total))
-
-	// Units should round down
-	res, err = c.IncStoredData(context.Background(), key, 289*mib)
-	require.NoError(t, err)
-	assert.Equal(t, 40, int(res.StoredData.Units))
-	assert.Equal(t, 320*mib, int(res.StoredData.Total))
-
-	// Check total usage
-	cus, err := c.GetCustomer(context.Background(), key)
-	require.NoError(t, err)
-	assert.Equal(t, 40, int(cus.StoredData.Units))
-	assert.Equal(t, 320*mib, int(cus.StoredData.Total))
+	assert.Equal(t, 1, int(res.StoredData.Units))
+	assert.Equal(t, service.StoredDataUnitSize, int(res.StoredData.Total))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncStoredData(context.Background(), key, service.StoredDataFreePerInterval)
@@ -190,6 +178,23 @@ func TestClient_IncStoredData(t *testing.T) {
 	// Try again
 	res, err = c.IncStoredData(context.Background(), key, service.StoredDataFreePerInterval)
 	require.NoError(t, err)
+	assert.Equal(t, service.StoredDataFreeUnitsPerInterval+1, int(res.StoredData.Units))
+	assert.Equal(t, service.StoredDataFreePerInterval+service.StoredDataUnitSize, int(res.StoredData.Total))
+
+	// Try as a child customer
+	childKey := newKey(t)
+	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
+	require.NoError(t, err)
+	res, err = c.IncStoredData(context.Background(), childKey, service.StoredDataUnitSize)
+	require.NoError(t, err)
+	assert.Equal(t, 1, int(res.StoredData.Units))
+	assert.Equal(t, service.StoredDataUnitSize, int(res.StoredData.Total))
+
+	// Check total usage
+	cus, err := c.GetCustomer(context.Background(), key)
+	require.NoError(t, err)
+	assert.Equal(t, service.StoredDataFreeUnitsPerInterval+2, int(cus.StoredData.Units))
+	assert.Equal(t, service.StoredDataFreePerInterval+(2*service.StoredDataUnitSize), int(cus.StoredData.Total))
 }
 
 func TestClient_IncNetworkEgress(t *testing.T) {
@@ -203,15 +208,13 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	res, err := c.IncNetworkEgress(context.Background(), key, mib)
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(res.NetworkEgress.Units))
-	total := mib
-	assert.Equal(t, total, int(res.NetworkEgress.Total))
+	assert.Equal(t, mib, int(res.NetworkEgress.Total))
 
 	// Add more to reach unit size
 	res, err = c.IncNetworkEgress(context.Background(), key, service.NetworkEgressUnitSize-mib)
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(res.NetworkEgress.Units))
-	total += service.NetworkEgressUnitSize - mib
-	assert.Equal(t, total, int(res.NetworkEgress.Total))
+	assert.Equal(t, service.NetworkEgressUnitSize, int(res.NetworkEgress.Total))
 
 	// Add a bunch of units above free quota
 	res, err = c.IncNetworkEgress(context.Background(), key, service.NetworkEgressFreePerInterval)
@@ -225,14 +228,22 @@ func TestClient_IncNetworkEgress(t *testing.T) {
 	res, err = c.IncNetworkEgress(context.Background(), key, service.NetworkEgressFreePerInterval)
 	require.NoError(t, err)
 	assert.Equal(t, service.NetworkEgressFreeUnitsPerInterval+1, int(res.NetworkEgress.Units))
-	total += service.NetworkEgressFreePerInterval
-	assert.Equal(t, total, int(res.NetworkEgress.Total))
+	assert.Equal(t, service.NetworkEgressFreePerInterval+service.NetworkEgressUnitSize, int(res.NetworkEgress.Total))
+
+	// Try as a child customer
+	childKey := newKey(t)
+	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
+	require.NoError(t, err)
+	res, err = c.IncNetworkEgress(context.Background(), childKey, service.NetworkEgressUnitSize)
+	require.NoError(t, err)
+	assert.Equal(t, 1, int(res.NetworkEgress.Units))
+	assert.Equal(t, service.NetworkEgressUnitSize, int(res.NetworkEgress.Total))
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
-	assert.Equal(t, service.NetworkEgressFreeUnitsPerInterval+1, int(cus.NetworkEgress.Units))
-	assert.Equal(t, total, int(cus.NetworkEgress.Total))
+	assert.Equal(t, service.NetworkEgressFreeUnitsPerInterval+2, int(cus.NetworkEgress.Units))
+	assert.Equal(t, service.NetworkEgressFreePerInterval+(2*service.NetworkEgressUnitSize), int(cus.NetworkEgress.Total))
 }
 
 func TestClient_IncInstanceReads(t *testing.T) {
@@ -268,11 +279,20 @@ func TestClient_IncInstanceReads(t *testing.T) {
 	assert.Equal(t, service.InstanceReadsFreeUnitsPerInterval+1, int(res.InstanceReads.Units))
 	assert.Equal(t, service.InstanceReadsFreePerInterval+service.InstanceReadsUnitSize, int(res.InstanceReads.Total))
 
+	// Try as a child customer
+	childKey := newKey(t)
+	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
+	require.NoError(t, err)
+	res, err = c.IncInstanceReads(context.Background(), childKey, service.InstanceReadsUnitSize)
+	require.NoError(t, err)
+	assert.Equal(t, 1, int(res.InstanceReads.Units))
+	assert.Equal(t, service.InstanceReadsUnitSize, int(res.InstanceReads.Total))
+
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
-	assert.Equal(t, service.InstanceReadsFreeUnitsPerInterval+1, int(cus.InstanceReads.Units))
-	assert.Equal(t, service.InstanceReadsFreePerInterval+service.InstanceReadsUnitSize, int(cus.InstanceReads.Total))
+	assert.Equal(t, service.InstanceReadsFreeUnitsPerInterval+2, int(cus.InstanceReads.Units))
+	assert.Equal(t, service.InstanceReadsFreePerInterval+(2*service.InstanceReadsUnitSize), int(cus.InstanceReads.Total))
 }
 
 func TestClient_IncInstanceWrites(t *testing.T) {
@@ -308,11 +328,20 @@ func TestClient_IncInstanceWrites(t *testing.T) {
 	assert.Equal(t, service.InstanceWritesFreeUnitsPerInterval+1, int(res.InstanceWrites.Units))
 	assert.Equal(t, service.InstanceWritesFreePerInterval+service.InstanceWritesUnitSize, int(res.InstanceWrites.Total))
 
+	// Try as a child customer
+	childKey := newKey(t)
+	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
+	require.NoError(t, err)
+	res, err = c.IncInstanceWrites(context.Background(), childKey, service.InstanceWritesUnitSize)
+	require.NoError(t, err)
+	assert.Equal(t, 1, int(res.InstanceWrites.Units))
+	assert.Equal(t, service.InstanceWritesUnitSize, int(res.InstanceWrites.Total))
+
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
-	assert.Equal(t, service.InstanceWritesFreeUnitsPerInterval+1, int(cus.InstanceWrites.Units))
-	assert.Equal(t, service.InstanceWritesFreePerInterval+service.InstanceWritesUnitSize, int(cus.InstanceWrites.Total))
+	assert.Equal(t, service.InstanceWritesFreeUnitsPerInterval+2, int(cus.InstanceWrites.Units))
+	assert.Equal(t, service.InstanceWritesFreePerInterval+(2*service.InstanceWritesUnitSize), int(cus.InstanceWrites.Total))
 }
 
 func setup(t *testing.T) *client.Client {
