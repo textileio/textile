@@ -43,10 +43,10 @@ func TestClient_CreateCustomer(t *testing.T) {
 	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithEmail(apitest.NewEmail()))
 	require.NoError(t, err)
 
-	_, err = c.CreateCustomer(context.Background(), key, client.WithParentKey(newKey(t)))
-	require.Error(t, err)
-	_, err = c.CreateCustomer(context.Background(), key, client.WithParentKey(newKey(t)))
-	require.Error(t, err)
+	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(newKey(t)))
+	require.Error(t, err) // Parent does not exist
+	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(key))
+	require.NoError(t, err)
 }
 
 func TestClient_GetCustomer(t *testing.T) {
@@ -80,15 +80,40 @@ func TestClient_GetCustomerSession(t *testing.T) {
 	assert.NotEmpty(t, session.Url)
 }
 
-func TestClient_DeleteCustomer(t *testing.T) {
+func TestClient_ListDependentCustomers(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key)
 	require.NoError(t, err)
 
-	err = c.DeleteCustomer(context.Background(), key)
+	for i := 0; i < 30; i++ {
+		_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(key))
+		require.NoError(t, err)
+	}
+
+	res, err := c.ListDependentCustomers(context.Background(), key, client.WithLimit(30))
 	require.NoError(t, err)
+	assert.Len(t, res.Customers, 30)
+	for _, c := range res.Customers {
+		fmt.Println(c.Key)
+	}
+
+	res, err = c.ListDependentCustomers(context.Background(), key)
+	require.NoError(t, err)
+	assert.Len(t, res.Customers, 25)
+
+	res, err = c.ListDependentCustomers(context.Background(), key, client.WithLimit(5))
+	require.NoError(t, err)
+	assert.Len(t, res.Customers, 5)
+
+	res, err = c.ListDependentCustomers(context.Background(), key, client.WithOffset(res.NextOffset))
+	require.NoError(t, err)
+	assert.Len(t, res.Customers, 25)
+
+	res, err = c.ListDependentCustomers(context.Background(), key, client.WithOffset(res.NextOffset))
+	require.NoError(t, err)
+	assert.Len(t, res.Customers, 0)
 }
 
 func TestClient_UpdateCustomer(t *testing.T) {
@@ -146,6 +171,17 @@ func TestClient_RecreateCustomerSubscription(t *testing.T) {
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
 	assert.Equal(t, string(stripe.SubscriptionStatusActive), cus.Status)
+}
+
+func TestClient_DeleteCustomer(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	key := newKey(t)
+	_, err := c.CreateCustomer(context.Background(), key)
+	require.NoError(t, err)
+
+	err = c.DeleteCustomer(context.Background(), key)
+	require.NoError(t, err)
 }
 
 func TestClient_IncStoredData(t *testing.T) {

@@ -341,7 +341,7 @@ func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentbo
 	return &pb.DeleteSentboxMessageResponse{}, nil
 }
 
-func (s *Service) GetUsage(ctx context.Context, _ *pb.GetUsageRequest) (*pb.GetUsageResponse, error) {
+func (s *Service) GetUsage(ctx context.Context, req *pb.GetUsageRequest) (*pb.GetUsageResponse, error) {
 	log.Debugf("received get usage request")
 
 	if s.BillingClient == nil {
@@ -349,12 +349,26 @@ func (s *Service) GetUsage(ctx context.Context, _ *pb.GetUsageRequest) (*pb.GetU
 	}
 
 	account, _ := mdb.AccountFromContext(ctx)
-	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().Key)
+	var key, parentKey thread.PubKey
+	if req.Key != "" {
+		k := &thread.Libp2pPubKey{}
+		if err := k.UnmarshalString(req.Key); err != nil {
+			return nil, status.Error(codes.FailedPrecondition, "Invalid public key")
+		}
+		key = k
+		parentKey = account.Owner().Key
+	} else {
+		key = account.Owner().Key
+	}
+	cus, err := s.BillingClient.GetCustomer(ctx, key)
 	if err != nil {
 		return nil, err
 	}
+	if parentKey != nil && cus.ParentKey != parentKey.String() {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
 	return &pb.GetUsageResponse{
-		Customer: customer,
+		Customer: cus,
 	}, nil
 }
 

@@ -170,9 +170,6 @@ func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) conte
 	if !ok {
 		return ctx
 	}
-	if _, err := h.t.bc.GetCustomer(ctx, account.Owner().Key); err != nil {
-		return ctx // Bail if no customer exists for this account
-	}
 	return context.WithValue(ctx, statsCtxKey("requestStats"), &requestStats{
 		key: account.Owner().Key,
 	})

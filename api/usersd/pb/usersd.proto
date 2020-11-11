@@ -97,7 +97,9 @@ message DeleteSentboxMessageRequest {
 
 message DeleteSentboxMessageResponse {}
 
-message GetUsageRequest {}
+message GetUsageRequest {
+    string key = 1;
+}
 
 message GetUsageResponse {
     api.billingd.pb.GetCustomerResponse customer = 1;

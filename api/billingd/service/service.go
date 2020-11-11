@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"net/http"
@@ -26,6 +27,9 @@ import (
 )
 
 const (
+	defaultPageSize = 25
+	maxPageSize     = 1000
+
 	mib = 1024 * 1024
 	gib = 1024 * mib
 
@@ -125,7 +129,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 			Options: options.Index().SetUnique(true),
 		},
 		{
-			Keys: bson.D{{"parent_key", 1}},
+			Keys: bson.D{{"parent_key", 1}, {"created_at", 1}},
 		},
 	})
 	if err != nil {
@@ -421,21 +425,7 @@ func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 		return nil, err
 	}
 	log.Debugf("got customer %s", doc.Key)
-	return &pb.GetCustomerResponse{
-		CustomerId:     doc.CustomerID,
-		ParentKey:      doc.ParentKey,
-		Email:          doc.Email,
-		Status:         doc.Status,
-		Balance:        doc.Balance,
-		Billable:       doc.Billable,
-		Delinquent:     doc.Delinquent,
-		CreatedAt:      doc.CreatedAt,
-		Period:         periodToPb(doc.Period),
-		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
-		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
-		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
-		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
-	}, nil
+	return s.customerToPb(ctx, doc)
 }
 
 func periodToPb(period Period) *pb.Period {
@@ -457,6 +447,30 @@ func usageToPb(usage Usage, unitSize, freeUnits int64) *pb.Usage {
 	}
 }
 
+func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
+	deps, err := s.db.CountDocuments(ctx, bson.M{"parent_id": doc.Key})
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetCustomerResponse{
+		Key:            doc.Key,
+		CustomerId:     doc.CustomerID,
+		ParentKey:      doc.ParentKey,
+		Email:          doc.Email,
+		Status:         doc.Status,
+		Balance:        doc.Balance,
+		Billable:       doc.Billable,
+		Delinquent:     doc.Delinquent,
+		CreatedAt:      doc.CreatedAt,
+		Period:         periodToPb(doc.Period),
+		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
+		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
+		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
+		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
+		Dependents:     deps,
+	}, nil
+}
+
 func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSessionRequest) (
 	*pb.GetCustomerSessionResponse, error) {
 	lck := s.semaphores.Get(customerLock(req.Key))
@@ -476,6 +490,60 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 	}
 	return &pb.GetCustomerSessionResponse{
 		Url: session.URL,
+	}, nil
+}
+
+func (s *Service) ListDependentCustomers(ctx context.Context, req *pb.ListDependentCustomersRequest) (
+	*pb.ListDependentCustomersResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"parent_key": doc.Key}
+	if req.Offset > 0 {
+		filter["created_at"] = bson.M{"$gt": req.Offset}
+	}
+	opts := &options.FindOptions{}
+	if req.Limit > 0 {
+		if req.Limit > maxPageSize {
+			return nil, fmt.Errorf("maximum limit is %d", maxPageSize)
+		}
+		opts.SetLimit(req.Limit)
+	} else {
+		opts.SetLimit(defaultPageSize)
+	}
+	cursor, err := s.db.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var list []*pb.GetCustomerResponse
+	for cursor.Next(ctx) {
+		var doc Customer
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		cus, err := s.customerToPb(ctx, &doc)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, cus)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	var next int64
+	if len(list) > 0 {
+		next = list[len(list)-1].CreatedAt
+	}
+	log.Debugf("listed %d customers", len(list))
+	return &pb.ListDependentCustomersResponse{
+		Customers:  list,
+		NextOffset: next,
 	}, nil
 }
 

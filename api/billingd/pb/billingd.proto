@@ -32,20 +32,34 @@ message GetCustomerRequest {
 }
 
 message GetCustomerResponse {
-    string customer_id = 1;
-    string parent_key = 2;
-    string email = 3;
-    string status = 4;
-    int64 balance = 5;
-    bool billable = 6;
-    bool delinquent = 7;
-    int64 created_at = 8;
+    string key = 1;
+    string customer_id = 2;
+    string parent_key = 3;
+    string email = 4;
+    string status = 5;
+    int64 balance = 6;
+    bool billable = 7;
+    bool delinquent = 8;
+    int64 created_at = 9;
 
-    Period period = 9;
-    Usage stored_data = 10;
-    Usage network_egress = 11;
-    Usage instance_writes = 12;
-    Usage instance_reads = 13;
+    Period period = 10;
+    Usage stored_data = 11;
+    Usage network_egress = 12;
+    Usage instance_writes = 13;
+    Usage instance_reads = 14;
+
+    int64 dependents = 15;
+}
+
+message ListDependentCustomersRequest {
+    string key = 1;
+    int64 offset = 2;
+    int64 limit = 3;
+}
+
+message ListDependentCustomersResponse {
+    repeated GetCustomerResponse customers = 1;
+    int64 next_offset = 2;
 }
 
 message GetCustomerSessionRequest {
@@ -129,6 +143,7 @@ service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
+    rpc ListDependentCustomers(ListDependentCustomersRequest) returns (ListDependentCustomersResponse) {}
     rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
     rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {}
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}

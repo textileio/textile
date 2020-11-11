@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"go.mongodb.org/mongo-driver/mongo"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
@@ -66,34 +69,48 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		return ctx, nil
 	}
 
-	// Collect the user if it hasn't been seen yet.
-	if ok && account.User.CreatedAt.IsZero() {
-		key, ok := mdb.APIKeyFromContext(ctx)
-		if !ok {
-			return nil, status.Error(codes.PermissionDenied, "Bad API key")
-		}
+	// Collect new users.
+	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
 		var powInfo *mdb.PowInfo
 		if t.pc != nil {
 			ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
 			if err != nil {
-				return nil, err
+				return ctx, err
 			}
 			powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
 		}
 		user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
 		if err != nil {
-			return nil, err
-		}
-		if _, err := t.bc.CreateCustomer(ctx, user.Key, billing.WithParentKey(key.Owner)); err != nil {
-			return nil, err
+			return ctx, err
 		}
 		ctx = mdb.NewAccountContext(ctx, user, account.Org)
 		account, _ = mdb.AccountFromContext(ctx)
 	}
 
+	// Collect new customers.
 	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
-		return ctx, nil // Bail if no customer exists for this account
+		if strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
+			opts := []billing.Option{
+				billing.WithEmail(account.Owner().Email),
+			}
+			if account.Owner().Type == mdb.User {
+				key, ok := mdb.APIKeyFromContext(ctx)
+				if !ok {
+					return ctx, status.Error(codes.PermissionDenied, "Bad API key")
+				}
+				opts = append(opts, billing.WithParentKey(key.Owner))
+			}
+			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
+				return ctx, err
+			}
+			cus, err = t.bc.GetCustomer(ctx, account.Owner().Key)
+			if err != nil {
+				return ctx, err
+			}
+		} else {
+			return ctx, err
+		}
 	}
 	if err := common.StatusCheck(cus.Status); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())

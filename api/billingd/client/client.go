@@ -69,6 +69,19 @@ func (c *Client) GetCustomerSession(ctx context.Context, key thread.PubKey) (*pb
 	})
 }
 
+func (c *Client) ListDependentCustomers(ctx context.Context, key thread.PubKey, opts ...ListOption) (
+	*pb.ListDependentCustomersResponse, error) {
+	args := &listOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return c.c.ListDependentCustomers(ctx, &pb.ListDependentCustomersRequest{
+		Key:    key.String(),
+		Offset: args.offset,
+		Limit:  args.limit,
+	})
+}
+
 func (c *Client) UpdateCustomer(
 	ctx context.Context,
 	customerID string,
