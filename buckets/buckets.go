@@ -26,7 +26,7 @@ var (
 	ErrNoCurrentArchive = fmt.Errorf("the bucket was never archived")
 
 	// ErrZeroBalance is returned when archiving a bucket which
-	// underlying Account/User storage profile balance is zero.
+	// underlying Account Powergate user balance is zero.
 	ErrZeroBalance = errors.New("wallet FIL balance is zero, if recently created wait 30s")
 )
 

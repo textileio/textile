@@ -91,7 +91,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	if s.PowergateClient != nil {
 		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
+			return nil, status.Errorf(codes.Internal, "Unable to create user: %v", err)
 		}
 		powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 	}
@@ -384,7 +384,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if s.PowergateClient != nil {
 		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
+			return nil, status.Errorf(codes.Internal, "Unable to create user: %v", err)
 		}
 		powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 	}

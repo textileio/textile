@@ -344,7 +344,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
 			}
-			if powergateServiceDesc, err = createServiceDesciptor("proto/powergate/v1/powergate.proto", powergateServiceName); err != nil {
+			if powergateServiceDesc, err = createServiceDesciptor("powergate/user/v1/user.proto", powergateServiceName); err != nil {
 				return nil, err
 			}
 		}

@@ -64,7 +64,7 @@ func powInterceptor(
 			return nil, status.Errorf(codes.FailedPrecondition, "account is required")
 		}
 
-		createNewProfile := func() error {
+		createNewUser := func() error {
 			res, err := pc.Admin.Users.Create(ctx)
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
@@ -80,9 +80,9 @@ func powInterceptor(
 			"please try again in 30 seconds to allow time for setup to complete")
 
 		// Case where account/user was created before powergate was enabled.
-		// create a storage profile for them.
+		// create a user for them.
 		if account.Owner().PowInfo == nil {
-			if err := createNewProfile(); err != nil {
+			if err := createNewUser(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
@@ -100,9 +100,9 @@ func powInterceptor(
 			if !strings.Contains(err.Error(), "auth token not found") {
 				return nil, err
 			} else {
-				// case where the profile token is no longer valid because powergate was reset.
-				// create a new storage profile for them.
-				if err := createNewProfile(); err != nil {
+				// case where the auth token is no longer valid because powergate was reset.
+				// create a new user for them.
+				if err := createNewUser(); err != nil {
 					return nil, err
 				}
 				return nil, tryAgain

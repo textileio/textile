@@ -35,7 +35,7 @@ func TestCreateBucket(t *testing.T) {
 	ctx, _, client, shutdown := setup(t)
 	defer shutdown(true)
 
-	// Storage profile is now created for the user, so it should exist after spinup
+	// User is now created, so it should exist after spinup
 	res, err := powc.Admin.Users.List(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(res.Users))
@@ -43,7 +43,7 @@ func TestCreateBucket(t *testing.T) {
 	_, err = client.Create(ctx)
 	require.NoError(t, err)
 
-	// No new storage profile should be created for the bucket
+	// No new user should be created for the bucket
 	res, err = powc.Admin.Users.List(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(res.Users))

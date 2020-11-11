@@ -2332,7 +2332,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
 
-	createNewProfile := func() error {
+	createNewUser := func() error {
 		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
@@ -2348,9 +2348,9 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		"new powergate integration created, please try again in 30 seconds to allow time for wallet funding")
 
 	// Case where account/user was created before bucket archives were enabled.
-	// create a storage profile for them.
+	// create a user for them.
 	if account.Owner().PowInfo == nil {
-		if err := createNewProfile(); err != nil {
+		if err := createNewUser(); err != nil {
 			return nil, err
 		}
 		return nil, tryAgain
@@ -2363,9 +2363,9 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		if !strings.Contains(err.Error(), "auth token not found") {
 			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
 		} else {
-			// case where the storage profile token is no longer valid because powergate was reset.
-			// create a new storage profile for them.
-			if err := createNewProfile(); err != nil {
+			// case where the user token is no longer valid because powergate was reset.
+			// create a new user for them.
+			if err := createNewUser(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
@@ -2393,11 +2393,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	if storageConfig.Cold.Filecoin.Address == "" {
 		// We don't have an address to use, which is the case for a BucketArchive.DefaultArchiveConfig
-		// that is the default value, get the default address from the storage profile
+		// that is the default value, get the default address from the user
 		storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 	}
 
-	// Check that storage profile wallet addr balance is > 0, if not, fail fast.
+	// Check that user wallet addr balance is > 0, if not, fail fast.
 	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
 	if err != nil {
 		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
@@ -2410,7 +2410,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, buckets.ErrZeroBalance
 	}
 
-	// Archive pushes the current root Cid to the corresponding storage profile of the bucket.
+	// Archive pushes the current root Cid to the corresponding user of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.
 	// 0. No previous archive or last one aborted: simply pushes the Cid to Powergate.
 	// 1. Last archive exists with the same Cid:

@@ -275,7 +275,7 @@ func (t *Tracker) saveDealsInArchive(
 	buckKey string,
 	dbID thread.ID,
 	dbToken thread.Token,
-	profileToken string,
+	authToken string,
 	c cid.Cid,
 ) error {
 	opts := tdb.WithToken(dbToken)
@@ -284,8 +284,8 @@ func (t *Tracker) saveDealsInArchive(
 	if err := t.buckets.Get(ctx, dbID, buckKey, &buck, opts); err != nil {
 		return fmt.Errorf("getting bucket for save deals: %s", err)
 	}
-	ctxProfile := context.WithValue(ctx, powc.AuthKey, profileToken)
-	res, err := t.pgClient.Data.CidInfo(ctxProfile, c.String())
+	ctxAuth := context.WithValue(ctx, powc.AuthKey, authToken)
+	res, err := t.pgClient.Data.CidInfo(ctxAuth, c.String())
 	if err != nil {
 		return fmt.Errorf("getting cid info: %s", err)
 	}
