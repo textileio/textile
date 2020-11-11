@@ -64,7 +64,7 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 	}
 	if retries == limit {
 		if err != nil {
-			t.Errorf("trying to confirm health check: %s", err)
+			t.Errorf("trying to confirm build info: %s", err)
 			t.FailNow()
 		}
 		t.Errorf("max retries to connect with Powergate")
