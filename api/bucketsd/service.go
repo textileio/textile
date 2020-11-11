@@ -29,7 +29,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	nutil "github.com/textileio/go-threads/net/util"
 	pow "github.com/textileio/powergate/api/client"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	powUtil "github.com/textileio/powergate/util"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
@@ -64,11 +64,11 @@ var (
 
 	// baseArchiveStorageConfig is used to build the final StorageConfig after being
 	// combined with information from the ArchiveConfig
-	baseArchiveStorageConfig = &pbPow.StorageConfig{
-		Hot: &pbPow.HotConfig{
+	baseArchiveStorageConfig = &userPb.StorageConfig{
+		Hot: &userPb.HotConfig{
 			Enabled: false,
 		},
-		Cold: &pbPow.ColdConfig{
+		Cold: &userPb.ColdConfig{
 			Enabled: true,
 		},
 	}
@@ -2333,11 +2333,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	createNewProfile := func() error {
-		res, err := s.PowergateClient.Admin.Profiles.CreateStorageProfile(ctx)
+		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
-		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token})
+		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
 		if err != nil {
 			return fmt.Errorf("updating user/account with new powergate information: %v", err)
 		}
@@ -2439,23 +2439,23 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
-		statusName, found := pbPow.JobStatus_name[int32(ba.Archives.Current.JobStatus)]
+		statusName, found := userPb.JobStatus_name[int32(ba.Archives.Current.JobStatus)]
 		if !found {
 			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.JobStatus)
 		}
 
-		status := pbPow.JobStatus(ba.Archives.Current.JobStatus)
+		status := userPb.JobStatus(ba.Archives.Current.JobStatus)
 
 		if oldCid.Equals(p.Cid()) { // Case 1.
 			switch status {
 			// Case 1.a.
-			case pbPow.JobStatus_JOB_STATUS_SUCCESS:
+			case userPb.JobStatus_JOB_STATUS_SUCCESS:
 				return nil, fmt.Errorf("the same bucket cid is already archived successfully")
 			// Case 1.b.
-			case pbPow.JobStatus_JOB_STATUS_EXECUTING, pbPow.JobStatus_JOB_STATUS_QUEUED:
+			case userPb.JobStatus_JOB_STATUS_EXECUTING, userPb.JobStatus_JOB_STATUS_QUEUED:
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
-			case pbPow.JobStatus_JOB_STATUS_FAILED, pbPow.JobStatus_JOB_STATUS_CANCELED:
+			case userPb.JobStatus_JOB_STATUS_FAILED, userPb.JobStatus_JOB_STATUS_CANCELED:
 				res, err := s.PowergateClient.StorageConfig.Apply(
 					ctxPow,
 					p.Cid().String(),
@@ -2490,7 +2490,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				_, err = s.PowergateClient.StorageConfig.Apply(
 					ctxPow,
 					oldCid.String(),
-					pow.WithStorageConfig(&pbPow.StorageConfig{}),
+					pow.WithStorageConfig(&userPb.StorageConfig{}),
 					pow.WithOverride(true),
 				)
 				if err != nil {
@@ -2522,7 +2522,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		Cid:       p.Cid().Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid,
-		JobStatus: int(pbPow.JobStatus_JOB_STATUS_QUEUED),
+		JobStatus: int(userPb.JobStatus_JOB_STATUS_QUEUED),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
@@ -2580,13 +2580,13 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	}
 	var st pb.ArchiveStatusResponse_Status
 	switch jstatus {
-	case pbPow.JobStatus_JOB_STATUS_SUCCESS:
+	case userPb.JobStatus_JOB_STATUS_SUCCESS:
 		st = pb.ArchiveStatusResponse_STATUS_DONE
-	case pbPow.JobStatus_JOB_STATUS_QUEUED, pbPow.JobStatus_JOB_STATUS_EXECUTING:
+	case userPb.JobStatus_JOB_STATUS_QUEUED, userPb.JobStatus_JOB_STATUS_EXECUTING:
 		st = pb.ArchiveStatusResponse_STATUS_EXECUTING
-	case pbPow.JobStatus_JOB_STATUS_FAILED:
+	case userPb.JobStatus_JOB_STATUS_FAILED:
 		st = pb.ArchiveStatusResponse_STATUS_FAILED
-	case pbPow.JobStatus_JOB_STATUS_CANCELED:
+	case userPb.JobStatus_JOB_STATUS_CANCELED:
 		st = pb.ArchiveStatusResponse_STATUS_CANCELED
 	default:
 		return nil, fmt.Errorf("unknown job status %d", jstatus)
@@ -2686,11 +2686,11 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 	return config
 }
 
-func toFilConfig(config *mdb.ArchiveConfig) *pbPow.FilConfig {
+func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 	if config == nil {
 		return nil
 	}
-	return &pbPow.FilConfig{
+	return &userPb.FilConfig{
 		ReplicationFactor: int64(config.RepFactor),
 		Address:           config.Addr,
 		CountryCodes:      config.CountryCodes,
@@ -2699,7 +2699,7 @@ func toFilConfig(config *mdb.ArchiveConfig) *pbPow.FilConfig {
 		ExcludedMiners:    config.ExcludedMiners,
 		FastRetrieval:     config.FastRetrieval,
 		MaxPrice:          config.MaxPrice,
-		Renew: &pbPow.FilRenew{
+		Renew: &userPb.FilRenew{
 			Enabled:   config.Renew.Enabled,
 			Threshold: int64(config.Renew.Threshold),
 		},

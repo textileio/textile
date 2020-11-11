@@ -3,13 +3,13 @@ package client
 import (
 	"context"
 
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"google.golang.org/grpc"
 )
 
 // Client provides the client api.
 type Client struct {
-	powC pbPow.PowergateServiceClient
+	powC userPb.UserServiceClient
 	conn *grpc.ClientConn
 }
 
@@ -20,36 +20,36 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		powC: pbPow.NewPowergateServiceClient(conn),
+		powC: userPb.NewUserServiceClient(conn),
 		conn: conn,
 	}, nil
 }
 
-func (c *Client) Addresses(ctx context.Context) (*pbPow.AddressesResponse, error) {
-	return c.powC.Addresses(ctx, &pbPow.AddressesRequest{})
+func (c *Client) Addresses(ctx context.Context) (*userPb.AddressesResponse, error) {
+	return c.powC.Addresses(ctx, &userPb.AddressesRequest{})
 }
 
-func (c *Client) Balance(ctx context.Context, addr string) (*pbPow.BalanceResponse, error) {
-	req := &pbPow.BalanceRequest{
+func (c *Client) Balance(ctx context.Context, addr string) (*userPb.BalanceResponse, error) {
+	req := &userPb.BalanceRequest{
 		Address: addr,
 	}
 	return c.powC.Balance(ctx, req)
 }
 
-func (c *Client) CidInfo(ctx context.Context, cids ...string) (*pbPow.CidInfoResponse, error) {
-	req := &pbPow.CidInfoRequest{Cids: cids}
+func (c *Client) CidInfo(ctx context.Context, cids ...string) (*userPb.CidInfoResponse, error) {
+	req := &userPb.CidInfoRequest{Cids: cids}
 	return c.powC.CidInfo(ctx, req)
 }
 
-func (c *Client) StorageDealRecords(ctx context.Context, config *pbPow.DealRecordsConfig) (*pbPow.StorageDealRecordsResponse, error) {
-	req := &pbPow.StorageDealRecordsRequest{
+func (c *Client) StorageDealRecords(ctx context.Context, config *userPb.DealRecordsConfig) (*userPb.StorageDealRecordsResponse, error) {
+	req := &userPb.StorageDealRecordsRequest{
 		Config: config,
 	}
 	return c.powC.StorageDealRecords(ctx, req)
 }
 
-func (c *Client) RetrievalDealRecords(ctx context.Context, config *pbPow.DealRecordsConfig) (*pbPow.RetrievalDealRecordsResponse, error) {
-	req := &pbPow.RetrievalDealRecordsRequest{
+func (c *Client) RetrievalDealRecords(ctx context.Context, config *userPb.DealRecordsConfig) (*userPb.RetrievalDealRecordsResponse, error) {
+	req := &userPb.RetrievalDealRecordsRequest{
 		Config: config,
 	}
 	return c.powC.RetrievalDealRecords(ctx, req)

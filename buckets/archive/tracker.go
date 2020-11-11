@@ -11,7 +11,7 @@ import (
 	logger "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
@@ -189,7 +189,7 @@ func (t *Tracker) trackArchiveProgress(
 
 	var aborted bool
 	var abortMsg string
-	var job *pbPow.Job
+	var job *userPb.StorageJob
 	select {
 	case <-ctx.Done():
 		log.Infof("job %s status watching canceled", jid)
@@ -203,7 +203,7 @@ func (t *Tracker) trackArchiveProgress(
 			aborted = true
 			abortMsg = s.Err.Error()
 		}
-		job = s.Res.Job
+		job = s.Res.StorageJob
 	}
 
 	if !aborted && !isJobStatusFinal(job.Status) {
@@ -212,7 +212,7 @@ func (t *Tracker) trackArchiveProgress(
 
 	// Step 2: On success, save Deal data in the underlying Bucket thread. On
 	// failure save the error message. Also update status on Mongo for the archive.
-	if job.Status == pbPow.JobStatus_JOB_STATUS_SUCCESS {
+	if job.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
 		if err := t.saveDealsInArchive(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
 			return true, fmt.Sprintf("saving deal data in archive: %s", err), nil
 		}
@@ -241,7 +241,7 @@ func (t *Tracker) trackArchiveProgress(
 func (t *Tracker) updateArchiveStatus(
 	ctx context.Context,
 	buckKey string,
-	job *pbPow.Job,
+	job *userPb.StorageJob,
 	aborted bool,
 	abortMsg string,
 ) error {
@@ -313,7 +313,7 @@ func (t *Tracker) saveDealsInArchive(
 	return nil
 }
 
-func prepareFailureMsg(job *pbPow.Job) string {
+func prepareFailureMsg(job *userPb.StorageJob) string {
 	if job.ErrorCause == "" {
 		return ""
 	}
@@ -326,8 +326,8 @@ func prepareFailureMsg(job *pbPow.Job) string {
 	return b.String()
 }
 
-func isJobStatusFinal(js pbPow.JobStatus) bool {
-	return js == pbPow.JobStatus_JOB_STATUS_SUCCESS ||
-		js == pbPow.JobStatus_JOB_STATUS_CANCELED ||
-		js == pbPow.JobStatus_JOB_STATUS_FAILED
+func isJobStatusFinal(js userPb.JobStatus) bool {
+	return js == userPb.JobStatus_JOB_STATUS_SUCCESS ||
+		js == userPb.JobStatus_JOB_STATUS_CANCELED ||
+		js == userPb.JobStatus_JOB_STATUS_FAILED
 }

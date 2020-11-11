@@ -36,17 +36,17 @@ func TestCreateBucket(t *testing.T) {
 	defer shutdown(true)
 
 	// Storage profile is now created for the user, so it should exist after spinup
-	res, err := powc.Admin.Profiles.StorageProfiles(ctx)
+	res, err := powc.Admin.Users.List(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(res.AuthEntries))
+	require.Equal(t, 1, len(res.Users))
 
 	_, err = client.Create(ctx)
 	require.NoError(t, err)
 
 	// No new storage profile should be created for the bucket
-	res, err = powc.Admin.Profiles.StorageProfiles(ctx)
+	res, err = powc.Admin.Users.List(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(res.AuthEntries))
+	require.Equal(t, 1, len(res.Users))
 }
 
 func TestArchiveTracker(t *testing.T) {

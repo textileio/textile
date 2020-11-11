@@ -17,7 +17,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
 	powc "github.com/textileio/powergate/api/client"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 )
@@ -524,23 +524,23 @@ func (b *Buckets) IsArchivingEnabled() bool {
 
 // ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,
 // an extra string with the error message is provided.
-func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (pbPow.JobStatus, string, error) {
+func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (userPb.JobStatus, string, error) {
 	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
-		return pbPow.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("getting BucketArchive data: %s", err)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
 	if ba.Archives.Current.JobID == "" {
-		return pbPow.JobStatus_JOB_STATUS_UNSPECIFIED, "", buckets.ErrNoCurrentArchive
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", buckets.ErrNoCurrentArchive
 	}
 	current := ba.Archives.Current
 	if current.Aborted {
-		return pbPow.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
-	if statusName, found := pbPow.JobStatus_name[int32(current.JobStatus)]; !found {
-		return pbPow.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("unknown powergate job status: %s", statusName)
+	if statusName, found := userPb.JobStatus_name[int32(current.JobStatus)]; !found {
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("unknown powergate job status: %s", statusName)
 	}
-	return pbPow.JobStatus(current.JobStatus), current.FailureMsg, nil
+	return userPb.JobStatus(current.JobStatus), current.FailureMsg, nil
 }
 
 // ArchiveWatch allows to have the last log execution for the last archive, plus realtime

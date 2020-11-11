@@ -113,11 +113,11 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		if ok && account.User.CreatedAt.IsZero() {
 			var powInfo *mdb.PowInfo
 			if t.pc != nil {
-				res, err := t.pc.Admin.Profiles.CreateStorageProfile(ctx)
+				res, err := t.pc.Admin.Users.Create(ctx)
 				if err != nil {
 					return nil, err
 				}
-				powInfo = &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token}
+				powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 			}
 			user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
 			if err != nil {

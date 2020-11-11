@@ -89,11 +89,11 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		res, err := s.PowergateClient.Admin.Profiles.CreateStorageProfile(ctx)
+		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
 		}
-		powInfo = &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token}
+		powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 	}
 
 	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, powInfo)
@@ -382,11 +382,11 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	}
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		res, err := s.PowergateClient.Admin.Profiles.CreateStorageProfile(ctx)
+		res, err := s.PowergateClient.Admin.Users.Create(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create storage profile: %v", err)
 		}
-		powInfo = &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token}
+		powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 	}
 	org, err := s.Collections.Accounts.CreateOrg(ctx, req.Name, []mdb.Member{{
 		Key:      account.User.Key,

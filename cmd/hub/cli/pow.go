@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/cmd"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -99,7 +99,7 @@ var powStorageCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		final, err := c.Flags().GetBool("include-final")
 		cmd.ErrCheck(err)
-		conf := &pbPow.DealRecordsConfig{
+		conf := &userPb.DealRecordsConfig{
 			Ascending:      ascending,
 			DataCids:       cids,
 			FromAddrs:      addrs,
@@ -128,7 +128,7 @@ var powRetrievalsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		addrs, err := c.Flags().GetStringSlice("addrs")
 		cmd.ErrCheck(err)
-		conf := &pbPow.DealRecordsConfig{
+		conf := &userPb.DealRecordsConfig{
 			Ascending: ascending,
 			DataCids:  cids,
 			FromAddrs: addrs,

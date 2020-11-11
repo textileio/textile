@@ -29,7 +29,7 @@ import (
 	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
 	pow "github.com/textileio/powergate/api/client"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -77,7 +77,7 @@ var (
 		"/threads.pb.API/ListDBs",
 	}
 
-	powergateServiceName = "proto.powergate.v1.PowergateService"
+	powergateServiceName = "powergate.user.v1.UserService"
 
 	// ToDo: Add support for streaming methods and double check the list for completeness.
 
@@ -378,7 +378,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		if conf.Hub {
 			hpb.RegisterAPIServiceServer(t.server, hs)
 			upb.RegisterAPIServiceServer(t.server, us)
-			pbPow.RegisterPowergateServiceServer(t.server, &pbPow.UnimplementedPowergateServiceServer{})
+			userPb.RegisterUserServiceServer(t.server, &userPb.UnimplementedUserServiceServer{})
 		}
 		bpb.RegisterAPIServiceServer(t.server, bs)
 		if err := t.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {

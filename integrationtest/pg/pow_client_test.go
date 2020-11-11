@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
-	pbPow "github.com/textileio/powergate/proto/powergate/v1"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
@@ -44,7 +44,7 @@ func TestPowClient(t *testing.T) {
 	})
 
 	t.Run("StorageDealRecords", func(t *testing.T) {
-		res, err := client.StorageDealRecords(ctx, &pbPow.DealRecordsConfig{IncludeFinal: true})
+		res, err := client.StorageDealRecords(ctx, &userPb.DealRecordsConfig{IncludeFinal: true})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 	})

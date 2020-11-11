@@ -65,11 +65,11 @@ func powInterceptor(
 		}
 
 		createNewProfile := func() error {
-			res, err := pc.Admin.Profiles.CreateStorageProfile(ctx)
+			res, err := pc.Admin.Users.Create(ctx)
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
-			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.AuthEntry.Id, Token: res.AuthEntry.Token})
+			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
 			if err != nil {
 				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}
