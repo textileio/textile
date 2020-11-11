@@ -163,21 +163,23 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrAPI          ma.Multiaddr
-	AddrAPIProxy     ma.Multiaddr
+	AddrAPI      ma.Multiaddr
+	AddrAPIProxy ma.Multiaddr
+
+	AddrMongoURI  string
+	AddrMongoName string
+
 	AddrThreadsHost  ma.Multiaddr
 	AddrIPFSAPI      ma.Multiaddr
-	AddrGatewayHost  ma.Multiaddr
-	AddrGatewayURL   string
 	AddrBillingAPI   string
 	AddrPowergateAPI string
-	AddrMongoURI     string
+
+	AddrGatewayHost ma.Multiaddr
+	AddrGatewayURL  string
 
 	ThreadsConnManager connmgr.ConnManager
 
 	UseSubdomains bool
-
-	MongoName string
 
 	DNSDomain string
 	DNSZoneID string
@@ -228,7 +230,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	t.collections, err = mdb.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName, conf.Hub)
+	t.collections, err = mdb.NewCollections(ctx, conf.AddrMongoURI, conf.AddrMongoName, conf.Hub)
 	if err != nil {
 		return nil, err
 	}

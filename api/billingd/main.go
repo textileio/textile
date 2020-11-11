@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -43,7 +41,7 @@ var (
 			},
 			"addrMongoName": {
 				Key:      "addr.mongo_name",
-				DefValue: "hub_billing",
+				DefValue: "textile_billing",
 			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
@@ -231,14 +229,10 @@ var rootCmd = &cobra.Command{
 
 		fmt.Println("Welcome to Hub Billing!")
 
-		quit := make(chan os.Signal)
-		signal.Notify(quit, os.Interrupt)
-		<-quit
-		fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
-		err = api.Stop(false)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
+		cmd.HandleInterrupt(func() {
+			if err := api.Stop(false); err != nil {
+				fmt.Println(err.Error())
+			}
+		})
 	},
 }

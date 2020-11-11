@@ -52,8 +52,8 @@ var billingPortalCmd = &cobra.Command{
 	},
 }
 
-var billingStatusCmd = &cobra.Command{
-	Use:   "status",
+var billingUsageCmd = &cobra.Command{
+	Use:   "usage",
 	Short: "Show usage and billing info",
 	Long:  `Shows usage and billing information.`,
 	Args:  cobra.ExactArgs(0),
