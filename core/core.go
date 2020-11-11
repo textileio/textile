@@ -72,7 +72,6 @@ var (
 		"/api.hubd.pb.APIService/DestroyAccount",
 		"/api.hubd.pb.APIService/SetupBilling",
 		"/api.hubd.pb.APIService/GetBillingSession",
-		"/api.hubd.pb.APIService/GetBillingInfo",
 	}
 
 	// blockMethods are always blocked by auth.
@@ -323,8 +322,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			PowergateClient:    t.pc,
 		}
 		us = &usersd.Service{
-			Collections: t.collections,
-			Mail:        t.mail,
+			Collections:   t.collections,
+			Mail:          t.mail,
+			BillingClient: t.bc,
 		}
 	}
 	if conf.Hub {
@@ -379,8 +379,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		opts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
-				t.threadInterceptor(),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
+				t.threadInterceptor(),
 				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),

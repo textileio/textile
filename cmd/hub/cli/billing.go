@@ -60,7 +60,7 @@ var billingStatusCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		info, err := clients.Hub.GetBillingInfo(ctx)
+		info, err := clients.Users.GetUsage(ctx)
 		cmd.ErrCheck(err)
 		cus := info.Customer
 

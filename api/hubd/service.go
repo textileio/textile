@@ -621,25 +621,6 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
-func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoRequest) (*pb.GetBillingInfoResponse, error) {
-	log.Debugf("received get billing info request")
-
-	if s.BillingClient == nil {
-		return nil, fmt.Errorf("billing is not enabled")
-	}
-	account, err := getAccount(ctx)
-	if err != nil {
-		return nil, err
-	}
-	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().Key)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetBillingInfoResponse{
-		Customer: customer,
-	}, nil
-}
-
 func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {
 	log.Debugf("received is username available request")
 

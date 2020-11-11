@@ -13,6 +13,7 @@ import (
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/mail"
 	mdb "github.com/textileio/textile/v2/mongodb"
@@ -25,8 +26,9 @@ import (
 var log = logging.Logger("usersapi")
 
 type Service struct {
-	Collections *mdb.Collections
-	Mail        *tdb.Mail
+	Collections   *mdb.Collections
+	Mail          *tdb.Mail
+	BillingClient *billing.Client
 }
 
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadResponse, error) {
@@ -337,6 +339,23 @@ func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentbo
 		return nil, err
 	}
 	return &pb.DeleteSentboxMessageResponse{}, nil
+}
+
+func (s *Service) GetUsage(ctx context.Context, _ *pb.GetUsageRequest) (*pb.GetUsageResponse, error) {
+	log.Debugf("received get usage request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+
+	account, _ := mdb.AccountFromContext(ctx)
+	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().Key)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetUsageResponse{
+		Customer: customer,
+	}, nil
 }
 
 func (s *Service) getMailbox(ctx context.Context, key thread.PubKey) (thread.ID, error) {

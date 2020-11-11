@@ -398,25 +398,6 @@ func TestClient_GetBillingSession(t *testing.T) {
 	})
 }
 
-func TestClient_GetBillingInfo(t *testing.T) {
-	t.Parallel()
-	conf, client, _ := setupWithBilling(t)
-	ctx := context.Background()
-
-	t.Run("without session", func(t *testing.T) {
-		_, err := client.GetBillingInfo(ctx)
-		require.Error(t, err)
-	})
-
-	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-
-	t.Run("with session", func(t *testing.T) {
-		res, err := client.GetBillingInfo(common.NewSessionContext(ctx, user.Session))
-		require.NoError(t, err)
-		assert.NotEmpty(t, res.Customer)
-	})
-}
-
 func TestClient_IsUsernameAvailable(t *testing.T) {
 	t.Parallel()
 	conf, client, _ := setup(t, nil)

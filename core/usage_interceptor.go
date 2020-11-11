@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
@@ -64,6 +65,32 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if !ok {
 		return ctx, nil
 	}
+
+	// Collect the user if it hasn't been seen yet.
+	if ok && account.User.CreatedAt.IsZero() {
+		key, ok := mdb.APIKeyFromContext(ctx)
+		if !ok {
+			return nil, status.Error(codes.PermissionDenied, "Bad API key")
+		}
+		var powInfo *mdb.PowInfo
+		if t.pc != nil {
+			ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
+			if err != nil {
+				return nil, err
+			}
+			powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
+		}
+		user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := t.bc.CreateCustomer(ctx, user.Key, billing.WithParentKey(key.Owner)); err != nil {
+			return nil, err
+		}
+		ctx = mdb.NewAccountContext(ctx, user, account.Org)
+		account, _ = mdb.AccountFromContext(ctx)
+	}
+
 	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
 		return ctx, nil // Bail if no customer exists for this account

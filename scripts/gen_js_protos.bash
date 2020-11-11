@@ -19,7 +19,7 @@ echo generating js-protos in api/hubd/pb/javascript
   --plugin=protoc-gen-ts=api/hubd/pb/javascript/node_modules/.bin/protoc-gen-ts \
   --js_out=import_style=commonjs,binary:api/hubd/pb/javascript \
   --ts_out=service=grpc-web:api/hubd/pb/javascript \
-  api/billingd/pb/billingd.proto api/hubd/pb/hubd.proto
+  api/hubd/pb/hubd.proto
 
 echo generating js-protos in api/usersd/pb/javascript
 ./buildtools/protoc/bin/protoc \
@@ -27,7 +27,7 @@ echo generating js-protos in api/usersd/pb/javascript
   --plugin=protoc-gen-ts=api/usersd/pb/javascript/node_modules/.bin/protoc-gen-ts \
   --js_out=import_style=commonjs,binary:api/usersd/pb/javascript \
   --ts_out=service=grpc-web:api/usersd/pb/javascript \
-  api/usersd/pb/usersd.proto
+  api/billingd/pb/billingd.proto api/usersd/pb/usersd.proto
 
 echo generating js-protos in api/bucketsd/pb/javascript
 ./buildtools/protoc/bin/protoc \

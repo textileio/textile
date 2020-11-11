@@ -275,3 +275,8 @@ func (c *Client) DeleteSentboxMessage(ctx context.Context, id string) error {
 	})
 	return err
 }
+
+// GetUsage returns current billing and usage information.
+func (c *Client) GetUsage(ctx context.Context) (*pb.GetUsageResponse, error) {
+	return c.c.GetUsage(ctx, &pb.GetUsageRequest{})
+}

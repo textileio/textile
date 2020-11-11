@@ -134,11 +134,6 @@ func (c *Client) GetBillingSession(ctx context.Context) (*pb.GetBillingSessionRe
 	return c.c.GetBillingSession(ctx, &pb.GetBillingSessionRequest{})
 }
 
-// GetBillingInfo returns current billing and usage information.
-func (c *Client) GetBillingInfo(ctx context.Context) (*pb.GetBillingInfoResponse, error) {
-	return c.c.GetBillingInfo(ctx, &pb.GetBillingInfoRequest{})
-}
-
 // IsUsernameAvailable returns a nil error if the username is valid and available.
 func (c *Client) IsUsernameAvailable(ctx context.Context, username string) error {
 	_, err := c.c.IsUsernameAvailable(ctx, &pb.IsUsernameAvailableRequest{

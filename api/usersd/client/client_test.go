@@ -3,11 +3,13 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -16,6 +18,7 @@ import (
 	nc "github.com/textileio/go-threads/net/api/client"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
+	billing "github.com/textileio/textile/v2/api/billingd/service"
 	bc "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
@@ -23,6 +26,7 @@ import (
 	c "github.com/textileio/textile/v2/api/usersd/client"
 	bucks "github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,7 +34,7 @@ import (
 
 func TestClient_GetThread(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 	ctx := context.Background()
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -129,7 +133,7 @@ func TestClient_GetThread(t *testing.T) {
 
 func TestClient_ListThreads(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, net, _ := setup(t)
+	conf, client, hub, threads, net, _ := setup(t, nil)
 	ctx := context.Background()
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
@@ -232,7 +236,7 @@ func TestClient_ListThreads(t *testing.T) {
 
 func TestClient_SetupMailbox(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -258,7 +262,7 @@ func TestClient_SetupMailbox(t *testing.T) {
 
 func TestClient_SendMessage(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -275,7 +279,7 @@ func TestClient_SendMessage(t *testing.T) {
 
 func TestClient_ListInboxMessages(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -361,7 +365,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 
 func TestClient_ListSentboxMessages(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -388,7 +392,7 @@ func TestClient_ListSentboxMessages(t *testing.T) {
 
 func TestClient_ReadInboxMessage(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -410,7 +414,7 @@ func TestClient_ReadInboxMessage(t *testing.T) {
 
 func TestClient_DeleteInboxMessage(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -432,7 +436,7 @@ func TestClient_DeleteInboxMessage(t *testing.T) {
 
 func TestClient_DeleteSentboxMessage(t *testing.T) {
 	t.Parallel()
-	conf, client, hub, threads, _, _ := setup(t)
+	conf, client, hub, threads, _, _ := setup(t, nil)
 
 	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
 	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
@@ -452,21 +456,33 @@ func TestClient_DeleteSentboxMessage(t *testing.T) {
 	assert.Len(t, list, 0)
 }
 
-func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key string) (thread.Identity, context.Context) {
-	ctx := common.NewAPIKeyContext(context.Background(), key)
+func TestClient_GetUsage(t *testing.T) {
+	t.Parallel()
+	conf, client, hub, threads, _, _ := setupWithBilling(t)
+	ctx := context.Background()
+
+	dev := apitest.Signup(t, hub, conf, apitest.NewUsername(), apitest.NewEmail())
+	res, err := hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, false)
+	require.NoError(t, err)
+
+	ctx = common.NewAPIKeyContext(context.Background(), res.KeyInfo.Key)
 	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 	id := thread.NewLibp2pIdentity(sk)
 	tok, err := threads.GetToken(ctx, id)
 	require.NoError(t, err)
 	ctx = thread.NewTokenContext(ctx, tok)
-	_, err = client.SetupMailbox(ctx)
+
+	usage, err := client.GetUsage(ctx)
 	require.NoError(t, err)
-	return id, ctx
+	assert.NotEmpty(t, usage.Customer)
+
+	usage, err = client.GetUsage(ctx)
+	require.NoError(t, err)
 }
 
 func TestAccountBuckets(t *testing.T) {
-	conf, users, hub, threads, _, buckets := setup(t)
+	conf, users, hub, threads, _, buckets := setup(t, nil)
 	ctx := context.Background()
 
 	// Signup, create an API key, and sign it for the requests
@@ -504,7 +520,7 @@ func TestAccountBuckets(t *testing.T) {
 }
 
 func TestUserBuckets(t *testing.T) {
-	conf, users, hub, threads, net, buckets := setup(t)
+	conf, users, hub, threads, net, buckets := setup(t, nil)
 	ctx := context.Background()
 
 	// Signup, create an API key, and sign it for the requests
@@ -608,9 +624,12 @@ func TestUserBuckets(t *testing.T) {
 	assert.Len(t, info.Logs, 2)
 }
 
-func setup(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
-	defConfig := apitest.DefaultTextileConfig(t)
-	return setupWithConf(t, defConfig)
+func setup(t *testing.T, conf *core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
+	if conf == nil {
+		tmp := apitest.DefaultTextileConfig(t)
+		conf = &tmp
+	}
+	return setupWithConf(t, *conf)
 }
 
 func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
@@ -636,4 +655,47 @@ func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.
 		require.NoError(t, err)
 	})
 	return conf, client, hubclient, threadsclient, threadsnetclient, bucketsclient
+}
+
+func setupWithBilling(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
+	billingPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	billingGwPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api, err := billing.NewService(ctx, billing.Config{
+		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
+		StripeAPIURL:           "https://api.stripe.com",
+		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
+		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
+		DBURI:           "mongodb://127.0.0.1:27017",
+		DBName:          util.MakeToken(8),
+		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
+		Debug:           true,
+	})
+	require.NoError(t, err)
+	err = api.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := api.Stop(true)
+		require.NoError(t, err)
+	})
+
+	conf := apitest.DefaultTextileConfig(t)
+	conf.AddrBillingAPI = fmt.Sprintf("127.0.0.1:%d", billingPort)
+	return setup(t, &conf)
+}
+
+func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key string) (thread.Identity, context.Context) {
+	ctx := common.NewAPIKeyContext(context.Background(), key)
+	sk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	id := thread.NewLibp2pIdentity(sk)
+	tok, err := threads.GetToken(ctx, id)
+	require.NoError(t, err)
+	ctx = thread.NewTokenContext(ctx, tok)
+	_, err = client.SetupMailbox(ctx)
+	require.NoError(t, err)
+	return id, ctx
 }
