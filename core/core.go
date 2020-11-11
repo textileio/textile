@@ -178,6 +178,8 @@ type Config struct {
 
 	Hub   bool
 	Debug bool
+
+	TokenPowergateAdmin string
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -294,17 +296,18 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
 		hs = &hubd.Service{
-			Collections:        t.collections,
-			Threads:            t.th,
-			ThreadsNet:         t.thn,
-			GatewayURL:         conf.AddrGatewayURL,
-			EmailClient:        ec,
-			EmailSessionBus:    t.emailSessionBus,
-			EmailSessionSecret: conf.EmailSessionSecret,
-			IPFSClient:         ic,
-			IPNSManager:        t.ipnsm,
-			BillingClient:      t.bc,
-			PowergateClient:    t.pc,
+			Collections:         t.collections,
+			Threads:             t.th,
+			ThreadsNet:          t.thn,
+			GatewayURL:          conf.AddrGatewayURL,
+			EmailClient:         ec,
+			EmailSessionBus:     t.emailSessionBus,
+			EmailSessionSecret:  conf.EmailSessionSecret,
+			IPFSClient:          ic,
+			IPNSManager:         t.ipnsm,
+			BillingClient:       t.bc,
+			PowergateClient:     t.pc,
+			PowergateAdminToken: conf.TokenPowergateAdmin,
 		}
 		us = &usersd.Service{
 			Collections: t.collections,
@@ -319,16 +322,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &bucketsd.Service{
-		Collections:        t.collections,
-		Buckets:            t.bucks,
-		GatewayURL:         conf.AddrGatewayURL,
-		GatewayBucketsHost: conf.DNSDomain,
-		IPFSClient:         ic,
-		IPNSManager:        t.ipnsm,
-		PowergateClient:    t.pc,
-		ArchiveTracker:     t.archiveTracker,
-		Semaphores:         t.buckLocks,
-		MaxBucketSize:      conf.MaxBucketSize,
+		Collections:         t.collections,
+		Buckets:             t.bucks,
+		GatewayURL:          conf.AddrGatewayURL,
+		GatewayBucketsHost:  conf.DNSDomain,
+		IPFSClient:          ic,
+		IPNSManager:         t.ipnsm,
+		PowergateClient:     t.pc,
+		PowergateAdminToken: conf.TokenPowergateAdmin,
+		ArchiveTracker:      t.archiveTracker,
+		Semaphores:          t.buckLocks,
+		MaxBucketSize:       conf.MaxBucketSize,
 	}
 
 	// Start serving
@@ -353,7 +357,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
-				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, t.collections),
+				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, conf.TokenPowergateAdmin, t.collections),
 			),
 			grpcm.WithStreamServerChain(
 				auth.StreamServerInterceptor(t.authFunc),

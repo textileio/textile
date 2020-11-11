@@ -8,6 +8,7 @@ import (
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/core/thread"
 	netpb "github.com/textileio/go-threads/net/api/pb"
+	"github.com/textileio/powergate/api/client"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -113,7 +114,8 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		if ok && account.User.CreatedAt.IsZero() {
 			var powInfo *mdb.PowInfo
 			if t.pc != nil {
-				res, err := t.pc.Admin.Users.Create(ctx)
+				ctxAdmin := context.WithValue(ctx, client.AdminKey, t.conf.TokenPowergateAdmin)
+				res, err := t.pc.Admin.Users.Create(ctxAdmin)
 				if err != nil {
 					return nil, err
 				}

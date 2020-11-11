@@ -93,16 +93,17 @@ type ctxKey string
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections        *mdb.Collections
-	Buckets            *tdb.Buckets
-	GatewayURL         string
-	GatewayBucketsHost string
-	IPFSClient         iface.CoreAPI
-	IPNSManager        *ipns.Manager
-	PowergateClient    *pow.Client
-	ArchiveTracker     *archive.Tracker
-	Semaphores         *nutil.SemaphorePool
-	MaxBucketSize      int64
+	Collections         *mdb.Collections
+	Buckets             *tdb.Buckets
+	GatewayURL          string
+	GatewayBucketsHost  string
+	IPFSClient          iface.CoreAPI
+	IPNSManager         *ipns.Manager
+	PowergateClient     *pow.Client
+	PowergateAdminToken string
+	ArchiveTracker      *archive.Tracker
+	Semaphores          *nutil.SemaphorePool
+	MaxBucketSize       int64
 }
 
 var (
@@ -2333,7 +2334,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	createNewUser := func() error {
-		res, err := s.PowergateClient.Admin.Users.Create(ctx)
+		ctxAdmin := context.WithValue(ctx, pow.AdminKey, s.PowergateAdminToken)
+		res, err := s.PowergateClient.Admin.Users.Create(ctxAdmin)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}

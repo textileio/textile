@@ -42,17 +42,18 @@ var (
 )
 
 type Service struct {
-	Collections        *mdb.Collections
-	Threads            *threads.Client
-	ThreadsNet         *netclient.Client
-	GatewayURL         string
-	EmailClient        *email.Client
-	EmailSessionBus    *broadcast.Broadcaster
-	EmailSessionSecret string
-	IPFSClient         iface.CoreAPI
-	IPNSManager        *ipns.Manager
-	BillingClient      *billing.Client
-	PowergateClient    *pow.Client
+	Collections         *mdb.Collections
+	Threads             *threads.Client
+	ThreadsNet          *netclient.Client
+	GatewayURL          string
+	EmailClient         *email.Client
+	EmailSessionBus     *broadcast.Broadcaster
+	EmailSessionSecret  string
+	IPFSClient          iface.CoreAPI
+	IPNSManager         *ipns.Manager
+	BillingClient       *billing.Client
+	PowergateClient     *pow.Client
+	PowergateAdminToken string
 }
 
 // Info provides the currently running API's build information
@@ -89,7 +90,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		res, err := s.PowergateClient.Admin.Users.Create(ctx)
+		res, err := s.PowergateClient.Admin.Users.Create(s.powergateAdminCtx(ctx))
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create user: %v", err)
 		}
@@ -219,6 +220,10 @@ func (s *Service) awaitVerification(secret string) bool {
 		listen.Discard()
 		return false
 	}
+}
+
+func (s *Service) powergateAdminCtx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, pow.AdminKey, s.PowergateAdminToken)
 }
 
 // getSessionSecret returns a random secret for use with email verification.
@@ -382,7 +387,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	}
 	var powInfo *mdb.PowInfo
 	if s.PowergateClient != nil {
-		res, err := s.PowergateClient.Admin.Users.Create(ctx)
+		res, err := s.PowergateClient.Admin.Users.Create(s.powergateAdminCtx(ctx))
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Unable to create user: %v", err)
 		}

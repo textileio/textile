@@ -23,6 +23,7 @@ func powInterceptor(
 	serviceDesc *desc.ServiceDescriptor,
 	stub *grpcdynamic.Stub,
 	pc *powc.Client,
+	powAdminToken string,
 	c *mdb.Collections,
 ) grpc.UnaryServerInterceptor {
 	return func(
@@ -65,7 +66,8 @@ func powInterceptor(
 		}
 
 		createNewUser := func() error {
-			res, err := pc.Admin.Users.Create(ctx)
+			ctxAdmin := context.WithValue(ctx, powc.AdminKey, powAdminToken)
+			res, err := pc.Admin.Users.Create(ctxAdmin)
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
