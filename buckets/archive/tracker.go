@@ -23,7 +23,7 @@ const (
 
 var (
 	CheckInterval         = time.Second * 15
-	JobStatusPollInterval = time.Second * 30
+	JobStatusPollInterval = time.Minute * 30
 
 	log = logger.Logger("pow-archive")
 )
