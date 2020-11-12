@@ -36,7 +36,7 @@ var loginCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		config.Viper.Set("session", res.Session)
 
-		writeConfig()
+		cmd.WriteConfigToHome(config)
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))

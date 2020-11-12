@@ -2,17 +2,10 @@ package cli
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/logrusorgru/aurora"
-	"github.com/mitchellh/go-homedir"
-	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/core/thread"
@@ -49,6 +42,10 @@ var (
 				Key:      "secret",
 				DefValue: "",
 			},
+			"token": {
+				Key:      "token",
+				DefValue: "",
+			},
 			"identity": {
 				Key:      "identity",
 				DefValue: "",
@@ -80,7 +77,10 @@ func Init(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().StringP("org", "o", config.Flags["org"].DefValue.(string), "Org username")
 	rootCmd.PersistentFlags().String("key", config.Flags["key"].DefValue.(string), "User API key")
 	rootCmd.PersistentFlags().String("secret", config.Flags["secret"].DefValue.(string), "User API secret")
+	rootCmd.PersistentFlags().String("token", config.Flags["token"].DefValue.(string), "User identity token")
 	rootCmd.PersistentFlags().String("identity", config.Flags["identity"].DefValue.(string), "User identity")
+
+	rootCmd.PersistentFlags().Bool("newIdentity", false, "Generate a new user identity")
 
 	billingUsageCmd.Flags().StringP("user", "u", "", "User multibase encoded public key")
 
@@ -97,57 +97,23 @@ func SetClients(c *cmd.Clients) {
 }
 
 func Auth(ctx context.Context) context.Context {
-	ctx = common.NewAPIKeyContext(ctx, config.Viper.GetString("key"))
-	if config.Viper.GetString("secret") != "" {
-		var err error
-		ctx, err = common.CreateAPISigContext(
-			ctx,
-			time.Now().Add(time.Hour),
-			config.Viper.GetString("secret"),
-		)
-		if err != nil {
-			cmd.Fatal(fmt.Errorf("invalid secret: %w", err))
+	if config.Viper.GetString("key") != "" {
+		ctx = common.NewAPIKeyContext(ctx, config.Viper.GetString("key"))
+		if config.Viper.GetString("secret") != "" {
+			var err error
+			ctx, err = common.CreateAPISigContext(
+				ctx,
+				time.Now().Add(time.Hour),
+				config.Viper.GetString("secret"),
+			)
+			if err != nil {
+				cmd.Fatal(fmt.Errorf("invalid secret: %w", err))
+			}
 		}
+		ctx = thread.NewTokenContext(ctx, thread.Token(config.Viper.GetString("token")))
+	} else {
+		ctx = common.NewSessionContext(ctx, config.Viper.GetString("session"))
+		ctx = common.NewOrgSlugContext(ctx, config.Viper.GetString("org"))
 	}
-	if config.Viper.GetString("identity") != "" {
-		if config.Viper.GetString("identity") == "create" {
-			sk, pk, err := crypto.GenerateEd25519Key(rand.Reader)
-			cmd.ErrCheck(err)
-			skb, err := crypto.MarshalPrivateKey(sk)
-			cmd.ErrCheck(err)
-			pkb, err := crypto.MarshalPublicKey(pk)
-			cmd.ErrCheck(err)
-			sks, err := mbase.Encode(mbase.Base32, skb)
-			cmd.ErrCheck(err)
-			pks, err := mbase.Encode(mbase.Base32, pkb)
-			cmd.ErrCheck(err)
-			config.Viper.Set("identity", sks)
-			writeConfig()
-			cmd.Message("Generated new identity with public key %s", aurora.White(pks).Bold())
-		}
-		_, id, err := mbase.Decode(config.Viper.GetString("identity"))
-		if err != nil {
-			cmd.Fatal(fmt.Errorf("invalid identity: %w", err))
-		}
-		sk, err := crypto.UnmarshalPrivateKey(id)
-		cmd.ErrCheck(err)
-		tok, err := clients.Threads.GetToken(ctx, thread.NewLibp2pIdentity(sk))
-		if err != nil {
-			cmd.Fatal(fmt.Errorf("getting identity token: %w", err))
-		}
-		ctx = thread.NewTokenContext(ctx, tok)
-	}
-	ctx = common.NewSessionContext(ctx, config.Viper.GetString("session"))
-	return common.NewOrgSlugContext(ctx, config.Viper.GetString("org"))
-}
-
-func writeConfig() {
-	home, err := homedir.Dir()
-	cmd.ErrCheck(err)
-	dir := filepath.Join(home, config.Dir)
-	err = os.MkdirAll(dir, os.ModePerm)
-	cmd.ErrCheck(err)
-	filename := filepath.Join(dir, config.Name+".yml")
-	err = config.Viper.WriteConfigAs(filename)
-	cmd.ErrCheck(err)
+	return ctx
 }

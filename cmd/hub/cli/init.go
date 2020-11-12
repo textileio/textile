@@ -65,7 +65,7 @@ var initCmd = &cobra.Command{
 		}
 		config.Viper.Set("session", res.Session)
 
-		writeConfig()
+		cmd.WriteConfigToHome(config)
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))

@@ -165,7 +165,16 @@ func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) conte
 			return ctx
 		}
 	}
-	ctx, _ = h.t.newAuthCtx(ctx, info.FullMethodName, false)
+	token, err := thread.NewTokenFromMD(ctx)
+	if err != nil {
+		return ctx
+	} else {
+		ctx = thread.NewTokenContext(ctx, token)
+	}
+	ctx, err = h.t.newAuthCtx(ctx, info.FullMethodName, false)
+	if err != nil {
+		return ctx
+	}
 	account, ok := mdb.AccountFromContext(ctx)
 	if !ok {
 		return ctx

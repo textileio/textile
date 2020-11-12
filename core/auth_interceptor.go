@@ -35,10 +35,10 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	if threadName, ok := common.ThreadNameFromMD(ctx); ok {
 		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
-	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
+	if token, err := thread.NewTokenFromMD(ctx); err != nil {
 		return nil, err
 	} else {
-		ctx = thread.NewTokenContext(ctx, threadToken)
+		ctx = thread.NewTokenContext(ctx, token)
 	}
 
 	return t.newAuthCtx(ctx, method, true)

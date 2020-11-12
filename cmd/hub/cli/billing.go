@@ -72,7 +72,9 @@ Use the --user flag to get usage for a dependent user.`,
 
 		// @todo: Move this account status to the customer object? Seems useful.
 		var status string
-		if cus.Delinquent {
+		if cus.ParentKey != "" {
+			status = "dependent"
+		} else if cus.Delinquent {
 			status = "delinquent"
 		} else if cus.Billable {
 			status = "pay-as-you-go"
@@ -80,8 +82,10 @@ Use the --user flag to get usage for a dependent user.`,
 			status = "free-quota-only"
 		}
 		cmd.Message("Account status: %s", aurora.White(status).Bold())
-		balance := float64(cus.Balance) / 100
-		cmd.Message("Account balance: %s%.2f", aurora.White("$").Bold(), aurora.White(balance).Bold())
+		if cus.ParentKey == "" {
+			balance := float64(cus.Balance) / 100
+			cmd.Message("Account balance: %s%.2f", aurora.White("$").Bold(), aurora.White(balance).Bold())
+		}
 		cmd.Message("Subscription status: %s", aurora.White(cus.Status).Bold())
 		if cus.Dependents > 0 {
 			cmd.Message("Contributing users: %d", aurora.White(cus.Dependents).Bold())

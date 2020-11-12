@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
