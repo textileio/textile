@@ -10,7 +10,8 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/billingd/pb"
-	"github.com/textileio/textile/v2/api/usersd/client"
+	hub "github.com/textileio/textile/v2/api/hubd/client"
+	users "github.com/textileio/textile/v2/api/usersd/client"
 	"github.com/textileio/textile/v2/cmd"
 )
 
@@ -66,7 +67,7 @@ Use the --user flag to get usage for a dependent user.`,
 
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		info, err := clients.Users.GetUsage(ctx, client.WithPubKey(user))
+		info, err := clients.Users.GetUsage(ctx, users.WithPubKey(user))
 		cmd.ErrCheck(err)
 		cus := info.Usage
 
@@ -121,24 +122,36 @@ var billingUsersCmd = &cobra.Command{
 	Long:  `Lists users contributing to billing usage.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		list, err := clients.Hub.ListBillingUsers(ctx)
+		limit, err := c.Flags().GetInt64("limit")
 		cmd.ErrCheck(err)
-
-		if len(list.Users) > 0 {
-			data := make([][]string, len(list.Users))
-			for i, u := range list.Users {
-				data[i] = []string{
-					u.Key,
-					strconv.Itoa(int(u.StoredData.Total)),
-					strconv.Itoa(int(u.NetworkEgress.Total)),
-					strconv.Itoa(int(u.InstanceReads.Total)),
-					strconv.Itoa(int(u.InstanceWrites.Total)),
-				}
-			}
-			cmd.RenderTable([]string{"user", "data (bytes)", "egress (bytes)", "reads", "writes"}, data)
-		}
-		cmd.Message("Found %d users", aurora.White(len(list.Users)).Bold())
+		offset, err := c.Flags().GetInt64("offset")
+		cmd.ErrCheck(err)
+		listUsers(limit, offset)
 	},
+}
+
+func listUsers(limit, offset int64) {
+	ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+	defer cancel()
+	list, err := clients.Hub.ListBillingUsers(ctx, hub.WithLimit(limit), hub.WithOffset(offset))
+	cmd.ErrCheck(err)
+
+	if len(list.Users) > 0 {
+		data := make([][]string, len(list.Users))
+		for i, u := range list.Users {
+			data[i] = []string{
+				u.Key,
+				strconv.Itoa(int(u.StoredData.Total)),
+				strconv.Itoa(int(u.NetworkEgress.Total)),
+				strconv.Itoa(int(u.InstanceReads.Total)),
+				strconv.Itoa(int(u.InstanceWrites.Total)),
+			}
+		}
+		cmd.RenderTable([]string{"user", "data (bytes)", "egress (bytes)", "reads", "writes"}, data)
+
+		cmd.Message("Next offset: %d", aurora.White(list.NextOffset).Bold())
+		cmd.Message("Press 'Enter' to show more...")
+		_, _ = fmt.Scanln()
+		listUsers(limit, list.NextOffset)
+	}
 }

@@ -84,6 +84,9 @@ func Init(rootCmd *cobra.Command) {
 
 	billingUsageCmd.Flags().StringP("user", "u", "", "User multibase encoded public key")
 
+	billingUsersCmd.Flags().Int64("limit", 25, "Page size (max 1000)")
+	billingUsersCmd.Flags().Int64("offset", 0, "Page offset (returned by each request)")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
