@@ -114,7 +114,7 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		if ok && account.User.CreatedAt.IsZero() {
 			var powInfo *mdb.PowInfo
 			if t.pc != nil {
-				ctxAdmin := context.WithValue(ctx, client.AdminKey, t.conf.TokenPowergateAdmin)
+				ctxAdmin := context.WithValue(ctx, client.AdminKey, t.conf.PowergateAdminToken)
 				res, err := t.pc.Admin.Users.Create(ctxAdmin)
 				if err != nil {
 					return nil, err

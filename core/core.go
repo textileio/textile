@@ -179,7 +179,7 @@ type Config struct {
 	Hub   bool
 	Debug bool
 
-	TokenPowergateAdmin string
+	PowergateAdminToken string
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -307,7 +307,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			IPNSManager:         t.ipnsm,
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
-			PowergateAdminToken: conf.TokenPowergateAdmin,
+			PowergateAdminToken: conf.PowergateAdminToken,
 		}
 		us = &usersd.Service{
 			Collections: t.collections,
@@ -329,7 +329,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		IPFSClient:          ic,
 		IPNSManager:         t.ipnsm,
 		PowergateClient:     t.pc,
-		PowergateAdminToken: conf.TokenPowergateAdmin,
+		PowergateAdminToken: conf.PowergateAdminToken,
 		ArchiveTracker:      t.archiveTracker,
 		Semaphores:          t.buckLocks,
 		MaxBucketSize:       conf.MaxBucketSize,
@@ -357,7 +357,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 				auth.UnaryServerInterceptor(t.authFunc),
 				t.threadInterceptor(),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
-				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, conf.TokenPowergateAdmin, t.collections),
+				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, conf.PowergateAdminToken, t.collections),
 			),
 			grpcm.WithStreamServerChain(
 				auth.StreamServerInterceptor(t.authFunc),

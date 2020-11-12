@@ -116,8 +116,8 @@ var (
 				Key:      "threads.max_number_per_owner",
 				DefValue: 100,
 			},
-			"tokenPowergateAdmin": {
-				Key:      "token.powergate_admin",
+			"powergateAdminToken": {
+				Key:      "powergate.admin_token",
 				DefValue: "",
 			},
 		},
@@ -240,8 +240,8 @@ func init() {
 
 	// Auth tokens
 	rootCmd.PersistentFlags().String(
-		"tokenPowergateAdmin",
-		config.Flags["tokenPowergateAdmin"].DefValue.(string),
+		"powergateAdminToken",
+		config.Flags["powergateAdminToken"].DefValue.(string),
 		"Auth token for Powergate admin APIs")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
@@ -297,7 +297,7 @@ var rootCmd = &cobra.Command{
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
 
-		tokenPowergateAdmin := config.Viper.GetString("token.powergate_admin")
+		powergateAdminToken := config.Viper.GetString("powergate.admin_token")
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
@@ -339,7 +339,7 @@ var rootCmd = &cobra.Command{
 			Hub:   true,
 			Debug: config.Viper.GetBool("log.debug"),
 
-			TokenPowergateAdmin: tokenPowergateAdmin,
+			PowergateAdminToken: powergateAdminToken,
 		})
 		cmd.ErrCheck(err)
 		defer textile.Close(false)
