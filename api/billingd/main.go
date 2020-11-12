@@ -79,6 +79,22 @@ var (
 				Key:      "stripe.instance_writes.price",
 				DefValue: "",
 			},
+			"stripeStoredDataDependentPrice": {
+				Key:      "stripe.stored_data.dependent_price",
+				DefValue: "",
+			},
+			"stripeNetworkEgressDependentPrice": {
+				Key:      "stripe.network_egress.dependent_price",
+				DefValue: "",
+			},
+			"stripeInstanceReadsDependentPrice": {
+				Key:      "stripe.instance_reads.dependent_price",
+				DefValue: "",
+			},
+			"stripeInstanceWritesDependentPrice": {
+				Key:      "stripe.instance_writes.dependent_price",
+				DefValue: "",
+			},
 		},
 		EnvPre: "BILLING",
 		Global: true,
@@ -155,6 +171,22 @@ func init() {
 		"stripeInstanceWritesPrice",
 		config.Flags["stripeInstanceWritesPrice"].DefValue.(string),
 		"Stripe price ID for instance writes")
+	rootCmd.PersistentFlags().String(
+		"stripeStoredDataDependentPrice",
+		config.Flags["stripeStoredDataDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users stored data")
+	rootCmd.PersistentFlags().String(
+		"stripeNetworkEgressDependentPrice",
+		config.Flags["stripeNetworkEgressDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users network egress")
+	rootCmd.PersistentFlags().String(
+		"stripeInstanceReadsDependentPrice",
+		config.Flags["stripeInstanceReadsDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users instance reads")
+	rootCmd.PersistentFlags().String(
+		"stripeInstanceWritesDependentPrice",
+		config.Flags["stripeInstanceWritesDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users instance writes")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -198,6 +230,10 @@ var rootCmd = &cobra.Command{
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
 		stripeInstanceReadsPrice := config.Viper.GetString("stripe.instance_reads.price")
 		stripeInstanceWritesPrice := config.Viper.GetString("stripe.instance_writes.price")
+		stripeStoredDataDependentPrice := config.Viper.GetString("stripe.stored_data.dependent_price")
+		stripeNetworkEgressDependentPrice := config.Viper.GetString("stripe.network_egress.dependent_price")
+		stripeInstanceReadsDependentPrice := config.Viper.GetString("stripe.instance_reads.dependent_price")
+		stripeInstanceWritesDependentPrice := config.Viper.GetString("stripe.instance_writes.dependent_price")
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
@@ -208,18 +244,22 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		api, err := service.NewService(ctx, service.Config{
-			ListenAddr:             addrApi,
-			StripeAPIURL:           stripeApiUrl,
-			StripeAPIKey:           stripeApiKey,
-			StripeSessionReturnURL: stripeSessionReturnUrl,
-			StripeWebhookSecret:    stripeWebhookSecret,
-			DBURI:                  addrMongoUri,
-			DBName:                 addrMongoName,
-			GatewayHostAddr:        addrGatewayHost,
-			StoredDataPriceID:      stripeStoredDataPrice,
-			NetworkEgressPriceID:   stripeNetworkEgressPrice,
-			InstanceReadsPriceID:   stripeInstanceReadsPrice,
-			InstanceWritesPriceID:  stripeInstanceWritesPrice,
+			ListenAddr:                     addrApi,
+			StripeAPIURL:                   stripeApiUrl,
+			StripeAPIKey:                   stripeApiKey,
+			StripeSessionReturnURL:         stripeSessionReturnUrl,
+			StripeWebhookSecret:            stripeWebhookSecret,
+			DBURI:                          addrMongoUri,
+			DBName:                         addrMongoName,
+			GatewayHostAddr:                addrGatewayHost,
+			StoredDataPriceID:              stripeStoredDataPrice,
+			NetworkEgressPriceID:           stripeNetworkEgressPrice,
+			InstanceReadsPriceID:           stripeInstanceReadsPrice,
+			InstanceWritesPriceID:          stripeInstanceWritesPrice,
+			StoredDataDependentPriceID:     stripeStoredDataDependentPrice,
+			NetworkEgressDependentPriceID:  stripeNetworkEgressDependentPrice,
+			InstanceReadsDependentPriceID:  stripeInstanceReadsDependentPrice,
+			InstanceWritesDependentPriceID: stripeInstanceWritesDependentPrice,
 			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)

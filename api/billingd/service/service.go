@@ -100,6 +100,11 @@ type Config struct {
 	InstanceReadsPriceID  string
 	InstanceWritesPriceID string
 
+	StoredDataDependentPriceID     string
+	NetworkEgressDependentPriceID  string
+	InstanceReadsDependentPriceID  string
+	InstanceWritesDependentPriceID string
+
 	Debug bool
 }
 
@@ -197,6 +202,55 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 			stripe.PriceRecurringAggregateUsageSum,
 			InstanceWritesFreeUnitsPerInterval,
 			InstanceWritesUnitCostPerInterval,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if s.config.StoredDataDependentPriceID == "" {
+		s.config.StoredDataDependentPriceID, err = s.createPrice(
+			sc,
+			"Stored data",
+			stripe.PriceRecurringAggregateUsageLastEver,
+			StoredDataFreeUnitsPerInterval,
+			0,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if s.config.NetworkEgressDependentPriceID == "" {
+		s.config.NetworkEgressDependentPriceID, err = s.createPrice(
+			sc,
+			"Network egress",
+			stripe.PriceRecurringAggregateUsageSum,
+			NetworkEgressFreeUnitsPerInterval,
+			0,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if s.config.InstanceReadsDependentPriceID == "" {
+		s.config.InstanceReadsDependentPriceID, err = s.createPrice(
+			sc,
+			"ThreadDB reads",
+			stripe.PriceRecurringAggregateUsageSum,
+			InstanceReadsFreeUnitsPerInterval,
+			0,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if s.config.InstanceWritesDependentPriceID == "" {
+		s.config.InstanceWritesDependentPriceID, err = s.createPrice(
+			sc,
+			"ThreadDB writes",
+			stripe.PriceRecurringAggregateUsageSum,
+			InstanceWritesFreeUnitsPerInterval,
+			0,
 		)
 		if err != nil {
 			return nil, err
@@ -374,21 +428,27 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 }
 
 func (s *Service) createSubscription(cus *Customer) error {
+	var (
+		storedDataPriceID, networkEgressPriceID, instanceReadsPriceID, instanceWritesPriceID string
+	)
+	if cus.ParentKey != "" {
+		storedDataPriceID = s.config.StoredDataDependentPriceID
+		networkEgressPriceID = s.config.NetworkEgressDependentPriceID
+		instanceReadsPriceID = s.config.InstanceReadsDependentPriceID
+		instanceWritesPriceID = s.config.InstanceWritesDependentPriceID
+	} else {
+		storedDataPriceID = s.config.StoredDataPriceID
+		networkEgressPriceID = s.config.NetworkEgressPriceID
+		instanceReadsPriceID = s.config.InstanceReadsPriceID
+		instanceWritesPriceID = s.config.InstanceWritesPriceID
+	}
 	sub, err := s.stripe.Subscriptions.New(&stripe.SubscriptionParams{
 		Customer: stripe.String(cus.CustomerID),
 		Items: []*stripe.SubscriptionItemsParams{
-			{
-				Price: stripe.String(s.config.StoredDataPriceID),
-			},
-			{
-				Price: stripe.String(s.config.NetworkEgressPriceID),
-			},
-			{
-				Price: stripe.String(s.config.InstanceReadsPriceID),
-			},
-			{
-				Price: stripe.String(s.config.InstanceWritesPriceID),
-			},
+			{Price: stripe.String(storedDataPriceID)},
+			{Price: stripe.String(networkEgressPriceID)},
+			{Price: stripe.String(instanceReadsPriceID)},
+			{Price: stripe.String(instanceWritesPriceID)},
 		},
 	})
 	if err != nil {
@@ -401,13 +461,13 @@ func (s *Service) createSubscription(cus *Customer) error {
 	}
 	for _, item := range sub.Items.Data {
 		switch item.Price.ID {
-		case s.config.StoredDataPriceID:
+		case storedDataPriceID:
 			cus.StoredData.ItemID = item.ID // Retain existing units since this is "last ever" usage
-		case s.config.NetworkEgressPriceID:
+		case networkEgressPriceID:
 			cus.NetworkEgress = Usage{ItemID: item.ID}
-		case s.config.InstanceReadsPriceID:
+		case instanceReadsPriceID:
 			cus.InstanceReads = Usage{ItemID: item.ID}
-		case s.config.InstanceWritesPriceID:
+		case instanceWritesPriceID:
 			cus.InstanceWrites = Usage{ItemID: item.ID}
 		}
 	}
