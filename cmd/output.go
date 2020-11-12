@@ -84,6 +84,15 @@ func ErrCheck(err error, args ...interface{}) {
 	}
 }
 
+func HandleInterrupt(stop func()) {
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
+	stop()
+	os.Exit(1)
+}
+
 func RenderTable(header []string, data [][]string) {
 	fmt.Println()
 	table := tablewriter.NewWriter(os.Stdout)
@@ -107,13 +116,4 @@ func RenderTable(header []string, data [][]string) {
 	table.AppendBulk(data)
 	table.Render()
 	fmt.Println()
-}
-
-func HandleInterrupt(stop func()) {
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
-	stop()
-	os.Exit(1)
 }

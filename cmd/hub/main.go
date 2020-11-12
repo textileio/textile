@@ -31,7 +31,12 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(hub.Config().Viper, hub.Config().Flags)
 
-		if hub.Config().Viper.GetString("session") == "" && c.Use != "init" && c.Use != "login" && c.Use != "version" && c.Use != "update" {
+		if hub.Config().Viper.GetString("session") == "" &&
+			hub.Config().Viper.GetString("key") == "" &&
+			c.Use != "init" &&
+			c.Use != "login" &&
+			c.Use != "version" &&
+			c.Use != "update" {
 			msg := "unauthorized! run `%s` or use `%s` to authorize"
 			cmd.Fatal(errors.New(msg), aurora.Cyan(hub.Name+" init|login"), aurora.Cyan("--session"))
 		}

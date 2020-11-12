@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/mail"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"
 )
@@ -68,14 +65,7 @@ var initCmd = &cobra.Command{
 		}
 		config.Viper.Set("session", res.Session)
 
-		home, err := homedir.Dir()
-		cmd.ErrCheck(err)
-		dir := filepath.Join(home, config.Dir)
-		err = os.MkdirAll(dir, os.ModePerm)
-		cmd.ErrCheck(err)
-		filename := filepath.Join(dir, config.Name+".yml")
-		err = config.Viper.WriteConfigAs(filename)
-		cmd.ErrCheck(err)
+		writeConfig()
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("Welcome to the Hub. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))
