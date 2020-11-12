@@ -2,6 +2,8 @@ syntax = "proto3";
 package api.hubd.pb;
 option go_package = "github.com/textileio/textile/v2/api/hubd/pb";
 
+import "api/billingd/pb/billingd.proto";
+
 message BuildInfoRequest {}
 
 message BuildInfoResponse {
@@ -147,6 +149,16 @@ message GetBillingSessionResponse {
     string url = 1;
 }
 
+message ListBillingUsersRequest {
+    int64 offset = 1;
+    int64 limit = 2;
+}
+
+message ListBillingUsersResponse {
+    repeated api.billingd.pb.GetCustomerResponse users = 1;
+    int64 next_offset = 2;
+}
+
 message IsUsernameAvailableRequest {
     string username = 1;
 }
@@ -189,6 +201,7 @@ service APIService {
 
     rpc SetupBilling(SetupBillingRequest) returns (SetupBillingResponse) {}
     rpc GetBillingSession(GetBillingSessionRequest) returns (GetBillingSessionResponse) {}
+    rpc ListBillingUsers(ListBillingUsersRequest) returns (ListBillingUsersResponse) {}
 
     rpc IsUsernameAvailable(IsUsernameAvailableRequest) returns (IsUsernameAvailableResponse) {}
     rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}

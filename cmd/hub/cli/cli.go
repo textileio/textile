@@ -50,13 +50,15 @@ func Init(rootCmd *cobra.Command) {
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
 	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powConnectednessCmd, powFindPeerCmd, powHealthCmd, powInfoCmd, powPeersCmd, powRetrievalsCmd, powShowAllCmd, powShowCmd, powStorageCmd)
-	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd)
+	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd, billingUsersCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
 
 	rootCmd.PersistentFlags().String("api", config.Flags["api"].DefValue.(string), "API target")
 	rootCmd.PersistentFlags().StringP("session", "s", config.Flags["session"].DefValue.(string), "User session token")
 	rootCmd.PersistentFlags().StringP("org", "o", config.Flags["org"].DefValue.(string), "Org username")
+
+	billingUsageCmd.Flags().StringP("user", "u", "", "User multibase encoded public key")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)

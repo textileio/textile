@@ -621,6 +621,30 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
+func (s *Service) ListBillingUsers(ctx context.Context, req *pb.ListBillingUsersRequest) (*pb.ListBillingUsersResponse, error) {
+	log.Debugf("received list billing users request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+
+	account, _ := mdb.AccountFromContext(ctx)
+	list, err := s.BillingClient.ListDependentCustomers(
+		ctx,
+		account.Owner().Key,
+		billing.WithOffset(req.Offset),
+		billing.WithLimit(req.Limit),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ListBillingUsersResponse{
+		Users:      list.Customers,
+		NextOffset: list.NextOffset,
+	}, nil
+}
+
 func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {
 	log.Debugf("received is username available request")
 

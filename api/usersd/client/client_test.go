@@ -475,7 +475,7 @@ func TestClient_GetUsage(t *testing.T) {
 
 	usage, err := client.GetUsage(ctx)
 	require.NoError(t, err)
-	assert.NotEmpty(t, usage.Customer)
+	assert.NotEmpty(t, usage.Usage)
 
 	usage, err = client.GetUsage(ctx)
 	require.NoError(t, err)

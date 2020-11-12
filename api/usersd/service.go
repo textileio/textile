@@ -368,7 +368,7 @@ func (s *Service) GetUsage(ctx context.Context, req *pb.GetUsageRequest) (*pb.Ge
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 	return &pb.GetUsageResponse{
-		Customer: cus,
+		Usage: cus,
 	}, nil
 }
 
