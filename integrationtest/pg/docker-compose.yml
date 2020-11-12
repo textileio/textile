@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
 
   lotus:
-    image: textile/lotus-devnet:sha-d57ac07
+    image: textile/lotus-devnet:sha-b560b20
     environment:
       - TEXLOTUSDEVNET_SPEED=300
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
