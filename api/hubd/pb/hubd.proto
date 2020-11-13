@@ -139,10 +139,6 @@ message LeaveOrgRequest {}
 
 message LeaveOrgResponse {}
 
-message SetupBillingRequest {}
-
-message SetupBillingResponse {}
-
 message GetBillingSessionRequest {}
 
 message GetBillingSessionResponse {
@@ -199,7 +195,6 @@ service APIService {
     rpc InviteToOrg(InviteToOrgRequest) returns (InviteToOrgResponse) {}
     rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgResponse) {}
 
-    rpc SetupBilling(SetupBillingRequest) returns (SetupBillingResponse) {}
     rpc GetBillingSession(GetBillingSessionRequest) returns (GetBillingSessionResponse) {}
     rpc ListBillingUsers(ListBillingUsersRequest) returns (ListBillingUsersResponse) {}
 

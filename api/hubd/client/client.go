@@ -122,13 +122,6 @@ func (c *Client) LeaveOrg(ctx context.Context) error {
 	return err
 }
 
-// SetupBilling (re-)enables billing for an account, enabling
-// usage beyond the free quotas.
-func (c *Client) SetupBilling(ctx context.Context) error {
-	_, err := c.c.SetupBilling(ctx, &pb.SetupBillingRequest{})
-	return err
-}
-
 // GetBillingSession returns a billing portal session url.
 func (c *Client) GetBillingSession(ctx context.Context) (*pb.GetBillingSessionResponse, error) {
 	return c.c.GetBillingSession(ctx, &pb.GetBillingSessionRequest{})

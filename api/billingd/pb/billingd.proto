@@ -87,12 +87,6 @@ message UpdateCustomerSubscriptionRequest {
 
 message UpdateCustomerSubscriptionResponse {}
 
-message RecreateCustomerSubscriptionRequest {
-    string key = 1;
-}
-
-message RecreateCustomerSubscriptionResponse {}
-
 message DeleteCustomerRequest {
     string key = 1;
 }
@@ -147,7 +141,6 @@ service APIService {
     rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
     rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {}
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
-    rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
     rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
     rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}

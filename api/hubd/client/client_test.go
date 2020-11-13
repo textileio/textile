@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 
@@ -354,28 +353,6 @@ func TestClient_LeaveOrg(t *testing.T) {
 	t.Run("as member", func(t *testing.T) {
 		err := client.LeaveOrg(ctx2)
 		require.NoError(t, err)
-	})
-}
-
-func TestClient_SetupBilling(t *testing.T) {
-	t.Parallel()
-	conf, client, _ := setupWithBilling(t)
-	ctx := context.Background()
-
-	t.Run("without session", func(t *testing.T) {
-		err := client.SetupBilling(ctx)
-		require.Error(t, err)
-	})
-
-	user := apitest.Signup(t, client, conf, apitest.NewUsername(), apitest.NewEmail())
-
-	t.Run("with session", func(t *testing.T) {
-		err := client.SetupBilling(common.NewSessionContext(ctx, user.Session))
-		require.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "subscription exists"))
-		// Note: There's no way API for canceling the subscription since users
-		// will do that via the Stripe customer portal. So, for now we're not able
-		// to have a test for re-enabling billing after they cancel.
 	})
 }
 

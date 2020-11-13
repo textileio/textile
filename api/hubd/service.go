@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -112,17 +111,6 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
 		return nil, err
-	}
-
-	// Create a customer
-	if s.BillingClient != nil {
-		if _, err := s.BillingClient.CreateCustomer(
-			ctx,
-			dev.Key,
-			billing.WithEmail(dev.Email),
-		); err != nil {
-			return nil, err
-		}
 	}
 
 	// Check for pending invites
@@ -405,17 +393,6 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		return nil, err
 	}
 
-	// Create a customer using the dev's email address
-	if s.BillingClient != nil {
-		if _, err := s.BillingClient.CreateCustomer(
-			ctx,
-			org.Key,
-			billing.WithEmail(account.User.Email),
-		); err != nil {
-			return nil, err
-		}
-	}
-
 	orgInfo, err := s.orgToPbOrg(org)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
@@ -572,36 +549,6 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 		return nil, err
 	}
 	return &pb.LeaveOrgResponse{}, nil
-}
-
-func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (*pb.SetupBillingResponse, error) {
-	log.Debugf("received setup billing request")
-
-	if s.BillingClient == nil {
-		return nil, fmt.Errorf("billing is not enabled")
-	}
-	account, err := getAccount(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.BillingClient.CreateCustomer(
-		ctx,
-		account.Owner().Key,
-		billing.WithEmail(account.Owner().Email),
-	); err != nil {
-		if strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
-			if err := s.BillingClient.RecreateCustomerSubscription(
-				ctx,
-				account.Owner().Key,
-			); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return &pb.SetupBillingResponse{}, nil
 }
 
 func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSessionRequest) (*pb.GetBillingSessionResponse, error) {
