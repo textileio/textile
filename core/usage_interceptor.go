@@ -53,6 +53,9 @@ func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterc
 }
 
 func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Context, error) {
+	if t.bc == nil {
+		return ctx, nil
+	}
 	for _, ignored := range authIgnoredMethods {
 		if method == ignored {
 			return ctx, nil
@@ -160,6 +163,9 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 }
 
 func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
+	if t.bc == nil {
+		return nil
+	}
 	for _, ignored := range authIgnoredMethods {
 		if method == ignored {
 			return nil

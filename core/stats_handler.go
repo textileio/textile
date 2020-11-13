@@ -21,6 +21,9 @@ var statsTimeout = time.Second * 10
 
 // HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
+	if h.t.bc == nil {
+		return
+	}
 	switch st := st.(type) {
 	case *stats.OutPayload:
 		if getStats(ctx) == nil {
@@ -160,6 +163,9 @@ type requestStats struct {
 }
 
 func (h *StatsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	if h.t.bc == nil {
+		return ctx
+	}
 	for _, ignored := range authIgnoredMethods {
 		if info.FullMethodName == ignored {
 			return ctx
