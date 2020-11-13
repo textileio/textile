@@ -109,23 +109,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 			}
 		}
 
-		// Collect the user if we haven't seen them before.
-		if ok && account.User.CreatedAt.IsZero() {
-			var powInfo *mdb.PowInfo
-			if t.pc != nil {
-				ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
-				if err != nil {
-					return nil, err
-				}
-				powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
-			}
-			user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
-			if err != nil {
-				return nil, err
-			}
-			ctx = mdb.NewAccountContext(ctx, user, account.Org)
-		}
-
 		// Preemptively track the new thread ID for the owner.
 		// This needs to happen before the request is handled in case there's a conflict
 		// with the owner and thread name.

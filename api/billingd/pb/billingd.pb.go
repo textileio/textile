@@ -189,7 +189,9 @@ func (m *CheckHealthResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_CheckHealthResponse proto.InternalMessageInfo
 
 type CreateCustomerRequest struct {
-	Email                string   `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	ParentKey            string   `protobuf:"bytes,2,opt,name=parent_key,json=parentKey,proto3" json:"parent_key,omitempty"`
+	Email                string   `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -219,6 +221,20 @@ func (m *CreateCustomerRequest) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_CreateCustomerRequest proto.InternalMessageInfo
+
+func (m *CreateCustomerRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *CreateCustomerRequest) GetParentKey() string {
+	if m != nil {
+		return m.ParentKey
+	}
+	return ""
+}
 
 func (m *CreateCustomerRequest) GetEmail() string {
 	if m != nil {
@@ -267,7 +283,7 @@ func (m *CreateCustomerResponse) GetCustomerId() string {
 }
 
 type GetCustomerRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -298,25 +314,29 @@ func (m *GetCustomerRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetCustomerRequest proto.InternalMessageInfo
 
-func (m *GetCustomerRequest) GetCustomerId() string {
+func (m *GetCustomerRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
 
 type GetCustomerResponse struct {
-	Email                string   `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	Status               string   `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Balance              int64    `protobuf:"varint,3,opt,name=balance,proto3" json:"balance,omitempty"`
-	Billable             bool     `protobuf:"varint,4,opt,name=billable,proto3" json:"billable,omitempty"`
-	Delinquent           bool     `protobuf:"varint,5,opt,name=delinquent,proto3" json:"delinquent,omitempty"`
-	CreatedAt            int64    `protobuf:"varint,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Period               *Period  `protobuf:"bytes,7,opt,name=period,proto3" json:"period,omitempty"`
-	StoredData           *Usage   `protobuf:"bytes,8,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
-	NetworkEgress        *Usage   `protobuf:"bytes,9,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
-	InstanceWrites       *Usage   `protobuf:"bytes,10,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
-	InstanceReads        *Usage   `protobuf:"bytes,11,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	CustomerId           string   `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	ParentKey            string   `protobuf:"bytes,3,opt,name=parent_key,json=parentKey,proto3" json:"parent_key,omitempty"`
+	Email                string   `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	Status               string   `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Balance              int64    `protobuf:"varint,6,opt,name=balance,proto3" json:"balance,omitempty"`
+	Billable             bool     `protobuf:"varint,7,opt,name=billable,proto3" json:"billable,omitempty"`
+	Delinquent           bool     `protobuf:"varint,8,opt,name=delinquent,proto3" json:"delinquent,omitempty"`
+	CreatedAt            int64    `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Period               *Period  `protobuf:"bytes,10,opt,name=period,proto3" json:"period,omitempty"`
+	StoredData           *Usage   `protobuf:"bytes,11,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
+	NetworkEgress        *Usage   `protobuf:"bytes,12,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
+	InstanceWrites       *Usage   `protobuf:"bytes,13,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
+	InstanceReads        *Usage   `protobuf:"bytes,14,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
+	Dependents           int64    `protobuf:"varint,15,opt,name=dependents,proto3" json:"dependents,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -346,6 +366,27 @@ func (m *GetCustomerResponse) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_GetCustomerResponse proto.InternalMessageInfo
+
+func (m *GetCustomerResponse) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *GetCustomerResponse) GetCustomerId() string {
+	if m != nil {
+		return m.CustomerId
+	}
+	return ""
+}
+
+func (m *GetCustomerResponse) GetParentKey() string {
+	if m != nil {
+		return m.ParentKey
+	}
+	return ""
+}
 
 func (m *GetCustomerResponse) GetEmail() string {
 	if m != nil {
@@ -424,8 +465,117 @@ func (m *GetCustomerResponse) GetInstanceReads() *Usage {
 	return nil
 }
 
+func (m *GetCustomerResponse) GetDependents() int64 {
+	if m != nil {
+		return m.Dependents
+	}
+	return 0
+}
+
+type ListDependentCustomersRequest struct {
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Offset               int64    `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Limit                int64    `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListDependentCustomersRequest) Reset()         { *m = ListDependentCustomersRequest{} }
+func (m *ListDependentCustomersRequest) String() string { return proto.CompactTextString(m) }
+func (*ListDependentCustomersRequest) ProtoMessage()    {}
+func (*ListDependentCustomersRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8c6bad727a6da184, []int{8}
+}
+
+func (m *ListDependentCustomersRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListDependentCustomersRequest.Unmarshal(m, b)
+}
+func (m *ListDependentCustomersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListDependentCustomersRequest.Marshal(b, m, deterministic)
+}
+func (m *ListDependentCustomersRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListDependentCustomersRequest.Merge(m, src)
+}
+func (m *ListDependentCustomersRequest) XXX_Size() int {
+	return xxx_messageInfo_ListDependentCustomersRequest.Size(m)
+}
+func (m *ListDependentCustomersRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListDependentCustomersRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListDependentCustomersRequest proto.InternalMessageInfo
+
+func (m *ListDependentCustomersRequest) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *ListDependentCustomersRequest) GetOffset() int64 {
+	if m != nil {
+		return m.Offset
+	}
+	return 0
+}
+
+func (m *ListDependentCustomersRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+type ListDependentCustomersResponse struct {
+	Customers            []*GetCustomerResponse `protobuf:"bytes,1,rep,name=customers,proto3" json:"customers,omitempty"`
+	NextOffset           int64                  `protobuf:"varint,2,opt,name=next_offset,json=nextOffset,proto3" json:"next_offset,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
+}
+
+func (m *ListDependentCustomersResponse) Reset()         { *m = ListDependentCustomersResponse{} }
+func (m *ListDependentCustomersResponse) String() string { return proto.CompactTextString(m) }
+func (*ListDependentCustomersResponse) ProtoMessage()    {}
+func (*ListDependentCustomersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8c6bad727a6da184, []int{9}
+}
+
+func (m *ListDependentCustomersResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListDependentCustomersResponse.Unmarshal(m, b)
+}
+func (m *ListDependentCustomersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListDependentCustomersResponse.Marshal(b, m, deterministic)
+}
+func (m *ListDependentCustomersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListDependentCustomersResponse.Merge(m, src)
+}
+func (m *ListDependentCustomersResponse) XXX_Size() int {
+	return xxx_messageInfo_ListDependentCustomersResponse.Size(m)
+}
+func (m *ListDependentCustomersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListDependentCustomersResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListDependentCustomersResponse proto.InternalMessageInfo
+
+func (m *ListDependentCustomersResponse) GetCustomers() []*GetCustomerResponse {
+	if m != nil {
+		return m.Customers
+	}
+	return nil
+}
+
+func (m *ListDependentCustomersResponse) GetNextOffset() int64 {
+	if m != nil {
+		return m.NextOffset
+	}
+	return 0
+}
+
 type GetCustomerSessionRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -435,7 +585,7 @@ func (m *GetCustomerSessionRequest) Reset()         { *m = GetCustomerSessionReq
 func (m *GetCustomerSessionRequest) String() string { return proto.CompactTextString(m) }
 func (*GetCustomerSessionRequest) ProtoMessage()    {}
 func (*GetCustomerSessionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{8}
+	return fileDescriptor_8c6bad727a6da184, []int{10}
 }
 
 func (m *GetCustomerSessionRequest) XXX_Unmarshal(b []byte) error {
@@ -456,9 +606,9 @@ func (m *GetCustomerSessionRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetCustomerSessionRequest proto.InternalMessageInfo
 
-func (m *GetCustomerSessionRequest) GetCustomerId() string {
+func (m *GetCustomerSessionRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -474,7 +624,7 @@ func (m *GetCustomerSessionResponse) Reset()         { *m = GetCustomerSessionRe
 func (m *GetCustomerSessionResponse) String() string { return proto.CompactTextString(m) }
 func (*GetCustomerSessionResponse) ProtoMessage()    {}
 func (*GetCustomerSessionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{9}
+	return fileDescriptor_8c6bad727a6da184, []int{11}
 }
 
 func (m *GetCustomerSessionResponse) XXX_Unmarshal(b []byte) error {
@@ -516,7 +666,7 @@ func (m *UpdateCustomerRequest) Reset()         { *m = UpdateCustomerRequest{} }
 func (m *UpdateCustomerRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateCustomerRequest) ProtoMessage()    {}
 func (*UpdateCustomerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{10}
+	return fileDescriptor_8c6bad727a6da184, []int{12}
 }
 
 func (m *UpdateCustomerRequest) XXX_Unmarshal(b []byte) error {
@@ -575,7 +725,7 @@ func (m *UpdateCustomerResponse) Reset()         { *m = UpdateCustomerResponse{}
 func (m *UpdateCustomerResponse) String() string { return proto.CompactTextString(m) }
 func (*UpdateCustomerResponse) ProtoMessage()    {}
 func (*UpdateCustomerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{11}
+	return fileDescriptor_8c6bad727a6da184, []int{13}
 }
 
 func (m *UpdateCustomerResponse) XXX_Unmarshal(b []byte) error {
@@ -609,7 +759,7 @@ func (m *UpdateCustomerSubscriptionRequest) Reset()         { *m = UpdateCustome
 func (m *UpdateCustomerSubscriptionRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateCustomerSubscriptionRequest) ProtoMessage()    {}
 func (*UpdateCustomerSubscriptionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{12}
+	return fileDescriptor_8c6bad727a6da184, []int{14}
 }
 
 func (m *UpdateCustomerSubscriptionRequest) XXX_Unmarshal(b []byte) error {
@@ -661,7 +811,7 @@ func (m *UpdateCustomerSubscriptionResponse) Reset()         { *m = UpdateCustom
 func (m *UpdateCustomerSubscriptionResponse) String() string { return proto.CompactTextString(m) }
 func (*UpdateCustomerSubscriptionResponse) ProtoMessage()    {}
 func (*UpdateCustomerSubscriptionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{13}
+	return fileDescriptor_8c6bad727a6da184, []int{15}
 }
 
 func (m *UpdateCustomerSubscriptionResponse) XXX_Unmarshal(b []byte) error {
@@ -683,7 +833,7 @@ func (m *UpdateCustomerSubscriptionResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_UpdateCustomerSubscriptionResponse proto.InternalMessageInfo
 
 type RecreateCustomerSubscriptionRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -693,7 +843,7 @@ func (m *RecreateCustomerSubscriptionRequest) Reset()         { *m = RecreateCus
 func (m *RecreateCustomerSubscriptionRequest) String() string { return proto.CompactTextString(m) }
 func (*RecreateCustomerSubscriptionRequest) ProtoMessage()    {}
 func (*RecreateCustomerSubscriptionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{14}
+	return fileDescriptor_8c6bad727a6da184, []int{16}
 }
 
 func (m *RecreateCustomerSubscriptionRequest) XXX_Unmarshal(b []byte) error {
@@ -714,9 +864,9 @@ func (m *RecreateCustomerSubscriptionRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RecreateCustomerSubscriptionRequest proto.InternalMessageInfo
 
-func (m *RecreateCustomerSubscriptionRequest) GetCustomerId() string {
+func (m *RecreateCustomerSubscriptionRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -731,7 +881,7 @@ func (m *RecreateCustomerSubscriptionResponse) Reset()         { *m = RecreateCu
 func (m *RecreateCustomerSubscriptionResponse) String() string { return proto.CompactTextString(m) }
 func (*RecreateCustomerSubscriptionResponse) ProtoMessage()    {}
 func (*RecreateCustomerSubscriptionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{15}
+	return fileDescriptor_8c6bad727a6da184, []int{17}
 }
 
 func (m *RecreateCustomerSubscriptionResponse) XXX_Unmarshal(b []byte) error {
@@ -753,7 +903,7 @@ func (m *RecreateCustomerSubscriptionResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_RecreateCustomerSubscriptionResponse proto.InternalMessageInfo
 
 type DeleteCustomerRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -763,7 +913,7 @@ func (m *DeleteCustomerRequest) Reset()         { *m = DeleteCustomerRequest{} }
 func (m *DeleteCustomerRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteCustomerRequest) ProtoMessage()    {}
 func (*DeleteCustomerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{16}
+	return fileDescriptor_8c6bad727a6da184, []int{18}
 }
 
 func (m *DeleteCustomerRequest) XXX_Unmarshal(b []byte) error {
@@ -784,9 +934,9 @@ func (m *DeleteCustomerRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_DeleteCustomerRequest proto.InternalMessageInfo
 
-func (m *DeleteCustomerRequest) GetCustomerId() string {
+func (m *DeleteCustomerRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -801,7 +951,7 @@ func (m *DeleteCustomerResponse) Reset()         { *m = DeleteCustomerResponse{}
 func (m *DeleteCustomerResponse) String() string { return proto.CompactTextString(m) }
 func (*DeleteCustomerResponse) ProtoMessage()    {}
 func (*DeleteCustomerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{17}
+	return fileDescriptor_8c6bad727a6da184, []int{19}
 }
 
 func (m *DeleteCustomerResponse) XXX_Unmarshal(b []byte) error {
@@ -823,7 +973,7 @@ func (m *DeleteCustomerResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_DeleteCustomerResponse proto.InternalMessageInfo
 
 type IncStoredDataRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	IncSize              int64    `protobuf:"varint,2,opt,name=inc_size,json=incSize,proto3" json:"inc_size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -834,7 +984,7 @@ func (m *IncStoredDataRequest) Reset()         { *m = IncStoredDataRequest{} }
 func (m *IncStoredDataRequest) String() string { return proto.CompactTextString(m) }
 func (*IncStoredDataRequest) ProtoMessage()    {}
 func (*IncStoredDataRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{18}
+	return fileDescriptor_8c6bad727a6da184, []int{20}
 }
 
 func (m *IncStoredDataRequest) XXX_Unmarshal(b []byte) error {
@@ -855,9 +1005,9 @@ func (m *IncStoredDataRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_IncStoredDataRequest proto.InternalMessageInfo
 
-func (m *IncStoredDataRequest) GetCustomerId() string {
+func (m *IncStoredDataRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -881,7 +1031,7 @@ func (m *IncStoredDataResponse) Reset()         { *m = IncStoredDataResponse{} }
 func (m *IncStoredDataResponse) String() string { return proto.CompactTextString(m) }
 func (*IncStoredDataResponse) ProtoMessage()    {}
 func (*IncStoredDataResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{19}
+	return fileDescriptor_8c6bad727a6da184, []int{21}
 }
 
 func (m *IncStoredDataResponse) XXX_Unmarshal(b []byte) error {
@@ -917,7 +1067,7 @@ func (m *IncStoredDataResponse) GetStoredData() *Usage {
 }
 
 type IncNetworkEgressRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	IncSize              int64    `protobuf:"varint,2,opt,name=inc_size,json=incSize,proto3" json:"inc_size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -928,7 +1078,7 @@ func (m *IncNetworkEgressRequest) Reset()         { *m = IncNetworkEgressRequest
 func (m *IncNetworkEgressRequest) String() string { return proto.CompactTextString(m) }
 func (*IncNetworkEgressRequest) ProtoMessage()    {}
 func (*IncNetworkEgressRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{20}
+	return fileDescriptor_8c6bad727a6da184, []int{22}
 }
 
 func (m *IncNetworkEgressRequest) XXX_Unmarshal(b []byte) error {
@@ -949,9 +1099,9 @@ func (m *IncNetworkEgressRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_IncNetworkEgressRequest proto.InternalMessageInfo
 
-func (m *IncNetworkEgressRequest) GetCustomerId() string {
+func (m *IncNetworkEgressRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -975,7 +1125,7 @@ func (m *IncNetworkEgressResponse) Reset()         { *m = IncNetworkEgressRespon
 func (m *IncNetworkEgressResponse) String() string { return proto.CompactTextString(m) }
 func (*IncNetworkEgressResponse) ProtoMessage()    {}
 func (*IncNetworkEgressResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{21}
+	return fileDescriptor_8c6bad727a6da184, []int{23}
 }
 
 func (m *IncNetworkEgressResponse) XXX_Unmarshal(b []byte) error {
@@ -1011,7 +1161,7 @@ func (m *IncNetworkEgressResponse) GetNetworkEgress() *Usage {
 }
 
 type IncInstanceReadsRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1022,7 +1172,7 @@ func (m *IncInstanceReadsRequest) Reset()         { *m = IncInstanceReadsRequest
 func (m *IncInstanceReadsRequest) String() string { return proto.CompactTextString(m) }
 func (*IncInstanceReadsRequest) ProtoMessage()    {}
 func (*IncInstanceReadsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{22}
+	return fileDescriptor_8c6bad727a6da184, []int{24}
 }
 
 func (m *IncInstanceReadsRequest) XXX_Unmarshal(b []byte) error {
@@ -1043,9 +1193,9 @@ func (m *IncInstanceReadsRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_IncInstanceReadsRequest proto.InternalMessageInfo
 
-func (m *IncInstanceReadsRequest) GetCustomerId() string {
+func (m *IncInstanceReadsRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -1069,7 +1219,7 @@ func (m *IncInstanceReadsResponse) Reset()         { *m = IncInstanceReadsRespon
 func (m *IncInstanceReadsResponse) String() string { return proto.CompactTextString(m) }
 func (*IncInstanceReadsResponse) ProtoMessage()    {}
 func (*IncInstanceReadsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{23}
+	return fileDescriptor_8c6bad727a6da184, []int{25}
 }
 
 func (m *IncInstanceReadsResponse) XXX_Unmarshal(b []byte) error {
@@ -1105,7 +1255,7 @@ func (m *IncInstanceReadsResponse) GetInstanceReads() *Usage {
 }
 
 type IncInstanceWritesRequest struct {
-	CustomerId           string   `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -1116,7 +1266,7 @@ func (m *IncInstanceWritesRequest) Reset()         { *m = IncInstanceWritesReque
 func (m *IncInstanceWritesRequest) String() string { return proto.CompactTextString(m) }
 func (*IncInstanceWritesRequest) ProtoMessage()    {}
 func (*IncInstanceWritesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{24}
+	return fileDescriptor_8c6bad727a6da184, []int{26}
 }
 
 func (m *IncInstanceWritesRequest) XXX_Unmarshal(b []byte) error {
@@ -1137,9 +1287,9 @@ func (m *IncInstanceWritesRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_IncInstanceWritesRequest proto.InternalMessageInfo
 
-func (m *IncInstanceWritesRequest) GetCustomerId() string {
+func (m *IncInstanceWritesRequest) GetKey() string {
 	if m != nil {
-		return m.CustomerId
+		return m.Key
 	}
 	return ""
 }
@@ -1163,7 +1313,7 @@ func (m *IncInstanceWritesResponse) Reset()         { *m = IncInstanceWritesResp
 func (m *IncInstanceWritesResponse) String() string { return proto.CompactTextString(m) }
 func (*IncInstanceWritesResponse) ProtoMessage()    {}
 func (*IncInstanceWritesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{25}
+	return fileDescriptor_8c6bad727a6da184, []int{27}
 }
 
 func (m *IncInstanceWritesResponse) XXX_Unmarshal(b []byte) error {
@@ -1207,6 +1357,8 @@ func init() {
 	proto.RegisterType((*CreateCustomerResponse)(nil), "api.billingd.pb.CreateCustomerResponse")
 	proto.RegisterType((*GetCustomerRequest)(nil), "api.billingd.pb.GetCustomerRequest")
 	proto.RegisterType((*GetCustomerResponse)(nil), "api.billingd.pb.GetCustomerResponse")
+	proto.RegisterType((*ListDependentCustomersRequest)(nil), "api.billingd.pb.ListDependentCustomersRequest")
+	proto.RegisterType((*ListDependentCustomersResponse)(nil), "api.billingd.pb.ListDependentCustomersResponse")
 	proto.RegisterType((*GetCustomerSessionRequest)(nil), "api.billingd.pb.GetCustomerSessionRequest")
 	proto.RegisterType((*GetCustomerSessionResponse)(nil), "api.billingd.pb.GetCustomerSessionResponse")
 	proto.RegisterType((*UpdateCustomerRequest)(nil), "api.billingd.pb.UpdateCustomerRequest")
@@ -1230,68 +1382,77 @@ func init() {
 func init() { proto.RegisterFile("api/billingd/pb/billingd.proto", fileDescriptor_8c6bad727a6da184) }
 
 var fileDescriptor_8c6bad727a6da184 = []byte{
-	// 961 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0x5f, 0x6f, 0x1b, 0x45,
-	0x10, 0xf7, 0xd9, 0x89, 0x1b, 0x8f, 0xd5, 0x34, 0x6c, 0xe3, 0xf4, 0x72, 0x40, 0x09, 0xdb, 0x10,
-	0x42, 0x11, 0x36, 0xa4, 0x54, 0x80, 0x04, 0x42, 0x25, 0x85, 0xe2, 0x17, 0x54, 0x9d, 0x15, 0x15,
-	0xe5, 0xc5, 0xac, 0xef, 0x86, 0x64, 0xd5, 0xcb, 0x9d, 0x7b, 0xbb, 0xd7, 0xa2, 0xbe, 0xf1, 0x84,
-	0x84, 0x14, 0x3e, 0x05, 0x5f, 0x8c, 0x6f, 0x82, 0xee, 0xbc, 0xe7, 0xdc, 0x9f, 0xf5, 0xf9, 0x9c,
-	0xf6, 0x6d, 0x77, 0x3c, 0xbf, 0x99, 0x9d, 0xb9, 0xdf, 0xce, 0x6f, 0x0d, 0x77, 0xd9, 0x94, 0x0f,
-	0x26, 0xdc, 0xf3, 0xb8, 0x7f, 0xe6, 0x0e, 0xa6, 0x93, 0xf9, 0xba, 0x3f, 0x0d, 0x03, 0x19, 0x90,
-	0x5b, 0x6c, 0xca, 0xfb, 0x57, 0xb6, 0x09, 0xfd, 0x1c, 0xda, 0x4f, 0x31, 0xe4, 0x81, 0x4b, 0xb6,
-	0x61, 0x5d, 0x48, 0x16, 0x4a, 0xd3, 0xd8, 0x33, 0x0e, 0x5b, 0xf6, 0x6c, 0x43, 0xb6, 0xa0, 0x85,
-	0xbe, 0x6b, 0x36, 0x13, 0x5b, 0xbc, 0xa4, 0x4f, 0x60, 0xfd, 0x44, 0xb0, 0x33, 0x8c, 0x01, 0x91,
-	0xcf, 0xa5, 0x48, 0x01, 0xc9, 0x26, 0xb6, 0xca, 0x40, 0x32, 0x4f, 0x41, 0x66, 0x1b, 0x42, 0x60,
-	0xed, 0xf7, 0x10, 0xd1, 0x6c, 0x25, 0xc6, 0x64, 0x4d, 0xb7, 0x81, 0x1c, 0x9f, 0xa3, 0xf3, 0xfc,
-	0x67, 0x64, 0x9e, 0x3c, 0xb7, 0xf1, 0x45, 0x84, 0x42, 0xd2, 0x1e, 0xdc, 0xce, 0x59, 0xc5, 0x34,
-	0xf0, 0x05, 0xd2, 0xcf, 0xa0, 0x77, 0x1c, 0x22, 0x93, 0x78, 0x1c, 0x09, 0x19, 0x5c, 0x60, 0xa8,
-	0xfc, 0xe3, 0x7c, 0x78, 0xc1, 0xb8, 0x97, 0x9c, 0xa2, 0x63, 0xcf, 0x36, 0xf4, 0x1b, 0xd8, 0x29,
-	0xba, 0xcf, 0x02, 0x91, 0x0f, 0xa0, 0xeb, 0x28, 0xdb, 0x98, 0xbb, 0x0a, 0x05, 0xa9, 0x69, 0xe8,
-	0xd2, 0x87, 0x40, 0x9e, 0xa0, 0x2c, 0xa6, 0x59, 0x0a, 0xfb, 0xaf, 0x05, 0xb7, 0x73, 0x38, 0x95,
-	0x4f, 0x7b, 0x3e, 0xb2, 0x03, 0x6d, 0x21, 0x99, 0x8c, 0x44, 0xd2, 0xa6, 0x8e, 0xad, 0x76, 0xc4,
-	0x84, 0x1b, 0x13, 0xe6, 0x31, 0xdf, 0x49, 0x5b, 0x95, 0x6e, 0x89, 0x05, 0x1b, 0xf1, 0x77, 0x63,
-	0x13, 0x0f, 0xcd, 0xb5, 0x3d, 0xe3, 0x70, 0xc3, 0x9e, 0xef, 0xc9, 0x5d, 0x00, 0x17, 0x3d, 0xee,
-	0xbf, 0x88, 0xd0, 0x97, 0xe6, 0x7a, 0xf2, 0x6b, 0xc6, 0x42, 0xde, 0x07, 0x70, 0x92, 0x6e, 0xb8,
-	0x63, 0x26, 0xcd, 0x76, 0x12, 0xb8, 0xa3, 0x2c, 0x8f, 0x24, 0x19, 0x40, 0x7b, 0x9a, 0x70, 0xc0,
-	0xbc, 0xb1, 0x67, 0x1c, 0x76, 0x8f, 0xee, 0xf4, 0x0b, 0x2c, 0xe9, 0xcf, 0x28, 0x62, 0x2b, 0x37,
-	0xf2, 0x15, 0x74, 0x85, 0x0c, 0x42, 0x74, 0xc7, 0x2e, 0x93, 0xcc, 0xdc, 0x48, 0x50, 0x3b, 0x25,
-	0x54, 0x42, 0x13, 0x1b, 0x66, 0xae, 0x8f, 0x99, 0x64, 0xe4, 0x3b, 0xd8, 0xf4, 0x51, 0xbe, 0x0a,
-	0xc2, 0xe7, 0x63, 0x3c, 0x0b, 0x51, 0x08, 0xb3, 0x53, 0x89, 0xbd, 0xa9, 0xbc, 0x7f, 0x4c, 0x9c,
-	0xc9, 0xf7, 0x70, 0x8b, 0xfb, 0x42, 0xc6, 0xfd, 0x18, 0xbf, 0x0a, 0xb9, 0x44, 0x61, 0x42, 0x25,
-	0x7e, 0x33, 0x75, 0x7f, 0x96, 0x78, 0xc7, 0xf9, 0xe7, 0x01, 0x42, 0x64, 0xae, 0x30, 0xbb, 0xd5,
-	0xf9, 0x53, 0x6f, 0x3b, 0x76, 0xa6, 0xdf, 0xc2, 0x6e, 0xe6, 0x13, 0x8f, 0x50, 0x08, 0x1e, 0xf8,
-	0xb5, 0x19, 0xd2, 0x07, 0x4b, 0x87, 0x56, 0x3c, 0xd9, 0x82, 0x56, 0x14, 0xa6, 0x2c, 0x89, 0x97,
-	0xf4, 0x1f, 0x03, 0x7a, 0x27, 0x53, 0x57, 0xc3, 0xf9, 0x65, 0xa9, 0xb2, 0x34, 0x6a, 0x2e, 0xa6,
-	0x51, 0xab, 0x92, 0x46, 0x6b, 0x45, 0x1a, 0x51, 0x13, 0x76, 0x8a, 0xe7, 0x51, 0xb7, 0xf3, 0xd2,
-	0x80, 0x0f, 0xf3, 0x3f, 0x8d, 0xa2, 0x89, 0x70, 0x42, 0x3e, 0x95, 0x2b, 0x74, 0x68, 0xe1, 0xad,
-	0xb8, 0x22, 0x68, 0xab, 0x16, 0x41, 0xe9, 0x3e, 0xd0, 0xaa, 0xe3, 0xa8, 0x53, 0xff, 0x04, 0xf7,
-	0x6c, 0x74, 0x72, 0x63, 0xe2, 0x3a, 0xc7, 0xa6, 0x07, 0xb0, 0x5f, 0x1d, 0x47, 0xe5, 0xfb, 0x1a,
-	0x7a, 0x8f, 0xd1, 0xc3, 0xd5, 0xbf, 0x67, 0xdc, 0xf9, 0x22, 0x52, 0xc5, 0xb4, 0x61, 0x7b, 0xe8,
-	0x3b, 0xa3, 0xf9, 0x15, 0xab, 0xdd, 0xeb, 0x5d, 0xd8, 0xe0, 0xbe, 0x33, 0x16, 0xfc, 0xf5, 0x9c,
-	0x23, 0xdc, 0x77, 0x46, 0xfc, 0x35, 0xd2, 0x3f, 0x0d, 0xe8, 0x15, 0x82, 0x2a, 0x92, 0x5e, 0x7d,
-	0x08, 0xe3, 0x5a, 0x93, 0xa2, 0x59, 0x77, 0x52, 0xd0, 0x13, 0xb8, 0x33, 0xf4, 0x9d, 0x5f, 0xb2,
-	0xd7, 0xff, 0x6d, 0x94, 0xf6, 0xb7, 0x01, 0x66, 0x39, 0xee, 0x75, 0xab, 0x2b, 0x8f, 0xb3, 0xe6,
-	0x0a, 0xe3, 0x8c, 0x3e, 0x4b, 0x6a, 0x1c, 0x66, 0x47, 0x4c, 0xed, 0x1a, 0xdf, 0x85, 0x4e, 0x5c,
-	0xa3, 0x13, 0x44, 0xbe, 0x54, 0x45, 0xc6, 0x45, 0x1f, 0xc7, 0xfb, 0xb4, 0xca, 0x42, 0xe4, 0x37,
-	0xa8, 0xb2, 0x30, 0x34, 0x9b, 0xab, 0x0c, 0xcd, 0x5f, 0x73, 0x67, 0x99, 0x0d, 0xe2, 0xb7, 0x53,
-	0xe6, 0xa5, 0x01, 0xbb, 0x9a, 0xd0, 0xd7, 0xad, 0x53, 0xa3, 0x2e, 0xcd, 0x55, 0xd4, 0xe5, 0xe8,
-	0x5f, 0x00, 0x78, 0xf4, 0x74, 0x38, 0xc2, 0xf0, 0x25, 0x77, 0x90, 0x9c, 0x42, 0x37, 0xf3, 0x92,
-	0x21, 0xf7, 0x4a, 0x51, 0xca, 0xaf, 0x1f, 0x6b, 0xbf, 0xda, 0x49, 0x5d, 0xfa, 0x06, 0x71, 0x60,
-	0x33, 0xff, 0xbe, 0x21, 0x07, 0x65, 0xa4, 0xee, 0xbd, 0x64, 0x7d, 0xbc, 0xd4, 0x6f, 0x9e, 0xe4,
-	0x14, 0xba, 0x19, 0xc1, 0xd2, 0x14, 0x50, 0x7e, 0x27, 0x69, 0x0a, 0xd0, 0x3c, 0x8a, 0x68, 0x83,
-	0x04, 0xb9, 0x57, 0x96, 0x12, 0x43, 0x72, 0xbf, 0x0a, 0x9d, 0xd7, 0x5b, 0xeb, 0xd3, 0x5a, 0xbe,
-	0xd9, 0x8e, 0xe5, 0x25, 0x41, 0xd3, 0x31, 0xad, 0xda, 0x6a, 0x3a, 0xb6, 0x40, 0x05, 0x1b, 0xe4,
-	0x2f, 0x03, 0xac, 0xc5, 0xc2, 0x43, 0x8e, 0x96, 0x44, 0xd2, 0xa8, 0x8f, 0xf5, 0x60, 0x25, 0xcc,
-	0xfc, 0x24, 0x97, 0x06, 0xbc, 0x57, 0x25, 0x4a, 0xe4, 0xcb, 0x52, 0xdc, 0x1a, 0x5a, 0x68, 0x3d,
-	0x5c, 0x11, 0x95, 0x6d, 0x7f, 0x5e, 0xc1, 0x34, 0xed, 0xd7, 0x8a, 0xa3, 0xa6, 0xfd, 0x0b, 0xa4,
-	0xb0, 0x41, 0x7e, 0x83, 0x9b, 0x39, 0xdd, 0x22, 0x1f, 0x95, 0xb0, 0x3a, 0xb1, 0xb4, 0x0e, 0x96,
-	0xb9, 0xcd, 0x33, 0x70, 0xd8, 0x2a, 0xca, 0x07, 0x39, 0xd4, 0xa1, 0x75, 0xca, 0x65, 0x7d, 0x52,
-	0xc3, 0xb3, 0x90, 0x2a, 0x37, 0xc3, 0xf5, 0xa9, 0x74, 0x02, 0xa2, 0x4f, 0xa5, 0x15, 0x04, 0xda,
-	0x20, 0x1e, 0xbc, 0x53, 0x9a, 0xa3, 0xa4, 0x32, 0x42, 0x6e, 0x8c, 0x5b, 0xf7, 0xeb, 0xb8, 0xa6,
-	0xd9, 0x7e, 0xf8, 0xe2, 0x74, 0x70, 0xc6, 0xe5, 0x79, 0x34, 0xe9, 0x3b, 0xc1, 0xc5, 0x40, 0xe2,
-	0x1f, 0x92, 0x7b, 0xc8, 0x83, 0x74, 0x35, 0x78, 0x79, 0x34, 0x28, 0xfc, 0x8b, 0x9d, 0xb4, 0x93,
-	0x7f, 0xaf, 0x0f, 0xfe, 0x0f, 0x00, 0x00, 0xff, 0xff, 0x55, 0xf8, 0x49, 0x6e, 0xdf, 0x0e, 0x00,
-	0x00,
+	// 1115 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x58, 0xdd, 0x6e, 0x1b, 0x45,
+	0x14, 0xce, 0xda, 0x89, 0x1b, 0x1f, 0x93, 0xa4, 0x4c, 0x13, 0x77, 0xb3, 0xd0, 0x10, 0xa6, 0x21,
+	0xa4, 0x45, 0xd8, 0x90, 0x82, 0x2a, 0x2e, 0x10, 0x6a, 0x13, 0x68, 0x2d, 0x10, 0x54, 0x8e, 0x2a,
+	0xa4, 0x5c, 0x60, 0xd6, 0xbb, 0x27, 0xc9, 0x28, 0x9b, 0x5d, 0x77, 0x67, 0xdc, 0x3f, 0xae, 0xb8,
+	0x40, 0x48, 0x48, 0xe1, 0x1d, 0x78, 0x26, 0x5e, 0x08, 0xcd, 0x78, 0xd6, 0xde, 0x9f, 0xf1, 0xda,
+	0x09, 0x77, 0x33, 0x67, 0xbf, 0xf3, 0x37, 0x73, 0xce, 0xf9, 0x46, 0x0b, 0x5b, 0xee, 0x80, 0xb5,
+	0xfb, 0x2c, 0x08, 0x58, 0x78, 0xea, 0xb7, 0x07, 0xfd, 0xf1, 0xba, 0x35, 0x88, 0x23, 0x11, 0x91,
+	0x35, 0x77, 0xc0, 0x5a, 0x13, 0x59, 0x9f, 0x7e, 0x06, 0xb5, 0x67, 0x18, 0xb3, 0xc8, 0x27, 0xeb,
+	0xb0, 0xc4, 0x85, 0x1b, 0x0b, 0xdb, 0xda, 0xb6, 0xf6, 0xaa, 0xdd, 0xd1, 0x86, 0xdc, 0x84, 0x2a,
+	0x86, 0xbe, 0x5d, 0x51, 0x32, 0xb9, 0xa4, 0x4f, 0x60, 0xe9, 0x39, 0x77, 0x4f, 0x51, 0x2a, 0x0c,
+	0x43, 0x26, 0x78, 0xa2, 0xa0, 0x36, 0x52, 0x2a, 0x22, 0xe1, 0x06, 0x5a, 0x65, 0xb4, 0x21, 0x04,
+	0x16, 0x4f, 0x62, 0x44, 0xbb, 0xaa, 0x84, 0x6a, 0x4d, 0xd7, 0x81, 0x1c, 0x9c, 0xa1, 0x77, 0xfe,
+	0x14, 0xdd, 0x40, 0x9c, 0x75, 0xf1, 0xc5, 0x10, 0xb9, 0xa0, 0x1b, 0x70, 0x2b, 0x23, 0xe5, 0x83,
+	0x28, 0xe4, 0x48, 0x7f, 0x81, 0x8d, 0x83, 0x18, 0x5d, 0x81, 0x07, 0x43, 0x2e, 0xa2, 0x0b, 0x8c,
+	0x35, 0x5e, 0x06, 0x78, 0x8e, 0x6f, 0x54, 0x0c, 0xf5, 0xae, 0x5c, 0x92, 0x3b, 0x00, 0x03, 0x37,
+	0xc6, 0x50, 0xf4, 0xe4, 0x87, 0x8a, 0xfa, 0x50, 0x1f, 0x49, 0xbe, 0xc7, 0x37, 0x32, 0x40, 0xbc,
+	0x70, 0x59, 0xa0, 0x62, 0xa9, 0x77, 0x47, 0x1b, 0xfa, 0x15, 0x34, 0xf3, 0xf6, 0x47, 0x9e, 0xc9,
+	0x07, 0xd0, 0xf0, 0xb4, 0xac, 0xc7, 0x7c, 0xed, 0x08, 0x12, 0x51, 0xc7, 0xa7, 0xbb, 0x40, 0x9e,
+	0xa0, 0x98, 0x19, 0x17, 0xfd, 0x77, 0x11, 0x6e, 0x65, 0x80, 0xda, 0x41, 0x31, 0x83, 0x9c, 0xcb,
+	0x4a, 0xde, 0x65, 0x2e, 0xc5, 0xea, 0xd4, 0x14, 0x17, 0x53, 0x29, 0x92, 0x26, 0xd4, 0xb8, 0x70,
+	0xc5, 0x90, 0xdb, 0x4b, 0x4a, 0xac, 0x77, 0xc4, 0x86, 0x1b, 0x7d, 0x37, 0x70, 0x43, 0x0f, 0xed,
+	0x9a, 0xba, 0x9e, 0x64, 0x4b, 0x1c, 0x58, 0x96, 0xb5, 0xe2, 0xf6, 0x03, 0xb4, 0x6f, 0x6c, 0x5b,
+	0x7b, 0xcb, 0xdd, 0xf1, 0x9e, 0x6c, 0x01, 0xf8, 0x18, 0xb0, 0xf0, 0xc5, 0x10, 0x43, 0x61, 0x2f,
+	0xab, 0xaf, 0x29, 0x89, 0x0c, 0xd1, 0x53, 0x07, 0xea, 0xf7, 0x5c, 0x61, 0xd7, 0x95, 0xe1, 0xba,
+	0x96, 0x3c, 0x12, 0xa4, 0x0d, 0xb5, 0x81, 0xaa, 0x3b, 0x1b, 0xb6, 0xad, 0xbd, 0xc6, 0xfe, 0xed,
+	0x56, 0xae, 0x32, 0x5b, 0xa3, 0xb2, 0xec, 0x6a, 0x18, 0x79, 0x08, 0x0d, 0x2e, 0xa2, 0x18, 0xfd,
+	0x9e, 0xef, 0x0a, 0xd7, 0x6e, 0x28, 0xad, 0x66, 0x41, 0x4b, 0x95, 0x66, 0x17, 0x46, 0xd0, 0x43,
+	0x57, 0xb8, 0xe4, 0x6b, 0x58, 0x0d, 0x51, 0xbc, 0x8a, 0xe2, 0xf3, 0x1e, 0x9e, 0xc6, 0xc8, 0xb9,
+	0xfd, 0x4e, 0xa9, 0xee, 0x8a, 0x46, 0x7f, 0xab, 0xc0, 0xe4, 0x1b, 0x58, 0x63, 0x21, 0x17, 0xf2,
+	0x3c, 0x7a, 0xaf, 0x62, 0x26, 0x90, 0xdb, 0x2b, 0xa5, 0xfa, 0xab, 0x09, 0xfc, 0x67, 0x85, 0x96,
+	0xfe, 0xc7, 0x06, 0x62, 0x74, 0x7d, 0x6e, 0xaf, 0x96, 0xfb, 0x4f, 0xd0, 0x5d, 0x09, 0x1e, 0x9d,
+	0xf3, 0x00, 0x43, 0x1f, 0x43, 0xc1, 0xed, 0x35, 0x75, 0x8e, 0x29, 0x09, 0xed, 0xc1, 0x9d, 0x1f,
+	0x18, 0x17, 0x87, 0x89, 0x24, 0x29, 0x2f, 0x3e, 0xbd, 0x41, 0x9a, 0x50, 0x8b, 0x4e, 0x4e, 0x38,
+	0x0a, 0xdd, 0xa3, 0x7a, 0x27, 0xcb, 0x26, 0x60, 0x17, 0x4c, 0xe8, 0x2e, 0x1d, 0x6d, 0xe8, 0x1f,
+	0x16, 0x6c, 0x4d, 0xf3, 0xa0, 0x2b, 0xf8, 0x31, 0xd4, 0x93, 0xe2, 0x94, 0xd3, 0xa0, 0xba, 0xd7,
+	0xd8, 0xdf, 0x29, 0x64, 0x67, 0x28, 0xfd, 0xee, 0x44, 0x4d, 0xd6, 0x7c, 0x88, 0xaf, 0x45, 0x2f,
+	0x13, 0x19, 0x48, 0xd1, 0x4f, 0x4a, 0x42, 0x3f, 0x85, 0xcd, 0x94, 0x89, 0x23, 0xe4, 0x9c, 0x45,
+	0xe1, 0xf4, 0x6e, 0x6b, 0x81, 0x63, 0x82, 0x4f, 0x7a, 0x6e, 0x18, 0x07, 0x09, 0x7e, 0x18, 0x07,
+	0xf4, 0x6f, 0x0b, 0x36, 0x9e, 0x0f, 0x7c, 0xc3, 0x84, 0x99, 0x35, 0x00, 0xd2, 0x0d, 0x54, 0x99,
+	0xde, 0x40, 0xd5, 0xd2, 0x06, 0x5a, 0xcc, 0x37, 0x10, 0xb5, 0xa1, 0x99, 0x8f, 0x47, 0xcf, 0xc2,
+	0x4b, 0x0b, 0x3e, 0xcc, 0x7e, 0x3a, 0x1a, 0xf6, 0xb9, 0x17, 0xb3, 0x81, 0x48, 0x1d, 0xc9, 0xcc,
+	0xb0, 0x27, 0xf3, 0xa0, 0x92, 0x99, 0x07, 0x93, 0xd6, 0xac, 0xce, 0xd5, 0x9a, 0x74, 0x07, 0x68,
+	0x59, 0x38, 0x3a, 0xea, 0x87, 0x70, 0xb7, 0x8b, 0x5e, 0x66, 0xc6, 0x9a, 0xc2, 0x2e, 0xde, 0xe4,
+	0x2e, 0xec, 0x94, 0x2b, 0x6a, 0x07, 0xf7, 0x60, 0xe3, 0x10, 0x03, 0x9c, 0x83, 0x22, 0xe4, 0xd9,
+	0xe6, 0xa1, 0xda, 0xc8, 0x01, 0xac, 0x77, 0x42, 0xef, 0x68, 0x3c, 0x3e, 0xa6, 0x77, 0xd1, 0x26,
+	0x2c, 0xb3, 0xd0, 0xeb, 0x71, 0xf6, 0x76, 0x7c, 0xed, 0x2c, 0xf4, 0x8e, 0xd8, 0x5b, 0xa4, 0xbf,
+	0x5b, 0xb0, 0x91, 0xb3, 0xa2, 0xeb, 0x6e, 0x72, 0xb6, 0xd6, 0xb5, 0xc6, 0x5e, 0x65, 0xde, 0xb1,
+	0x47, 0xbf, 0x83, 0xdb, 0x9d, 0xd0, 0xfb, 0x31, 0x3d, 0xcb, 0xae, 0x95, 0xcb, 0x5f, 0x16, 0xd8,
+	0x45, 0x43, 0xd7, 0x4d, 0xa7, 0x38, 0x8c, 0x2b, 0x57, 0x18, 0xc6, 0xf4, 0xa9, 0x4a, 0xaa, 0x93,
+	0x1e, 0x90, 0xd3, 0x93, 0x7a, 0x0f, 0xea, 0x32, 0x29, 0x2f, 0x1a, 0x86, 0xc9, 0x3c, 0x91, 0x59,
+	0x1e, 0xc8, 0x7d, 0x92, 0x56, 0xce, 0xd4, 0xff, 0x48, 0x2b, 0x37, 0xe3, 0x2b, 0x57, 0x98, 0xf1,
+	0xb4, 0x93, 0x89, 0x65, 0xc4, 0x1b, 0xd7, 0xcc, 0xeb, 0xd2, 0x82, 0x4d, 0x83, 0xad, 0xeb, 0x26,
+	0x66, 0x60, 0xbf, 0xca, 0x55, 0xd8, 0x6f, 0xff, 0x9f, 0x06, 0xc0, 0xa3, 0x67, 0x9d, 0x23, 0x8c,
+	0x5f, 0x32, 0x0f, 0xc9, 0x31, 0x34, 0x52, 0xaf, 0x3b, 0x72, 0xb7, 0x60, 0xa5, 0xf8, 0x22, 0x74,
+	0x76, 0xca, 0x41, 0xba, 0x71, 0x17, 0x88, 0x07, 0xab, 0xd9, 0x27, 0x1c, 0xd9, 0x2d, 0x6a, 0x9a,
+	0xde, 0x90, 0xce, 0xc7, 0x33, 0x71, 0x63, 0x27, 0xc7, 0xd0, 0x48, 0xd1, 0x8a, 0x21, 0x81, 0xe2,
+	0x53, 0xd0, 0x99, 0x8b, 0x0b, 0xe9, 0x02, 0xf9, 0x0d, 0x9a, 0x66, 0xa2, 0x25, 0xad, 0x82, 0x85,
+	0x52, 0xce, 0x77, 0xda, 0x73, 0xe3, 0xc7, 0xce, 0xa3, 0xcc, 0x2b, 0x56, 0xf3, 0x25, 0xb9, 0x5f,
+	0x16, 0x7a, 0x96, 0x83, 0x9d, 0x4f, 0xe6, 0xc2, 0xa6, 0xaf, 0x2b, 0xcb, 0x1a, 0x86, 0xeb, 0x32,
+	0x12, 0xb2, 0xe1, 0xba, 0xa6, 0x10, 0xe5, 0x02, 0xf9, 0xd3, 0x02, 0x67, 0x3a, 0x37, 0x91, 0xfd,
+	0x19, 0x96, 0x0c, 0x04, 0xe5, 0x3c, 0xb8, 0x92, 0xce, 0x38, 0x92, 0x4b, 0x0b, 0xde, 0x2f, 0xa3,
+	0x31, 0xf2, 0x45, 0xc1, 0xee, 0x1c, 0x74, 0xe9, 0x7c, 0x79, 0x45, 0xad, 0xf4, 0xf1, 0x67, 0x29,
+	0xd0, 0x70, 0xfc, 0x46, 0x3a, 0x35, 0x1c, 0xff, 0x14, 0x2e, 0x5d, 0x20, 0xbf, 0xc2, 0x4a, 0x86,
+	0x07, 0xc9, 0x47, 0x05, 0x5d, 0x13, 0xdb, 0x3a, 0xbb, 0xb3, 0x60, 0x63, 0x0f, 0x0c, 0x6e, 0xe6,
+	0xd9, 0x89, 0xec, 0x99, 0xb4, 0x4d, 0x4c, 0xe8, 0xdc, 0x9b, 0x03, 0x99, 0x73, 0x95, 0x61, 0x0c,
+	0xb3, 0x2b, 0x13, 0x3f, 0x99, 0x5d, 0x19, 0xe9, 0x87, 0x2e, 0x90, 0x00, 0xde, 0x2d, 0x0c, 0x71,
+	0x52, 0x6a, 0x21, 0x43, 0x1a, 0xce, 0xfd, 0x79, 0xa0, 0x89, 0xb7, 0xc7, 0x9f, 0x1f, 0xb7, 0x4f,
+	0x99, 0x38, 0x1b, 0xf6, 0x5b, 0x5e, 0x74, 0xd1, 0x16, 0xf8, 0x5a, 0xb0, 0x00, 0x59, 0x94, 0xac,
+	0xda, 0x2f, 0xf7, 0xdb, 0xb9, 0xdf, 0x0a, 0xfd, 0x9a, 0xfa, 0x9d, 0xf0, 0xe0, 0xbf, 0x00, 0x00,
+	0x00, 0xff, 0xff, 0x97, 0xab, 0x69, 0xbf, 0x70, 0x10, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1309,6 +1470,7 @@ type APIServiceClient interface {
 	CheckHealth(ctx context.Context, in *CheckHealthRequest, opts ...grpc.CallOption) (*CheckHealthResponse, error)
 	CreateCustomer(ctx context.Context, in *CreateCustomerRequest, opts ...grpc.CallOption) (*CreateCustomerResponse, error)
 	GetCustomer(ctx context.Context, in *GetCustomerRequest, opts ...grpc.CallOption) (*GetCustomerResponse, error)
+	ListDependentCustomers(ctx context.Context, in *ListDependentCustomersRequest, opts ...grpc.CallOption) (*ListDependentCustomersResponse, error)
 	GetCustomerSession(ctx context.Context, in *GetCustomerSessionRequest, opts ...grpc.CallOption) (*GetCustomerSessionResponse, error)
 	UpdateCustomer(ctx context.Context, in *UpdateCustomerRequest, opts ...grpc.CallOption) (*UpdateCustomerResponse, error)
 	UpdateCustomerSubscription(ctx context.Context, in *UpdateCustomerSubscriptionRequest, opts ...grpc.CallOption) (*UpdateCustomerSubscriptionResponse, error)
@@ -1349,6 +1511,15 @@ func (c *aPIServiceClient) CreateCustomer(ctx context.Context, in *CreateCustome
 func (c *aPIServiceClient) GetCustomer(ctx context.Context, in *GetCustomerRequest, opts ...grpc.CallOption) (*GetCustomerResponse, error) {
 	out := new(GetCustomerResponse)
 	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/GetCustomer", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aPIServiceClient) ListDependentCustomers(ctx context.Context, in *ListDependentCustomersRequest, opts ...grpc.CallOption) (*ListDependentCustomersResponse, error) {
+	out := new(ListDependentCustomersResponse)
+	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/ListDependentCustomers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1441,6 +1612,7 @@ type APIServiceServer interface {
 	CheckHealth(context.Context, *CheckHealthRequest) (*CheckHealthResponse, error)
 	CreateCustomer(context.Context, *CreateCustomerRequest) (*CreateCustomerResponse, error)
 	GetCustomer(context.Context, *GetCustomerRequest) (*GetCustomerResponse, error)
+	ListDependentCustomers(context.Context, *ListDependentCustomersRequest) (*ListDependentCustomersResponse, error)
 	GetCustomerSession(context.Context, *GetCustomerSessionRequest) (*GetCustomerSessionResponse, error)
 	UpdateCustomer(context.Context, *UpdateCustomerRequest) (*UpdateCustomerResponse, error)
 	UpdateCustomerSubscription(context.Context, *UpdateCustomerSubscriptionRequest) (*UpdateCustomerSubscriptionResponse, error)
@@ -1464,6 +1636,9 @@ func (*UnimplementedAPIServiceServer) CreateCustomer(ctx context.Context, req *C
 }
 func (*UnimplementedAPIServiceServer) GetCustomer(ctx context.Context, req *GetCustomerRequest) (*GetCustomerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCustomer not implemented")
+}
+func (*UnimplementedAPIServiceServer) ListDependentCustomers(ctx context.Context, req *ListDependentCustomersRequest) (*ListDependentCustomersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDependentCustomers not implemented")
 }
 func (*UnimplementedAPIServiceServer) GetCustomerSession(ctx context.Context, req *GetCustomerSessionRequest) (*GetCustomerSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCustomerSession not implemented")
@@ -1547,6 +1722,24 @@ func _APIService_GetCustomer_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(APIServiceServer).GetCustomer(ctx, req.(*GetCustomerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _APIService_ListDependentCustomers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDependentCustomersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(APIServiceServer).ListDependentCustomers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.billingd.pb.APIService/ListDependentCustomers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(APIServiceServer).ListDependentCustomers(ctx, req.(*ListDependentCustomersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1728,6 +1921,10 @@ var _APIService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCustomer",
 			Handler:    _APIService_GetCustomer_Handler,
+		},
+		{
+			MethodName: "ListDependentCustomers",
+			Handler:    _APIService_ListDependentCustomers_Handler,
 		},
 		{
 			MethodName: "GetCustomerSession",

@@ -235,10 +235,6 @@ func TestAccounts_SetToken(t *testing.T) {
 	assert.NotEmpty(t, got.Token)
 }
 
-func TestAccounts_SetCustomerID(t *testing.T) {
-
-}
-
 func TestAccounts_UpdatePowInfo(t *testing.T) {
 	db := newDB(t)
 	col, err := NewAccounts(context.Background(), db)

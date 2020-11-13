@@ -48,7 +48,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
 		AddrMongoURI:    "mongodb://127.0.0.1:27017",
 
-		MongoName: util.MakeToken(12),
+		AddrMongoName: util.MakeToken(12),
 
 		EmailFrom:   "test@email.textile.io",
 		EmailDomain: "email.textile.io",

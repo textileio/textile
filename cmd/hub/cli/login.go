@@ -3,13 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/caarlos0/spin"
 	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"
 )
@@ -39,14 +36,7 @@ var loginCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		config.Viper.Set("session", res.Session)
 
-		home, err := homedir.Dir()
-		cmd.ErrCheck(err)
-		dir := filepath.Join(home, config.Dir)
-		err = os.MkdirAll(dir, os.ModePerm)
-		cmd.ErrCheck(err)
-		filename := filepath.Join(dir, config.Name+".yml")
-		err = config.Viper.WriteConfigAs(filename)
-		cmd.ErrCheck(err)
+		cmd.WriteConfigToHome(config)
 
 		fmt.Println(aurora.Sprintf("%s Email confirmed", aurora.Green("✔")))
 		cmd.Success("You are now logged in. Initialize a new bucket with `%s`.", aurora.Cyan(Name+" buck init"))

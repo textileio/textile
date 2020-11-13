@@ -3,11 +3,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -50,6 +53,9 @@ func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterc
 }
 
 func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Context, error) {
+	if t.bc == nil {
+		return ctx, nil
+	}
 	for _, ignored := range authIgnoredMethods {
 		if method == ignored {
 			return ctx, nil
@@ -61,12 +67,52 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		}
 	}
 	account, ok := mdb.AccountFromContext(ctx)
-	if !ok || account.Owner().CustomerID == "" {
+	if !ok {
 		return ctx, nil
 	}
-	cus, err := t.bc.GetCustomer(ctx, account.Owner().CustomerID)
+
+	// Collect new users.
+	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
+		var powInfo *mdb.PowInfo
+		if t.pc != nil {
+			ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
+			if err != nil {
+				return ctx, err
+			}
+			powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
+		}
+		user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
+		if err != nil {
+			return ctx, err
+		}
+		ctx = mdb.NewAccountContext(ctx, user, account.Org)
+		account, _ = mdb.AccountFromContext(ctx)
+	}
+
+	// Collect new customers.
+	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
-		return ctx, err
+		if strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
+			opts := []billing.Option{
+				billing.WithEmail(account.Owner().Email),
+			}
+			if account.Owner().Type == mdb.User {
+				key, ok := mdb.APIKeyFromContext(ctx)
+				if !ok {
+					return ctx, status.Error(codes.PermissionDenied, "Bad API key")
+				}
+				opts = append(opts, billing.WithParentKey(key.Owner))
+			}
+			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
+				return ctx, err
+			}
+			cus, err = t.bc.GetCustomer(ctx, account.Owner().Key)
+			if err != nil {
+				return ctx, err
+			}
+		} else {
+			return ctx, err
+		}
 	}
 	if err := common.StatusCheck(cus.Status); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
@@ -117,13 +163,20 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 }
 
 func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
+	if t.bc == nil {
+		return nil
+	}
 	for _, ignored := range authIgnoredMethods {
 		if method == ignored {
 			return nil
 		}
 	}
 	account, ok := mdb.AccountFromContext(ctx)
-	if !ok || account.Owner().CustomerID == "" {
+	if !ok {
+		return nil
+	}
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if !ok {
 		return nil
 	}
 	switch method {
@@ -133,12 +186,9 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
-		owner, ok := buckets.BucketOwnerFromContext(ctx)
-		if ok {
-			_, err := t.bc.IncStoredData(ctx, account.Owner().CustomerID, owner.StorageDelta)
-			if err != nil {
-				return err
-			}
+		_, err := t.bc.IncStoredData(ctx, account.Owner().Key, owner.StorageDelta)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

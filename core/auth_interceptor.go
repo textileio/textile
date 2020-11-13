@@ -35,10 +35,10 @@ func (t *Textile) authFunc(ctx context.Context) (context.Context, error) {
 	if threadName, ok := common.ThreadNameFromMD(ctx); ok {
 		ctx = common.NewThreadNameContext(ctx, threadName)
 	}
-	if threadToken, err := thread.NewTokenFromMD(ctx); err != nil {
+	if token, err := thread.NewTokenFromMD(ctx); err != nil {
 		return nil, err
 	} else {
-		ctx = thread.NewTokenContext(ctx, threadToken)
+		ctx = thread.NewTokenContext(ctx, token)
 	}
 
 	return t.newAuthCtx(ctx, method, true)
@@ -154,7 +154,7 @@ func (t *Textile) newAuthCtx(ctx context.Context, method string, touchSession bo
 				}
 				if user == nil {
 					// Attach a temp user context that will be accessible in the next interceptor.
-					user = &mdb.Account{Key: ukey}
+					user = &mdb.Account{Key: ukey, Type: mdb.User}
 				}
 				ctx = mdb.NewAccountContext(ctx, user, nil)
 			} else if method != "/threads.pb.API/GetToken" && method != "/threads.net.pb.API/GetToken" {

@@ -43,6 +43,14 @@ var (
 				Key:      "addr.api_proxy",
 				DefValue: "/ip4/127.0.0.1/tcp/3007",
 			},
+			"addrMongoUri": {
+				Key:      "addr.mongo_uri",
+				DefValue: "mongodb://127.0.0.1:27017",
+			},
+			"addrMongoName": {
+				Key:      "addr.mongo_name",
+				DefValue: "buckets",
+			},
 			"addrThreadsHost": {
 				Key:      "addr.threads.host",
 				DefValue: "/ip4/0.0.0.0/tcp/4006",
@@ -62,10 +70,6 @@ var (
 			"addrPowergateApi": {
 				Key:      "addr.powergate.api",
 				DefValue: "",
-			},
-			"addrMongoUri": {
-				Key:      "addr.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017",
 			},
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
@@ -123,6 +127,14 @@ func init() {
 		config.Flags["addrApiProxy"].DefValue.(string),
 		"Hub API proxy listen address")
 	rootCmd.PersistentFlags().String(
+		"addrMongoUri",
+		config.Flags["addrMongoUri"].DefValue.(string),
+		"MongoDB connection URI")
+	rootCmd.PersistentFlags().String(
+		"addrMongoName",
+		config.Flags["addrMongoName"].DefValue.(string),
+		"MongoDB database name")
+	rootCmd.PersistentFlags().String(
 		"addrThreadsHost",
 		config.Flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
@@ -142,10 +154,6 @@ func init() {
 		"addrPowergateApi",
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
-	rootCmd.PersistentFlags().String(
-		"addrMongoUri",
-		config.Flags["addrMongoUri"].DefValue.(string),
-		"MongoDB connection URI")
 
 	// Gateway settings
 	rootCmd.PersistentFlags().Bool(
@@ -197,15 +205,16 @@ var rootCmd = &cobra.Command{
 
 		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
 		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
+
+		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
+		addrMongoName := config.Viper.GetString("addr.mongo_name")
+
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
-
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
-
-		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 
 		dnsDomain := config.Viper.GetString("dns.domain")
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
@@ -222,18 +231,20 @@ var rootCmd = &cobra.Command{
 		textile, err := core.NewTextile(ctx, core.Config{
 			RepoPath: config.Viper.GetString("repo"),
 
-			AddrAPI:          addrApi,
-			AddrAPIProxy:     addrApiProxy,
+			AddrAPI:      addrApi,
+			AddrAPIProxy: addrApiProxy,
+
+			AddrMongoURI:  addrMongoUri,
+			AddrMongoName: addrMongoName,
+
 			AddrThreadsHost:  addrThreadsHost,
 			AddrIPFSAPI:      addrIpfsApi,
-			AddrGatewayHost:  addrGatewayHost,
-			AddrGatewayURL:   addrGatewayUrl,
-			AddrMongoURI:     addrMongoUri,
 			AddrPowergateAPI: addrPowergateApi,
 
-			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
+			AddrGatewayHost: addrGatewayHost,
+			AddrGatewayURL:  addrGatewayUrl,
 
-			MongoName: "buckets",
+			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
 
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
@@ -242,12 +253,15 @@ var rootCmd = &cobra.Command{
 			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)
-		defer textile.Close(false)
 		textile.Bootstrap()
 
 		fmt.Println("Welcome to Buckets!")
 		fmt.Println("Your peer ID is " + textile.HostID().String())
 
-		select {}
+		cmd.HandleInterrupt(func() {
+			if err := textile.Close(false); err != nil {
+				fmt.Println(err.Error())
+			}
+		})
 	},
 }

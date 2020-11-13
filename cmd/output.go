@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -81,6 +82,15 @@ func ErrCheck(err error, args ...interface{}) {
 	if err != nil {
 		Fatal(err, args...)
 	}
+}
+
+func HandleInterrupt(stop func()) {
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
+	stop()
+	os.Exit(1)
 }
 
 func RenderTable(header []string, data [][]string) {

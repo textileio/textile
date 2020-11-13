@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -43,7 +41,7 @@ var (
 			},
 			"addrMongoName": {
 				Key:      "addr.mongo_name",
-				DefValue: "hub_billing",
+				DefValue: "textile_billing",
 			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
@@ -65,10 +63,6 @@ var (
 				Key:      "stripe.webhook_secret",
 				DefValue: "",
 			},
-			"stripeCreatePrices": {
-				Key:      "stripe.create_prices",
-				DefValue: false,
-			},
 			"stripeStoredDataPrice": {
 				Key:      "stripe.stored_data.price",
 				DefValue: "",
@@ -83,6 +77,22 @@ var (
 			},
 			"stripeInstanceWritesPrice": {
 				Key:      "stripe.instance_writes.price",
+				DefValue: "",
+			},
+			"stripeStoredDataDependentPrice": {
+				Key:      "stripe.stored_data.dependent_price",
+				DefValue: "",
+			},
+			"stripeNetworkEgressDependentPrice": {
+				Key:      "stripe.network_egress.dependent_price",
+				DefValue: "",
+			},
+			"stripeInstanceReadsDependentPrice": {
+				Key:      "stripe.instance_reads.dependent_price",
+				DefValue: "",
+			},
+			"stripeInstanceWritesDependentPrice": {
+				Key:      "stripe.instance_writes.dependent_price",
 				DefValue: "",
 			},
 		},
@@ -145,10 +155,6 @@ func init() {
 		"stripeWebhookSecret",
 		config.Flags["stripeWebhookSecret"].DefValue.(string),
 		"Stripe webhook endpoint secret")
-	rootCmd.PersistentFlags().Bool(
-		"stripeCreatePrices",
-		config.Flags["stripeCreatePrices"].DefValue.(bool),
-		"Create Stripe subscription prices (overrides explicitly given price IDs)")
 	rootCmd.PersistentFlags().String(
 		"stripeStoredDataPrice",
 		config.Flags["stripeStoredDataPrice"].DefValue.(string),
@@ -165,6 +171,22 @@ func init() {
 		"stripeInstanceWritesPrice",
 		config.Flags["stripeInstanceWritesPrice"].DefValue.(string),
 		"Stripe price ID for instance writes")
+	rootCmd.PersistentFlags().String(
+		"stripeStoredDataDependentPrice",
+		config.Flags["stripeStoredDataDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users stored data")
+	rootCmd.PersistentFlags().String(
+		"stripeNetworkEgressDependentPrice",
+		config.Flags["stripeNetworkEgressDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users network egress")
+	rootCmd.PersistentFlags().String(
+		"stripeInstanceReadsDependentPrice",
+		config.Flags["stripeInstanceReadsDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users instance reads")
+	rootCmd.PersistentFlags().String(
+		"stripeInstanceWritesDependentPrice",
+		config.Flags["stripeInstanceWritesDependentPrice"].DefValue.(string),
+		"Stripe price ID for dependent users instance writes")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -204,11 +226,14 @@ var rootCmd = &cobra.Command{
 		stripeApiKey := config.Viper.GetString("stripe.api_key")
 		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
 		stripeWebhookSecret := config.Viper.GetString("stripe.webhook_secret")
-		stripeCreatePrices := config.Viper.GetBool("stripe.create_prices")
 		stripeStoredDataPrice := config.Viper.GetString("stripe.stored_data.price")
 		stripeNetworkEgressPrice := config.Viper.GetString("stripe.network_egress.price")
 		stripeInstanceReadsPrice := config.Viper.GetString("stripe.instance_reads.price")
 		stripeInstanceWritesPrice := config.Viper.GetString("stripe.instance_writes.price")
+		stripeStoredDataDependentPrice := config.Viper.GetString("stripe.stored_data.dependent_price")
+		stripeNetworkEgressDependentPrice := config.Viper.GetString("stripe.network_egress.dependent_price")
+		stripeInstanceReadsDependentPrice := config.Viper.GetString("stripe.instance_reads.dependent_price")
+		stripeInstanceWritesDependentPrice := config.Viper.GetString("stripe.instance_writes.dependent_price")
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
@@ -219,20 +244,24 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		api, err := service.NewService(ctx, service.Config{
-			ListenAddr:             addrApi,
-			StripeAPIURL:           stripeApiUrl,
-			StripeAPIKey:           stripeApiKey,
-			StripeSessionReturnURL: stripeSessionReturnUrl,
-			StripeWebhookSecret:    stripeWebhookSecret,
-			DBURI:                  addrMongoUri,
-			DBName:                 addrMongoName,
-			GatewayHostAddr:        addrGatewayHost,
-			StoredDataPriceID:      stripeStoredDataPrice,
-			NetworkEgressPriceID:   stripeNetworkEgressPrice,
-			InstanceReadsPriceID:   stripeInstanceReadsPrice,
-			InstanceWritesPriceID:  stripeInstanceWritesPrice,
+			ListenAddr:                     addrApi,
+			StripeAPIURL:                   stripeApiUrl,
+			StripeAPIKey:                   stripeApiKey,
+			StripeSessionReturnURL:         stripeSessionReturnUrl,
+			StripeWebhookSecret:            stripeWebhookSecret,
+			DBURI:                          addrMongoUri,
+			DBName:                         addrMongoName,
+			GatewayHostAddr:                addrGatewayHost,
+			StoredDataPriceID:              stripeStoredDataPrice,
+			NetworkEgressPriceID:           stripeNetworkEgressPrice,
+			InstanceReadsPriceID:           stripeInstanceReadsPrice,
+			InstanceWritesPriceID:          stripeInstanceWritesPrice,
+			StoredDataDependentPriceID:     stripeStoredDataDependentPrice,
+			NetworkEgressDependentPriceID:  stripeNetworkEgressDependentPrice,
+			InstanceReadsDependentPriceID:  stripeInstanceReadsDependentPrice,
+			InstanceWritesDependentPriceID: stripeInstanceWritesDependentPrice,
 			Debug: config.Viper.GetBool("log.debug"),
-		}, stripeCreatePrices)
+		})
 		cmd.ErrCheck(err)
 
 		err = api.Start()
@@ -240,14 +269,10 @@ var rootCmd = &cobra.Command{
 
 		fmt.Println("Welcome to Hub Billing!")
 
-		quit := make(chan os.Signal)
-		signal.Notify(quit, os.Interrupt)
-		<-quit
-		fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
-		err = api.Stop(false)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
+		cmd.HandleInterrupt(func() {
+			if err := api.Stop(false); err != nil {
+				fmt.Println(err.Error())
+			}
+		})
 	},
 }

@@ -68,7 +68,7 @@ require (
 	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v1.0.0
+	github.com/textileio/go-threads v1.0.1
 	github.com/textileio/powergate v0.6.7
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1
@@ -79,7 +79,6 @@ require (
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
-	gotest.tools v2.2.0+incompatible
 )
 
 replace github.com/filecoin-project/filecoin-ffi => github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200904205544-405691046034

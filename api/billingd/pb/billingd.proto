@@ -18,7 +18,9 @@ message CheckHealthRequest {}
 message CheckHealthResponse {}
 
 message CreateCustomerRequest {
-    string email = 1;
+    string key = 1;
+    string parent_key = 2;
+    string email = 3;
 }
 
 message CreateCustomerResponse {
@@ -26,26 +28,42 @@ message CreateCustomerResponse {
 }
 
 message GetCustomerRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message GetCustomerResponse {
-    string email = 1;
-    string status = 2;
-    int64 balance = 3;
-    bool billable = 4;
-    bool delinquent = 5;
-    int64 created_at = 6;
+    string key = 1;
+    string customer_id = 2;
+    string parent_key = 3;
+    string email = 4;
+    string status = 5;
+    int64 balance = 6;
+    bool billable = 7;
+    bool delinquent = 8;
+    int64 created_at = 9;
 
-    Period period = 7;
-    Usage stored_data = 8;
-    Usage network_egress = 9;
-    Usage instance_writes = 10;
-    Usage instance_reads = 11;
+    Period period = 10;
+    Usage stored_data = 11;
+    Usage network_egress = 12;
+    Usage instance_writes = 13;
+    Usage instance_reads = 14;
+
+    int64 dependents = 15;
+}
+
+message ListDependentCustomersRequest {
+    string key = 1;
+    int64 offset = 2;
+    int64 limit = 3;
+}
+
+message ListDependentCustomersResponse {
+    repeated GetCustomerResponse customers = 1;
+    int64 next_offset = 2;
 }
 
 message GetCustomerSessionRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message GetCustomerSessionResponse {
@@ -70,19 +88,19 @@ message UpdateCustomerSubscriptionRequest {
 message UpdateCustomerSubscriptionResponse {}
 
 message RecreateCustomerSubscriptionRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message RecreateCustomerSubscriptionResponse {}
 
 message DeleteCustomerRequest {
-    string customer_id = 1;
+    string key = 1;
 }
 
 message DeleteCustomerResponse {}
 
 message IncStoredDataRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_size = 2;
 }
 
@@ -92,7 +110,7 @@ message IncStoredDataResponse {
 }
 
 message IncNetworkEgressRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_size = 2;
 }
 
@@ -102,7 +120,7 @@ message IncNetworkEgressResponse {
 }
 
 message IncInstanceReadsRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_count = 2;
 }
 
@@ -112,7 +130,7 @@ message IncInstanceReadsResponse {
 }
 
 message IncInstanceWritesRequest {
-    string customer_id = 1;
+    string key = 1;
     int64 inc_count = 2;
 }
 
@@ -125,6 +143,7 @@ service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
     rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {}
+    rpc ListDependentCustomers(ListDependentCustomersRequest) returns (ListDependentCustomersResponse) {}
     rpc GetCustomerSession(GetCustomerSessionRequest) returns (GetCustomerSessionResponse) {}
     rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {}
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}

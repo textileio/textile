@@ -86,7 +86,7 @@ func initConfig(v *viper.Viper, file, pre, cdir, name, envPre string, global boo
 	return true
 }
 
-// WriteConfig writes the viper config with name.
+// WriteConfig writes the viper config based on the command.
 func WriteConfig(c *cobra.Command, v *viper.Viper, name string) {
 	var dir string
 	if !c.Flag("dir").Changed {
@@ -109,6 +109,18 @@ func WriteConfig(c *cobra.Command, v *viper.Viper, name string) {
 	if err := v.WriteConfigAs(filename); err != nil {
 		Fatal(err)
 	}
+}
+
+// WriteConfigToHome writes config to the home directory.
+func WriteConfigToHome(config *Config) {
+	home, err := homedir.Dir()
+	ErrCheck(err)
+	dir := filepath.Join(home, config.Dir)
+	err = os.MkdirAll(dir, os.ModePerm)
+	ErrCheck(err)
+	filename := filepath.Join(dir, config.Name+".yml")
+	err = config.Viper.WriteConfigAs(filename)
+	ErrCheck(err)
 }
 
 // BindFlags binds the flags to the viper config values.

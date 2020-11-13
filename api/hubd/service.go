@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -111,17 +112,6 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	}
 	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
 		return nil, err
-	}
-
-	// Create a customer
-	if s.BillingClient != nil {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, req.Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, dev.Key, cusID); err != nil {
-			return nil, err
-		}
 	}
 
 	// Check for pending invites
@@ -404,17 +394,6 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		return nil, err
 	}
 
-	// Create a customer using the dev's email address
-	if s.BillingClient != nil {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, account.User.Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, org.Key, cusID); err != nil {
-			return nil, err
-		}
-	}
-
 	orgInfo, err := s.orgToPbOrg(org)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
@@ -583,16 +562,20 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	if err != nil {
 		return nil, err
 	}
-	if account.Owner().CustomerID == "" {
-		cusID, err := s.BillingClient.CreateCustomer(ctx, account.Owner().Email)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.Collections.Accounts.SetCustomerID(ctx, account.Owner().Key, cusID); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := s.BillingClient.RecreateCustomerSubscription(ctx, account.Owner().CustomerID); err != nil {
+
+	if _, err := s.BillingClient.CreateCustomer(
+		ctx,
+		account.Owner().Key,
+		billing.WithEmail(account.Owner().Email),
+	); err != nil {
+		if strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
+			if err := s.BillingClient.RecreateCustomerSubscription(
+				ctx,
+				account.Owner().Key,
+			); err != nil {
+				return nil, err
+			}
+		} else {
 			return nil, err
 		}
 	}
@@ -609,29 +592,34 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.BillingClient.GetCustomerSession(ctx, account.Owner().CustomerID)
+	session, err := s.BillingClient.GetCustomerSession(ctx, account.Owner().Key)
 	if err != nil {
 		return nil, err
 	}
 	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
-func (s *Service) GetBillingInfo(ctx context.Context, _ *pb.GetBillingInfoRequest) (*pb.GetBillingInfoResponse, error) {
-	log.Debugf("received get billing info request")
+func (s *Service) ListBillingUsers(ctx context.Context, req *pb.ListBillingUsersRequest) (*pb.ListBillingUsersResponse, error) {
+	log.Debugf("received list billing users request")
 
 	if s.BillingClient == nil {
 		return nil, fmt.Errorf("billing is not enabled")
 	}
-	account, err := getAccount(ctx)
+
+	account, _ := mdb.AccountFromContext(ctx)
+	list, err := s.BillingClient.ListDependentCustomers(
+		ctx,
+		account.Owner().Key,
+		billing.WithOffset(req.Offset),
+		billing.WithLimit(req.Limit),
+	)
 	if err != nil {
 		return nil, err
 	}
-	customer, err := s.BillingClient.GetCustomer(ctx, account.Owner().CustomerID)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetBillingInfoResponse{
-		Customer: customer,
+
+	return &pb.ListBillingUsersResponse{
+		Users:      list.Customers,
+		NextOffset: list.NextOffset,
 	}, nil
 }
 

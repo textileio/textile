@@ -935,7 +935,7 @@ func setup(t *testing.T) (context.Context, *c.Client) {
 		DBName:          util.MakeToken(8),
 		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
 		Debug:           true,
-	}, true)
+	})
 	require.NoError(t, err)
 	err = api.Start()
 	require.NoError(t, err)

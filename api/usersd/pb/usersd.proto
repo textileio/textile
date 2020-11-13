@@ -2,6 +2,8 @@ syntax = "proto3";
 package api.usersd.pb;
 option go_package = "github.com/textileio/textile/v2/api/usersd/pb";
 
+import "api/billingd/pb/billingd.proto";
+
 message ListThreadsRequest {}
 
 message ListThreadsResponse {
@@ -95,6 +97,14 @@ message DeleteSentboxMessageRequest {
 
 message DeleteSentboxMessageResponse {}
 
+message GetUsageRequest {
+    string key = 1;
+}
+
+message GetUsageResponse {
+    api.billingd.pb.GetCustomerResponse usage = 1;
+}
+
 service APIService {
     rpc GetThread(GetThreadRequest) returns (GetThreadResponse) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {}
@@ -106,4 +116,6 @@ service APIService {
     rpc ReadInboxMessage(ReadInboxMessageRequest) returns (ReadInboxMessageResponse) {}
     rpc DeleteInboxMessage(DeleteInboxMessageRequest) returns (DeleteInboxMessageResponse) {}
     rpc DeleteSentboxMessage(DeleteSentboxMessageRequest) returns (DeleteSentboxMessageResponse) {}
+
+    rpc GetUsage(GetUsageRequest) returns (GetUsageResponse) {}
 }

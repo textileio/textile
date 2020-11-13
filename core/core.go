@@ -72,7 +72,6 @@ var (
 		"/api.hubd.pb.APIService/DestroyAccount",
 		"/api.hubd.pb.APIService/SetupBilling",
 		"/api.hubd.pb.APIService/GetBillingSession",
-		"/api.hubd.pb.APIService/GetBillingInfo",
 	}
 
 	// blockMethods are always blocked by auth.
@@ -164,21 +163,23 @@ type Textile struct {
 type Config struct {
 	RepoPath string
 
-	AddrAPI          ma.Multiaddr
-	AddrAPIProxy     ma.Multiaddr
+	AddrAPI      ma.Multiaddr
+	AddrAPIProxy ma.Multiaddr
+
+	AddrMongoURI  string
+	AddrMongoName string
+
 	AddrThreadsHost  ma.Multiaddr
 	AddrIPFSAPI      ma.Multiaddr
-	AddrGatewayHost  ma.Multiaddr
-	AddrGatewayURL   string
 	AddrBillingAPI   string
 	AddrPowergateAPI string
-	AddrMongoURI     string
+
+	AddrGatewayHost ma.Multiaddr
+	AddrGatewayURL  string
 
 	ThreadsConnManager connmgr.ConnManager
 
 	UseSubdomains bool
-
-	MongoName string
 
 	DNSDomain string
 	DNSZoneID string
@@ -229,7 +230,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			return nil, err
 		}
 	}
-	t.collections, err = mdb.NewCollections(ctx, conf.AddrMongoURI, conf.MongoName, conf.Hub)
+	t.collections, err = mdb.NewCollections(ctx, conf.AddrMongoURI, conf.AddrMongoName, conf.Hub)
 	if err != nil {
 		return nil, err
 	}
@@ -323,8 +324,9 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			PowergateClient:    t.pc,
 		}
 		us = &usersd.Service{
-			Collections: t.collections,
-			Mail:        t.mail,
+			Collections:   t.collections,
+			Mail:          t.mail,
+			BillingClient: t.bc,
 		}
 	}
 	if conf.Hub {
@@ -379,8 +381,8 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		opts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
-				t.threadInterceptor(),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
+				t.threadInterceptor(),
 				powInterceptor(healthServiceName, allowedPowMethods[healthServiceName], healthServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(netServiceName, allowedPowMethods[netServiceName], netServiceDesc, powStub, t.pc, t.collections),
 				powInterceptor(ffsServiceName, allowedPowMethods[ffsServiceName], ffsServiceDesc, powStub, t.pc, t.collections),

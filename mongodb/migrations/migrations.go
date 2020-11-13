@@ -4,18 +4,23 @@ import (
 	"context"
 	"time"
 
+	logging "github.com/ipfs/go-log"
 	migrate "github.com/xakep666/mongo-migrate"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var migrateTimeout = time.Minute
+var (
+	log            = logging.Logger("migrations")
+	migrateTimeout = time.Minute
+)
 
 var m001 = migrate.Migration{
 	Version:     1,
 	Description: "make accounts username index sparse",
 	Up: func(db *mongo.Database) error {
+		log.Info("migrating 001 up")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		count, err := db.Collection("accounts").CountDocuments(ctx, bson.M{})
@@ -39,6 +44,7 @@ var m001 = migrate.Migration{
 		return err
 	},
 	Down: func(db *mongo.Database) error {
+		log.Info("migrating 001 down")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		count, err := db.Collection("accounts").CountDocuments(ctx, bson.M{})
@@ -66,6 +72,7 @@ var m002 = migrate.Migration{
 	Version:     2,
 	Description: "consolidate users and accounts",
 	Up: func(db *mongo.Database) error {
+		log.Info("migrating 002 up")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		cursor, err := db.Collection("users").Find(ctx, bson.M{})
@@ -90,6 +97,7 @@ var m002 = migrate.Migration{
 		return db.Collection("users").Drop(ctx)
 	},
 	Down: func(db *mongo.Database) error {
+		log.Info("migrating 002 down")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		cursor, err := db.Collection("accounts").Find(ctx, bson.M{})
@@ -122,6 +130,7 @@ var m003 = migrate.Migration{
 	Version:     3,
 	Description: "remove buckets_total_size from accounts",
 	Up: func(db *mongo.Database) error {
+		log.Info("migrating 003 up")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		_, err := db.Collection("accounts").UpdateMany(ctx, bson.M{
@@ -132,6 +141,7 @@ var m003 = migrate.Migration{
 		return err
 	},
 	Down: func(db *mongo.Database) error {
+		log.Info("migrating 003 down")
 		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 		defer cancel()
 		_, err := db.Collection("accounts").UpdateMany(ctx, bson.M{}, bson.M{
