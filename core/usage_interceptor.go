@@ -116,7 +116,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			return ctx, err
 		}
 	}
-	if err := common.StatusCheck(cus.Status); err != nil {
+	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
 	if !cus.Billable && cus.NetworkEgress.Free == 0 {
@@ -188,8 +188,14 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
-		_, err := t.bc.IncStoredData(ctx, account.Owner().Key, owner.StorageDelta)
-		if err != nil {
+		if _, err := t.bc.IncCustomerUsage(
+			ctx,
+			account.Owner().Key,
+			owner.StorageDelta,
+			0,
+			0,
+			0,
+		); err != nil {
 			return err
 		}
 	}

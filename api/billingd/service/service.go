@@ -362,15 +362,15 @@ func (s *Service) Stop(force bool) error {
 }
 
 type Customer struct {
-	Key        string `bson:"_id"`
-	CustomerID string `bson:"customer_id"`
-	ParentKey  string `bson:"parent_key"`
-	Email      string `bson:"email"`
-	Status     string `bson:"status"`
-	Balance    int64  `bson:"balance"`
-	Billable   bool   `bson:"billable"`
-	Delinquent bool   `bson:"delinquent"`
-	CreatedAt  int64  `bson:"created_at"`
+	Key                string `bson:"_id"`
+	CustomerID         string `bson:"customer_id"`
+	ParentKey          string `bson:"parent_key"`
+	Email              string `bson:"email"`
+	SubscriptionStatus string `bson:"subscription_status"`
+	Balance            int64  `bson:"balance"`
+	Billable           bool   `bson:"billable"`
+	Delinquent         bool   `bson:"delinquent"`
+	CreatedAt          int64  `bson:"created_at"`
 
 	Period         Period `bson:"period"`
 	StoredData     Usage  `bson:"stored_data"`
@@ -388,6 +388,18 @@ type Usage struct {
 	ItemID string `bson:"item_id"`
 	Units  int64  `bson:"units"`
 	Total  int64  `bson:"total"`
+}
+
+func (c *Customer) AccountStatus() string {
+	if c.ParentKey != "" {
+		return "dependent"
+	} else if c.Delinquent {
+		return "delinquent"
+	} else if c.Billable {
+		return "pay-as-you-go"
+	} else {
+		return "free-quota-only"
+	}
 }
 
 func (s *Service) CheckHealth(_ context.Context, _ *pb.CheckHealthRequest) (*pb.CheckHealthResponse, error) {
@@ -454,7 +466,7 @@ func (s *Service) createSubscription(cus *Customer) error {
 	if err != nil {
 		return err
 	}
-	cus.Status = string(sub.Status)
+	cus.SubscriptionStatus = string(sub.Status)
 	cus.Period = Period{
 		Start: sub.CurrentPeriodStart,
 		End:   sub.CurrentPeriodEnd,
@@ -513,21 +525,22 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		return nil, err
 	}
 	return &pb.GetCustomerResponse{
-		Key:            doc.Key,
-		CustomerId:     doc.CustomerID,
-		ParentKey:      doc.ParentKey,
-		Email:          doc.Email,
-		Status:         doc.Status,
-		Balance:        doc.Balance,
-		Billable:       doc.Billable,
-		Delinquent:     doc.Delinquent,
-		CreatedAt:      doc.CreatedAt,
-		Period:         periodToPb(doc.Period),
-		StoredData:     usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
-		NetworkEgress:  usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
-		InstanceReads:  usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
-		InstanceWrites: usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
-		Dependents:     deps,
+		Key:                doc.Key,
+		CustomerId:         doc.CustomerID,
+		ParentKey:          doc.ParentKey,
+		Email:              doc.Email,
+		AccountStatus:      doc.AccountStatus(),
+		SubscriptionStatus: doc.SubscriptionStatus,
+		Balance:            doc.Balance,
+		Billable:           doc.Billable,
+		Delinquent:         doc.Delinquent,
+		CreatedAt:          doc.CreatedAt,
+		Period:             periodToPb(doc.Period),
+		StoredData:         usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
+		NetworkEgress:      usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
+		InstanceReads:      usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
+		InstanceWrites:     usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
+		Dependents:         deps,
 	}, nil
 }
 
@@ -638,9 +651,9 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 
 	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": doc.Key}, bson.M{
 		"$set": bson.M{
-			"status":       req.Status,
-			"period.start": req.Period.Start,
-			"period.end":   req.Period.End,
+			"subscription_status": req.Status,
+			"period.start":        req.Period.Start,
+			"period.end":          req.Period.End,
 		},
 	})
 	if r.Err() != nil {
@@ -678,7 +691,7 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 	if err != nil {
 		return nil, err
 	}
-	if err := common.StatusCheck(doc.Status); err == nil {
+	if err := common.StatusCheck(doc.SubscriptionStatus); err == nil {
 		return nil, common.ErrSubscriptionExists
 	} else if !errors.Is(err, common.ErrSubscriptionCanceled) {
 		return nil, err
@@ -688,12 +701,12 @@ func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.Recr
 	}
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
 		"$set": bson.M{
-			"status":          doc.Status,
-			"period":          doc.Period,
-			"stored_data":     doc.StoredData,
-			"network_egress":  doc.NetworkEgress,
-			"instance_reads":  doc.InstanceReads,
-			"instance_writes": doc.InstanceWrites,
+			"subscription_status": doc.SubscriptionStatus,
+			"period":              doc.Period,
+			"stored_data":         doc.StoredData,
+			"network_egress":      doc.NetworkEgress,
+			"instance_reads":      doc.InstanceReads,
+			"instance_writes":     doc.InstanceWrites,
 		}}); err != nil {
 		return nil, err
 	}
@@ -722,15 +735,15 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	return &pb.DeleteCustomerResponse{}, nil
 }
 
-func (s *Service) IncStoredData(ctx context.Context, req *pb.IncStoredDataRequest) (*pb.IncStoredDataResponse, error) {
-	return s.handleStoredData(ctx, req.Key, req.IncSize)
+func (s *Service) IncCustomerUsage(ctx context.Context, req *pb.IncCustomerUsageRequest) (*pb.IncCustomerUsageResponse, error) {
+	return s.handleCustomerUsage(ctx, req.Key, req)
 }
 
-func (s *Service) handleStoredData(
+func (s *Service) handleCustomerUsage(
 	ctx context.Context,
 	key string,
-	incSize int64,
-) (*pb.IncStoredDataResponse, error) {
+	req *pb.IncCustomerUsageRequest,
+) (*pb.IncCustomerUsageResponse, error) {
 	lck := s.semaphores.Get(customerLock(key))
 	lck.Acquire()
 	defer lck.Release()
@@ -740,19 +753,19 @@ func (s *Service) handleStoredData(
 		return nil, err
 	}
 	if cus.ParentKey != "" {
-		if _, err := s.handleStoredData(ctx, cus.ParentKey, incSize); err != nil {
+		if _, err := s.handleCustomerUsage(ctx, cus.ParentKey, req); err != nil {
 			return nil, err
 		}
 	}
-	if err := common.StatusCheck(cus.Status); err != nil {
+	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 		return nil, err
 	}
-	usage, err := s.handleUsage(
+	sd, err := s.handleUsage(
 		ctx,
 		cus.Key,
 		cus.StoredData,
 		"stored_data",
-		incSize,
+		req.StoredDataIncSize,
 		StoredDataUnitSize,
 		StoredDataFreeUnitsPerInterval,
 		cus.Billable,
@@ -763,48 +776,16 @@ func (s *Service) handleStoredData(
 	log.Debugf(
 		"%s period data: units=%d total=%d free=%d",
 		cus.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
+		sd.Units,
+		sd.Total,
+		sd.Free,
 	)
-	return &pb.IncStoredDataResponse{
-		Period:     periodToPb(cus.Period),
-		StoredData: usage,
-	}, nil
-}
-
-func (s *Service) IncNetworkEgress(ctx context.Context, req *pb.IncNetworkEgressRequest) (
-	*pb.IncNetworkEgressResponse, error) {
-	return s.handleNetworkEgress(ctx, req.Key, req.IncSize)
-}
-
-func (s *Service) handleNetworkEgress(
-	ctx context.Context,
-	key string,
-	incSize int64,
-) (*pb.IncNetworkEgressResponse, error) {
-	lck := s.semaphores.Get(customerLock(key))
-	lck.Acquire()
-	defer lck.Release()
-
-	cus, err := s.getCustomer(ctx, "_id", key)
-	if err != nil {
-		return nil, err
-	}
-	if cus.ParentKey != "" {
-		if _, err := s.handleNetworkEgress(ctx, cus.ParentKey, incSize); err != nil {
-			return nil, err
-		}
-	}
-	if err := common.StatusCheck(cus.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
+	ne, err := s.handleUsage(
 		ctx,
 		cus.Key,
 		cus.NetworkEgress,
 		"network_egress",
-		incSize,
+		req.NetworkEgressIncSize,
 		NetworkEgressUnitSize,
 		NetworkEgressFreeUnitsPerInterval,
 		cus.Billable,
@@ -814,48 +795,16 @@ func (s *Service) handleNetworkEgress(
 	}
 	log.Debugf("%s period egress: units=%d total=%d free=%d",
 		cus.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
+		ne.Units,
+		ne.Total,
+		ne.Free,
 	)
-	return &pb.IncNetworkEgressResponse{
-		Period:        periodToPb(cus.Period),
-		NetworkEgress: usage,
-	}, nil
-}
-
-func (s *Service) IncInstanceReads(ctx context.Context, req *pb.IncInstanceReadsRequest) (
-	*pb.IncInstanceReadsResponse, error) {
-	return s.handleInstanceReads(ctx, req.Key, req.IncCount)
-}
-
-func (s *Service) handleInstanceReads(
-	ctx context.Context,
-	key string,
-	incCount int64,
-) (*pb.IncInstanceReadsResponse, error) {
-	lck := s.semaphores.Get(customerLock(key))
-	lck.Acquire()
-	defer lck.Release()
-
-	cus, err := s.getCustomer(ctx, "_id", key)
-	if err != nil {
-		return nil, err
-	}
-	if cus.ParentKey != "" {
-		if _, err := s.handleInstanceReads(ctx, cus.ParentKey, incCount); err != nil {
-			return nil, err
-		}
-	}
-	if err := common.StatusCheck(cus.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
+	ir, err := s.handleUsage(
 		ctx,
 		cus.Key,
 		cus.InstanceReads,
 		"instance_reads",
-		incCount,
+		req.InstanceReadsIncCount,
 		InstanceReadsUnitSize,
 		InstanceReadsFreeUnitsPerInterval,
 		cus.Billable,
@@ -866,48 +815,16 @@ func (s *Service) handleInstanceReads(
 	log.Debugf(
 		"%s period reads: units=%d total=%d free=%d",
 		cus.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
+		ir.Units,
+		ir.Total,
+		ir.Free,
 	)
-	return &pb.IncInstanceReadsResponse{
-		Period:        periodToPb(cus.Period),
-		InstanceReads: usage,
-	}, nil
-}
-
-func (s *Service) IncInstanceWrites(ctx context.Context, req *pb.IncInstanceWritesRequest) (
-	*pb.IncInstanceWritesResponse, error) {
-	return s.handleInstanceWrites(ctx, req.Key, req.IncCount)
-}
-
-func (s *Service) handleInstanceWrites(
-	ctx context.Context,
-	key string,
-	incCount int64,
-) (*pb.IncInstanceWritesResponse, error) {
-	lck := s.semaphores.Get(customerLock(key))
-	lck.Acquire()
-	defer lck.Release()
-
-	cus, err := s.getCustomer(ctx, "_id", key)
-	if err != nil {
-		return nil, err
-	}
-	if cus.ParentKey != "" {
-		if _, err := s.handleInstanceWrites(ctx, cus.ParentKey, incCount); err != nil {
-			return nil, err
-		}
-	}
-	if err := common.StatusCheck(cus.Status); err != nil {
-		return nil, err
-	}
-	usage, err := s.handleUsage(
+	iw, err := s.handleUsage(
 		ctx,
 		cus.Key,
 		cus.InstanceWrites,
 		"instance_writes",
-		incCount,
+		req.InstanceWritesIncCount,
 		InstanceWritesUnitSize,
 		InstanceWritesFreeUnitsPerInterval,
 		cus.Billable,
@@ -918,13 +835,16 @@ func (s *Service) handleInstanceWrites(
 	log.Debugf(
 		"%s period writes: units=%d total=%d free=%d",
 		cus.Key,
-		usage.Units,
-		usage.Total,
-		usage.Free,
+		iw.Units,
+		iw.Total,
+		iw.Free,
 	)
-	return &pb.IncInstanceWritesResponse{
+	return &pb.IncCustomerUsageResponse{
 		Period:         periodToPb(cus.Period),
-		InstanceWrites: usage,
+		StoredData:     sd,
+		NetworkEgress:  ne,
+		InstanceReads:  ir,
+		InstanceWrites: iw,
 	}, nil
 }
 

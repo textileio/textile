@@ -326,17 +326,18 @@ type GetCustomerResponse struct {
 	CustomerId           string   `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
 	ParentKey            string   `protobuf:"bytes,3,opt,name=parent_key,json=parentKey,proto3" json:"parent_key,omitempty"`
 	Email                string   `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	Status               string   `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
-	Balance              int64    `protobuf:"varint,6,opt,name=balance,proto3" json:"balance,omitempty"`
-	Billable             bool     `protobuf:"varint,7,opt,name=billable,proto3" json:"billable,omitempty"`
-	Delinquent           bool     `protobuf:"varint,8,opt,name=delinquent,proto3" json:"delinquent,omitempty"`
-	CreatedAt            int64    `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Period               *Period  `protobuf:"bytes,10,opt,name=period,proto3" json:"period,omitempty"`
-	StoredData           *Usage   `protobuf:"bytes,11,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
-	NetworkEgress        *Usage   `protobuf:"bytes,12,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
-	InstanceWrites       *Usage   `protobuf:"bytes,13,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
-	InstanceReads        *Usage   `protobuf:"bytes,14,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
-	Dependents           int64    `protobuf:"varint,15,opt,name=dependents,proto3" json:"dependents,omitempty"`
+	AccountStatus        string   `protobuf:"bytes,5,opt,name=account_status,json=accountStatus,proto3" json:"account_status,omitempty"`
+	SubscriptionStatus   string   `protobuf:"bytes,6,opt,name=subscription_status,json=subscriptionStatus,proto3" json:"subscription_status,omitempty"`
+	Balance              int64    `protobuf:"varint,7,opt,name=balance,proto3" json:"balance,omitempty"`
+	Billable             bool     `protobuf:"varint,8,opt,name=billable,proto3" json:"billable,omitempty"`
+	Delinquent           bool     `protobuf:"varint,9,opt,name=delinquent,proto3" json:"delinquent,omitempty"`
+	CreatedAt            int64    `protobuf:"varint,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Period               *Period  `protobuf:"bytes,11,opt,name=period,proto3" json:"period,omitempty"`
+	StoredData           *Usage   `protobuf:"bytes,12,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
+	NetworkEgress        *Usage   `protobuf:"bytes,13,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
+	InstanceWrites       *Usage   `protobuf:"bytes,14,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
+	InstanceReads        *Usage   `protobuf:"bytes,15,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
+	Dependents           int64    `protobuf:"varint,16,opt,name=dependents,proto3" json:"dependents,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -395,9 +396,16 @@ func (m *GetCustomerResponse) GetEmail() string {
 	return ""
 }
 
-func (m *GetCustomerResponse) GetStatus() string {
+func (m *GetCustomerResponse) GetAccountStatus() string {
 	if m != nil {
-		return m.Status
+		return m.AccountStatus
+	}
+	return ""
+}
+
+func (m *GetCustomerResponse) GetSubscriptionStatus() string {
+	if m != nil {
+		return m.SubscriptionStatus
 	}
 	return ""
 }
@@ -972,376 +980,142 @@ func (m *DeleteCustomerResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_DeleteCustomerResponse proto.InternalMessageInfo
 
-type IncStoredDataRequest struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	IncSize              int64    `protobuf:"varint,2,opt,name=inc_size,json=incSize,proto3" json:"inc_size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+type IncCustomerUsageRequest struct {
+	Key                    string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	StoredDataIncSize      int64    `protobuf:"varint,2,opt,name=stored_data_inc_size,json=storedDataIncSize,proto3" json:"stored_data_inc_size,omitempty"`
+	NetworkEgressIncSize   int64    `protobuf:"varint,3,opt,name=network_egress_inc_size,json=networkEgressIncSize,proto3" json:"network_egress_inc_size,omitempty"`
+	InstanceReadsIncCount  int64    `protobuf:"varint,4,opt,name=instance_reads_inc_count,json=instanceReadsIncCount,proto3" json:"instance_reads_inc_count,omitempty"`
+	InstanceWritesIncCount int64    `protobuf:"varint,5,opt,name=instance_writes_inc_count,json=instanceWritesIncCount,proto3" json:"instance_writes_inc_count,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
+	XXX_unrecognized       []byte   `json:"-"`
+	XXX_sizecache          int32    `json:"-"`
 }
 
-func (m *IncStoredDataRequest) Reset()         { *m = IncStoredDataRequest{} }
-func (m *IncStoredDataRequest) String() string { return proto.CompactTextString(m) }
-func (*IncStoredDataRequest) ProtoMessage()    {}
-func (*IncStoredDataRequest) Descriptor() ([]byte, []int) {
+func (m *IncCustomerUsageRequest) Reset()         { *m = IncCustomerUsageRequest{} }
+func (m *IncCustomerUsageRequest) String() string { return proto.CompactTextString(m) }
+func (*IncCustomerUsageRequest) ProtoMessage()    {}
+func (*IncCustomerUsageRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c6bad727a6da184, []int{20}
 }
 
-func (m *IncStoredDataRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncStoredDataRequest.Unmarshal(m, b)
+func (m *IncCustomerUsageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_IncCustomerUsageRequest.Unmarshal(m, b)
 }
-func (m *IncStoredDataRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncStoredDataRequest.Marshal(b, m, deterministic)
+func (m *IncCustomerUsageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_IncCustomerUsageRequest.Marshal(b, m, deterministic)
 }
-func (m *IncStoredDataRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncStoredDataRequest.Merge(m, src)
+func (m *IncCustomerUsageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_IncCustomerUsageRequest.Merge(m, src)
 }
-func (m *IncStoredDataRequest) XXX_Size() int {
-	return xxx_messageInfo_IncStoredDataRequest.Size(m)
+func (m *IncCustomerUsageRequest) XXX_Size() int {
+	return xxx_messageInfo_IncCustomerUsageRequest.Size(m)
 }
-func (m *IncStoredDataRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncStoredDataRequest.DiscardUnknown(m)
+func (m *IncCustomerUsageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_IncCustomerUsageRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_IncStoredDataRequest proto.InternalMessageInfo
+var xxx_messageInfo_IncCustomerUsageRequest proto.InternalMessageInfo
 
-func (m *IncStoredDataRequest) GetKey() string {
+func (m *IncCustomerUsageRequest) GetKey() string {
 	if m != nil {
 		return m.Key
 	}
 	return ""
 }
 
-func (m *IncStoredDataRequest) GetIncSize() int64 {
+func (m *IncCustomerUsageRequest) GetStoredDataIncSize() int64 {
 	if m != nil {
-		return m.IncSize
+		return m.StoredDataIncSize
 	}
 	return 0
 }
 
-type IncStoredDataResponse struct {
+func (m *IncCustomerUsageRequest) GetNetworkEgressIncSize() int64 {
+	if m != nil {
+		return m.NetworkEgressIncSize
+	}
+	return 0
+}
+
+func (m *IncCustomerUsageRequest) GetInstanceReadsIncCount() int64 {
+	if m != nil {
+		return m.InstanceReadsIncCount
+	}
+	return 0
+}
+
+func (m *IncCustomerUsageRequest) GetInstanceWritesIncCount() int64 {
+	if m != nil {
+		return m.InstanceWritesIncCount
+	}
+	return 0
+}
+
+type IncCustomerUsageResponse struct {
 	Period               *Period  `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
 	StoredData           *Usage   `protobuf:"bytes,2,opt,name=stored_data,json=storedData,proto3" json:"stored_data,omitempty"`
+	NetworkEgress        *Usage   `protobuf:"bytes,3,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
+	InstanceReads        *Usage   `protobuf:"bytes,4,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
+	InstanceWrites       *Usage   `protobuf:"bytes,5,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *IncStoredDataResponse) Reset()         { *m = IncStoredDataResponse{} }
-func (m *IncStoredDataResponse) String() string { return proto.CompactTextString(m) }
-func (*IncStoredDataResponse) ProtoMessage()    {}
-func (*IncStoredDataResponse) Descriptor() ([]byte, []int) {
+func (m *IncCustomerUsageResponse) Reset()         { *m = IncCustomerUsageResponse{} }
+func (m *IncCustomerUsageResponse) String() string { return proto.CompactTextString(m) }
+func (*IncCustomerUsageResponse) ProtoMessage()    {}
+func (*IncCustomerUsageResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8c6bad727a6da184, []int{21}
 }
 
-func (m *IncStoredDataResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncStoredDataResponse.Unmarshal(m, b)
+func (m *IncCustomerUsageResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_IncCustomerUsageResponse.Unmarshal(m, b)
 }
-func (m *IncStoredDataResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncStoredDataResponse.Marshal(b, m, deterministic)
+func (m *IncCustomerUsageResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_IncCustomerUsageResponse.Marshal(b, m, deterministic)
 }
-func (m *IncStoredDataResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncStoredDataResponse.Merge(m, src)
+func (m *IncCustomerUsageResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_IncCustomerUsageResponse.Merge(m, src)
 }
-func (m *IncStoredDataResponse) XXX_Size() int {
-	return xxx_messageInfo_IncStoredDataResponse.Size(m)
+func (m *IncCustomerUsageResponse) XXX_Size() int {
+	return xxx_messageInfo_IncCustomerUsageResponse.Size(m)
 }
-func (m *IncStoredDataResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncStoredDataResponse.DiscardUnknown(m)
+func (m *IncCustomerUsageResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_IncCustomerUsageResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_IncStoredDataResponse proto.InternalMessageInfo
+var xxx_messageInfo_IncCustomerUsageResponse proto.InternalMessageInfo
 
-func (m *IncStoredDataResponse) GetPeriod() *Period {
+func (m *IncCustomerUsageResponse) GetPeriod() *Period {
 	if m != nil {
 		return m.Period
 	}
 	return nil
 }
 
-func (m *IncStoredDataResponse) GetStoredData() *Usage {
+func (m *IncCustomerUsageResponse) GetStoredData() *Usage {
 	if m != nil {
 		return m.StoredData
 	}
 	return nil
 }
 
-type IncNetworkEgressRequest struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	IncSize              int64    `protobuf:"varint,2,opt,name=inc_size,json=incSize,proto3" json:"inc_size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncNetworkEgressRequest) Reset()         { *m = IncNetworkEgressRequest{} }
-func (m *IncNetworkEgressRequest) String() string { return proto.CompactTextString(m) }
-func (*IncNetworkEgressRequest) ProtoMessage()    {}
-func (*IncNetworkEgressRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{22}
-}
-
-func (m *IncNetworkEgressRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncNetworkEgressRequest.Unmarshal(m, b)
-}
-func (m *IncNetworkEgressRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncNetworkEgressRequest.Marshal(b, m, deterministic)
-}
-func (m *IncNetworkEgressRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncNetworkEgressRequest.Merge(m, src)
-}
-func (m *IncNetworkEgressRequest) XXX_Size() int {
-	return xxx_messageInfo_IncNetworkEgressRequest.Size(m)
-}
-func (m *IncNetworkEgressRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncNetworkEgressRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncNetworkEgressRequest proto.InternalMessageInfo
-
-func (m *IncNetworkEgressRequest) GetKey() string {
-	if m != nil {
-		return m.Key
-	}
-	return ""
-}
-
-func (m *IncNetworkEgressRequest) GetIncSize() int64 {
-	if m != nil {
-		return m.IncSize
-	}
-	return 0
-}
-
-type IncNetworkEgressResponse struct {
-	Period               *Period  `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
-	NetworkEgress        *Usage   `protobuf:"bytes,2,opt,name=network_egress,json=networkEgress,proto3" json:"network_egress,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncNetworkEgressResponse) Reset()         { *m = IncNetworkEgressResponse{} }
-func (m *IncNetworkEgressResponse) String() string { return proto.CompactTextString(m) }
-func (*IncNetworkEgressResponse) ProtoMessage()    {}
-func (*IncNetworkEgressResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{23}
-}
-
-func (m *IncNetworkEgressResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncNetworkEgressResponse.Unmarshal(m, b)
-}
-func (m *IncNetworkEgressResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncNetworkEgressResponse.Marshal(b, m, deterministic)
-}
-func (m *IncNetworkEgressResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncNetworkEgressResponse.Merge(m, src)
-}
-func (m *IncNetworkEgressResponse) XXX_Size() int {
-	return xxx_messageInfo_IncNetworkEgressResponse.Size(m)
-}
-func (m *IncNetworkEgressResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncNetworkEgressResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncNetworkEgressResponse proto.InternalMessageInfo
-
-func (m *IncNetworkEgressResponse) GetPeriod() *Period {
-	if m != nil {
-		return m.Period
-	}
-	return nil
-}
-
-func (m *IncNetworkEgressResponse) GetNetworkEgress() *Usage {
+func (m *IncCustomerUsageResponse) GetNetworkEgress() *Usage {
 	if m != nil {
 		return m.NetworkEgress
 	}
 	return nil
 }
 
-type IncInstanceReadsRequest struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncInstanceReadsRequest) Reset()         { *m = IncInstanceReadsRequest{} }
-func (m *IncInstanceReadsRequest) String() string { return proto.CompactTextString(m) }
-func (*IncInstanceReadsRequest) ProtoMessage()    {}
-func (*IncInstanceReadsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{24}
-}
-
-func (m *IncInstanceReadsRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncInstanceReadsRequest.Unmarshal(m, b)
-}
-func (m *IncInstanceReadsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncInstanceReadsRequest.Marshal(b, m, deterministic)
-}
-func (m *IncInstanceReadsRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncInstanceReadsRequest.Merge(m, src)
-}
-func (m *IncInstanceReadsRequest) XXX_Size() int {
-	return xxx_messageInfo_IncInstanceReadsRequest.Size(m)
-}
-func (m *IncInstanceReadsRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncInstanceReadsRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncInstanceReadsRequest proto.InternalMessageInfo
-
-func (m *IncInstanceReadsRequest) GetKey() string {
-	if m != nil {
-		return m.Key
-	}
-	return ""
-}
-
-func (m *IncInstanceReadsRequest) GetIncCount() int64 {
-	if m != nil {
-		return m.IncCount
-	}
-	return 0
-}
-
-type IncInstanceReadsResponse struct {
-	Period               *Period  `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
-	InstanceReads        *Usage   `protobuf:"bytes,2,opt,name=instance_reads,json=instanceReads,proto3" json:"instance_reads,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncInstanceReadsResponse) Reset()         { *m = IncInstanceReadsResponse{} }
-func (m *IncInstanceReadsResponse) String() string { return proto.CompactTextString(m) }
-func (*IncInstanceReadsResponse) ProtoMessage()    {}
-func (*IncInstanceReadsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{25}
-}
-
-func (m *IncInstanceReadsResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncInstanceReadsResponse.Unmarshal(m, b)
-}
-func (m *IncInstanceReadsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncInstanceReadsResponse.Marshal(b, m, deterministic)
-}
-func (m *IncInstanceReadsResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncInstanceReadsResponse.Merge(m, src)
-}
-func (m *IncInstanceReadsResponse) XXX_Size() int {
-	return xxx_messageInfo_IncInstanceReadsResponse.Size(m)
-}
-func (m *IncInstanceReadsResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncInstanceReadsResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncInstanceReadsResponse proto.InternalMessageInfo
-
-func (m *IncInstanceReadsResponse) GetPeriod() *Period {
-	if m != nil {
-		return m.Period
-	}
-	return nil
-}
-
-func (m *IncInstanceReadsResponse) GetInstanceReads() *Usage {
+func (m *IncCustomerUsageResponse) GetInstanceReads() *Usage {
 	if m != nil {
 		return m.InstanceReads
 	}
 	return nil
 }
 
-type IncInstanceWritesRequest struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	IncCount             int64    `protobuf:"varint,2,opt,name=inc_count,json=incCount,proto3" json:"inc_count,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncInstanceWritesRequest) Reset()         { *m = IncInstanceWritesRequest{} }
-func (m *IncInstanceWritesRequest) String() string { return proto.CompactTextString(m) }
-func (*IncInstanceWritesRequest) ProtoMessage()    {}
-func (*IncInstanceWritesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{26}
-}
-
-func (m *IncInstanceWritesRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncInstanceWritesRequest.Unmarshal(m, b)
-}
-func (m *IncInstanceWritesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncInstanceWritesRequest.Marshal(b, m, deterministic)
-}
-func (m *IncInstanceWritesRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncInstanceWritesRequest.Merge(m, src)
-}
-func (m *IncInstanceWritesRequest) XXX_Size() int {
-	return xxx_messageInfo_IncInstanceWritesRequest.Size(m)
-}
-func (m *IncInstanceWritesRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncInstanceWritesRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncInstanceWritesRequest proto.InternalMessageInfo
-
-func (m *IncInstanceWritesRequest) GetKey() string {
-	if m != nil {
-		return m.Key
-	}
-	return ""
-}
-
-func (m *IncInstanceWritesRequest) GetIncCount() int64 {
-	if m != nil {
-		return m.IncCount
-	}
-	return 0
-}
-
-type IncInstanceWritesResponse struct {
-	Period               *Period  `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
-	InstanceWrites       *Usage   `protobuf:"bytes,2,opt,name=instance_writes,json=instanceWrites,proto3" json:"instance_writes,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IncInstanceWritesResponse) Reset()         { *m = IncInstanceWritesResponse{} }
-func (m *IncInstanceWritesResponse) String() string { return proto.CompactTextString(m) }
-func (*IncInstanceWritesResponse) ProtoMessage()    {}
-func (*IncInstanceWritesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8c6bad727a6da184, []int{27}
-}
-
-func (m *IncInstanceWritesResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IncInstanceWritesResponse.Unmarshal(m, b)
-}
-func (m *IncInstanceWritesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IncInstanceWritesResponse.Marshal(b, m, deterministic)
-}
-func (m *IncInstanceWritesResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IncInstanceWritesResponse.Merge(m, src)
-}
-func (m *IncInstanceWritesResponse) XXX_Size() int {
-	return xxx_messageInfo_IncInstanceWritesResponse.Size(m)
-}
-func (m *IncInstanceWritesResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_IncInstanceWritesResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IncInstanceWritesResponse proto.InternalMessageInfo
-
-func (m *IncInstanceWritesResponse) GetPeriod() *Period {
-	if m != nil {
-		return m.Period
-	}
-	return nil
-}
-
-func (m *IncInstanceWritesResponse) GetInstanceWrites() *Usage {
+func (m *IncCustomerUsageResponse) GetInstanceWrites() *Usage {
 	if m != nil {
 		return m.InstanceWrites
 	}
@@ -1369,90 +1143,82 @@ func init() {
 	proto.RegisterType((*RecreateCustomerSubscriptionResponse)(nil), "api.billingd.pb.RecreateCustomerSubscriptionResponse")
 	proto.RegisterType((*DeleteCustomerRequest)(nil), "api.billingd.pb.DeleteCustomerRequest")
 	proto.RegisterType((*DeleteCustomerResponse)(nil), "api.billingd.pb.DeleteCustomerResponse")
-	proto.RegisterType((*IncStoredDataRequest)(nil), "api.billingd.pb.IncStoredDataRequest")
-	proto.RegisterType((*IncStoredDataResponse)(nil), "api.billingd.pb.IncStoredDataResponse")
-	proto.RegisterType((*IncNetworkEgressRequest)(nil), "api.billingd.pb.IncNetworkEgressRequest")
-	proto.RegisterType((*IncNetworkEgressResponse)(nil), "api.billingd.pb.IncNetworkEgressResponse")
-	proto.RegisterType((*IncInstanceReadsRequest)(nil), "api.billingd.pb.IncInstanceReadsRequest")
-	proto.RegisterType((*IncInstanceReadsResponse)(nil), "api.billingd.pb.IncInstanceReadsResponse")
-	proto.RegisterType((*IncInstanceWritesRequest)(nil), "api.billingd.pb.IncInstanceWritesRequest")
-	proto.RegisterType((*IncInstanceWritesResponse)(nil), "api.billingd.pb.IncInstanceWritesResponse")
+	proto.RegisterType((*IncCustomerUsageRequest)(nil), "api.billingd.pb.IncCustomerUsageRequest")
+	proto.RegisterType((*IncCustomerUsageResponse)(nil), "api.billingd.pb.IncCustomerUsageResponse")
 }
 
 func init() { proto.RegisterFile("api/billingd/pb/billingd.proto", fileDescriptor_8c6bad727a6da184) }
 
 var fileDescriptor_8c6bad727a6da184 = []byte{
-	// 1115 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x58, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0xce, 0xda, 0x89, 0x1b, 0x1f, 0x93, 0xa4, 0x4c, 0x13, 0x77, 0xb3, 0xd0, 0x10, 0xa6, 0x21,
-	0xa4, 0x45, 0xd8, 0x90, 0x82, 0x2a, 0x2e, 0x10, 0x6a, 0x13, 0x68, 0x2d, 0x10, 0x54, 0x8e, 0x2a,
-	0xa4, 0x5c, 0x60, 0xd6, 0xbb, 0x27, 0xc9, 0x28, 0x9b, 0x5d, 0x77, 0x67, 0xdc, 0x3f, 0xae, 0xb8,
-	0x40, 0x48, 0x48, 0xe1, 0x1d, 0x78, 0x26, 0x5e, 0x08, 0xcd, 0x78, 0xd6, 0xde, 0x9f, 0xf1, 0xda,
-	0x09, 0x77, 0x33, 0x67, 0xbf, 0xf3, 0x37, 0x73, 0xce, 0xf9, 0x46, 0x0b, 0x5b, 0xee, 0x80, 0xb5,
-	0xfb, 0x2c, 0x08, 0x58, 0x78, 0xea, 0xb7, 0x07, 0xfd, 0xf1, 0xba, 0x35, 0x88, 0x23, 0x11, 0x91,
-	0x35, 0x77, 0xc0, 0x5a, 0x13, 0x59, 0x9f, 0x7e, 0x06, 0xb5, 0x67, 0x18, 0xb3, 0xc8, 0x27, 0xeb,
-	0xb0, 0xc4, 0x85, 0x1b, 0x0b, 0xdb, 0xda, 0xb6, 0xf6, 0xaa, 0xdd, 0xd1, 0x86, 0xdc, 0x84, 0x2a,
-	0x86, 0xbe, 0x5d, 0x51, 0x32, 0xb9, 0xa4, 0x4f, 0x60, 0xe9, 0x39, 0x77, 0x4f, 0x51, 0x2a, 0x0c,
-	0x43, 0x26, 0x78, 0xa2, 0xa0, 0x36, 0x52, 0x2a, 0x22, 0xe1, 0x06, 0x5a, 0x65, 0xb4, 0x21, 0x04,
-	0x16, 0x4f, 0x62, 0x44, 0xbb, 0xaa, 0x84, 0x6a, 0x4d, 0xd7, 0x81, 0x1c, 0x9c, 0xa1, 0x77, 0xfe,
-	0x14, 0xdd, 0x40, 0x9c, 0x75, 0xf1, 0xc5, 0x10, 0xb9, 0xa0, 0x1b, 0x70, 0x2b, 0x23, 0xe5, 0x83,
-	0x28, 0xe4, 0x48, 0x7f, 0x81, 0x8d, 0x83, 0x18, 0x5d, 0x81, 0x07, 0x43, 0x2e, 0xa2, 0x0b, 0x8c,
-	0x35, 0x5e, 0x06, 0x78, 0x8e, 0x6f, 0x54, 0x0c, 0xf5, 0xae, 0x5c, 0x92, 0x3b, 0x00, 0x03, 0x37,
-	0xc6, 0x50, 0xf4, 0xe4, 0x87, 0x8a, 0xfa, 0x50, 0x1f, 0x49, 0xbe, 0xc7, 0x37, 0x32, 0x40, 0xbc,
-	0x70, 0x59, 0xa0, 0x62, 0xa9, 0x77, 0x47, 0x1b, 0xfa, 0x15, 0x34, 0xf3, 0xf6, 0x47, 0x9e, 0xc9,
-	0x07, 0xd0, 0xf0, 0xb4, 0xac, 0xc7, 0x7c, 0xed, 0x08, 0x12, 0x51, 0xc7, 0xa7, 0xbb, 0x40, 0x9e,
-	0xa0, 0x98, 0x19, 0x17, 0xfd, 0x77, 0x11, 0x6e, 0x65, 0x80, 0xda, 0x41, 0x31, 0x83, 0x9c, 0xcb,
-	0x4a, 0xde, 0x65, 0x2e, 0xc5, 0xea, 0xd4, 0x14, 0x17, 0x53, 0x29, 0x92, 0x26, 0xd4, 0xb8, 0x70,
-	0xc5, 0x90, 0xdb, 0x4b, 0x4a, 0xac, 0x77, 0xc4, 0x86, 0x1b, 0x7d, 0x37, 0x70, 0x43, 0x0f, 0xed,
-	0x9a, 0xba, 0x9e, 0x64, 0x4b, 0x1c, 0x58, 0x96, 0xb5, 0xe2, 0xf6, 0x03, 0xb4, 0x6f, 0x6c, 0x5b,
-	0x7b, 0xcb, 0xdd, 0xf1, 0x9e, 0x6c, 0x01, 0xf8, 0x18, 0xb0, 0xf0, 0xc5, 0x10, 0x43, 0x61, 0x2f,
-	0xab, 0xaf, 0x29, 0x89, 0x0c, 0xd1, 0x53, 0x07, 0xea, 0xf7, 0x5c, 0x61, 0xd7, 0x95, 0xe1, 0xba,
-	0x96, 0x3c, 0x12, 0xa4, 0x0d, 0xb5, 0x81, 0xaa, 0x3b, 0x1b, 0xb6, 0xad, 0xbd, 0xc6, 0xfe, 0xed,
-	0x56, 0xae, 0x32, 0x5b, 0xa3, 0xb2, 0xec, 0x6a, 0x18, 0x79, 0x08, 0x0d, 0x2e, 0xa2, 0x18, 0xfd,
-	0x9e, 0xef, 0x0a, 0xd7, 0x6e, 0x28, 0xad, 0x66, 0x41, 0x4b, 0x95, 0x66, 0x17, 0x46, 0xd0, 0x43,
-	0x57, 0xb8, 0xe4, 0x6b, 0x58, 0x0d, 0x51, 0xbc, 0x8a, 0xe2, 0xf3, 0x1e, 0x9e, 0xc6, 0xc8, 0xb9,
-	0xfd, 0x4e, 0xa9, 0xee, 0x8a, 0x46, 0x7f, 0xab, 0xc0, 0xe4, 0x1b, 0x58, 0x63, 0x21, 0x17, 0xf2,
-	0x3c, 0x7a, 0xaf, 0x62, 0x26, 0x90, 0xdb, 0x2b, 0xa5, 0xfa, 0xab, 0x09, 0xfc, 0x67, 0x85, 0x96,
-	0xfe, 0xc7, 0x06, 0x62, 0x74, 0x7d, 0x6e, 0xaf, 0x96, 0xfb, 0x4f, 0xd0, 0x5d, 0x09, 0x1e, 0x9d,
-	0xf3, 0x00, 0x43, 0x1f, 0x43, 0xc1, 0xed, 0x35, 0x75, 0x8e, 0x29, 0x09, 0xed, 0xc1, 0x9d, 0x1f,
-	0x18, 0x17, 0x87, 0x89, 0x24, 0x29, 0x2f, 0x3e, 0xbd, 0x41, 0x9a, 0x50, 0x8b, 0x4e, 0x4e, 0x38,
-	0x0a, 0xdd, 0xa3, 0x7a, 0x27, 0xcb, 0x26, 0x60, 0x17, 0x4c, 0xe8, 0x2e, 0x1d, 0x6d, 0xe8, 0x1f,
-	0x16, 0x6c, 0x4d, 0xf3, 0xa0, 0x2b, 0xf8, 0x31, 0xd4, 0x93, 0xe2, 0x94, 0xd3, 0xa0, 0xba, 0xd7,
-	0xd8, 0xdf, 0x29, 0x64, 0x67, 0x28, 0xfd, 0xee, 0x44, 0x4d, 0xd6, 0x7c, 0x88, 0xaf, 0x45, 0x2f,
-	0x13, 0x19, 0x48, 0xd1, 0x4f, 0x4a, 0x42, 0x3f, 0x85, 0xcd, 0x94, 0x89, 0x23, 0xe4, 0x9c, 0x45,
-	0xe1, 0xf4, 0x6e, 0x6b, 0x81, 0x63, 0x82, 0x4f, 0x7a, 0x6e, 0x18, 0x07, 0x09, 0x7e, 0x18, 0x07,
-	0xf4, 0x6f, 0x0b, 0x36, 0x9e, 0x0f, 0x7c, 0xc3, 0x84, 0x99, 0x35, 0x00, 0xd2, 0x0d, 0x54, 0x99,
-	0xde, 0x40, 0xd5, 0xd2, 0x06, 0x5a, 0xcc, 0x37, 0x10, 0xb5, 0xa1, 0x99, 0x8f, 0x47, 0xcf, 0xc2,
-	0x4b, 0x0b, 0x3e, 0xcc, 0x7e, 0x3a, 0x1a, 0xf6, 0xb9, 0x17, 0xb3, 0x81, 0x48, 0x1d, 0xc9, 0xcc,
-	0xb0, 0x27, 0xf3, 0xa0, 0x92, 0x99, 0x07, 0x93, 0xd6, 0xac, 0xce, 0xd5, 0x9a, 0x74, 0x07, 0x68,
-	0x59, 0x38, 0x3a, 0xea, 0x87, 0x70, 0xb7, 0x8b, 0x5e, 0x66, 0xc6, 0x9a, 0xc2, 0x2e, 0xde, 0xe4,
-	0x2e, 0xec, 0x94, 0x2b, 0x6a, 0x07, 0xf7, 0x60, 0xe3, 0x10, 0x03, 0x9c, 0x83, 0x22, 0xe4, 0xd9,
-	0xe6, 0xa1, 0xda, 0xc8, 0x01, 0xac, 0x77, 0x42, 0xef, 0x68, 0x3c, 0x3e, 0xa6, 0x77, 0xd1, 0x26,
-	0x2c, 0xb3, 0xd0, 0xeb, 0x71, 0xf6, 0x76, 0x7c, 0xed, 0x2c, 0xf4, 0x8e, 0xd8, 0x5b, 0xa4, 0xbf,
-	0x5b, 0xb0, 0x91, 0xb3, 0xa2, 0xeb, 0x6e, 0x72, 0xb6, 0xd6, 0xb5, 0xc6, 0x5e, 0x65, 0xde, 0xb1,
-	0x47, 0xbf, 0x83, 0xdb, 0x9d, 0xd0, 0xfb, 0x31, 0x3d, 0xcb, 0xae, 0x95, 0xcb, 0x5f, 0x16, 0xd8,
-	0x45, 0x43, 0xd7, 0x4d, 0xa7, 0x38, 0x8c, 0x2b, 0x57, 0x18, 0xc6, 0xf4, 0xa9, 0x4a, 0xaa, 0x93,
-	0x1e, 0x90, 0xd3, 0x93, 0x7a, 0x0f, 0xea, 0x32, 0x29, 0x2f, 0x1a, 0x86, 0xc9, 0x3c, 0x91, 0x59,
-	0x1e, 0xc8, 0x7d, 0x92, 0x56, 0xce, 0xd4, 0xff, 0x48, 0x2b, 0x37, 0xe3, 0x2b, 0x57, 0x98, 0xf1,
-	0xb4, 0x93, 0x89, 0x65, 0xc4, 0x1b, 0xd7, 0xcc, 0xeb, 0xd2, 0x82, 0x4d, 0x83, 0xad, 0xeb, 0x26,
-	0x66, 0x60, 0xbf, 0xca, 0x55, 0xd8, 0x6f, 0xff, 0x9f, 0x06, 0xc0, 0xa3, 0x67, 0x9d, 0x23, 0x8c,
-	0x5f, 0x32, 0x0f, 0xc9, 0x31, 0x34, 0x52, 0xaf, 0x3b, 0x72, 0xb7, 0x60, 0xa5, 0xf8, 0x22, 0x74,
-	0x76, 0xca, 0x41, 0xba, 0x71, 0x17, 0x88, 0x07, 0xab, 0xd9, 0x27, 0x1c, 0xd9, 0x2d, 0x6a, 0x9a,
-	0xde, 0x90, 0xce, 0xc7, 0x33, 0x71, 0x63, 0x27, 0xc7, 0xd0, 0x48, 0xd1, 0x8a, 0x21, 0x81, 0xe2,
-	0x53, 0xd0, 0x99, 0x8b, 0x0b, 0xe9, 0x02, 0xf9, 0x0d, 0x9a, 0x66, 0xa2, 0x25, 0xad, 0x82, 0x85,
-	0x52, 0xce, 0x77, 0xda, 0x73, 0xe3, 0xc7, 0xce, 0xa3, 0xcc, 0x2b, 0x56, 0xf3, 0x25, 0xb9, 0x5f,
-	0x16, 0x7a, 0x96, 0x83, 0x9d, 0x4f, 0xe6, 0xc2, 0xa6, 0xaf, 0x2b, 0xcb, 0x1a, 0x86, 0xeb, 0x32,
-	0x12, 0xb2, 0xe1, 0xba, 0xa6, 0x10, 0xe5, 0x02, 0xf9, 0xd3, 0x02, 0x67, 0x3a, 0x37, 0x91, 0xfd,
-	0x19, 0x96, 0x0c, 0x04, 0xe5, 0x3c, 0xb8, 0x92, 0xce, 0x38, 0x92, 0x4b, 0x0b, 0xde, 0x2f, 0xa3,
-	0x31, 0xf2, 0x45, 0xc1, 0xee, 0x1c, 0x74, 0xe9, 0x7c, 0x79, 0x45, 0xad, 0xf4, 0xf1, 0x67, 0x29,
-	0xd0, 0x70, 0xfc, 0x46, 0x3a, 0x35, 0x1c, 0xff, 0x14, 0x2e, 0x5d, 0x20, 0xbf, 0xc2, 0x4a, 0x86,
-	0x07, 0xc9, 0x47, 0x05, 0x5d, 0x13, 0xdb, 0x3a, 0xbb, 0xb3, 0x60, 0x63, 0x0f, 0x0c, 0x6e, 0xe6,
-	0xd9, 0x89, 0xec, 0x99, 0xb4, 0x4d, 0x4c, 0xe8, 0xdc, 0x9b, 0x03, 0x99, 0x73, 0x95, 0x61, 0x0c,
-	0xb3, 0x2b, 0x13, 0x3f, 0x99, 0x5d, 0x19, 0xe9, 0x87, 0x2e, 0x90, 0x00, 0xde, 0x2d, 0x0c, 0x71,
-	0x52, 0x6a, 0x21, 0x43, 0x1a, 0xce, 0xfd, 0x79, 0xa0, 0x89, 0xb7, 0xc7, 0x9f, 0x1f, 0xb7, 0x4f,
-	0x99, 0x38, 0x1b, 0xf6, 0x5b, 0x5e, 0x74, 0xd1, 0x16, 0xf8, 0x5a, 0xb0, 0x00, 0x59, 0x94, 0xac,
-	0xda, 0x2f, 0xf7, 0xdb, 0xb9, 0xdf, 0x0a, 0xfd, 0x9a, 0xfa, 0x9d, 0xf0, 0xe0, 0xbf, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0x97, 0xab, 0x69, 0xbf, 0x70, 0x10, 0x00, 0x00,
+	// 1081 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x57, 0x5d, 0x6f, 0xdc, 0x44,
+	0x17, 0xce, 0xee, 0x66, 0xb7, 0xd9, 0xb3, 0x6f, 0x3e, 0xde, 0x49, 0xb2, 0x71, 0x2d, 0x1a, 0x82,
+	0x1b, 0x42, 0x0a, 0x62, 0x17, 0x52, 0xaa, 0xa8, 0x17, 0x08, 0xb5, 0x09, 0x2a, 0x11, 0x48, 0x54,
+	0x8e, 0x2a, 0xa4, 0x5c, 0x60, 0xcd, 0xda, 0x27, 0xc9, 0x28, 0x8e, 0xed, 0x7a, 0xc6, 0xfd, 0xe2,
+	0x1a, 0xf5, 0xaa, 0xdc, 0xf0, 0x93, 0xf8, 0x2f, 0xfc, 0x0e, 0xe4, 0xf1, 0x78, 0xd7, 0xdf, 0xd9,
+	0xc0, 0x9d, 0xe7, 0xcc, 0xf3, 0xcc, 0x39, 0x33, 0x73, 0xce, 0x73, 0xc6, 0xb0, 0x4d, 0x03, 0x36,
+	0x9e, 0x30, 0xd7, 0x65, 0xde, 0x85, 0x33, 0x0e, 0x26, 0xd3, 0xef, 0x51, 0x10, 0xfa, 0xc2, 0x27,
+	0xab, 0x34, 0x60, 0xa3, 0x99, 0x6d, 0x62, 0x7c, 0x05, 0xbd, 0xe7, 0x18, 0x32, 0xdf, 0x21, 0x1b,
+	0xd0, 0xe5, 0x82, 0x86, 0x42, 0x6b, 0xed, 0xb4, 0xf6, 0x3b, 0x66, 0x32, 0x20, 0x6b, 0xd0, 0x41,
+	0xcf, 0xd1, 0xda, 0xd2, 0x16, 0x7f, 0x1a, 0xcf, 0xa0, 0xfb, 0x82, 0xd3, 0x0b, 0x8c, 0x09, 0x91,
+	0xc7, 0x04, 0x4f, 0x09, 0x72, 0x10, 0x5b, 0x85, 0x2f, 0xa8, 0xab, 0x28, 0xc9, 0x80, 0x10, 0x58,
+	0x3c, 0x0f, 0x11, 0xb5, 0x8e, 0x34, 0xca, 0x6f, 0x63, 0x03, 0xc8, 0xd1, 0x25, 0xda, 0x57, 0x3f,
+	0x20, 0x75, 0xc5, 0xa5, 0x89, 0x2f, 0x23, 0xe4, 0xc2, 0xd8, 0x84, 0xf5, 0x9c, 0x95, 0x07, 0xbe,
+	0xc7, 0xd1, 0xf8, 0x15, 0x36, 0x8f, 0x42, 0xa4, 0x02, 0x8f, 0x22, 0x2e, 0xfc, 0x6b, 0x0c, 0x15,
+	0x3e, 0x0e, 0xf0, 0x0a, 0xdf, 0xca, 0x18, 0xfa, 0x66, 0xfc, 0x49, 0xee, 0x01, 0x04, 0x34, 0x44,
+	0x4f, 0x58, 0xf1, 0x44, 0x5b, 0x4e, 0xf4, 0x13, 0xcb, 0x8f, 0xf8, 0x36, 0x0e, 0x10, 0xaf, 0x29,
+	0x73, 0x65, 0x2c, 0x7d, 0x33, 0x19, 0x18, 0x8f, 0x61, 0x58, 0x5c, 0x3f, 0xf1, 0x4c, 0x3e, 0x86,
+	0x81, 0xad, 0x6c, 0x16, 0x73, 0x94, 0x23, 0x48, 0x4d, 0x27, 0x8e, 0xb1, 0x07, 0xe4, 0x19, 0x8a,
+	0x1b, 0xe3, 0x32, 0xfe, 0xec, 0xc2, 0x7a, 0x0e, 0xa8, 0x1c, 0x94, 0x77, 0x50, 0x70, 0xd9, 0x2e,
+	0xba, 0x2c, 0x6c, 0xb1, 0x53, 0xbb, 0xc5, 0xc5, 0xcc, 0x16, 0xc9, 0xa7, 0xb0, 0x42, 0x6d, 0xdb,
+	0x8f, 0x3c, 0x61, 0x71, 0x41, 0x45, 0xc4, 0xb5, 0xae, 0x9c, 0x5e, 0x56, 0xd6, 0x53, 0x69, 0x24,
+	0x63, 0x58, 0xe7, 0xd1, 0x84, 0xdb, 0x21, 0x0b, 0x04, 0xf3, 0xbd, 0x14, 0xdb, 0x93, 0x58, 0x92,
+	0x9d, 0x52, 0x04, 0x0d, 0xee, 0x4c, 0xa8, 0x4b, 0x3d, 0x1b, 0xb5, 0x3b, 0xf2, 0x7a, 0xd3, 0x21,
+	0xd1, 0x61, 0x29, 0xce, 0x35, 0x3a, 0x71, 0x51, 0x5b, 0xda, 0x69, 0xed, 0x2f, 0x99, 0xd3, 0x31,
+	0xd9, 0x06, 0x70, 0xd0, 0x65, 0xde, 0xcb, 0x08, 0x3d, 0xa1, 0xf5, 0xe5, 0x6c, 0xc6, 0x12, 0x6f,
+	0xd1, 0x96, 0x17, 0xe2, 0x58, 0x54, 0x68, 0x20, 0x17, 0xee, 0x2b, 0xcb, 0x13, 0x41, 0xc6, 0xd0,
+	0x0b, 0x64, 0xde, 0x6a, 0x83, 0x9d, 0xd6, 0xfe, 0xe0, 0x60, 0x6b, 0x54, 0xc8, 0xec, 0x51, 0x92,
+	0xd6, 0xa6, 0x82, 0x91, 0x43, 0x18, 0x70, 0xe1, 0x87, 0xe8, 0x58, 0x0e, 0x15, 0x54, 0xfb, 0x9f,
+	0x64, 0x0d, 0x4b, 0x2c, 0x99, 0xda, 0x26, 0x24, 0xd0, 0x63, 0x2a, 0x28, 0xf9, 0x16, 0x56, 0x3c,
+	0x14, 0xaf, 0xfd, 0xf0, 0xca, 0xc2, 0x8b, 0x10, 0x39, 0xd7, 0x96, 0x1b, 0xb9, 0xcb, 0x0a, 0xfd,
+	0xbd, 0x04, 0x93, 0xef, 0x60, 0x95, 0x79, 0x5c, 0xc4, 0xe7, 0x61, 0xbd, 0x0e, 0x99, 0x40, 0xae,
+	0xad, 0x34, 0xf2, 0x57, 0x52, 0xf8, 0x2f, 0x12, 0x1d, 0xfb, 0x9f, 0x2e, 0x10, 0x22, 0x75, 0xb8,
+	0xb6, 0xda, 0xec, 0x3f, 0x45, 0x9b, 0x31, 0x38, 0x39, 0xe7, 0x00, 0x3d, 0x07, 0x3d, 0xc1, 0xb5,
+	0x35, 0x79, 0x8e, 0x19, 0x8b, 0x61, 0xc1, 0xbd, 0x9f, 0x18, 0x17, 0xc7, 0xa9, 0x25, 0x4d, 0x4f,
+	0x5e, 0x5f, 0x60, 0x43, 0xe8, 0xf9, 0xe7, 0xe7, 0x1c, 0x85, 0xaa, 0x71, 0x35, 0x8a, 0xd3, 0xce,
+	0x65, 0xd7, 0x4c, 0xa8, 0x2a, 0x4f, 0x06, 0xc6, 0xef, 0x2d, 0xd8, 0xae, 0xf3, 0xa0, 0x2a, 0xe0,
+	0x29, 0xf4, 0xd3, 0xe4, 0x8e, 0xd5, 0xa4, 0xb3, 0x3f, 0x38, 0xd8, 0x2d, 0xed, 0xae, 0xa2, 0x74,
+	0xcc, 0x19, 0x2d, 0xae, 0x19, 0x0f, 0xdf, 0x08, 0x2b, 0x17, 0x19, 0xc4, 0xa6, 0x9f, 0xa5, 0xc5,
+	0xf8, 0x12, 0xee, 0x66, 0x96, 0x38, 0x45, 0xce, 0x99, 0xef, 0xd5, 0x57, 0xeb, 0x08, 0xf4, 0x2a,
+	0xf8, 0xac, 0x66, 0xa3, 0xd0, 0x4d, 0xf1, 0x51, 0xe8, 0x1a, 0x7f, 0xb4, 0x60, 0xf3, 0x45, 0xe0,
+	0x54, 0x28, 0xd4, 0x4d, 0x02, 0x92, 0x2d, 0xa0, 0x76, 0x7d, 0x01, 0x75, 0x1a, 0x0b, 0x68, 0xb1,
+	0x58, 0x40, 0x86, 0x06, 0xc3, 0x62, 0x3c, 0x4a, 0x4b, 0x3f, 0xb4, 0xe0, 0x93, 0xfc, 0xd4, 0x69,
+	0xa6, 0xaa, 0xe7, 0x0e, 0x7b, 0x08, 0x3d, 0xa5, 0x0d, 0x89, 0x40, 0xa9, 0x51, 0xa6, 0x34, 0x3b,
+	0x73, 0x95, 0xa6, 0xb1, 0x0b, 0x46, 0x53, 0x38, 0x2a, 0xea, 0x43, 0xb8, 0x6f, 0xa2, 0x9d, 0xd3,
+	0xe8, 0xaa, 0xb0, 0xcb, 0x37, 0xb9, 0x07, 0xbb, 0xcd, 0x44, 0xe5, 0xe0, 0x01, 0x6c, 0x1e, 0xa3,
+	0x8b, 0x73, 0xb4, 0x98, 0xf8, 0x6c, 0x8b, 0x50, 0xb5, 0xc8, 0xfb, 0x36, 0x6c, 0x9d, 0x78, 0x76,
+	0x6a, 0x4f, 0x4a, 0xb2, 0xb6, 0x92, 0xc6, 0xb0, 0x91, 0x11, 0x25, 0x8b, 0x79, 0xb6, 0xc5, 0xd9,
+	0xbb, 0x34, 0x0d, 0xfe, 0x3f, 0x53, 0xa1, 0x13, 0xcf, 0x3e, 0x65, 0xef, 0x90, 0x3c, 0x82, 0xad,
+	0xbc, 0x18, 0xcd, 0x38, 0x49, 0xd1, 0x6d, 0xe4, 0xd4, 0x27, 0xa5, 0x1d, 0x82, 0x96, 0xd7, 0x10,
+	0x49, 0x93, 0xaa, 0x2f, 0x33, 0xa7, 0x63, 0x6e, 0xe6, 0x54, 0x23, 0xde, 0x41, 0x3c, 0x49, 0x1e,
+	0xc3, 0xdd, 0x82, 0x7a, 0x65, 0x98, 0x5d, 0xc9, 0x1c, 0xe6, 0xf5, 0x2a, 0xa5, 0x1a, 0x7f, 0xb5,
+	0x41, 0x2b, 0x9f, 0x84, 0xaa, 0x9f, 0x59, 0x8e, 0xb4, 0xfe, 0x95, 0x7c, 0xb7, 0xff, 0x83, 0x7c,
+	0x77, 0x6e, 0x23, 0xdf, 0x65, 0xf5, 0x5d, 0xbc, 0x8d, 0xfa, 0x56, 0xa8, 0x7f, 0xf7, 0x36, 0xea,
+	0x7f, 0xf0, 0xf7, 0x12, 0xc0, 0x93, 0xe7, 0x27, 0xa7, 0x18, 0xbe, 0x62, 0x36, 0x92, 0x33, 0x18,
+	0x64, 0x5e, 0x47, 0xe4, 0x7e, 0x69, 0x95, 0xf2, 0x8b, 0x4a, 0xdf, 0x6d, 0x06, 0xa9, 0xc4, 0x5d,
+	0x20, 0x36, 0xac, 0xe4, 0x9f, 0x40, 0x64, 0xaf, 0xcc, 0xac, 0x7a, 0x83, 0xe9, 0x9f, 0xdd, 0x88,
+	0x9b, 0x3a, 0x39, 0x83, 0x41, 0x46, 0x56, 0x2b, 0x36, 0x50, 0x7e, 0x4a, 0xe9, 0x73, 0xf5, 0x02,
+	0x63, 0x81, 0xfc, 0x06, 0xc3, 0xea, 0x46, 0x43, 0x46, 0xa5, 0x15, 0x1a, 0x7b, 0x9e, 0x3e, 0x9e,
+	0x1b, 0x3f, 0x75, 0xee, 0xe7, 0x5e, 0x81, 0xaa, 0x5f, 0x90, 0xcf, 0x9b, 0x42, 0xcf, 0xf7, 0x20,
+	0xfd, 0x8b, 0xb9, 0xb0, 0xd9, 0xeb, 0xca, 0xab, 0x66, 0xc5, 0x75, 0x55, 0x36, 0xa4, 0x8a, 0xeb,
+	0xaa, 0x69, 0x14, 0x0b, 0xe4, 0x7d, 0x0b, 0xf4, 0x7a, 0x6d, 0x26, 0x07, 0x37, 0xac, 0x54, 0x21,
+	0xd0, 0xfa, 0xc3, 0x5b, 0x71, 0xa6, 0x91, 0x7c, 0x68, 0xc1, 0x47, 0x4d, 0x32, 0x4e, 0xbe, 0x29,
+	0xad, 0x3b, 0x47, 0xbb, 0xd0, 0x1f, 0xdd, 0x92, 0x95, 0x3d, 0xfe, 0x7c, 0x0b, 0xa8, 0x38, 0xfe,
+	0xca, 0x76, 0x52, 0x71, 0xfc, 0x35, 0xbd, 0x64, 0x81, 0x30, 0x58, 0x2b, 0x4a, 0x28, 0xd9, 0x2f,
+	0xd1, 0x6b, 0xfa, 0x8d, 0xfe, 0x60, 0x0e, 0x64, 0xea, 0xea, 0xe9, 0xd7, 0x67, 0xe3, 0x0b, 0x26,
+	0x2e, 0xa3, 0xc9, 0xc8, 0xf6, 0xaf, 0xc7, 0x02, 0xdf, 0x08, 0xe6, 0x22, 0xf3, 0xd3, 0xaf, 0xf1,
+	0xab, 0x83, 0x71, 0xe1, 0xdf, 0x72, 0xd2, 0x93, 0xff, 0x94, 0x0f, 0xff, 0x09, 0x00, 0x00, 0xff,
+	0xff, 0xc0, 0x57, 0x78, 0xfa, 0x75, 0x0e, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1476,10 +1242,7 @@ type APIServiceClient interface {
 	UpdateCustomerSubscription(ctx context.Context, in *UpdateCustomerSubscriptionRequest, opts ...grpc.CallOption) (*UpdateCustomerSubscriptionResponse, error)
 	RecreateCustomerSubscription(ctx context.Context, in *RecreateCustomerSubscriptionRequest, opts ...grpc.CallOption) (*RecreateCustomerSubscriptionResponse, error)
 	DeleteCustomer(ctx context.Context, in *DeleteCustomerRequest, opts ...grpc.CallOption) (*DeleteCustomerResponse, error)
-	IncStoredData(ctx context.Context, in *IncStoredDataRequest, opts ...grpc.CallOption) (*IncStoredDataResponse, error)
-	IncNetworkEgress(ctx context.Context, in *IncNetworkEgressRequest, opts ...grpc.CallOption) (*IncNetworkEgressResponse, error)
-	IncInstanceReads(ctx context.Context, in *IncInstanceReadsRequest, opts ...grpc.CallOption) (*IncInstanceReadsResponse, error)
-	IncInstanceWrites(ctx context.Context, in *IncInstanceWritesRequest, opts ...grpc.CallOption) (*IncInstanceWritesResponse, error)
+	IncCustomerUsage(ctx context.Context, in *IncCustomerUsageRequest, opts ...grpc.CallOption) (*IncCustomerUsageResponse, error)
 }
 
 type aPIServiceClient struct {
@@ -1571,36 +1334,9 @@ func (c *aPIServiceClient) DeleteCustomer(ctx context.Context, in *DeleteCustome
 	return out, nil
 }
 
-func (c *aPIServiceClient) IncStoredData(ctx context.Context, in *IncStoredDataRequest, opts ...grpc.CallOption) (*IncStoredDataResponse, error) {
-	out := new(IncStoredDataResponse)
-	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/IncStoredData", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) IncNetworkEgress(ctx context.Context, in *IncNetworkEgressRequest, opts ...grpc.CallOption) (*IncNetworkEgressResponse, error) {
-	out := new(IncNetworkEgressResponse)
-	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/IncNetworkEgress", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) IncInstanceReads(ctx context.Context, in *IncInstanceReadsRequest, opts ...grpc.CallOption) (*IncInstanceReadsResponse, error) {
-	out := new(IncInstanceReadsResponse)
-	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/IncInstanceReads", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) IncInstanceWrites(ctx context.Context, in *IncInstanceWritesRequest, opts ...grpc.CallOption) (*IncInstanceWritesResponse, error) {
-	out := new(IncInstanceWritesResponse)
-	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/IncInstanceWrites", in, out, opts...)
+func (c *aPIServiceClient) IncCustomerUsage(ctx context.Context, in *IncCustomerUsageRequest, opts ...grpc.CallOption) (*IncCustomerUsageResponse, error) {
+	out := new(IncCustomerUsageResponse)
+	err := c.cc.Invoke(ctx, "/api.billingd.pb.APIService/IncCustomerUsage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1618,10 +1354,7 @@ type APIServiceServer interface {
 	UpdateCustomerSubscription(context.Context, *UpdateCustomerSubscriptionRequest) (*UpdateCustomerSubscriptionResponse, error)
 	RecreateCustomerSubscription(context.Context, *RecreateCustomerSubscriptionRequest) (*RecreateCustomerSubscriptionResponse, error)
 	DeleteCustomer(context.Context, *DeleteCustomerRequest) (*DeleteCustomerResponse, error)
-	IncStoredData(context.Context, *IncStoredDataRequest) (*IncStoredDataResponse, error)
-	IncNetworkEgress(context.Context, *IncNetworkEgressRequest) (*IncNetworkEgressResponse, error)
-	IncInstanceReads(context.Context, *IncInstanceReadsRequest) (*IncInstanceReadsResponse, error)
-	IncInstanceWrites(context.Context, *IncInstanceWritesRequest) (*IncInstanceWritesResponse, error)
+	IncCustomerUsage(context.Context, *IncCustomerUsageRequest) (*IncCustomerUsageResponse, error)
 }
 
 // UnimplementedAPIServiceServer can be embedded to have forward compatible implementations.
@@ -1655,17 +1388,8 @@ func (*UnimplementedAPIServiceServer) RecreateCustomerSubscription(ctx context.C
 func (*UnimplementedAPIServiceServer) DeleteCustomer(ctx context.Context, req *DeleteCustomerRequest) (*DeleteCustomerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCustomer not implemented")
 }
-func (*UnimplementedAPIServiceServer) IncStoredData(ctx context.Context, req *IncStoredDataRequest) (*IncStoredDataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IncStoredData not implemented")
-}
-func (*UnimplementedAPIServiceServer) IncNetworkEgress(ctx context.Context, req *IncNetworkEgressRequest) (*IncNetworkEgressResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IncNetworkEgress not implemented")
-}
-func (*UnimplementedAPIServiceServer) IncInstanceReads(ctx context.Context, req *IncInstanceReadsRequest) (*IncInstanceReadsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IncInstanceReads not implemented")
-}
-func (*UnimplementedAPIServiceServer) IncInstanceWrites(ctx context.Context, req *IncInstanceWritesRequest) (*IncInstanceWritesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IncInstanceWrites not implemented")
+func (*UnimplementedAPIServiceServer) IncCustomerUsage(ctx context.Context, req *IncCustomerUsageRequest) (*IncCustomerUsageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IncCustomerUsage not implemented")
 }
 
 func RegisterAPIServiceServer(s *grpc.Server, srv APIServiceServer) {
@@ -1834,74 +1558,20 @@ func _APIService_DeleteCustomer_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _APIService_IncStoredData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IncStoredDataRequest)
+func _APIService_IncCustomerUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IncCustomerUsageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServiceServer).IncStoredData(ctx, in)
+		return srv.(APIServiceServer).IncCustomerUsage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.billingd.pb.APIService/IncStoredData",
+		FullMethod: "/api.billingd.pb.APIService/IncCustomerUsage",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).IncStoredData(ctx, req.(*IncStoredDataRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_IncNetworkEgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IncNetworkEgressRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).IncNetworkEgress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.billingd.pb.APIService/IncNetworkEgress",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).IncNetworkEgress(ctx, req.(*IncNetworkEgressRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_IncInstanceReads_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IncInstanceReadsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).IncInstanceReads(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.billingd.pb.APIService/IncInstanceReads",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).IncInstanceReads(ctx, req.(*IncInstanceReadsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_IncInstanceWrites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IncInstanceWritesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).IncInstanceWrites(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.billingd.pb.APIService/IncInstanceWrites",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).IncInstanceWrites(ctx, req.(*IncInstanceWritesRequest))
+		return srv.(APIServiceServer).IncCustomerUsage(ctx, req.(*IncCustomerUsageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1947,20 +1617,8 @@ var _APIService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _APIService_DeleteCustomer_Handler,
 		},
 		{
-			MethodName: "IncStoredData",
-			Handler:    _APIService_IncStoredData_Handler,
-		},
-		{
-			MethodName: "IncNetworkEgress",
-			Handler:    _APIService_IncNetworkEgress_Handler,
-		},
-		{
-			MethodName: "IncInstanceReads",
-			Handler:    _APIService_IncInstanceReads_Handler,
-		},
-		{
-			MethodName: "IncInstanceWrites",
-			Handler:    _APIService_IncInstanceWrites_Handler,
+			MethodName: "IncCustomerUsage",
+			Handler:    _APIService_IncCustomerUsage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

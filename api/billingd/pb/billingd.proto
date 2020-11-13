@@ -36,19 +36,20 @@ message GetCustomerResponse {
     string customer_id = 2;
     string parent_key = 3;
     string email = 4;
-    string status = 5;
-    int64 balance = 6;
-    bool billable = 7;
-    bool delinquent = 8;
-    int64 created_at = 9;
+    string account_status = 5;
+    string subscription_status = 6;
+    int64 balance = 7;
+    bool billable = 8;
+    bool delinquent = 9;
+    int64 created_at = 10;
 
-    Period period = 10;
-    Usage stored_data = 11;
-    Usage network_egress = 12;
-    Usage instance_writes = 13;
-    Usage instance_reads = 14;
+    Period period = 11;
+    Usage stored_data = 12;
+    Usage network_egress = 13;
+    Usage instance_writes = 14;
+    Usage instance_reads = 15;
 
-    int64 dependents = 15;
+    int64 dependents = 16;
 }
 
 message ListDependentCustomersRequest {
@@ -99,44 +100,20 @@ message DeleteCustomerRequest {
 
 message DeleteCustomerResponse {}
 
-message IncStoredDataRequest {
+message IncCustomerUsageRequest {
     string key = 1;
-    int64 inc_size = 2;
+    int64 stored_data_inc_size = 2;
+    int64 network_egress_inc_size = 3;
+    int64 instance_reads_inc_count = 4;
+    int64 instance_writes_inc_count = 5;
 }
 
-message IncStoredDataResponse {
+message IncCustomerUsageResponse {
     Period period = 1;
     Usage stored_data = 2;
-}
-
-message IncNetworkEgressRequest {
-    string key = 1;
-    int64 inc_size = 2;
-}
-
-message IncNetworkEgressResponse {
-    Period period = 1;
-    Usage network_egress = 2;
-}
-
-message IncInstanceReadsRequest {
-    string key = 1;
-    int64 inc_count = 2;
-}
-
-message IncInstanceReadsResponse {
-    Period period = 1;
-    Usage instance_reads = 2;
-}
-
-message IncInstanceWritesRequest {
-    string key = 1;
-    int64 inc_count = 2;
-}
-
-message IncInstanceWritesResponse {
-    Period period = 1;
-    Usage instance_writes = 2;
+    Usage network_egress = 3;
+    Usage instance_reads = 4;
+    Usage instance_writes = 5;
 }
 
 service APIService {
@@ -149,8 +126,5 @@ service APIService {
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
     rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
-    rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
-    rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
-    rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
-    rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
+    rpc IncCustomerUsage(IncCustomerUsageRequest) returns (IncCustomerUsageResponse) {}
 }
