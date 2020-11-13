@@ -233,6 +233,7 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 			t.Errorf("unknown archive status")
 			t.FailNow()
 		}
+
 		return false
 	}
 }
