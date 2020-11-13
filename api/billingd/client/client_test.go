@@ -90,6 +90,7 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(key))
 		require.NoError(t, err)
+		time.Sleep(time.Second)
 	}
 
 	res, err := c.ListDependentCustomers(context.Background(), key, client.WithLimit(30))
