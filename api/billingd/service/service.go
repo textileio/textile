@@ -668,6 +668,40 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 	return &pb.UpdateCustomerSubscriptionResponse{}, nil
 }
 
+func (s *Service) RecreateCustomerSubscription(ctx context.Context, req *pb.RecreateCustomerSubscriptionRequest) (
+	*pb.RecreateCustomerSubscriptionResponse, error) {
+	lck := s.semaphores.Get(customerLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
+		return nil, err
+	}
+	if err := common.StatusCheck(doc.Status); err == nil {
+		return nil, common.ErrSubscriptionExists
+	} else if !errors.Is(err, common.ErrSubscriptionCanceled) {
+		return nil, err
+	}
+	if err := s.createSubscription(doc); err != nil {
+		return nil, err
+	}
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": req.Key}, bson.M{
+		"$set": bson.M{
+			"status":          doc.Status,
+			"period":          doc.Period,
+			"stored_data":     doc.StoredData,
+			"network_egress":  doc.NetworkEgress,
+			"instance_reads":  doc.InstanceReads,
+			"instance_writes": doc.InstanceWrites,
+		}}); err != nil {
+		return nil, err
+	}
+
+	log.Debugf("recreated subscription for %s", req.Key)
+	return &pb.RecreateCustomerSubscriptionResponse{}, nil
+}
+
 func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequest) (
 	*pb.DeleteCustomerResponse, error) {
 	lck := s.semaphores.Get(customerLock(req.Key))

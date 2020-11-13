@@ -150,6 +150,29 @@ func TestClient_UpdateCustomerSubscription(t *testing.T) {
 	assert.Equal(t, string(stripe.SubscriptionStatusCanceled), cus.Status)
 }
 
+func TestClient_RecreateCustomerSubscription(t *testing.T) {
+	t.Parallel()
+	c := setup(t)
+	key := newKey(t)
+	id, err := c.CreateCustomer(context.Background(), key)
+	require.NoError(t, err)
+
+	err = c.RecreateCustomerSubscription(context.Background(), key)
+	require.Error(t, err)
+
+	start := time.Now().Add(-time.Hour).Unix()
+	end := time.Now().Add(time.Hour).Unix()
+	err = c.UpdateCustomerSubscription(context.Background(), id, stripe.SubscriptionStatusCanceled, start, end)
+	require.NoError(t, err)
+
+	err = c.RecreateCustomerSubscription(context.Background(), key)
+	require.NoError(t, err)
+
+	cus, err := c.GetCustomer(context.Background(), key)
+	require.NoError(t, err)
+	assert.Equal(t, string(stripe.SubscriptionStatusActive), cus.Status)
+}
+
 func TestClient_DeleteCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)

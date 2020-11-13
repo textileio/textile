@@ -139,6 +139,7 @@ func (c *eventCollector) collect(events chan MailboxEvent) {
 }
 
 func (c *eventCollector) check(t *testing.T, numNew, numRead, numDeleted int) {
+	time.Sleep(time.Second)
 	c.Lock()
 	defer c.Unlock()
 	assert.Equal(t, numNew, c.new)

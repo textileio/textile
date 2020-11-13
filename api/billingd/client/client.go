@@ -115,6 +115,13 @@ func (c *Client) UpdateCustomerSubscription(
 	return err
 }
 
+func (c *Client) RecreateCustomerSubscription(ctx context.Context, key thread.PubKey) error {
+	_, err := c.c.RecreateCustomerSubscription(ctx, &pb.RecreateCustomerSubscriptionRequest{
+		Key: key.String(),
+	})
+	return err
+}
+
 func (c *Client) DeleteCustomer(ctx context.Context, key thread.PubKey) error {
 	_, err := c.c.DeleteCustomer(ctx, &pb.DeleteCustomerRequest{
 		Key: key.String(),

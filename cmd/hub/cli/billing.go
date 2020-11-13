@@ -55,7 +55,7 @@ var billingPortalCmd = &cobra.Command{
 }
 
 var billingUsageCmd = &cobra.Command{
-	Use:   "usage [key]",
+	Use:   "usage",
 	Short: "Show usage and billing info",
 	Long: `Shows usage and billing information.
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -549,6 +550,36 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 		return nil, err
 	}
 	return &pb.LeaveOrgResponse{}, nil
+}
+
+func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (*pb.SetupBillingResponse, error) {
+	log.Debugf("received setup billing request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+	account, err := getAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.BillingClient.CreateCustomer(
+		ctx,
+		account.Owner().Key,
+		billing.WithEmail(account.Owner().Email),
+	); err != nil {
+		if strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
+			if err := s.BillingClient.RecreateCustomerSubscription(
+				ctx,
+				account.Owner().Key,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return &pb.SetupBillingResponse{}, nil
 }
 
 func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSessionRequest) (*pb.GetBillingSessionResponse, error) {

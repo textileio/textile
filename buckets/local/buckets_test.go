@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	ipfsfiles "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -328,6 +329,7 @@ func (c *eventCollector) collect(events chan PathEvent) {
 }
 
 func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int) {
+	time.Sleep(time.Second)
 	c.Lock()
 	defer c.Unlock()
 	if numFilesAdded > 0 {
