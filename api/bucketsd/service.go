@@ -916,16 +916,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	})
 	buck.UnsetMetadataWithPrefix(destPath + "/")
 
-	txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if e := txn.End(err); err == nil {
-			err = e
-		}
-	}()
-	if err = txn.Verify(ctx, buck); err != nil {
+	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 
@@ -944,7 +935,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 		return nil, err
 	}
 	buck.Path = dirPath.String()
-	if err = txn.Save(ctx, buck); err != nil {
+	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 	return &pb.SetPathResponse{
@@ -1350,16 +1341,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	})
 	buck.UnsetMetadataWithPrefix(filePath + "/")
 
-	txn, err := s.Buckets.WriteTxn(server.Context(), dbID, tdb.WithToken(dbToken))
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if e := txn.End(err); err == nil {
-			err = e
-		}
-	}()
-	if err = txn.Verify(server.Context(), buck); err != nil {
+	if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return err
 	}
 
@@ -1490,7 +1472,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}
 
 	buck.Path = dirPath.String()
-	if err = txn.Save(ctx, buck); err != nil {
+	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return err
 	}
 
@@ -1955,16 +1937,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	buck.UpdatedAt = time.Now().UnixNano()
 	buck.UnsetMetadataWithPrefix(filePath)
 
-	txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if e := txn.End(err); err == nil {
-			err = e
-		}
-	}()
-	if err = txn.Verify(ctx, buck); err != nil {
+	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 
@@ -1991,7 +1964,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	}
 
 	buck.Path = dirPath.String()
-	if err = txn.Save(ctx, buck); err != nil {
+	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
 
@@ -2161,16 +2134,7 @@ func (s *Service) PushPathAccessRoles(
 			}
 		}
 
-		txn, err := s.Buckets.WriteTxn(ctx, dbID, tdb.WithToken(dbToken))
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if e := txn.End(err); err == nil {
-				err = e
-			}
-		}()
-		if err = txn.Verify(ctx, buck); err != nil {
+		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 			return nil, err
 		}
 
@@ -2212,7 +2176,7 @@ func (s *Service) PushPathAccessRoles(
 			buck.Path = dirPath.String()
 		}
 
-		if err = txn.Save(ctx, buck); err != nil {
+		if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 			return nil, err
 		}
 	}

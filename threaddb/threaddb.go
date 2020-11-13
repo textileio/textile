@@ -32,7 +32,8 @@ func WithToken(t thread.Token) Option {
 }
 
 // Create a collection instance.
-func (c *Collection) Create(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) (coredb.InstanceID, error) {
+func (c *Collection) Create(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) (
+	coredb.InstanceID, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -73,7 +74,8 @@ func (c *Collection) Get(ctx context.Context, dbID thread.ID, key string, instan
 }
 
 // List collection instances.
-func (c *Collection) List(ctx context.Context, dbID thread.ID, query *db.Query, instance interface{}, opts ...Option) (interface{}, error) {
+func (c *Collection) List(ctx context.Context, dbID thread.ID, query *db.Query, instance interface{}, opts ...Option) (
+	interface{}, error) {
 	args := &Options{}
 	for _, opt := range opts {
 		opt(args)
@@ -103,6 +105,22 @@ func (c *Collection) Save(ctx context.Context, dbID thread.ID, instance interfac
 			return err
 		}
 		return c.Save(ctx, dbID, instance, opts...)
+	}
+	return err
+}
+
+// Save a collection instance.
+func (c *Collection) Verify(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) error {
+	args := &Options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	err := c.c.Verify(ctx, dbID, c.config.Name, dbc.Instances{instance}, db.WithTxnToken(args.Token))
+	if isInvalidSchemaErr(err) {
+		if err := c.updateCollection(ctx, dbID, args.Token); err != nil {
+			return err
+		}
+		return c.Verify(ctx, dbID, instance, opts...)
 	}
 	return err
 }

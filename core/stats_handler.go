@@ -17,7 +17,7 @@ type StatsHandler struct {
 
 var _ stats.Handler = (*StatsHandler)(nil)
 
-var statsTimeout = time.Second * 10
+var statsTimeout = time.Hour
 
 // HandleRPC accounts for customer usage across services.
 func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
