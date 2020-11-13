@@ -26,6 +26,7 @@ services:
       - TEXLOTUSDEVNET_SPEED=300
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=false
+      - TEXLOTUSDEVNET_ONLINEMODE=true
 
   ipfs:
     image: ipfs/go-ipfs:v0.7.0
