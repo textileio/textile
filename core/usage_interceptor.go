@@ -120,7 +120,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
 	if !cus.Billable && cus.NetworkEgress.Free == 0 {
-		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeUnits)
+		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeQuota)
 		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
 
@@ -149,7 +149,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/ReadTransaction",
 		"/threads.pb.API/Listen":
 		if !cus.Billable && cus.InstanceReads.Free == 0 {
-			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeUnits)
+			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
 	case "/threads.pb.API/Create",
@@ -157,7 +157,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/Delete",
 		"/threads.pb.API/WriteTransaction":
 		if !cus.Billable && cus.InstanceWrites.Free == 0 {
-			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeUnits)
+			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
 	}

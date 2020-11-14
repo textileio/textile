@@ -8,7 +8,6 @@ message Period {
 }
 
 message Usage {
-    int64 units = 1;
     int64 total = 2;
     int64 free = 3;
 }

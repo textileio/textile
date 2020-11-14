@@ -12,6 +12,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
+	cron "github.com/robfig/cron/v3"
 	stripe "github.com/stripe/stripe-go/v72"
 	stripec "github.com/stripe/stripe-go/v72/client"
 	nutil "github.com/textileio/go-threads/net/util"
@@ -30,35 +31,33 @@ const (
 	defaultPageSize = 25
 	maxPageSize     = 1000
 
+	reporterTimeout = time.Hour
+
 	mib = 1024 * 1024
 	gib = 1024 * mib
 
 	Interval      = stripe.PriceRecurringIntervalMonth
 	IntervalCount = 1
 
-	StoredDataCostPerInterval      = 0.03 / gib
-	StoredDataFreePerInterval      = 5 * gib
-	StoredDataUnitSize             = 8 * mib
-	StoredDataFreeUnitsPerInterval = StoredDataFreePerInterval / StoredDataUnitSize
-	StoredDataUnitCostPerInterval  = StoredDataUnitSize * StoredDataCostPerInterval
+	StoredDataCostPerInterval     = 0.03 / gib
+	StoredDataFreePerInterval     = 5 * gib
+	StoredDataUnitSize            = 8 * mib
+	StoredDataUnitCostPerInterval = StoredDataUnitSize * StoredDataCostPerInterval
 
-	NetworkEgressCostPerInterval      = 0.1 / gib
-	NetworkEgressFreePerInterval      = 10 * gib
-	NetworkEgressUnitSize             = 8 * mib
-	NetworkEgressFreeUnitsPerInterval = NetworkEgressFreePerInterval / NetworkEgressUnitSize
-	NetworkEgressUnitCostPerInterval  = NetworkEgressUnitSize * NetworkEgressCostPerInterval
+	NetworkEgressCostPerInterval     = 0.1 / gib
+	NetworkEgressFreePerInterval     = 10 * gib
+	NetworkEgressUnitSize            = 8 * mib
+	NetworkEgressUnitCostPerInterval = NetworkEgressUnitSize * NetworkEgressCostPerInterval
 
-	InstanceReadsCostPerInterval      = 0.1 / 100000
-	InstanceReadsFreePerInterval      = 500000
-	InstanceReadsUnitSize             = 500
-	InstanceReadsFreeUnitsPerInterval = InstanceReadsFreePerInterval / InstanceReadsUnitSize
-	InstanceReadsUnitCostPerInterval  = InstanceReadsUnitSize * InstanceReadsCostPerInterval
+	InstanceReadsCostPerInterval     = 0.1 / 100000
+	InstanceReadsFreePerInterval     = 500000
+	InstanceReadsUnitSize            = 500
+	InstanceReadsUnitCostPerInterval = InstanceReadsUnitSize * InstanceReadsCostPerInterval
 
-	InstanceWritesCostPerInterval      = 0.2 / 100000
-	InstanceWritesFreePerInterval      = 200000
-	InstanceWritesUnitSize             = 500
-	InstanceWritesFreeUnitsPerInterval = InstanceWritesFreePerInterval / InstanceWritesUnitSize
-	InstanceWritesUnitCostPerInterval  = InstanceWritesUnitSize * InstanceWritesCostPerInterval
+	InstanceWritesCostPerInterval     = 0.2 / 100000
+	InstanceWritesFreePerInterval     = 200000
+	InstanceWritesUnitSize            = 500
+	InstanceWritesUnitCostPerInterval = InstanceWritesUnitSize * InstanceWritesCostPerInterval
 )
 
 var log = logging.Logger("billing")
@@ -69,6 +68,7 @@ type Service struct {
 	stripe     *stripec.API
 	db         *mongo.Collection
 	gateway    *gateway.Gateway
+	reporter   *cron.Cron
 	semaphores *nutil.SemaphorePool
 }
 
@@ -95,15 +95,15 @@ type Config struct {
 
 	GatewayHostAddr ma.Multiaddr
 
-	StoredDataPriceID     string
-	NetworkEgressPriceID  string
-	InstanceReadsPriceID  string
-	InstanceWritesPriceID string
+	StoredDataFreePriceID     string
+	NetworkEgressFreePriceID  string
+	InstanceReadsFreePriceID  string
+	InstanceWritesFreePriceID string
 
-	StoredDataDependentPriceID     string
-	NetworkEgressDependentPriceID  string
-	InstanceReadsDependentPriceID  string
-	InstanceWritesDependentPriceID string
+	StoredDataPaidPriceID     string
+	NetworkEgressPaidPriceID  string
+	InstanceReadsPaidPriceID  string
+	InstanceWritesPaidPriceID string
 
 	Debug bool
 }
@@ -145,9 +145,10 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	s := &Service{
-		config: config,
-		db:     customers,
-		stripe: sc,
+		config:   config,
+		db:       customers,
+		stripe:   sc,
+		reporter: cron.New(),
 	}
 	s.gateway, err = gateway.NewGateway(gateway.Config{
 		Addr:                config.GatewayHostAddr,
@@ -159,48 +160,48 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		return nil, err
 	}
 
-	if s.config.StoredDataPriceID == "" {
-		s.config.StoredDataPriceID, err = s.createPrice(
+	if _, err := s.reporter.AddFunc("@daily", func() {
+		if err := s.reportUsage(); err != nil {
+			log.Errorf("reporting usage: %v", err)
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	if s.config.StoredDataFreePriceID == "" {
+		s.config.StoredDataFreePriceID, err = s.createPrice(
 			sc,
 			"Stored data",
-			stripe.PriceRecurringAggregateUsageLastEver,
-			StoredDataFreeUnitsPerInterval,
 			StoredDataUnitCostPerInterval,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.NetworkEgressPriceID == "" {
-		s.config.NetworkEgressPriceID, err = s.createPrice(
+	if s.config.NetworkEgressFreePriceID == "" {
+		s.config.NetworkEgressFreePriceID, err = s.createPrice(
 			sc,
 			"Network egress",
-			stripe.PriceRecurringAggregateUsageSum,
-			NetworkEgressFreeUnitsPerInterval,
 			NetworkEgressUnitCostPerInterval,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.InstanceReadsPriceID == "" {
-		s.config.InstanceReadsPriceID, err = s.createPrice(
+	if s.config.InstanceReadsFreePriceID == "" {
+		s.config.InstanceReadsFreePriceID, err = s.createPrice(
 			sc,
 			"ThreadDB reads",
-			stripe.PriceRecurringAggregateUsageSum,
-			InstanceReadsFreeUnitsPerInterval,
 			InstanceReadsUnitCostPerInterval,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.InstanceWritesPriceID == "" {
-		s.config.InstanceWritesPriceID, err = s.createPrice(
+	if s.config.InstanceWritesFreePriceID == "" {
+		s.config.InstanceWritesFreePriceID, err = s.createPrice(
 			sc,
 			"ThreadDB writes",
-			stripe.PriceRecurringAggregateUsageSum,
-			InstanceWritesFreeUnitsPerInterval,
 			InstanceWritesUnitCostPerInterval,
 		)
 		if err != nil {
@@ -208,48 +209,40 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		}
 	}
 
-	if s.config.StoredDataDependentPriceID == "" {
-		s.config.StoredDataDependentPriceID, err = s.createPrice(
+	if s.config.StoredDataPaidPriceID == "" {
+		s.config.StoredDataPaidPriceID, err = s.createPrice(
 			sc,
-			"Stored data",
-			stripe.PriceRecurringAggregateUsageLastEver,
-			StoredDataFreeUnitsPerInterval,
+			"Stored data (free quota)",
 			0,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.NetworkEgressDependentPriceID == "" {
-		s.config.NetworkEgressDependentPriceID, err = s.createPrice(
+	if s.config.NetworkEgressPaidPriceID == "" {
+		s.config.NetworkEgressPaidPriceID, err = s.createPrice(
 			sc,
-			"Network egress",
-			stripe.PriceRecurringAggregateUsageSum,
-			NetworkEgressFreeUnitsPerInterval,
+			"Network egress (free quota)",
 			0,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.InstanceReadsDependentPriceID == "" {
-		s.config.InstanceReadsDependentPriceID, err = s.createPrice(
+	if s.config.InstanceReadsPaidPriceID == "" {
+		s.config.InstanceReadsPaidPriceID, err = s.createPrice(
 			sc,
-			"ThreadDB reads",
-			stripe.PriceRecurringAggregateUsageSum,
-			InstanceReadsFreeUnitsPerInterval,
+			"ThreadDB reads (free quota)",
 			0,
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if s.config.InstanceWritesDependentPriceID == "" {
-		s.config.InstanceWritesDependentPriceID, err = s.createPrice(
+	if s.config.InstanceWritesPaidPriceID == "" {
+		s.config.InstanceWritesPaidPriceID, err = s.createPrice(
 			sc,
-			"ThreadDB writes",
-			stripe.PriceRecurringAggregateUsageSum,
-			InstanceWritesFreeUnitsPerInterval,
+			"ThreadDB writes (free quota)",
 			0,
 		)
 		if err != nil {
@@ -284,13 +277,7 @@ func newStripeClient(url, key string) (*stripec.API, error) {
 	return client, nil
 }
 
-func (s *Service) createPrice(
-	client *stripec.API,
-	productName string,
-	priceAggregateUsage stripe.PriceRecurringAggregateUsage,
-	freeUnitsPerInterval int64,
-	unitCost float64,
-) (string, error) {
+func (s *Service) createPrice(client *stripec.API, productName string, unitCost float64) (string, error) {
 	product, err := client.Products.New(&stripe.ProductParams{
 		Name: stripe.String(productName),
 	})
@@ -301,16 +288,12 @@ func (s *Service) createPrice(
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
 		Product:  stripe.String(product.ID),
 		Recurring: &stripe.PriceRecurringParams{
-			AggregateUsage: stripe.String(string(priceAggregateUsage)),
+			AggregateUsage: stripe.String(string(stripe.PriceRecurringAggregateUsageSum)),
 			Interval:       stripe.String(string(Interval)),
 			IntervalCount:  stripe.Int64(IntervalCount),
 			UsageType:      stripe.String(string(stripe.PriceRecurringUsageTypeMetered)),
 		},
 		Tiers: []*stripe.PriceTierParams{
-			{
-				UpTo:       stripe.Int64(freeUnitsPerInterval),
-				UnitAmount: stripe.Int64(0),
-			},
 			{
 				UpToInf:           stripe.Bool(true),
 				UnitAmountDecimal: stripe.Float64(unitCost),
@@ -343,6 +326,7 @@ func (s *Service) Start() error {
 		}
 	}()
 	s.gateway.Start()
+	s.reporter.Start()
 	return nil
 }
 
@@ -352,6 +336,7 @@ func (s *Service) Stop(force bool) error {
 	} else {
 		s.server.GracefulStop()
 	}
+	s.reporter.Stop()
 	s.semaphores.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -385,9 +370,9 @@ type Period struct {
 }
 
 type Usage struct {
-	ItemID string `bson:"item_id"`
-	Units  int64  `bson:"units"`
-	Total  int64  `bson:"total"`
+	FreeItemID string `bson:"free_item_id"`
+	PaidItemID string `bson:"paid_item_id"`
+	Total      int64  `bson:"total"`
 }
 
 func (c *Customer) AccountStatus() string {
@@ -440,27 +425,17 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 }
 
 func (s *Service) createSubscription(cus *Customer) error {
-	var (
-		storedDataPriceID, networkEgressPriceID, instanceReadsPriceID, instanceWritesPriceID string
-	)
-	if cus.ParentKey != "" {
-		storedDataPriceID = s.config.StoredDataDependentPriceID
-		networkEgressPriceID = s.config.NetworkEgressDependentPriceID
-		instanceReadsPriceID = s.config.InstanceReadsDependentPriceID
-		instanceWritesPriceID = s.config.InstanceWritesDependentPriceID
-	} else {
-		storedDataPriceID = s.config.StoredDataPriceID
-		networkEgressPriceID = s.config.NetworkEgressPriceID
-		instanceReadsPriceID = s.config.InstanceReadsPriceID
-		instanceWritesPriceID = s.config.InstanceWritesPriceID
-	}
 	sub, err := s.stripe.Subscriptions.New(&stripe.SubscriptionParams{
 		Customer: stripe.String(cus.CustomerID),
 		Items: []*stripe.SubscriptionItemsParams{
-			{Price: stripe.String(storedDataPriceID)},
-			{Price: stripe.String(networkEgressPriceID)},
-			{Price: stripe.String(instanceReadsPriceID)},
-			{Price: stripe.String(instanceWritesPriceID)},
+			{Price: stripe.String(s.config.StoredDataFreePriceID)},
+			{Price: stripe.String(s.config.StoredDataPaidPriceID)},
+			{Price: stripe.String(s.config.NetworkEgressFreePriceID)},
+			{Price: stripe.String(s.config.NetworkEgressPaidPriceID)},
+			{Price: stripe.String(s.config.InstanceReadsFreePriceID)},
+			{Price: stripe.String(s.config.InstanceReadsPaidPriceID)},
+			{Price: stripe.String(s.config.InstanceWritesFreePriceID)},
+			{Price: stripe.String(s.config.InstanceWritesPaidPriceID)},
 		},
 	})
 	if err != nil {
@@ -473,14 +448,22 @@ func (s *Service) createSubscription(cus *Customer) error {
 	}
 	for _, item := range sub.Items.Data {
 		switch item.Price.ID {
-		case storedDataPriceID:
-			cus.StoredData.ItemID = item.ID // Retain existing units since this is "last ever" usage
-		case networkEgressPriceID:
-			cus.NetworkEgress = Usage{ItemID: item.ID}
-		case instanceReadsPriceID:
-			cus.InstanceReads = Usage{ItemID: item.ID}
-		case instanceWritesPriceID:
-			cus.InstanceWrites = Usage{ItemID: item.ID}
+		case s.config.StoredDataFreePriceID:
+			cus.StoredData.PaidItemID = item.ID
+		case s.config.StoredDataPaidPriceID:
+			cus.StoredData.FreeItemID = item.ID
+		case s.config.NetworkEgressFreePriceID:
+			cus.NetworkEgress.PaidItemID = item.ID
+		case s.config.NetworkEgressPaidPriceID:
+			cus.NetworkEgress.FreeItemID = item.ID
+		case s.config.InstanceReadsFreePriceID:
+			cus.InstanceReads.PaidItemID = item.ID
+		case s.config.InstanceReadsPaidPriceID:
+			cus.InstanceReads.FreeItemID = item.ID
+		case s.config.InstanceWritesFreePriceID:
+			cus.InstanceWrites.PaidItemID = item.ID
+		case s.config.InstanceWritesPaidPriceID:
+			cus.InstanceWrites.FreeItemID = item.ID
 		}
 	}
 	return nil
@@ -507,13 +490,12 @@ func periodToPb(period Period) *pb.Period {
 	}
 }
 
-func usageToPb(usage Usage, unitSize, freeUnits int64) *pb.Usage {
-	free := (freeUnits * unitSize) - usage.Total
+func usageToPb(usage Usage, freeSize int64) *pb.Usage {
+	free := freeSize - usage.Total
 	if free < 0 {
 		free = 0
 	}
 	return &pb.Usage{
-		Units: usage.Units,
 		Total: usage.Total,
 		Free:  free,
 	}
@@ -536,10 +518,10 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		Delinquent:         doc.Delinquent,
 		CreatedAt:          doc.CreatedAt,
 		Period:             periodToPb(doc.Period),
-		StoredData:         usageToPb(doc.StoredData, StoredDataUnitSize, StoredDataFreeUnitsPerInterval),
-		NetworkEgress:      usageToPb(doc.NetworkEgress, NetworkEgressUnitSize, NetworkEgressFreeUnitsPerInterval),
-		InstanceReads:      usageToPb(doc.InstanceReads, InstanceReadsUnitSize, InstanceReadsFreeUnitsPerInterval),
-		InstanceWrites:     usageToPb(doc.InstanceWrites, InstanceWritesUnitSize, InstanceWritesFreeUnitsPerInterval),
+		StoredData:         usageToPb(doc.StoredData, StoredDataFreePerInterval),
+		NetworkEgress:      usageToPb(doc.NetworkEgress, NetworkEgressFreePerInterval),
+		InstanceReads:      usageToPb(doc.InstanceReads, InstanceReadsFreePerInterval),
+		InstanceWrites:     usageToPb(doc.InstanceWrites, InstanceWritesFreePerInterval),
 		Dependents:         deps,
 	}, nil
 }
@@ -648,36 +630,16 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
-
-	r := s.db.FindOneAndUpdate(ctx, bson.M{"_id": doc.Key}, bson.M{
+	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
 		"$set": bson.M{
 			"subscription_status": req.Status,
 			"period.start":        req.Period.Start,
 			"period.end":          req.Period.End,
 		},
-	})
-	if r.Err() != nil {
-		return nil, r.Err()
-	}
-	var pre Customer
-	if err := r.Decode(&pre); err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	if pre.Period.End < req.Period.End {
-		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": pre.Key}, bson.M{
-			"$set": bson.M{
-				"network_egress.units":      0,
-				"network_egress.sub_units":  0,
-				"instance_reads.units":      0,
-				"instance_reads.sub_units":  0,
-				"instance_writes.units":     0,
-				"instance_writes.sub_units": 0,
-			}}); err != nil {
-			return nil, err
-		}
-	}
-
-	log.Debugf("updated subscription with status '%s' for %s", req.Status, pre.Key)
+	log.Debugf("updated subscription with status '%s' for %s", req.Status, doc.Key)
 	return &pb.UpdateCustomerSubscriptionResponse{}, nil
 }
 
@@ -766,17 +728,15 @@ func (s *Service) handleCustomerUsage(
 		cus.StoredData,
 		"stored_data",
 		req.StoredDataIncSize,
-		StoredDataUnitSize,
-		StoredDataFreeUnitsPerInterval,
+		StoredDataFreePerInterval,
 		cus.Billable,
 	)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf(
-		"%s period data: units=%d total=%d free=%d",
+		"%s period data: total=%d free=%d",
 		cus.Key,
-		sd.Units,
 		sd.Total,
 		sd.Free,
 	)
@@ -786,16 +746,14 @@ func (s *Service) handleCustomerUsage(
 		cus.NetworkEgress,
 		"network_egress",
 		req.NetworkEgressIncSize,
-		NetworkEgressUnitSize,
-		NetworkEgressFreeUnitsPerInterval,
+		NetworkEgressFreePerInterval,
 		cus.Billable,
 	)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("%s period egress: units=%d total=%d free=%d",
+	log.Debugf("%s period egress: total=%d free=%d",
 		cus.Key,
-		ne.Units,
 		ne.Total,
 		ne.Free,
 	)
@@ -805,17 +763,15 @@ func (s *Service) handleCustomerUsage(
 		cus.InstanceReads,
 		"instance_reads",
 		req.InstanceReadsIncCount,
-		InstanceReadsUnitSize,
-		InstanceReadsFreeUnitsPerInterval,
+		InstanceReadsFreePerInterval,
 		cus.Billable,
 	)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf(
-		"%s period reads: units=%d total=%d free=%d",
+		"%s period reads: total=%d free=%d",
 		cus.Key,
-		ir.Units,
 		ir.Total,
 		ir.Free,
 	)
@@ -825,17 +781,15 @@ func (s *Service) handleCustomerUsage(
 		cus.InstanceWrites,
 		"instance_writes",
 		req.InstanceWritesIncCount,
-		InstanceWritesUnitSize,
-		InstanceWritesFreeUnitsPerInterval,
+		InstanceWritesFreePerInterval,
 		cus.Billable,
 	)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf(
-		"%s period writes: units=%d total=%d free=%d",
+		"%s period writes: total=%d free=%d",
 		cus.Key,
-		iw.Units,
 		iw.Total,
 		iw.Free,
 	)
@@ -862,39 +816,134 @@ func (s *Service) handleUsage(
 	key string,
 	usage Usage,
 	usageKey string,
-	inc, unitSize, freeUnits int64,
+	inc, freeSize int64,
 	billable bool,
 ) (*pb.Usage, error) {
 	total := usage.Total + inc
 	if total < 0 {
 		total = 0
 	}
+	if total > freeSize && !billable {
+		return nil, common.ErrExceedsFreeQuota
+	}
 	update := bson.M{usageKey + ".total": total}
-	units := int64(math.Round(float64(total) / float64(unitSize)))
-	if units > freeUnits && !billable {
-		return nil, common.ErrExceedsFreeUnits
-	}
-	if units != usage.Units {
-		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
-			SubscriptionItem: stripe.String(usage.ItemID),
-			Quantity:         stripe.Int64(units),
-			Timestamp:        stripe.Int64(time.Now().Unix()),
-			Action:           stripe.String(stripe.UsageRecordActionSet),
-		}); err != nil {
-			return nil, err
-		}
-		update[usageKey+".units"] = units
-	}
 	if _, err := s.db.UpdateOne(ctx, bson.M{"_id": key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
-	free := (freeUnits * unitSize) - total
+	free := freeSize - total
 	if free < 0 {
 		free = 0
 	}
 	return &pb.Usage{
-		Units: units,
 		Total: total,
 		Free:  free,
 	}, nil
+}
+
+func (s *Service) reportUsage() error {
+	periodDays := getPeriodDays()
+
+	ctx, cancel := context.WithTimeout(context.Background(), reporterTimeout)
+	defer cancel()
+	cursor, err := s.db.Find(ctx, bson.M{})
+	if err != nil {
+		return fmt.Errorf("finding customers: %v", err)
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var doc Customer
+		if err := cursor.Decode(&doc); err != nil {
+			return fmt.Errorf("decoding customer: %v", err)
+		}
+
+		if err := s.reportUnits(
+			doc.StoredData,
+			StoredDataFreePerInterval,
+			StoredDataUnitSize,
+			periodDays,
+		); err != nil {
+			return err
+		}
+		if err := s.reportUnits(
+			doc.NetworkEgress,
+			NetworkEgressFreePerInterval,
+			NetworkEgressUnitSize,
+			periodDays,
+		); err != nil {
+			return err
+		}
+		if err := s.reportUnits(
+			doc.InstanceReads,
+			InstanceReadsFreePerInterval,
+			InstanceReadsUnitSize,
+			periodDays,
+		); err != nil {
+			return err
+		}
+		if err := s.reportUnits(
+			doc.InstanceWrites,
+			InstanceWritesFreePerInterval,
+			InstanceWritesUnitSize,
+			periodDays,
+		); err != nil {
+			return err
+		}
+
+		// Reset all usage totals.
+		if _, err := s.db.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
+			"$set": bson.M{
+				"stored_data.total":     0,
+				"network_egress.total":  0,
+				"instance_reads.total":  0,
+				"instance_writes.total": 0,
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	if err := cursor.Err(); err != nil {
+		return fmt.Errorf("cursor error: %v", err)
+	}
+	return nil
+}
+
+func (s *Service) reportUnits(usage Usage, productFreeSize, productUnitSize, periodDays int64) error {
+	var freeSize, paidSize int64
+	if usage.Total > productFreeSize {
+		freeSize = productFreeSize
+		paidSize = usage.Total - productFreeSize
+	} else {
+		freeSize = usage.Total
+	}
+	freeUnits := int64(math.Round(float64(freeSize) / float64(productUnitSize) / float64(periodDays)))
+	if freeUnits > 0 {
+		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			SubscriptionItem: stripe.String(usage.FreeItemID),
+			Quantity:         stripe.Int64(freeUnits),
+			Timestamp:        stripe.Int64(time.Now().Unix()),
+			Action:           stripe.String(stripe.UsageRecordActionSet),
+		}); err != nil {
+			return err
+		}
+	}
+	paidUnits := int64(math.Round(float64(paidSize) / float64(productUnitSize) / float64(periodDays)))
+	if paidUnits > 0 {
+		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
+			SubscriptionItem: stripe.String(usage.PaidItemID),
+			Quantity:         stripe.Int64(paidUnits),
+			Timestamp:        stripe.Int64(time.Now().Unix()),
+			Action:           stripe.String(stripe.UsageRecordActionIncrement),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getPeriodDays() int64 {
+	// Go to next month
+	d1 := time.Now().AddDate(0, 1, 0)
+	// Zeroing days will cause time to normalize the date to the last day of the current month.
+	d2 := time.Date(d1.Year(), d1.Month(), 0, 0, 0, 0, 0, time.UTC)
+	return int64(d2.Day())
 }

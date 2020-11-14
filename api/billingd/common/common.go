@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	// ErrExceedsFreeUnits indicates the requested operation exceeds the free unit quota.
-	ErrExceedsFreeUnits = errors.New("request exceeds free unit quota")
+	// ErrExceedsFreeQuota indicates the requested operation exceeds the free quota.
+	ErrExceedsFreeQuota = errors.New("request exceeds free quota")
 
 	// ErrSubscriptionExists indicates the subscription already exists and has a healthy status.
 	ErrSubscriptionExists = errors.New("subscription exists")
