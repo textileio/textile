@@ -182,23 +182,34 @@ func TestClient_DeleteCustomer(t *testing.T) {
 
 func TestClient_IncCustomerUsage(t *testing.T) {
 	t.Parallel()
+	tests := map[string]int64{
+		"stored_data":     mib,
+		"network_egress":  mib,
+		"instance_reads":  1,
+		"instance_writes": 1,
+	}
+	for k, size := range tests {
+		incCustomerUsage(t, k, size)
+	}
+}
+
+func incCustomerUsage(t *testing.T, productKey string, initialIncSize int64) {
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key)
 	require.NoError(t, err)
 
-	productKey := "stored_data"
 	product := getProduct(t, productKey)
 	freeUnitsPerInterval := getFreeUnitsPerInterval(product)
 
 	// Add some under unit size
-	res, err := c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: mib})
+	res, err := c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: initialIncSize})
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), res.DailyUsage[productKey].Units)
-	assert.Equal(t, int64(mib), res.DailyUsage[productKey].Total)
+	assert.Equal(t, int64(initialIncSize), res.DailyUsage[productKey].Total)
 
 	// Add more to reach unit size
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.UnitSize - mib})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.UnitSize - initialIncSize})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), res.DailyUsage[productKey].Units)
 	assert.Equal(t, product.UnitSize, res.DailyUsage[productKey].Total)
