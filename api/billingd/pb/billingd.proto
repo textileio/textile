@@ -3,11 +3,12 @@ package api.billingd.pb;
 option go_package = "github.com/textileio/textile/v2/api/billingd/pb";
 
 message Period {
-    int64 start = 1;
-    int64 end = 2;
+    int64 unix_start = 1;
+    int64 unix_end = 2;
 }
 
 message Usage {
+    int64 units = 1;
     int64 total = 2;
     int64 free = 3;
 }
@@ -42,13 +43,11 @@ message GetCustomerResponse {
     bool delinquent = 9;
     int64 created_at = 10;
 
-    Period period = 11;
-    Usage stored_data = 12;
-    Usage network_egress = 13;
-    Usage instance_writes = 14;
-    Usage instance_reads = 15;
+    Period invoice_period = 11;
 
-    int64 dependents = 16;
+    map<string, Usage> daily_usage = 12;
+
+    int64 dependents = 13;
 }
 
 message ListDependentCustomersRequest {
@@ -82,7 +81,7 @@ message UpdateCustomerResponse {}
 message UpdateCustomerSubscriptionRequest {
     string customer_id = 1;
     string status = 2;
-    Period period = 3;
+    Period invoice_period = 3;
 }
 
 message UpdateCustomerSubscriptionResponse {}
@@ -101,18 +100,12 @@ message DeleteCustomerResponse {}
 
 message IncCustomerUsageRequest {
     string key = 1;
-    int64 stored_data_inc_size = 2;
-    int64 network_egress_inc_size = 3;
-    int64 instance_reads_inc_count = 4;
-    int64 instance_writes_inc_count = 5;
+    map<string, int64> product_usage = 2;
 }
 
 message IncCustomerUsageResponse {
-    Period period = 1;
-    Usage stored_data = 2;
-    Usage network_egress = 3;
-    Usage instance_reads = 4;
-    Usage instance_writes = 5;
+    Period invoice_period = 1;
+    map<string, Usage> daily_usage = 2;
 }
 
 service APIService {

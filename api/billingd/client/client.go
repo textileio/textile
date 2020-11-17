@@ -107,9 +107,9 @@ func (c *Client) UpdateCustomerSubscription(
 	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
 		CustomerId: customerID,
 		Status:     string(status),
-		Period: &pb.Period{
-			Start: periodStart,
-			End:   periodEnd,
+		InvoicePeriod: &pb.Period{
+			UnixStart: periodStart,
+			UnixEnd:   periodEnd,
 		},
 	})
 	return err
@@ -132,13 +132,10 @@ func (c *Client) DeleteCustomer(ctx context.Context, key thread.PubKey) error {
 func (c *Client) IncCustomerUsage(
 	ctx context.Context,
 	key thread.PubKey,
-	storedDataincSize, networkEgressIncSize, instanceReadsIncCount, instanceWritesIncCount int64,
+	productUsage map[string]int64,
 ) (*pb.IncCustomerUsageResponse, error) {
 	return c.c.IncCustomerUsage(ctx, &pb.IncCustomerUsageRequest{
-		Key:                    key.String(),
-		StoredDataIncSize:      storedDataincSize,
-		NetworkEgressIncSize:   networkEgressIncSize,
-		InstanceReadsIncCount:  instanceReadsIncCount,
-		InstanceWritesIncCount: instanceWritesIncCount,
+		Key:          key.String(),
+		ProductUsage: productUsage,
 	})
 }

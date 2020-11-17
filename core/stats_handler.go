@@ -137,10 +137,11 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 				if _, err := h.t.bc.IncCustomerUsage(
 					ctx,
 					rs.key,
-					0,
-					rs.egress,
-					rs.reads,
-					rs.writes,
+					map[string]int64{
+						"network_egress":  rs.egress,
+						"instance_reads":  rs.reads,
+						"instance_writes": rs.writes,
+					},
 				); err != nil {
 					log.Errorf("stats: inc customer usage: %v", err)
 				}
