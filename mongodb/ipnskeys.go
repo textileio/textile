@@ -25,10 +25,10 @@ func NewIPNSKeys(ctx context.Context, db *mongo.Database) (*IPNSKeys, error) {
 	k := &IPNSKeys{col: db.Collection("ipnskeys")}
 	_, err := k.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"cid", 1}},
+			Keys: bson.D{primitive.E{Key: "cid", Value: 1}},
 		},
 		{
-			Keys: bson.D{{"thread_id", 1}},
+			Keys: bson.D{primitive.E{Key: "thread_id", Value: 1}},
 		},
 	})
 	return k, err

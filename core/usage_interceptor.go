@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
+	powc "github.com/textileio/powergate/api/client"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/buckets"
@@ -75,11 +76,12 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
 		var powInfo *mdb.PowInfo
 		if t.pc != nil {
-			ffsId, ffsToken, err := t.pc.FFS.Create(ctx)
+			ctxAdmin := context.WithValue(ctx, powc.AdminKey, t.conf.PowergateAdminToken)
+			res, err := t.pc.Admin.Users.Create(ctxAdmin)
 			if err != nil {
 				return ctx, err
 			}
-			powInfo = &mdb.PowInfo{ID: ffsId, Token: ffsToken}
+			powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
 		}
 		user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
 		if err != nil {

@@ -23,6 +23,7 @@ func powInterceptor(
 	serviceDesc *desc.ServiceDescriptor,
 	stub *grpcdynamic.Stub,
 	pc *powc.Client,
+	powAdminToken string,
 	c *mdb.Collections,
 ) grpc.UnaryServerInterceptor {
 	return func(
@@ -64,12 +65,13 @@ func powInterceptor(
 			return nil, status.Errorf(codes.FailedPrecondition, "account is required")
 		}
 
-		createNewFFS := func() error {
-			id, token, err := pc.FFS.Create(ctx)
+		createNewUser := func() error {
+			ctxAdmin := context.WithValue(ctx, powc.AdminKey, powAdminToken)
+			res, err := pc.Admin.Users.Create(ctxAdmin)
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
-			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: id, Token: token})
+			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
 			if err != nil {
 				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}
@@ -80,29 +82,29 @@ func powInterceptor(
 			"please try again in 30 seconds to allow time for setup to complete")
 
 		// Case where account/user was created before powergate was enabled.
-		// create a ffs instance for them.
+		// create a user for them.
 		if account.Owner().PowInfo == nil {
-			if err := createNewFFS(); err != nil {
+			if err := createNewUser(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
 		}
 
-		ffsCtx := context.WithValue(ctx, powc.AuthKey, account.Owner().PowInfo.Token)
+		powCtx := context.WithValue(ctx, powc.AuthKey, account.Owner().PowInfo.Token)
 
 		methodDesc := serviceDesc.FindMethodByName(methodName)
 		if methodDesc == nil {
 			return nil, status.Errorf(codes.Internal, "no method found for %s", methodName)
 		}
 
-		res, err := stub.InvokeRpc(ffsCtx, methodDesc, req.(proto.Message))
+		res, err := stub.InvokeRpc(powCtx, methodDesc, req.(proto.Message))
 		if err != nil {
 			if !strings.Contains(err.Error(), "auth token not found") {
 				return nil, err
 			} else {
-				// case where the ffs token is no longer valid because powergate was reset.
-				// create a new ffs instance for them.
-				if err := createNewFFS(); err != nil {
+				// case where the auth token is no longer valid because powergate was reset.
+				// create a new user for them.
+				if err := createNewUser(); err != nil {
 					return nil, err
 				}
 				return nil, tryAgain

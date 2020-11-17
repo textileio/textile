@@ -32,13 +32,13 @@ func NewInvites(ctx context.Context, db *mongo.Database) (*Invites, error) {
 	i := &Invites{col: db.Collection("invites")}
 	_, err := i.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"org", 1}},
+			Keys: bson.D{primitive.E{Key: "org", Value: 1}},
 		},
 		{
-			Keys: bson.D{{"from_id", 1}},
+			Keys: bson.D{primitive.E{Key: "from_id", Value: 1}},
 		},
 		{
-			Keys: bson.D{{"email_to", 1}},
+			Keys: bson.D{primitive.E{Key: "email_to", Value: 1}},
 		},
 	})
 	return i, err

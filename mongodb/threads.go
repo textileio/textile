@@ -41,16 +41,16 @@ func NewThreads(ctx context.Context, db *mongo.Database) (*Threads, error) {
 	t := &Threads{col: db.Collection("threads")}
 	_, err := t.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"_id.owner", 1}, {"name", 1}},
+			Keys: bson.D{primitive.E{Key: "_id.owner", Value: 1}, primitive.E{Key: "name", Value: 1}},
 			Options: options.Index().SetUnique(true).
-				SetPartialFilterExpression(bson.D{{"name", bson.M{"$exists": 1}}}).
+				SetPartialFilterExpression(bson.D{primitive.E{Key: "name", Value: bson.M{"$exists": 1}}}).
 				SetCollation(&options.Collation{Locale: "en", Strength: 2}),
 		},
 		{
-			Keys: bson.D{{"_id.thread", 1}},
+			Keys: bson.D{primitive.E{Key: "_id.thread", Value: 1}},
 		},
 		{
-			Keys: bson.D{{"key_id", 1}},
+			Keys: bson.D{primitive.E{Key: "key_id", Value: 1}},
 		},
 	})
 	return t, err
@@ -75,7 +75,7 @@ func (t *Threads) Create(ctx context.Context, id thread.ID, owner thread.PubKey,
 		return nil, err
 	}
 	raw := bson.M{
-		"_id":        bson.D{{"owner", ownerID}, {"thread", id.Bytes()}},
+		"_id":        bson.D{primitive.E{Key: "owner", Value: ownerID}, primitive.E{Key: "thread", Value: id.Bytes()}},
 		"key_id":     doc.Key,
 		"is_db":      doc.IsDB,
 		"created_at": doc.CreatedAt,
@@ -94,7 +94,7 @@ func (t *Threads) Get(ctx context.Context, id thread.ID, owner thread.PubKey) (*
 	if err != nil {
 		return nil, err
 	}
-	res := t.col.FindOne(ctx, bson.M{"_id": bson.D{{"owner", ownerID}, {"thread", id.Bytes()}}})
+	res := t.col.FindOne(ctx, bson.M{"_id": bson.D{primitive.E{Key: "owner", Value: ownerID}, primitive.E{Key: "thread", Value: id.Bytes()}}})
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
@@ -178,7 +178,7 @@ func (t *Threads) Delete(ctx context.Context, id thread.ID, owner thread.PubKey)
 	if err != nil {
 		return err
 	}
-	res, err := t.col.DeleteOne(ctx, bson.M{"_id": bson.D{{"owner", ownerID}, {"thread", id.Bytes()}}})
+	res, err := t.col.DeleteOne(ctx, bson.M{"_id": bson.D{primitive.E{Key: "owner", Value: ownerID}, primitive.E{Key: "thread", Value: id.Bytes()}}})
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,12 @@ package cli
 
 import (
 	"context"
+	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
-	ffsRpc "github.com/textileio/powergate/ffs/rpc"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func init() {
@@ -28,62 +29,6 @@ var powCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(0),
 }
 
-var powHealthCmd = &cobra.Command{
-	Use:   "health",
-	Short: "Check the health of the Powergate node",
-	Long:  `Check the health of the Powergate node.`,
-	Args:  cobra.ExactArgs(0),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.Health(ctx)
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powPeersCmd = &cobra.Command{
-	Use:   "peers",
-	Short: "List Powergate's Filecoin peers",
-	Long:  `List Powergate's Filecoin peers.`,
-	Args:  cobra.ExactArgs(0),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.Peers(ctx)
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powFindPeerCmd = &cobra.Command{
-	Use:   "find-peer [peer-id]",
-	Short: "Find a Filecoin peer by id",
-	Long:  `Find a Filecoin peer by id.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.FindPeer(ctx, args[0])
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powConnectednessCmd = &cobra.Command{
-	Use:   "connectedness [peer-id]",
-	Short: "Get the connectedness state to a Filecoin peer",
-	Long:  `Get the connectedness state to a Filecoin peer.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.Connectedness(ctx, args[0])
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
 var powAddrsCmd = &cobra.Command{
 	Use:   "addrs",
 	Short: "List Filecoin wallet addresses associated with the current account or org",
@@ -92,51 +37,47 @@ var powAddrsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		res, err := clients.Pow.Addrs(ctx)
+		res, err := clients.Pow.Addresses(ctx)
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
 	},
 }
 
-var powInfoCmd = &cobra.Command{
-	Use:   "info",
-	Short: "Display information about the Powergate associated with the current account or org to any other account",
-	Long:  `Display information about the Powergate associated with the current account or org to any other account.`,
-	Args:  cobra.ExactArgs(0),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.Info(ctx)
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powShowCmd = &cobra.Command{
-	Use:   "show [cid]",
-	Short: "Display information about a stored CID",
-	Long:  `Display information about a stored CID.`,
+var powBalanceCmd = &cobra.Command{
+	Use:   "balance [addr]",
+	Short: "Display the FIL balance of a wallet address",
+	Long:  `Display the FIL balance of a wallet address.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		res, err := clients.Pow.Show(ctx, args[0])
+		res, err := clients.Pow.Balance(ctx, args[0])
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
 	},
 }
 
-var powShowAllCmd = &cobra.Command{
-	Use:   "show-all",
-	Short: "Display information about all stored CIDs",
-	Long:  `Display information about all stored CIDs.`,
-	Args:  cobra.ExactArgs(0),
+var powInfoCmd = &cobra.Command{
+	Use:   "info [optional cid1,cid2,...]",
+	Short: "Get information about the current storate state of a cid",
+	Long:  `Get information about the current storate state of a cid`,
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		res, err := clients.Pow.ShowAll(ctx)
+		var cids []string
+		if len(args) > 0 {
+			cids = strings.Split(args[0], ",")
+		}
+		res, err := clients.Pow.CidInfo(ctx, cids...)
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
 	},
 }
 
@@ -158,16 +99,18 @@ var powStorageCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		final, err := c.Flags().GetBool("include-final")
 		cmd.ErrCheck(err)
-		conf := &ffsRpc.ListDealRecordsConfig{
+		conf := &userPb.DealRecordsConfig{
 			Ascending:      ascending,
 			DataCids:       cids,
 			FromAddrs:      addrs,
 			IncludeFinal:   final,
 			IncludePending: pending,
 		}
-		res, err := clients.Pow.ListStorageDealRecords(ctx, conf)
+		res, err := clients.Pow.StorageDealRecords(ctx, conf)
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
 	},
 }
 
@@ -185,27 +128,15 @@ var powRetrievalsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		addrs, err := c.Flags().GetStringSlice("addrs")
 		cmd.ErrCheck(err)
-		conf := &ffsRpc.ListDealRecordsConfig{
+		conf := &userPb.DealRecordsConfig{
 			Ascending: ascending,
 			DataCids:  cids,
 			FromAddrs: addrs,
 		}
-		res, err := clients.Pow.ListRetrievalDealRecords(ctx, conf)
+		res, err := clients.Pow.RetrievalDealRecords(ctx, conf)
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
-	},
-}
-
-var powBalanceCmd = &cobra.Command{
-	Use:   "balance [addr]",
-	Short: "Display the FIL balance of a wallet address",
-	Long:  `Display the FIL balance of a wallet address.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
-		defer cancel()
-		res, err := clients.Pow.Balance(ctx, args[0])
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
-		cmd.Success("\n%v", proto.MarshalTextString(res))
+		cmd.Success("\n%v", string(json))
 	},
 }

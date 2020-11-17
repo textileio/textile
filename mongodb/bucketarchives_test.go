@@ -44,18 +44,18 @@ func TestBucketArchives_Replace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "buckkey1", res.BucketKey)
 
-	ffs, err := col.GetOrCreate(context.Background(), "buckkey1")
+	ba, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
 
 	c1, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	c2, _ := cid.Decode("QmU7gJi6Bz3jrvbuVfB7zzXStLJrTHf6vWh8ZqkCsTGoRC")
-	ffs.Archives.Current = Archive{
+	ba.Archives.Current = Archive{
 		Cid:       c1.Bytes(),
 		JobID:     "JobID1",
 		JobStatus: 123,
 		CreatedAt: time.Now().Unix(),
 	}
-	ffs.Archives.History = []Archive{
+	ba.Archives.History = []Archive{
 		{
 			Cid:       c2.Bytes(),
 			JobID:     "JobID2",
@@ -63,10 +63,10 @@ func TestBucketArchives_Replace(t *testing.T) {
 			CreatedAt: time.Now().Add(time.Hour * -24).Unix(),
 		},
 	}
-	err = col.Replace(ctx, ffs)
+	err = col.Replace(ctx, ba)
 	require.NoError(t, err)
 
-	ffs2, err := col.GetOrCreate(context.Background(), "buckkey1")
+	ba2, err := col.GetOrCreate(context.Background(), "buckkey1")
 	require.NoError(t, err)
-	require.Equal(t, ffs, ffs2)
+	require.Equal(t, ba, ba2)
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	gopath "path"
 	"strings"
 	"sync"
@@ -28,8 +29,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	nutil "github.com/textileio/go-threads/net/util"
 	pow "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
-	ffsRpc "github.com/textileio/powergate/ffs/rpc"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	powUtil "github.com/textileio/powergate/util"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
@@ -64,11 +64,11 @@ var (
 
 	// baseArchiveStorageConfig is used to build the final StorageConfig after being
 	// combined with information from the ArchiveConfig
-	baseArchiveStorageConfig = ffs.StorageConfig{
-		Hot: ffs.HotConfig{
+	baseArchiveStorageConfig = &userPb.StorageConfig{
+		Hot: &userPb.HotConfig{
 			Enabled: false,
 		},
-		Cold: ffs.ColdConfig{
+		Cold: &userPb.ColdConfig{
 			Enabled: true,
 		},
 	}
@@ -93,16 +93,17 @@ type ctxKey string
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections        *mdb.Collections
-	Buckets            *tdb.Buckets
-	GatewayURL         string
-	GatewayBucketsHost string
-	IPFSClient         iface.CoreAPI
-	IPNSManager        *ipns.Manager
-	PowergateClient    *pow.Client
-	ArchiveTracker     *archive.Tracker
-	Semaphores         *nutil.SemaphorePool
-	MaxBucketSize      int64
+	Collections         *mdb.Collections
+	Buckets             *tdb.Buckets
+	GatewayURL          string
+	GatewayBucketsHost  string
+	IPFSClient          iface.CoreAPI
+	IPNSManager         *ipns.Manager
+	PowergateClient     *pow.Client
+	PowergateAdminToken string
+	ArchiveTracker      *archive.Tracker
+	Semaphores          *nutil.SemaphorePool
+	MaxBucketSize       int64
 }
 
 var (
@@ -2296,12 +2297,13 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("parsing cid path: %s", err)
 	}
 
-	createNewFFS := func() error {
-		id, token, err := s.PowergateClient.FFS.Create(ctx)
+	createNewUser := func() error {
+		ctxAdmin := context.WithValue(ctx, pow.AdminKey, s.PowergateAdminToken)
+		res, err := s.PowergateClient.Admin.Users.Create(ctxAdmin)
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
-		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: id, Token: token})
+		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
 		if err != nil {
 			return fmt.Errorf("updating user/account with new powergate information: %v", err)
 		}
@@ -2312,24 +2314,24 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		"new powergate integration created, please try again in 30 seconds to allow time for wallet funding")
 
 	// Case where account/user was created before bucket archives were enabled.
-	// create a ffs instance for them.
+	// create a user for them.
 	if account.Owner().PowInfo == nil {
-		if err := createNewFFS(); err != nil {
+		if err := createNewUser(); err != nil {
 			return nil, err
 		}
 		return nil, tryAgain
 	}
 
-	ctxFFS := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
+	ctxPow := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
 
-	defConf, err := s.PowergateClient.FFS.DefaultStorageConfig(ctxFFS)
+	defConfRes, err := s.PowergateClient.StorageConfig.Default(ctxPow)
 	if err != nil {
 		if !strings.Contains(err.Error(), "auth token not found") {
 			return nil, fmt.Errorf("getting powergate default StorageConfig: %v", err)
 		} else {
-			// case where the ffs token is no longer valid because powergate was reset.
-			// create a new ffs instance for them.
-			if err := createNewFFS(); err != nil {
+			// case where the user token is no longer valid because powergate was reset.
+			// create a new user for them.
+			if err := createNewUser(); err != nil {
 				return nil, err
 			}
 			return nil, tryAgain
@@ -2355,116 +2357,125 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	storageConfig := baseArchiveStorageConfig
 	storageConfig.Cold.Filecoin = toFilConfig(archiveConfig)
 
-	if storageConfig.Cold.Filecoin.Addr == "" {
+	if storageConfig.Cold.Filecoin.Address == "" {
 		// We don't have an address to use, which is the case for a BucketArchive.DefaultArchiveConfig
-		// that is the default value, get the default address from the FFS instance
-		storageConfig.Cold.Filecoin.Addr = defConf.Cold.Filecoin.Addr
+		// that is the default value, get the default address from the user
+		storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 	}
 
-	// Check that FFS wallet addr balance is > 0, if not, fail fast.
-	bal, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Addr)
+	// Check that user wallet addr balance is > 0, if not, fail fast.
+	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
 	if err != nil {
 		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
 	}
-	if bal == 0 {
+	bal, ok := new(big.Int).SetString(balRes.Balance, 10)
+	if !ok {
+		return nil, fmt.Errorf("error converting balance %v to big int", balRes.Balance)
+	}
+	if bal.Cmp(big.NewInt(0)) == 0 {
 		return nil, buckets.ErrZeroBalance
 	}
 
-	// Archive pushes the current root Cid to the corresponding FFS instance of the bucket.
+	// Archive pushes the current root Cid to the corresponding user of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.
-	// 0. No previous archive or last one aborted: simply pushes the Cid to the FFS instance.
+	// 0. No previous archive or last one aborted: simply pushes the Cid to Powergate.
 	// 1. Last archive exists with the same Cid:
 	//   a. Last archive Successful: fails, there's nothing to do.
 	//   b. Last archive Executing/Queued: fails, that work already starting and is in progress.
 	//   c. Last archive Failed/Canceled: work to do, push again with override flag to try again.
-	// 2. Archiving on new Cid: work to do, it will always call Replace(,) in the FFS instance.
-	var jid ffs.JobID
+	// 2. Archiving on new Cid: work to do, it will always call Replace(,).
+	var jid string
 	firstTimeArchive := ba.Archives.Current.JobID == ""
 	if firstTimeArchive || ba.Archives.Current.Aborted { // Case 0.
 		// On the first archive, we simply push the Cid with
 		// the default CidConfig configured at bucket creation.
-		jid, err = s.PowergateClient.FFS.PushStorageConfig(
-			ctxFFS,
-			p.Cid(),
+		res, err := s.PowergateClient.StorageConfig.Apply(
+			ctxPow,
+			p.Cid().String(),
 			pow.WithStorageConfig(storageConfig),
 			pow.WithOverride(true),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("pushing config: %s", err)
 		}
+		jid = res.JobId
 	} else {
 		oldCid, err := cid.Cast(ba.Archives.Current.Cid)
 		if err != nil {
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
+		statusName, found := userPb.JobStatus_name[int32(ba.Archives.Current.JobStatus)]
+		if !found {
+			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.JobStatus)
+		}
+
+		status := userPb.JobStatus(ba.Archives.Current.JobStatus)
+
 		if oldCid.Equals(p.Cid()) { // Case 1.
-			switch ffs.JobStatus(ba.Archives.Current.JobStatus) {
+			switch status {
 			// Case 1.a.
-			case ffs.Success:
+			case userPb.JobStatus_JOB_STATUS_SUCCESS:
 				return nil, fmt.Errorf("the same bucket cid is already archived successfully")
 			// Case 1.b.
-			case ffs.Executing, ffs.Queued:
+			case userPb.JobStatus_JOB_STATUS_EXECUTING, userPb.JobStatus_JOB_STATUS_QUEUED:
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
-			case ffs.Failed, ffs.Canceled:
-				jid, err = s.PowergateClient.FFS.PushStorageConfig(
-					ctxFFS,
-					p.Cid(),
+			case userPb.JobStatus_JOB_STATUS_FAILED, userPb.JobStatus_JOB_STATUS_CANCELED:
+				res, err := s.PowergateClient.StorageConfig.Apply(
+					ctxPow,
+					p.Cid().String(),
 					pow.WithStorageConfig(storageConfig),
 					pow.WithOverride(true),
 				)
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
+				jid = res.JobId
 			default:
-				return nil, fmt.Errorf("unexpected current archive status: %d", ba.Archives.Current.JobStatus)
+				return nil, fmt.Errorf("unexpected current archive status: %s", statusName)
 			}
 		} else { // Case 2.
-			res, err := s.PowergateClient.FFS.GetStorageConfig(ctxFFS, oldCid)
+			res, err := s.PowergateClient.Data.CidInfo(ctxPow, oldCid.String())
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
-			// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
-			var oldStorageConfig *ffs.StorageConfig
-			if res.Config != nil {
-				oldStorageConfig = &ffs.StorageConfig{
-					Repairable: res.Config.Repairable,
-					Cold:       fromRPCColdConfig(res.Config.Cold),
-					Hot:        fromRPCHotConfig(res.Config.Hot),
-				}
+			if len(res.CidInfos) == 0 {
+				return nil, fmt.Errorf("no cid info returned")
 			}
 
-			if cmp.Equal(&storageConfig, oldStorageConfig) {
+			if cmp.Equal(&storageConfig, res.CidInfos[0].LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
-				jid, err = s.PowergateClient.FFS.Replace(ctxFFS, oldCid, p.Cid())
+				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
 					return nil, fmt.Errorf("replacing cid: %s", err)
 				}
+				jid = res.JobId
 			} else {
 				// New storage config, so remove and push.
-				_, err = s.PowergateClient.FFS.PushStorageConfig(
-					ctxFFS,
-					oldCid,
-					pow.WithStorageConfig(ffs.StorageConfig{}),
+				_, err = s.PowergateClient.StorageConfig.Apply(
+					ctxPow,
+					oldCid.String(),
+					pow.WithStorageConfig(&userPb.StorageConfig{}),
 					pow.WithOverride(true),
 				)
 				if err != nil {
 					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %s", err)
 				}
-				err = s.PowergateClient.FFS.Remove(ctxFFS, oldCid)
+				_, err = s.PowergateClient.StorageConfig.Remove(ctxPow, oldCid.String())
 				if err != nil {
 					return nil, fmt.Errorf("removing old cid storage: %s", err)
 				}
-				jid, err = s.PowergateClient.FFS.PushStorageConfig(
-					ctxFFS,
-					p.Cid(),
+				res, err := s.PowergateClient.StorageConfig.Apply(
+					ctxPow,
+					p.Cid().String(),
 					pow.WithStorageConfig(storageConfig),
 					pow.WithOverride(true),
 				)
 				if err != nil {
 					return nil, fmt.Errorf("pushing config: %s", err)
 				}
+				jid = res.JobId
 			}
 
 		}
@@ -2476,8 +2487,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	ba.Archives.Current = mdb.Archive{
 		Cid:       p.Cid().Bytes(),
 		CreatedAt: time.Now().Unix(),
-		JobID:     jid.String(),
-		JobStatus: int(ffs.Queued),
+		JobID:     jid,
+		JobStatus: int(userPb.JobStatus_JOB_STATUS_QUEUED),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
@@ -2535,13 +2546,13 @@ func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusReques
 	}
 	var st pb.ArchiveStatusResponse_Status
 	switch jstatus {
-	case ffs.Success:
+	case userPb.JobStatus_JOB_STATUS_SUCCESS:
 		st = pb.ArchiveStatusResponse_STATUS_DONE
-	case ffs.Queued, ffs.Executing:
+	case userPb.JobStatus_JOB_STATUS_QUEUED, userPb.JobStatus_JOB_STATUS_EXECUTING:
 		st = pb.ArchiveStatusResponse_STATUS_EXECUTING
-	case ffs.Failed:
+	case userPb.JobStatus_JOB_STATUS_FAILED:
 		st = pb.ArchiveStatusResponse_STATUS_FAILED
-	case ffs.Canceled:
+	case userPb.JobStatus_JOB_STATUS_CANCELED:
 		st = pb.ArchiveStatusResponse_STATUS_CANCELED
 	default:
 		return nil, fmt.Errorf("unknown job status %d", jstatus)
@@ -2641,70 +2652,23 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 	return config
 }
 
-func toFilConfig(config *mdb.ArchiveConfig) ffs.FilConfig {
+func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 	if config == nil {
-		return ffs.FilConfig{}
+		return nil
 	}
-	return ffs.FilConfig{
-		RepFactor:       config.RepFactor,
-		Addr:            config.Addr,
-		CountryCodes:    config.CountryCodes,
-		DealMinDuration: config.DealMinDuration,
-		DealStartOffset: config.DealStartOffset,
-		ExcludedMiners:  config.ExcludedMiners,
-		FastRetrieval:   config.FastRetrieval,
-		MaxPrice:        config.MaxPrice,
-		Renew: ffs.FilRenew{
+	return &userPb.FilConfig{
+		ReplicationFactor: int64(config.RepFactor),
+		Address:           config.Addr,
+		CountryCodes:      config.CountryCodes,
+		DealMinDuration:   config.DealMinDuration,
+		DealStartOffset:   config.DealStartOffset,
+		ExcludedMiners:    config.ExcludedMiners,
+		FastRetrieval:     config.FastRetrieval,
+		MaxPrice:          config.MaxPrice,
+		Renew: &userPb.FilRenew{
 			Enabled:   config.Renew.Enabled,
-			Threshold: config.Renew.Threshold,
+			Threshold: int64(config.Renew.Threshold),
 		},
 		TrustedMiners: config.TrustedMiners,
 	}
-}
-
-// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
-func fromRPCHotConfig(config *ffsRpc.HotConfig) ffs.HotConfig {
-	res := ffs.HotConfig{}
-	if config != nil {
-		res.Enabled = config.Enabled
-		res.AllowUnfreeze = config.AllowUnfreeze
-		res.UnfreezeMaxPrice = config.UnfreezeMaxPrice
-		if config.Ipfs != nil {
-			ipfs := ffs.IpfsConfig{
-				AddTimeout: int(config.Ipfs.AddTimeout),
-			}
-			res.Ipfs = ipfs
-		}
-	}
-	return res
-}
-
-// @todo: Remove this once .PowergateClient.FFS.GetStorageConfig returns a ffs.StorageConfig
-func fromRPCColdConfig(config *ffsRpc.ColdConfig) ffs.ColdConfig {
-	res := ffs.ColdConfig{}
-	if config != nil {
-		res.Enabled = config.Enabled
-		if config.Filecoin != nil {
-			filecoin := ffs.FilConfig{
-				RepFactor:       int(config.Filecoin.RepFactor),
-				DealMinDuration: config.Filecoin.DealMinDuration,
-				ExcludedMiners:  config.Filecoin.ExcludedMiners,
-				CountryCodes:    config.Filecoin.CountryCodes,
-				TrustedMiners:   config.Filecoin.TrustedMiners,
-				Addr:            config.Filecoin.Addr,
-				MaxPrice:        config.Filecoin.MaxPrice,
-				FastRetrieval:   config.Filecoin.FastRetrieval,
-				DealStartOffset: config.Filecoin.DealStartOffset,
-			}
-			if config.Filecoin.Renew != nil {
-				renew := ffs.FilRenew{
-					Enabled:   config.Filecoin.Renew.Enabled,
-					Threshold: int(config.Filecoin.Renew.Threshold),
-				}
-				filecoin.Renew = renew
-			}
-			res.Filecoin = filecoin
-		}
-	}
-	return res
 }

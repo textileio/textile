@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/powergate/ffs"
 	. "github.com/textileio/textile/v2/mongodb"
 )
 
@@ -23,7 +22,7 @@ func TestArchiveTracking_Create(t *testing.T) {
 	dbID := thread.NewIDV1(thread.Raw, 16)
 	dbToken := thread.Token("token")
 	bucketKey := "buckKey"
-	jid := ffs.JobID("jobID1")
+	jid := "jobID1"
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -40,7 +39,7 @@ func TestArchiveTracking_Get(t *testing.T) {
 	dbID := thread.NewIDV1(thread.Raw, 16)
 	dbToken := thread.Token("token")
 	bucketKey := "buckKey"
-	jid := ffs.JobID("jobID1")
+	jid := "jobID1"
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -72,7 +71,7 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	dbID := thread.NewIDV1(thread.Raw, 16)
 	dbToken := thread.Token("token")
 	bucketKey := "buckKey"
-	jid := ffs.JobID("jobID1")
+	jid := "jobID1"
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -100,7 +99,7 @@ func TestArchiveTracking_Finalize(t *testing.T) {
 	dbID := thread.NewIDV1(thread.Raw, 16)
 	dbToken := thread.Token("token")
 	bucketKey := "buckKey"
-	jid := ffs.JobID("jobID1")
+	jid := "jobID1"
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -130,7 +129,7 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 	dbID := thread.NewIDV1(thread.Raw, 16)
 	dbToken := thread.Token("token")
 	bucketKey := "buckKey"
-	jid := ffs.JobID("jobID1")
+	jid := "jobID1"
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)

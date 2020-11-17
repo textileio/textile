@@ -38,7 +38,7 @@ func NewSessions(ctx context.Context, db *mongo.Database) (*Sessions, error) {
 	s := &Sessions{col: db.Collection("sessions")}
 	_, err := s.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{"developer_id", 1}},
+			Keys: bson.D{primitive.E{Key: "developer_id", Value: 1}},
 		},
 	})
 	return s, err

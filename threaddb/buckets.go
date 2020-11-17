@@ -17,7 +17,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	db "github.com/textileio/go-threads/db"
 	powc "github.com/textileio/powergate/api/client"
-	"github.com/textileio/powergate/ffs"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 )
@@ -437,7 +437,6 @@ type Buckets struct {
 	baCol    *mdb.BucketArchives
 	pgClient *powc.Client
 
-	lock   sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -525,26 +524,29 @@ func (b *Buckets) IsArchivingEnabled() bool {
 
 // ArchiveStatus returns the last known archive status on Powergate. If the return status is Failed,
 // an extra string with the error message is provided.
-func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (ffs.JobStatus, string, error) {
+func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (userPb.JobStatus, string, error) {
 	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
-		return ffs.Failed, "", fmt.Errorf("getting BucketArchive data: %s", err)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
 	if ba.Archives.Current.JobID == "" {
-		return ffs.Failed, "", buckets.ErrNoCurrentArchive
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", buckets.ErrNoCurrentArchive
 	}
 	current := ba.Archives.Current
 	if current.Aborted {
-		return ffs.Failed, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
-	return ffs.JobStatus(current.JobStatus), current.FailureMsg, nil
+	if statusName, found := userPb.JobStatus_name[int32(current.JobStatus)]; !found {
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("unknown powergate job status: %s", statusName)
+	}
+	return userPb.JobStatus(current.JobStatus), current.FailureMsg, nil
 }
 
 // ArchiveWatch allows to have the last log execution for the last archive, plus realtime
 // human-friendly log output of how the current archive is executing.
 // If the last archive is already done, it will simply return the log history and close the channel.
-func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ffsToken string, ch chan<- string) error {
+func (b *Buckets) ArchiveWatch(ctx context.Context, key string, powToken string, ch chan<- string) error {
 	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
 		return fmt.Errorf("getting BucketArchive data: %s", err)
@@ -561,18 +563,18 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, ffsToken string,
 	if err != nil {
 		return fmt.Errorf("parsing current archive cid: %s", err)
 	}
-	ctx = context.WithValue(ctx, powc.AuthKey, ffsToken)
+	ctx = context.WithValue(ctx, powc.AuthKey, powToken)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ffsCh := make(chan powc.LogEvent)
-	if err := b.pgClient.FFS.WatchLogs(ctx, ffsCh, c, powc.WithJidFilter(ffs.JobID(current.JobID)), powc.WithHistory(true)); err != nil {
+	logsCh := make(chan powc.WatchLogsEvent)
+	if err := b.pgClient.Data.WatchLogs(ctx, logsCh, c.String(), powc.WithJobIDFilter(current.JobID), powc.WithHistory(true)); err != nil {
 		return fmt.Errorf("watching log events in Powergate: %s", err)
 	}
-	for le := range ffsCh {
+	for le := range logsCh {
 		if le.Err != nil {
 			return le.Err
 		}
-		ch <- le.LogEntry.Msg
+		ch <- le.Res.LogEntry.Message
 	}
 	return nil
 }
