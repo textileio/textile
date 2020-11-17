@@ -107,9 +107,9 @@ func (c *Client) UpdateCustomerSubscription(
 	_, err := c.c.UpdateCustomerSubscription(ctx, &pb.UpdateCustomerSubscriptionRequest{
 		CustomerId: customerID,
 		Status:     string(status),
-		Period: &pb.Period{
-			Start: periodStart,
-			End:   periodEnd,
+		InvoicePeriod: &pb.Period{
+			UnixStart: periodStart,
+			UnixEnd:   periodEnd,
 		},
 	})
 	return err
@@ -129,46 +129,13 @@ func (c *Client) DeleteCustomer(ctx context.Context, key thread.PubKey) error {
 	return err
 }
 
-func (c *Client) IncStoredData(
+func (c *Client) IncCustomerUsage(
 	ctx context.Context,
 	key thread.PubKey,
-	incSize int64,
-) (*pb.IncStoredDataResponse, error) {
-	return c.c.IncStoredData(ctx, &pb.IncStoredDataRequest{
-		Key:     key.String(),
-		IncSize: incSize,
-	})
-}
-
-func (c *Client) IncNetworkEgress(
-	ctx context.Context,
-	key thread.PubKey,
-	incSize int64,
-) (*pb.IncNetworkEgressResponse, error) {
-	return c.c.IncNetworkEgress(ctx, &pb.IncNetworkEgressRequest{
-		Key:     key.String(),
-		IncSize: incSize,
-	})
-}
-
-func (c *Client) IncInstanceReads(
-	ctx context.Context,
-	key thread.PubKey,
-	incCount int64,
-) (*pb.IncInstanceReadsResponse, error) {
-	return c.c.IncInstanceReads(ctx, &pb.IncInstanceReadsRequest{
-		Key:      key.String(),
-		IncCount: incCount,
-	})
-}
-
-func (c *Client) IncInstanceWrites(
-	ctx context.Context,
-	key thread.PubKey,
-	incCount int64,
-) (*pb.IncInstanceWritesResponse, error) {
-	return c.c.IncInstanceWrites(ctx, &pb.IncInstanceWritesRequest{
-		Key:      key.String(),
-		IncCount: incCount,
+	productUsage map[string]int64,
+) (*pb.IncCustomerUsageResponse, error) {
+	return c.c.IncCustomerUsage(ctx, &pb.IncCustomerUsageRequest{
+		Key:          key.String(),
+		ProductUsage: productUsage,
 	})
 }

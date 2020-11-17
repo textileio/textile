@@ -3,14 +3,16 @@ package api.billingd.pb;
 option go_package = "github.com/textileio/textile/v2/api/billingd/pb";
 
 message Period {
-    int64 start = 1;
-    int64 end = 2;
+    int64 unix_start = 1;
+    int64 unix_end = 2;
 }
 
 message Usage {
-    int64 units = 1;
-    int64 total = 2;
-    int64 free = 3;
+    string description = 1;
+    int64 units = 2;
+    int64 total = 3;
+    int64 free = 4;
+    double cost = 5;
 }
 
 message CheckHealthRequest {}
@@ -36,19 +38,18 @@ message GetCustomerResponse {
     string customer_id = 2;
     string parent_key = 3;
     string email = 4;
-    string status = 5;
-    int64 balance = 6;
-    bool billable = 7;
-    bool delinquent = 8;
-    int64 created_at = 9;
+    string account_status = 5;
+    string subscription_status = 6;
+    int64 balance = 7;
+    bool billable = 8;
+    bool delinquent = 9;
+    int64 created_at = 10;
 
-    Period period = 10;
-    Usage stored_data = 11;
-    Usage network_egress = 12;
-    Usage instance_writes = 13;
-    Usage instance_reads = 14;
+    Period invoice_period = 11;
 
-    int64 dependents = 15;
+    map<string, Usage> daily_usage = 12;
+
+    int64 dependents = 13;
 }
 
 message ListDependentCustomersRequest {
@@ -82,7 +83,7 @@ message UpdateCustomerResponse {}
 message UpdateCustomerSubscriptionRequest {
     string customer_id = 1;
     string status = 2;
-    Period period = 3;
+    Period invoice_period = 3;
 }
 
 message UpdateCustomerSubscriptionResponse {}
@@ -99,44 +100,14 @@ message DeleteCustomerRequest {
 
 message DeleteCustomerResponse {}
 
-message IncStoredDataRequest {
+message IncCustomerUsageRequest {
     string key = 1;
-    int64 inc_size = 2;
+    map<string, int64> product_usage = 2;
 }
 
-message IncStoredDataResponse {
-    Period period = 1;
-    Usage stored_data = 2;
-}
-
-message IncNetworkEgressRequest {
-    string key = 1;
-    int64 inc_size = 2;
-}
-
-message IncNetworkEgressResponse {
-    Period period = 1;
-    Usage network_egress = 2;
-}
-
-message IncInstanceReadsRequest {
-    string key = 1;
-    int64 inc_count = 2;
-}
-
-message IncInstanceReadsResponse {
-    Period period = 1;
-    Usage instance_reads = 2;
-}
-
-message IncInstanceWritesRequest {
-    string key = 1;
-    int64 inc_count = 2;
-}
-
-message IncInstanceWritesResponse {
-    Period period = 1;
-    Usage instance_writes = 2;
+message IncCustomerUsageResponse {
+    Period invoice_period = 1;
+    map<string, Usage> daily_usage = 2;
 }
 
 service APIService {
@@ -149,8 +120,5 @@ service APIService {
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
     rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
-    rpc IncStoredData(IncStoredDataRequest) returns (IncStoredDataResponse) {}
-    rpc IncNetworkEgress(IncNetworkEgressRequest) returns (IncNetworkEgressResponse) {}
-    rpc IncInstanceReads(IncInstanceReadsRequest) returns (IncInstanceReadsResponse) {}
-    rpc IncInstanceWrites(IncInstanceWritesRequest) returns (IncInstanceWritesResponse) {}
+    rpc IncCustomerUsage(IncCustomerUsageRequest) returns (IncCustomerUsageResponse) {}
 }

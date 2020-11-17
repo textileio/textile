@@ -51,7 +51,7 @@ func Error(err error, args ...interface{}) {
 	msg = strings.Join(words, " ")
 
 	// @todo: Clean this up somehow?
-	if strings.Contains(strings.ToLower(msg), common.ErrExceedsFreeUnits.Error()) ||
+	if strings.Contains(strings.ToLower(msg), common.ErrExceedsFreeQuota.Error()) ||
 		strings.Contains(strings.ToLower(msg), bucketsd.ErrStorageQuotaExhausted.Error()) {
 		fmt.Println(aurora.Sprintf(aurora.Red("> Error! %s %s"),
 			aurora.Sprintf(aurora.BrightBlack(msg), args...),

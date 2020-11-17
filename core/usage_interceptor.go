@@ -116,11 +116,11 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			return ctx, err
 		}
 	}
-	if err := common.StatusCheck(cus.Status); err != nil {
+	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	if !cus.Billable && cus.NetworkEgress.Free == 0 {
-		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeUnits)
+	if !cus.Billable && cus.DailyUsage["network_egress"].Free == 0 {
+		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeQuota)
 		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
 
@@ -133,12 +133,12 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
 		owner := &buckets.BucketOwner{
-			StorageUsed: cus.StoredData.Total,
+			StorageUsed: cus.DailyUsage["stored_data"].Total,
 		}
 		if cus.Billable {
 			owner.StorageAvailable = -1
 		} else {
-			owner.StorageAvailable = cus.StoredData.Free
+			owner.StorageAvailable = cus.DailyUsage["stored_data"].Free
 		}
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
 	case
@@ -148,16 +148,16 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/FindByID",
 		"/threads.pb.API/ReadTransaction",
 		"/threads.pb.API/Listen":
-		if !cus.Billable && cus.InstanceReads.Free == 0 {
-			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeUnits)
+		if !cus.Billable && cus.DailyUsage["instance_reads"].Free == 0 {
+			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
 	case "/threads.pb.API/Create",
 		"/threads.pb.API/Save",
 		"/threads.pb.API/Delete",
 		"/threads.pb.API/WriteTransaction":
-		if !cus.Billable && cus.InstanceWrites.Free == 0 {
-			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeUnits)
+		if !cus.Billable && cus.DailyUsage["instance_writes"].Free == 0 {
+			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
 	}
@@ -188,8 +188,13 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
-		_, err := t.bc.IncStoredData(ctx, account.Owner().Key, owner.StorageDelta)
-		if err != nil {
+		if _, err := t.bc.IncCustomerUsage(
+			ctx,
+			account.Owner().Key,
+			map[string]int64{
+				"stored_data": owner.StorageDelta,
+			},
+		); err != nil {
 			return err
 		}
 	}

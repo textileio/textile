@@ -133,20 +133,17 @@ func (h *StatsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
 			defer cancel()
-			// @todo: Consolidate these to one IncStats call.
-			if rs.egress > 0 {
-				if _, err := h.t.bc.IncNetworkEgress(ctx, rs.key, rs.egress); err != nil {
-					log.Errorf("stats: inc network egress: %v", err)
-				}
-			}
-			if rs.reads > 0 {
-				if _, err := h.t.bc.IncInstanceReads(ctx, rs.key, rs.reads); err != nil {
-					log.Errorf("stats: inc instance reads: %v", err)
-				}
-			}
-			if rs.writes > 0 {
-				if _, err := h.t.bc.IncInstanceWrites(ctx, rs.key, rs.writes); err != nil {
-					log.Errorf("stats: inc instance writes: %v", err)
+			if rs.egress > 0 || rs.reads > 0 || rs.writes > 0 {
+				if _, err := h.t.bc.IncCustomerUsage(
+					ctx,
+					rs.key,
+					map[string]int64{
+						"network_egress":  rs.egress,
+						"instance_reads":  rs.reads,
+						"instance_writes": rs.writes,
+					},
+				); err != nil {
+					log.Errorf("stats: inc customer usage: %v", err)
 				}
 			}
 		}()
