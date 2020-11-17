@@ -52,6 +52,7 @@ type Product struct {
 	PriceType         PriceType         `bson:"price_type"`
 	FreeQuotaSize     int64             `bson:"free_quota_size"`
 	FreeQuotaInterval FreeQuotaInterval `bson:"free_quota_interval"`
+	Units             string            `bson:"units"`
 	UnitSize          int64             `bson:"unit_size"`
 
 	FreePriceID string `bson:"free_price_id"`
@@ -80,6 +81,7 @@ var Products = []Product{
 		PriceType:         PriceTypeTemporal,
 		FreeQuotaSize:     5 * gib,
 		FreeQuotaInterval: FreeQuotaMonthly,
+		Units:             "bytes",
 		UnitSize:          8 * mib,
 	},
 	{
@@ -89,6 +91,7 @@ var Products = []Product{
 		PriceType:         PriceTypeIncremental,
 		FreeQuotaSize:     10 * gib,
 		FreeQuotaInterval: FreeQuotaMonthly,
+		Units:             "bytes",
 		UnitSize:          8 * mib,
 	},
 	{
@@ -529,11 +532,18 @@ func getUsage(product Product, total int64) *pb.Usage {
 	} else {
 		cost = 0
 	}
+	var desc string
+	if product.Units != "" {
+		desc = fmt.Sprintf("%s (%s)", product.Name, product.Units)
+	} else {
+		desc = product.Name
+	}
 	return &pb.Usage{
-		Units: freeUnits + paidUnits,
-		Total: total,
-		Free:  free,
-		Cost:  cost,
+		Description: desc,
+		Units:       freeUnits + paidUnits,
+		Total:       total,
+		Free:        free,
+		Cost:        cost,
 	}
 }
 

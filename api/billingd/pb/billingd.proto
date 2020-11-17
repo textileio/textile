@@ -8,10 +8,11 @@ message Period {
 }
 
 message Usage {
-    int64 units = 1;
-    int64 total = 2;
-    int64 free = 3;
-    double cost = 4;
+    string description = 1;
+    int64 units = 2;
+    int64 total = 3;
+    int64 free = 4;
+    double cost = 5;
 }
 
 message CheckHealthRequest {}

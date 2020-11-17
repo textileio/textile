@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"time"
 
@@ -80,28 +81,28 @@ Use the --user flag to get usage for a dependent user.`,
 		if cus.Dependents > 0 {
 			cmd.Message("Contributing users: %d", aurora.White(cus.Dependents).Bold())
 		}
+		var rows [][]string
+		for _, usage := range cus.DailyUsage {
+			rows = append(rows, getUsageRow(usage, cus.InvoicePeriod))
+		}
 		cmd.RenderTable(
-			[]string{"", "usage", "free quota", "start", "end"},
-			[][]string{
-				getUsageRow("Stored data (bytes)", cus.StoredData, cus.Period),
-				getUsageRow("Network egress (bytes)", cus.NetworkEgress, cus.Period),
-				getUsageRow("ThreadDB reads", cus.InstanceReads, cus.Period),
-				getUsageRow("ThreadDB writes", cus.InstanceWrites, cus.Period),
-			},
+			[]string{"", "usage", "free quota", "daily cost", "start", "end"},
+			rows,
 		)
 	},
 }
 
-func getUsageRow(name string, usage *pb.Usage, period *pb.Period) []string {
+func getUsageRow(usage *pb.Usage, period *pb.Period) []string {
 	return []string{
-		name,
+		usage.Description,
 		strconv.Itoa(int(usage.Total)),
 		fmt.Sprintf(
 			"%s (%d%%)",
 			strconv.Itoa(int(usage.Free)),
 			int(math.Round(100*float64(usage.Free)/float64(usage.Total+usage.Free)))),
-		time.Unix(period.Start, 0).Format("02-Jan-06"),
-		time.Unix(period.End, 0).Format("02-Jan-06"),
+		fmt.Sprintf("$%.2f", usage.Cost),
+		time.Unix(period.UnixStart, 0).Format("02-Jan-06"),
+		time.Unix(period.UnixEnd, 0).Format("02-Jan-06"),
 	}
 }
 
@@ -128,15 +129,21 @@ func listUsers(limit, offset int64) {
 	if len(list.Users) > 0 {
 		data := make([][]string, len(list.Users))
 		for i, u := range list.Users {
-			data[i] = []string{
-				u.Key,
-				strconv.Itoa(int(u.StoredData.Total)),
-				strconv.Itoa(int(u.NetworkEgress.Total)),
-				strconv.Itoa(int(u.InstanceReads.Total)),
-				strconv.Itoa(int(u.InstanceWrites.Total)),
+			keys := make([]string, 0, len(u.DailyUsage))
+			for k := range u.DailyUsage {
+				keys = append(keys, k)
 			}
+			sort.Strings(keys)
+			var usage string
+			for i, k := range keys {
+				usage += k + "=" + strconv.Itoa(int(u.DailyUsage[k].Total))
+				if i != len(keys)-1 {
+					usage += " "
+				}
+			}
+			data[i] = []string{u.Key, usage}
 		}
-		cmd.RenderTable([]string{"user", "data (bytes)", "egress (bytes)", "reads", "writes"}, data)
+		cmd.RenderTable([]string{"user", "usage"}, data)
 
 		cmd.Message("Next offset: %d", aurora.White(list.NextOffset).Bold())
 		cmd.Message("Press 'Enter' to show more...")
