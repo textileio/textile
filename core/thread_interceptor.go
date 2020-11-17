@@ -8,7 +8,6 @@ import (
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/core/thread"
 	netpb "github.com/textileio/go-threads/net/api/pb"
-	"github.com/textileio/powergate/api/client"
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -108,24 +107,6 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 					}
 				}
 			}
-		}
-
-		// Collect the user if we haven't seen them before.
-		if ok && account.User.CreatedAt.IsZero() {
-			var powInfo *mdb.PowInfo
-			if t.pc != nil {
-				ctxAdmin := context.WithValue(ctx, client.AdminKey, t.conf.PowergateAdminToken)
-				res, err := t.pc.Admin.Users.Create(ctxAdmin)
-				if err != nil {
-					return nil, err
-				}
-				powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
-			}
-			user, err := t.collections.Accounts.CreateUser(ctx, account.User.Key, powInfo)
-			if err != nil {
-				return nil, err
-			}
-			ctx = mdb.NewAccountContext(ctx, user, account.Org)
 		}
 
 		// Preemptively track the new thread ID for the owner.

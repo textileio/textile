@@ -71,7 +71,13 @@ However, for development purposes, you may opt-out of Signature Authentication d
 
 		res, err := clients.Hub.CreateKey(ctx, keyType, secure)
 		cmd.ErrCheck(err)
-		cmd.RenderTable([]string{"key", "secret", "type", "secure"}, [][]string{{res.KeyInfo.Key, res.KeyInfo.Secret, keyTypeDesc, strconv.FormatBool(secure)}})
+		cmd.RenderTable([]string{
+			"key",
+			"secret",
+			"type",
+			"secure"},
+			[][]string{{res.KeyInfo.Key, res.KeyInfo.Secret, keyTypeDesc, strconv.FormatBool(secure)}},
+		)
 		cmd.Success("Created new API key and secret")
 	},
 }
@@ -112,7 +118,14 @@ var keysLsCmd = &cobra.Command{
 			data := make([][]string, len(list.List))
 			for i, k := range list.List {
 				secure := strconv.FormatBool(k.Secure)
-				data[i] = []string{k.Key, k.Secret, keyTypeToString(k.Type), secure, strconv.FormatBool(k.Valid), strconv.Itoa(int(k.Threads))}
+				data[i] = []string{
+					k.Key,
+					k.Secret,
+					keyTypeToString(k.Type),
+					secure,
+					strconv.FormatBool(k.Valid),
+					strconv.Itoa(int(k.Threads)),
+				}
 			}
 			cmd.RenderTable([]string{"key", "secret", "type", "secure", "valid", "threads"}, data)
 		}
@@ -144,7 +157,8 @@ func selectKey(ctx context.Context, label, successMsg string) *keyItem {
 		Label: label,
 		Items: items,
 		Templates: &promptui.SelectTemplates{
-			Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Key | bold }} {{ .Type | faint }}`, promptui.IconSelect),
+			Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Key | bold }} {{ .Type | faint }}`,
+				promptui.IconSelect),
 			Inactive: `{{ .Key | faint }} {{ .Type | faint }}`,
 			Details:  `{{ "(Threads:" | faint }} {{ .Threads | faint }}{{ ")" | faint }}`,
 			Selected: successMsg,

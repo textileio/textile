@@ -70,7 +70,7 @@ require (
 	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-threads v1.0.0
+	github.com/textileio/go-threads v1.0.1
 	github.com/textileio/powergate v1.2.1
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1

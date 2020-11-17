@@ -13,6 +13,7 @@ import (
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
+	billing "github.com/textileio/textile/v2/api/billingd/client"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/mail"
 	mdb "github.com/textileio/textile/v2/mongodb"
@@ -25,8 +26,9 @@ import (
 var log = logging.Logger("usersapi")
 
 type Service struct {
-	Collections *mdb.Collections
-	Mail        *tdb.Mail
+	Collections   *mdb.Collections
+	Mail          *tdb.Mail
+	BillingClient *billing.Client
 }
 
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadResponse, error) {
@@ -337,6 +339,37 @@ func (s *Service) DeleteSentboxMessage(ctx context.Context, req *pb.DeleteSentbo
 		return nil, err
 	}
 	return &pb.DeleteSentboxMessageResponse{}, nil
+}
+
+func (s *Service) GetUsage(ctx context.Context, req *pb.GetUsageRequest) (*pb.GetUsageResponse, error) {
+	log.Debugf("received get usage request")
+
+	if s.BillingClient == nil {
+		return nil, fmt.Errorf("billing is not enabled")
+	}
+
+	account, _ := mdb.AccountFromContext(ctx)
+	var key, parentKey thread.PubKey
+	if req.Key != "" {
+		k := &thread.Libp2pPubKey{}
+		if err := k.UnmarshalString(req.Key); err != nil {
+			return nil, status.Error(codes.FailedPrecondition, "Invalid public key")
+		}
+		key = k
+		parentKey = account.Owner().Key
+	} else {
+		key = account.Owner().Key
+	}
+	cus, err := s.BillingClient.GetCustomer(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if parentKey != nil && cus.ParentKey != parentKey.String() {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+	return &pb.GetUsageResponse{
+		Usage: cus,
+	}, nil
 }
 
 func (s *Service) getMailbox(ctx context.Context, key thread.PubKey) (thread.ID, error) {

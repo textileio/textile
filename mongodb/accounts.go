@@ -30,17 +30,16 @@ func init() {
 }
 
 type Account struct {
-	Type       AccountType
-	Key        thread.PubKey
-	Secret     thread.Identity
-	Name       string
-	Username   string
-	Email      string
-	Token      thread.Token
-	Members    []Member
-	CustomerID string
-	PowInfo    *PowInfo
-	CreatedAt  time.Time
+	Type      AccountType
+	Key       thread.PubKey
+	Secret    thread.Identity
+	Name      string
+	Username  string
+	Email     string
+	Token     thread.Token
+	Members   []Member
+	PowInfo   *PowInfo
+	CreatedAt time.Time
 }
 
 type AccountType int
@@ -351,21 +350,6 @@ func (a *Accounts) SetToken(ctx context.Context, key thread.PubKey, token thread
 	return nil
 }
 
-func (a *Accounts) SetCustomerID(ctx context.Context, key thread.PubKey, customerID string) error {
-	id, err := key.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	res, err := a.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"customer_id": customerID}})
-	if err != nil {
-		return err
-	}
-	if res.MatchedCount == 0 {
-		return mongo.ErrNoDocuments
-	}
-	return nil
-}
-
 func (a *Accounts) UpdatePowInfo(ctx context.Context, key thread.PubKey, powInfo *PowInfo) (*Account, error) {
 	id, err := key.MarshalBinary()
 	if err != nil {
@@ -603,7 +587,7 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	var username, name, email, customerID string
+	var username, name, email string
 	if v, ok := raw["username"]; ok {
 		username = v.(string)
 	}
@@ -612,9 +596,6 @@ func decodeAccount(raw bson.M) (*Account, error) {
 	}
 	if v, ok := raw["email"]; ok {
 		email = v.(string)
-	}
-	if v, ok := raw["customer_id"]; ok {
-		customerID = v.(string)
 	}
 	var secret *thread.Libp2pIdentity
 	if v, ok := raw["secret"]; ok {
@@ -652,16 +633,15 @@ func decodeAccount(raw bson.M) (*Account, error) {
 		created = v.(primitive.DateTime).Time()
 	}
 	return &Account{
-		Type:       AccountType(raw["type"].(int32)),
-		Key:        key,
-		Secret:     secret,
-		Name:       name,
-		Username:   username,
-		Email:      email,
-		Token:      token,
-		Members:    mems,
-		CustomerID: customerID,
-		PowInfo:    decodePowInfo(raw),
-		CreatedAt:  created,
+		Type:      AccountType(raw["type"].(int32)),
+		Key:       key,
+		Secret:    secret,
+		Name:      name,
+		Username:  username,
+		Email:     email,
+		Token:     token,
+		Members:   mems,
+		PowInfo:   decodePowInfo(raw),
+		CreatedAt: created,
 	}, nil
 }

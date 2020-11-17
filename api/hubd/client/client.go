@@ -134,9 +134,17 @@ func (c *Client) GetBillingSession(ctx context.Context) (*pb.GetBillingSessionRe
 	return c.c.GetBillingSession(ctx, &pb.GetBillingSessionRequest{})
 }
 
-// GetBillingInfo returns current billing and usage information.
-func (c *Client) GetBillingInfo(ctx context.Context) (*pb.GetBillingInfoResponse, error) {
-	return c.c.GetBillingInfo(ctx, &pb.GetBillingInfoRequest{})
+// ListBillingUsers returns a list of users the account is responsible for.
+func (c *Client) ListBillingUsers(ctx context.Context, opts ...ListOption) (
+	*pb.ListBillingUsersResponse, error) {
+	args := &listOptions{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	return c.c.ListBillingUsers(ctx, &pb.ListBillingUsersRequest{
+		Offset: args.offset,
+		Limit:  args.limit,
+	})
 }
 
 // IsUsernameAvailable returns a nil error if the username is valid and available.

@@ -49,3 +49,16 @@ func WithStatus(s Status) ListOption {
 		args.status = s
 	}
 }
+
+type usageOptions struct {
+	key string
+}
+
+type UsageOption func(*usageOptions)
+
+// WithPubKey returns usage info for the public key.
+func WithPubKey(key string) UsageOption {
+	return func(args *usageOptions) {
+		args.key = key
+	}
+}
