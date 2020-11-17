@@ -177,56 +177,32 @@ func (t *Tracker) trackArchiveProgress(
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ctx = context.WithValue(ctx, powc.AuthKey, powInfo.Token)
-	ch := make(chan powc.WatchStorageJobsEvent, 1)
-	if err := t.pgClient.StorageJobs.Watch(ctx, ch, jid); err != nil {
+	res, err := t.pgClient.StorageJobs.StorageJob(ctx, jid)
+	if err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
 		// return the error as fatal so the archive will be untracked
 		if strings.Contains(err.Error(), "auth token not found") {
 			return false, "", err
 		}
-		return true, fmt.Sprintf("watching current job %s for bucket %s: %s", jid, buckKey, err), nil
+		return true, fmt.Sprintf("getting current job %s for bucket %s: %s", jid, buckKey, err), nil
 	}
 
-	var aborted bool
-	var abortMsg string
-	var job *userPb.StorageJob
-	select {
-	case <-ctx.Done():
-		log.Infof("job %s status watching canceled", jid)
-		return true, "watching cancelled", nil
-	case s, ok := <-ch:
-		if !ok {
-			return true, "powergate closed communication chan", nil
-		}
-		if s.Err != nil {
-			log.Errorf("job %s update: %s", jid, s.Err)
-			aborted = true
-			abortMsg = s.Err.Error()
-		}
-		job = s.Res.StorageJob
-	}
-
-	if !aborted && !isJobStatusFinal(job.Status) {
+	if !isJobStatusFinal(res.StorageJob.Status) {
 		return true, "no final status yet", nil
 	}
 
 	// Step 2: On success, save Deal data in the underlying Bucket thread. On
 	// failure save the error message. Also update status on Mongo for the archive.
-	if job.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
+	if res.StorageJob.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
 		if err := t.saveDealsInArchive(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
 			return true, fmt.Sprintf("saving deal data in archive: %s", err), nil
 		}
 	}
-	if err := t.updateArchiveStatus(ctx, buckKey, job, aborted, abortMsg); err != nil {
+	if err := t.updateArchiveStatus(ctx, buckKey, res.StorageJob, false, ""); err != nil {
 		return true, fmt.Sprintf("updating archive status: %s", err), nil
 	}
 
-	msg := "reached final status"
-	if aborted {
-		msg = "aborted with reason " + abortMsg
-	}
-
-	return false, msg, nil
+	return false, "reached final status", nil
 }
 
 // updateArchiveStatus save the last known job status. It also receives an
