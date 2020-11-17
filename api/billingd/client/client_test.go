@@ -180,42 +180,50 @@ func TestClient_DeleteCustomer(t *testing.T) {
 	require.NoError(t, err)
 }
 
+type usageTest struct {
+	key            string
+	initialIncSize int64
+	unitPrice      float64
+}
+
 func TestClient_IncCustomerUsage(t *testing.T) {
 	t.Parallel()
-	tests := map[string]int64{
-		"stored_data":     mib,
-		"network_egress":  mib,
-		"instance_reads":  1,
-		"instance_writes": 1,
+	tests := []usageTest{
+		{"stored_data", mib, 0.000007705471},
+		{"network_egress", mib, 0.000025684903},
+		{"instance_reads", 1, 0.000099999999},
+		{"instance_writes", 1, 0.000199999999},
 	}
-	for k, size := range tests {
-		incCustomerUsage(t, k, size)
+	for _, test := range tests {
+		incCustomerUsage(t, test)
 	}
 }
 
-func incCustomerUsage(t *testing.T, productKey string, initialIncSize int64) {
+func incCustomerUsage(t *testing.T, test usageTest) {
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key)
 	require.NoError(t, err)
 
-	product := getProduct(t, productKey)
+	product := getProduct(t, test.key)
 	freeUnitsPerInterval := getFreeUnitsPerInterval(product)
 
 	// Add some under unit size
-	res, err := c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: initialIncSize})
+	res, err := c.IncCustomerUsage(context.Background(), key, map[string]int64{test.key: test.initialIncSize})
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), res.DailyUsage[productKey].Units)
-	assert.Equal(t, int64(initialIncSize), res.DailyUsage[productKey].Total)
+	assert.Equal(t, int64(0), res.DailyUsage[test.key].Units)
+	assert.Equal(t, test.initialIncSize, res.DailyUsage[test.key].Total)
+	assert.Equal(t, float64(0), res.DailyUsage[test.key].Cost)
 
 	// Add more to reach unit size
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.UnitSize - initialIncSize})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{test.key: product.UnitSize - test.initialIncSize})
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), res.DailyUsage[productKey].Units)
-	assert.Equal(t, product.UnitSize, res.DailyUsage[productKey].Total)
+	assert.Equal(t, int64(1), res.DailyUsage[test.key].Units)
+	assert.Equal(t, product.UnitSize, res.DailyUsage[test.key].Total)
+	assert.Equal(t, float64(0), res.DailyUsage[test.key].Cost)
 
 	// Add a bunch of units above free quota
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaSize})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{test.key: product.FreeQuotaSize})
 	require.Error(t, err)
 
 	// Flag as billable to remove the free quota limit
@@ -223,25 +231,28 @@ func incCustomerUsage(t *testing.T, productKey string, initialIncSize int64) {
 	require.NoError(t, err)
 
 	// Try again
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaSize})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{test.key: product.FreeQuotaSize})
 	require.NoError(t, err)
-	assert.Equal(t, freeUnitsPerInterval+1, res.DailyUsage[productKey].Units)
-	assert.Equal(t, product.FreeQuotaSize+product.UnitSize, res.DailyUsage[productKey].Total)
+	assert.Equal(t, freeUnitsPerInterval+1, res.DailyUsage[test.key].Units)
+	assert.Equal(t, product.FreeQuotaSize+product.UnitSize, res.DailyUsage[test.key].Total)
+	assert.Equal(t, test.unitPrice, res.DailyUsage[test.key].Cost)
 
 	// Try as a child customer
 	childKey := newKey(t)
 	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
 	require.NoError(t, err)
-	res, err = c.IncCustomerUsage(context.Background(), childKey, map[string]int64{productKey: product.UnitSize})
+	res, err = c.IncCustomerUsage(context.Background(), childKey, map[string]int64{test.key: product.UnitSize})
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), res.DailyUsage[productKey].Units)
-	assert.Equal(t, product.UnitSize, res.DailyUsage[productKey].Total)
+	assert.Equal(t, int64(1), res.DailyUsage[test.key].Units)
+	assert.Equal(t, product.UnitSize, res.DailyUsage[test.key].Total)
+	assert.Equal(t, float64(0), res.DailyUsage[test.key].Cost)
 
 	// Check total usage
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
-	assert.Equal(t, freeUnitsPerInterval+2, cus.DailyUsage[productKey].Units)
-	assert.Equal(t, product.FreeQuotaSize+(2*product.UnitSize), cus.DailyUsage[productKey].Total)
+	assert.Equal(t, freeUnitsPerInterval+2, cus.DailyUsage[test.key].Units)
+	assert.Equal(t, product.FreeQuotaSize+(2*product.UnitSize), cus.DailyUsage[test.key].Total)
+	assert.Equal(t, test.unitPrice*2, cus.DailyUsage[test.key].Cost)
 }
 
 func getProduct(t *testing.T, key string) *service.Product {

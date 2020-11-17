@@ -29,10 +29,13 @@ import (
 )
 
 const (
+	numDaysPerMonth    = 30.4167
+	unitPricePrecision = 1e12
+
+	reporterTimeout = time.Hour
+
 	defaultPageSize = 25
 	maxPageSize     = 1000
-	numDaysPerMonth = 30.4167
-	reporterTimeout = time.Hour
 
 	mib = 1024 * 1024
 	gib = 1024 * mib
@@ -264,19 +267,12 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 			}
 		} else if err == nil {
 			doc = product
-			doc.FreePriceID, err = s.createPrice(sc, product.Name+" (free quota)", 0)
+			doc.FreePriceID, err = s.createPrice(sc, doc.Name+" (free quota)", 0)
 			if err != nil {
 				return nil, err
 			}
-			var unitPrice float64
-			switch doc.FreeQuotaInterval {
-			case FreeQuotaMonthly:
-				unitPrice = product.Price * float64(product.UnitSize) / numDaysPerMonth
-			case FreeQuotaDaily:
-				unitPrice = product.Price * float64(product.UnitSize)
-			}
-			unitPrice = math.Floor(unitPrice*1e12) / 1e12
-			doc.PaidPriceID, err = s.createPrice(sc, product.Name, unitPrice)
+			up := getUnitPrice(doc)
+			doc.PaidPriceID, err = s.createPrice(sc, doc.Name, up)
 			if err != nil {
 				return nil, err
 			}
@@ -289,6 +285,17 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		s.products[product.Key] = doc
 	}
 	return s, nil
+}
+
+func getUnitPrice(product Product) float64 {
+	var unitPrice float64
+	switch product.FreeQuotaInterval {
+	case FreeQuotaMonthly:
+		unitPrice = product.Price * float64(product.UnitSize) / numDaysPerMonth
+	case FreeQuotaDaily:
+		unitPrice = product.Price * float64(product.UnitSize)
+	}
+	return math.Floor(unitPrice*unitPricePrecision) / unitPricePrecision
 }
 
 func newStripeClient(url, key string) (*stripec.API, error) {
@@ -511,14 +518,22 @@ func (s *Service) usageToPb(usage map[string]Usage) map[string]*pb.Usage {
 }
 
 func getUsage(product Product, total int64) *pb.Usage {
+	freeUnits, paidUnits := getDailyUnits(product, total)
 	free := product.FreeQuotaSize - total
 	if free < 0 {
 		free = 0
 	}
+	var cost float64
+	if paidUnits > 0 {
+		cost = float64(paidUnits) * getUnitPrice(product)
+	} else {
+		cost = 0
+	}
 	return &pb.Usage{
-		Units: getDailyUnits(product, total),
+		Units: freeUnits + paidUnits,
 		Total: total,
 		Free:  free,
+		Cost:  cost,
 	}
 }
 
@@ -827,14 +842,7 @@ func (s *Service) reportUsage() error {
 }
 
 func (s *Service) reportDailyUnits(product Product, usage Usage) error {
-	var freeSize, paidSize int64
-	if usage.Total > product.FreeQuotaSize {
-		freeSize = product.FreeQuotaSize
-		paidSize = usage.Total - product.FreeQuotaSize
-	} else {
-		freeSize = usage.Total
-	}
-	freeUnits := getDailyUnits(product, freeSize)
+	freeUnits, paidUnits := getDailyUnits(product, usage.Total)
 	if freeUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.FreeItemID),
@@ -845,7 +853,6 @@ func (s *Service) reportDailyUnits(product Product, usage Usage) error {
 			return err
 		}
 	}
-	paidUnits := getDailyUnits(product, paidSize)
 	if paidUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.PaidItemID),
@@ -859,7 +866,14 @@ func (s *Service) reportDailyUnits(product Product, usage Usage) error {
 	return nil
 }
 
-func getDailyUnits(product Product, size int64) int64 {
-	units := float64(size) / float64(product.UnitSize)
-	return int64(math.Round(units))
+func getDailyUnits(product Product, total int64) (freeUnits, paidUnits int64) {
+	var freeSize, paidSize int64
+	if total > product.FreeQuotaSize {
+		freeSize = product.FreeQuotaSize
+		paidSize = total - product.FreeQuotaSize
+	} else {
+		freeSize = total
+	}
+	return int64(math.Round(float64(freeSize) / float64(product.UnitSize))),
+		int64(math.Round(float64(paidSize) / float64(product.UnitSize)))
 }
