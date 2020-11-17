@@ -204,7 +204,7 @@ func TestClient_IncCustomerUsage(t *testing.T) {
 	assert.Equal(t, product.UnitSize, res.DailyUsage[productKey].Total)
 
 	// Add a bunch of units above free quota
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaPerInterval})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaSize})
 	require.Error(t, err)
 
 	// Flag as billable to remove the free quota limit
@@ -212,10 +212,10 @@ func TestClient_IncCustomerUsage(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try again
-	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaPerInterval})
+	res, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{productKey: product.FreeQuotaSize})
 	require.NoError(t, err)
 	assert.Equal(t, freeUnitsPerInterval+1, res.DailyUsage[productKey].Units)
-	assert.Equal(t, product.FreeQuotaPerInterval+product.UnitSize, res.DailyUsage[productKey].Total)
+	assert.Equal(t, product.FreeQuotaSize+product.UnitSize, res.DailyUsage[productKey].Total)
 
 	// Try as a child customer
 	childKey := newKey(t)
@@ -230,7 +230,7 @@ func TestClient_IncCustomerUsage(t *testing.T) {
 	cus, err := c.GetCustomer(context.Background(), key)
 	require.NoError(t, err)
 	assert.Equal(t, freeUnitsPerInterval+2, cus.DailyUsage[productKey].Units)
-	assert.Equal(t, product.FreeQuotaPerInterval+(2*product.UnitSize), cus.DailyUsage[productKey].Total)
+	assert.Equal(t, product.FreeQuotaSize+(2*product.UnitSize), cus.DailyUsage[productKey].Total)
 }
 
 func getProduct(t *testing.T, key string) *service.Product {
@@ -244,7 +244,7 @@ func getProduct(t *testing.T, key string) *service.Product {
 }
 
 func getFreeUnitsPerInterval(product *service.Product) int64 {
-	return product.FreeQuotaPerInterval / product.UnitSize
+	return product.FreeQuotaSize / product.UnitSize
 }
 
 func setup(t *testing.T) *client.Client {

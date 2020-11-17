@@ -31,7 +31,7 @@ import (
 const (
 	defaultPageSize = 25
 	maxPageSize     = 1000
-
+	numDaysPerMonth = 30.4167
 	reporterTimeout = time.Hour
 
 	mib = 1024 * 1024
@@ -42,57 +42,69 @@ const (
 
 var log = logging.Logger("billing")
 
-type PricingInterval int
-
-const (
-	Monthly PricingInterval = iota
-	Daily
-)
-
 type Product struct {
-	Key                  string          `bson:"_id"`
-	Name                 string          `bson:"name"`
-	PricingInterval      PricingInterval `bson:"pricing_interval"`
-	Price                float64         `bson:"price"`
-	FreeQuotaPerInterval int64           `bson:"free_quota_per_interval"`
-	UnitSize             int64           `bson:"unit_size"`
+	Key               string            `bson:"_id"`
+	Name              string            `bson:"name"`
+	Price             float64           `bson:"price"`
+	PriceType         PriceType         `bson:"price_type"`
+	FreeQuotaSize     int64             `bson:"free_quota_size"`
+	FreeQuotaInterval FreeQuotaInterval `bson:"free_quota_interval"`
+	UnitSize          int64             `bson:"unit_size"`
 
 	FreePriceID string `bson:"free_price_id"`
 	PaidPriceID string `bson:"paid_price_id"`
 }
 
+type PriceType string
+
+const (
+	PriceTypeTemporal    PriceType = "temporal"
+	PriceTypeIncremental           = "incremental"
+)
+
+type FreeQuotaInterval string
+
+const (
+	FreeQuotaMonthly FreeQuotaInterval = "monthly"
+	FreeQuotaDaily                     = "daily"
+)
+
 var Products = []Product{
 	{
-		Key:                  "stored_data",
-		Name:                 "Stored data",
-		PricingInterval:      Monthly,
-		Price:                0.03 / gib,
-		FreeQuotaPerInterval: 5 * gib,
-		UnitSize:             8 * mib,
+		Key:               "stored_data",
+		Name:              "Stored data",
+		Price:             0.03 / gib,
+		PriceType:         PriceTypeTemporal,
+		FreeQuotaSize:     5 * gib,
+		FreeQuotaInterval: FreeQuotaMonthly,
+		UnitSize:          8 * mib,
 	},
 	{
-		Key:                  "network_egress",
-		Name:                 "Network egress",
-		PricingInterval:      Daily,
-		Price:                0.1 / gib,
-		FreeQuotaPerInterval: 10 * gib,
-		UnitSize:             8 * mib,
+		Key:               "network_egress",
+		Name:              "Network egress",
+		Price:             0.1 / gib,
+		PriceType:         PriceTypeIncremental,
+		FreeQuotaSize:     10 * gib,
+		FreeQuotaInterval: FreeQuotaMonthly,
+		UnitSize:          8 * mib,
 	},
 	{
-		Key:                  "instance_reads",
-		Name:                 "ThreadDB reads",
-		PricingInterval:      Daily,
-		Price:                0.1 / 100000,
-		FreeQuotaPerInterval: 50000,
-		UnitSize:             500,
+		Key:               "instance_reads",
+		Name:              "ThreadDB reads",
+		Price:             0.1 / 100000,
+		PriceType:         PriceTypeIncremental,
+		FreeQuotaSize:     50000,
+		FreeQuotaInterval: FreeQuotaDaily,
+		UnitSize:          100,
 	},
 	{
-		Key:                  "instance_writes",
-		Name:                 "ThreadDB writes",
-		PricingInterval:      Daily,
-		Price:                0.2 / 100000,
-		FreeQuotaPerInterval: 20000,
-		UnitSize:             500,
+		Key:               "instance_writes",
+		Name:              "ThreadDB writes",
+		Price:             0.2 / 100000,
+		PriceType:         PriceTypeIncremental,
+		FreeQuotaSize:     20000,
+		FreeQuotaInterval: FreeQuotaDaily,
+		UnitSize:          100,
 	},
 }
 
@@ -257,12 +269,13 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 				return nil, err
 			}
 			var unitPrice float64
-			switch doc.PricingInterval {
-			case Monthly:
-				unitPrice = product.Price * float64(product.UnitSize) / 30
-			case Daily:
+			switch doc.FreeQuotaInterval {
+			case FreeQuotaMonthly:
+				unitPrice = product.Price * float64(product.UnitSize) / numDaysPerMonth
+			case FreeQuotaDaily:
 				unitPrice = product.Price * float64(product.UnitSize)
 			}
+			unitPrice = math.Floor(unitPrice*1e12) / 1e12
 			doc.PaidPriceID, err = s.createPrice(sc, product.Name, unitPrice)
 			if err != nil {
 				return nil, err
@@ -498,7 +511,7 @@ func (s *Service) usageToPb(usage map[string]Usage) map[string]*pb.Usage {
 }
 
 func getUsage(product Product, total int64) *pb.Usage {
-	free := product.FreeQuotaPerInterval - total
+	free := product.FreeQuotaSize - total
 	if free < 0 {
 		free = 0
 	}
@@ -635,13 +648,23 @@ func (s *Service) UpdateCustomerSubscription(ctx context.Context, req *pb.Update
 	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
-	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
-		"$set": bson.M{
-			"subscription_status":       req.Status,
-			"invoice_period.unix_start": req.InvoicePeriod.UnixStart,
-			"invoice_period.unix_end":   req.InvoicePeriod.UnixEnd,
-		},
-	}); err != nil {
+
+	update := bson.M{
+		"subscription_status":       req.Status,
+		"invoice_period.unix_start": req.InvoicePeriod.UnixStart,
+		"invoice_period.unix_end":   req.InvoicePeriod.UnixEnd,
+	}
+	if doc.InvoicePeriod.UnixEnd < req.InvoicePeriod.UnixEnd {
+		for k := range doc.DailyUsage {
+			if product, ok := s.products[k]; ok {
+				if product.FreeQuotaInterval == FreeQuotaMonthly &&
+					product.PriceType == PriceTypeIncremental {
+					update["daily_usage."+k+".total"] = 0
+				}
+			}
+		}
+	}
+	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
 	log.Debugf("updated subscription with status '%s' for %s", req.Status, doc.Key)
@@ -699,7 +722,10 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	return &pb.DeleteCustomerResponse{}, nil
 }
 
-func (s *Service) IncCustomerUsage(ctx context.Context, req *pb.IncCustomerUsageRequest) (*pb.IncCustomerUsageResponse, error) {
+func (s *Service) IncCustomerUsage(
+	ctx context.Context,
+	req *pb.IncCustomerUsageRequest,
+) (*pb.IncCustomerUsageResponse, error) {
 	return s.handleCustomerUsage(ctx, req.Key, req)
 }
 
@@ -732,7 +758,7 @@ func (s *Service) handleCustomerUsage(
 	for k, inc := range req.ProductUsage {
 		product, ok := s.products[k]
 		if ok {
-			usage, err := s.handleUsage(ctx, cus, product, k, inc)
+			usage, err := s.handleUsage(ctx, cus, product, inc)
 			if err != nil {
 				return nil, err
 			}
@@ -745,25 +771,20 @@ func (s *Service) handleCustomerUsage(
 	return res, nil
 }
 
-func (s *Service) handleUsage(
-	ctx context.Context,
-	cus *Customer,
-	product Product,
-	key string,
-	incSize int64,
-) (*pb.Usage, error) {
-	usage, ok := cus.DailyUsage[key]
+func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Product, incSize int64) (*pb.Usage, error) {
+	usage, ok := cus.DailyUsage[product.Key]
 	if !ok {
 		return nil, nil
 	}
 	total := usage.Total + incSize
 	if total < 0 {
+		log.Warnf("negative %s detected: total=%d inc=%d)", product.Key, total, incSize)
 		total = 0
 	}
-	if total > product.FreeQuotaPerInterval && !cus.Billable {
+	if total > product.FreeQuotaSize && !cus.Billable {
 		return nil, common.ErrExceedsFreeQuota
 	}
-	update := bson.M{"daily_usage." + key + ".total": total}
+	update := bson.M{"daily_usage." + product.Key + ".total": total}
 	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
@@ -788,7 +809,8 @@ func (s *Service) reportUsage() error {
 				if err := s.reportDailyUnits(product, usage); err != nil {
 					return err
 				}
-				if product.PricingInterval == Daily {
+				if product.FreeQuotaInterval == FreeQuotaDaily &&
+					product.PriceType == PriceTypeIncremental {
 					if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
 						"$set": bson.M{"daily_usage." + k + ".total": 0},
 					}); err != nil {
@@ -806,9 +828,9 @@ func (s *Service) reportUsage() error {
 
 func (s *Service) reportDailyUnits(product Product, usage Usage) error {
 	var freeSize, paidSize int64
-	if usage.Total > product.FreeQuotaPerInterval {
-		freeSize = product.FreeQuotaPerInterval
-		paidSize = usage.Total - product.FreeQuotaPerInterval
+	if usage.Total > product.FreeQuotaSize {
+		freeSize = product.FreeQuotaSize
+		paidSize = usage.Total - product.FreeQuotaSize
 	} else {
 		freeSize = usage.Total
 	}
@@ -840,12 +862,4 @@ func (s *Service) reportDailyUnits(product Product, usage Usage) error {
 func getDailyUnits(product Product, size int64) int64 {
 	units := float64(size) / float64(product.UnitSize)
 	return int64(math.Round(units))
-}
-
-func getPeriodDays() int {
-	// Go to next month
-	d1 := time.Now().AddDate(0, 1, 0)
-	// Zeroing days will cause time to normalize the date to the last day of the current month.
-	d2 := time.Date(d1.Year(), d1.Month(), 0, 0, 0, 0, 0, time.UTC)
-	return d2.Day()
 }
