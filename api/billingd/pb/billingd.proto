@@ -44,12 +44,13 @@ message GetCustomerResponse {
     bool billable = 8;
     bool delinquent = 9;
     int64 created_at = 10;
+    int64 grace_period_end = 11;
 
-    Period invoice_period = 11;
+    Period invoice_period = 12;
 
-    map<string, Usage> daily_usage = 12;
+    map<string, Usage> daily_usage = 13;
 
-    int64 dependents = 13;
+    int64 dependents = 14;
 }
 
 message ListDependentCustomersRequest {
