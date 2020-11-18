@@ -281,10 +281,11 @@ func setup(t *testing.T) *client.Client {
 		StripeAPIURL:           "https://api.stripe.com",
 		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		DBURI:           "mongodb://127.0.0.1:27017",
-		DBName:          util.MakeToken(8),
-		GatewayHostAddr: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),
-		Debug:           true,
+		DBURI:                "mongodb://127.0.0.1:27017",
+		DBName:               util.MakeToken(8),
+		GatewayHostAddr:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),
+		FreeQuotaGracePeriod: 0,
+		Debug:                true,
 	})
 	require.NoError(t, err)
 	err = api.Start()
