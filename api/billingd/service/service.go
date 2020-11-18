@@ -782,7 +782,7 @@ func (s *Service) handleCustomerUsage(
 	}
 	for k, inc := range req.ProductUsage {
 		product, ok := s.products[k]
-		if ok {
+		if ok && inc != 0 {
 			usage, err := s.handleUsage(ctx, cus, product, inc)
 			if err != nil {
 				return nil, err
