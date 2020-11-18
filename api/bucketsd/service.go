@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"math/big"
 	gopath "path"
 	"strings"
@@ -399,7 +400,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageAvailable != -1 {
+	if ok {
 		if totalAddedSize > owner.StorageAvailable {
 			return ctx, ErrStorageQuotaExhausted
 		}
@@ -416,7 +417,7 @@ func (s *Service) addPinnedBytes(ctx context.Context, delta int64) context.Conte
 	total, _ := ctx.Value(ctxKey("pinnedBytes")).(int64)
 	ctx = context.WithValue(ctx, ctxKey("pinnedBytes"), total+delta)
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageAvailable != -1 {
+	if ok {
 		owner.StorageUsed += delta
 		owner.StorageAvailable -= delta
 		owner.StorageDelta += delta
@@ -450,7 +451,7 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageAvailable != -1 {
+	if ok {
 		if int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
 			return ctx, nil, ErrStorageQuotaExhausted
 		}
@@ -1299,7 +1300,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
-	storageAvailable := int64(-1)
+	storageAvailable := int64(math.MaxInt64)
 	owner, ok := buckets.BucketOwnerFromContext(server.Context())
 	if ok {
 		storageAvailable = owner.StorageAvailable
@@ -1700,7 +1701,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && owner.StorageAvailable != -1 {
+	if ok {
 		if deltaSize > owner.StorageAvailable {
 			return ctx, ErrStorageQuotaExhausted
 		}
@@ -2410,10 +2411,10 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.JobStatus)
 		}
 
-		status := userPb.JobStatus(ba.Archives.Current.JobStatus)
+		st := userPb.JobStatus(ba.Archives.Current.JobStatus)
 
 		if oldCid.Equals(p.Cid()) { // Case 1.
-			switch status {
+			switch st {
 			// Case 1.a.
 			case userPb.JobStatus_JOB_STATUS_SUCCESS:
 				return nil, fmt.Errorf("the same bucket cid is already archived successfully")

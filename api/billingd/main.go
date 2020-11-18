@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -62,6 +63,10 @@ var (
 			"stripeWebhookSecret": {
 				Key:      "stripe.webhook_secret",
 				DefValue: "",
+			},
+			"freeQuotaGracePeriod": {
+				Key:      "free_quota_grace_period",
+				DefValue: time.Hour * 24 * 7,
 			},
 		},
 		EnvPre: "BILLING",
@@ -124,6 +129,11 @@ func init() {
 		config.Flags["stripeWebhookSecret"].DefValue.(string),
 		"Stripe webhook endpoint secret")
 
+	rootCmd.PersistentFlags().Duration(
+		"freeQuotaGracePeriod",
+		config.Flags["freeQuotaGracePeriod"].DefValue.(time.Duration),
+		"Grace period before blocking usage after free quota is exhausted")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -163,6 +173,8 @@ var rootCmd = &cobra.Command{
 		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
 		stripeWebhookSecret := config.Viper.GetString("stripe.webhook_secret")
 
+		freeQuotaGracePeriod := config.Viper.GetDuration("free_quota_grace_period")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			err = util.SetupDefaultLoggingConfig(logFile)
@@ -180,6 +192,7 @@ var rootCmd = &cobra.Command{
 			DBURI:                  addrMongoUri,
 			DBName:                 addrMongoName,
 			GatewayHostAddr:        addrGatewayHost,
+			FreeQuotaGracePeriod:   freeQuotaGracePeriod,
 			Debug:                  config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)

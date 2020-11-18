@@ -124,6 +124,7 @@ type Customer struct {
 	Billable           bool   `bson:"billable"`
 	Delinquent         bool   `bson:"delinquent"`
 	CreatedAt          int64  `bson:"created_at"`
+	GracePeriodStartAt int64  `bson:"grace_period_start_at"`
 
 	InvoicePeriod Period `bson:"invoice_period"`
 
@@ -190,6 +191,8 @@ type Config struct {
 	DBName string
 
 	GatewayHostAddr ma.Multiaddr
+
+	FreeQuotaGracePeriod time.Duration
 
 	Debug bool
 }
@@ -806,10 +809,18 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		log.Warnf("negative %s detected: total=%d inc=%d)", product.Key, total, incSize)
 		total = 0
 	}
-	if total > product.FreeQuotaSize && !cus.Billable {
-		return nil, common.ErrExceedsFreeQuota
-	}
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
+	if total > product.FreeQuotaSize && !cus.Billable {
+		now := time.Now().Unix()
+		if cus.GracePeriodStartAt == 0 {
+			cus.GracePeriodStartAt = now
+			update["grace_period_start_at"] = cus.GracePeriodStartAt
+		}
+		deadline := cus.GracePeriodStartAt + int64(s.config.FreeQuotaGracePeriod.Seconds())
+		if now >= deadline {
+			return nil, common.ErrExceedsFreeQuota
+		}
+	}
 	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}

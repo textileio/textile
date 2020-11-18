@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -136,7 +137,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			StorageUsed: cus.DailyUsage["stored_data"].Total,
 		}
 		if cus.Billable {
-			owner.StorageAvailable = -1
+			owner.StorageAvailable = int64(math.MaxInt64)
 		} else {
 			owner.StorageAvailable = cus.DailyUsage["stored_data"].Free
 		}
