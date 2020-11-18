@@ -149,5 +149,7 @@ func listUsers(limit, offset int64) {
 		cmd.Message("Press 'Enter' to show more...")
 		_, _ = fmt.Scanln()
 		listUsers(limit, list.NextOffset)
+	} else {
+		cmd.Message("Found %d users", aurora.White(0).Bold())
 	}
 }
