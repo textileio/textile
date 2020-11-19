@@ -37,6 +37,7 @@ type BucketOwner struct {
 	StorageUsed      int64
 	StorageAvailable int64
 	StorageDelta     int64
+	GracePeriodEnded bool
 }
 
 func NewBucketOwnerContext(ctx context.Context, owner *BucketOwner) context.Context {

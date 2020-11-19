@@ -221,9 +221,6 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	var sa analytics.Client
 	if config.SegmentAPIKey != "" {
 		sa = analytics.New(config.SegmentAPIKey)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
@@ -421,12 +418,10 @@ func (s *Service) CheckHealth(_ context.Context, _ *pb.CheckHealthRequest) (*pb.
 
 func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequest) (
 	*pb.CreateCustomerResponse, error) {
-	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
-		Email: stripe.String(req.Email),
-	})
-	if err != nil {
-		return nil, err
-	}
+	lck := s.semaphores.Get(customerLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
 	if req.ParentKey != "" {
 		if _, err := s.getCustomer(ctx, "_id", req.ParentKey); err != nil {
 			return nil, err
@@ -435,36 +430,50 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 
 	doc := &Customer{
 		Key:         req.Key,
-		CustomerID:  customer.ID,
 		ParentKey:   req.ParentKey,
-		Email:       customer.Email,
+		Email:       req.Email,
 		AccountType: mdb.AccountType(req.AccountType),
 		CreatedAt:   time.Now().Unix(),
-	}
-	if err := s.createSubscription(doc); err != nil {
-		return nil, err
 	}
 	if _, err := s.cdb.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
+	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
+		Email: stripe.String(req.Email),
+	})
+	if err != nil {
+		return nil, err
+	}
+	doc.CustomerID = customer.ID
+	if err := s.createSubscription(doc); err != nil {
+		return nil, err
+	}
+	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{"$set": doc}); err != nil {
+		return nil, err
+	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	// Create new analytics entry
-	if s.segment != nil {
-		s.segment.Enqueue(analytics.Identify{
-			UserId: doc.Key,
-			Traits: analytics.NewTraits().
-				SetEmail(doc.Email).
-				Set("parent_key", doc.ParentKey).
-				Set("customer_id", doc.CustomerID).
-				Set("account_type", doc.AccountType).
-				Set("hub_signup", "true"),
-		})
-	}
+	go s.segmentNewCustomer(doc)
 
 	return &pb.CreateCustomerResponse{
 		CustomerId: doc.CustomerID,
 	}, nil
+}
+
+func (s *Service) segmentNewCustomer(cus *Customer) {
+	if s.segment != nil {
+		if err := s.segment.Enqueue(analytics.Identify{
+			UserId: cus.Key,
+			Traits: analytics.NewTraits().
+				SetEmail(cus.Email).
+				Set("parent_key", cus.ParentKey).
+				Set("customer_id", cus.CustomerID).
+				Set("account_type", cus.AccountType).
+				Set("hub_signup", "true"),
+		}); err != nil {
+			log.Error("identifying new user: %v", err)
+		}
+	}
 }
 
 func (s *Service) getCustomer(ctx context.Context, key, val string) (*Customer, error) {
@@ -525,10 +534,6 @@ func (s *Service) createSubscription(cus *Customer) error {
 
 func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
 	*pb.GetCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
 	doc, err := s.getCustomer(ctx, "_id", req.Key)
 	if err != nil {
 		return nil, err
@@ -544,19 +549,26 @@ func periodToPb(period Period) *pb.Period {
 	}
 }
 
-func (s *Service) usageToPb(usage map[string]Usage) map[string]*pb.Usage {
+func (s *Service) dailyUsageToPb(usage map[string]Usage) map[string]*pb.Usage {
+	start, end := getCurrentDayBounds()
 	res := make(map[string]*pb.Usage)
 	for k, u := range usage {
-		product, ok := s.products[k]
-		if ok {
-			res[k] = getUsage(product, u.Total)
+		if product, ok := s.products[k]; ok {
+			res[k] = getUsage(product, u.Total, Period{UnixStart: start, UnixEnd: end})
 		}
 	}
 	return res
 }
 
-func getUsage(product Product, total int64) *pb.Usage {
-	freeUnits, paidUnits := getDailyUnits(product, total)
+func getCurrentDayBounds() (int64, int64) {
+	now := time.Now()
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	end := time.Date(now.Year(), now.Month(), now.Day(), 24, 0, 0, 0, time.Local)
+	return start.Unix(), end.Unix()
+}
+
+func getUsage(product Product, total int64, period Period) *pb.Usage {
+	freeUnits, paidUnits := getUnits(product, total)
 	free := product.FreeQuotaSize - total
 	if free < 0 {
 		free = 0
@@ -574,12 +586,26 @@ func getUsage(product Product, total int64) *pb.Usage {
 		desc = product.Name
 	}
 	return &pb.Usage{
+		Period:      periodToPb(period),
 		Description: desc,
 		Units:       freeUnits + paidUnits,
 		Total:       total,
 		Free:        free,
 		Cost:        cost,
 	}
+}
+
+func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
+	var freeSize, paidSize int64
+	if total > product.FreeQuotaSize {
+		freeSize = product.FreeQuotaSize
+		paidSize = total - product.FreeQuotaSize
+	} else {
+		freeSize = total
+	}
+	freeUnits = int64(math.Round(float64(freeSize) / float64(product.UnitSize)))
+	paidUnits = int64(math.Round(float64(paidSize) / float64(product.UnitSize)))
+	return
 }
 
 func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
@@ -604,17 +630,13 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		CreatedAt:          doc.CreatedAt,
 		GracePeriodEnd:     gracePeriodEnd,
 		InvoicePeriod:      periodToPb(doc.InvoicePeriod),
-		DailyUsage:         s.usageToPb(doc.DailyUsage),
+		DailyUsage:         s.dailyUsageToPb(doc.DailyUsage),
 		Dependents:         deps,
 	}, nil
 }
 
 func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSessionRequest) (
 	*pb.GetCustomerSessionResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
 	doc, err := s.getCustomer(ctx, "_id", req.Key)
 	if err != nil {
 		return nil, err
@@ -633,10 +655,6 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 
 func (s *Service) ListDependentCustomers(ctx context.Context, req *pb.ListDependentCustomersRequest) (
 	*pb.ListDependentCustomersResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
-	lck.Acquire()
-	defer lck.Release()
-
 	doc, err := s.getCustomer(ctx, "_id", req.Key)
 	if err != nil {
 		return nil, err
@@ -787,6 +805,58 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	return &pb.DeleteCustomerResponse{}, nil
 }
 
+func (s *Service) GetCustomerUsage(
+	ctx context.Context,
+	req *pb.GetCustomerUsageRequest,
+) (*pb.GetCustomerUsageResponse, error) {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
+		return nil, err
+	}
+	usage := make(map[string]*pb.Usage)
+	for k, u := range doc.DailyUsage {
+		if product, ok := s.products[k]; ok {
+			// Get reported usage over the current invoice period
+			free, err := s.getPeriodUsageItem(u.FreeItemID)
+			if err != nil {
+				return nil, err
+			}
+			paid, err := s.getPeriodUsageItem(u.PaidItemID)
+			if err != nil {
+				return nil, err
+			}
+			total := (free.TotalUsage + paid.TotalUsage) * product.UnitSize
+			// Add current day unreported usage
+			if product.FreeQuotaInterval == FreeQuotaDaily &&
+				product.PriceType == PriceTypeIncremental {
+				total += u.Total
+			}
+			usage[k] = getUsage(product, total, doc.InvoicePeriod)
+		}
+	}
+	return &pb.GetCustomerUsageResponse{
+		Usage: usage,
+	}, nil
+}
+
+func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary, err error) {
+	params := &stripe.UsageRecordSummaryListParams{
+		SubscriptionItem: stripe.String(id),
+	}
+	params.Filters.AddFilter("limit", "", "1")
+	i := s.stripe.UsageRecordSummaries.List(params)
+	for i.Next() {
+		sum = i.UsageRecordSummary()
+	}
+	if i.Err() != nil {
+		return nil, i.Err()
+	}
+	if sum != nil && sum.Period != nil {
+		return sum, nil
+	}
+	return nil, fmt.Errorf("subscription item %s not found", id)
+}
+
 func (s *Service) IncCustomerUsage(
 	ctx context.Context,
 	req *pb.IncCustomerUsageRequest,
@@ -817,12 +887,10 @@ func (s *Service) handleCustomerUsage(
 	}
 
 	res := &pb.IncCustomerUsageResponse{
-		InvoicePeriod: periodToPb(cus.InvoicePeriod),
-		DailyUsage:    make(map[string]*pb.Usage),
+		DailyUsage: make(map[string]*pb.Usage),
 	}
 	for k, inc := range req.ProductUsage {
-		product, ok := s.products[k]
-		if ok && inc != 0 {
+		if product, ok := s.products[k]; ok && inc != 0 {
 			usage, err := s.handleUsage(ctx, cus, product, inc)
 			if err != nil {
 				return nil, err
@@ -861,7 +929,22 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
-	return getUsage(product, total), nil
+	start, end := getCurrentDayBounds()
+	return getUsage(product, total, Period{UnixStart: start, UnixEnd: end}), nil
+}
+
+func (s *Service) ReportCustomerUsage(
+	ctx context.Context,
+	req *pb.ReportCustomerUsageRequest,
+) (*pb.ReportCustomerUsageResponse, error) {
+	doc, err := s.getCustomer(ctx, "_id", req.Key)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.reportCustomerUsage(ctx, doc); err != nil {
+		return nil, err
+	}
+	return &pb.ReportCustomerUsageResponse{}, nil
 }
 
 func (s *Service) reportUsage() error {
@@ -877,20 +960,8 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
-		for k, usage := range doc.DailyUsage {
-			if product, ok := s.products[k]; ok {
-				if err := s.reportDailyUnits(product, usage); err != nil {
-					return err
-				}
-				if product.FreeQuotaInterval == FreeQuotaDaily &&
-					product.PriceType == PriceTypeIncremental {
-					if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{
-						"$set": bson.M{"daily_usage." + k + ".total": 0},
-					}); err != nil {
-						return err
-					}
-				}
-			}
+		if err := s.reportCustomerUsage(ctx, &doc); err != nil {
+			return fmt.Errorf("reporting customer usage: %v", err)
 		}
 	}
 	if err := cursor.Err(); err != nil {
@@ -899,8 +970,30 @@ func (s *Service) reportUsage() error {
 	return nil
 }
 
-func (s *Service) reportDailyUnits(product Product, usage Usage) error {
-	freeUnits, paidUnits := getDailyUnits(product, usage.Total)
+func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
+	for k, usage := range cus.DailyUsage {
+		if product, ok := s.products[k]; ok {
+			if err := s.reportUnits(product, usage); err != nil {
+				return err
+			}
+			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
+			if product.FreeQuotaInterval == FreeQuotaDaily &&
+				product.PriceType == PriceTypeIncremental {
+				if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{
+					"$set": bson.M{"daily_usage." + k + ".total": 0},
+				}); err != nil {
+					return err
+				}
+			}
+		} else {
+			log.Warn("%s has invalid product key: %s", cus.Key, k)
+		}
+	}
+	return nil
+}
+
+func (s *Service) reportUnits(product Product, usage Usage) error {
+	freeUnits, paidUnits := getUnits(product, usage.Total)
 	if freeUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.FreeItemID),
@@ -922,16 +1015,4 @@ func (s *Service) reportDailyUnits(product Product, usage Usage) error {
 		}
 	}
 	return nil
-}
-
-func getDailyUnits(product Product, total int64) (freeUnits, paidUnits int64) {
-	var freeSize, paidSize int64
-	if total > product.FreeQuotaSize {
-		freeSize = product.FreeQuotaSize
-		paidSize = total - product.FreeQuotaSize
-	} else {
-		freeSize = total
-	}
-	return int64(math.Round(float64(freeSize) / float64(product.UnitSize))),
-		int64(math.Round(float64(paidSize) / float64(product.UnitSize)))
 }

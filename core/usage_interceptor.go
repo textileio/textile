@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/api/client"
@@ -121,7 +122,10 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	if !cus.Billable && cus.DailyUsage["network_egress"].Free == 0 {
+
+	gracePeriodEnded := time.Now().Unix() >= cus.GracePeriodEnd
+
+	if !cus.Billable && cus.DailyUsage["network_egress"].Free == 0 && gracePeriodEnded {
 		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeQuota)
 		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
@@ -135,7 +139,8 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
 		owner := &buckets.BucketOwner{
-			StorageUsed: cus.DailyUsage["stored_data"].Total,
+			StorageUsed:      cus.DailyUsage["stored_data"].Total,
+			GracePeriodEnded: gracePeriodEnded,
 		}
 		if cus.Billable {
 			owner.StorageAvailable = int64(math.MaxInt64)
@@ -150,7 +155,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/FindByID",
 		"/threads.pb.API/ReadTransaction",
 		"/threads.pb.API/Listen":
-		if !cus.Billable && cus.DailyUsage["instance_reads"].Free == 0 {
+		if !cus.Billable && cus.DailyUsage["instance_reads"].Free == 0 && gracePeriodEnded {
 			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
@@ -158,7 +163,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/Save",
 		"/threads.pb.API/Delete",
 		"/threads.pb.API/WriteTransaction":
-		if !cus.Billable && cus.DailyUsage["instance_writes"].Free == 0 {
+		if !cus.Billable && cus.DailyUsage["instance_writes"].Free == 0 && gracePeriodEnded {
 			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}

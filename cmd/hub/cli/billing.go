@@ -58,7 +58,9 @@ var billingPortalCmd = &cobra.Command{
 var billingUsageCmd = &cobra.Command{
 	Use:   "usage",
 	Short: "Show usage and billing info",
-	Long: `Shows usage and billing information.
+	Long: `Shows usage and billing information
+
+Usage is evaluated daily and invoiced monthly.
 
 Use the --user flag to get usage for a dependent user.`,
 	Args: cobra.MaximumNArgs(1),
@@ -70,7 +72,7 @@ Use the --user flag to get usage for a dependent user.`,
 		defer cancel()
 		info, err := clients.Users.GetUsage(ctx, users.WithPubKey(user))
 		cmd.ErrCheck(err)
-		cus := info.Usage
+		cus := info.Customer
 
 		cmd.Message("Account status: %s", aurora.White(cus.AccountStatus).Bold())
 		if cus.ParentKey == "" {
@@ -81,14 +83,12 @@ Use the --user flag to get usage for a dependent user.`,
 		if cus.Dependents > 0 {
 			cmd.Message("Contributing users: %d", aurora.White(cus.Dependents).Bold())
 		}
+		header := []string{"", "usage", "free quota", "daily cost", "start", "end"}
 		var rows [][]string
-		for _, usage := range cus.DailyUsage {
-			rows = append(rows, getUsageRow(usage, cus.InvoicePeriod))
+		for _, usage := range info.Usage.Usage {
+			rows = append(rows, getUsageRow(usage))
 		}
-		cmd.RenderTable(
-			[]string{"", "usage", "free quota", "daily cost", "start", "end"},
-			rows,
-		)
+		cmd.RenderTable(header, rows)
 		if !cus.Billable && cus.GracePeriodEnd > 0 {
 			ends := time.Unix(cus.GracePeriodEnd, 0).Format("02-Jan-06 15:04 -0700")
 			cmd.Warn("Free quota grace period ends: %d", aurora.Bold(ends))
@@ -96,7 +96,7 @@ Use the --user flag to get usage for a dependent user.`,
 	},
 }
 
-func getUsageRow(usage *pb.Usage, period *pb.Period) []string {
+func getUsageRow(usage *pb.Usage) []string {
 	return []string{
 		usage.Description,
 		strconv.Itoa(int(usage.Total)),
@@ -105,8 +105,8 @@ func getUsageRow(usage *pb.Usage, period *pb.Period) []string {
 			strconv.Itoa(int(usage.Free)),
 			int(math.Round(100*float64(usage.Free)/float64(usage.Total+usage.Free)))),
 		fmt.Sprintf("$%.4f", usage.Cost),
-		time.Unix(period.UnixStart, 0).Format("02-Jan-06"),
-		time.Unix(period.UnixEnd, 0).Format("02-Jan-06"),
+		time.Unix(usage.Period.UnixStart, 0).Format("02-Jan-06"),
+		time.Unix(usage.Period.UnixEnd, 0).Format("02-Jan-06"),
 	}
 }
 

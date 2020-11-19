@@ -13,6 +13,7 @@ message Usage {
     int64 total = 3;
     int64 free = 4;
     double cost = 5;
+    Period period = 6;
 }
 
 message CheckHealthRequest {}
@@ -102,15 +103,28 @@ message DeleteCustomerRequest {
 
 message DeleteCustomerResponse {}
 
+message GetCustomerUsageRequest {
+    string key = 1;
+}
+
+message GetCustomerUsageResponse {
+    map<string, Usage> usage = 1;
+}
+
 message IncCustomerUsageRequest {
     string key = 1;
     map<string, int64> product_usage = 2;
 }
 
 message IncCustomerUsageResponse {
-    Period invoice_period = 1;
-    map<string, Usage> daily_usage = 2;
+    map<string, Usage> daily_usage = 1;
 }
+
+message ReportCustomerUsageRequest {
+    string key = 1;
+}
+
+message ReportCustomerUsageResponse {}
 
 service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
@@ -122,5 +136,7 @@ service APIService {
     rpc UpdateCustomerSubscription(UpdateCustomerSubscriptionRequest) returns (UpdateCustomerSubscriptionResponse) {}
     rpc RecreateCustomerSubscription(RecreateCustomerSubscriptionRequest) returns (RecreateCustomerSubscriptionResponse) {}
     rpc DeleteCustomer(DeleteCustomerRequest) returns (DeleteCustomerResponse) {}
+    rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse) {}
     rpc IncCustomerUsage(IncCustomerUsageRequest) returns (IncCustomerUsageResponse) {}
+    rpc ReportCustomerUsage(ReportCustomerUsageRequest) returns (ReportCustomerUsageResponse) {}
 }

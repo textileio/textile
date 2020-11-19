@@ -400,10 +400,8 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if totalAddedSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaExhausted
-		}
+	if ok && totalAddedSize > owner.StorageAvailable && owner.GracePeriodEnded {
+		return ctx, ErrStorageQuotaExhausted
 	}
 
 	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
@@ -451,10 +449,8 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
-			return ctx, nil, ErrStorageQuotaExhausted
-		}
+	if ok && int64(bootStatn.CumulativeSize) > owner.StorageAvailable && owner.GracePeriodEnded {
+		return ctx, nil, ErrStorageQuotaExhausted
 	}
 
 	// Here we have to walk and possibly encrypt the boot path dag
@@ -1301,9 +1297,11 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
 	storageAvailable := int64(math.MaxInt64)
+	gracePeriodEnded := true
 	owner, ok := buckets.BucketOwnerFromContext(server.Context())
 	if ok {
 		storageAvailable = owner.StorageAvailable
+		gracePeriodEnded = owner.GracePeriodEnded
 	}
 
 	req, err := server.Recv()
@@ -1385,7 +1383,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
 					assignErr(ErrMaxBucketSizeExceeded)
 					return
-				} else if storageAvailable > 0 && cummSize > storageAvailable {
+				} else if storageAvailable > 0 && cummSize > storageAvailable && gracePeriodEnded {
 					assignErr(ErrStorageQuotaExhausted)
 					return
 				}
@@ -1701,10 +1699,8 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if deltaSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaExhausted
-		}
+	if ok && deltaSize > owner.StorageAvailable && owner.GracePeriodEnded {
+		return ctx, ErrStorageQuotaExhausted
 	}
 
 	if from == nil {

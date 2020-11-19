@@ -367,8 +367,13 @@ func (s *Service) GetUsage(ctx context.Context, req *pb.GetUsageRequest) (*pb.Ge
 	if parentKey != nil && cus.ParentKey != parentKey.String() {
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
+	usage, err := s.BillingClient.GetCustomerUsage(ctx, key)
+	if err != nil {
+		return nil, err
+	}
 	return &pb.GetUsageResponse{
-		Usage: cus,
+		Customer: cus,
+		Usage:    usage,
 	}, nil
 }
 
