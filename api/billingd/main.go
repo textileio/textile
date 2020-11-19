@@ -68,6 +68,10 @@ var (
 				Key:      "free_quota_grace_period",
 				DefValue: time.Hour * 24 * 7,
 			},
+			"segmentApiKey": {
+				Key:      "segment.api_key",
+				DefValue: "",
+			},
 		},
 		EnvPre: "BILLING",
 		Global: true,
@@ -134,6 +138,12 @@ func init() {
 		config.Flags["freeQuotaGracePeriod"].DefValue.(time.Duration),
 		"Grace period before blocking usage after free quota is exhausted")
 
+	// Segment settings
+	rootCmd.PersistentFlags().String(
+		"segmentApiKey",
+		config.Flags["segmentApiKey"].DefValue.(string),
+		"Segment API key")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -175,6 +185,8 @@ var rootCmd = &cobra.Command{
 
 		freeQuotaGracePeriod := config.Viper.GetDuration("free_quota_grace_period")
 
+		segmentApiKey := config.Viper.GetString("segment.api_key")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			err = util.SetupDefaultLoggingConfig(logFile)
@@ -189,6 +201,7 @@ var rootCmd = &cobra.Command{
 			StripeAPIKey:           stripeApiKey,
 			StripeSessionReturnURL: stripeSessionReturnUrl,
 			StripeWebhookSecret:    stripeWebhookSecret,
+			SegmentAPIKey:          segmentApiKey,
 			DBURI:                  addrMongoUri,
 			DBName:                 addrMongoName,
 			GatewayHostAddr:        addrGatewayHost,

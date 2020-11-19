@@ -21,11 +21,13 @@ import (
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
+	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
+	analytics "gopkg.in/segmentio/analytics-go.v3"
 )
 
 const (
@@ -115,16 +117,17 @@ var Products = []Product{
 }
 
 type Customer struct {
-	Key                string `bson:"_id"`
-	CustomerID         string `bson:"customer_id"`
-	ParentKey          string `bson:"parent_key"`
-	Email              string `bson:"email"`
-	SubscriptionStatus string `bson:"subscription_status"`
-	Balance            int64  `bson:"balance"`
-	Billable           bool   `bson:"billable"`
-	Delinquent         bool   `bson:"delinquent"`
-	CreatedAt          int64  `bson:"created_at"`
-	GracePeriodStart   int64  `bson:"grace_period_start"`
+	Key                string          `bson:"_id"`
+	CustomerID         string          `bson:"customer_id"`
+	ParentKey          string          `bson:"parent_key"`
+	Email              string          `bson:"email"`
+	AccountType        mdb.AccountType `bson:"account_type"`
+	SubscriptionStatus string          `bson:"subscription_status"`
+	Balance            int64           `bson:"balance"`
+	Billable           bool            `bson:"billable"`
+	Delinquent         bool            `bson:"delinquent"`
+	CreatedAt          int64           `bson:"created_at"`
+	GracePeriodStart   int64           `bson:"grace_period_start"`
 
 	InvoicePeriod Period `bson:"invoice_period"`
 
@@ -157,6 +160,7 @@ func (c *Customer) AccountStatus() string {
 
 type Service struct {
 	config     Config
+	segment    analytics.Client
 	server     *grpc.Server
 	stripe     *stripec.API
 	gateway    *gateway.Gateway
@@ -187,6 +191,8 @@ type Config struct {
 	StripeSessionReturnURL string
 	StripeWebhookSecret    string
 
+	SegmentAPIKey string
+
 	DBURI  string
 	DBName string
 
@@ -209,6 +215,15 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	sc, err := newStripeClient(config.StripeAPIURL, config.StripeAPIKey)
 	if err != nil {
 		return nil, err
+	}
+
+	// Configure analytics client
+	var sa analytics.Client
+	if config.SegmentAPIKey != "" {
+		sa = analytics.New(config.SegmentAPIKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
@@ -238,6 +253,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	s := &Service{
 		config:   config,
 		stripe:   sc,
+		segment:  sa,
 		reporter: cron.New(),
 		pdb:      pdb,
 		cdb:      cdb,
@@ -416,12 +432,14 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 			return nil, err
 		}
 	}
+
 	doc := &Customer{
-		Key:        req.Key,
-		CustomerID: customer.ID,
-		ParentKey:  req.ParentKey,
-		Email:      customer.Email,
-		CreatedAt:  time.Now().Unix(),
+		Key:         req.Key,
+		CustomerID:  customer.ID,
+		ParentKey:   req.ParentKey,
+		Email:       customer.Email,
+		AccountType: mdb.AccountType(req.AccountType),
+		CreatedAt:   time.Now().Unix(),
 	}
 	if err := s.createSubscription(doc); err != nil {
 		return nil, err
@@ -430,6 +448,20 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 		return nil, err
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
+
+	// Create new analytics entry
+	if s.segment != nil {
+		s.segment.Enqueue(analytics.Identify{
+			UserId: doc.Key,
+			Traits: analytics.NewTraits().
+				SetEmail(doc.Email).
+				Set("parent_key", doc.ParentKey).
+				Set("customer_id", doc.CustomerID).
+				Set("account_type", doc.AccountType).
+				Set("hub_signup", "true"),
+		})
+	}
+
 	return &pb.CreateCustomerResponse{
 		CustomerId: doc.CustomerID,
 	}, nil

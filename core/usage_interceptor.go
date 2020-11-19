@@ -106,6 +106,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 				}
 				opts = append(opts, billing.WithParentKey(key.Owner))
 			}
+			opts = append(opts, billing.WithAccountType(account.Owner().Type))
 			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
 				return ctx, err
 			}

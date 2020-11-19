@@ -23,6 +23,7 @@ message CreateCustomerRequest {
     string key = 1;
     string parent_key = 2;
     string email = 3;
+    int64 account_type = 4;
 }
 
 message CreateCustomerResponse {
