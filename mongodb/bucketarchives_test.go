@@ -52,14 +52,14 @@ func TestBucketArchives_Replace(t *testing.T) {
 	ba.Archives.Current = Archive{
 		Cid:       c1.Bytes(),
 		JobID:     "JobID1",
-		JobStatus: 123,
+		Status:    123,
 		CreatedAt: time.Now().Unix(),
 	}
 	ba.Archives.History = []Archive{
 		{
 			Cid:       c2.Bytes(),
 			JobID:     "JobID2",
-			JobStatus: 456,
+			Status:    456,
 			CreatedAt: time.Now().Add(time.Hour * -24).Unix(),
 		},
 	}

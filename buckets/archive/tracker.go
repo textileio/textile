@@ -187,10 +187,6 @@ func (t *Tracker) trackArchiveProgress(
 		return true, fmt.Sprintf("getting current job %s for bucket %s: %s", jid, buckKey, err), nil
 	}
 
-	if !isJobStatusFinal(res.StorageJob.Status) {
-		return true, "no final status yet", nil
-	}
-
 	// Step 2: On success, save Deal data in the underlying Bucket thread. On
 	// failure save the error message. Also update status on Mongo for the archive.
 	if res.StorageJob.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
@@ -202,7 +198,13 @@ func (t *Tracker) trackArchiveProgress(
 		return true, fmt.Sprintf("updating archive status: %s", err), nil
 	}
 
-	return false, "reached final status", nil
+	message := "reached final status"
+	reschedule := !isJobStatusFinal(res.StorageJob.Status)
+	if reschedule {
+		message = "non-final status"
+	}
+
+	return reschedule, message, nil
 }
 
 // updateArchiveStatus save the last known job status. It also receives an
@@ -227,19 +229,48 @@ func (t *Tracker) updateArchiveStatus(
 	if err != nil {
 		return fmt.Errorf("getting BucketArchive data: %s", err)
 	}
-	lastArchive := &ba.Archives.Current
-	if lastArchive.JobID != job.Id {
+
+	archiveToUpdate := &ba.Archives.Processing
+	if isJobStatusFinal(job.Status) {
+		archiveToUpdate = &ba.Archives.Current
+		// If the job is final and it is the job being tracked by ba.Archives.Processing,
+		// Reset ba.Archives.Processing since it is no longer processing.
+		if job.Id == ba.Archives.Processing.JobID {
+			ba.Archives.Processing = mdb.Archive{}
+		}
+	}
+	if archiveToUpdate.JobID != job.Id {
 		for i := range ba.Archives.History {
 			if ba.Archives.History[i].JobID == job.Id {
-				lastArchive = &ba.Archives.History[i]
+				archiveToUpdate = &ba.Archives.History[i]
 				break
 			}
 		}
 	}
-	lastArchive.JobStatus = int(job.Status)
-	lastArchive.Aborted = aborted
-	lastArchive.AbortedMsg = abortMsg
-	lastArchive.FailureMsg = prepareFailureMsg(job)
+	archiveToUpdate.Status = int(job.Status)
+	archiveToUpdate.Aborted = aborted
+	archiveToUpdate.AbortedMsg = abortMsg
+	archiveToUpdate.FailureMsg = prepareFailureMsg(job)
+
+	dealInfo := make([]mdb.DealInfo, len(job.DealInfo))
+	for i, info := range job.DealInfo {
+		dealInfo[i] = mdb.DealInfo{
+			ProposalCid:     info.ProposalCid,
+			StateID:         info.StateId,
+			StateName:       info.StateName,
+			Miner:           info.Miner,
+			PieceCID:        info.PieceCid,
+			Size:            info.Size,
+			PricePerEpoch:   info.PricePerEpoch,
+			StartEpoch:      info.StartEpoch,
+			Duration:        info.Duration,
+			DealID:          info.DealId,
+			ActivationEpoch: info.ActivationEpoch,
+			Message:         info.Message,
+		}
+	}
+	archiveToUpdate.DealInfo = dealInfo
+
 	if err := t.colls.BucketArchives.Replace(ctx, ba); err != nil {
 		return fmt.Errorf("updating bucket archives status: %s", err)
 	}

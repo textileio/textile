@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var defaultArchiveConfigCmd = &cobra.Command{
@@ -138,10 +139,30 @@ var archiveCmd = &cobra.Command{
 	},
 }
 
-var archiveStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show status of the latest archive",
-	Long:  `Shows the status of the most recent bucket archive.`,
+var archivesCmd = &cobra.Command{
+	Use:   "archives",
+	Short: "Shows information about current, processing, and historical archives.",
+	Long:  `Shows information about current, processing, and historical archives.`,
+	Args:  cobra.NoArgs,
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, ".")
+		cmd.ErrCheck(err)
+		res, err := buck.Archives(ctx)
+		cmd.ErrCheck(err)
+
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+
+		cmd.Success("\n", string(json))
+	},
+}
+
+var archiveWatchCmd = &cobra.Command{
+	Use:   "watch",
+	Short: "Watch the status of the most recent bucket archive.",
+	Long:  `Watch the status of the most recent bucket archive.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		watch, err := c.Flags().GetBool("watch")
@@ -150,44 +171,19 @@ var archiveStatusCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		msgs, err := buck.ArchiveStatus(ctx, watch)
+		msgs, err := buck.ArchiveWatch(ctx, watch)
 		cmd.ErrCheck(err)
 		for m := range msgs {
 			switch m.Type {
 			case local.ArchiveMessage:
 				cmd.Message(m.Message)
-			case local.ArchiveWarning:
-				cmd.Warn(m.Message)
 			case local.ArchiveError:
 				if m.InactivityClose {
 					cmd.Warn("No news from this job for a long-time. Re-run the command if you're still interested!")
 					break
 				}
 				cmd.Fatal(m.Error)
-			case local.ArchiveSuccess:
-				cmd.Success(m.Message)
 			}
 		}
-	},
-}
-
-var archiveInfoCmd = &cobra.Command{
-	Use:   "info",
-	Short: "Show info about the current archive",
-	Long:  `Shows information about the current archive.`,
-	Args:  cobra.NoArgs,
-	Run: func(c *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
-		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
-		cmd.ErrCheck(err)
-		info, err := buck.ArchiveInfo(ctx)
-		cmd.ErrCheck(err)
-		cmd.Message("Archive of cid %s has %d deals:\n", info.Archive.Cid, len(info.Archive.Deals))
-		var data [][]string
-		for _, d := range info.Archive.Deals {
-			data = append(data, []string{d.ProposalCid.String(), d.Miner})
-		}
-		cmd.RenderTable([]string{"proposal cid", "miner"}, data)
 	},
 }

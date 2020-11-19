@@ -131,7 +131,7 @@ install-protoc:
 
 PROTOCGENGO=$(shell pwd)/buildtools/protoc-gen-go
 protos: install-protoc clean-protos
-	./scripts/protoc_gen_plugin.bash \
+	PATH=$(PROTOCGENGO):$(PATH) ./scripts/protoc_gen_plugin.bash \
 	--proto_path=. \
 	--plugin_name=go \
 	--plugin_out=. \

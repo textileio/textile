@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 )
@@ -71,11 +70,11 @@ func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig
 	if pbConfig == nil {
 		return config, fmt.Errorf("no archive config in response")
 	}
-	config = fromPbArchiveConfig(*pbConfig)
+	config = fromPbArchiveConfig(pbConfig)
 	return
 }
 
-func fromPbArchiveConfig(pbConfig pb.ArchiveConfig) ArchiveConfig {
+func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) ArchiveConfig {
 	config := ArchiveConfig{
 		RepFactor:       int(pbConfig.RepFactor),
 		DealMinDuration: pbConfig.DealMinDuration,
@@ -176,17 +175,12 @@ type ArchiveMessageType int
 const (
 	// ArchiveMessage accompanies an informational message.
 	ArchiveMessage ArchiveMessageType = iota
-	// ArchiveWarning accompanies a warning state.
-	ArchiveWarning
 	// ArchiveError accompanies an error state.
 	ArchiveError
-	// ArchiveSuccess accompanies a successful state.
-	ArchiveSuccess
 )
 
-// ArchiveStatus returns the current archive status.
-// When watch is true, the channel remains open, delivering all messages.
-func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveStatusMessage, error) {
+// Archives returns information about current, processing, and historical archives.
+func (b *Bucket) Archives(ctx context.Context) (*pb.ArchivesResponse, error) {
 	b.Lock()
 	defer b.Unlock()
 	ctx, err := b.context(ctx)
@@ -194,113 +188,39 @@ func (b *Bucket) ArchiveStatus(ctx context.Context, watch bool) (<-chan ArchiveS
 		return nil, err
 	}
 	key := b.Key()
-	rep, err := b.clients.Buckets.ArchiveStatus(ctx, key)
+	return b.clients.Buckets.Archives(ctx, key)
+}
+
+// ArchiveWatch delivers messages about the archive status.
+func (b *Bucket) ArchiveWatch(ctx context.Context, watch bool) (<-chan ArchiveStatusMessage, error) {
+	b.Lock()
+	defer b.Unlock()
+	ctx, err := b.context(ctx)
 	if err != nil {
 		return nil, err
 	}
+	key := b.Key()
 	msgs := make(chan ArchiveStatusMessage)
 	go func() {
 		defer close(msgs)
-		switch rep.GetStatus() {
-		case pb.ArchiveStatusResponse_STATUS_FAILED:
-			msgs <- ArchiveStatusMessage{
-				Type:    ArchiveWarning,
-				Message: "Archive failed with message: " + rep.GetFailedMsg(),
-			}
-		case pb.ArchiveStatusResponse_STATUS_CANCELED:
-			msgs <- ArchiveStatusMessage{
-				Type:    ArchiveWarning,
-				Message: "Archive was superseded by a new executing archive",
-			}
-		case pb.ArchiveStatusResponse_STATUS_EXECUTING:
-			msgs <- ArchiveStatusMessage{
-				Type:    ArchiveMessage,
-				Message: "Archive is currently executing, grab a coffee and be patient...",
-			}
-		case pb.ArchiveStatusResponse_STATUS_DONE:
-			msgs <- ArchiveStatusMessage{
-				Type:    ArchiveSuccess,
-				Message: "Archive executed successfully!",
-			}
-		default:
-			msgs <- ArchiveStatusMessage{
-				Type:    ArchiveWarning,
-				Message: "Archive status unknown",
-			}
+		ch := make(chan string)
+		wCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		var err error
+		go func() {
+			err = b.clients.Buckets.ArchiveWatch(wCtx, key, ch)
+			close(ch)
+		}()
+		for msg := range ch {
+			msgs <- ArchiveStatusMessage{Type: ArchiveMessage, Message: "\t " + msg}
 		}
-		if watch {
-			ch := make(chan string)
-			wCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			var err error
-			go func() {
-				err = b.clients.Buckets.ArchiveWatch(wCtx, key, ch)
-				close(ch)
-			}()
-			for msg := range ch {
-				msgs <- ArchiveStatusMessage{Type: ArchiveMessage, Message: "\t " + msg}
+		if err != nil {
+			if strings.Contains(err.Error(), "RST_STREAM") {
+				msgs <- ArchiveStatusMessage{Type: ArchiveError, InactivityClose: true}
+				return
 			}
-			if err != nil {
-				if strings.Contains(err.Error(), "RST_STREAM") {
-					msgs <- ArchiveStatusMessage{Type: ArchiveError, InactivityClose: true}
-					return
-				}
-				msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
-			}
+			msgs <- ArchiveStatusMessage{Type: ArchiveError, Error: err}
 		}
 	}()
 	return msgs, nil
-}
-
-// ArchiveInfo wraps info about an archive.
-type ArchiveInfo struct {
-	Key     string  `json:"key"`
-	Archive Archive `json:"archive"`
-}
-
-// Archive describes the state of an archive.
-type Archive struct {
-	Cid   cid.Cid       `json:"cid"`
-	Deals []ArchiveDeal `json:"deals"`
-}
-
-// ArchiveDeal describes an archive deal.
-type ArchiveDeal struct {
-	ProposalCid cid.Cid `json:"proposal_cid"`
-	Miner       string  `json:"miner"`
-}
-
-// ArchiveInfo returns information about the current archvie.
-func (b *Bucket) ArchiveInfo(ctx context.Context) (info ArchiveInfo, err error) {
-	b.Lock()
-	defer b.Unlock()
-	ctx, err = b.context(ctx)
-	if err != nil {
-		return
-	}
-	rep, err := b.clients.Buckets.ArchiveInfo(ctx, b.Key())
-	if err != nil {
-		return
-	}
-	return pbArchiveInfoToArchiveInfo(rep)
-}
-
-func pbArchiveInfoToArchiveInfo(pi *pb.ArchiveInfoResponse) (info ArchiveInfo, err error) {
-	info.Key = pi.Key
-	if pi.Archive != nil {
-		info.Archive.Cid, err = cid.Decode(pi.Archive.Cid)
-		if err != nil {
-			return
-		}
-		deals := make([]ArchiveDeal, len(pi.Archive.Deals))
-		for i, d := range pi.Archive.Deals {
-			deals[i].Miner = d.Miner
-			deals[i].ProposalCid, err = cid.Decode(d.ProposalCid)
-			if err != nil {
-				return
-			}
-		}
-		info.Archive.Deals = deals
-	}
-	return info, err
 }

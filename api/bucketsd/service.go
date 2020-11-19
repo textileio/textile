@@ -2406,12 +2406,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
 		}
 
-		statusName, found := userPb.JobStatus_name[int32(ba.Archives.Current.JobStatus)]
+		statusName, found := userPb.JobStatus_name[int32(ba.Archives.Current.Status)]
 		if !found {
-			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.JobStatus)
+			return nil, fmt.Errorf("invalid job status %v", ba.Archives.Current.Status)
 		}
 
-		st := userPb.JobStatus(ba.Archives.Current.JobStatus)
+		st := userPb.JobStatus(ba.Archives.Current.Status)
 
 		if oldCid.Equals(p.Cid()) { // Case 1.
 			switch st {
@@ -2489,7 +2489,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		Cid:       p.Cid().Bytes(),
 		CreatedAt: time.Now().Unix(),
 		JobID:     jid,
-		JobStatus: int(userPb.JobStatus_JOB_STATUS_QUEUED),
+		Status:    int(userPb.JobStatus_JOB_STATUS_QUEUED),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
@@ -2501,6 +2501,76 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	log.Debug("archived bucket")
 	return &pb.ArchiveResponse{}, nil
+}
+
+func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.ArchivesResponse, error) {
+	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
+	if err != nil {
+		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+	}
+	res := &pb.ArchivesResponse{}
+	if ba.Archives.Processing.JobID != "" {
+		archive, err := toPbArchive(ba.Archives.Processing)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
+		}
+		res.Processing = archive
+	}
+	if ba.Archives.Current.JobID != "" {
+		archive, err := toPbArchive(ba.Archives.Current)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
+		}
+		res.Current = archive
+	}
+	history := make([]*pb.Archive, len(ba.Archives.History))
+	for i, item := range ba.Archives.History {
+		pbItem, err := toPbArchive(item)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
+		}
+		history[i] = pbItem
+	}
+	res.History = history
+	return res, nil
+}
+
+func toPbArchive(archive mdb.Archive) (*pb.Archive, error) {
+	c, err := cid.Cast(archive.Cid)
+	if err != nil {
+		return nil, fmt.Errorf("casting cid: %v", err)
+	}
+	_, ok := pb.ArchiveStatus_name[int32(archive.Status)]
+	if !ok {
+		return nil, fmt.Errorf("unknown job status: %v", archive.Status)
+	}
+	dealInfo := make([]*pb.DealInfo, len(archive.DealInfo))
+	for i, info := range archive.DealInfo {
+		dealInfo[i] = &pb.DealInfo{
+			ActivationEpoch: info.ActivationEpoch,
+			DealId:          info.DealID,
+			Duration:        info.Duration,
+			Message:         info.Message,
+			Miner:           info.Miner,
+			PieceCid:        info.PieceCID,
+			PricePerEpoch:   info.PricePerEpoch,
+			ProposalCid:     info.ProposalCid,
+			Size:            info.Size,
+			StartEpoch:      info.StartEpoch,
+			StateId:         info.StateID,
+			StateName:       info.StateName,
+		}
+	}
+	return &pb.Archive{
+		Aborted:       archive.Aborted,
+		AbortedMsg:    archive.AbortedMsg,
+		Cid:           c.String(),
+		CreatedAt:     archive.CreatedAt,
+		DealInfo:      dealInfo,
+		FailureMsg:    archive.FailureMsg,
+		JobId:         archive.JobID,
+		ArchiveStatus: pb.ArchiveStatus(archive.Status),
+	}, nil
 }
 
 func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService_ArchiveWatchServer) error {
@@ -2532,79 +2602,6 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 		return fmt.Errorf("watching cid logs: %s", err)
 	}
 	return nil
-}
-
-func (s *Service) ArchiveStatus(ctx context.Context, req *pb.ArchiveStatusRequest) (*pb.ArchiveStatusResponse, error) {
-	log.Debug("received archive status")
-
-	if !s.Buckets.IsArchivingEnabled() {
-		return nil, ErrArchivingFeatureDisabled
-	}
-
-	jstatus, failedMsg, err := s.Buckets.ArchiveStatus(ctx, req.Key)
-	if err != nil {
-		return nil, fmt.Errorf("getting status from last archive: %s", err)
-	}
-	var st pb.ArchiveStatusResponse_Status
-	switch jstatus {
-	case userPb.JobStatus_JOB_STATUS_SUCCESS:
-		st = pb.ArchiveStatusResponse_STATUS_DONE
-	case userPb.JobStatus_JOB_STATUS_QUEUED, userPb.JobStatus_JOB_STATUS_EXECUTING:
-		st = pb.ArchiveStatusResponse_STATUS_EXECUTING
-	case userPb.JobStatus_JOB_STATUS_FAILED:
-		st = pb.ArchiveStatusResponse_STATUS_FAILED
-	case userPb.JobStatus_JOB_STATUS_CANCELED:
-		st = pb.ArchiveStatusResponse_STATUS_CANCELED
-	default:
-		return nil, fmt.Errorf("unknown job status %d", jstatus)
-	}
-
-	log.Debug("finished archive status")
-	return &pb.ArchiveStatusResponse{
-		Key:       req.Key,
-		Status:    st,
-		FailedMsg: failedMsg,
-	}, nil
-}
-
-func (s *Service) ArchiveInfo(ctx context.Context, req *pb.ArchiveInfoRequest) (*pb.ArchiveInfoResponse, error) {
-	log.Debug("received archive info")
-
-	if !s.Buckets.IsArchivingEnabled() {
-		return nil, ErrArchivingFeatureDisabled
-	}
-
-	dbID, ok := common.ThreadIDFromContext(ctx)
-	if !ok {
-		return nil, errDBRequired
-	}
-	dbToken, _ := thread.TokenFromContext(ctx)
-
-	buck := &tdb.Bucket{}
-	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-	currentArchive := buck.Archives.Current
-	if currentArchive.Cid == "" {
-		return nil, buckets.ErrNoCurrentArchive
-	}
-
-	deals := make([]*pb.ArchiveInfoResponse_Archive_Deal, len(currentArchive.Deals))
-	for i, d := range currentArchive.Deals {
-		deals[i] = &pb.ArchiveInfoResponse_Archive_Deal{
-			ProposalCid: d.ProposalCid,
-			Miner:       d.Miner,
-		}
-	}
-	log.Debug("finished archive info")
-	return &pb.ArchiveInfoResponse{
-		Key: req.Key,
-		Archive: &pb.ArchiveInfoResponse_Archive{
-			Cid:   currentArchive.Cid,
-			Deals: deals,
-		},
-	}, nil
 }
 
 func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
