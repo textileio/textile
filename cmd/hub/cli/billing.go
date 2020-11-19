@@ -89,6 +89,10 @@ Use the --user flag to get usage for a dependent user.`,
 			[]string{"", "usage", "free quota", "daily cost", "start", "end"},
 			rows,
 		)
+		if !cus.Billable && cus.GracePeriodEnd > 0 {
+			ends := time.Unix(cus.GracePeriodEnd, 0).Format("02-Jan-06 15:04 -0700")
+			cmd.Warn("Free quota grace period ends: %d", aurora.Bold(ends))
+		}
 	},
 }
 
@@ -100,7 +104,7 @@ func getUsageRow(usage *pb.Usage, period *pb.Period) []string {
 			"%s (%d%%)",
 			strconv.Itoa(int(usage.Free)),
 			int(math.Round(100*float64(usage.Free)/float64(usage.Total+usage.Free)))),
-		fmt.Sprintf("$%.2f", usage.Cost),
+		fmt.Sprintf("$%.4f", usage.Cost),
 		time.Unix(period.UnixStart, 0).Format("02-Jan-06"),
 		time.Unix(period.UnixEnd, 0).Format("02-Jan-06"),
 	}

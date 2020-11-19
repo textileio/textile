@@ -124,7 +124,7 @@ type Customer struct {
 	Billable           bool   `bson:"billable"`
 	Delinquent         bool   `bson:"delinquent"`
 	CreatedAt          int64  `bson:"created_at"`
-	GracePeriodStartAt int64  `bson:"grace_period_start_at"`
+	GracePeriodStart   int64  `bson:"grace_period_start"`
 
 	InvoicePeriod Period `bson:"invoice_period"`
 
@@ -555,6 +555,10 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 	if err != nil {
 		return nil, err
 	}
+	var gracePeriodEnd int64
+	if doc.GracePeriodStart > 0 {
+		gracePeriodEnd = doc.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
+	}
 	return &pb.GetCustomerResponse{
 		Key:                doc.Key,
 		CustomerId:         doc.CustomerID,
@@ -566,6 +570,7 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		Billable:           doc.Billable,
 		Delinquent:         doc.Delinquent,
 		CreatedAt:          doc.CreatedAt,
+		GracePeriodEnd:     gracePeriodEnd,
 		InvoicePeriod:      periodToPb(doc.InvoicePeriod),
 		DailyUsage:         s.usageToPb(doc.DailyUsage),
 		Dependents:         deps,
@@ -812,11 +817,11 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
-		if cus.GracePeriodStartAt == 0 {
-			cus.GracePeriodStartAt = now
-			update["grace_period_start_at"] = cus.GracePeriodStartAt
+		if cus.GracePeriodStart == 0 {
+			cus.GracePeriodStart = now
+			update["grace_period_start"] = cus.GracePeriodStart
 		}
-		deadline := cus.GracePeriodStartAt + int64(s.config.FreeQuotaGracePeriod.Seconds())
+		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			return nil, common.ErrExceedsFreeQuota
 		}
