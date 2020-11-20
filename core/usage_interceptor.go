@@ -7,12 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textileio/textile/v2/api/billingd/pb"
-
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/api/client"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
+	"github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
