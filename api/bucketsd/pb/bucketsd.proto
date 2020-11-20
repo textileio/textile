@@ -266,9 +266,8 @@ message ArchivesRequest {
 }
 
 message ArchivesResponse {
-    Archive processing = 1;
-    Archive current = 2;
-    repeated Archive history = 3;
+    Archive current = 1;
+    repeated Archive history = 2;
 }
 
 message ArchiveWatchRequest {

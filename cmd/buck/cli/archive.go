@@ -155,7 +155,7 @@ var archivesCmd = &cobra.Command{
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
 
-		cmd.Success("\n", string(json))
+		cmd.Success("\n%v", string(json))
 	},
 }
 

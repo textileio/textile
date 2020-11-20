@@ -230,15 +230,7 @@ func (t *Tracker) updateArchiveStatus(
 		return fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
-	archiveToUpdate := &ba.Archives.Processing
-	if isJobStatusFinal(job.Status) {
-		archiveToUpdate = &ba.Archives.Current
-		// If the job is final and it is the job being tracked by ba.Archives.Processing,
-		// Reset ba.Archives.Processing since it is no longer processing.
-		if job.Id == ba.Archives.Processing.JobID {
-			ba.Archives.Processing = mdb.Archive{}
-		}
-	}
+	archiveToUpdate := &ba.Archives.Current
 	if archiveToUpdate.JobID != job.Id {
 		for i := range ba.Archives.History {
 			if ba.Archives.History[i].JobID == job.Id {

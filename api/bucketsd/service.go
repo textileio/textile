@@ -2509,13 +2509,6 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 		return nil, fmt.Errorf("getting bucket archive data: %s", err)
 	}
 	res := &pb.ArchivesResponse{}
-	if ba.Archives.Processing.JobID != "" {
-		archive, err := toPbArchive(ba.Archives.Processing)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
-		}
-		res.Processing = archive
-	}
 	if ba.Archives.Current.JobID != "" {
 		archive, err := toPbArchive(ba.Archives.Current)
 		if err != nil {

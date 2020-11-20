@@ -14,9 +14,8 @@ type BucketArchive struct {
 }
 
 type Archives struct {
-	Processing Archive   `bson:"processing"`
-	Current    Archive   `bson:"current"`
-	History    []Archive `bson:"history"`
+	Current Archive   `bson:"current"`
+	History []Archive `bson:"history"`
 }
 
 type Archive struct {
