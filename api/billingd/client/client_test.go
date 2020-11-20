@@ -319,6 +319,7 @@ func setup(t *testing.T) *client.Client {
 		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
+		SegmentPrefix:          "test_",
 		DBURI:                  "mongodb://127.0.0.1:27017",
 		DBName:                 util.MakeToken(8),
 		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),

@@ -100,7 +100,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if err != nil {
 		if strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
 			opts := []billing.Option{
-				billing.WithEmail(account.Owner().Email),
+				billing.WithEmail(account.User.Email),
 			}
 			if account.Owner().Type == mdb.User {
 				key, ok := mdb.APIKeyFromContext(ctx)
