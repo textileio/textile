@@ -12,8 +12,9 @@ message Usage {
     int64 units = 2;
     int64 total = 3;
     int64 free = 4;
-    double cost = 5;
-    Period period = 6;
+    int64 grace = 5;
+    double cost = 6;
+    Period period = 7;
 }
 
 message CheckHealthRequest {}

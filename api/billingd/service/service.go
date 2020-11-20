@@ -48,14 +48,16 @@ const (
 var log = logging.Logger("billing")
 
 type Product struct {
-	Key               string            `bson:"_id"`
-	Name              string            `bson:"name"`
-	Price             float64           `bson:"price"`
-	PriceType         PriceType         `bson:"price_type"`
-	FreeQuotaSize     int64             `bson:"free_quota_size"`
-	FreeQuotaInterval FreeQuotaInterval `bson:"free_quota_interval"`
-	Units             string            `bson:"units"`
-	UnitSize          int64             `bson:"unit_size"`
+	Key                      string            `bson:"_id"`
+	Name                     string            `bson:"name"`
+	Price                    float64           `bson:"price"`
+	PriceType                PriceType         `bson:"price_type"`
+	FreeQuotaSize            int64             `bson:"free_quota_size"`
+	FreeQuotaGracePeriodSize int64             `bson:"free_quota_grace_period_size"`
+	FreeQuotaInterval        FreeQuotaInterval `bson:"free_quota_interval"`
+
+	Units    string `bson:"units"`
+	UnitSize int64  `bson:"unit_size"`
 
 	FreePriceID string `bson:"free_price_id"`
 	PaidPriceID string `bson:"paid_price_id"`
@@ -77,42 +79,46 @@ const (
 
 var Products = []Product{
 	{
-		Key:               "stored_data",
-		Name:              "Stored data",
-		Price:             0.03 / gib,
-		PriceType:         PriceTypeTemporal,
-		FreeQuotaSize:     5 * gib,
-		FreeQuotaInterval: FreeQuotaMonthly,
-		Units:             "bytes",
-		UnitSize:          8 * mib,
+		Key:                      "stored_data",
+		Name:                     "Stored data",
+		Price:                    0.03 / gib,
+		PriceType:                PriceTypeTemporal,
+		FreeQuotaSize:            5 * gib,
+		FreeQuotaGracePeriodSize: 50 * gib,
+		FreeQuotaInterval:        FreeQuotaMonthly,
+		Units:                    "bytes",
+		UnitSize:                 8 * mib,
 	},
 	{
-		Key:               "network_egress",
-		Name:              "Network egress",
-		Price:             0.1 / gib,
-		PriceType:         PriceTypeIncremental,
-		FreeQuotaSize:     10 * gib,
-		FreeQuotaInterval: FreeQuotaMonthly,
-		Units:             "bytes",
-		UnitSize:          8 * mib,
+		Key:                      "network_egress",
+		Name:                     "Network egress",
+		Price:                    0.1 / gib,
+		PriceType:                PriceTypeIncremental,
+		FreeQuotaSize:            10 * gib,
+		FreeQuotaGracePeriodSize: 100 * gib,
+		FreeQuotaInterval:        FreeQuotaMonthly,
+		Units:                    "bytes",
+		UnitSize:                 8 * mib,
 	},
 	{
-		Key:               "instance_reads",
-		Name:              "ThreadDB reads",
-		Price:             0.1 / 100000,
-		PriceType:         PriceTypeIncremental,
-		FreeQuotaSize:     50000,
-		FreeQuotaInterval: FreeQuotaDaily,
-		UnitSize:          100,
+		Key:                      "instance_reads",
+		Name:                     "ThreadDB reads",
+		Price:                    0.1 / 100000,
+		PriceType:                PriceTypeIncremental,
+		FreeQuotaSize:            50000,
+		FreeQuotaGracePeriodSize: 500000,
+		FreeQuotaInterval:        FreeQuotaDaily,
+		UnitSize:                 100,
 	},
 	{
-		Key:               "instance_writes",
-		Name:              "ThreadDB writes",
-		Price:             0.2 / 100000,
-		PriceType:         PriceTypeIncremental,
-		FreeQuotaSize:     20000,
-		FreeQuotaInterval: FreeQuotaDaily,
-		UnitSize:          100,
+		Key:                      "instance_writes",
+		Name:                     "ThreadDB writes",
+		Price:                    0.2 / 100000,
+		PriceType:                PriceTypeIncremental,
+		FreeQuotaSize:            20000,
+		FreeQuotaGracePeriodSize: 200000,
+		FreeQuotaInterval:        FreeQuotaDaily,
+		UnitSize:                 100,
 	},
 }
 
@@ -471,7 +477,7 @@ func (s *Service) segmentNewCustomer(cus *Customer) {
 				Set("account_type", cus.AccountType).
 				Set("hub_signup", "true"),
 		}); err != nil {
-			log.Error("identifying new user: %v", err)
+			log.Error("segmenting new customer: %v", err)
 		}
 	}
 }
@@ -573,6 +579,10 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 	if free < 0 {
 		free = 0
 	}
+	grace := product.FreeQuotaGracePeriodSize - total
+	if free < 0 {
+		free = 0
+	}
 	var cost float64
 	if paidUnits > 0 {
 		cost = float64(paidUnits) * getUnitPrice(product)
@@ -586,12 +596,13 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 		desc = product.Name
 	}
 	return &pb.Usage{
-		Period:      periodToPb(period),
 		Description: desc,
 		Units:       freeUnits + paidUnits,
 		Total:       total,
 		Free:        free,
+		Grace:       grace,
 		Cost:        cost,
+		Period:      periodToPb(period),
 	}
 }
 

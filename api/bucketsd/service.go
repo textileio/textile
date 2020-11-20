@@ -400,7 +400,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && totalAddedSize > owner.StorageAvailable && owner.GracePeriodEnded {
+	if ok && totalAddedSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
 
@@ -449,7 +449,7 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && int64(bootStatn.CumulativeSize) > owner.StorageAvailable && owner.GracePeriodEnded {
+	if ok && int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
 		return ctx, nil, ErrStorageQuotaExhausted
 	}
 
@@ -1297,11 +1297,9 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	dbToken, _ := thread.TokenFromContext(server.Context())
 
 	storageAvailable := int64(math.MaxInt64)
-	gracePeriodEnded := true
 	owner, ok := buckets.BucketOwnerFromContext(server.Context())
 	if ok {
 		storageAvailable = owner.StorageAvailable
-		gracePeriodEnded = owner.GracePeriodEnded
 	}
 
 	req, err := server.Recv()
@@ -1383,7 +1381,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
 					assignErr(ErrMaxBucketSizeExceeded)
 					return
-				} else if storageAvailable > 0 && cummSize > storageAvailable && gracePeriodEnded {
+				} else if storageAvailable > 0 && cummSize > storageAvailable {
 					assignErr(ErrStorageQuotaExhausted)
 					return
 				}
@@ -1699,7 +1697,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && deltaSize > owner.StorageAvailable && owner.GracePeriodEnded {
+	if ok && deltaSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
 
