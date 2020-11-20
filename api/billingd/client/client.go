@@ -21,7 +21,6 @@ func NewClient(target string, opts ...grpc.DialOption) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &Client{
 		c:    pb.NewAPIServiceClient(conn),
 		conn: conn,
