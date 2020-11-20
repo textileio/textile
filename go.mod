@@ -17,21 +17,21 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/gogo/status v1.1.0
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.1
+	github.com/google/go-cmp v0.5.2
 	github.com/gosimple/slug v1.9.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/improbable-eng/grpc-web v0.13.0
-	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
+	github.com/ipfs/go-blockservice v0.1.4
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-flatfs v0.4.4
-	github.com/ipfs/go-ipfs-blockstore v1.0.1
+	github.com/ipfs/go-ipfs-blockstore v1.0.2
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipfs-http-client v0.1.0
-	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200428170625-a0bd04d3cbdf
+	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
 	github.com/ipfs/go-merkledag v0.3.2
@@ -39,13 +39,13 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jhump/protoreflect v1.7.0
-	github.com/libp2p/go-libp2p-core v0.6.1
+	github.com/libp2p/go-libp2p-core v0.7.0
 	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/mailgun/mailgun-go/v3 v3.6.4
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/manifoldco/promptui v0.7.0
-	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.0 // indirect
@@ -58,11 +58,14 @@ require (
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/radovskyb/watcher v1.0.7
 	github.com/rhysd/go-github-selfupdate v1.2.2
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
+	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
@@ -70,13 +73,14 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-threads v1.0.1
-	github.com/textileio/powergate v0.6.7
+	github.com/textileio/powergate v1.2.1
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/sys v0.0.0-20201113135734-0a15ea8d9b02 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
@@ -85,4 +89,10 @@ require (
 	gopkg.in/segmentio/analytics-go.v3 v3.1.0
 )
 
-replace github.com/filecoin-project/filecoin-ffi => github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200904205544-405691046034
+replace github.com/libp2p/go-libp2p-kad-dht => github.com/libp2p/go-libp2p-kad-dht v0.8.3
+
+replace github.com/libp2p/go-libp2p-core => github.com/libp2p/go-libp2p-core v0.6.1
+
+replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.10.3
+
+replace github.com/libp2p/go-libp2p-swarm => github.com/libp2p/go-libp2p-swarm v0.2.8

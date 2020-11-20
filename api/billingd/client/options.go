@@ -6,8 +6,8 @@ import (
 )
 
 type options struct {
-	email       string
 	accountType mdb.AccountType
+	email       string
 	parentKey   thread.PubKey
 }
 
