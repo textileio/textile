@@ -86,7 +86,7 @@ build-buckd-release: $(GOX) $(GOVVV) $(GOMPLATE)
 .PHONY: build-buckd-release
 
 build-billingd-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./cmd/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./api/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
 .PHONY: build-billingd-release
 
 build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release build-billingd-release

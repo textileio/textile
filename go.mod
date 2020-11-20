@@ -7,6 +7,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/caarlos0/spin v1.1.0
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cloudflare/cloudflare-go v0.11.6
@@ -61,6 +62,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -75,6 +77,7 @@ require (
 	github.com/textileio/powergate v1.2.1
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1
+	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
@@ -84,6 +87,7 @@ require (
 	google.golang.org/grpc/examples v0.0.0-20200819190100-f640ae6a4f43 // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/ini.v1 v1.55.0 // indirect
+	gopkg.in/segmentio/analytics-go.v3 v3.1.0
 )
 
 replace github.com/libp2p/go-libp2p-kad-dht => github.com/libp2p/go-libp2p-kad-dht v0.8.3

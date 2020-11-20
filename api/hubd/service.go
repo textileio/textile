@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -568,21 +567,11 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 		return nil, err
 	}
 
-	if _, err := s.BillingClient.CreateCustomer(
+	if err := s.BillingClient.RecreateCustomerSubscription(
 		ctx,
 		account.Owner().Key,
-		billing.WithEmail(account.Owner().Email),
 	); err != nil {
-		if strings.Contains(err.Error(), mdb.DuplicateErrMsg) {
-			if err := s.BillingClient.RecreateCustomerSubscription(
-				ctx,
-				account.Owner().Key,
-			); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 	return &pb.SetupBillingResponse{}, nil
 }

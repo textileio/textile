@@ -39,6 +39,7 @@ type Config struct {
 	Addr                ma.Multiaddr
 	APIAddr             ma.Multiaddr
 	StripeWebhookSecret string
+	SegmentAPIKey       string
 	Debug               bool
 }
 

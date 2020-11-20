@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/api/client"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
+	"github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -72,6 +74,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if !ok {
 		return ctx, nil
 	}
+	now := time.Now()
 
 	// Collect new users.
 	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
@@ -106,6 +109,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 				}
 				opts = append(opts, billing.WithParentKey(key.Owner))
 			}
+			opts = append(opts, billing.WithAccountType(account.Owner().Type))
 			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
 				return ctx, err
 			}
@@ -120,7 +124,8 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 		return ctx, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	if !cus.Billable && cus.DailyUsage["network_egress"].Free == 0 {
+
+	if usageExhausted(cus, "network_egress", now) {
 		err = fmt.Errorf("network egress exhausted: %v", common.ErrExceedsFreeQuota)
 		return ctx, status.Error(codes.ResourceExhausted, err.Error())
 	}
@@ -138,6 +143,8 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		}
 		if cus.Billable {
 			owner.StorageAvailable = int64(math.MaxInt64)
+		} else if now.Unix() < cus.GracePeriodEnd {
+			owner.StorageAvailable = cus.DailyUsage["stored_data"].Grace
 		} else {
 			owner.StorageAvailable = cus.DailyUsage["stored_data"].Free
 		}
@@ -149,7 +156,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/FindByID",
 		"/threads.pb.API/ReadTransaction",
 		"/threads.pb.API/Listen":
-		if !cus.Billable && cus.DailyUsage["instance_reads"].Free == 0 {
+		if usageExhausted(cus, "instance_reads", now) {
 			err = fmt.Errorf("threaddb reads exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
@@ -157,12 +164,23 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/threads.pb.API/Save",
 		"/threads.pb.API/Delete",
 		"/threads.pb.API/WriteTransaction":
-		if !cus.Billable && cus.DailyUsage["instance_writes"].Free == 0 {
+		if usageExhausted(cus, "instance_writes", now) {
 			err = fmt.Errorf("threaddb writes exhausted: %v", common.ErrExceedsFreeQuota)
 			return ctx, status.Error(codes.ResourceExhausted, err.Error())
 		}
 	}
 	return ctx, nil
+}
+
+func usageExhausted(cus *pb.GetCustomerResponse, key string, now time.Time) bool {
+	if !cus.Billable && cus.DailyUsage[key].Free == 0 {
+		if now.Unix() >= cus.GracePeriodEnd {
+			return true // Grace period ended
+		} else if cus.DailyUsage[key].Grace == 0 {
+			return true // Still in grace period, but reached the hard cap
+		}
+	}
+	return false
 }
 
 func (t *Textile) postUsageFunc(ctx context.Context, method string) error {

@@ -400,10 +400,8 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if totalAddedSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaExhausted
-		}
+	if ok && totalAddedSize > owner.StorageAvailable {
+		return ctx, ErrStorageQuotaExhausted
 	}
 
 	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
@@ -451,10 +449,8 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
-			return ctx, nil, ErrStorageQuotaExhausted
-		}
+	if ok && int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
+		return ctx, nil, ErrStorageQuotaExhausted
 	}
 
 	// Here we have to walk and possibly encrypt the boot path dag
@@ -1701,10 +1697,8 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok {
-		if deltaSize > owner.StorageAvailable {
-			return ctx, ErrStorageQuotaExhausted
-		}
+	if ok && deltaSize > owner.StorageAvailable {
+		return ctx, ErrStorageQuotaExhausted
 	}
 
 	if from == nil {
