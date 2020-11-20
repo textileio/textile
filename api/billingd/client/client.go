@@ -47,9 +47,10 @@ func (c *Client) CreateCustomer(ctx context.Context, key thread.PubKey, opts ...
 		parentKey = args.parentKey.String()
 	}
 	res, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
-		Key:       key.String(),
-		ParentKey: parentKey,
-		Email:     args.email,
+		Key:         key.String(),
+		ParentKey:   parentKey,
+		Email:       args.email,
+		AccountType: int64(args.accountType),
 	})
 	if err != nil {
 		return "", err

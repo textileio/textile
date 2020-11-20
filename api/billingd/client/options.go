@@ -1,10 +1,14 @@
 package client
 
-import "github.com/textileio/go-threads/core/thread"
+import (
+	"github.com/textileio/go-threads/core/thread"
+	mdb "github.com/textileio/textile/v2/mongodb"
+)
 
 type options struct {
-	email     string
-	parentKey thread.PubKey
+	accountType mdb.AccountType
+	email       string
+	parentKey   thread.PubKey
 }
 
 type Option func(*options)
@@ -20,6 +24,13 @@ func WithEmail(email string) Option {
 func WithParentKey(parentKey thread.PubKey) Option {
 	return func(args *options) {
 		args.parentKey = parentKey
+	}
+}
+
+// WithAccountType attaches an account type to the new customer.
+func WithAccountType(accountType mdb.AccountType) Option {
+	return func(args *options) {
+		args.accountType = accountType
 	}
 }
 
