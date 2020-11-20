@@ -64,13 +64,17 @@ var (
 				Key:      "stripe.webhook_secret",
 				DefValue: "",
 			},
-			"freeQuotaGracePeriod": {
-				Key:      "free_quota_grace_period",
-				DefValue: time.Hour * 24 * 7,
-			},
 			"segmentApiKey": {
 				Key:      "segment.api_key",
 				DefValue: "",
+			},
+			"segmentPrefix": {
+				Key:      "segment.prefix",
+				DefValue: "",
+			},
+			"freeQuotaGracePeriod": {
+				Key:      "free_quota_grace_period",
+				DefValue: time.Hour * 24 * 7,
 			},
 		},
 		EnvPre: "BILLING",
@@ -143,6 +147,10 @@ func init() {
 		"segmentApiKey",
 		config.Flags["segmentApiKey"].DefValue.(string),
 		"Segment API key")
+	rootCmd.PersistentFlags().String(
+		"segmentPrefix",
+		config.Flags["segmentPrefix"].DefValue.(string),
+		"Segment trait source prefix")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -186,6 +194,7 @@ var rootCmd = &cobra.Command{
 		freeQuotaGracePeriod := config.Viper.GetDuration("free_quota_grace_period")
 
 		segmentApiKey := config.Viper.GetString("segment.api_key")
+		segmentPrefix := config.Viper.GetString("segment.prefix")
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
@@ -202,6 +211,7 @@ var rootCmd = &cobra.Command{
 			StripeSessionReturnURL: stripeSessionReturnUrl,
 			StripeWebhookSecret:    stripeWebhookSecret,
 			SegmentAPIKey:          segmentApiKey,
+			SegmentPrefix:          segmentPrefix,
 			DBURI:                  addrMongoUri,
 			DBName:                 addrMongoName,
 			GatewayHostAddr:        addrGatewayHost,

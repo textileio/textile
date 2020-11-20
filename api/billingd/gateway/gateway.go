@@ -156,7 +156,7 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 		defer cancel()
 		if err := g.client.UpdateCustomer(ctx, cus.ID, cus.Balance, billable, cus.Delinquent); err != nil {
-			log.Errorf("updating customer: %v", err)
+			log.Warnf("updating customer: %v", err)
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -181,7 +181,7 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			sub.CurrentPeriodStart,
 			sub.CurrentPeriodEnd,
 		); err != nil {
-			log.Errorf("updating customer subscription: %v", err)
+			log.Warnf("updating customer subscription: %v", err)
 			c.Status(http.StatusBadRequest)
 			return
 		}

@@ -198,6 +198,7 @@ type Config struct {
 	StripeWebhookSecret    string
 
 	SegmentAPIKey string
+	SegmentPrefix string
 
 	DBURI  string
 	DBName string
@@ -475,7 +476,7 @@ func (s *Service) segmentNewCustomer(cus *Customer) {
 				Set("parent_key", cus.ParentKey).
 				Set("customer_id", cus.CustomerID).
 				Set("account_type", cus.AccountType).
-				Set("hub_signup", "true"),
+				Set(s.config.SegmentPrefix+"signup", "true"),
 		}); err != nil {
 			log.Error("segmenting new customer: %v", err)
 		}
@@ -827,20 +828,20 @@ func (s *Service) GetCustomerUsage(
 	usage := make(map[string]*pb.Usage)
 	for k, u := range doc.DailyUsage {
 		if product, ok := s.products[k]; ok {
-			// Get reported usage over the current invoice period
-			free, err := s.getPeriodUsageItem(u.FreeItemID)
-			if err != nil {
-				return nil, err
-			}
-			paid, err := s.getPeriodUsageItem(u.PaidItemID)
-			if err != nil {
-				return nil, err
-			}
-			total := (free.TotalUsage + paid.TotalUsage) * product.UnitSize
 			// Add current day unreported usage
+			total := u.Total
+			// Get reported usage over the current invoice period
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
 				product.PriceType == PriceTypeIncremental {
-				total += u.Total
+				free, err := s.getPeriodUsageItem(u.FreeItemID)
+				if err != nil {
+					return nil, err
+				}
+				paid, err := s.getPeriodUsageItem(u.PaidItemID)
+				if err != nil {
+					return nil, err
+				}
+				total += (free.TotalUsage + paid.TotalUsage) * product.UnitSize
 			}
 			usage[k] = getUsage(product, total, doc.InvoicePeriod)
 		}
