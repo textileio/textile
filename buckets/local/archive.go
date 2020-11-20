@@ -179,7 +179,7 @@ const (
 	ArchiveError
 )
 
-// Archives returns information about current, processing, and historical archives.
+// Archives returns information about current and historical archives.
 func (b *Bucket) Archives(ctx context.Context) (*pb.ArchivesResponse, error) {
 	b.Lock()
 	defer b.Unlock()

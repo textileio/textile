@@ -69,10 +69,11 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 }
 
 var archiveCmd = &cobra.Command{
-	Use:   "archive",
-	Short: "Create a Filecoin archive",
-	Long:  `Creates a Filecoin archive from the remote bucket root. Pass in a custom archive storage config via the --file flag or stdin to override the default archive storage configuration.`,
-	Args:  cobra.NoArgs,
+	Use:     "archive",
+	Aliases: []string{"archives"},
+	Short:   "Create a Filecoin archive",
+	Long:    `Creates a Filecoin archive from the remote bucket root. Pass in a custom archive storage config via the --file flag or stdin to override the default archive storage configuration.`,
+	Args:    cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
@@ -140,9 +141,9 @@ var archiveCmd = &cobra.Command{
 }
 
 var archivesCmd = &cobra.Command{
-	Use:   "archives",
-	Short: "Shows information about current, processing, and historical archives.",
-	Long:  `Shows information about current, processing, and historical archives.`,
+	Use:   "list",
+	Short: "Shows information about current and historical archives.",
+	Long:  `Shows information about current and historical archives.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)

@@ -370,7 +370,7 @@ func (c *Client) Archive(ctx context.Context, key string, opts ...ArchiveOption)
 	return err
 }
 
-// Archives returns information about current, processing, and historical archives.
+// Archives returns information about current and historical archives.
 func (c *Client) Archives(ctx context.Context, key string) (*pb.ArchivesResponse, error) {
 	return c.c.Archives(ctx, &pb.ArchivesRequest{Key: key})
 }
