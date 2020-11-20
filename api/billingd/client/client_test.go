@@ -186,6 +186,43 @@ type usageTest struct {
 	unitPrice      float64
 }
 
+func TestClient_GetCustomerUsage(t *testing.T) {
+	t.Parallel()
+	tests := []usageTest{
+		{"stored_data", mib, 0.000007705471},
+		{"network_egress", mib, 0.000025684903},
+		{"instance_reads", 1, 0.000099999999},
+		{"instance_writes", 1, 0.000199999999},
+	}
+	for _, test := range tests {
+		getCustomerUsage(t, test)
+	}
+}
+
+func getCustomerUsage(t *testing.T, test usageTest) {
+	c := setup(t)
+	key := newKey(t)
+	id, err := c.CreateCustomer(context.Background(), key)
+	require.NoError(t, err)
+
+	product := getProduct(t, test.key)
+
+	err = c.UpdateCustomer(context.Background(), id, 0, true, false)
+	require.NoError(t, err)
+
+	_, err = c.IncCustomerUsage(context.Background(), key, map[string]int64{test.key: product.FreeQuotaSize * 2})
+	require.NoError(t, err)
+
+	err = c.ReportCustomerUsage(context.Background(), key)
+	require.NoError(t, err)
+
+	res, err := c.GetCustomerUsage(context.Background(), key)
+	require.NoError(t, err)
+	assert.NotEmpty(t, res.Usage)
+	assert.Equal(t, product.FreeQuotaSize*2, res.Usage[test.key].Total)
+	assert.Equal(t, float64(product.FreeQuotaSize/product.UnitSize)*test.unitPrice, res.Usage[test.key].Cost)
+}
+
 func TestClient_IncCustomerUsage(t *testing.T) {
 	t.Parallel()
 	tests := []usageTest{
