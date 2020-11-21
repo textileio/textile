@@ -14,7 +14,7 @@ import (
 
 var (
 	log            = logging.Logger("migrations")
-	migrateTimeout = time.Minute
+	migrateTimeout = time.Hour
 )
 
 var m001 = migrate.Migration{
@@ -97,8 +97,7 @@ var m002 = migrate.Migration{
 		if cursor.Err() != nil {
 			return cursor.Err()
 		}
-		//return db.Collection("users").Drop(ctx)
-		return nil
+		return db.Collection("users").Drop(ctx)
 	},
 	Down: func(db *mongo.Database) error {
 		log.Info("migrating 002 down")
