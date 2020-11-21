@@ -14,7 +14,7 @@ import (
 
 var (
 	log            = logging.Logger("migrations")
-	migrateTimeout = time.Minute
+	migrateTimeout = time.Hour
 )
 
 var m001 = migrate.Migration{
