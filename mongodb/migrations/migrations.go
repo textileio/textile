@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -88,13 +89,16 @@ var m002 = migrate.Migration{
 			user["type"] = 2
 			_, err := db.Collection("accounts").InsertOne(ctx, user)
 			if err != nil {
-				return err
+				if !strings.Contains(err.Error(), "E11000 duplicate key error") {
+					return err
+				}
 			}
 		}
 		if cursor.Err() != nil {
 			return cursor.Err()
 		}
-		return db.Collection("users").Drop(ctx)
+		//return db.Collection("users").Drop(ctx)
+		return nil
 	},
 	Down: func(db *mongo.Database) error {
 		log.Info("migrating 002 down")
