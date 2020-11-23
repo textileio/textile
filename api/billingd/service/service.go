@@ -425,28 +425,44 @@ func (s *Service) CheckHealth(_ context.Context, _ *pb.CheckHealthRequest) (*pb.
 
 func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequest) (
 	*pb.CreateCustomerResponse, error) {
-	lck := s.semaphores.Get(customerLock(req.Key))
+	var parentKey string
+	if req.Parent != nil {
+		if _, err := s.createCustomer(ctx, req.Parent, ""); err != nil &&
+			!strings.Contains(err.Error(), duplicateKeyMsg) {
+			return nil, err
+		}
+		parentKey = req.Parent.Key
+	}
+	cus, err := s.createCustomer(ctx, req.Customer, parentKey)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.CreateCustomerResponse{
+		CustomerId: cus.CustomerID,
+	}, nil
+}
+
+func (s *Service) createCustomer(
+	ctx context.Context,
+	params *pb.CreateCustomerRequest_Params,
+	parentKey string,
+) (*Customer, error) {
+	lck := s.semaphores.Get(customerLock(params.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	if req.ParentKey != "" {
-		if _, err := s.getCustomer(ctx, "_id", req.ParentKey); err != nil {
-			return nil, err
-		}
-	}
-
 	doc := &Customer{
-		Key:         req.Key,
-		ParentKey:   req.ParentKey,
-		Email:       req.Email,
-		AccountType: mdb.AccountType(req.AccountType),
+		Key:         params.Key,
+		ParentKey:   parentKey,
+		Email:       params.Email,
+		AccountType: mdb.AccountType(params.AccountType),
 		CreatedAt:   time.Now().Unix(),
 	}
 	if _, err := s.cdb.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
 	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
-		Email: stripe.String(req.Email),
+		Email: stripe.String(doc.Email),
 	})
 	if err != nil {
 		return nil, err
@@ -462,9 +478,7 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 
 	go s.segmentNewCustomer(doc)
 
-	return &pb.CreateCustomerResponse{
-		CustomerId: doc.CustomerID,
-	}, nil
+	return doc, nil
 }
 
 func (s *Service) segmentNewCustomer(cus *Customer) {
@@ -621,7 +635,7 @@ func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
 }
 
 func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
-	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_id": doc.Key})
+	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": doc.Key})
 	if err != nil {
 		return nil, err
 	}
@@ -634,6 +648,7 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		CustomerId:         doc.CustomerID,
 		ParentKey:          doc.ParentKey,
 		Email:              doc.Email,
+		AccountType:        int32(doc.AccountType),
 		AccountStatus:      doc.AccountStatus(),
 		SubscriptionStatus: doc.SubscriptionStatus,
 		Balance:            doc.Balance,
@@ -985,7 +1000,7 @@ func (s *Service) reportUsage() error {
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
 	for k, usage := range cus.DailyUsage {
 		if product, ok := s.products[k]; ok {
-			if err := s.reportUnits(product, usage); err != nil {
+			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
 			}
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
@@ -1004,8 +1019,12 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 	return nil
 }
 
-func (s *Service) reportUnits(product Product, usage Usage) error {
+func (s *Service) reportUnits(product Product, usage Usage, parentKey string) error {
 	freeUnits, paidUnits := getUnits(product, usage.Total)
+	if parentKey != "" {
+		freeUnits += paidUnits
+		paidUnits = 0
+	}
 	if freeUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.FreeItemID),

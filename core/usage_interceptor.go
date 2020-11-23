@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -77,7 +78,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	now := time.Now()
 
 	// Collect new users.
-	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
+	if account.User != nil && account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
 		var powInfo *mdb.PowInfo
 		if t.pc != nil {
 			ctxAdmin := context.WithValue(ctx, powc.AdminKey, t.conf.PowergateAdminToken)
@@ -99,18 +100,33 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
 		if strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
-			opts := []billing.Option{
-				billing.WithEmail(account.User.Email),
+			email, err := t.getAccountCtxEmail(ctx, account)
+			if err != nil {
+				return ctx, err
 			}
+			var opts []billing.Option
 			if account.Owner().Type == mdb.User {
 				key, ok := mdb.APIKeyFromContext(ctx)
 				if !ok {
 					return ctx, status.Error(codes.PermissionDenied, "Bad API key")
 				}
-				opts = append(opts, billing.WithParentKey(key.Owner))
+				parent, err := t.collections.Accounts.Get(ctx, key.Owner)
+				if err != nil {
+					return nil, fmt.Errorf("parent for %s not found: %s", account.Owner().Key, key.Owner)
+				}
+				email, err := t.getAccountCtxEmail(ctx, mdb.AccountCtxForAccount(parent))
+				if err != nil {
+					return ctx, err
+				}
+				opts = append(opts, billing.WithParent(parent.Key, email, parent.Type))
 			}
-			opts = append(opts, billing.WithAccountType(account.Owner().Type))
-			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
+			if _, err := t.bc.CreateCustomer(
+				ctx,
+				account.Owner().Key,
+				email,
+				account.Owner().Type,
+				opts...,
+			); err != nil {
 				return ctx, err
 			}
 			cus, err = t.bc.GetCustomer(ctx, account.Owner().Key)
@@ -218,4 +234,24 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		}
 	}
 	return nil
+}
+
+func (t *Textile) getAccountCtxEmail(ctx context.Context, account *mdb.AccountCtx) (string, error) {
+	if account.User != nil {
+		return account.User.Email, nil
+	}
+	if account.Org == nil {
+		return "", errors.New("invalid account context")
+	}
+	for _, m := range account.Org.Members {
+		if m.Role == mdb.OrgOwner {
+			owner, err := t.collections.Accounts.Get(ctx, m.Key)
+			if err != nil {
+				log.Errorf("getting org owner: %v", err)
+				continue
+			}
+			return owner.Email, nil
+		}
+	}
+	return "", errors.New("could not resolve email for org")
 }

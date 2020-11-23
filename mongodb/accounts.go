@@ -85,6 +85,16 @@ func NewAccountContext(ctx context.Context, user, org *Account) context.Context 
 	})
 }
 
+func AccountCtxForAccount(account *Account) *AccountCtx {
+	actx := &AccountCtx{}
+	if account.Type == Org {
+		actx.Org = account
+	} else {
+		actx.User = account
+	}
+	return actx
+}
+
 func AccountFromContext(ctx context.Context) (*AccountCtx, bool) {
 	acc, ok := ctx.Value(ctxKey("account")).(*AccountCtx)
 	return acc, ok
