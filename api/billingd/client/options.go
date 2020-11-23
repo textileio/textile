@@ -6,31 +6,19 @@ import (
 )
 
 type options struct {
-	accountType mdb.AccountType
-	email       string
-	parentKey   thread.PubKey
+	parentKey         thread.PubKey
+	parentEmail       string
+	parentAccountType mdb.AccountType
 }
 
 type Option func(*options)
 
-// WithEmail attaches an email address to the new customer.
-func WithEmail(email string) Option {
+// WithParent is used to create a billing hierarchy between two customers.
+func WithParent(key thread.PubKey, email string, accountType mdb.AccountType) Option {
 	return func(args *options) {
-		args.email = email
-	}
-}
-
-// WithParentKey is used to create a billing hierarchy between two customers.
-func WithParentKey(parentKey thread.PubKey) Option {
-	return func(args *options) {
-		args.parentKey = parentKey
-	}
-}
-
-// WithAccountType attaches an account type to the new customer.
-func WithAccountType(accountType mdb.AccountType) Option {
-	return func(args *options) {
-		args.accountType = accountType
+		args.parentKey = key
+		args.parentEmail = email
+		args.parentAccountType = accountType
 	}
 }
 

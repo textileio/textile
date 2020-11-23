@@ -104,18 +104,29 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			if err != nil {
 				return ctx, err
 			}
-			opts := []billing.Option{
-				billing.WithEmail(email),
-			}
+			var opts []billing.Option
 			if account.Owner().Type == mdb.User {
 				key, ok := mdb.APIKeyFromContext(ctx)
 				if !ok {
 					return ctx, status.Error(codes.PermissionDenied, "Bad API key")
 				}
-				opts = append(opts, billing.WithParentKey(key.Owner))
+				parent, err := t.collections.Accounts.Get(ctx, key.Owner)
+				if err != nil {
+					return nil, fmt.Errorf("parent for %s not found: %s", account.Owner().Key, key.Owner)
+				}
+				email, err := t.getAccountCtxEmail(ctx, mdb.AccountCtxForAccount(parent))
+				if err != nil {
+					return ctx, err
+				}
+				opts = append(opts, billing.WithParent(parent.Key, email, parent.Type))
 			}
-			opts = append(opts, billing.WithAccountType(account.Owner().Type))
-			if _, err := t.bc.CreateCustomer(ctx, account.Owner().Key, opts...); err != nil {
+			if _, err := t.bc.CreateCustomer(
+				ctx,
+				account.Owner().Key,
+				email,
+				account.Owner().Type,
+				opts...,
+			); err != nil {
 				return ctx, err
 			}
 			cus, err = t.bc.GetCustomer(ctx, account.Owner().Key)
