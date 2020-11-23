@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -77,7 +78,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	now := time.Now()
 
 	// Collect new users.
-	if account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
+	if account.User != nil && account.User.CreatedAt.IsZero() && account.User.Type == mdb.User {
 		var powInfo *mdb.PowInfo
 		if t.pc != nil {
 			ctxAdmin := context.WithValue(ctx, powc.AdminKey, t.conf.PowergateAdminToken)
@@ -99,8 +100,12 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	cus, err := t.bc.GetCustomer(ctx, account.Owner().Key)
 	if err != nil {
 		if strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
+			email, err := t.getAccountCtxEmail(ctx, account)
+			if err != nil {
+				return ctx, err
+			}
 			opts := []billing.Option{
-				billing.WithEmail(account.User.Email),
+				billing.WithEmail(email),
 			}
 			if account.Owner().Type == mdb.User {
 				key, ok := mdb.APIKeyFromContext(ctx)
@@ -218,4 +223,24 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		}
 	}
 	return nil
+}
+
+func (t *Textile) getAccountCtxEmail(ctx context.Context, account *mdb.AccountCtx) (string, error) {
+	if account.User != nil {
+		return account.User.Email, nil
+	}
+	if account.Org == nil {
+		return "", errors.New("invalid account context")
+	}
+	for _, m := range account.Org.Members {
+		if m.Role == mdb.OrgOwner {
+			owner, err := t.collections.Accounts.Get(ctx, m.Key)
+			if err != nil {
+				log.Errorf("getting org owner: %v", err)
+				continue
+			}
+			return owner.Email, nil
+		}
+	}
+	return "", errors.New("could not resolve email for org")
 }
