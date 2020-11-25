@@ -215,9 +215,11 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 			pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS,
 			pb.ArchiveStatus_ARCHIVE_STATUS_CANCELED:
 			return true
+		case pb.ArchiveStatus_ARCHIVE_STATUS_QUEUED:
 		case pb.ArchiveStatus_ARCHIVE_STATUS_EXECUTING:
+		case pb.ArchiveStatus_ARCHIVE_STATUS_UNSPECIFIED:
 		default:
-			t.Errorf("unknown archive status")
+			t.Errorf("unknown archive status %v", pb.ArchiveStatus_name[int32(res.Current.ArchiveStatus)])
 			t.FailNow()
 		}
 
