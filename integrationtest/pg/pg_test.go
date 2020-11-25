@@ -26,7 +26,6 @@ import (
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
-	archive.JobStatusPollInterval = time.Second * 5
 	os.Exit(m.Run())
 }
 
@@ -246,6 +245,8 @@ func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client,
 	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
+	conf.ArchiveJobPollIntervalFast = time.Second * 5
+	conf.ArchiveJobPollIntervalSlow = time.Second * 10
 	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)

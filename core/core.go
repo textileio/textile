@@ -181,6 +181,9 @@ type Config struct {
 	Debug bool
 
 	PowergateAdminToken string
+
+	ArchiveJobPollIntervalSlow time.Duration
+	ArchiveJobPollIntervalFast time.Duration
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -317,7 +320,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	if conf.Hub {
-		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.pc, t.internalHubSession)
+		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.pc, t.internalHubSession, conf.ArchiveJobPollIntervalSlow, conf.ArchiveJobPollIntervalFast)
 		if err != nil {
 			return nil, err
 		}

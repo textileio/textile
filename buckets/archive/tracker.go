@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
 	logger "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/core/thread"
@@ -22,8 +23,7 @@ const (
 )
 
 var (
-	CheckInterval         = time.Second * 15
-	JobStatusPollInterval = time.Minute * 30
+	CheckInterval = time.Second * 15
 
 	log = logger.Logger("pow-archive")
 )
@@ -38,6 +38,9 @@ type Tracker struct {
 	colls           *mdb.Collections
 	buckets         *tdb.Buckets
 	pgClient        *powc.Client
+
+	jobPollIntervalSlow time.Duration
+	jobPollIntervalFast time.Duration
 }
 
 func New(
@@ -45,6 +48,8 @@ func New(
 	buckets *tdb.Buckets,
 	pgClient *powc.Client,
 	internalSession string,
+	jobPollIntervalSlow time.Duration,
+	jobPollIntervalFast time.Duration,
 ) (*Tracker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &Tracker{
@@ -56,6 +61,9 @@ func New(
 		colls:           colls,
 		buckets:         buckets,
 		pgClient:        pgClient,
+
+		jobPollIntervalSlow: jobPollIntervalSlow,
+		jobPollIntervalFast: jobPollIntervalFast,
 	}
 	go t.run()
 	return t, nil
@@ -108,7 +116,7 @@ func (t *Tracker) run() {
 							return
 						}
 
-						reschedule, cause, err := t.trackArchiveProgress(
+						rescheduleDuration, cause, err := t.trackArchiveProgress(
 							ctx,
 							a.BucketKey,
 							a.DbID,
@@ -117,7 +125,7 @@ func (t *Tracker) run() {
 							a.BucketRoot,
 							account.PowInfo,
 						)
-						if err != nil || !reschedule {
+						if err != nil || rescheduleDuration == 0 {
 							if err != nil {
 								cause = err.Error()
 							}
@@ -128,7 +136,7 @@ func (t *Tracker) run() {
 							return
 						}
 						log.Infof("rescheduling tracking archive with job %s, cause %s", a.JID, cause)
-						err = t.colls.ArchiveTracking.Reschedule(ctx, a.JID, JobStatusPollInterval, cause)
+						err = t.colls.ArchiveTracking.Reschedule(ctx, a.JID, rescheduleDuration, cause)
 						if err != nil {
 							log.Errorf("rescheduling tracked archive: %s", err)
 						}
@@ -159,8 +167,8 @@ func (t *Tracker) Track(
 // trackArchiveProgress queries the current archive status.
 // If a fatal error in tracking happens, it will return an error, which indicates the archive should be untracked.
 // If the archive didn't reach a final status yet, or a possibly recoverable error (by retrying) happens,
-// it will return (true, "retry cause", nil).
-// If the archive reach final status, it will return (false, "", nil) and the tracking can be considered done.
+// it will return (duration > 0, "retry cause", nil) and the archive query should be rescheduled for duration in the future.
+// If the archive reach final status, it will return (duration == 0, "", nil) and the tracking can be considered done.
 func (t *Tracker) trackArchiveProgress(
 	ctx context.Context,
 	buckKey string,
@@ -169,11 +177,10 @@ func (t *Tracker) trackArchiveProgress(
 	jid string,
 	bucketRoot cid.Cid,
 	powInfo *mdb.PowInfo,
-) (bool, string, error) {
+) (time.Duration, string, error) {
 	log.Infof("querying archive status of job %s", jid)
 	defer log.Infof("finished querying archive status of job %s", jid)
-	// Step 1: watch for the Job status, and keep updating on Mongo until
-	// we're in a final state.
+	// Step 1: Get the Job status.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ctx = context.WithValue(ctx, powc.AuthKey, powInfo.Token)
@@ -182,29 +189,40 @@ func (t *Tracker) trackArchiveProgress(
 		// if error specifies that the auth token isn't found, powergate must have been reset.
 		// return the error as fatal so the archive will be untracked
 		if strings.Contains(err.Error(), "auth token not found") {
-			return false, "", err
+			return 0, "", err
 		}
-		return true, fmt.Sprintf("getting current job %s for bucket %s: %s", jid, buckKey, err), nil
+		return t.jobPollIntervalSlow, fmt.Sprintf("getting current job %s for bucket %s: %s", jid, buckKey, err), nil
 	}
 
-	// Step 2: On success, save Deal data in the underlying Bucket thread. On
-	// failure save the error message. Also update status on Mongo for the archive.
+	// Step 2: On job success, save Deal data in the underlying Bucket thread. On
+	// failure save the error message.
 	if res.StorageJob.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
-		if err := t.saveDealsInArchive(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
-			return true, fmt.Sprintf("saving deal data in archive: %s", err), nil
+		if err := t.saveDealsInBucket(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
+			return t.jobPollIntervalSlow, fmt.Sprintf("saving deal data in archive: %s", err), nil
 		}
 	}
+	// Step 3: Update status on Mongo for the archive.
 	if err := t.updateArchiveStatus(ctx, buckKey, res.StorageJob, false, ""); err != nil {
-		return true, fmt.Sprintf("updating archive status: %s", err), nil
+		return t.jobPollIntervalSlow, fmt.Sprintf("updating archive status: %s", err), nil
 	}
 
-	message := "reached final status"
-	reschedule := !isJobStatusFinal(res.StorageJob.Status)
-	if reschedule {
-		message = "non-final status"
+	rescheduleDuration := t.jobPollIntervalFast
+	message := "non-final status"
+	if isJobStatusFinal(res.StorageJob.Status) {
+		message = "reached final status"
+		rescheduleDuration = 0
 	}
 
-	return reschedule, message, nil
+	if rescheduleDuration > 0 {
+		for _, dealInfo := range res.StorageJob.DealInfo {
+			if dealInfo.StateId == storagemarket.StorageDealSealing {
+				rescheduleDuration = t.jobPollIntervalSlow
+				break
+			}
+		}
+	}
+
+	return rescheduleDuration, message, nil
 }
 
 // updateArchiveStatus save the last known job status. It also receives an
@@ -269,7 +287,7 @@ func (t *Tracker) updateArchiveStatus(
 	return nil
 }
 
-func (t *Tracker) saveDealsInArchive(
+func (t *Tracker) saveDealsInBucket(
 	ctx context.Context,
 	buckKey string,
 	dbID thread.ID,
