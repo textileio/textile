@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -13,7 +14,7 @@ import (
 
 var (
 	log            = logging.Logger("migrations")
-	migrateTimeout = time.Minute
+	migrateTimeout = time.Hour
 )
 
 var m001 = migrate.Migration{
@@ -88,7 +89,9 @@ var m002 = migrate.Migration{
 			user["type"] = 2
 			_, err := db.Collection("accounts").InsertOne(ctx, user)
 			if err != nil {
-				return err
+				if !strings.Contains(err.Error(), "E11000 duplicate key error") {
+					return err
+				}
 			}
 		}
 		if cursor.Err() != nil {

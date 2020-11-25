@@ -17,6 +17,7 @@ import (
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/service"
+	mdb "github.com/textileio/textile/v2/mongodb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
@@ -37,23 +38,40 @@ func TestClient_CreateCustomer(t *testing.T) {
 	c := setup(t)
 
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key)
+	email := apitest.NewEmail()
+	_, err := c.CreateCustomer(context.Background(), key, email, mdb.Dev)
 	require.NoError(t, err)
 
-	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithEmail(apitest.NewEmail()))
+	_, err = c.CreateCustomer(
+		context.Background(),
+		newKey(t),
+		apitest.NewEmail(),
+		mdb.User,
+		client.WithParent(key, email, mdb.Dev),
+	)
 	require.NoError(t, err)
 
-	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(newKey(t)))
-	require.Error(t, err) // Parent does not exist
-	_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(key))
+	nonExistentParentKey := newKey(t)
+	_, err = c.CreateCustomer(
+		context.Background(),
+		newKey(t),
+		apitest.NewEmail(),
+		mdb.User,
+		client.WithParent(nonExistentParentKey, apitest.NewEmail(), mdb.Dev),
+	)
 	require.NoError(t, err)
+
+	newParent, err := c.GetCustomer(context.Background(), nonExistentParentKey)
+	require.NoError(t, err)
+	assert.NotEmpty(t, newParent)
+	assert.Equal(t, int64(1), newParent.Dependents)
 }
 
 func TestClient_GetCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	cus, err := c.GetCustomer(context.Background(), key)
@@ -70,7 +88,7 @@ func TestClient_GetCustomerSession(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	session, err := c.GetCustomerSession(context.Background(), key)
@@ -82,11 +100,18 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key)
+	email := apitest.NewEmail()
+	_, err := c.CreateCustomer(context.Background(), key, email, mdb.Org)
 	require.NoError(t, err)
 
 	for i := 0; i < 30; i++ {
-		_, err = c.CreateCustomer(context.Background(), newKey(t), client.WithParentKey(key))
+		_, err = c.CreateCustomer(
+			context.Background(),
+			newKey(t),
+			apitest.NewEmail(),
+			mdb.User,
+			client.WithParent(key, email, mdb.Org),
+		)
 		require.NoError(t, err)
 		time.Sleep(time.Second)
 	}
@@ -116,7 +141,7 @@ func TestClient_UpdateCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.UpdateCustomer(context.Background(), id, 100, true, true)
@@ -133,7 +158,7 @@ func TestClient_UpdateCustomerSubscription(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	start := time.Now().Add(-time.Hour).Unix()
@@ -150,7 +175,7 @@ func TestClient_RecreateCustomerSubscription(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.RecreateCustomerSubscription(context.Background(), key)
@@ -173,7 +198,7 @@ func TestClient_DeleteCustomer(t *testing.T) {
 	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.DeleteCustomer(context.Background(), key)
@@ -202,7 +227,7 @@ func TestClient_GetCustomerUsage(t *testing.T) {
 func getCustomerUsage(t *testing.T, test usageTest) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
 	require.NoError(t, err)
 
 	product := getProduct(t, test.key)
@@ -239,7 +264,8 @@ func TestClient_IncCustomerUsage(t *testing.T) {
 func incCustomerUsage(t *testing.T, test usageTest) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key)
+	email := apitest.NewEmail()
+	id, err := c.CreateCustomer(context.Background(), key, email, mdb.Dev)
 	require.NoError(t, err)
 
 	product := getProduct(t, test.key)
@@ -276,7 +302,13 @@ func incCustomerUsage(t *testing.T, test usageTest) {
 
 	// Try as a child customer
 	childKey := newKey(t)
-	_, err = c.CreateCustomer(context.Background(), childKey, client.WithParentKey(key))
+	_, err = c.CreateCustomer(
+		context.Background(),
+		childKey,
+		apitest.NewEmail(),
+		mdb.User,
+		client.WithParent(key, email, mdb.Dev),
+	)
 	require.NoError(t, err)
 	res, err = c.IncCustomerUsage(context.Background(), childKey, map[string]int64{test.key: product.UnitSize})
 	require.NoError(t, err)
@@ -319,6 +351,7 @@ func setup(t *testing.T) *client.Client {
 		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
+		SegmentPrefix:          "test_",
 		DBURI:                  "mongodb://127.0.0.1:27017",
 		DBName:                 util.MakeToken(8),
 		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),

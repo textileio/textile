@@ -22,10 +22,14 @@ message CheckHealthRequest {}
 message CheckHealthResponse {}
 
 message CreateCustomerRequest {
-    string key = 1;
-    string parent_key = 2;
-    string email = 3;
-    int64 account_type = 4;
+    Params customer = 1;
+    Params parent = 2;
+
+    message Params {
+        string key = 1;
+        string email = 2;
+        int32 account_type = 3;
+    }
 }
 
 message CreateCustomerResponse {
@@ -41,19 +45,20 @@ message GetCustomerResponse {
     string customer_id = 2;
     string parent_key = 3;
     string email = 4;
-    string account_status = 5;
-    string subscription_status = 6;
-    int64 balance = 7;
-    bool billable = 8;
-    bool delinquent = 9;
-    int64 created_at = 10;
-    int64 grace_period_end = 11;
+    int32 account_type = 5;
+    string account_status = 6;
+    string subscription_status = 7;
+    int64 balance = 8;
+    bool billable = 9;
+    bool delinquent = 10;
+    int64 created_at = 11;
+    int64 grace_period_end = 12;
 
-    Period invoice_period = 12;
+    Period invoice_period = 13;
 
-    map<string, Usage> daily_usage = 13;
+    map<string, Usage> daily_usage = 14;
 
-    int64 dependents = 14;
+    int64 dependents = 15;
 }
 
 message ListDependentCustomersRequest {

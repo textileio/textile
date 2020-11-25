@@ -12,7 +12,11 @@
     "api/usersd/pb/usersd_pb.js",
     "api/usersd/pb/usersd_pb_service.js",
     "api/usersd/pb/usersd_pb.d.ts",
-    "api/usersd/pb/usersd_pb_service.d.ts"
+    "api/usersd/pb/usersd_pb_service.d.ts",
+    "api/billingd/pb/billingd_pb.js",
+    "api/billingd/pb/billingd_pb_service.js",
+    "api/billingd/pb/billingd_pb.d.ts",
+    "api/billingd/pb/billingd_pb_service.d.ts"
   ],
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.13.0",

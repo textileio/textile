@@ -6,6 +6,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
+	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
 )
 
@@ -37,20 +38,32 @@ func (c *Client) CheckHealth(ctx context.Context) error {
 	return err
 }
 
-func (c *Client) CreateCustomer(ctx context.Context, key thread.PubKey, opts ...Option) (string, error) {
+func (c *Client) CreateCustomer(
+	ctx context.Context,
+	key thread.PubKey,
+	email string,
+	accountType mdb.AccountType,
+	opts ...Option,
+) (string, error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	var parentKey string
+	var parent *pb.CreateCustomerRequest_Params
 	if args.parentKey != nil {
-		parentKey = args.parentKey.String()
+		parent = &pb.CreateCustomerRequest_Params{
+			Key:         args.parentKey.String(),
+			Email:       args.parentEmail,
+			AccountType: int32(args.parentAccountType),
+		}
 	}
 	res, err := c.c.CreateCustomer(ctx, &pb.CreateCustomerRequest{
-		Key:         key.String(),
-		ParentKey:   parentKey,
-		Email:       args.email,
-		AccountType: int64(args.accountType),
+		Customer: &pb.CreateCustomerRequest_Params{
+			Key:         key.String(),
+			Email:       email,
+			AccountType: int32(accountType),
+		},
+		Parent: parent,
 	})
 	if err != nil {
 		return "", err
