@@ -30,4 +30,4 @@ buildtools/protoc
 buildtools/protoc-gen-go
 build/
 **/javascript/api
-**/javascript/web/api
+**/javascript/browser/api
