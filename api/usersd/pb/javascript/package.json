@@ -18,12 +18,24 @@
     "api/billingd/pb/billingd_pb.d.ts",
     "api/billingd/pb/billingd_pb_service.d.ts"
   ],
+  "browser": [
+    "web/api/usersd/pb/usersd_pb.js",
+    "web/api/usersd/pb/usersd_pb_service.js",
+    "web/api/usersd/pb/usersd_pb.d.ts",
+    "web/api/usersd/pb/usersd_pb_service.d.ts",
+    "web/api/billingd/pb/billingd_pb.js",
+    "web/api/billingd/pb/billingd_pb_service.js",
+    "web/api/billingd/pb/billingd_pb.d.ts",
+    "web/api/billingd/pb/billingd_pb_service.d.ts"
+  ],
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.13.0",
+    "@grpc/grpc-js": "^1.2.1",
     "@types/google-protobuf": "^3.7.4",
     "google-protobuf": "^3.13.0"
   },
   "devDependencies": {
-    "ts-protoc-gen": "^0.13.0"
+    "ts-protoc-gen": "^0.13.0",
+    "protoc-gen-grpc": "1.4.4"
   }
 }

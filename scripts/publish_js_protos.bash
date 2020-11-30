@@ -29,7 +29,7 @@ while IFS=  read -r -d $'\0'; do
 done < <(find . -path "*/pb/javascript" ! -path "*/node_modules/*" -print0)
 
 echo installing dependencies
-npm install -g json >/dev/null 2>&1
+npm install -g json grpc-tools >/dev/null 2>&1
 
 for path in "${js_paths[@]}"; do
   cd "${path}"
