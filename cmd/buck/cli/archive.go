@@ -166,13 +166,11 @@ var archiveWatchCmd = &cobra.Command{
 	Long:  `Watch the status of the most recent bucket archive.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		watch, err := c.Flags().GetBool("watch")
-		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.ArchiveWatchTimeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, ".")
 		cmd.ErrCheck(err)
-		msgs, err := buck.ArchiveWatch(ctx, watch)
+		msgs, err := buck.ArchiveWatch(ctx)
 		cmd.ErrCheck(err)
 		for m := range msgs {
 			switch m.Type {

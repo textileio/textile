@@ -192,7 +192,7 @@ func (b *Bucket) Archives(ctx context.Context) (*pb.ArchivesResponse, error) {
 }
 
 // ArchiveWatch delivers messages about the archive status.
-func (b *Bucket) ArchiveWatch(ctx context.Context, watch bool) (<-chan ArchiveStatusMessage, error) {
+func (b *Bucket) ArchiveWatch(ctx context.Context) (<-chan ArchiveStatusMessage, error) {
 	b.Lock()
 	defer b.Unlock()
 	ctx, err := b.context(ctx)
