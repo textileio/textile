@@ -370,11 +370,9 @@ func (c *Client) Archive(ctx context.Context, key string, opts ...ArchiveOption)
 	return err
 }
 
-// ArchiveStatus returns the status of a Filecoin bucket archive.
-func (c *Client) ArchiveStatus(ctx context.Context, key string) (*pb.ArchiveStatusResponse, error) {
-	return c.c.ArchiveStatus(ctx, &pb.ArchiveStatusRequest{
-		Key: key,
-	})
+// Archives returns information about current and historical archives.
+func (c *Client) Archives(ctx context.Context, key string) (*pb.ArchivesResponse, error) {
+	return c.c.Archives(ctx, &pb.ArchivesRequest{Key: key})
 }
 
 // ArchiveWatch watches status events from a Filecoin bucket archive.
@@ -396,11 +394,4 @@ func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string)
 		ch <- reply.Msg
 	}
 	return nil
-}
-
-// ArchiveInfo returns info about a Filecoin bucket archive.
-func (c *Client) ArchiveInfo(ctx context.Context, key string) (*pb.ArchiveInfoResponse, error) {
-	return c.c.ArchiveInfo(ctx, &pb.ArchiveInfoRequest{
-		Key: key,
-	})
 }

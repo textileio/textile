@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/spf13/cobra"
@@ -123,6 +124,14 @@ var (
 			"powergateAdminToken": {
 				Key:      "powergate.admin_token",
 				DefValue: "",
+			},
+			"archivesJobPollIntervalSlow": {
+				Key:      "archives.job_poll_interval_slow",
+				DefValue: time.Minute * 30,
+			},
+			"archivesJobPollIntervalFast": {
+				Key:      "archives.job_poll_interval_fast",
+				DefValue: time.Minute * 15,
 			},
 		},
 		EnvPre: "HUB",
@@ -246,11 +255,21 @@ func init() {
 		config.Flags["threadsMaxNumberPerOwner"].DefValue.(int),
 		"Max number threads per owner")
 
-	// Auth tokens
+	// Powergate
 	rootCmd.PersistentFlags().String(
 		"powergateAdminToken",
 		config.Flags["powergateAdminToken"].DefValue.(string),
 		"Auth token for Powergate admin APIs")
+
+	// Archives
+	rootCmd.PersistentFlags().Duration(
+		"archivesJobPollIntervalSlow",
+		config.Flags["archivesJobPollIntervalSlow"].DefValue.(time.Duration),
+		"How frequently to check archive job status for arcives with deals in the sealing state")
+	rootCmd.PersistentFlags().Duration(
+		"archivesJobPollIntervalFast",
+		config.Flags["archivesJobPollIntervalFast"].DefValue.(time.Duration),
+		"How frequently to check archive job status for arcives with deals in non-sealing states")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -308,6 +327,9 @@ var rootCmd = &cobra.Command{
 
 		powergateAdminToken := config.Viper.GetString("powergate.admin_token")
 
+		archivesJobPollIntervalSlow := config.Viper.GetDuration("archives.job_poll_interval_slow")
+		archivesJobPollIntervalFast := config.Viper.GetDuration("archives.job_poll_interval_fast")
+
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			err = util.SetupDefaultLoggingConfig(logFile)
@@ -351,6 +373,9 @@ var rootCmd = &cobra.Command{
 			Debug: config.Viper.GetBool("log.debug"),
 
 			PowergateAdminToken: powergateAdminToken,
+
+			ArchiveJobPollIntervalSlow: archivesJobPollIntervalSlow,
+			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
 		})
 		cmd.ErrCheck(err)
 		textile.Bootstrap()

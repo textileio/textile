@@ -537,10 +537,10 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (userPb.JobStat
 	if current.Aborted {
 		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
-	if statusName, found := userPb.JobStatus_name[int32(current.JobStatus)]; !found {
+	if statusName, found := userPb.JobStatus_name[int32(current.Status)]; !found {
 		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("unknown powergate job status: %s", statusName)
 	}
-	return userPb.JobStatus(current.JobStatus), current.FailureMsg, nil
+	return userPb.JobStatus(current.Status), current.FailureMsg, nil
 }
 
 // ArchiveWatch allows to have the last log execution for the last archive, plus realtime

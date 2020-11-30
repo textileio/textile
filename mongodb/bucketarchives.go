@@ -19,13 +19,32 @@ type Archives struct {
 }
 
 type Archive struct {
-	Cid        []byte `bson:"cid"`
-	JobID      string `bson:"job_id"`
-	JobStatus  int    `bson:"job_status"`
-	Aborted    bool   `bson:"aborted"`
-	AbortedMsg string `bson:"aborted_msg"`
-	FailureMsg string `bson:"failure_msg"`
-	CreatedAt  int64  `bson:"created_at"`
+	Cid        []byte     `bson:"cid"`
+	JobID      string     `bson:"job_id"`
+	Status     int        `bson:"status"`
+	Aborted    bool       `bson:"aborted"`
+	AbortedMsg string     `bson:"aborted_msg"`
+	FailureMsg string     `bson:"failure_msg"`
+	CreatedAt  int64      `bson:"created_at"`
+	DealInfo   []DealInfo `bson:"deal_info"`
+}
+
+type DealInfo struct {
+	ProposalCid string `bson:"proposal_cid"`
+	StateID     uint64 `bson:"state_id"`
+	StateName   string `bson:"state_name"`
+	Miner       string `bson:"miner"`
+
+	PieceCID string `bson:"piece_cid"`
+	Size     uint64
+
+	PricePerEpoch uint64 `bson:"price_per_epoch"`
+	StartEpoch    uint64 `bson:"start_epoch"`
+	Duration      uint64 `bson:"duration"`
+
+	DealID          uint64 `bson:"deal_id"`
+	ActivationEpoch int64  `bson:"activation_epoch"`
+	Message         string `bson:"message"`
 }
 
 // ArchiveConfig is the desired state of a Cid in the Filecoin network.

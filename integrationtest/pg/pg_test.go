@@ -26,7 +26,6 @@ import (
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
-	archive.JobStatusPollInterval = time.Second * 5
 	os.Exit(m.Run())
 }
 
@@ -83,21 +82,15 @@ func TestArchiveTracker(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 
 		// Verify that the current archive status is Done.
-		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
 
-		// Get ArchiveInfo, which has all successful pushs with
-		// its data about deals.
-		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
-		require.NoError(t, err)
-
-		arc := ai.GetArchive()
-		require.Equal(t, rootCid1, arc.Cid)
-		require.Len(t, arc.Deals, 1)
-		deal := arc.Deals[0]
-		require.NotEmpty(t, deal.GetProposalCid())
-		require.NotEmpty(t, deal.GetMiner())
+		require.Equal(t, rootCid1, res.Current.Cid)
+		require.Len(t, res.Current.DealInfo, 1)
+		deal := res.Current.DealInfo[0]
+		require.NotEmpty(t, deal.ProposalCid)
+		require.NotEmpty(t, deal.Miner)
 	})
 }
 
@@ -121,21 +114,15 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 
 		// Verify that the current archive status is Done.
-		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus(), as.FailedMsg)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
 
-		// Get ArchiveInfo, which has all successful pushs with
-		// its data about deals.
-		ai, err := client.ArchiveInfo(ctx, b.Root.Key)
-		require.NoError(t, err)
-
-		arc := ai.GetArchive()
-		require.Equal(t, rootCid1, arc.Cid)
-		require.Len(t, arc.Deals, 1)
-		deal := arc.Deals[0]
-		require.NotEmpty(t, deal.GetProposalCid())
-		require.NotEmpty(t, deal.GetMiner())
+		require.Equal(t, rootCid1, res.Current.Cid)
+		require.Len(t, res.Current.DealInfo, 1)
+		deal := res.Current.DealInfo[0]
+		require.NotEmpty(t, deal.ProposalCid)
+		require.NotEmpty(t, deal.Miner)
 
 		// Add another file to the bucket.
 		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
@@ -144,19 +131,15 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		err = client.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		as, err = client.ArchiveStatus(ctx, b.Root.Key)
+		res, err = client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_DONE, as.GetStatus())
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
 
-		ai, err = client.ArchiveInfo(ctx, b.Root.Key)
-		require.NoError(t, err)
-
-		arc = ai.GetArchive()
-		require.Equal(t, rootCid2, arc.Cid)
-		require.Len(t, arc.Deals, 1)
-		deal = arc.Deals[0]
-		require.NotEmpty(t, deal.GetProposalCid())
-		require.NotEmpty(t, deal.GetMiner())
+		require.Equal(t, rootCid2, res.Current.Cid)
+		require.Len(t, res.Current.DealInfo, 1)
+		deal = res.Current.DealInfo[0]
+		require.NotEmpty(t, deal.ProposalCid)
+		require.NotEmpty(t, deal.Miner)
 	})
 }
 
@@ -211,26 +194,32 @@ func TestFailingArchive(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), time.Minute, 2*time.Second)
-		as, err := client.ArchiveStatus(ctx, b.Root.Key)
+		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatusResponse_STATUS_FAILED, as.GetStatus())
-		require.NotEmpty(t, as.GetFailedMsg())
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_FAILED, res.Current.ArchiveStatus)
+		require.NotEmpty(t, res.Current.FailureMsg)
 	})
 }
 
 func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *c.Client, bucketKey string) func() bool {
 	return func() bool {
-		as, err := client.ArchiveStatus(ctx, bucketKey)
+		res, err := client.Archives(ctx, bucketKey)
 		require.NoError(t, err)
 
-		switch as.GetStatus() {
-		case pb.ArchiveStatusResponse_STATUS_FAILED,
-			pb.ArchiveStatusResponse_STATUS_DONE,
-			pb.ArchiveStatusResponse_STATUS_CANCELED:
+		if res.Current == nil {
+			return false
+		}
+
+		switch res.Current.ArchiveStatus {
+		case pb.ArchiveStatus_ARCHIVE_STATUS_FAILED,
+			pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS,
+			pb.ArchiveStatus_ARCHIVE_STATUS_CANCELED:
 			return true
-		case pb.ArchiveStatusResponse_STATUS_EXECUTING:
+		case pb.ArchiveStatus_ARCHIVE_STATUS_QUEUED:
+		case pb.ArchiveStatus_ARCHIVE_STATUS_EXECUTING:
+		case pb.ArchiveStatus_ARCHIVE_STATUS_UNSPECIFIED:
 		default:
-			t.Errorf("unknown archive status")
+			t.Errorf("unknown archive status %v", pb.ArchiveStatus_name[int32(res.Current.ArchiveStatus)])
 			t.FailNow()
 		}
 
@@ -258,6 +247,8 @@ func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client,
 	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
+	conf.ArchiveJobPollIntervalFast = time.Second * 5
+	conf.ArchiveJobPollIntervalSlow = time.Second * 10
 	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)

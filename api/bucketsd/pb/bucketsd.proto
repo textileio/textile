@@ -199,6 +199,41 @@ message ArchiveConfig {
     int64 deal_start_offset = 10;
 }
 
+message Archive {
+    string cid = 1;
+    string job_id = 2;
+    ArchiveStatus archive_status = 3;
+    bool aborted = 4;
+    string aborted_msg = 5;
+    string failure_msg = 6;
+    int64 created_at = 7;
+    repeated DealInfo deal_info = 8;
+}
+
+enum ArchiveStatus {
+    ARCHIVE_STATUS_UNSPECIFIED = 0;
+    ARCHIVE_STATUS_QUEUED = 1;
+    ARCHIVE_STATUS_EXECUTING = 2;
+    ARCHIVE_STATUS_FAILED = 3;
+    ARCHIVE_STATUS_CANCELED = 4;
+    ARCHIVE_STATUS_SUCCESS = 5;
+  }
+
+message DealInfo {
+    string proposal_cid = 1;
+    uint64 state_id = 2;
+    string state_name = 3;
+    string miner = 4;
+    string piece_cid = 5;
+    uint64 size = 6;
+    uint64 price_per_epoch  = 7;
+    uint64 start_epoch = 8;
+    uint64 duration = 9;
+    uint64 deal_id = 10;
+    int64 activation_epoch = 11;
+    string message = 12;
+  }
+
 message ArchiveRenew {
     bool enabled = 1;
     int32 threshold = 2;
@@ -226,41 +261,13 @@ message ArchiveRequest {
 
 message ArchiveResponse {}
 
-message ArchiveStatusRequest {
+message ArchivesRequest {
     string key = 1;
 }
 
-message ArchiveStatusResponse {
-    string key = 1;
-    Status status = 2;
-    string failed_msg = 3;
-
-    enum Status {
-        STATUS_UNSPECIFIED = 0;
-        STATUS_EXECUTING = 1;
-        STATUS_FAILED = 2;
-        STATUS_DONE = 3;
-        STATUS_CANCELED = 4;
-    }
-}
-
-message ArchiveInfoRequest {
-    string key = 1;
-}
-
-message ArchiveInfoResponse {
-    string key = 1;
-    Archive archive = 2;
-
-    message Archive {
-        string cid = 1;
-        repeated Deal deals = 2;
-
-        message Deal {
-            string proposal_cid = 1;
-            string miner = 2;
-        }
-    }
+message ArchivesResponse {
+    Archive current = 1;
+    repeated Archive history = 2;
 }
 
 message ArchiveWatchRequest {
@@ -291,7 +298,6 @@ service APIService {
     rpc DefaultArchiveConfig(DefaultArchiveConfigRequest) returns (DefaultArchiveConfigResponse) {}
     rpc SetDefaultArchiveConfig(SetDefaultArchiveConfigRequest) returns (SetDefaultArchiveConfigResponse) {}
     rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
-    rpc ArchiveStatus(ArchiveStatusRequest) returns (ArchiveStatusResponse) {}
-    rpc ArchiveInfo(ArchiveInfoRequest) returns (ArchiveInfoResponse) {}
+    rpc Archives(ArchivesRequest) returns (ArchivesResponse) {}
     rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchResponse) {}
 }
