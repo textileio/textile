@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/billingd/pb"
 	hub "github.com/textileio/textile/v2/api/hubd/client"

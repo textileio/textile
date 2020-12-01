@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 
-	"github.com/logrusorgru/aurora"
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"

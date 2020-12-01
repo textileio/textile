@@ -15,7 +15,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ds-flatfs"
+	flatfs "github.com/ipfs/go-ds-flatfs"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
@@ -222,8 +222,8 @@ func (b *Repo) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGSer
 				return nil
 			}
 			p := n
-			n = strings.TrimPrefix(n, abs+"/")
-			if strings.HasPrefix(n, filepath.Dir(b.name)+"/") || strings.HasSuffix(n, patchExt) {
+			n = strings.TrimPrefix(n, abs+string(os.PathSeparator))
+			if strings.HasPrefix(n, filepath.Dir(b.name)+string(os.PathSeparator)) || strings.HasSuffix(n, patchExt) {
 				return nil
 			}
 			file, err := os.Open(p)
@@ -238,7 +238,7 @@ func (b *Repo) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGSer
 			if err = editor.InsertNodeAtPath(ctx, n, nd, unixfs.EmptyDirNode); err != nil {
 				return err
 			}
-			maps[strings.TrimPrefix(p, abs+"/")] = nd.Cid()
+			maps[strings.TrimPrefix(p, abs+string(os.PathSeparator))] = nd.Cid()
 		}
 		return nil
 	}); err != nil {
