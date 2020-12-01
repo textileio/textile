@@ -35,7 +35,9 @@
     "google-protobuf": "^3.13.0"
   },
   "devDependencies": {
-    "ts-protoc-gen": "^0.13.0",
-    "protoc-gen-grpc": "1.4.4"
+    "grpc-tools": "1.10.0",
+    "protoc-gen-grpc": "1.4.4",
+    "ts-protoc-gen": "0.13.0",
+    "typescript": "4.1.2"
   }
 }
