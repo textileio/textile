@@ -9,11 +9,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v1
-      - name: Get latest tag
-        id: latesttag
-        uses: "WyriHaximus/github-action-get-previous-tag@master"
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       - name: Install build tools
         run: |
           sudo apt-get update
@@ -31,11 +26,11 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "12.x"
+          registry-url: "https://registry.npmjs.org"
       - name: Generate JS libs
         run: |
           make js-protos
       - name: Publish JS libs
         run: |
-          ./scripts/publish_js_protos.bash -v ${{ steps.latesttag.outputs.tag }} -t ${{ secrets.NPM_AUTH_TOKEN }}
+          ./scripts/publish_js_protos.bash -v ${{ github.event.release.tag_name }} -t ${{ secrets.NPM_AUTH_TOKEN }} -p ${{ github.event.release.prerelease }}
