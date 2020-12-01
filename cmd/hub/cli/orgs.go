@@ -6,7 +6,6 @@ import (
 	"net/mail"
 	"strconv"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/spf13/cobra"

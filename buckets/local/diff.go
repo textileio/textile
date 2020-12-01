@@ -4,13 +4,16 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ipfs/go-merkledag/dagutils"
-	"github.com/logrusorgru/aurora"
+	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/cmd"
 )
+
+var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
 // Change describes a local bucket change.
 type Change struct {
@@ -35,7 +38,7 @@ func ChangeType(t dagutils.ChangeType) string {
 }
 
 // ChangeColor returns an appropriate color for the given change type.
-func ChangeColor(t dagutils.ChangeType) func(arg interface{}) aurora.Value {
+func ChangeColor(t dagutils.ChangeType) func(arg interface{}) aurora2.Value {
 	switch t {
 	case dagutils.Mod:
 		return aurora.Yellow
@@ -54,6 +57,7 @@ func (b *Bucket) DiffLocal() ([]Change, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 	defer cancel()
 	diff, err := b.repo.Diff(ctx, bp)
@@ -73,7 +77,7 @@ func (b *Bucket) DiffLocal() ([]Change, error) {
 				return nil, err
 			}
 			for _, n := range names {
-				p := strings.TrimPrefix(n, bp+"/")
+				p := strings.TrimPrefix(n, bp+string(os.PathSeparator))
 				r, err := filepath.Rel(b.cwd, n)
 				if err != nil {
 					return nil, err
@@ -97,7 +101,7 @@ func (b *Bucket) walkPath(pth string) (names []string, err error) {
 			return err
 		}
 		if !info.IsDir() {
-			f := strings.TrimPrefix(n, pth+"/")
+			f := strings.TrimPrefix(n, pth+string(os.PathSeparator))
 			if Ignore(n) || f == buckets.SeedName || strings.HasPrefix(f, b.conf.Dir) || strings.HasSuffix(f, patchExt) {
 				return nil
 			}

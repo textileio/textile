@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/ipfs/go-cid"
 	"github.com/manifoldco/promptui"
@@ -37,8 +38,15 @@ func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
 	for e := range events {
 		switch e.Type {
 		case local.FileStart:
+			if runtime.GOOS == "windows" {
+				cmd.Message("Uploading %s", e.Path)
+				continue
+			}
 			bars[e.Path] = addBar(p, e.Path, e.Size)
 		case local.FileProgress, local.FileComplete:
+			if runtime.GOOS == "windows" {
+				continue
+			}
 			bar, ok := bars[e.Path]
 			if ok {
 				_ = bar.Set(int(e.Progress))
@@ -48,6 +56,10 @@ func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
 				}
 			}
 		case local.FileRemoved:
+			if runtime.GOOS == "windows" {
+				cmd.Message("Removing %s", e.Path)
+				continue
+			}
 			bar := p.AddBar(int(e.Size))
 			finishBar(p, bar, e.Path, e.Cid, true)
 		}
