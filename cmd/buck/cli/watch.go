@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"

@@ -3,9 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
+	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/core/thread"
@@ -15,6 +17,8 @@ import (
 )
 
 const Name = "hub"
+
+var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
 var (
 	config = &cmd.Config{

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/go-threads/core/thread"

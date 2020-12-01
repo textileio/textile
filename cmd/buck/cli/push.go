@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/buckets/local"
@@ -62,7 +61,8 @@ var pushCmd = &cobra.Command{
 			ctx,
 			local.WithConfirm(getConfirm("Push %d changes", yes)),
 			local.WithForce(force),
-			local.WithPathEvents(events))
+			local.WithPathEvents(events),
+		)
 		if progress != nil {
 			progress.Stop()
 		}

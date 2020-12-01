@@ -44,7 +44,7 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err != nil {
 				return roots, err
 			}
-			p := strings.TrimPrefix(n, bp+"/")
+			p := strings.TrimPrefix(n, bp+string(os.PathSeparator))
 			reset = append(reset, Change{Type: dagutils.Add, Name: n, Path: p, Rel: r})
 		}
 		// Add unique additions

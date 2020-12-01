@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
+	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	"google.golang.org/grpc/status"
 )
+
+var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
 func Message(format string, args ...interface{}) {
 	if format == "" {

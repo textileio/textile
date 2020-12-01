@@ -3,9 +3,10 @@ package cli
 import (
 	"context"
 	"os"
+	"runtime"
 	"strconv"
 
-	"github.com/logrusorgru/aurora"
+	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
@@ -17,9 +18,12 @@ const Name = "buck"
 
 var bucks *local.Buckets
 
+var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
+
 func init() {
 	uiprogress.Empty = ' '
 	uiprogress.Fill = '-'
+
 }
 
 func Init(baseCmd *cobra.Command) {
