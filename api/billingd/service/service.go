@@ -476,7 +476,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.CreateUser(doc.Key, doc.Email, map[string]string{
+	go s.analytics.NewUser(doc.Key, doc.Email, map[string]string{
 		"parent_key":                      doc.ParentKey,
 		"customer_id":                     doc.CustomerID,
 		"account_type":                    fmt.Sprint(doc.AccountType),

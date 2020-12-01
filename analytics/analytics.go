@@ -34,8 +34,8 @@ func NewClient(segmentAPIKey string, debug bool) (*Client, error) {
 	return client, err
 }
 
-// Fires analytics event for response
-func (c *Client) CreateUser(userId string, email string, properties map[string]string) {
+// NewUser sets up a user for lifecycle events
+func (c *Client) NewUser(userId string, email string, properties map[string]string) {
 	if c.api != nil {
 		traits := analytics.NewTraits()
 		for key, value := range properties {
@@ -53,7 +53,7 @@ func (c *Client) CreateUser(userId string, email string, properties map[string]s
 	}
 }
 
-// Fires analytics event for response
+// NewEvent logs a new event
 func (c *Client) NewEvent(userId string, eventName string, properties map[string]string) {
 	if c.api != nil {
 		props := analytics.NewProperties()
