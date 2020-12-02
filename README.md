@@ -168,25 +168,31 @@ Usage:
   hub [command]
 
 Available Commands:
+  billing     Billing management
   buck        Manage an object storage bucket
   destroy     Destroy your account
+  fil         Interact with Filecoin related commands.
   help        Help about any command
   init        Initialize account
   keys        API key management
   login       Login
   logout      Logout
   orgs        Org management
-  pow         Interact with Powergate
   threads     Thread management
   update      Update the hub CLI
   version     Show current version
   whoami      Show current user
 
 Flags:
-      --api string       API target (default "api.hub.textile.io:443")
-  -h, --help             help for hub
-  -o, --org string       Org username
-  -s, --session string   User session token
+      --api string        API target (default "api.hub.textile.io:443")
+  -h, --help              help for hub
+      --identity string   User identity
+      --key string        User API key
+      --newIdentity       Generate a new user identity
+  -o, --org string        Org username
+      --secret string     User API secret
+  -s, --session string    User session token
+      --token string      User identity token
 
 Use "hub [command] --help" for more information about a command.
 ```
