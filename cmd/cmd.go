@@ -13,8 +13,8 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	bc "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
+	fc "github.com/textileio/textile/v2/api/filecoin/client"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
-	pc "github.com/textileio/textile/v2/api/pow/client"
 	uc "github.com/textileio/textile/v2/api/usersd/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,11 +80,11 @@ func (cc ConfConfig) NewConfig(pth string, flags map[string]Flag, global bool) (
 
 // Clients wraps all the possible hubd/buckd clients.
 type Clients struct {
-	Buckets *bc.Client
-	Threads *tc.Client
-	Hub     *hc.Client
-	Users   *uc.Client
-	Pow     *pc.Client
+	Buckets  *bc.Client
+	Threads  *tc.Client
+	Hub      *hc.Client
+	Users    *uc.Client
+	Filecoin *fc.Client
 }
 
 // NewClients returns a new clients object pointing to the target address.
@@ -121,7 +121,7 @@ func NewClients(target string, isHub bool) *Clients {
 			Fatal(err)
 		}
 	}
-	c.Pow, err = pc.NewClient(target, opts...)
+	c.Filecoin, err = fc.NewClient(target, opts...)
 	if err != nil {
 		Fatal(err)
 	}

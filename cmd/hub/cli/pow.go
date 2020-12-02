@@ -11,25 +11,26 @@ import (
 )
 
 func init() {
-	powStorageCmd.Flags().BoolP("ascending", "a", false, "sort records ascending, default is sort descending")
-	powStorageCmd.Flags().StringSlice("cids", []string{}, "limit the records to deals for the specified data cids, treated as and AND operation if --addrs is also provided")
-	powStorageCmd.Flags().StringSlice("addrs", []string{}, "limit the records to deals initiated from  the specified wallet addresses, treated as and AND operation if --cids is also provided")
-	powStorageCmd.Flags().BoolP("include-pending", "p", false, "include pending deals")
-	powStorageCmd.Flags().BoolP("include-final", "f", true, "include final deals")
+	filStorageCmd.Flags().BoolP("ascending", "a", false, "sort records ascending, default is sort descending")
+	filStorageCmd.Flags().StringSlice("cids", []string{}, "limit the records to deals for the specified data cids, treated as and AND operation if --addrs is also provided")
+	filStorageCmd.Flags().StringSlice("addrs", []string{}, "limit the records to deals initiated from  the specified wallet addresses, treated as and AND operation if --cids is also provided")
+	filStorageCmd.Flags().BoolP("include-pending", "p", false, "include pending deals")
+	filStorageCmd.Flags().BoolP("include-final", "f", true, "include final deals")
 
-	powRetrievalsCmd.Flags().BoolP("ascending", "a", false, "sort records ascending, default is sort descending")
-	powRetrievalsCmd.Flags().StringSlice("cids", []string{}, "limit the records to deals for the specified data cids, treated as and AND operation if --addrs is also provided")
-	powRetrievalsCmd.Flags().StringSlice("addrs", []string{}, "limit the records to deals initiated from  the specified wallet addresses, treated as and AND operation if --cids is also provided")
+	filRetrievalsCmd.Flags().BoolP("ascending", "a", false, "sort records ascending, default is sort descending")
+	filRetrievalsCmd.Flags().StringSlice("cids", []string{}, "limit the records to deals for the specified data cids, treated as and AND operation if --addrs is also provided")
+	filRetrievalsCmd.Flags().StringSlice("addrs", []string{}, "limit the records to deals initiated from  the specified wallet addresses, treated as and AND operation if --cids is also provided")
 }
 
-var powCmd = &cobra.Command{
-	Use:   "pow",
-	Short: "Interact with Powergate",
-	Long:  `Interact with Powergate.`,
-	Args:  cobra.ExactArgs(0),
+var filCmd = &cobra.Command{
+	Use:     "fil",
+	Aliases: []string{"filecoin", "pow"},
+	Short:   "Interact with Filecoin related commands.",
+	Long:    `Interact with Filecoin related commands.`,
+	Args:    cobra.ExactArgs(0),
 }
 
-var powAddrsCmd = &cobra.Command{
+var filAddrsCmd = &cobra.Command{
 	Use:   "addrs",
 	Short: "List Filecoin wallet addresses associated with the current account or org",
 	Long:  `List Filecoin wallet addresses associated with the current account or org.`,
@@ -37,7 +38,7 @@ var powAddrsCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		res, err := clients.Pow.Addresses(ctx)
+		res, err := clients.Filecoin.Addresses(ctx)
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
@@ -45,7 +46,7 @@ var powAddrsCmd = &cobra.Command{
 	},
 }
 
-var powBalanceCmd = &cobra.Command{
+var filBalanceCmd = &cobra.Command{
 	Use:   "balance [addr]",
 	Short: "Display the FIL balance of a wallet address",
 	Long:  `Display the FIL balance of a wallet address.`,
@@ -53,7 +54,7 @@ var powBalanceCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		res, err := clients.Pow.Balance(ctx, args[0])
+		res, err := clients.Filecoin.Balance(ctx, args[0])
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
@@ -61,7 +62,7 @@ var powBalanceCmd = &cobra.Command{
 	},
 }
 
-var powInfoCmd = &cobra.Command{
+var filInfoCmd = &cobra.Command{
 	Use:   "info [optional cid1,cid2,...]",
 	Short: "Get information about the current storate state of a cid",
 	Long:  `Get information about the current storate state of a cid`,
@@ -73,7 +74,7 @@ var powInfoCmd = &cobra.Command{
 		if len(args) > 0 {
 			cids = strings.Split(args[0], ",")
 		}
-		res, err := clients.Pow.CidInfo(ctx, cids...)
+		res, err := clients.Filecoin.CidInfo(ctx, cids...)
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
@@ -81,10 +82,10 @@ var powInfoCmd = &cobra.Command{
 	},
 }
 
-var powStorageCmd = &cobra.Command{
+var filStorageCmd = &cobra.Command{
 	Use:   "storage",
-	Short: "List Powergate storage deal records associated with the current account or org",
-	Long:  `List Powergate storage deal records associated with the current account or org.`,
+	Short: "List Filecoin storage deal records associated with the current account or org",
+	Long:  `List Filecoin storage deal records associated with the current account or org.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
@@ -106,7 +107,7 @@ var powStorageCmd = &cobra.Command{
 			IncludeFinal:   final,
 			IncludePending: pending,
 		}
-		res, err := clients.Pow.StorageDealRecords(ctx, conf)
+		res, err := clients.Filecoin.StorageDealRecords(ctx, conf)
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
@@ -114,10 +115,10 @@ var powStorageCmd = &cobra.Command{
 	},
 }
 
-var powRetrievalsCmd = &cobra.Command{
+var filRetrievalsCmd = &cobra.Command{
 	Use:   "retrievals",
-	Short: "List Powergate retrieval deal records associated with the current account or org",
-	Long:  `List Powergate retrieval deal records associated with the current account or org.`,
+	Short: "List Filecoin retrieval deal records associated with the current account or org",
+	Long:  `List Filecoin retrieval deal records associated with the current account or org.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
@@ -133,7 +134,7 @@ var powRetrievalsCmd = &cobra.Command{
 			DataCids:  cids,
 			FromAddrs: addrs,
 		}
-		res, err := clients.Pow.RetrievalDealRecords(ctx, conf)
+		res, err := clients.Filecoin.RetrievalDealRecords(ctx, conf)
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)

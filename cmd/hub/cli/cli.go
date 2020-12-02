@@ -67,11 +67,11 @@ var (
 func Init(rootCmd *cobra.Command) {
 	config.Viper.SetConfigType("yaml")
 
-	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, updateCmd, versionCmd, orgsCmd, keysCmd, threadsCmd, powCmd, billingCmd)
+	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, updateCmd, versionCmd, orgsCmd, keysCmd, threadsCmd, filCmd, billingCmd)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
-	powCmd.AddCommand(powAddrsCmd, powBalanceCmd, powInfoCmd, powStorageCmd, powRetrievalsCmd)
+	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd)
 	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd, billingUsersCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
