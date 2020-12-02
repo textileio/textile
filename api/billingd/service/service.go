@@ -20,6 +20,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
+	"github.com/textileio/textile/v2/api/billingd/migrations"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/bson"
@@ -235,13 +236,16 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		return nil, err
 	}
 	db := client.Database(config.DBName)
+	if err = migrations.Migrate(db); err != nil {
+		return nil, err
+	}
 
 	pdb := db.Collection("products")
 	cdb := db.Collection("customers")
 	indexes, err := cdb.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{"customer_id", 1}},
-			Options: options.Index().SetUnique(true),
+			Options: options.Index().SetUnique(true).SetSparse(true),
 		},
 		{
 			Keys: bson.D{{"parent_key", 1}, {"created_at", 1}},

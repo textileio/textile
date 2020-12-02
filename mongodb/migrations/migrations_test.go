@@ -141,7 +141,7 @@ func setup(t *testing.T, ctx context.Context) *mongo.Database {
 	uri := "mongodb://127.0.0.1:27017"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	require.NoError(t, err)
-	db := client.Database("test_migrations")
+	db := client.Database("test_textile_migrations")
 	t.Cleanup(func() {
 		err := db.Drop(ctx)
 		require.NoError(t, err)
