@@ -46,7 +46,7 @@ type Service struct {
 	Threads             *threads.Client
 	ThreadsNet          *netclient.Client
 	GatewayURL          string
-	EmailClient         *email.Client
+	EmailClient         *email.Email
 	EmailSessionBus     *broadcast.Broadcaster
 	EmailSessionSecret  string
 	IPFSClient          iface.CoreAPI
@@ -81,7 +81,8 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, s.GatewayURL, secret); err != nil {
+	if err := s.EmailClient.ConfirmAddress(ectx, req.Username, req.Email, s.GatewayURL, secret); err != nil {
+		log.Error(err)
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -166,7 +167,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.EmailClient.ConfirmAddress(ectx, dev.Email, s.GatewayURL, secret); err != nil {
+	if err = s.EmailClient.ConfirmAddress(ectx, dev.Username, dev.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {

@@ -99,11 +99,15 @@ var (
 			},
 			"emailFrom": {
 				Key:      "email.from",
-				DefValue: "Hub <verify@email.textile.io>",
+				DefValue: "hub@textile.io",
 			},
-			"emailDomain": {
-				Key:      "email.domain",
-				DefValue: "email.textile.io",
+			"emailInviteTmpl": {
+				Key:      "email.invite_template",
+				DefValue: "d-c65718122962460b8fc991c253a76a1a",
+			},
+			"emailConfirmTmpl": {
+				Key:      "email.confirm_template",
+				DefValue: "d-051bf0a3bd144bd4a693b61203cd197a",
 			},
 			"emailApiKey": {
 				Key:      "email.api_key",
@@ -231,9 +235,13 @@ func init() {
 		config.Flags["emailFrom"].DefValue.(string),
 		"Source address of system emails")
 	rootCmd.PersistentFlags().String(
-		"emailDomain",
-		config.Flags["emailDomain"].DefValue.(string),
-		"Domain of system emails")
+		"emailConfirmTmpl",
+		config.Flags["emailConfirmTmpl"].DefValue.(string),
+		"Template ID for confirmation emails")
+	rootCmd.PersistentFlags().String(
+		"emailInviteTmpl",
+		config.Flags["emailInviteTmpl"].DefValue.(string),
+		"Template ID for invite emails")
 	rootCmd.PersistentFlags().String(
 		"emailApiKey",
 		config.Flags["emailApiKey"].DefValue.(string),
@@ -318,7 +326,9 @@ var rootCmd = &cobra.Command{
 		dnsToken := config.Viper.GetString("dns.token")
 
 		emailFrom := config.Viper.GetString("email.from")
-		emailDomain := config.Viper.GetString("email.domain")
+		emailConfirmTmpl := config.Viper.GetString("email.confirm_template")
+		emailInviteTmpl := config.Viper.GetString("email.invite_template")
+
 		emailApiKey := config.Viper.GetString("email.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
@@ -362,7 +372,8 @@ var rootCmd = &cobra.Command{
 			DNSToken:  dnsToken,
 
 			EmailFrom:          emailFrom,
-			EmailDomain:        emailDomain,
+			EmailConfirmTmpl:   emailConfirmTmpl,
+			EmailInviteTmpl:    emailInviteTmpl,
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
 
