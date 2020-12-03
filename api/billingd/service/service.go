@@ -480,7 +480,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.NewUpdate(doc.Key, doc.Email, map[string]interface{}{
+	go s.analytics.Update(doc.Key, doc.Email, map[string]interface{}{
 		"parent_key":   doc.ParentKey,
 		"customer_id":  doc.CustomerID,
 		"account_type": doc.AccountType,
@@ -942,9 +942,8 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			product.Key + "_usage":      total,
 			product.Key + "_units":      product.Units,
 			product.Key + "_free_quota": product.FreeQuotaSize,
-			"grace_period_start":        s.analytics.FormatTime(cus.GracePeriodStart),
 		}
-		go s.analytics.NewUpdate(cus.Key, cus.Email, summary)
+		go s.analytics.Update(cus.Key, cus.Email, summary)
 
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
@@ -991,7 +990,7 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
-		go s.analytics.NewEvent(doc.Key, "report_usage", map[string]interface{}{
+		go s.analytics.Update(doc.Key, doc.Email, map[string]interface{}{
 			"billable":             doc.Billable,
 			"delinquent":           doc.Delinquent,
 			"grace_period_start":   s.analytics.FormatTime(doc.GracePeriodStart),
