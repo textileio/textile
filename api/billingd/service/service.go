@@ -480,7 +480,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.NewUser(doc.Key, doc.Email, map[string]interface{}{
+	go s.analytics.NewUpdate(doc.Key, doc.Email, map[string]interface{}{
 		"parent_key":   doc.ParentKey,
 		"customer_id":  doc.CustomerID,
 		"account_type": doc.AccountType,
@@ -820,7 +820,6 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	if _, err := s.cdb.DeleteOne(ctx, bson.M{"_id": req.Key}); err != nil {
 		return nil, err
 	}
-
 	log.Debugf("deleted customer %s", req.Key)
 	return &pb.DeleteCustomerResponse{}, nil
 }
@@ -939,13 +938,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		now := time.Now().Unix()
 
 		summary := map[string]interface{}{
-			"product_key":        product.Key,
-			"product_name":       product.Name,
-			"product_units":      product.Units,
-			"product_usage":      fmt.Sprint(total),
-			"product_free_quota": fmt.Sprint(product.FreeQuotaSize),
-			"grace_period_start": s.analytics.FormatTime(cus.GracePeriodStart),
+			product.Key + "_name":       product.Name,
+			product.Key + "_usage":      total,
+			product.Key + "_units":      product.Units,
+			product.Key + "_free_quota": product.FreeQuotaSize,
+			"grace_period_start":        s.analytics.FormatTime(cus.GracePeriodStart),
 		}
+		go s.analytics.NewUpdate(cus.Key, cus.Email, summary)
 
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now

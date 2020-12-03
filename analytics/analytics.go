@@ -39,8 +39,8 @@ func NewClient(segmentApiKey, prefix string, debug bool) (*Client, error) {
 	return client, err
 }
 
-// NewUser sets up a user for lifecycle events
-func (c *Client) NewUser(userId, email string, properties map[string]interface{}) {
+// NewUpdate updates the user metadata
+func (c *Client) NewUpdate(userId, email string, properties map[string]interface{}) {
 	if c.api != nil {
 		traits := analytics.NewTraits()
 		for key, value := range properties {
@@ -60,7 +60,7 @@ func (c *Client) NewUser(userId, email string, properties map[string]interface{}
 }
 
 // NewEvent logs a new event
-func (c *Client) NewEvent(userId string, eventName string, properties map[string]interface{}) {
+func (c *Client) NewEvent(userId, eventName string, properties map[string]interface{}) {
 	if c.api != nil {
 		props := analytics.NewProperties()
 		for key, value := range properties {
