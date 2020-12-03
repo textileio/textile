@@ -121,7 +121,6 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		"username":     dev.Username,
 		"account_type": dev.Type,
 		"name":         dev.Name,
-		"last_seen":    s.Analytics.FormatTime(time.Now().UnixNano()),
 	})
 
 	// Check for pending invites
@@ -197,7 +196,6 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		"username":     dev.Username,
 		"account_type": dev.Type,
 		"name":         dev.Name,
-		"last_seen":    s.Analytics.FormatTime(time.Now().UnixNano()),
 	})
 
 	return &pb.SigninResponse{
