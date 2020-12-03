@@ -948,11 +948,11 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
-			go s.analytics.NewEvent(cus.Key, "grace_period_start", summary)
+			go s.analytics.NewEvent(cus.Key, "grace_period_start", false, summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
-			go s.analytics.NewEvent(cus.Key, "grace_period_end", summary)
+			go s.analytics.NewEvent(cus.Key, "grace_period_end", false, summary)
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}

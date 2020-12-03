@@ -420,7 +420,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), "create_org", map[string]interface{}{
+	go s.Analytics.NewEvent(account.User.Key.String(), "create_org", true, map[string]interface{}{
 		"org_name": org.Name,
 		"org_key":  org.Key.String(),
 	})
@@ -555,7 +555,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		return nil, err
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), "invite_to_org", map[string]interface{}{
+	go s.Analytics.NewEvent(account.User.Key.String(), "invite_to_org", true, map[string]interface{}{
 		"org_name":    account.Org.Name,
 		"org_key":     account.Org.Key.String(),
 		"org_invitee": req.Email,
@@ -604,7 +604,7 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 		return nil, err
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), "setup_billing", map[string]interface{}{})
+	go s.Analytics.NewEvent(account.User.Key.String(), "setup_billing", true, map[string]interface{}{})
 
 	return &pb.SetupBillingResponse{}, nil
 }
@@ -686,7 +686,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 		return nil, err
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), "destroy_account", map[string]interface{}{})
+	go s.Analytics.NewEvent(account.User.Key.String(), "destroy_account", true, map[string]interface{}{})
 
 	return &pb.DestroyAccountResponse{}, nil
 }

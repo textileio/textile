@@ -65,7 +65,7 @@ func (c *Client) Update(userId, email string, active bool, properties map[string
 }
 
 // NewEvent logs a new event
-func (c *Client) NewEvent(userId, eventName string, properties map[string]interface{}) {
+func (c *Client) NewEvent(userId, eventName string, active bool, properties map[string]interface{}) {
 	if c.api != nil {
 		props := analytics.NewProperties()
 		for key, value := range properties {
@@ -76,6 +76,11 @@ func (c *Client) NewEvent(userId, eventName string, properties map[string]interf
 			UserId:     userId,
 			Event:      eventName,
 			Properties: props,
+			Context: &analytics.Context{
+				Extra: map[string]interface{}{
+					"active": active,
+				},
+			},
 		}); err != nil {
 			log.Error("segmenting new event: %v", err)
 		}
