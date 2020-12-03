@@ -117,6 +117,14 @@ var (
 				Key:      "email.session_secret",
 				DefValue: "",
 			},
+			"segmentApiKey": {
+				Key:      "segment.api_key",
+				DefValue: "",
+			},
+			"segmentPrefix": {
+				Key:      "segment.prefix",
+				DefValue: "",
+			},
 			"bucketsMaxSize": {
 				Key:      "buckets.max_size",
 				DefValue: int64(4 * gib),
@@ -251,6 +259,16 @@ func init() {
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
 
+	// Analytics service
+	rootCmd.PersistentFlags().String(
+		"segmentApiKey",
+		config.Flags["segmentApiKey"].DefValue.(string),
+		"Segment API key")
+	rootCmd.PersistentFlags().String(
+		"segmentPrefix",
+		config.Flags["segmentPrefix"].DefValue.(string),
+		"Segment trait source prefix")
+
 	// Bucket settings
 	rootCmd.PersistentFlags().Int64(
 		"bucketsMaxSize",
@@ -332,6 +350,9 @@ var rootCmd = &cobra.Command{
 		emailApiKey := config.Viper.GetString("email.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
+		segmentApiKey := config.Viper.GetString("segment.api_key")
+		segmentPrefix := config.Viper.GetString("segment.prefix")
+
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
 
@@ -376,6 +397,9 @@ var rootCmd = &cobra.Command{
 			EmailInviteTmpl:    emailInviteTmpl,
 			EmailAPIKey:        emailApiKey,
 			EmailSessionSecret: emailSessionSecret,
+
+			SegmentAPIKey: segmentApiKey,
+			SegmentPrefix: segmentPrefix,
 
 			MaxBucketSize:            bucketsMaxSize,
 			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,

@@ -1,6 +1,8 @@
 package analytics
 
 import (
+	"time"
+
 	logging "github.com/ipfs/go-log"
 	"gopkg.in/segmentio/analytics-go.v3"
 	segment "gopkg.in/segmentio/analytics-go.v3"
@@ -12,35 +14,39 @@ var (
 
 // Client uses segment to trigger life-cycle emails (quota, billing, etc).
 type Client struct {
-	api   segment.Client
-	debug bool
+	api    segment.Client
+	prefix string
+	debug  bool
 }
 
 // NewClient return a segment client.
-func NewClient(segmentAPIKey string, debug bool) (*Client, error) {
+func NewClient(segmentApiKey, prefix string, debug bool) (*Client, error) {
 	var api segment.Client
 	var err error
-	if segmentAPIKey != "" {
+	if segmentApiKey != "" {
 		config := segment.Config{
 			Verbose: debug,
 		}
-		api, err = segment.NewWithConfig(segmentAPIKey, config)
+		api, err = segment.NewWithConfig(segmentApiKey, config)
 	}
 
 	client := &Client{
-		api: api,
+		api:    api,
+		prefix: prefix,
+		debug:  debug,
 	}
 
 	return client, err
 }
 
 // NewUser sets up a user for lifecycle events
-func (c *Client) NewUser(userId string, email string, properties map[string]string) {
+func (c *Client) NewUser(userId, email string, properties map[string]interface{}) {
 	if c.api != nil {
 		traits := analytics.NewTraits()
 		for key, value := range properties {
 			traits.Set(key, value)
 		}
+		traits.Set(c.prefix+"signup", "true")
 		if email != "" {
 			traits.SetEmail(email)
 		}
@@ -54,7 +60,7 @@ func (c *Client) NewUser(userId string, email string, properties map[string]stri
 }
 
 // NewEvent logs a new event
-func (c *Client) NewEvent(userId string, eventName string, properties map[string]string) {
+func (c *Client) NewEvent(userId string, eventName string, properties map[string]interface{}) {
 	if c.api != nil {
 		props := analytics.NewProperties()
 		for key, value := range properties {
@@ -69,4 +75,8 @@ func (c *Client) NewEvent(userId string, eventName string, properties map[string
 			log.Error("segmenting new event: %v", err)
 		}
 	}
+}
+
+func (c *Client) FormatTime(nanos int64) string {
+	return time.Unix(0, nanos).Format(time.RFC3339)
 }

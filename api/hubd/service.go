@@ -16,6 +16,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/api/client"
+	"github.com/textileio/textile/v2/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
@@ -54,6 +55,7 @@ type Service struct {
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
+	Analytics           *analytics.Client
 }
 
 // Info provides the currently running API's build information
@@ -114,6 +116,12 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
 		return nil, err
 	}
+
+	go s.Analytics.NewUser(dev.Key.String(), dev.Email, map[string]interface{}{
+		"username":     dev.Username,
+		"account_type": dev.Type,
+		"name":         dev.Name,
+	})
 
 	// Check for pending invites
 	invites, err := s.Collections.Invites.ListByEmail(ctx, dev.Email)
@@ -183,6 +191,9 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	if err != nil {
 		return nil, err
 	}
+
+	go s.Analytics.NewEvent(dev.Key.String(), "signin", map[string]interface{}{})
+
 	return &pb.SigninResponse{
 		Key:     key,
 		Session: session.ID,
@@ -300,6 +311,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
 	}
+
 	return &pb.CreateKeyResponse{
 		KeyInfo: &pb.KeyInfo{
 			Key:     key.Key,
@@ -403,6 +415,12 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
 	}
+
+	go s.Analytics.NewEvent(account.User.Key.String(), "create_org", map[string]interface{}{
+		"org_name": org.Name,
+		"org_key":  org.Key.String(),
+	})
+
 	return &pb.CreateOrgResponse{
 		OrgInfo: orgInfo,
 	}, nil
@@ -532,6 +550,13 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		ectx, account.Org.Name, account.User.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
+
+	go s.Analytics.NewEvent(account.User.Key.String(), "invite_to_org", map[string]interface{}{
+		"org_name":    account.Org.Name,
+		"org_key":     account.Org.Key.String(),
+		"org_invitee": req.Email,
+	})
+
 	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
 }
 
@@ -574,6 +599,9 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	); err != nil {
 		return nil, err
 	}
+
+	go s.Analytics.NewEvent(account.User.Key.String(), "setup_billing", map[string]interface{}{})
+
 	return &pb.SetupBillingResponse{}, nil
 }
 
@@ -653,6 +681,9 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	if err := s.destroyAccount(ctx, account.User); err != nil {
 		return nil, err
 	}
+
+	go s.Analytics.NewEvent(account.User.Key.String(), "destroy_account", map[string]interface{}{})
+
 	return &pb.DestroyAccountResponse{}, nil
 }
 

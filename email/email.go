@@ -86,6 +86,9 @@ func (sg *Email) getBody(template_id, to_email string, group_id int, template_da
 
 // ConfirmAddress sends a confirmation link to a recipient.
 func (sg *Email) ConfirmAddress(ctx context.Context, username, email, url, secret string) error {
+	if sg.apiKey == "" {
+		return nil
+	}
 	link := fmt.Sprintf("%s/confirm/%s", url, secret)
 	request := sendgrid.GetRequest(sg.apiKey, sg.path, sg.host)
 	request.Method = "POST"
@@ -101,6 +104,9 @@ func (sg *Email) ConfirmAddress(ctx context.Context, username, email, url, secre
 
 // ConfirmAddress sends a confirmation link to a recipient.
 func (sg *Email) InviteAddress(ctx context.Context, org, email, to, url, secret string) error {
+	if sg.apiKey == "" {
+		return nil
+	}
 	link := fmt.Sprintf("%s/confirm/%s", url, secret)
 	request := sendgrid.GetRequest(sg.apiKey, sg.path, sg.host)
 	request.Method = "POST"

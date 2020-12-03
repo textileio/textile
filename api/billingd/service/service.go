@@ -84,7 +84,7 @@ var Products = []Product{
 		Name:                     "Stored data",
 		Price:                    0.03 / gib,
 		PriceType:                PriceTypeTemporal,
-		FreeQuotaSize:            5 * gib,
+		FreeQuotaSize:            5 * mib,
 		FreeQuotaGracePeriodSize: 1000 * gib,
 		FreeQuotaInterval:        FreeQuotaMonthly,
 		Units:                    "bytes",
@@ -226,7 +226,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	// Configure analytics client
-	ac, err := analytics.NewClient(config.SegmentAPIKey, config.Debug)
+	ac, err := analytics.NewClient(config.SegmentAPIKey, config.SegmentPrefix, config.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -480,11 +480,10 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.NewUser(doc.Key, doc.Email, map[string]string{
-		"parent_key":                      doc.ParentKey,
-		"customer_id":                     doc.CustomerID,
-		"account_type":                    fmt.Sprint(doc.AccountType),
-		s.config.SegmentPrefix + "signup": "true",
+	go s.analytics.NewEvent(doc.Key, "customer_setup", map[string]interface{}{
+		"parent_key":   doc.ParentKey,
+		"customer_id":  doc.CustomerID,
+		"account_type": doc.AccountType,
 	})
 
 	return doc, nil
@@ -821,6 +820,7 @@ func (s *Service) DeleteCustomer(ctx context.Context, req *pb.DeleteCustomerRequ
 	if _, err := s.cdb.DeleteOne(ctx, bson.M{"_id": req.Key}); err != nil {
 		return nil, err
 	}
+
 	log.Debugf("deleted customer %s", req.Key)
 	return &pb.DeleteCustomerResponse{}, nil
 }
@@ -937,12 +937,24 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
+
+		summary := map[string]interface{}{
+			"product_key":        product.Key,
+			"product_name":       product.Name,
+			"product_units":      product.Units,
+			"product_usage":      fmt.Sprint(total),
+			"product_free_quota": fmt.Sprint(product.FreeQuotaSize),
+			"grace_period_start": s.analytics.FormatTime(cus.GracePeriodStart),
+		}
+
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
+			go s.analytics.NewEvent(cus.Key, "grace_period_start", summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
+			go s.analytics.NewEvent(cus.Key, "grace_period_end", summary)
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -980,12 +992,12 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
-		go s.analytics.NewEvent(doc.Key, "billing", map[string]string{
-			"billable":             fmt.Sprint(doc.Billable),
-			"delinquent":           fmt.Sprint(doc.Delinquent),
-			"grace_period_start":   fmt.Sprint(doc.GracePeriodStart),
-			"invoice_period_end":   fmt.Sprint(doc.InvoicePeriod.UnixEnd),
-			"invoice_period_start": fmt.Sprint(doc.InvoicePeriod.UnixStart),
+		go s.analytics.NewEvent(doc.Key, "report_usage", map[string]interface{}{
+			"billable":             doc.Billable,
+			"delinquent":           doc.Delinquent,
+			"grace_period_start":   s.analytics.FormatTime(doc.GracePeriodStart),
+			"invoice_period_end":   s.analytics.FormatTime(doc.InvoicePeriod.UnixEnd),
+			"invoice_period_start": s.analytics.FormatTime(doc.InvoicePeriod.UnixStart),
 			"subscription_status":  doc.SubscriptionStatus,
 		})
 		if err := s.reportCustomerUsage(ctx, &doc); err != nil {

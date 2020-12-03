@@ -21,6 +21,7 @@ services:
       - HUB_EMAIL_SESSION_SECRET=hubsession
       - HUB_EMAIL_API_KEY
       - HUB_SEGMENT_API_KEY
+      - HUB_SEGMENT_PREFIX
       - HUB_BUCKETS_MAX_SIZE
       - HUB_THREADS_MAX_NUMBER_PER_OWNER
     ports:
