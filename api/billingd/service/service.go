@@ -480,7 +480,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.NewEvent(doc.Key, "customer_setup", map[string]interface{}{
+	go s.analytics.NewUser(doc.Key, doc.Email, map[string]interface{}{
 		"parent_key":   doc.ParentKey,
 		"customer_id":  doc.CustomerID,
 		"account_type": doc.AccountType,
