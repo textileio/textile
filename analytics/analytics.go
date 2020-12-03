@@ -40,7 +40,7 @@ func NewClient(segmentApiKey, prefix string, debug bool) (*Client, error) {
 }
 
 // Update updates the user metadata
-func (c *Client) Update(userId, email string, properties map[string]interface{}) {
+func (c *Client) Update(userId, email string, active bool, properties map[string]interface{}) {
 	if c.api != nil {
 		traits := analytics.NewTraits()
 		for key, value := range properties {
@@ -53,6 +53,11 @@ func (c *Client) Update(userId, email string, properties map[string]interface{})
 		if err := c.api.Enqueue(segment.Identify{
 			UserId: userId,
 			Traits: traits,
+			Context: &analytics.Context{
+				Extra: map[string]interface{}{
+					"active": active,
+				},
+			},
 		}); err != nil {
 			log.Error("segmenting new customer: %v", err)
 		}

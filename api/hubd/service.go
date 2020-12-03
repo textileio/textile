@@ -117,7 +117,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 		return nil, err
 	}
 
-	go s.Analytics.Update(dev.Key.String(), dev.Email, map[string]interface{}{
+	go s.Analytics.Update(dev.Key.String(), dev.Email, true, map[string]interface{}{
 		"username":     dev.Username,
 		"account_type": dev.Type,
 		"name":         dev.Name,
@@ -192,7 +192,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, err
 	}
 
-	go s.Analytics.Update(dev.Key.String(), dev.Email, map[string]interface{}{
+	go s.Analytics.Update(dev.Key.String(), dev.Email, true, map[string]interface{}{
 		"username":     dev.Username,
 		"account_type": dev.Type,
 		"name":         dev.Name,
