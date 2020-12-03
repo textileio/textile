@@ -84,7 +84,7 @@ var Products = []Product{
 		Name:                     "Stored data",
 		Price:                    0.03 / gib,
 		PriceType:                PriceTypeTemporal,
-		FreeQuotaSize:            5 * mib,
+		FreeQuotaSize:            5 * gib,
 		FreeQuotaGracePeriodSize: 1000 * gib,
 		FreeQuotaInterval:        FreeQuotaMonthly,
 		Units:                    "bytes",
