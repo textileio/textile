@@ -316,6 +316,8 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
 	}
 
+	go s.Analytics.NewEvent(account.User.Key.String(), "create_key", true, map[string]interface{}{})
+
 	return &pb.CreateKeyResponse{
 		KeyInfo: &pb.KeyInfo{
 			Key:     key.Key,
