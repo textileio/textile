@@ -70,7 +70,7 @@ func (sg *Email) ConfirmAddress(ctx context.Context, id, username, email, url, s
 	return err
 }
 
-// ConfirmAddress sends a confirmation link to a recipient.
+// InviteAddress sends a confirmation link to a recipient.
 func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, token string) error {
 	if sg.client == nil {
 		log.Debug("Skipping email send")
