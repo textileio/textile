@@ -71,7 +71,7 @@ func Init(rootCmd *cobra.Command) {
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
-	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd)
+	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filSignCmd, filVerifyCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd)
 	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd, billingUsersCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)

@@ -85,6 +85,8 @@ var (
 		powergateServiceName: {
 			"Addresses",
 			"Balance",
+			"SignMessage",
+			"VerifyMessage",
 			"CidInfo",
 			"StorageDealRecords",
 			"RetrievalDealRecords",

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/hex"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -58,6 +59,56 @@ var filBalanceCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
+	},
+}
+
+var filSignCmd = &cobra.Command{
+	Use:   "sign [hex-encoded-message]",
+	Short: "Signs a message with user wallet addresses.",
+	Long:  "Signs a message using all wallet addresses associated with the user",
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+
+		b, err := hex.DecodeString(args[0])
+		cmd.ErrCheck(err)
+
+		res, err := clients.Filecoin.Addresses(ctx)
+		cmd.ErrCheck(err)
+
+		data := make([][]string, len(res.Addresses))
+		for i, a := range res.Addresses {
+			signRes, err := clients.Filecoin.SignMessage(ctx, a.Address, b)
+			cmd.ErrCheck(err)
+			data[i] = []string{a.Address, hex.EncodeToString(signRes.Signature)}
+		}
+
+		cmd.RenderTable([]string{"address", "signature"}, data)
+	},
+}
+
+var filVerifyCmd = &cobra.Command{
+	Use:   "verify [addr] [hex-encoded-message] [hex-encoded-signature]",
+	Short: "Verifies the signature of a message signed with a user wallet address.",
+	Long:  "Verifies the signature of a message signed with a user wallet address.",
+	Args:  cobra.ExactArgs(3),
+	Run: func(c *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		defer cancel()
+
+		mb, err := hex.DecodeString(args[1])
+		cmd.ErrCheck(err)
+		sb, err := hex.DecodeString(args[2])
+		cmd.ErrCheck(err)
+
+		res, err := clients.Filecoin.VerifyMessage(ctx, args[0], mb, sb)
+		cmd.ErrCheck(err)
+
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+
 		cmd.Success("\n%v", string(json))
 	},
 }
