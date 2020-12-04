@@ -41,13 +41,15 @@ func NewClient(segmentApiKey, prefix string, debug bool) (*Client, error) {
 
 // Update updates the user metadata
 func (c *Client) Update(userId, email string, active bool, properties map[string]interface{}) {
-	if c.api != nil && email != "" {
+	if c.api != nil {
 		traits := analytics.NewTraits()
-		traits.SetEmail(email)
 		for key, value := range properties {
 			traits.Set(key, value)
 		}
 		traits.Set(c.prefix+"signup", "true")
+		if email != "" {
+			traits.SetEmail(email)
+		}
 		if err := c.api.Enqueue(segment.Identify{
 			UserId: userId,
 			Traits: traits,
