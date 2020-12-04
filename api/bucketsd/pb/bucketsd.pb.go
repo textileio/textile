@@ -92,7 +92,6 @@ const (
 	ArchiveStatus_ARCHIVE_STATUS_SUCCESS     ArchiveStatus = 5
 )
 
-<<<<<<< HEAD
 // Enum value maps for ArchiveStatus.
 var (
 	ArchiveStatus_name = map[int32]string{
@@ -115,33 +114,10 @@ var (
 
 func (x ArchiveStatus) Enum() *ArchiveStatus {
 	p := new(ArchiveStatus)
-=======
-// Enum value maps for ArchiveStatusResponse_Status.
-var (
-	ArchiveStatusResponse_Status_name = map[int32]string{
-		0: "STATUS_UNSPECIFIED",
-		1: "STATUS_EXECUTING",
-		2: "STATUS_FAILED",
-		3: "STATUS_DONE",
-		4: "STATUS_CANCELED",
-	}
-	ArchiveStatusResponse_Status_value = map[string]int32{
-		"STATUS_UNSPECIFIED": 0,
-		"STATUS_EXECUTING":   1,
-		"STATUS_FAILED":      2,
-		"STATUS_DONE":        3,
-		"STATUS_CANCELED":    4,
-	}
-)
-
-func (x ArchiveStatusResponse_Status) Enum() *ArchiveStatusResponse_Status {
-	p := new(ArchiveStatusResponse_Status)
->>>>>>> chore(build): add grpc-js builds for protos
 	*p = x
 	return p
 }
 
-<<<<<<< HEAD
 func (x ArchiveStatus) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
@@ -161,27 +137,6 @@ func (x ArchiveStatus) Number() protoreflect.EnumNumber {
 // Deprecated: Use ArchiveStatus.Descriptor instead.
 func (ArchiveStatus) EnumDescriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{1}
-=======
-func (x ArchiveStatusResponse_Status) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ArchiveStatusResponse_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_bucketsd_pb_bucketsd_proto_enumTypes[1].Descriptor()
-}
-
-func (ArchiveStatusResponse_Status) Type() protoreflect.EnumType {
-	return &file_api_bucketsd_pb_bucketsd_proto_enumTypes[1]
-}
-
-func (x ArchiveStatusResponse_Status) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ArchiveStatusResponse_Status.Descriptor instead.
-func (ArchiveStatusResponse_Status) EnumDescriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{40, 0}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 type Metadata struct {
@@ -1173,7 +1128,6 @@ type PushPathRequest_Chunk struct {
 }
 
 func (*PushPathRequest_Header_) isPushPathRequest_Payload() {}
-<<<<<<< HEAD
 
 func (*PushPathRequest_Chunk) isPushPathRequest_Payload() {}
 
@@ -1250,36 +1204,6 @@ func (*PullPathRequest) ProtoMessage() {}
 
 func (x *PullPathRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[17]
-=======
-
-func (*PushPathRequest_Chunk) isPushPathRequest_Payload() {}
-
-type PushPathResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Event *PushPathResponse_Event `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
-}
-
-func (x *PushPathResponse) Reset() {
-	*x = PushPathResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[16]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PushPathResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PushPathResponse) ProtoMessage() {}
-
-func (x *PushPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[16]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1288,7 +1212,6 @@ func (x *PushPathResponse) ProtoReflect() protoreflect.Message {
 		return ms
 	}
 	return mi.MessageOf(x)
-<<<<<<< HEAD
 }
 
 // Deprecated: Use PullPathRequest.ProtoReflect.Descriptor instead.
@@ -1324,22 +1247,9 @@ func (x *PullPathResponse) Reset() {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
-=======
-}
-
-// Deprecated: Use PushPathResponse.ProtoReflect.Descriptor instead.
-func (*PushPathResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *PushPathResponse) GetEvent() *PushPathResponse_Event {
-	if x != nil {
-		return x.Event
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 }
 
-<<<<<<< HEAD
 func (x *PullPathResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
@@ -1382,27 +1292,11 @@ func (x *PullIpfsPathRequest) Reset() {
 	*x = PullIpfsPathRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[19]
-=======
-type PullPathRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-}
-
-func (x *PullPathRequest) Reset() {
-	*x = PullPathRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[17]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-<<<<<<< HEAD
 func (x *PullIpfsPathRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
@@ -1411,16 +1305,6 @@ func (*PullIpfsPathRequest) ProtoMessage() {}
 
 func (x *PullIpfsPathRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[19]
-=======
-func (x *PullPathRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullPathRequest) ProtoMessage() {}
-
-func (x *PullPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[17]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1431,7 +1315,6 @@ func (x *PullPathRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-<<<<<<< HEAD
 // Deprecated: Use PullIpfsPathRequest.ProtoReflect.Descriptor instead.
 func (*PullIpfsPathRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{19}
@@ -1458,27 +1341,9 @@ func (x *PullIpfsPathResponse) Reset() {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
-=======
-// Deprecated: Use PullPathRequest.ProtoReflect.Descriptor instead.
-func (*PullPathRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *PullPathRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *PullPathRequest) GetPath() string {
-	if x != nil {
-		return x.Path
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 }
 
-<<<<<<< HEAD
 func (x *PullIpfsPathResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
@@ -1536,33 +1401,6 @@ func (*SetPathRequest) ProtoMessage() {}
 
 func (x *SetPathRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[21]
-=======
-type PullPathResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Chunk []byte `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
-}
-
-func (x *PullPathResponse) Reset() {
-	*x = PullPathResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[18]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PullPathResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullPathResponse) ProtoMessage() {}
-
-func (x *PullPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[18]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1573,7 +1411,6 @@ func (x *PullPathResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-<<<<<<< HEAD
 // Deprecated: Use SetPathRequest.ProtoReflect.Descriptor instead.
 func (*SetPathRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{21}
@@ -1589,21 +1426,10 @@ func (x *SetPathRequest) GetKey() string {
 func (x *SetPathRequest) GetPath() string {
 	if x != nil {
 		return x.Path
-=======
-// Deprecated: Use PullPathResponse.ProtoReflect.Descriptor instead.
-func (*PullPathResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *PullPathResponse) GetChunk() []byte {
-	if x != nil {
-		return x.Chunk
->>>>>>> chore(build): add grpc-js builds for protos
 	}
-	return nil
+	return ""
 }
 
-<<<<<<< HEAD
 func (x *SetPathRequest) GetCid() string {
 	if x != nil {
 		return x.Cid
@@ -1623,26 +1449,11 @@ func (x *SetPathResponse) Reset() {
 	*x = SetPathResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[22]
-=======
-type PullIpfsPathRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-}
-
-func (x *PullIpfsPathRequest) Reset() {
-	*x = PullIpfsPathRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[19]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-<<<<<<< HEAD
 func (x *SetPathResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
@@ -1651,16 +1462,6 @@ func (*SetPathResponse) ProtoMessage() {}
 
 func (x *SetPathResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[22]
-=======
-func (x *PullIpfsPathRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullIpfsPathRequest) ProtoMessage() {}
-
-func (x *PullIpfsPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[19]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1669,7 +1470,6 @@ func (x *PullIpfsPathRequest) ProtoReflect() protoreflect.Message {
 		return ms
 	}
 	return mi.MessageOf(x)
-<<<<<<< HEAD
 }
 
 // Deprecated: Use SetPathResponse.ProtoReflect.Descriptor instead.
@@ -1715,23 +1515,10 @@ func (x *RemoveRequest) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-}
-
-// Deprecated: Use PullIpfsPathRequest.ProtoReflect.Descriptor instead.
-func (*PullIpfsPathRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *PullIpfsPathRequest) GetPath() string {
-	if x != nil {
-		return x.Path
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return mi.MessageOf(x)
 }
 
-<<<<<<< HEAD
 // Deprecated: Use RemoveRequest.ProtoReflect.Descriptor instead.
 func (*RemoveRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{23}
@@ -1775,56 +1562,10 @@ func (x *RemoveResponse) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type PullIpfsPathResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Chunk []byte `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
-}
-
-func (x *PullIpfsPathResponse) Reset() {
-	*x = PullIpfsPathResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[20]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PullIpfsPathResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullIpfsPathResponse) ProtoMessage() {}
-
-func (x *PullIpfsPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[20]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PullIpfsPathResponse.ProtoReflect.Descriptor instead.
-func (*PullIpfsPathResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *PullIpfsPathResponse) GetChunk() []byte {
-	if x != nil {
-		return x.Chunk
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use RemoveResponse.ProtoReflect.Descriptor instead.
 func (*RemoveResponse) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{24}
@@ -1851,28 +1592,11 @@ func (x *RemovePathRequest) Reset() {
 	*x = RemovePathRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[25]
-=======
-type SetPathRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Cid  string `protobuf:"bytes,3,opt,name=cid,proto3" json:"cid,omitempty"`
-}
-
-func (x *SetPathRequest) Reset() {
-	*x = SetPathRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[21]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-<<<<<<< HEAD
 func (x *RemovePathRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
@@ -1881,16 +1605,6 @@ func (*RemovePathRequest) ProtoMessage() {}
 
 func (x *RemovePathRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[25]
-=======
-func (x *SetPathRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetPathRequest) ProtoMessage() {}
-
-func (x *SetPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[21]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1901,61 +1615,37 @@ func (x *SetPathRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-<<<<<<< HEAD
 // Deprecated: Use RemovePathRequest.ProtoReflect.Descriptor instead.
 func (*RemovePathRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *RemovePathRequest) GetKey() string {
-=======
-// Deprecated: Use SetPathRequest.ProtoReflect.Descriptor instead.
-func (*SetPathRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *SetPathRequest) GetKey() string {
->>>>>>> chore(build): add grpc-js builds for protos
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *RemovePathRequest) GetPath() string {
-=======
-func (x *SetPathRequest) GetPath() string {
->>>>>>> chore(build): add grpc-js builds for protos
 	if x != nil {
 		return x.Path
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *RemovePathRequest) GetRoot() string {
 	if x != nil {
 		return x.Root
-=======
-func (x *SetPathRequest) GetCid() string {
-	if x != nil {
-		return x.Cid
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 type RemovePathResponse struct {
-=======
-type SetPathResponse struct {
->>>>>>> chore(build): add grpc-js builds for protos
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-<<<<<<< HEAD
 	Root   *Root `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
 	Pinned int64 `protobuf:"varint,2,opt,name=pinned,proto3" json:"pinned,omitempty"`
 }
@@ -1983,51 +1673,10 @@ func (x *RemovePathResponse) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-	Pinned int64 `protobuf:"varint,1,opt,name=pinned,proto3" json:"pinned,omitempty"`
-}
-
-func (x *SetPathResponse) Reset() {
-	*x = SetPathResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[22]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *SetPathResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetPathResponse) ProtoMessage() {}
-
-func (x *SetPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[22]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SetPathResponse.ProtoReflect.Descriptor instead.
-func (*SetPathResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *SetPathResponse) GetPinned() int64 {
-	if x != nil {
-		return x.Pinned
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use RemovePathResponse.ProtoReflect.Descriptor instead.
 func (*RemovePathResponse) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{26}
@@ -2080,56 +1729,10 @@ func (x *PushPathAccessRolesRequest) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type RemoveRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-}
-
-func (x *RemoveRequest) Reset() {
-	*x = RemoveRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[23]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemoveRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemoveRequest) ProtoMessage() {}
-
-func (x *RemoveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[23]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemoveRequest.ProtoReflect.Descriptor instead.
-func (*RemoveRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *RemoveRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use PushPathAccessRolesRequest.ProtoReflect.Descriptor instead.
 func (*PushPathAccessRolesRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{27}
@@ -2187,56 +1790,10 @@ func (x *PushPathAccessRolesResponse) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type RemoveResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Pinned int64 `protobuf:"varint,1,opt,name=pinned,proto3" json:"pinned,omitempty"`
-}
-
-func (x *RemoveResponse) Reset() {
-	*x = RemoveResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[24]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemoveResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemoveResponse) ProtoMessage() {}
-
-func (x *RemoveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[24]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemoveResponse.ProtoReflect.Descriptor instead.
-func (*RemoveResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *RemoveResponse) GetPinned() int64 {
-	if x != nil {
-		return x.Pinned
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use PushPathAccessRolesResponse.ProtoReflect.Descriptor instead.
 func (*PushPathAccessRolesResponse) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{28}
@@ -2281,58 +1838,10 @@ func (x *PullPathAccessRolesRequest) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type RemovePathRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Root string `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
-}
-
-func (x *RemovePathRequest) Reset() {
-	*x = RemovePathRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[25]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemovePathRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemovePathRequest) ProtoMessage() {}
-
-func (x *RemovePathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[25]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemovePathRequest.ProtoReflect.Descriptor instead.
-func (*RemovePathRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *RemovePathRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use PullPathAccessRolesRequest.ProtoReflect.Descriptor instead.
 func (*PullPathAccessRolesRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{29}
@@ -2341,38 +1850,22 @@ func (*PullPathAccessRolesRequest) Descriptor() ([]byte, []int) {
 func (x *PullPathAccessRolesRequest) GetKey() string {
 	if x != nil {
 		return x.Key
-=======
-func (x *RemovePathRequest) GetPath() string {
-	if x != nil {
-		return x.Path
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *PullPathAccessRolesRequest) GetPath() string {
 	if x != nil {
 		return x.Path
-=======
-func (x *RemovePathRequest) GetRoot() string {
-	if x != nil {
-		return x.Root
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 type PullPathAccessRolesResponse struct {
-=======
-type RemovePathResponse struct {
->>>>>>> chore(build): add grpc-js builds for protos
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-<<<<<<< HEAD
 	Roles map[string]PathAccessRole `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=api.bucketsd.pb.PathAccessRole"`
 }
 
@@ -2399,52 +1892,10 @@ func (x *PullPathAccessRolesResponse) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-	Root   *Root `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
-	Pinned int64 `protobuf:"varint,2,opt,name=pinned,proto3" json:"pinned,omitempty"`
-}
-
-func (x *RemovePathResponse) Reset() {
-	*x = RemovePathResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[26]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemovePathResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemovePathResponse) ProtoMessage() {}
-
-func (x *RemovePathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[26]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemovePathResponse.ProtoReflect.Descriptor instead.
-func (*RemovePathResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *RemovePathResponse) GetRoot() *Root {
-	if x != nil {
-		return x.Root
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use PullPathAccessRolesResponse.ProtoReflect.Descriptor instead.
 func (*PullPathAccessRolesResponse) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{30}
@@ -2453,16 +1904,10 @@ func (*PullPathAccessRolesResponse) Descriptor() ([]byte, []int) {
 func (x *PullPathAccessRolesResponse) GetRoles() map[string]PathAccessRole {
 	if x != nil {
 		return x.Roles
-=======
-func (x *RemovePathResponse) GetPinned() int64 {
-	if x != nil {
-		return x.Pinned
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return nil
 }
 
-<<<<<<< HEAD
 type ArchiveConfig struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2536,84 +1981,24 @@ func (x *ArchiveConfig) GetExcludedMiners() []string {
 func (x *ArchiveConfig) GetTrustedMiners() []string {
 	if x != nil {
 		return x.TrustedMiners
-=======
-type PushPathAccessRolesRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key   string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path  string                    `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Roles map[string]PathAccessRole `protobuf:"bytes,3,rep,name=roles,proto3" json:"roles,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=api.bucketsd.pb.PathAccessRole"`
-}
-
-func (x *PushPathAccessRolesRequest) Reset() {
-	*x = PushPathAccessRolesRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[27]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PushPathAccessRolesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PushPathAccessRolesRequest) ProtoMessage() {}
-
-func (x *PushPathAccessRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[27]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PushPathAccessRolesRequest.ProtoReflect.Descriptor instead.
-func (*PushPathAccessRolesRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *PushPathAccessRolesRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return nil
 }
 
-<<<<<<< HEAD
 func (x *ArchiveConfig) GetCountryCodes() []string {
 	if x != nil {
 		return x.CountryCodes
-=======
-func (x *PushPathAccessRolesRequest) GetPath() string {
-	if x != nil {
-		return x.Path
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return nil
 }
 
-<<<<<<< HEAD
 func (x *ArchiveConfig) GetRenew() *ArchiveRenew {
 	if x != nil {
 		return x.Renew
-=======
-func (x *PushPathAccessRolesRequest) GetRoles() map[string]PathAccessRole {
-	if x != nil {
-		return x.Roles
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return nil
 }
 
-<<<<<<< HEAD
 func (x *ArchiveConfig) GetAddr() string {
 	if x != nil {
 		return x.Addr
@@ -2680,56 +2065,10 @@ func (x *Archive) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type PushPathAccessRolesResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Pinned int64 `protobuf:"varint,1,opt,name=pinned,proto3" json:"pinned,omitempty"`
-}
-
-func (x *PushPathAccessRolesResponse) Reset() {
-	*x = PushPathAccessRolesResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[28]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PushPathAccessRolesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PushPathAccessRolesResponse) ProtoMessage() {}
-
-func (x *PushPathAccessRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[28]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PushPathAccessRolesResponse.ProtoReflect.Descriptor instead.
-func (*PushPathAccessRolesResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *PushPathAccessRolesResponse) GetPinned() int64 {
-	if x != nil {
-		return x.Pinned
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use Archive.ProtoReflect.Descriptor instead.
 func (*Archive) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{32}
@@ -2766,70 +2105,17 @@ func (x *Archive) GetAborted() bool {
 func (x *Archive) GetAbortedMsg() string {
 	if x != nil {
 		return x.AbortedMsg
-=======
-type PullPathAccessRolesRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-}
-
-func (x *PullPathAccessRolesRequest) Reset() {
-	*x = PullPathAccessRolesRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[29]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PullPathAccessRolesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullPathAccessRolesRequest) ProtoMessage() {}
-
-func (x *PullPathAccessRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[29]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PullPathAccessRolesRequest.ProtoReflect.Descriptor instead.
-func (*PullPathAccessRolesRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *PullPathAccessRolesRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *Archive) GetFailureMsg() string {
 	if x != nil {
 		return x.FailureMsg
-=======
-func (x *PullPathAccessRolesRequest) GetPath() string {
-	if x != nil {
-		return x.Path
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *Archive) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
@@ -2886,56 +2172,10 @@ func (x *DealInfo) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type PullPathAccessRolesResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Roles map[string]PathAccessRole `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=api.bucketsd.pb.PathAccessRole"`
-}
-
-func (x *PullPathAccessRolesResponse) Reset() {
-	*x = PullPathAccessRolesResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[30]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PullPathAccessRolesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PullPathAccessRolesResponse) ProtoMessage() {}
-
-func (x *PullPathAccessRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[30]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PullPathAccessRolesResponse.ProtoReflect.Descriptor instead.
-func (*PullPathAccessRolesResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{30}
-}
-
-func (x *PullPathAccessRolesResponse) GetRoles() map[string]PathAccessRole {
-	if x != nil {
-		return x.Roles
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use DealInfo.ProtoReflect.Descriptor instead.
 func (*DealInfo) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{33}
@@ -2951,182 +2191,73 @@ func (x *DealInfo) GetProposalCid() string {
 func (x *DealInfo) GetStateId() uint64 {
 	if x != nil {
 		return x.StateId
-=======
-type ArchiveConfig struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	RepFactor       int32         `protobuf:"varint,1,opt,name=rep_factor,json=repFactor,proto3" json:"rep_factor,omitempty"`
-	DealMinDuration int64         `protobuf:"varint,2,opt,name=deal_min_duration,json=dealMinDuration,proto3" json:"deal_min_duration,omitempty"`
-	ExcludedMiners  []string      `protobuf:"bytes,3,rep,name=excluded_miners,json=excludedMiners,proto3" json:"excluded_miners,omitempty"`
-	TrustedMiners   []string      `protobuf:"bytes,4,rep,name=trusted_miners,json=trustedMiners,proto3" json:"trusted_miners,omitempty"`
-	CountryCodes    []string      `protobuf:"bytes,5,rep,name=country_codes,json=countryCodes,proto3" json:"country_codes,omitempty"`
-	Renew           *ArchiveRenew `protobuf:"bytes,6,opt,name=renew,proto3" json:"renew,omitempty"`
-	Addr            string        `protobuf:"bytes,7,opt,name=addr,proto3" json:"addr,omitempty"`
-	MaxPrice        uint64        `protobuf:"varint,8,opt,name=max_price,json=maxPrice,proto3" json:"max_price,omitempty"`
-	FastRetrieval   bool          `protobuf:"varint,9,opt,name=fast_retrieval,json=fastRetrieval,proto3" json:"fast_retrieval,omitempty"`
-	DealStartOffset int64         `protobuf:"varint,10,opt,name=deal_start_offset,json=dealStartOffset,proto3" json:"deal_start_offset,omitempty"`
-}
-
-func (x *ArchiveConfig) Reset() {
-	*x = ArchiveConfig{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[31]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveConfig) ProtoMessage() {}
-
-func (x *ArchiveConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[31]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveConfig.ProtoReflect.Descriptor instead.
-func (*ArchiveConfig) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{31}
-}
-
-func (x *ArchiveConfig) GetRepFactor() int32 {
-	if x != nil {
-		return x.RepFactor
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetStateName() string {
 	if x != nil {
 		return x.StateName
-=======
-func (x *ArchiveConfig) GetDealMinDuration() int64 {
-	if x != nil {
-		return x.DealMinDuration
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetMiner() string {
 	if x != nil {
 		return x.Miner
-=======
-func (x *ArchiveConfig) GetExcludedMiners() []string {
-	if x != nil {
-		return x.ExcludedMiners
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetPieceCid() string {
 	if x != nil {
 		return x.PieceCid
-=======
-func (x *ArchiveConfig) GetTrustedMiners() []string {
-	if x != nil {
-		return x.TrustedMiners
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetSize() uint64 {
 	if x != nil {
 		return x.Size
-=======
-func (x *ArchiveConfig) GetCountryCodes() []string {
-	if x != nil {
-		return x.CountryCodes
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetPricePerEpoch() uint64 {
 	if x != nil {
 		return x.PricePerEpoch
-=======
-func (x *ArchiveConfig) GetRenew() *ArchiveRenew {
-	if x != nil {
-		return x.Renew
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetStartEpoch() uint64 {
 	if x != nil {
 		return x.StartEpoch
-=======
-func (x *ArchiveConfig) GetAddr() string {
-	if x != nil {
-		return x.Addr
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetDuration() uint64 {
 	if x != nil {
 		return x.Duration
-=======
-func (x *ArchiveConfig) GetMaxPrice() uint64 {
-	if x != nil {
-		return x.MaxPrice
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetDealId() uint64 {
 	if x != nil {
 		return x.DealId
-=======
-func (x *ArchiveConfig) GetFastRetrieval() bool {
-	if x != nil {
-		return x.FastRetrieval
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetActivationEpoch() int64 {
 	if x != nil {
 		return x.ActivationEpoch
-=======
-func (x *ArchiveConfig) GetDealStartOffset() int64 {
-	if x != nil {
-		return x.DealStartOffset
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
 
-<<<<<<< HEAD
 func (x *DealInfo) GetMessage() string {
 	if x != nil {
 		return x.Message
@@ -3147,21 +2278,6 @@ func (x *ArchiveRenew) Reset() {
 	*x = ArchiveRenew{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[34]
-=======
-type ArchiveRenew struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Enabled   bool  `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Threshold int32 `protobuf:"varint,2,opt,name=threshold,proto3" json:"threshold,omitempty"`
-}
-
-func (x *ArchiveRenew) Reset() {
-	*x = ArchiveRenew{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[32]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3174,11 +2290,7 @@ func (x *ArchiveRenew) String() string {
 func (*ArchiveRenew) ProtoMessage() {}
 
 func (x *ArchiveRenew) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[34]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[32]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3191,11 +2303,7 @@ func (x *ArchiveRenew) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveRenew.ProtoReflect.Descriptor instead.
 func (*ArchiveRenew) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{34}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{32}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func (x *ArchiveRenew) GetEnabled() bool {
@@ -3223,11 +2331,7 @@ type DefaultArchiveConfigRequest struct {
 func (x *DefaultArchiveConfigRequest) Reset() {
 	*x = DefaultArchiveConfigRequest{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[35]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[33]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3240,11 +2344,7 @@ func (x *DefaultArchiveConfigRequest) String() string {
 func (*DefaultArchiveConfigRequest) ProtoMessage() {}
 
 func (x *DefaultArchiveConfigRequest) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[35]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[33]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3257,11 +2357,7 @@ func (x *DefaultArchiveConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefaultArchiveConfigRequest.ProtoReflect.Descriptor instead.
 func (*DefaultArchiveConfigRequest) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{35}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{33}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func (x *DefaultArchiveConfigRequest) GetKey() string {
@@ -3282,11 +2378,7 @@ type DefaultArchiveConfigResponse struct {
 func (x *DefaultArchiveConfigResponse) Reset() {
 	*x = DefaultArchiveConfigResponse{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[36]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[34]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3299,11 +2391,7 @@ func (x *DefaultArchiveConfigResponse) String() string {
 func (*DefaultArchiveConfigResponse) ProtoMessage() {}
 
 func (x *DefaultArchiveConfigResponse) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[36]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[34]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3316,11 +2404,7 @@ func (x *DefaultArchiveConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefaultArchiveConfigResponse.ProtoReflect.Descriptor instead.
 func (*DefaultArchiveConfigResponse) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{36}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{34}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func (x *DefaultArchiveConfigResponse) GetArchiveConfig() *ArchiveConfig {
@@ -3342,11 +2426,7 @@ type SetDefaultArchiveConfigRequest struct {
 func (x *SetDefaultArchiveConfigRequest) Reset() {
 	*x = SetDefaultArchiveConfigRequest{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[37]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[35]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3359,11 +2439,7 @@ func (x *SetDefaultArchiveConfigRequest) String() string {
 func (*SetDefaultArchiveConfigRequest) ProtoMessage() {}
 
 func (x *SetDefaultArchiveConfigRequest) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[37]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[35]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3376,11 +2452,7 @@ func (x *SetDefaultArchiveConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDefaultArchiveConfigRequest.ProtoReflect.Descriptor instead.
 func (*SetDefaultArchiveConfigRequest) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{37}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{35}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func (x *SetDefaultArchiveConfigRequest) GetKey() string {
@@ -3406,11 +2478,7 @@ type SetDefaultArchiveConfigResponse struct {
 func (x *SetDefaultArchiveConfigResponse) Reset() {
 	*x = SetDefaultArchiveConfigResponse{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[38]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[36]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3423,11 +2491,7 @@ func (x *SetDefaultArchiveConfigResponse) String() string {
 func (*SetDefaultArchiveConfigResponse) ProtoMessage() {}
 
 func (x *SetDefaultArchiveConfigResponse) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[38]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[36]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3440,11 +2504,7 @@ func (x *SetDefaultArchiveConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDefaultArchiveConfigResponse.ProtoReflect.Descriptor instead.
 func (*SetDefaultArchiveConfigResponse) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{38}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{36}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 type ArchiveRequest struct {
@@ -3459,11 +2519,7 @@ type ArchiveRequest struct {
 func (x *ArchiveRequest) Reset() {
 	*x = ArchiveRequest{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[39]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[37]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3476,11 +2532,7 @@ func (x *ArchiveRequest) String() string {
 func (*ArchiveRequest) ProtoMessage() {}
 
 func (x *ArchiveRequest) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[39]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[37]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3493,11 +2545,7 @@ func (x *ArchiveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveRequest) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{39}
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{37}
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func (x *ArchiveRequest) GetKey() string {
@@ -3523,11 +2571,7 @@ type ArchiveResponse struct {
 func (x *ArchiveResponse) Reset() {
 	*x = ArchiveResponse{}
 	if protoimpl.UnsafeEnabled {
-<<<<<<< HEAD
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[40]
-=======
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[38]
->>>>>>> chore(build): add grpc-js builds for protos
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3540,11 +2584,7 @@ func (x *ArchiveResponse) String() string {
 func (*ArchiveResponse) ProtoMessage() {}
 
 func (x *ArchiveResponse) ProtoReflect() protoreflect.Message {
-<<<<<<< HEAD
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[40]
-=======
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[38]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3557,23 +2597,15 @@ func (x *ArchiveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveResponse.ProtoReflect.Descriptor instead.
 func (*ArchiveResponse) Descriptor() ([]byte, []int) {
-<<<<<<< HEAD
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{40}
 }
 
 type ArchivesRequest struct {
-=======
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{38}
-}
-
-type ArchiveStatusRequest struct {
->>>>>>> chore(build): add grpc-js builds for protos
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-<<<<<<< HEAD
 }
 
 func (x *ArchivesRequest) Reset() {
@@ -3599,50 +2631,10 @@ func (x *ArchivesRequest) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-}
-
-func (x *ArchiveStatusRequest) Reset() {
-	*x = ArchiveStatusRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[39]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveStatusRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveStatusRequest) ProtoMessage() {}
-
-func (x *ArchiveStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[39]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ArchiveStatusRequest.ProtoReflect.Descriptor instead.
-func (*ArchiveStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{39}
-}
-
-func (x *ArchiveStatusRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use ArchivesRequest.ProtoReflect.Descriptor instead.
 func (*ArchivesRequest) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{41}
@@ -3687,58 +2679,10 @@ func (x *ArchivesResponse) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-type ArchiveStatusResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key       string                       `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Status    ArchiveStatusResponse_Status `protobuf:"varint,2,opt,name=status,proto3,enum=api.bucketsd.pb.ArchiveStatusResponse_Status" json:"status,omitempty"`
-	FailedMsg string                       `protobuf:"bytes,3,opt,name=failed_msg,json=failedMsg,proto3" json:"failed_msg,omitempty"`
-}
-
-func (x *ArchiveStatusResponse) Reset() {
-	*x = ArchiveStatusResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[40]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveStatusResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveStatusResponse) ProtoMessage() {}
-
-func (x *ArchiveStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[40]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ArchiveStatusResponse.ProtoReflect.Descriptor instead.
-func (*ArchiveStatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{40}
-}
-
-func (x *ArchiveStatusResponse) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use ArchivesResponse.ProtoReflect.Descriptor instead.
 func (*ArchivesResponse) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{42}
@@ -3747,23 +2691,10 @@ func (*ArchivesResponse) Descriptor() ([]byte, []int) {
 func (x *ArchivesResponse) GetCurrent() *Archive {
 	if x != nil {
 		return x.Current
-=======
-func (x *ArchiveStatusResponse) GetStatus() ArchiveStatusResponse_Status {
-	if x != nil {
-		return x.Status
-	}
-	return ArchiveStatusResponse_STATUS_UNSPECIFIED
-}
-
-func (x *ArchiveStatusResponse) GetFailedMsg() string {
-	if x != nil {
-		return x.FailedMsg
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return nil
 }
 
-<<<<<<< HEAD
 func (x *ArchivesResponse) GetHistory() []*Archive {
 	if x != nil {
 		return x.History
@@ -3785,131 +2716,6 @@ func (x *ArchiveWatchRequest) Reset() {
 		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
-=======
-type ArchiveInfoRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-}
-
-func (x *ArchiveInfoRequest) Reset() {
-	*x = ArchiveInfoRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[41]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveInfoRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveInfoRequest) ProtoMessage() {}
-
-func (x *ArchiveInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[41]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveInfoRequest.ProtoReflect.Descriptor instead.
-func (*ArchiveInfoRequest) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{41}
-}
-
-func (x *ArchiveInfoRequest) GetKey() string {
-	if x != nil {
-		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-}
-
-<<<<<<< HEAD
-func (x *ArchiveWatchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveWatchRequest) ProtoMessage() {}
-
-=======
-type ArchiveInfoResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key     string                       `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Archive *ArchiveInfoResponse_Archive `protobuf:"bytes,2,opt,name=archive,proto3" json:"archive,omitempty"`
-}
-
-func (x *ArchiveInfoResponse) Reset() {
-	*x = ArchiveInfoResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[42]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveInfoResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveInfoResponse) ProtoMessage() {}
-
-func (x *ArchiveInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[42]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveInfoResponse.ProtoReflect.Descriptor instead.
-func (*ArchiveInfoResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{42}
-}
-
-func (x *ArchiveInfoResponse) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *ArchiveInfoResponse) GetArchive() *ArchiveInfoResponse_Archive {
-	if x != nil {
-		return x.Archive
-	}
-	return nil
-}
-
-type ArchiveWatchRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-}
-
-func (x *ArchiveWatchRequest) Reset() {
-	*x = ArchiveWatchRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[43]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
 	}
 }
 
@@ -3919,7 +2725,6 @@ func (x *ArchiveWatchRequest) String() string {
 
 func (*ArchiveWatchRequest) ProtoMessage() {}
 
->>>>>>> chore(build): add grpc-js builds for protos
 func (x *ArchiveWatchRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
@@ -3948,29 +2753,6 @@ type ArchiveWatchResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-<<<<<<< HEAD
-
-	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
-}
-
-func (x *ArchiveWatchResponse) Reset() {
-	*x = ArchiveWatchResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[44]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveWatchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveWatchResponse) ProtoMessage() {}
-
-func (x *ArchiveWatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[44]
-=======
 
 	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
 }
@@ -4041,7 +2823,6 @@ func (*PushPathRequest_Header) ProtoMessage() {}
 
 func (x *PushPathRequest_Header) ProtoReflect() protoreflect.Message {
 	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[46]
->>>>>>> chore(build): add grpc-js builds for protos
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4052,16 +2833,6 @@ func (x *PushPathRequest_Header) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-<<<<<<< HEAD
-// Deprecated: Use ArchiveWatchResponse.ProtoReflect.Descriptor instead.
-func (*ArchiveWatchResponse) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{44}
-}
-
-func (x *ArchiveWatchResponse) GetMsg() string {
-	if x != nil {
-		return x.Msg
-=======
 // Deprecated: Use PushPathRequest_Header.ProtoReflect.Descriptor instead.
 func (*PushPathRequest_Header) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{15, 0}
@@ -4070,27 +2841,10 @@ func (*PushPathRequest_Header) Descriptor() ([]byte, []int) {
 func (x *PushPathRequest_Header) GetKey() string {
 	if x != nil {
 		return x.Key
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return ""
 }
 
-<<<<<<< HEAD
-type PushPathRequest_Header struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Key  string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Root string `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
-}
-
-func (x *PushPathRequest_Header) Reset() {
-	*x = PushPathRequest_Header{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[46]
-=======
 func (x *PushPathRequest_Header) GetPath() string {
 	if x != nil {
 		return x.Path
@@ -4098,100 +2852,6 @@ func (x *PushPathRequest_Header) GetPath() string {
 	return ""
 }
 
-func (x *PushPathRequest_Header) GetRoot() string {
-	if x != nil {
-		return x.Root
-	}
-	return ""
-}
-
-type PushPathResponse_Event struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Name   string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Path   string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Bytes  int64  `protobuf:"varint,3,opt,name=bytes,proto3" json:"bytes,omitempty"`
-	Size   string `protobuf:"bytes,4,opt,name=size,proto3" json:"size,omitempty"`
-	Root   *Root  `protobuf:"bytes,5,opt,name=root,proto3" json:"root,omitempty"`
-	Pinned int64  `protobuf:"varint,6,opt,name=pinned,proto3" json:"pinned,omitempty"`
-}
-
-func (x *PushPathResponse_Event) Reset() {
-	*x = PushPathResponse_Event{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[47]
->>>>>>> chore(build): add grpc-js builds for protos
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-<<<<<<< HEAD
-func (x *PushPathRequest_Header) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PushPathRequest_Header) ProtoMessage() {}
-
-func (x *PushPathRequest_Header) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[46]
-=======
-func (x *PushPathResponse_Event) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PushPathResponse_Event) ProtoMessage() {}
-
-func (x *PushPathResponse_Event) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[47]
->>>>>>> chore(build): add grpc-js builds for protos
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
-// Deprecated: Use PushPathRequest_Header.ProtoReflect.Descriptor instead.
-func (*PushPathRequest_Header) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{15, 0}
-}
-
-func (x *PushPathRequest_Header) GetKey() string {
-	if x != nil {
-		return x.Key
-=======
-// Deprecated: Use PushPathResponse_Event.ProtoReflect.Descriptor instead.
-func (*PushPathResponse_Event) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{16, 0}
-}
-
-func (x *PushPathResponse_Event) GetName() string {
-	if x != nil {
-		return x.Name
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return ""
-}
-
-<<<<<<< HEAD
-func (x *PushPathRequest_Header) GetPath() string {
-=======
-func (x *PushPathResponse_Event) GetPath() string {
->>>>>>> chore(build): add grpc-js builds for protos
-	if x != nil {
-		return x.Path
-	}
-	return ""
-}
-
-<<<<<<< HEAD
 func (x *PushPathRequest_Header) GetRoot() string {
 	if x != nil {
 		return x.Root
@@ -4235,85 +2895,10 @@ func (x *PushPathResponse_Event) ProtoReflect() protoreflect.Message {
 			ms.StoreMessageInfo(mi)
 		}
 		return ms
-=======
-func (x *PushPathResponse_Event) GetBytes() int64 {
-	if x != nil {
-		return x.Bytes
-	}
-	return 0
-}
-
-func (x *PushPathResponse_Event) GetSize() string {
-	if x != nil {
-		return x.Size
-	}
-	return ""
-}
-
-func (x *PushPathResponse_Event) GetRoot() *Root {
-	if x != nil {
-		return x.Root
-	}
-	return nil
-}
-
-func (x *PushPathResponse_Event) GetPinned() int64 {
-	if x != nil {
-		return x.Pinned
-	}
-	return 0
-}
-
-type ArchiveInfoResponse_Archive struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Cid   string                              `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
-	Deals []*ArchiveInfoResponse_Archive_Deal `protobuf:"bytes,2,rep,name=deals,proto3" json:"deals,omitempty"`
-}
-
-func (x *ArchiveInfoResponse_Archive) Reset() {
-	*x = ArchiveInfoResponse_Archive{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[50]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveInfoResponse_Archive) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveInfoResponse_Archive) ProtoMessage() {}
-
-func (x *ArchiveInfoResponse_Archive) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[50]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
 	}
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ArchiveInfoResponse_Archive.ProtoReflect.Descriptor instead.
-func (*ArchiveInfoResponse_Archive) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{42, 0}
-}
-
-func (x *ArchiveInfoResponse_Archive) GetCid() string {
-	if x != nil {
-		return x.Cid
->>>>>>> chore(build): add grpc-js builds for protos
-	}
-	return mi.MessageOf(x)
-}
-
-<<<<<<< HEAD
 // Deprecated: Use PushPathResponse_Event.ProtoReflect.Descriptor instead.
 func (*PushPathResponse_Event) Descriptor() ([]byte, []int) {
 	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{16, 0}
@@ -4357,66 +2942,6 @@ func (x *PushPathResponse_Event) GetRoot() *Root {
 func (x *PushPathResponse_Event) GetPinned() int64 {
 	if x != nil {
 		return x.Pinned
-=======
-func (x *ArchiveInfoResponse_Archive) GetDeals() []*ArchiveInfoResponse_Archive_Deal {
-	if x != nil {
-		return x.Deals
-	}
-	return nil
-}
-
-type ArchiveInfoResponse_Archive_Deal struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	ProposalCid string `protobuf:"bytes,1,opt,name=proposal_cid,json=proposalCid,proto3" json:"proposal_cid,omitempty"`
-	Miner       string `protobuf:"bytes,2,opt,name=miner,proto3" json:"miner,omitempty"`
-}
-
-func (x *ArchiveInfoResponse_Archive_Deal) Reset() {
-	*x = ArchiveInfoResponse_Archive_Deal{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[51]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveInfoResponse_Archive_Deal) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveInfoResponse_Archive_Deal) ProtoMessage() {}
-
-func (x *ArchiveInfoResponse_Archive_Deal) ProtoReflect() protoreflect.Message {
-	mi := &file_api_bucketsd_pb_bucketsd_proto_msgTypes[51]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveInfoResponse_Archive_Deal.ProtoReflect.Descriptor instead.
-func (*ArchiveInfoResponse_Archive_Deal) Descriptor() ([]byte, []int) {
-	return file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP(), []int{42, 0, 0}
-}
-
-func (x *ArchiveInfoResponse_Archive_Deal) GetProposalCid() string {
-	if x != nil {
-		return x.ProposalCid
-	}
-	return ""
-}
-
-func (x *ArchiveInfoResponse_Archive_Deal) GetMiner() string {
-	if x != nil {
-		return x.Miner
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	return 0
 }
@@ -4646,7 +3171,6 @@ var file_api_bucketsd_pb_bucketsd_proto_rawDesc = []byte{
 	0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x12, 0x2a, 0x0a, 0x11, 0x64, 0x65, 0x61, 0x6c, 0x5f,
 	0x73, 0x74, 0x61, 0x72, 0x74, 0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x0a, 0x20, 0x01,
 	0x28, 0x03, 0x52, 0x0f, 0x64, 0x65, 0x61, 0x6c, 0x53, 0x74, 0x61, 0x72, 0x74, 0x4f, 0x66, 0x66,
-<<<<<<< HEAD
 	0x73, 0x65, 0x74, 0x22, 0xac, 0x02, 0x0a, 0x07, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x12,
 	0x10, 0x0a, 0x03, 0x63, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x69,
 	0x64, 0x12, 0x15, 0x0a, 0x06, 0x6a, 0x6f, 0x62, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
@@ -4870,212 +3394,6 @@ var file_api_bucketsd_pb_bucketsd_proto_rawDesc = []byte{
 	0x6c, 0x65, 0x69, 0x6f, 0x2f, 0x74, 0x65, 0x78, 0x74, 0x69, 0x6c, 0x65, 0x2f, 0x76, 0x32, 0x2f,
 	0x61, 0x70, 0x69, 0x2f, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2f, 0x70, 0x62, 0x62,
 	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
-=======
-	0x73, 0x65, 0x74, 0x22, 0x46, 0x0a, 0x0c, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65,
-	0x6e, 0x65, 0x77, 0x12, 0x18, 0x0a, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x1c, 0x0a,
-	0x09, 0x74, 0x68, 0x72, 0x65, 0x73, 0x68, 0x6f, 0x6c, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05,
-	0x52, 0x09, 0x74, 0x68, 0x72, 0x65, 0x73, 0x68, 0x6f, 0x6c, 0x64, 0x22, 0x2f, 0x0a, 0x1b, 0x44,
-	0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
-	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x65, 0x0a, 0x1c,
-	0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f,
-	0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x45, 0x0a, 0x0e,
-	0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65,
-	0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f,
-	0x6e, 0x66, 0x69, 0x67, 0x52, 0x0d, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x22, 0x79, 0x0a, 0x1e, 0x53, 0x65, 0x74, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c,
-	0x74, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x45, 0x0a, 0x0e, 0x61, 0x72, 0x63, 0x68, 0x69,
-	0x76, 0x65, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x1e, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52,
-	0x0d, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x22, 0x21,
-	0x0a, 0x1f, 0x53, 0x65, 0x74, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63, 0x68,
-	0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x69, 0x0a, 0x0e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x45, 0x0a, 0x0e, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65,
-	0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e,
-	0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x0d, 0x61,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x22, 0x11, 0x0a, 0x0f,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x28, 0x0a, 0x14, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x80, 0x02, 0x0a, 0x15, 0x41, 0x72,
-	0x63, 0x68, 0x69, 0x76, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x45, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x2d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x53, 0x74,
-	0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1d, 0x0a, 0x0a,
-	0x66, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x5f, 0x6d, 0x73, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x09, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x4d, 0x73, 0x67, 0x22, 0x6f, 0x0a, 0x06, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x16, 0x0a, 0x12, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f,
-	0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x14, 0x0a,
-	0x10, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x45, 0x58, 0x45, 0x43, 0x55, 0x54, 0x49, 0x4e,
-	0x47, 0x10, 0x01, 0x12, 0x11, 0x0a, 0x0d, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x46, 0x41,
-	0x49, 0x4c, 0x45, 0x44, 0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53,
-	0x5f, 0x44, 0x4f, 0x4e, 0x45, 0x10, 0x03, 0x12, 0x13, 0x0a, 0x0f, 0x53, 0x54, 0x41, 0x54, 0x55,
-	0x53, 0x5f, 0x43, 0x41, 0x4e, 0x43, 0x45, 0x4c, 0x45, 0x44, 0x10, 0x04, 0x22, 0x26, 0x0a, 0x12,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x03, 0x6b, 0x65, 0x79, 0x22, 0x97, 0x02, 0x0a, 0x13, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65,
-	0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a, 0x03,
-	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x46,
-	0x0a, 0x07, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x2c, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x07, 0x61,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x1a, 0xa5, 0x01, 0x0a, 0x07, 0x41, 0x72, 0x63, 0x68, 0x69,
-	0x76, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x63, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x03, 0x63, 0x69, 0x64, 0x12, 0x47, 0x0a, 0x05, 0x64, 0x65, 0x61, 0x6c, 0x73, 0x18, 0x02, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x31, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74,
-	0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x49, 0x6e, 0x66,
-	0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76,
-	0x65, 0x2e, 0x44, 0x65, 0x61, 0x6c, 0x52, 0x05, 0x64, 0x65, 0x61, 0x6c, 0x73, 0x1a, 0x3f, 0x0a,
-	0x04, 0x44, 0x65, 0x61, 0x6c, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x70, 0x6f, 0x73, 0x61,
-	0x6c, 0x5f, 0x63, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72, 0x6f,
-	0x70, 0x6f, 0x73, 0x61, 0x6c, 0x43, 0x69, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x69, 0x6e, 0x65,
-	0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x69, 0x6e, 0x65, 0x72, 0x22, 0x27,
-	0x0a, 0x13, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x57, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x28, 0x0a, 0x14, 0x41, 0x72, 0x63, 0x68, 0x69,
-	0x76, 0x65, 0x57, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x10, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d, 0x73,
-	0x67, 0x2a, 0x88, 0x01, 0x0a, 0x0e, 0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73,
-	0x52, 0x6f, 0x6c, 0x65, 0x12, 0x20, 0x0a, 0x1c, 0x50, 0x41, 0x54, 0x48, 0x5f, 0x41, 0x43, 0x43,
-	0x45, 0x53, 0x53, 0x5f, 0x52, 0x4f, 0x4c, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49,
-	0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x1b, 0x0a, 0x17, 0x50, 0x41, 0x54, 0x48, 0x5f, 0x41,
-	0x43, 0x43, 0x45, 0x53, 0x53, 0x5f, 0x52, 0x4f, 0x4c, 0x45, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x45,
-	0x52, 0x10, 0x01, 0x12, 0x1b, 0x0a, 0x17, 0x50, 0x41, 0x54, 0x48, 0x5f, 0x41, 0x43, 0x43, 0x45,
-	0x53, 0x53, 0x5f, 0x52, 0x4f, 0x4c, 0x45, 0x5f, 0x57, 0x52, 0x49, 0x54, 0x45, 0x52, 0x10, 0x02,
-	0x12, 0x1a, 0x0a, 0x16, 0x50, 0x41, 0x54, 0x48, 0x5f, 0x41, 0x43, 0x43, 0x45, 0x53, 0x53, 0x5f,
-	0x52, 0x4f, 0x4c, 0x45, 0x5f, 0x41, 0x44, 0x4d, 0x49, 0x4e, 0x10, 0x03, 0x32, 0xb4, 0x0e, 0x0a,
-	0x0a, 0x41, 0x50, 0x49, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x45, 0x0a, 0x04, 0x4c,
-	0x69, 0x73, 0x74, 0x12, 0x1c, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74,
-	0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x1d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64,
-	0x2e, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x4b, 0x0a, 0x06, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x12, 0x1e, 0x2e, 0x61,
-	0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x43,
-	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x61,
-	0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x43,
-	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12,
-	0x45, 0x0a, 0x04, 0x52, 0x6f, 0x6f, 0x74, 0x12, 0x1c, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75,
-	0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x6f, 0x74, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x48, 0x0a, 0x05, 0x4c, 0x69, 0x6e, 0x6b, 0x73, 0x12,
-	0x1d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x4c, 0x69, 0x6e, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62,
-	0x2e, 0x4c, 0x69, 0x6e, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
-	0x12, 0x51, 0x0a, 0x08, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x12, 0x20, 0x2e, 0x61,
-	0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4c,
-	0x69, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62,
-	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x12, 0x5d, 0x0a, 0x0c, 0x4c, 0x69, 0x73, 0x74, 0x49, 0x70, 0x66, 0x73, 0x50,
-	0x61, 0x74, 0x68, 0x12, 0x24, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74,
-	0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x49, 0x70, 0x66, 0x73, 0x50, 0x61,
-	0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x61, 0x70, 0x69, 0x2e,
-	0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74,
-	0x49, 0x70, 0x66, 0x73, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x55, 0x0a, 0x08, 0x50, 0x75, 0x73, 0x68, 0x50, 0x61, 0x74, 0x68, 0x12, 0x20,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62,
-	0x2e, 0x50, 0x75, 0x73, 0x68, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x21, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e,
-	0x70, 0x62, 0x2e, 0x50, 0x75, 0x73, 0x68, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x00, 0x28, 0x01, 0x30, 0x01, 0x12, 0x53, 0x0a, 0x08, 0x50, 0x75, 0x6c,
-	0x6c, 0x50, 0x61, 0x74, 0x68, 0x12, 0x20, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x6c, 0x6c, 0x50, 0x61, 0x74, 0x68,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75,
-	0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x6c, 0x6c, 0x50, 0x61,
-	0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x12, 0x5f,
-	0x0a, 0x0c, 0x50, 0x75, 0x6c, 0x6c, 0x49, 0x70, 0x66, 0x73, 0x50, 0x61, 0x74, 0x68, 0x12, 0x24,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62,
-	0x2e, 0x50, 0x75, 0x6c, 0x6c, 0x49, 0x70, 0x66, 0x73, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65,
-	0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x6c, 0x6c, 0x49, 0x70, 0x66, 0x73, 0x50,
-	0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x12,
-	0x4e, 0x0a, 0x07, 0x53, 0x65, 0x74, 0x50, 0x61, 0x74, 0x68, 0x12, 0x1f, 0x2e, 0x61, 0x70, 0x69,
-	0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x53, 0x65, 0x74,
-	0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x61, 0x70,
-	0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x53, 0x65,
-	0x74, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12,
-	0x4b, 0x0a, 0x06, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x12, 0x1e, 0x2e, 0x61, 0x70, 0x69, 0x2e,
-	0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x6d, 0x6f,
-	0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x61, 0x70, 0x69, 0x2e,
-	0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x6d, 0x6f,
-	0x76, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x57, 0x0a, 0x0a,
-	0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x50, 0x61, 0x74, 0x68, 0x12, 0x22, 0x2e, 0x61, 0x70, 0x69,
-	0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x6d,
-	0x6f, 0x76, 0x65, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62,
-	0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x50, 0x61, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x72, 0x0a, 0x13, 0x50, 0x75, 0x73, 0x68, 0x50, 0x61, 0x74,
-	0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x12, 0x2b, 0x2e, 0x61,
-	0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x50,
-	0x75, 0x73, 0x68, 0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x52, 0x6f, 0x6c,
-	0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2c, 0x2e, 0x61, 0x70, 0x69, 0x2e,
-	0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x73, 0x68,
-	0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x72, 0x0a, 0x13, 0x50, 0x75, 0x6c,
-	0x6c, 0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x52, 0x6f, 0x6c, 0x65, 0x73,
-	0x12, 0x2b, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e,
-	0x70, 0x62, 0x2e, 0x50, 0x75, 0x6c, 0x6c, 0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73,
-	0x73, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2c, 0x2e,
-	0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e,
-	0x50, 0x75, 0x6c, 0x6c, 0x50, 0x61, 0x74, 0x68, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x52, 0x6f,
-	0x6c, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x75, 0x0a,
-	0x14, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43,
-	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x2c, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74,
-	0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x22, 0x00, 0x12, 0x7e, 0x0a, 0x17, 0x53, 0x65, 0x74, 0x44, 0x65, 0x66, 0x61, 0x75,
-	0x6c, 0x74, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12,
-	0x2f, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x53, 0x65, 0x74, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63, 0x68,
-	0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x30, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e,
-	0x70, 0x62, 0x2e, 0x53, 0x65, 0x74, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x22, 0x00, 0x12, 0x4e, 0x0a, 0x07, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x12,
-	0x1f, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x20, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e,
-	0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x22, 0x00, 0x12, 0x60, 0x0a, 0x0d, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x25, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x61,
-	0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x5a, 0x0a, 0x0b, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76,
-	0x65, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x23, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b,
-	0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x49,
-	0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x61, 0x70, 0x69,
-	0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x5f, 0x0a, 0x0c, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x57, 0x61, 0x74,
-	0x63, 0x68, 0x12, 0x24, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73,
-	0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x57, 0x61, 0x74, 0x63,
-	0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x62,
-	0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69,
-	0x76, 0x65, 0x57, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x30, 0x01, 0x42, 0x31, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x74, 0x65, 0x78, 0x74, 0x69, 0x6c, 0x65, 0x69, 0x6f, 0x2f, 0x74, 0x65, 0x78, 0x74,
-	0x69, 0x6c, 0x65, 0x2f, 0x76, 0x32, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x62, 0x75, 0x63, 0x6b, 0x65,
-	0x74, 0x73, 0x64, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 var (
@@ -5091,7 +3409,6 @@ func file_api_bucketsd_pb_bucketsd_proto_rawDescGZIP() []byte {
 }
 
 var file_api_bucketsd_pb_bucketsd_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-<<<<<<< HEAD
 var file_api_bucketsd_pb_bucketsd_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
 var file_api_bucketsd_pb_bucketsd_proto_goTypes = []interface{}{
 	(PathAccessRole)(0),                     // 0: api.bucketsd.pb.PathAccessRole
@@ -5146,64 +3463,6 @@ var file_api_bucketsd_pb_bucketsd_proto_goTypes = []interface{}{
 	(*PushPathResponse_Event)(nil),          // 49: api.bucketsd.pb.PushPathResponse.Event
 	nil,                                     // 50: api.bucketsd.pb.PushPathAccessRolesRequest.RolesEntry
 	nil,                                     // 51: api.bucketsd.pb.PullPathAccessRolesResponse.RolesEntry
-=======
-var file_api_bucketsd_pb_bucketsd_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
-var file_api_bucketsd_pb_bucketsd_proto_goTypes = []interface{}{
-	(PathAccessRole)(0),                      // 0: api.bucketsd.pb.PathAccessRole
-	(ArchiveStatusResponse_Status)(0),        // 1: api.bucketsd.pb.ArchiveStatusResponse.Status
-	(*Metadata)(nil),                         // 2: api.bucketsd.pb.Metadata
-	(*Root)(nil),                             // 3: api.bucketsd.pb.Root
-	(*ListRequest)(nil),                      // 4: api.bucketsd.pb.ListRequest
-	(*ListResponse)(nil),                     // 5: api.bucketsd.pb.ListResponse
-	(*CreateRequest)(nil),                    // 6: api.bucketsd.pb.CreateRequest
-	(*CreateResponse)(nil),                   // 7: api.bucketsd.pb.CreateResponse
-	(*RootRequest)(nil),                      // 8: api.bucketsd.pb.RootRequest
-	(*RootResponse)(nil),                     // 9: api.bucketsd.pb.RootResponse
-	(*LinksRequest)(nil),                     // 10: api.bucketsd.pb.LinksRequest
-	(*LinksResponse)(nil),                    // 11: api.bucketsd.pb.LinksResponse
-	(*ListPathRequest)(nil),                  // 12: api.bucketsd.pb.ListPathRequest
-	(*ListPathResponse)(nil),                 // 13: api.bucketsd.pb.ListPathResponse
-	(*PathItem)(nil),                         // 14: api.bucketsd.pb.PathItem
-	(*ListIpfsPathRequest)(nil),              // 15: api.bucketsd.pb.ListIpfsPathRequest
-	(*ListIpfsPathResponse)(nil),             // 16: api.bucketsd.pb.ListIpfsPathResponse
-	(*PushPathRequest)(nil),                  // 17: api.bucketsd.pb.PushPathRequest
-	(*PushPathResponse)(nil),                 // 18: api.bucketsd.pb.PushPathResponse
-	(*PullPathRequest)(nil),                  // 19: api.bucketsd.pb.PullPathRequest
-	(*PullPathResponse)(nil),                 // 20: api.bucketsd.pb.PullPathResponse
-	(*PullIpfsPathRequest)(nil),              // 21: api.bucketsd.pb.PullIpfsPathRequest
-	(*PullIpfsPathResponse)(nil),             // 22: api.bucketsd.pb.PullIpfsPathResponse
-	(*SetPathRequest)(nil),                   // 23: api.bucketsd.pb.SetPathRequest
-	(*SetPathResponse)(nil),                  // 24: api.bucketsd.pb.SetPathResponse
-	(*RemoveRequest)(nil),                    // 25: api.bucketsd.pb.RemoveRequest
-	(*RemoveResponse)(nil),                   // 26: api.bucketsd.pb.RemoveResponse
-	(*RemovePathRequest)(nil),                // 27: api.bucketsd.pb.RemovePathRequest
-	(*RemovePathResponse)(nil),               // 28: api.bucketsd.pb.RemovePathResponse
-	(*PushPathAccessRolesRequest)(nil),       // 29: api.bucketsd.pb.PushPathAccessRolesRequest
-	(*PushPathAccessRolesResponse)(nil),      // 30: api.bucketsd.pb.PushPathAccessRolesResponse
-	(*PullPathAccessRolesRequest)(nil),       // 31: api.bucketsd.pb.PullPathAccessRolesRequest
-	(*PullPathAccessRolesResponse)(nil),      // 32: api.bucketsd.pb.PullPathAccessRolesResponse
-	(*ArchiveConfig)(nil),                    // 33: api.bucketsd.pb.ArchiveConfig
-	(*ArchiveRenew)(nil),                     // 34: api.bucketsd.pb.ArchiveRenew
-	(*DefaultArchiveConfigRequest)(nil),      // 35: api.bucketsd.pb.DefaultArchiveConfigRequest
-	(*DefaultArchiveConfigResponse)(nil),     // 36: api.bucketsd.pb.DefaultArchiveConfigResponse
-	(*SetDefaultArchiveConfigRequest)(nil),   // 37: api.bucketsd.pb.SetDefaultArchiveConfigRequest
-	(*SetDefaultArchiveConfigResponse)(nil),  // 38: api.bucketsd.pb.SetDefaultArchiveConfigResponse
-	(*ArchiveRequest)(nil),                   // 39: api.bucketsd.pb.ArchiveRequest
-	(*ArchiveResponse)(nil),                  // 40: api.bucketsd.pb.ArchiveResponse
-	(*ArchiveStatusRequest)(nil),             // 41: api.bucketsd.pb.ArchiveStatusRequest
-	(*ArchiveStatusResponse)(nil),            // 42: api.bucketsd.pb.ArchiveStatusResponse
-	(*ArchiveInfoRequest)(nil),               // 43: api.bucketsd.pb.ArchiveInfoRequest
-	(*ArchiveInfoResponse)(nil),              // 44: api.bucketsd.pb.ArchiveInfoResponse
-	(*ArchiveWatchRequest)(nil),              // 45: api.bucketsd.pb.ArchiveWatchRequest
-	(*ArchiveWatchResponse)(nil),             // 46: api.bucketsd.pb.ArchiveWatchResponse
-	nil,                                      // 47: api.bucketsd.pb.Metadata.RolesEntry
-	(*PushPathRequest_Header)(nil),           // 48: api.bucketsd.pb.PushPathRequest.Header
-	(*PushPathResponse_Event)(nil),           // 49: api.bucketsd.pb.PushPathResponse.Event
-	nil,                                      // 50: api.bucketsd.pb.PushPathAccessRolesRequest.RolesEntry
-	nil,                                      // 51: api.bucketsd.pb.PullPathAccessRolesResponse.RolesEntry
-	(*ArchiveInfoResponse_Archive)(nil),      // 52: api.bucketsd.pb.ArchiveInfoResponse.Archive
-	(*ArchiveInfoResponse_Archive_Deal)(nil), // 53: api.bucketsd.pb.ArchiveInfoResponse.Archive.Deal
->>>>>>> chore(build): add grpc-js builds for protos
 }
 var file_api_bucketsd_pb_bucketsd_proto_depIdxs = []int32{
 	47, // 0: api.bucketsd.pb.Metadata.roles:type_name -> api.bucketsd.pb.Metadata.RolesEntry
@@ -5222,7 +3481,6 @@ var file_api_bucketsd_pb_bucketsd_proto_depIdxs = []int32{
 	3,  // 13: api.bucketsd.pb.RemovePathResponse.root:type_name -> api.bucketsd.pb.Root
 	50, // 14: api.bucketsd.pb.PushPathAccessRolesRequest.roles:type_name -> api.bucketsd.pb.PushPathAccessRolesRequest.RolesEntry
 	51, // 15: api.bucketsd.pb.PullPathAccessRolesResponse.roles:type_name -> api.bucketsd.pb.PullPathAccessRolesResponse.RolesEntry
-<<<<<<< HEAD
 	36, // 16: api.bucketsd.pb.ArchiveConfig.renew:type_name -> api.bucketsd.pb.ArchiveRenew
 	1,  // 17: api.bucketsd.pb.Archive.archive_status:type_name -> api.bucketsd.pb.ArchiveStatus
 	35, // 18: api.bucketsd.pb.Archive.deal_info:type_name -> api.bucketsd.pb.DealInfo
@@ -5253,38 +3511,6 @@ var file_api_bucketsd_pb_bucketsd_proto_depIdxs = []int32{
 	39, // 43: api.bucketsd.pb.APIService.SetDefaultArchiveConfig:input_type -> api.bucketsd.pb.SetDefaultArchiveConfigRequest
 	41, // 44: api.bucketsd.pb.APIService.Archive:input_type -> api.bucketsd.pb.ArchiveRequest
 	43, // 45: api.bucketsd.pb.APIService.Archives:input_type -> api.bucketsd.pb.ArchivesRequest
-=======
-	34, // 16: api.bucketsd.pb.ArchiveConfig.renew:type_name -> api.bucketsd.pb.ArchiveRenew
-	33, // 17: api.bucketsd.pb.DefaultArchiveConfigResponse.archive_config:type_name -> api.bucketsd.pb.ArchiveConfig
-	33, // 18: api.bucketsd.pb.SetDefaultArchiveConfigRequest.archive_config:type_name -> api.bucketsd.pb.ArchiveConfig
-	33, // 19: api.bucketsd.pb.ArchiveRequest.archive_config:type_name -> api.bucketsd.pb.ArchiveConfig
-	1,  // 20: api.bucketsd.pb.ArchiveStatusResponse.status:type_name -> api.bucketsd.pb.ArchiveStatusResponse.Status
-	52, // 21: api.bucketsd.pb.ArchiveInfoResponse.archive:type_name -> api.bucketsd.pb.ArchiveInfoResponse.Archive
-	0,  // 22: api.bucketsd.pb.Metadata.RolesEntry.value:type_name -> api.bucketsd.pb.PathAccessRole
-	3,  // 23: api.bucketsd.pb.PushPathResponse.Event.root:type_name -> api.bucketsd.pb.Root
-	0,  // 24: api.bucketsd.pb.PushPathAccessRolesRequest.RolesEntry.value:type_name -> api.bucketsd.pb.PathAccessRole
-	0,  // 25: api.bucketsd.pb.PullPathAccessRolesResponse.RolesEntry.value:type_name -> api.bucketsd.pb.PathAccessRole
-	53, // 26: api.bucketsd.pb.ArchiveInfoResponse.Archive.deals:type_name -> api.bucketsd.pb.ArchiveInfoResponse.Archive.Deal
-	4,  // 27: api.bucketsd.pb.APIService.List:input_type -> api.bucketsd.pb.ListRequest
-	6,  // 28: api.bucketsd.pb.APIService.Create:input_type -> api.bucketsd.pb.CreateRequest
-	8,  // 29: api.bucketsd.pb.APIService.Root:input_type -> api.bucketsd.pb.RootRequest
-	10, // 30: api.bucketsd.pb.APIService.Links:input_type -> api.bucketsd.pb.LinksRequest
-	12, // 31: api.bucketsd.pb.APIService.ListPath:input_type -> api.bucketsd.pb.ListPathRequest
-	15, // 32: api.bucketsd.pb.APIService.ListIpfsPath:input_type -> api.bucketsd.pb.ListIpfsPathRequest
-	17, // 33: api.bucketsd.pb.APIService.PushPath:input_type -> api.bucketsd.pb.PushPathRequest
-	19, // 34: api.bucketsd.pb.APIService.PullPath:input_type -> api.bucketsd.pb.PullPathRequest
-	21, // 35: api.bucketsd.pb.APIService.PullIpfsPath:input_type -> api.bucketsd.pb.PullIpfsPathRequest
-	23, // 36: api.bucketsd.pb.APIService.SetPath:input_type -> api.bucketsd.pb.SetPathRequest
-	25, // 37: api.bucketsd.pb.APIService.Remove:input_type -> api.bucketsd.pb.RemoveRequest
-	27, // 38: api.bucketsd.pb.APIService.RemovePath:input_type -> api.bucketsd.pb.RemovePathRequest
-	29, // 39: api.bucketsd.pb.APIService.PushPathAccessRoles:input_type -> api.bucketsd.pb.PushPathAccessRolesRequest
-	31, // 40: api.bucketsd.pb.APIService.PullPathAccessRoles:input_type -> api.bucketsd.pb.PullPathAccessRolesRequest
-	35, // 41: api.bucketsd.pb.APIService.DefaultArchiveConfig:input_type -> api.bucketsd.pb.DefaultArchiveConfigRequest
-	37, // 42: api.bucketsd.pb.APIService.SetDefaultArchiveConfig:input_type -> api.bucketsd.pb.SetDefaultArchiveConfigRequest
-	39, // 43: api.bucketsd.pb.APIService.Archive:input_type -> api.bucketsd.pb.ArchiveRequest
-	41, // 44: api.bucketsd.pb.APIService.ArchiveStatus:input_type -> api.bucketsd.pb.ArchiveStatusRequest
-	43, // 45: api.bucketsd.pb.APIService.ArchiveInfo:input_type -> api.bucketsd.pb.ArchiveInfoRequest
->>>>>>> chore(build): add grpc-js builds for protos
 	45, // 46: api.bucketsd.pb.APIService.ArchiveWatch:input_type -> api.bucketsd.pb.ArchiveWatchRequest
 	5,  // 47: api.bucketsd.pb.APIService.List:output_type -> api.bucketsd.pb.ListResponse
 	7,  // 48: api.bucketsd.pb.APIService.Create:output_type -> api.bucketsd.pb.CreateResponse
@@ -5300,7 +3526,6 @@ var file_api_bucketsd_pb_bucketsd_proto_depIdxs = []int32{
 	28, // 58: api.bucketsd.pb.APIService.RemovePath:output_type -> api.bucketsd.pb.RemovePathResponse
 	30, // 59: api.bucketsd.pb.APIService.PushPathAccessRoles:output_type -> api.bucketsd.pb.PushPathAccessRolesResponse
 	32, // 60: api.bucketsd.pb.APIService.PullPathAccessRoles:output_type -> api.bucketsd.pb.PullPathAccessRolesResponse
-<<<<<<< HEAD
 	38, // 61: api.bucketsd.pb.APIService.DefaultArchiveConfig:output_type -> api.bucketsd.pb.DefaultArchiveConfigResponse
 	40, // 62: api.bucketsd.pb.APIService.SetDefaultArchiveConfig:output_type -> api.bucketsd.pb.SetDefaultArchiveConfigResponse
 	42, // 63: api.bucketsd.pb.APIService.Archive:output_type -> api.bucketsd.pb.ArchiveResponse
@@ -5311,19 +3536,6 @@ var file_api_bucketsd_pb_bucketsd_proto_depIdxs = []int32{
 	28, // [28:28] is the sub-list for extension type_name
 	28, // [28:28] is the sub-list for extension extendee
 	0,  // [0:28] is the sub-list for field type_name
-=======
-	36, // 61: api.bucketsd.pb.APIService.DefaultArchiveConfig:output_type -> api.bucketsd.pb.DefaultArchiveConfigResponse
-	38, // 62: api.bucketsd.pb.APIService.SetDefaultArchiveConfig:output_type -> api.bucketsd.pb.SetDefaultArchiveConfigResponse
-	40, // 63: api.bucketsd.pb.APIService.Archive:output_type -> api.bucketsd.pb.ArchiveResponse
-	42, // 64: api.bucketsd.pb.APIService.ArchiveStatus:output_type -> api.bucketsd.pb.ArchiveStatusResponse
-	44, // 65: api.bucketsd.pb.APIService.ArchiveInfo:output_type -> api.bucketsd.pb.ArchiveInfoResponse
-	46, // 66: api.bucketsd.pb.APIService.ArchiveWatch:output_type -> api.bucketsd.pb.ArchiveWatchResponse
-	47, // [47:67] is the sub-list for method output_type
-	27, // [27:47] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
->>>>>>> chore(build): add grpc-js builds for protos
 }
 
 func init() { file_api_bucketsd_pb_bucketsd_proto_init() }
@@ -5717,11 +3929,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*Archive); i {
-=======
-			switch v := v.(*ArchiveRenew); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5733,11 +3941,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*DealInfo); i {
-=======
-			switch v := v.(*DefaultArchiveConfigRequest); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5749,11 +3953,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*ArchiveRenew); i {
-=======
-			switch v := v.(*DefaultArchiveConfigResponse); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5765,11 +3965,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*DefaultArchiveConfigRequest); i {
-=======
-			switch v := v.(*SetDefaultArchiveConfigRequest); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5781,11 +3977,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*DefaultArchiveConfigResponse); i {
-=======
-			switch v := v.(*SetDefaultArchiveConfigResponse); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5797,11 +3989,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*SetDefaultArchiveConfigRequest); i {
-=======
-			switch v := v.(*ArchiveRequest); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5813,11 +4001,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*SetDefaultArchiveConfigResponse); i {
-=======
-			switch v := v.(*ArchiveResponse); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5829,11 +4013,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*ArchiveRequest); i {
-=======
-			switch v := v.(*ArchiveStatusRequest); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5845,11 +4025,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*ArchiveResponse); i {
-=======
-			switch v := v.(*ArchiveStatusResponse); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5861,11 +4037,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*ArchivesRequest); i {
-=======
-			switch v := v.(*ArchiveInfoRequest); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5877,11 +4049,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			}
 		}
 		file_api_bucketsd_pb_bucketsd_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-<<<<<<< HEAD
 			switch v := v.(*ArchivesResponse); i {
-=======
-			switch v := v.(*ArchiveInfoResponse); i {
->>>>>>> chore(build): add grpc-js builds for protos
 			case 0:
 				return &v.state
 			case 1:
@@ -5940,33 +4108,6 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 				return nil
 			}
 		}
-<<<<<<< HEAD
-=======
-		file_api_bucketsd_pb_bucketsd_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveInfoResponse_Archive); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_bucketsd_pb_bucketsd_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveInfoResponse_Archive_Deal); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
->>>>>>> chore(build): add grpc-js builds for protos
 	}
 	file_api_bucketsd_pb_bucketsd_proto_msgTypes[15].OneofWrappers = []interface{}{
 		(*PushPathRequest_Header_)(nil),
@@ -5978,11 +4119,7 @@ func file_api_bucketsd_pb_bucketsd_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_bucketsd_pb_bucketsd_proto_rawDesc,
 			NumEnums:      2,
-<<<<<<< HEAD
 			NumMessages:   50,
-=======
-			NumMessages:   52,
->>>>>>> chore(build): add grpc-js builds for protos
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -6380,18 +4517,9 @@ func (*UnimplementedAPIServiceServer) SetDefaultArchiveConfig(context.Context, *
 func (*UnimplementedAPIServiceServer) Archive(context.Context, *ArchiveRequest) (*ArchiveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Archive not implemented")
 }
-<<<<<<< HEAD
 func (*UnimplementedAPIServiceServer) Archives(context.Context, *ArchivesRequest) (*ArchivesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Archives not implemented")
 }
-=======
-func (*UnimplementedAPIServiceServer) ArchiveStatus(context.Context, *ArchiveStatusRequest) (*ArchiveStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchiveStatus not implemented")
-}
-func (*UnimplementedAPIServiceServer) ArchiveInfo(context.Context, *ArchiveInfoRequest) (*ArchiveInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchiveInfo not implemented")
-}
->>>>>>> chore(build): add grpc-js builds for protos
 func (*UnimplementedAPIServiceServer) ArchiveWatch(*ArchiveWatchRequest, APIService_ArchiveWatchServer) error {
 	return status.Errorf(codes.Unimplemented, "method ArchiveWatch not implemented")
 }
