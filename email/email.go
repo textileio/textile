@@ -71,7 +71,7 @@ func (sg *Email) ConfirmAddress(ctx context.Context, id, username, email, url, s
 }
 
 // ConfirmAddress sends a confirmation link to a recipient.
-func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, secret string) error {
+func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, token string) error {
 	if sg.client == nil {
 		log.Debug("Skipping email send")
 		return nil
@@ -84,7 +84,7 @@ func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, sec
 			"email": email,
 		},
 		MessageData: map[string]interface{}{
-			"link": fmt.Sprintf("%s/confirm/%s", url, secret),
+			"link": fmt.Sprintf("%s/consent/%s", url, token),
 			"org":  org,
 			"from": email,
 		},
