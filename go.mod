@@ -11,6 +11,7 @@ require (
 	github.com/caarlos0/spin v1.1.0
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cloudflare/cloudflare-go v0.11.6
+	github.com/customerio/go-customerio v2.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/filecoin-project/go-fil-markets v1.0.4
 	github.com/gin-contrib/location v0.0.2
@@ -64,8 +65,6 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
-	github.com/sendgrid/rest v2.6.2+incompatible // indirect
-	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect

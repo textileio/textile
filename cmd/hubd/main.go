@@ -97,17 +97,13 @@ var (
 				Key:      "dns.token",
 				DefValue: "",
 			},
-			"emailFrom": {
-				Key:      "email.from",
-				DefValue: "hub@textile.io",
-			},
 			"emailInviteTmpl": {
 				Key:      "email.invite_template",
-				DefValue: "d-c65718122962460b8fc991c253a76a1a",
+				DefValue: "2",
 			},
 			"emailConfirmTmpl": {
 				Key:      "email.confirm_template",
-				DefValue: "d-051bf0a3bd144bd4a693b61203cd197a",
+				DefValue: "3",
 			},
 			"emailApiKey": {
 				Key:      "email.api_key",
@@ -239,10 +235,6 @@ func init() {
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
-		"emailFrom",
-		config.Flags["emailFrom"].DefValue.(string),
-		"Source address of system emails")
-	rootCmd.PersistentFlags().String(
 		"emailConfirmTmpl",
 		config.Flags["emailConfirmTmpl"].DefValue.(string),
 		"Template ID for confirmation emails")
@@ -343,7 +335,6 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
 
-		emailFrom := config.Viper.GetString("email.from")
 		emailConfirmTmpl := config.Viper.GetString("email.confirm_template")
 		emailInviteTmpl := config.Viper.GetString("email.invite_template")
 
@@ -392,7 +383,6 @@ var rootCmd = &cobra.Command{
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
 
-			EmailFrom:          emailFrom,
 			EmailConfirmTmpl:   emailConfirmTmpl,
 			EmailInviteTmpl:    emailInviteTmpl,
 			EmailAPIKey:        emailApiKey,

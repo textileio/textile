@@ -50,7 +50,6 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 
 		AddrMongoName: util.MakeToken(12),
 
-		EmailFrom:   "hub@textile.io",
 		EmailAPIKey: "",
 
 		EmailSessionSecret: SessionSecret,

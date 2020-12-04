@@ -2,12 +2,10 @@ package email
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/mail"
 
+	"github.com/customerio/go-customerio"
 	logging "github.com/ipfs/go-log"
-	"github.com/sendgrid/sendgrid-go"
 	"github.com/textileio/go-threads/util"
 )
 
@@ -17,17 +15,13 @@ var (
 
 // Email service.
 type Email struct {
-	apiKey      string
-	from        string
 	inviteTmpl  string
 	confirmTmpl string
-	host        string
-	path        string
-	debug       bool
+	client      *customerio.APIClient
 }
 
 // NewClient return a email api client.
-func NewClient(from string, confirmTmpl string, inviteTmpl string, apiKey string, debug bool) (*Email, error) {
+func NewClient(confirmTmpl, inviteTmpl, apiKey string, debug bool) (*Email, error) {
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"email": logging.LevelDebug,
@@ -36,87 +30,69 @@ func NewClient(from string, confirmTmpl string, inviteTmpl string, apiKey string
 		}
 	}
 
-	if _, err := mail.ParseAddress(from); err != nil {
-		log.Fatalf("error parsing from email address: %v", err)
+	var client *customerio.APIClient
+	if apiKey != "" {
+		client = customerio.NewAPIClient(apiKey)
 	}
 
-	client := &Email{
-		apiKey:      apiKey,
-		from:        from,
+	api := &Email{
 		inviteTmpl:  inviteTmpl,
 		confirmTmpl: confirmTmpl,
-		host:        "https://api.sendgrid.com",
-		path:        "/v3/mail/send",
-		debug:       debug,
+		client:      client,
 	}
 
-	return client, nil
-}
-
-func (sg *Email) getBody(template_id, to_email string, group_id int, template_data map[string]string) ([]byte, error) {
-	template, err := json.Marshal(template_data)
-	if err != nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprintf(` {
-		"template_id":"%s",
-		"from": {
-			"email": "%s", 
-			"name": "Textile Hub"
-		},
-		"asm": {
-			"group_id": %d,
-		},
-		"personalizations": [
-			{
-				"to": [
-					{
-						"email": "%s"
-					}
-				],
-				"from": {
-					"email": "%s", 
-					"name": "Textile Hub"
-				},
-				"dynamic_template_data": %s,
-			},
-		]
-	}`, template_id, sg.from, group_id, to_email, sg.from, string(template))), nil
+	return api, nil
 }
 
 // ConfirmAddress sends a confirmation link to a recipient.
-func (sg *Email) ConfirmAddress(ctx context.Context, username, email, url, secret string) error {
-	if sg.apiKey == "" {
+func (sg *Email) ConfirmAddress(ctx context.Context, id, username, email, url, secret string) error {
+	if sg.client == nil {
+		log.Debug("Skipping email send")
 		return nil
 	}
-	link := fmt.Sprintf("%s/confirm/%s", url, secret)
-	request := sendgrid.GetRequest(sg.apiKey, sg.path, sg.host)
-	request.Method = "POST"
-	body, err := sg.getBody(sg.confirmTmpl, email, 14540, map[string]string{"link": link, "username": username})
-	if err != nil {
-		return err
+	request := customerio.SendEmailRequest{
+		To:                     email,
+		TransactionalMessageID: sg.confirmTmpl,
+		Identifiers: map[string]string{
+			"id":           id,
+			"confirmation": "true",
+		},
+		MessageData: map[string]interface{}{
+			"link":     fmt.Sprintf("%s/confirm/%s", url, secret),
+			"username": username,
+		},
 	}
-	request.Body = body
 
-	_, err = sendgrid.API(request)
+	_, err := sg.client.SendEmail(ctx, &request)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return err
 }
 
 // ConfirmAddress sends a confirmation link to a recipient.
-func (sg *Email) InviteAddress(ctx context.Context, org, email, to, url, secret string) error {
-	if sg.apiKey == "" {
+func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, secret string) error {
+	if sg.client == nil {
+		log.Debug("Skipping email send")
 		return nil
 	}
-	link := fmt.Sprintf("%s/confirm/%s", url, secret)
-	request := sendgrid.GetRequest(sg.apiKey, sg.path, sg.host)
-	request.Method = "POST"
-
-	body, err := sg.getBody(sg.inviteTmpl, to, 14541, map[string]string{"link": link, "org": org, "from": email})
-	if err != nil {
-		return err
+	request := customerio.SendEmailRequest{
+		To:                     to,
+		TransactionalMessageID: sg.inviteTmpl,
+		Identifiers: map[string]string{
+			"id":    id,
+			"email": email,
+		},
+		MessageData: map[string]interface{}{
+			"link": fmt.Sprintf("%s/confirm/%s", url, secret),
+			"org":  org,
+			"from": email,
+		},
 	}
-	request.Body = body
 
-	_, err = sendgrid.API(request)
+	_, err := sg.client.SendEmail(ctx, &request)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return err
 }

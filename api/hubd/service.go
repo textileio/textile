@@ -83,7 +83,7 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err := s.EmailClient.ConfirmAddress(ectx, req.Username, req.Email, s.GatewayURL, secret); err != nil {
+	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, req.Username, req.Email, s.GatewayURL, secret); err != nil {
 		log.Error(err)
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.EmailClient.ConfirmAddress(ectx, dev.Username, dev.Email, s.GatewayURL, secret); err != nil {
+	if err = s.EmailClient.ConfirmAddress(ectx, dev.Key.String(), dev.Username, dev.Email, s.GatewayURL, secret); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -553,7 +553,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.InviteAddress(
-		ectx, account.Org.Name, account.User.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
+		ectx, account.User.Key.String(), account.Org.Name, account.User.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
 		return nil, err
 	}
 
