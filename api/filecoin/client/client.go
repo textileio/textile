@@ -36,6 +36,19 @@ func (c *Client) Balance(ctx context.Context, addr string) (*userPb.BalanceRespo
 	return c.powC.Balance(ctx, req)
 }
 
+func (c *Client) SignMessage(ctx context.Context, address string, message []byte) (*userPb.SignMessageResponse, error) {
+	req := &userPb.SignMessageRequest{
+		Address: address,
+		Message: message,
+	}
+	return c.powC.SignMessage(ctx, req)
+}
+
+func (c *Client) VerifyMessage(ctx context.Context, address string, message, signature []byte) (*userPb.VerifyMessageResponse, error) {
+	r := &userPb.VerifyMessageRequest{Address: address, Message: message, Signature: signature}
+	return c.powC.VerifyMessage(ctx, r)
+}
+
 func (c *Client) CidInfo(ctx context.Context, cids ...string) (*userPb.CidInfoResponse, error) {
 	req := &userPb.CidInfoRequest{Cids: cids}
 	return c.powC.CidInfo(ctx, req)
