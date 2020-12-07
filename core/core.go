@@ -170,7 +170,7 @@ type Config struct {
 	DNSZoneID string
 	DNSToken  string
 
-	EmailAPIKey        string
+	CustomerioAPIKey   string
 	EmailConfirmTmpl   string
 	EmailInviteTmpl    string
 	EmailSessionSecret string
@@ -298,7 +298,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		ec, err := email.NewClient(email.Config{ConfirmTmpl: conf.EmailConfirmTmpl, InviteTmpl: conf.EmailInviteTmpl, APIKey: conf.EmailAPIKey, Debug: onf.Debug})
+		ec, err := email.NewClient(email.Config{ConfirmTmpl: conf.EmailConfirmTmpl, InviteTmpl: conf.EmailInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
 		if err != nil {
 			return nil, err
 		}
