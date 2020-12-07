@@ -105,8 +105,8 @@ var (
 				Key:      "email.confirm_template",
 				DefValue: "3",
 			},
-			"emailApiKey": {
-				Key:      "email.api_key",
+			"customerioApiKey": {
+				Key:      "customerio.api_key",
 				DefValue: "",
 			},
 			"emailSessionSecret": {
@@ -243,8 +243,8 @@ func init() {
 		config.Flags["emailInviteTmpl"].DefValue.(string),
 		"Template ID for invite emails")
 	rootCmd.PersistentFlags().String(
-		"emailApiKey",
-		config.Flags["emailApiKey"].DefValue.(string),
+		"custoemrioApiKey",
+		config.Flags["customerioApiKey"].DefValue.(string),
 		"Mailgun API key for sending emails")
 	rootCmd.PersistentFlags().String(
 		"emailSessionSecret",
@@ -338,7 +338,7 @@ var rootCmd = &cobra.Command{
 		emailConfirmTmpl := config.Viper.GetString("email.confirm_template")
 		emailInviteTmpl := config.Viper.GetString("email.invite_template")
 
-		emailApiKey := config.Viper.GetString("email.api_key")
+		customerioApiKey := config.Viper.GetString("customerio.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
 		segmentApiKey := config.Viper.GetString("segment.api_key")
@@ -385,7 +385,7 @@ var rootCmd = &cobra.Command{
 
 			EmailConfirmTmpl:   emailConfirmTmpl,
 			EmailInviteTmpl:    emailInviteTmpl,
-			EmailAPIKey:        emailApiKey,
+			CustomerioAPIKey:   customerioApiKey,
 			EmailSessionSecret: emailSessionSecret,
 
 			SegmentAPIKey: segmentApiKey,

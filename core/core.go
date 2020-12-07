@@ -298,7 +298,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		ec, err := email.NewClient(conf.EmailConfirmTmpl, conf.EmailInviteTmpl, conf.EmailAPIKey, conf.Debug)
+		ec, err := email.NewClient(email.Config{ConfirmTmpl: conf.EmailConfirmTmpl, InviteTmpl: conf.EmailInviteTmpl, APIKey: conf.EmailAPIKey, Debug: onf.Debug})
 		if err != nil {
 			return nil, err
 		}

@@ -13,16 +13,24 @@ var (
 	log = logging.Logger("email")
 )
 
-// Email service.
-type Email struct {
+// Client service.
+type Client struct {
 	inviteTmpl  string
 	confirmTmpl string
 	client      *customerio.APIClient
 }
 
+// Config defines the client configuration.
+type Config struct {
+	ConfirmTmpl string
+	InviteTmpl  string
+	APIKey      string
+	Debug       bool
+}
+
 // NewClient return a email api client.
-func NewClient(confirmTmpl, inviteTmpl, apiKey string, debug bool) (*Email, error) {
-	if debug {
+func NewClient(conf Config) (*Client, error) {
+	if conf.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"email": logging.LevelDebug,
 		}); err != nil {
@@ -31,13 +39,13 @@ func NewClient(confirmTmpl, inviteTmpl, apiKey string, debug bool) (*Email, erro
 	}
 
 	var client *customerio.APIClient
-	if apiKey != "" {
-		client = customerio.NewAPIClient(apiKey)
+	if conf.APIKey != "" {
+		client = customerio.NewAPIClient(conf.APIKey)
 	}
 
-	api := &Email{
-		inviteTmpl:  inviteTmpl,
-		confirmTmpl: confirmTmpl,
+	api := &Client{
+		inviteTmpl:  conf.InviteTmpl,
+		confirmTmpl: conf.ConfirmTmpl,
 		client:      client,
 	}
 
@@ -45,7 +53,7 @@ func NewClient(confirmTmpl, inviteTmpl, apiKey string, debug bool) (*Email, erro
 }
 
 // ConfirmAddress sends a confirmation link to a recipient.
-func (sg *Email) ConfirmAddress(ctx context.Context, id, username, email, url, secret string) error {
+func (sg *Client) ConfirmAddress(ctx context.Context, id, username, email, url, secret string) error {
 	if sg.client == nil {
 		log.Debug("Skipping email send")
 		return nil
@@ -71,7 +79,7 @@ func (sg *Email) ConfirmAddress(ctx context.Context, id, username, email, url, s
 }
 
 // InviteAddress sends a confirmation link to a recipient.
-func (sg *Email) InviteAddress(ctx context.Context, id, org, email, to, url, token string) error {
+func (sg *Client) InviteAddress(ctx context.Context, id, org, email, to, url, token string) error {
 	if sg.client == nil {
 		log.Debug("Skipping email send")
 		return nil
