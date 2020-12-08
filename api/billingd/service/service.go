@@ -18,6 +18,7 @@ import (
 	stripec "github.com/stripe/stripe-go/v72/client"
 	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
+	analytics "github.com/textileio/textile/v2/analytics"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	"github.com/textileio/textile/v2/api/billingd/migrations"
@@ -28,7 +29,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
-	analytics "gopkg.in/segmentio/analytics-go.v3"
 )
 
 const (
@@ -167,7 +167,7 @@ func (c *Customer) AccountStatus() string {
 
 type Service struct {
 	config     Config
-	segment    analytics.Client
+	analytics  *analytics.Client
 	server     *grpc.Server
 	stripe     *stripec.API
 	gateway    *gateway.Gateway
@@ -226,9 +226,9 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	// Configure analytics client
-	var sa analytics.Client
-	if config.SegmentAPIKey != "" {
-		sa = analytics.New(config.SegmentAPIKey)
+	ac, err := analytics.NewClient(config.SegmentAPIKey, config.SegmentPrefix, config.Debug)
+	if err != nil {
+		return nil, err
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
@@ -259,13 +259,13 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	s := &Service{
-		config:   config,
-		stripe:   sc,
-		segment:  sa,
-		reporter: cron.New(),
-		pdb:      pdb,
-		cdb:      cdb,
-		products: make(map[string]Product),
+		config:    config,
+		stripe:    sc,
+		analytics: ac,
+		reporter:  cron.New(),
+		pdb:       pdb,
+		cdb:       cdb,
+		products:  make(map[string]Product),
 	}
 	s.gateway, err = gateway.NewGateway(gateway.Config{
 		Addr:                config.GatewayHostAddr,
@@ -480,25 +480,13 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.segmentNewCustomer(doc)
+	go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
+		"parent_key":   doc.ParentKey,
+		"customer_id":  doc.CustomerID,
+		"account_type": doc.AccountType,
+	})
 
 	return doc, nil
-}
-
-func (s *Service) segmentNewCustomer(cus *Customer) {
-	if s.segment != nil {
-		if err := s.segment.Enqueue(analytics.Identify{
-			UserId: cus.Key,
-			Traits: analytics.NewTraits().
-				SetEmail(cus.Email).
-				Set("parent_key", cus.ParentKey).
-				Set("customer_id", cus.CustomerID).
-				Set("account_type", cus.AccountType).
-				Set(s.config.SegmentPrefix+"signup", "true"),
-		}); err != nil {
-			log.Error("segmenting new customer: %v", err)
-		}
-	}
 }
 
 func (s *Service) getCustomer(ctx context.Context, key, val string) (*Customer, error) {
@@ -948,12 +936,23 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
+
+		summary := map[string]interface{}{
+			product.Key + "_name":       product.Name,
+			product.Key + "_usage":      total,
+			product.Key + "_units":      product.Units,
+			product.Key + "_free_quota": product.FreeQuotaSize,
+		}
+		go s.analytics.Update(cus.Key, cus.Email, false, summary)
+
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
+			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_start", false, summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
+			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_end", false, summary)
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -991,6 +990,14 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
+		go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
+			"billable":             doc.Billable,
+			"delinquent":           doc.Delinquent,
+			"grace_period_start":   s.analytics.FormatTime(doc.GracePeriodStart),
+			"invoice_period_end":   s.analytics.FormatTime(doc.InvoicePeriod.UnixEnd),
+			"invoice_period_start": s.analytics.FormatTime(doc.InvoicePeriod.UnixStart),
+			"subscription_status":  doc.SubscriptionStatus,
+		})
 		if err := s.reportCustomerUsage(ctx, &doc); err != nil {
 			return fmt.Errorf("reporting customer usage: %v", err)
 		}

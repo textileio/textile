@@ -37,7 +37,7 @@ var (
 	Repo = "textileio/textile"
 )
 
-// Flaf describes a command flag.
+// Flag describes a command flag.
 type Flag struct {
 	Key      string
 	DefValue interface{}

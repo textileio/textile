@@ -97,20 +97,28 @@ var (
 				Key:      "dns.token",
 				DefValue: "",
 			},
-			"emailFrom": {
-				Key:      "email.from",
-				DefValue: "Hub <verify@email.textile.io>",
+			"emailInviteTmpl": {
+				Key:      "email.invite_template",
+				DefValue: "2",
 			},
-			"emailDomain": {
-				Key:      "email.domain",
-				DefValue: "email.textile.io",
+			"emailConfirmTmpl": {
+				Key:      "email.confirm_template",
+				DefValue: "3",
 			},
-			"emailApiKey": {
-				Key:      "email.api_key",
+			"customerioApiKey": {
+				Key:      "customerio.api_key",
 				DefValue: "",
 			},
 			"emailSessionSecret": {
 				Key:      "email.session_secret",
+				DefValue: "",
+			},
+			"segmentApiKey": {
+				Key:      "segment.api_key",
+				DefValue: "",
+			},
+			"segmentPrefix": {
+				Key:      "segment.prefix",
 				DefValue: "",
 			},
 			"bucketsMaxSize": {
@@ -227,21 +235,31 @@ func init() {
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
-		"emailFrom",
-		config.Flags["emailFrom"].DefValue.(string),
-		"Source address of system emails")
+		"emailConfirmTmpl",
+		config.Flags["emailConfirmTmpl"].DefValue.(string),
+		"Template ID for confirmation emails")
 	rootCmd.PersistentFlags().String(
-		"emailDomain",
-		config.Flags["emailDomain"].DefValue.(string),
-		"Domain of system emails")
+		"emailInviteTmpl",
+		config.Flags["emailInviteTmpl"].DefValue.(string),
+		"Template ID for invite emails")
 	rootCmd.PersistentFlags().String(
-		"emailApiKey",
-		config.Flags["emailApiKey"].DefValue.(string),
+		"custoemrioApiKey",
+		config.Flags["customerioApiKey"].DefValue.(string),
 		"Mailgun API key for sending emails")
 	rootCmd.PersistentFlags().String(
 		"emailSessionSecret",
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
+
+	// Analytics service
+	rootCmd.PersistentFlags().String(
+		"segmentApiKey",
+		config.Flags["segmentApiKey"].DefValue.(string),
+		"Segment API key")
+	rootCmd.PersistentFlags().String(
+		"segmentPrefix",
+		config.Flags["segmentPrefix"].DefValue.(string),
+		"Segment trait source prefix")
 
 	// Bucket settings
 	rootCmd.PersistentFlags().Int64(
@@ -317,10 +335,14 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
 
-		emailFrom := config.Viper.GetString("email.from")
-		emailDomain := config.Viper.GetString("email.domain")
-		emailApiKey := config.Viper.GetString("email.api_key")
+		emailConfirmTmpl := config.Viper.GetString("email.confirm_template")
+		emailInviteTmpl := config.Viper.GetString("email.invite_template")
+
+		customerioApiKey := config.Viper.GetString("customerio.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
+
+		segmentApiKey := config.Viper.GetString("segment.api_key")
+		segmentPrefix := config.Viper.GetString("segment.prefix")
 
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
@@ -361,10 +383,13 @@ var rootCmd = &cobra.Command{
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
 
-			EmailFrom:          emailFrom,
-			EmailDomain:        emailDomain,
-			EmailAPIKey:        emailApiKey,
+			EmailConfirmTmpl:   emailConfirmTmpl,
+			EmailInviteTmpl:    emailInviteTmpl,
+			CustomerioAPIKey:   customerioApiKey,
 			EmailSessionSecret: emailSessionSecret,
+
+			SegmentAPIKey: segmentApiKey,
+			SegmentPrefix: segmentPrefix,
 
 			MaxBucketSize:            bucketsMaxSize,
 			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,

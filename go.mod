@@ -11,6 +11,7 @@ require (
 	github.com/caarlos0/spin v1.1.0
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cloudflare/cloudflare-go v0.11.6
+	github.com/customerio/go-customerio v2.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/filecoin-project/go-fil-markets v1.0.4
 	github.com/gin-contrib/location v0.0.2

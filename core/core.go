@@ -30,6 +30,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	pow "github.com/textileio/powergate/api/client"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
+	"github.com/textileio/textile/v2/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -171,10 +172,13 @@ type Config struct {
 	DNSZoneID string
 	DNSToken  string
 
-	EmailFrom          string
-	EmailDomain        string
-	EmailAPIKey        string
+	CustomerioAPIKey   string
+	EmailConfirmTmpl   string
+	EmailInviteTmpl    string
 	EmailSessionSecret string
+
+	SegmentAPIKey string
+	SegmentPrefix string
 
 	MaxBucketSize            int64
 	MaxNumberThreadsPerOwner int
@@ -296,10 +300,16 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		ec, err := email.NewClient(conf.EmailFrom, conf.EmailDomain, conf.EmailAPIKey, conf.Debug)
+		ec, err := email.NewClient(email.Config{ConfirmTmpl: conf.EmailConfirmTmpl, InviteTmpl: conf.EmailInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
 		if err != nil {
 			return nil, err
 		}
+
+		ac, err := analytics.NewClient(conf.SegmentAPIKey, conf.SegmentPrefix, conf.Debug)
+		if err != nil {
+			return nil, err
+		}
+
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
 		hs = &hubd.Service{
 			Collections:         t.collections,
@@ -314,6 +324,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
+			Analytics:           ac,
 		}
 		us = &usersd.Service{
 			Collections:   t.collections,
