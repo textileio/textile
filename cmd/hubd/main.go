@@ -97,12 +97,12 @@ var (
 				Key:      "dns.token",
 				DefValue: "",
 			},
-			"emailInviteTmpl": {
-				Key:      "email.invite_template",
+			"customerioInviteTmpl": {
+				Key:      "customerio.invite_template",
 				DefValue: "2",
 			},
-			"emailConfirmTmpl": {
-				Key:      "email.confirm_template",
+			"customerioConfirmTmpl": {
+				Key:      "customerio.confirm_template",
 				DefValue: "3",
 			},
 			"customerioApiKey": {
@@ -235,15 +235,15 @@ func init() {
 
 	// Verification email settings
 	rootCmd.PersistentFlags().String(
-		"emailConfirmTmpl",
-		config.Flags["emailConfirmTmpl"].DefValue.(string),
+		"customerioConfirmTmpl",
+		config.Flags["customerioConfirmTmpl"].DefValue.(string),
 		"Template ID for confirmation emails")
 	rootCmd.PersistentFlags().String(
-		"emailInviteTmpl",
-		config.Flags["emailInviteTmpl"].DefValue.(string),
+		"customerioInviteTmpl",
+		config.Flags["customerioInviteTmpl"].DefValue.(string),
 		"Template ID for invite emails")
 	rootCmd.PersistentFlags().String(
-		"custoemrioApiKey",
+		"customerioApiKey",
 		config.Flags["customerioApiKey"].DefValue.(string),
 		"Mailgun API key for sending emails")
 	rootCmd.PersistentFlags().String(
@@ -335,8 +335,8 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
 
-		emailConfirmTmpl := config.Viper.GetString("email.confirm_template")
-		emailInviteTmpl := config.Viper.GetString("email.invite_template")
+		customerioConfirmTmpl := config.Viper.GetString("customerio.confirm_template")
+		customerioInviteTmpl := config.Viper.GetString("customerio.invite_template")
 
 		customerioApiKey := config.Viper.GetString("customerio.api_key")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
@@ -383,10 +383,10 @@ var rootCmd = &cobra.Command{
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
 
-			EmailConfirmTmpl:   emailConfirmTmpl,
-			EmailInviteTmpl:    emailInviteTmpl,
-			CustomerioAPIKey:   customerioApiKey,
-			EmailSessionSecret: emailSessionSecret,
+			CustomerioConfirmTmpl: customerioConfirmTmpl,
+			CustomerioInviteTmpl:  customerioInviteTmpl,
+			CustomerioAPIKey:      customerioApiKey,
+			EmailSessionSecret:    emailSessionSecret,
 
 			SegmentAPIKey: segmentApiKey,
 			SegmentPrefix: segmentPrefix,
