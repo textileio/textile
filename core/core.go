@@ -172,10 +172,10 @@ type Config struct {
 	DNSZoneID string
 	DNSToken  string
 
-	CustomerioAPIKey   string
-	EmailConfirmTmpl   string
-	EmailInviteTmpl    string
-	EmailSessionSecret string
+	CustomerioAPIKey      string
+	CustomerioConfirmTmpl string
+	CustomerioInviteTmpl  string
+	EmailSessionSecret    string
 
 	SegmentAPIKey string
 	SegmentPrefix string
@@ -300,7 +300,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		ec, err := email.NewClient(email.Config{ConfirmTmpl: conf.EmailConfirmTmpl, InviteTmpl: conf.EmailInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
+		cio, err := email.NewClient(email.Config{ConfirmTmpl: conf.CustomerioConfirmTmpl, InviteTmpl: conf.CustomerioInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +316,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			Threads:             t.th,
 			ThreadsNet:          t.thn,
 			GatewayURL:          conf.AddrGatewayURL,
-			EmailClient:         ec,
+			EmailClient:         cio,
 			EmailSessionBus:     t.emailSessionBus,
 			EmailSessionSecret:  conf.EmailSessionSecret,
 			IPFSClient:          ic,
