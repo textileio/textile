@@ -482,10 +482,10 @@ func (s *Service) createCustomer(
 		AccountType: mdb.AccountType(params.AccountType),
 		CreatedAt:   time.Now().Unix(),
 	}
-	if _, err := s.cdb.InsertOne(ctx, doc); err != nil {
+	if err := s.createSubscription(doc); err != nil {
 		return nil, err
 	}
-	if err := s.createSubscription(doc); err != nil {
+	if _, err := s.cdb.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
