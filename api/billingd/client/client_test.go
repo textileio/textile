@@ -42,6 +42,9 @@ func TestClient_CreateCustomer(t *testing.T) {
 	_, err := c.CreateCustomer(context.Background(), key, email, mdb.Dev)
 	require.NoError(t, err)
 
+	_, err = c.CreateCustomer(context.Background(), key, email, mdb.Dev)
+	require.Error(t, err)
+
 	_, err = c.CreateCustomer(
 		context.Background(),
 		newKey(t),

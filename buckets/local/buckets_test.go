@@ -329,7 +329,7 @@ func (c *eventCollector) collect(events chan PathEvent) {
 }
 
 func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int) {
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 	c.Lock()
 	defer c.Unlock()
 	if numFilesAdded > 0 {
