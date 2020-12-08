@@ -46,7 +46,12 @@ const (
 	duplicateKeyMsg = "E11000 duplicate key error"
 )
 
-var log = logging.Logger("billing")
+var (
+	log = logging.Logger("billing")
+
+	// ErrCustomerExists indicates a customer already exists.
+	ErrCustomerExists = errors.New("customer already exists")
+)
 
 type Product struct {
 	Key                      string            `bson:"_id"`
@@ -432,7 +437,7 @@ func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequ
 	var parentKey string
 	if req.Parent != nil {
 		if _, err := s.createCustomer(ctx, req.Parent, ""); err != nil &&
-			!strings.Contains(err.Error(), duplicateKeyMsg) {
+			!errors.Is(err, ErrCustomerExists) {
 			return nil, err
 		}
 		parentKey = req.Parent.Key
@@ -455,8 +460,23 @@ func (s *Service) createCustomer(
 	lck.Acquire()
 	defer lck.Release()
 
-	doc := &Customer{
+	doc, err := s.getCustomer(ctx, "_id", params.Key)
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, err
+	} else if err == nil {
+		return nil, ErrCustomerExists
+	}
+
+	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
+		Email: stripe.String(params.Email),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	doc = &Customer{
 		Key:         params.Key,
+		CustomerID:  customer.ID,
 		ParentKey:   parentKey,
 		Email:       params.Email,
 		AccountType: mdb.AccountType(params.AccountType),
@@ -465,17 +485,7 @@ func (s *Service) createCustomer(
 	if _, err := s.cdb.InsertOne(ctx, doc); err != nil {
 		return nil, err
 	}
-	customer, err := s.stripe.Customers.New(&stripe.CustomerParams{
-		Email: stripe.String(doc.Email),
-	})
-	if err != nil {
-		return nil, err
-	}
-	doc.CustomerID = customer.ID
 	if err := s.createSubscription(doc); err != nil {
-		return nil, err
-	}
-	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": doc.Key}, bson.M{"$set": doc}); err != nil {
 		return nil, err
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
