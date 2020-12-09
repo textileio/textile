@@ -653,6 +653,9 @@ func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
 		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 		"subscription_status":  cus.SubscriptionStatus,
 	}
+	if cus.GracePeriodStart > 0 {
+		summary["grace_period_end"] = cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
+	}
 	if deps > 0 {
 		summary["dependents"] = deps
 	}
