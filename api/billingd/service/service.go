@@ -590,6 +590,20 @@ func getCurrentDayBounds() (int64, int64) {
 	return start.Unix(), end.Unix()
 }
 
+func getCost(product Product, paidUnits int64) float64 {
+	if paidUnits > 0 {
+		return float64(paidUnits) * getUnitPrice(product)
+	}
+	return 0
+}
+
+func getDesc(product Product) string {
+	if product.Units != "" {
+		return fmt.Sprintf("%s (%s)", product.Name, product.Units)
+	}
+	return product.Name
+}
+
 func getUsage(product Product, total int64, period Period) *pb.Usage {
 	freeUnits, paidUnits := getUnits(product, total)
 	free := product.FreeQuotaSize - total
@@ -600,25 +614,13 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 	if free < 0 {
 		free = 0
 	}
-	var cost float64
-	if paidUnits > 0 {
-		cost = float64(paidUnits) * getUnitPrice(product)
-	} else {
-		cost = 0
-	}
-	var desc string
-	if product.Units != "" {
-		desc = fmt.Sprintf("%s (%s)", product.Name, product.Units)
-	} else {
-		desc = product.Name
-	}
 	return &pb.Usage{
-		Description: desc,
+		Description: getDesc(product),
 		Units:       freeUnits + paidUnits,
 		Total:       total,
 		Free:        free,
 		Grace:       grace,
-		Cost:        cost,
+		Cost:        getCost(product, paidUnits),
 		Period:      periodToPb(period),
 	}
 }
@@ -634,6 +636,38 @@ func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
 	freeUnits = int64(math.Round(float64(freeSize) / float64(product.UnitSize)))
 	paidUnits = int64(math.Round(float64(paidSize) / float64(product.UnitSize)))
 	return
+}
+
+func addProductToSummary(summary map[string]interface{}, product Product, total int64) {
+	_, paidUnits := getUnits(product, total)
+	cost := getCost(product, paidUnits)
+	desc := getDesc(product)
+	summary[product.Key+"_name"] = product.Name
+	summary[product.Key+"_units"] = product.Units
+	summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
+	summary[product.Key+"_total"] = total
+	summary[product.Key+"_cost"] = cost
+	summary[product.Key+"_description"] = desc
+
+}
+
+func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
+	summary := map[string]interface{}{
+		"account_status":       cus.AccountStatus(),
+		"billable":             cus.Billable,
+		"delinquent":           cus.Delinquent,
+		"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
+		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+		"subscription_status":  cus.SubscriptionStatus,
+	}
+	if cus.GracePeriodStart > 0 {
+		summary["grace_period_end"] = s.analytics.FormatUnix(cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds()))
+	}
+	if deps > 0 {
+		summary["dependents"] = deps
+	}
+	return summary
 }
 
 func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
@@ -944,24 +978,20 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		total = 0
 	}
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
+
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
-
-		summary := map[string]interface{}{
-			product.Key + "_name":       product.Name,
-			product.Key + "_usage":      total,
-			product.Key + "_units":      product.Units,
-			product.Key + "_free_quota": product.FreeQuotaSize,
-		}
-		go s.analytics.Update(cus.Key, cus.Email, false, summary)
-
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
+			summary := s.getSummary(cus, 0)
+			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_start", false, summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
+			summary := s.getSummary(cus, 0)
+			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_end", false, summary)
 			return nil, common.ErrExceedsFreeQuota
 		}
@@ -1000,14 +1030,6 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
-		go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
-			"billable":             doc.Billable,
-			"delinquent":           doc.Delinquent,
-			"grace_period_start":   s.analytics.FormatTime(doc.GracePeriodStart),
-			"invoice_period_end":   s.analytics.FormatTime(doc.InvoicePeriod.UnixEnd),
-			"invoice_period_start": s.analytics.FormatTime(doc.InvoicePeriod.UnixStart),
-			"subscription_status":  doc.SubscriptionStatus,
-		})
 		if err := s.reportCustomerUsage(ctx, &doc); err != nil {
 			return fmt.Errorf("reporting customer usage: %v", err)
 		}
@@ -1019,11 +1041,19 @@ func (s *Service) reportUsage() error {
 }
 
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
+	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": cus.Key})
+	if err != nil {
+		return err
+	}
+	summary := s.getSummary(cus, deps)
+
 	for k, usage := range cus.DailyUsage {
 		if product, ok := s.products[k]; ok {
 			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
 			}
+
+			addProductToSummary(summary, product, usage.Total)
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
 				product.PriceType == PriceTypeIncremental {
@@ -1037,6 +1067,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
 	}
+	go s.analytics.Update(cus.Key, cus.Email, false, summary)
 	return nil
 }
 

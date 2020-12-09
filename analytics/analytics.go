@@ -85,7 +85,7 @@ func (c *Client) NewEvent(userID, email, eventName string, active bool, properti
 	}
 }
 
-// FormatTime converts nanos to string in same format for all analytics requests
-func (c *Client) FormatTime(nanos int64) string {
-	return time.Unix(0, nanos).Format(time.RFC3339)
+// FormatUnix converts seconds to string in same format for all analytics requests
+func (c *Client) FormatUnix(seconds int64) string {
+	return time.Unix(seconds, 0).Format(time.RFC3339)
 }
