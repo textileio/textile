@@ -643,7 +643,7 @@ func addProductToSummary(summary map[string]interface{}, product Product, total 
 	summary[product.Key+"_total"] = total
 }
 
-func (s *Service) getSummary(cus *Customer) map[string]interface{} {
+func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
 	summary := map[string]interface{}{
 		"account_status":       cus.AccountStatus(),
 		"billable":             cus.Billable,
@@ -652,6 +652,9 @@ func (s *Service) getSummary(cus *Customer) map[string]interface{} {
 		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
 		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 		"subscription_status":  cus.SubscriptionStatus,
+	}
+	if deps > 0 {
+		summary["dependents"] = deps
 	}
 	return summary
 }
@@ -970,13 +973,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
-			summary := s.getSummary(cus)
+			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_start", false, summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
-			summary := s.getSummary(cus)
+			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_end", false, summary)
 			return nil, common.ErrExceedsFreeQuota
@@ -1027,12 +1030,11 @@ func (s *Service) reportUsage() error {
 }
 
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
-	summary := s.getSummary(cus)
 	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": cus.Key})
 	if err != nil {
 		return err
 	}
-	summary["dependents"] = deps
+	summary := s.getSummary(cus, deps)
 
 	for k, usage := range cus.DailyUsage {
 		if product, ok := s.products[k]; ok {
@@ -1044,7 +1046,6 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
 				product.PriceType == PriceTypeIncremental {
-				summary[product.Key+"_daily_usage"] = k
 				if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{
 					"$set": bson.M{"daily_usage." + k + ".total": 0},
 				}); err != nil {
