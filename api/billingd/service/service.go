@@ -958,6 +958,8 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			"invoice_period_start":      s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 			"subscription_status":       cus.SubscriptionStatus,
 			"account_status":            cus.AccountStatus(),
+			"billable":                  cus.Billable,
+			"delinquent":                cus.Delinquent,
 		}
 
 		if cus.GracePeriodStart == 0 {
@@ -1005,14 +1007,6 @@ func (s *Service) reportUsage() error {
 		if err := cursor.Decode(&doc); err != nil {
 			return fmt.Errorf("decoding customer: %v", err)
 		}
-		go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
-			"billable":             doc.Billable,
-			"delinquent":           doc.Delinquent,
-			"grace_period_start":   s.analytics.FormatUnix(doc.GracePeriodStart),
-			"invoice_period_end":   s.analytics.FormatUnix(doc.InvoicePeriod.UnixEnd),
-			"invoice_period_start": s.analytics.FormatUnix(doc.InvoicePeriod.UnixStart),
-			"subscription_status":  doc.SubscriptionStatus,
-		})
 		if err := s.reportCustomerUsage(ctx, &doc); err != nil {
 			return fmt.Errorf("reporting customer usage: %v", err)
 		}
@@ -1029,6 +1023,9 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
 		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 		"subscription_status":  cus.SubscriptionStatus,
+		"billable":             cus.Billable,
+		"delinquent":           cus.Delinquent,
+		"account_status":       cus.AccountStatus(),
 	}
 	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": cus.Key})
 	if err == nil {
