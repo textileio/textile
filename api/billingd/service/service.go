@@ -944,6 +944,7 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		total = 0
 	}
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
+
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
 
@@ -952,8 +953,11 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			product.Key + "_usage":      total,
 			product.Key + "_units":      product.Units,
 			product.Key + "_free_quota": product.FreeQuotaSize,
+			"grace_period_start":        s.analytics.FormatUnix(cus.GracePeriodStart),
+			"invoice_period_end":        s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+			"invoice_period_start":      s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+			"subscription_status":       cus.SubscriptionStatus,
 		}
-		go s.analytics.Update(cus.Key, cus.Email, false, summary)
 
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
@@ -1003,9 +1007,9 @@ func (s *Service) reportUsage() error {
 		go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
 			"billable":             doc.Billable,
 			"delinquent":           doc.Delinquent,
-			"grace_period_start":   s.analytics.FormatTime(doc.GracePeriodStart),
-			"invoice_period_end":   s.analytics.FormatTime(doc.InvoicePeriod.UnixEnd),
-			"invoice_period_start": s.analytics.FormatTime(doc.InvoicePeriod.UnixStart),
+			"grace_period_start":   s.analytics.FormatUnix(doc.GracePeriodStart),
+			"invoice_period_end":   s.analytics.FormatUnix(doc.InvoicePeriod.UnixEnd),
+			"invoice_period_start": s.analytics.FormatUnix(doc.InvoicePeriod.UnixStart),
 			"subscription_status":  doc.SubscriptionStatus,
 		})
 		if err := s.reportCustomerUsage(ctx, &doc); err != nil {
@@ -1020,13 +1024,27 @@ func (s *Service) reportUsage() error {
 
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
 	for k, usage := range cus.DailyUsage {
+
+		summary := map[string]interface{}{
+			"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
+			"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+			"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+			"subscription_status":  cus.SubscriptionStatus,
+		}
 		if product, ok := s.products[k]; ok {
 			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
 			}
+
+			summary[product.Key+"_name"] = product.Name
+			summary[product.Key+"_usage"] = usage.Total
+			summary[product.Key+"_units"] = product.Units
+			summary[product.Key+"_free_quota"] = product.FreeQuotaSize
+
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
 				product.PriceType == PriceTypeIncremental {
+				summary[product.Key+"_daily_usage"] = k
 				if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{
 					"$set": bson.M{"daily_usage." + k + ".total": 0},
 				}); err != nil {
@@ -1036,6 +1054,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 		} else {
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
+		go s.analytics.Update(cus.Key, cus.Email, false, summary)
 	}
 	return nil
 }
