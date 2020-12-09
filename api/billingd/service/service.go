@@ -636,6 +636,26 @@ func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
 	return
 }
 
+func addProductToSummary(summary map[string]interface{}, product Product, total int64) {
+	summary[product.Key+"_name"] = product.Name
+	summary[product.Key+"_units"] = product.Units
+	summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
+	summary[product.Key+"_total"] = total
+}
+
+func (s *Service) getSummary(cus *Customer) map[string]interface{} {
+	summary := map[string]interface{}{
+		"account_status":       cus.AccountStatus(),
+		"billable":             cus.Billable,
+		"delinquent":           cus.Delinquent,
+		"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
+		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+		"subscription_status":  cus.SubscriptionStatus,
+	}
+	return summary
+}
+
 func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
 	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": doc.Key})
 	if err != nil {
@@ -947,28 +967,17 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
-
-		summary := map[string]interface{}{
-			product.Key + "_name":       product.Name,
-			product.Key + "_total":      total,
-			product.Key + "_units":      product.Units,
-			product.Key + "_free_quota": product.FreeQuotaSize,
-			"grace_period_start":        s.analytics.FormatUnix(cus.GracePeriodStart),
-			"invoice_period_end":        s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
-			"invoice_period_start":      s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
-			"subscription_status":       cus.SubscriptionStatus,
-			"account_status":            cus.AccountStatus(),
-			"billable":                  cus.Billable,
-			"delinquent":                cus.Delinquent,
-		}
-
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
 			update["grace_period_start"] = cus.GracePeriodStart
+			summary := s.getSummary(cus)
+			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_start", false, summary)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
+			summary := s.getSummary(cus)
+			addProductToSummary(summary, product, total)
 			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_end", false, summary)
 			return nil, common.ErrExceedsFreeQuota
 		}
@@ -1018,29 +1027,19 @@ func (s *Service) reportUsage() error {
 }
 
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
-	summary := map[string]interface{}{
-		"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
-		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
-		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
-		"subscription_status":  cus.SubscriptionStatus,
-		"billable":             cus.Billable,
-		"delinquent":           cus.Delinquent,
-		"account_status":       cus.AccountStatus(),
-	}
+	summary := s.getSummary(cus)
 	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": cus.Key})
-	if err == nil {
-		summary["dependents"] = deps
+	if err != nil {
+		return err
 	}
+	summary["dependents"] = deps
+
 	for k, usage := range cus.DailyUsage {
 		if product, ok := s.products[k]; ok {
 			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
 			}
-
-			summary[product.Key+"_name"] = product.Name
-			summary[product.Key+"_total"] = usage.Total
-			summary[product.Key+"_units"] = product.Units
-			summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
+			addProductToSummary(summary, product, usage.Total)
 
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
