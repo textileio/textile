@@ -950,13 +950,14 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 
 		summary := map[string]interface{}{
 			product.Key + "_name":       product.Name,
-			product.Key + "_usage":      total,
+			product.Key + "_total":      total,
 			product.Key + "_units":      product.Units,
 			product.Key + "_free_quota": product.FreeQuotaSize,
 			"grace_period_start":        s.analytics.FormatUnix(cus.GracePeriodStart),
 			"invoice_period_end":        s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
 			"invoice_period_start":      s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 			"subscription_status":       cus.SubscriptionStatus,
+			"account_status":            cus.AccountStatus(),
 		}
 
 		if cus.GracePeriodStart == 0 {
@@ -1023,14 +1024,17 @@ func (s *Service) reportUsage() error {
 }
 
 func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error {
+	summary := map[string]interface{}{
+		"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
+		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+		"subscription_status":  cus.SubscriptionStatus,
+	}
+	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": cus.Key})
+	if err == nil {
+		summary["dependents"] = deps
+	}
 	for k, usage := range cus.DailyUsage {
-
-		summary := map[string]interface{}{
-			"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
-			"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
-			"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
-			"subscription_status":  cus.SubscriptionStatus,
-		}
 		if product, ok := s.products[k]; ok {
 			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
@@ -1054,8 +1058,8 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 		} else {
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
-		go s.analytics.Update(cus.Key, cus.Email, false, summary)
 	}
+	go s.analytics.Update(cus.Key, cus.Email, false, summary)
 	return nil
 }
 
