@@ -1038,9 +1038,9 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			}
 
 			summary[product.Key+"_name"] = product.Name
-			summary[product.Key+"_usage"] = usage.Total
+			summary[product.Key+"_total"] = usage.Total
 			summary[product.Key+"_units"] = product.Units
-			summary[product.Key+"_free_quota"] = product.FreeQuotaSize
+			summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
 
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
