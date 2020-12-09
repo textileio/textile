@@ -590,6 +590,12 @@ func getCurrentDayBounds() (int64, int64) {
 	return start.Unix(), end.Unix()
 }
 
+func getCost(product Product, paidUnits int64) float64 {
+	if paidUnits > 0 {
+		return float64(paidUnits) * getUnitPrice(product)
+	}
+	return 0
+}
 func getUsage(product Product, total int64, period Period) *pb.Usage {
 	freeUnits, paidUnits := getUnits(product, total)
 	free := product.FreeQuotaSize - total
@@ -600,12 +606,7 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 	if free < 0 {
 		free = 0
 	}
-	var cost float64
-	if paidUnits > 0 {
-		cost = float64(paidUnits) * getUnitPrice(product)
-	} else {
-		cost = 0
-	}
+	cost := getCost(product, paidUnits)
 	var desc string
 	if product.Units != "" {
 		desc = fmt.Sprintf("%s (%s)", product.Name, product.Units)
@@ -637,10 +638,14 @@ func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
 }
 
 func addProductToSummary(summary map[string]interface{}, product Product, total int64) {
+	_, paidUnits := getUnits(product, total)
+	cost := getCost(product, paidUnits)
 	summary[product.Key+"_name"] = product.Name
 	summary[product.Key+"_units"] = product.Units
 	summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
 	summary[product.Key+"_total"] = total
+	summary[product.Key+"_cost"] = cost
+
 }
 
 func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
@@ -1044,6 +1049,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			if err := s.reportUnits(product, usage, cus.ParentKey); err != nil {
 				return err
 			}
+
 			addProductToSummary(summary, product, usage.Total)
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
