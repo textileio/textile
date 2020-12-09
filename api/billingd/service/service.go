@@ -1042,7 +1042,6 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 				return err
 			}
 			addProductToSummary(summary, product, usage.Total)
-
 			log.Debugf("reported usage for %s: %s=%d", cus.Key, k, usage.Total)
 			if product.FreeQuotaInterval == FreeQuotaDaily &&
 				product.PriceType == PriceTypeIncremental {
