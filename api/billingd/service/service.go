@@ -596,6 +596,7 @@ func getCost(product Product, paidUnits int64) float64 {
 	}
 	return 0
 }
+
 func getUsage(product Product, total int64, period Period) *pb.Usage {
 	freeUnits, paidUnits := getUnits(product, total)
 	free := product.FreeQuotaSize - total
