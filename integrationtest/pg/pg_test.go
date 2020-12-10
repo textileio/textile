@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 func TestCreateBucket(t *testing.T) {
 	powc := StartPowergate(t)
 	ctx, _, client, shutdown := setup(t)
-	defer shutdown(true)
+	defer shutdown()
 
 	// User is now created, so it should exist after spinup.
 	res, err := powc.Admin.Users.List(ctx)
@@ -67,7 +67,7 @@ func TestArchiveTracker(t *testing.T) {
 
 		// Force stop the Hub.
 		fmt.Println("<<< Force stopping Hub")
-		shutdown(false)
+		shutdown()
 		fmt.Println("<<< Hub stopped")
 
 		// Re-spin up Hub.
@@ -98,7 +98,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		defer shutdown()
 
 		// Create bucket with a file.
 		b, err := client.Create(ctx)
@@ -147,7 +147,7 @@ func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		defer shutdown()
 
 		b, err := client.Create(ctx)
 		require.NoError(t, err)
@@ -181,7 +181,7 @@ func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
 		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		defer shutdown()
 
 		b, err := client.Create(ctx)
 		require.NoError(t, err)
@@ -242,7 +242,7 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 	return strings.SplitN(root.String(), "/", 4)[2]
 }
 
-func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func(bool)) {
+func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func()) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")

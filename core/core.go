@@ -18,6 +18,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	mongods "github.com/textileio/go-ds-mongo"
 	dbapi "github.com/textileio/go-threads/api"
 	threads "github.com/textileio/go-threads/api/client"
 	dbpb "github.com/textileio/go-threads/api/pb"
@@ -148,48 +149,54 @@ type Textile struct {
 }
 
 type Config struct {
-	RepoPath string
+	Hub   bool
+	Debug bool
 
-	AddrAPI      ma.Multiaddr
-	AddrAPIProxy ma.Multiaddr
+	// Addresses
+	AddrAPI              ma.Multiaddr
+	AddrAPIProxy         ma.Multiaddr
+	AddrMongoURI         string
+	AddrMongoName        string
+	AddrThreadsHost      ma.Multiaddr
+	AddrThreadsMongoURI  string
+	AddrThreadsMongoName string
+	AddrGatewayHost      ma.Multiaddr
+	AddrGatewayURL       string
+	AddrIPFSAPI          ma.Multiaddr
+	AddrBillingAPI       string
+	AddrPowergateAPI     string
 
-	AddrMongoURI  string
-	AddrMongoName string
+	// Buckets
+	MaxBucketSize int64
 
-	AddrThreadsHost  ma.Multiaddr
-	AddrIPFSAPI      ma.Multiaddr
-	AddrBillingAPI   string
-	AddrPowergateAPI string
+	// Threads
+	MaxNumberThreadsPerOwner int
+	ThreadsConnManager       connmgr.ConnManager
 
-	AddrGatewayHost ma.Multiaddr
-	AddrGatewayURL  string
+	// Powergate
+	PowergateAdminToken string
 
-	ThreadsConnManager connmgr.ConnManager
+	// Archives
+	ArchiveJobPollIntervalSlow time.Duration
+	ArchiveJobPollIntervalFast time.Duration
 
+	// Gateway
 	UseSubdomains bool
 
+	// Cloudflare
 	DNSDomain string
 	DNSZoneID string
 	DNSToken  string
 
+	// Customer.io
 	CustomerioAPIKey      string
 	CustomerioConfirmTmpl string
 	CustomerioInviteTmpl  string
 	EmailSessionSecret    string
 
+	// Segment
 	SegmentAPIKey string
 	SegmentPrefix string
-
-	MaxBucketSize            int64
-	MaxNumberThreadsPerOwner int
-
-	Hub   bool
-	Debug bool
-
-	PowergateAdminToken string
-
-	ArchiveJobPollIntervalSlow time.Duration
-	ArchiveJobPollIntervalFast time.Duration
 }
 
 func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
@@ -237,15 +244,13 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	// Configure threads
 	netOptions := []tc.NetOption{
 		tc.WithNetHostAddr(conf.AddrThreadsHost),
+		tc.WithNetMongoPersistence(conf.AddrThreadsMongoURI, conf.AddrThreadsMongoName),
 		tc.WithNetDebug(conf.Debug),
 	}
 	if conf.ThreadsConnManager != nil {
 		netOptions = append(netOptions, tc.WithConnectionManager(conf.ThreadsConnManager))
 	}
-	t.ts, err = tc.DefaultNetwork(
-		conf.RepoPath,
-		netOptions...,
-	)
+	t.ts, err = tc.DefaultNetwork(netOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -275,9 +280,17 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC services
-	ts, err := dbapi.NewService(t.ts, dbapi.Config{
-		RepoPath: conf.RepoPath,
-		Debug:    conf.Debug,
+	dbs, err := mongods.New(
+		ctx,
+		conf.AddrThreadsMongoURI,
+		conf.AddrThreadsMongoName,
+		mongods.WithCollName("eventstore"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := dbapi.NewService(dbs, t.ts, dbapi.Config{
+		Debug: conf.Debug,
 	})
 	if err != nil {
 		return nil, err
@@ -300,7 +313,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		cio, err := email.NewClient(email.Config{ConfirmTmpl: conf.CustomerioConfirmTmpl, InviteTmpl: conf.CustomerioInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
+		cio, err := email.NewClient(
+			email.Config{
+				ConfirmTmpl: conf.CustomerioConfirmTmpl,
+				InviteTmpl:  conf.CustomerioInviteTmpl,
+				APIKey:      conf.CustomerioAPIKey,
+				Debug:       conf.Debug,
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +353,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	if conf.Hub {
-		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.pc, t.internalHubSession, conf.ArchiveJobPollIntervalSlow, conf.ArchiveJobPollIntervalFast)
+		t.archiveTracker, err = archive.New(
+			t.collections,
+			t.bucks,
+			t.pc,
+			t.internalHubSession,
+			conf.ArchiveJobPollIntervalSlow,
+			conf.ArchiveJobPollIntervalFast,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +393,10 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
 			}
-			if powergateServiceDesc, err = createServiceDesciptor("powergate/user/v1/user.proto", powergateServiceName); err != nil {
+			if powergateServiceDesc, err = createServiceDesciptor(
+				"powergate/user/v1/user.proto",
+				powergateServiceName,
+			); err != nil {
 				return nil, err
 			}
 		}
@@ -375,7 +405,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 				auth.UnaryServerInterceptor(t.authFunc),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
 				t.threadInterceptor(),
-				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, conf.PowergateAdminToken, t.collections),
+				powInterceptor(
+					powergateServiceName,
+					allowedPowMethods[powergateServiceName],
+					powergateServiceDesc,
+					powStub,
+					t.pc,
+					conf.PowergateAdminToken,
+					t.collections,
+				),
 			),
 			grpcm.WithStreamServerChain(
 				auth.StreamServerInterceptor(t.authFunc),

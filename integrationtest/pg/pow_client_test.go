@@ -55,14 +55,15 @@ func TestPowClient(t *testing.T) {
 		require.NotNil(t, res)
 	})
 
-	cleanup(true)
+	cleanup()
 }
 
-func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *fc.Client, func(bool)) {
+func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *fc.Client, func()) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
 	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
+	conf.AddrThreadsMongoURI = "mongodb://127.0.0.1:27027"
 	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)

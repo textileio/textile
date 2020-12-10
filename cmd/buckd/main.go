@@ -35,6 +35,8 @@ var (
 				Key:      "log.file",
 				DefValue: "${HOME}/." + daemonName + "/log",
 			},
+
+			// Addresses
 			"addrApi": {
 				Key:      "addr.api",
 				DefValue: "/ip4/127.0.0.1/tcp/3006",
@@ -55,6 +57,14 @@ var (
 				Key:      "addr.threads.host",
 				DefValue: "/ip4/0.0.0.0/tcp/4006",
 			},
+			"addrThreadsMongoUri": {
+				Key:      "addr.threads_mongo_uri",
+				DefValue: "mongodb://127.0.0.1:27017",
+			},
+			"addrThreadsMongoName": {
+				Key:      "addr.threads_mongo_name",
+				DefValue: "buckets",
+			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
 				DefValue: "/ip4/127.0.0.1/tcp/8006",
@@ -71,10 +81,15 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
+
+			// Gateway
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
 				DefValue: false,
 			},
+
+			// Cloudflare
+			// @todo: Change these to cloudflareDnsDomain, etc.
 			"dnsDomain": {
 				Key:      "dns.domain",
 				DefValue: "",
@@ -117,7 +132,7 @@ func init() {
 		config.Flags["logFile"].DefValue.(string),
 		"Write logs to file")
 
-	// Address settings
+	// Addresses
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
@@ -139,6 +154,14 @@ func init() {
 		config.Flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
+		"addrThreadsMongoUri",
+		config.Flags["addrThreadsMongoUri"].DefValue.(string),
+		"Threads MongoDB connection URI")
+	rootCmd.PersistentFlags().String(
+		"addrThreadsMongoName",
+		config.Flags["addrThreadsMongoName"].DefValue.(string),
+		"Threads MongoDB database name")
+	rootCmd.PersistentFlags().String(
 		"addrGatewayHost",
 		config.Flags["addrGatewayHost"].DefValue.(string),
 		"Local gateway host address")
@@ -155,13 +178,13 @@ func init() {
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
 
-	// Gateway settings
+	// Gateway
 	rootCmd.PersistentFlags().Bool(
 		"gatewaySubdomains",
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
 
-	// DNS settings
+	// Cloudflare
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
 		config.Flags["dnsDomain"].DefValue.(string),
@@ -203,54 +226,51 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		log.Debugf("loaded config: %s", string(settings))
 
-		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
-		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
-
-		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
-		addrMongoName := config.Viper.GetString("addr.mongo_name")
-
-		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
-		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
-		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
-
-		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
-		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
-
-		dnsDomain := config.Viper.GetString("dns.domain")
-		dnsZoneID := config.Viper.GetString("dns.zone_id")
-		dnsToken := config.Viper.GetString("dns.token")
-
+		debug := config.Viper.GetBool("log.debug")
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			err = util.SetupDefaultLoggingConfig(logFile)
 			cmd.ErrCheck(err)
 		}
 
+		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
+		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
+		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
+		addrMongoName := config.Viper.GetString("addr.mongo_name")
+		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
+		addrThreadsMongoUri := config.Viper.GetString("addr.mongo_uri")
+		addrThreadsMongoName := config.Viper.GetString("addr.mongo_name")
+		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
+		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
+		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
+		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
+
+		dnsDomain := config.Viper.GetString("dns.domain")
+		dnsZoneID := config.Viper.GetString("dns.zone_id")
+		dnsToken := config.Viper.GetString("dns.token")
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath: config.Viper.GetString("repo"),
+			Debug: debug,
 
-			AddrAPI:      addrApi,
-			AddrAPIProxy: addrApiProxy,
-
-			AddrMongoURI:  addrMongoUri,
-			AddrMongoName: addrMongoName,
-
-			AddrThreadsHost:  addrThreadsHost,
-			AddrIPFSAPI:      addrIpfsApi,
-			AddrPowergateAPI: addrPowergateApi,
-
-			AddrGatewayHost: addrGatewayHost,
-			AddrGatewayURL:  addrGatewayUrl,
+			AddrAPI:              addrApi,
+			AddrAPIProxy:         addrApiProxy,
+			AddrMongoURI:         addrMongoUri,
+			AddrMongoName:        addrMongoName,
+			AddrThreadsHost:      addrThreadsHost,
+			AddrThreadsMongoURI:  addrThreadsMongoUri,
+			AddrThreadsMongoName: addrThreadsMongoName,
+			AddrGatewayHost:      addrGatewayHost,
+			AddrGatewayURL:       addrGatewayUrl,
+			AddrIPFSAPI:          addrIpfsApi,
+			AddrPowergateAPI:     addrPowergateApi,
 
 			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
 
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
-
-			Debug: config.Viper.GetBool("log.debug"),
 		})
 		cmd.ErrCheck(err)
 		textile.Bootstrap()

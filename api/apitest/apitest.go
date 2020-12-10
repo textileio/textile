@@ -3,10 +3,8 @@ package apitest
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -29,52 +27,41 @@ func MakeTextile(t *testing.T) core.Config {
 }
 
 func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
-	dir, err := ioutil.TempDir("", "")
-	require.NoError(t, err)
-
 	apiPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	gatewayPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
 	return core.Config{
-		RepoPath: dir,
-
-		AddrAPI:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrAPIProxy:    util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrIPFSAPI:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
-		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		AddrMongoURI:    "mongodb://127.0.0.1:27017",
-
-		AddrMongoName: util.MakeToken(12),
-
-		CustomerioAPIKey: "",
-
-		EmailSessionSecret: SessionSecret,
-
-		Hub:   true,
-		Debug: true,
+		Hub:                  true,
+		Debug:                true,
+		AddrAPI:              util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		AddrAPIProxy:         util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrMongoURI:         "mongodb://127.0.0.1:27017",
+		AddrMongoName:        util.MakeToken(12),
+		AddrThreadsHost:      util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsMongoURI:  "mongodb://127.0.0.1:27017",
+		AddrThreadsMongoName: util.MakeToken(12),
+		AddrIPFSAPI:          util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
+		AddrGatewayHost:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
+		AddrGatewayURL:       fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		EmailSessionSecret:   SessionSecret,
 	}
 }
 
-func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
+func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func() {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.NoError(t, err)
 	textile.Bootstrap()
 	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
-	done := func(deleteRepo bool) {
+	done := func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work
 		err := textile.Close(true)
 		require.NoError(t, err)
-		if deleteRepo {
-			_ = os.RemoveAll(conf.RepoPath)
-		}
 	}
 	if autoShutdown {
 		t.Cleanup(func() {
-			done(true)
+			done()
 		})
 	}
 	return done
