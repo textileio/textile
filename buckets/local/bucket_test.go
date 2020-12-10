@@ -498,7 +498,7 @@ func TestBucket_Watch(t *testing.T) {
 	// Stop and restart the first bucket's remote
 	stopTextile1()
 	stopTextile1Again := apitest.MakeTextileWithConfig(t, tconf, false)
-	time.Sleep(time.Second * 5) // Wait a sec for good measure
+	time.Sleep(time.Second * 10) // Wait a sec for good measure
 	stopTextile1Again()
 	cancel() // Stop watching
 	wg.Wait()
