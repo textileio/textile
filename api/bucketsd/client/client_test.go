@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -18,15 +17,12 @@ import (
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
-	billing "github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	c "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
@@ -39,7 +35,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	cleanup := test.StartMongoDB()
+	cleanup := apitest.StartServices()
 	exitVal := m.Run()
 	cleanup()
 	os.Exit(exitVal)
@@ -928,34 +924,13 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
-	billingPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	billingGwPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	api, err := billing.NewService(ctx, billing.Config{
-		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
-		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
-		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
-		SegmentPrefix:          "test_",
-		DBURI:                  "mongodb://127.0.0.1:27017",
-		DBName:                 util.MakeToken(8),
-		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
-		Debug:                  true,
-	})
-	require.NoError(t, err)
-	err = api.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := api.Stop(true)
-		require.NoError(t, err)
-	})
+	bconf := apitest.DefaultBillingConfig(t)
+	apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	conf.AddrBillingAPI = fmt.Sprintf("127.0.0.1:%d", billingPort)
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	conf.AddrBillingAPI = billingApi
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }

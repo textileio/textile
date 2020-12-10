@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
@@ -25,7 +24,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	cleanup := test.StartMongoDB()
+	cleanup := apitest.StartServices()
 	exitVal := m.Run()
 	cleanup()
 	os.Exit(exitVal)
@@ -293,7 +292,7 @@ func newDir(t *testing.T) string {
 }
 
 func createIpfsFolder(t *testing.T) (pth path.Resolved) {
-	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
 	require.NoError(t, err)
 	pth, err = ipfs.Unixfs().Add(
 		context.Background(),

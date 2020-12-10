@@ -3,23 +3,22 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/textileio/go-ds-mongo/test"
+
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	stripe "github.com/stripe/stripe-go/v72"
-	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
+	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/service"
 	mdb "github.com/textileio/textile/v2/mongodb"
-	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
@@ -230,8 +229,8 @@ func TestClient_GetCustomerUsage(t *testing.T) {
 		{"instance_reads", 1, 0.000099999999},
 		{"instance_writes", 1, 0.000199999999},
 	}
-	for _, test := range tests {
-		getCustomerUsage(t, test)
+	for _, tt := range tests {
+		getCustomerUsage(t, tt)
 	}
 }
 
@@ -267,8 +266,8 @@ func TestClient_IncCustomerUsage(t *testing.T) {
 		{"instance_reads", 1, 0.000099999999},
 		{"instance_writes", 1, 0.000199999999},
 	}
-	for _, test := range tests {
-		incCustomerUsage(t, test)
+	for _, tt := range tests {
+		incCustomerUsage(t, tt)
 	}
 }
 
@@ -350,34 +349,13 @@ func getFreeUnitsPerInterval(product *service.Product) int64 {
 }
 
 func setup(t *testing.T) *client.Client {
-	apiPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	gwPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	api, err := service.NewService(ctx, service.Config{
-		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
-		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
-		SegmentPrefix:          "test_",
-		DBURI:                  "mongodb://127.0.0.1:27017",
-		DBName:                 util.MakeToken(8),
-		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),
-		FreeQuotaGracePeriod:   0,
-		Debug:                  true,
-	})
-	require.NoError(t, err)
-	err = api.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := api.Stop(true)
-		require.NoError(t, err)
-	})
+	bconf := apitest.DefaultBillingConfig(t)
+	bconf.FreeQuotaGracePeriod = 0
+	apitest.MakeBillingWithConfig(t, bconf)
 
-	c, err := client.NewClient(fmt.Sprintf("127.0.0.1:%d", apiPort), grpc.WithInsecure())
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	c, err := client.NewClient(billingApi, grpc.WithInsecure())
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

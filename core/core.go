@@ -11,6 +11,7 @@ import (
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/ipfs/go-datastore"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log"
 	"github.com/jhump/protoreflect/desc"
@@ -122,7 +123,8 @@ var (
 type Textile struct {
 	collections *mdb.Collections
 
-	ts tc.NetBoostrapper
+	tn tc.NetBoostrapper
+	ts datastore.Datastore
 
 	th  *threads.Client
 	thn *netclient.Client
@@ -250,7 +252,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if conf.ThreadsConnManager != nil {
 		netOptions = append(netOptions, tc.WithConnectionManager(conf.ThreadsConnManager))
 	}
-	t.ts, err = tc.DefaultNetwork(netOptions...)
+	t.tn, err = tc.DefaultNetwork(netOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,13 +291,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	ts, err := dbapi.NewService(dbs, t.ts, dbapi.Config{
+	t.ts = dbs
+	ts, err := dbapi.NewService(dbs, t.tn, dbapi.Config{
 		Debug: conf.Debug,
 	})
 	if err != nil {
 		return nil, err
 	}
-	ns, err := netapi.NewService(t.ts, netapi.Config{
+	ns, err := netapi.NewService(t.tn, netapi.Config{
 		Debug: conf.Debug,
 	})
 	if err != nil {
@@ -499,39 +502,44 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 }
 
 func (t *Textile) Bootstrap() {
-	t.ts.Bootstrap(tutil.DefaultBoostrapPeers())
+	t.tn.Bootstrap(tutil.DefaultBoostrapPeers())
 }
 
-func (t *Textile) Close(force bool) error {
+func (t *Textile) Close() error {
 	if t.emailSessionBus != nil {
 		t.emailSessionBus.Discard()
 	}
+	log.Info("session bus was discarded")
+
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
+
 	t.buckLocks.Stop()
+	log.Info("locking buckets")
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := t.proxy.Shutdown(ctx); err != nil {
 		return err
 	}
-	if force {
-		t.server.Stop()
-	} else {
+	log.Info("gRPC proxy was shutdown")
+
+	stopped := make(chan struct{})
+	go func() {
 		t.server.GracefulStop()
+		close(stopped)
+	}()
+	timer := time.NewTimer(10 * time.Second)
+	select {
+	case <-timer.C:
+		t.server.Stop()
+	case <-stopped:
+		timer.Stop()
 	}
-	if t.archiveTracker != nil {
-		if err := t.archiveTracker.Close(); err != nil {
-			return err
-		}
-	}
-	if err := t.bucks.Close(); err != nil {
-		return err
-	}
+	log.Info("gRPC was shutdown")
+
 	if err := t.th.Close(); err != nil {
-		return err
-	}
-	if err := t.ts.Close(); err != nil {
 		return err
 	}
 	if t.bc != nil {
@@ -544,15 +552,37 @@ func (t *Textile) Close(force bool) error {
 			return err
 		}
 	}
+	log.Info("local clients were shutdown")
+
+	t.ipnsm.Cancel()
+	if t.archiveTracker != nil {
+		if err := t.archiveTracker.Close(); err != nil {
+			return err
+		}
+	}
+	if err := t.bucks.Close(); err != nil {
+		return err
+	}
+	log.Info("buckets was shutdown")
+
+	if err := t.tn.Close(); err != nil {
+		return err
+	}
+	if err := t.ts.Close(); err != nil {
+		return err
+	}
+	log.Info("threads was shutdown")
+
 	if err := t.collections.Close(); err != nil {
 		return err
 	}
-	t.ipnsm.Cancel()
+	log.Info("mongo collections were shutdown")
+
 	return nil
 }
 
 func (t *Textile) HostID() peer.ID {
-	return t.ts.Host().ID()
+	return t.tn.Host().ID()
 }
 
 func createServiceDesciptor(file string, serviceName string) (*desc.ServiceDescriptor, error) {

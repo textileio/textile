@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
@@ -27,10 +26,7 @@ import (
 
 func TestMain(m *testing.M) {
 	archive.CheckInterval = time.Second * 5
-	cleanup := test.StartMongoDB()
-	exitVal := m.Run()
-	cleanup()
-	os.Exit(exitVal)
+	os.Exit(m.Run())
 }
 
 func TestCreateBucket(t *testing.T) {
@@ -249,8 +245,6 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func()) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
-	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
-	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
 	conf.ArchiveJobPollIntervalFast = time.Second * 5
 	conf.ArchiveJobPollIntervalSlow = time.Second * 10
 	shutdown := apitest.MakeTextileWithConfig(t, conf, false)

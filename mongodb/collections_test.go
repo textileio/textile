@@ -12,8 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const uri = "mongodb://127.0.0.1:27017"
-
 func TestMain(m *testing.M) {
 	cleanup := test.StartMongoDB()
 	exitVal := m.Run()
@@ -23,7 +21,7 @@ func TestMain(m *testing.M) {
 
 func newDB(t *testing.T) *mongo.Database {
 	ctx, cancel := context.WithCancel(context.Background())
-	m, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	m, err := mongo.Connect(ctx, options.Client().ApplyURI(test.MongoUri))
 	require.NoError(t, err)
 	db := m.Database(util.MakeToken(12))
 
