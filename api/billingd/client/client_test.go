@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	stripe "github.com/stripe/stripe-go/v72"
+	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
@@ -25,6 +26,13 @@ import (
 const (
 	mib = 1024 * 1024
 )
+
+func TestMain(m *testing.M) {
+	cleanup := test.StartMongoDB()
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
 
 func TestClient_CheckHealth(t *testing.T) {
 	t.Parallel()

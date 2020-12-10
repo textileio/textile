@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
@@ -22,6 +23,13 @@ import (
 	"github.com/textileio/textile/v2/cmd"
 	"github.com/textileio/textile/v2/util"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := test.StartMongoDB()
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
 
 func TestBuckets_NewBucket(t *testing.T) {
 	buckets := setup(t)

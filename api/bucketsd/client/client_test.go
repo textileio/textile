@@ -21,6 +21,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-ds-mongo/test"
 	tc "github.com/textileio/go-threads/api/client"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
@@ -36,6 +37,13 @@ import (
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := test.StartMongoDB()
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
 
 func TestClient_Create(t *testing.T) {
 	ctx, client := setup(t)

@@ -64,11 +64,11 @@ var (
 				DefValue: "/ip4/0.0.0.0/tcp/4006",
 			},
 			"addrThreadsMongoUri": {
-				Key:      "addr.threads_mongo_uri",
+				Key:      "addr.threads.mongo_uri",
 				DefValue: "mongodb://127.0.0.1:27017",
 			},
 			"addrThreadsMongoName": {
-				Key:      "addr.threads_mongo_name",
+				Key:      "addr.threads.mongo_name",
 				DefValue: "textile_threads",
 			},
 			"addrGatewayHost": {
