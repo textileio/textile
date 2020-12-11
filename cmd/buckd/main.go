@@ -279,7 +279,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Your peer ID is " + textile.HostID().String())
 
 		cmd.HandleInterrupt(func() {
-			if err := textile.Close(false); err != nil {
+			if err := textile.Close(); err != nil {
 				fmt.Println(err.Error())
 			}
 		})
