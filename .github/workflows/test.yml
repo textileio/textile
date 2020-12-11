@@ -9,7 +9,7 @@ on:
 jobs:
   api:
     name: API
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -32,7 +32,7 @@ jobs:
         run: go test -v -timeout 45m -race -p 1 ./api/... ./mongodb/...
   buckets:
     name: Buckets
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -74,7 +74,7 @@ jobs:
         run: go test -v -timeout 45m -race -p 1 ./integrationtest/...
   mail:
     name: Mail
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: setup
         uses: actions/setup-go@v1
