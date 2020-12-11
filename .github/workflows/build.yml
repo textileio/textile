@@ -12,106 +12,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
         uses: actions/checkout@v1
         with:
           ref: master
       - name: checkout-master
-        if: success()
         run: git checkout master
       - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: make local
-        if: success()
         run: make buf-local
   buck:
     name: Buck CLI
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
-        uses: actions/checkout@v1
-        with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: build
-        if: success()
         run: make build-buck
   hub:
     name: Hub CLI
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
-        uses: actions/checkout@v1
-        with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: build
-        if: success()
         run: make build-hub
   buckd:
     name: Buck Daemon
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
-        uses: actions/checkout@v1
-        with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: build
-        if: success()
         run: make build-buckd
   billingd:
     name: Billing Daemon
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
-        uses: actions/checkout@v1
-        with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: build
-        if: success()
         run: make build-billingd
   hubd:
     name: Hub Daemon
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        if: success()
-        uses: actions/checkout@v1
-        with:
-          ref: master
-      - name: checkout-master
-        if: success()
-        run: git checkout master
-      - name: checkout
-        if: success()
         uses: actions/checkout@v1
       - name: build
-        if: success()
         run: make build-hubd
