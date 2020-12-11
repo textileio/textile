@@ -459,7 +459,15 @@ func NewBuckets(tc *dbc.Client, pgc *powc.Client, col *mdb.BucketArchives) (*Buc
 }
 
 // Create a bucket instance.
-func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.Path, now time.Time, owner thread.PubKey, metadata map[string]Metadata, opts ...BucketOption) (*Bucket, error) {
+func (b *Buckets) New(
+	ctx context.Context,
+	dbID thread.ID,
+	key string,
+	pth path.Path,
+	now time.Time,
+	owner thread.PubKey,
+	metadata map[string]Metadata, opts ...BucketOption,
+) (*Bucket, error) {
 	args := &BucketOptions{}
 	for _, opt := range opts {
 		opt(args)
@@ -494,15 +502,13 @@ func (b *Buckets) New(ctx context.Context, dbID thread.ID, key string, pth path.
 	if owner != nil {
 		bucket.Owner = owner.String()
 	}
-	_, err := b.Create(ctx, dbID, bucket, WithToken(args.Token))
-	if err != nil {
+	if _, err := b.Create(ctx, dbID, bucket, WithToken(args.Token)); err != nil {
 		return nil, fmt.Errorf("creating bucket in thread: %s", err)
 	}
-
 	if _, err := b.baCol.Create(ctx, key); err != nil {
 		return nil, fmt.Errorf("creating BucketArchive data: %s", err)
 	}
-	if err = b.Get(ctx, dbID, key, &bucket, WithToken(args.Token)); err != nil {
+	if err := b.Get(ctx, dbID, key, &bucket, WithToken(args.Token)); err != nil {
 		return nil, fmt.Errorf("getting bucket in thread: %s", err)
 	}
 	return bucket, nil
@@ -527,7 +533,8 @@ func (b *Buckets) IsArchivingEnabled() bool {
 func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (userPb.JobStatus, string, error) {
 	ba, err := b.baCol.GetOrCreate(ctx, key)
 	if err != nil {
-		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("getting BucketArchive data: %s", err)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "",
+			fmt.Errorf("getting BucketArchive data: %s", err)
 	}
 
 	if ba.Archives.Current.JobID == "" {
@@ -535,10 +542,12 @@ func (b *Buckets) ArchiveStatus(ctx context.Context, key string) (userPb.JobStat
 	}
 	current := ba.Archives.Current
 	if current.Aborted {
-		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "",
+			fmt.Errorf("job status tracking was aborted: %s", current.AbortedMsg)
 	}
 	if statusName, found := userPb.JobStatus_name[int32(current.Status)]; !found {
-		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "", fmt.Errorf("unknown powergate job status: %s", statusName)
+		return userPb.JobStatus_JOB_STATUS_UNSPECIFIED, "",
+			fmt.Errorf("unknown powergate job status: %s", statusName)
 	}
 	return userPb.JobStatus(current.Status), current.FailureMsg, nil
 }
@@ -567,7 +576,13 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, powToken string,
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	logsCh := make(chan powc.WatchLogsEvent)
-	if err := b.pgClient.Data.WatchLogs(ctx, logsCh, c.String(), powc.WithJobIDFilter(current.JobID), powc.WithHistory(true)); err != nil {
+	if err := b.pgClient.Data.WatchLogs(
+		ctx,
+		logsCh,
+		c.String(),
+		powc.WithJobIDFilter(current.JobID),
+		powc.WithHistory(true),
+	); err != nil {
 		return fmt.Errorf("watching log events in Powergate: %s", err)
 	}
 	for le := range logsCh {

@@ -11,24 +11,8 @@ jobs:
     name: Test
     runs-on: self-hosted
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
-      - name: Check out code
-        uses: actions/checkout@v1
-      - name: Cache dependencies
-        id: cache-dependencies
-        uses: actions/cache@v1
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Get dependencies
-        if: steps.cache-dependencies.outputs.cache-hit != 'true'
-        run: |
-          go get -v -t -d ./...
+      - name: Setup
+        uses: setup@v1
       - name: Test
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

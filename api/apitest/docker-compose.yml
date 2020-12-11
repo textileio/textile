@@ -5,7 +5,7 @@ services:
     environment:
       - IPFS_PROFILE=test
     ports:
-      - "4001:4001"
+      - "4011:4001"
       - "127.0.0.1:5011:5001"
   mongo:
     image: mongo:latest
