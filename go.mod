@@ -1,6 +1,6 @@
 module github.com/textileio/textile/v2
 
-go 1.14
+go 1.15
 
 require (
 	cloud.google.com/go v0.56.0 // indirect
@@ -12,7 +12,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/customerio/go-customerio v2.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/filecoin-project/go-fil-markets v1.0.4
+	github.com/filecoin-project/go-fil-markets v1.0.9
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
@@ -26,7 +26,7 @@ require (
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-flatfs v0.4.4
-	github.com/ipfs/go-ipfs-blockstore v1.0.2
+	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
@@ -41,7 +41,6 @@ require (
 	github.com/jbenet/go-is-domain v1.0.3
 	github.com/jhump/protoreflect v1.7.0
 	github.com/libp2p/go-libp2p-core v0.7.0
-	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/manifoldco/promptui v0.7.0
 	github.com/mattn/go-colorable v0.1.8 // indirect
@@ -71,15 +70,15 @@ require (
 	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-ds-mongo v0.1.4-0.20201211034657-04573e609d85
-	github.com/textileio/go-threads v1.0.3-0.20201209212917-4b2596fd0109
-	github.com/textileio/powergate v1.2.1
+	github.com/textileio/go-ds-mongo v0.1.4
+	github.com/textileio/go-threads v1.0.3-0.20201211194758-43e5d8cf554a
+	github.com/textileio/powergate v1.2.4
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.4.1
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20201113135734-0a15ea8d9b02 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/grpc v1.33.1
@@ -88,11 +87,3 @@ require (
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/segmentio/analytics-go.v3 v3.1.0
 )
-
-replace github.com/libp2p/go-libp2p-kad-dht => github.com/libp2p/go-libp2p-kad-dht v0.8.3
-
-replace github.com/libp2p/go-libp2p-core => github.com/libp2p/go-libp2p-core v0.6.1
-
-replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.10.3
-
-replace github.com/libp2p/go-libp2p-swarm => github.com/libp2p/go-libp2p-swarm v0.2.8

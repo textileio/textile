@@ -33,14 +33,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestClient_CheckHealth(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	err := c.CheckHealth(context.Background())
 	require.NoError(t, err)
 }
 
 func TestClient_CreateCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 
 	key := newKey(t)
@@ -77,7 +75,6 @@ func TestClient_CreateCustomer(t *testing.T) {
 }
 
 func TestClient_GetCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -94,7 +91,6 @@ func TestClient_GetCustomer(t *testing.T) {
 }
 
 func TestClient_GetCustomerSession(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -106,7 +102,6 @@ func TestClient_GetCustomerSession(t *testing.T) {
 }
 
 func TestClient_ListDependentCustomers(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	email := apitest.NewEmail()
@@ -147,7 +142,6 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 }
 
 func TestClient_UpdateCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -164,7 +158,6 @@ func TestClient_UpdateCustomer(t *testing.T) {
 }
 
 func TestClient_UpdateCustomerSubscription(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -181,7 +174,6 @@ func TestClient_UpdateCustomerSubscription(t *testing.T) {
 }
 
 func TestClient_RecreateCustomerSubscription(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -204,7 +196,6 @@ func TestClient_RecreateCustomerSubscription(t *testing.T) {
 }
 
 func TestClient_DeleteCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -221,7 +212,6 @@ type usageTest struct {
 }
 
 func TestClient_GetCustomerUsage(t *testing.T) {
-	t.Parallel()
 	tests := []usageTest{
 		{"stored_data", mib, 0.000007705471},
 		{"network_egress", mib, 0.000025684903},
@@ -258,7 +248,6 @@ func getCustomerUsage(t *testing.T, test usageTest) {
 }
 
 func TestClient_IncCustomerUsage(t *testing.T) {
-	t.Parallel()
 	tests := []usageTest{
 		{"stored_data", mib, 0.000007705471},
 		{"network_egress", mib, 0.000025684903},
