@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"runtime"
@@ -21,21 +22,43 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 	dirpath := path.Dir(currentFilePath)
 
 	makeDown := func() {
-		if err := exec.Command("docker-compose", "-f", fmt.Sprintf("%s/docker-compose.yml", dirpath), "down", "-v").Run(); err != nil {
-			panic(err)
+		cmd := exec.Command(
+			"docker-compose",
+			"-f",
+			fmt.Sprintf("%s/docker-compose.yml", dirpath),
+			"down",
+			"-v",
+			"--remove-orphans",
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			t.Errorf("docker-compose down: %s", err)
+			t.FailNow()
 		}
 	}
 	makeDown()
 
-	cmd := exec.Command("docker-compose", "-f", fmt.Sprintf("%s/docker-compose.yml", dirpath), "build")
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
+	cmd := exec.Command(
+		"docker-compose",
+		"-f",
+		fmt.Sprintf("%s/docker-compose.yml", dirpath),
+		"build",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		t.Errorf("docker-compose build: %s", err)
 		t.FailNow()
 	}
 
-	cmd = exec.Command("docker-compose", "-f", fmt.Sprintf("%s/docker-compose.yml", dirpath), "up", "-V")
+	cmd = exec.Command(
+		"docker-compose",
+		"-f",
+		fmt.Sprintf("%s/docker-compose.yml", dirpath),
+		"up",
+		"-V",
+	)
 	//cmd.Stdout = os.Stdout
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

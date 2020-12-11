@@ -38,7 +38,7 @@ services:
   mongo:
     image: mongo:latest
     ports:
-      - "27027:27017"
+      - "27017:27017"
     command:
       - /bin/bash
       - -c

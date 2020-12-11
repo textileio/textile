@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/textileio/go-ds-mongo/test"
-
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	stripe "github.com/stripe/stripe-go/v72"
+	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
@@ -351,6 +350,7 @@ func getFreeUnitsPerInterval(product *service.Product) int64 {
 func setup(t *testing.T) *client.Client {
 	bconf := apitest.DefaultBillingConfig(t)
 	bconf.FreeQuotaGracePeriod = 0
+	bconf.DBURI = test.MongoUri
 	apitest.MakeBillingWithConfig(t, bconf)
 
 	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)

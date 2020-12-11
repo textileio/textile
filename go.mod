@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	cloud.google.com/go v0.56.0 // indirect
-	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
@@ -17,7 +16,6 @@ require (
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
-	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/gogo/status v1.1.0
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.2
@@ -45,8 +43,6 @@ require (
 	github.com/libp2p/go-libp2p-core v0.7.0
 	github.com/libp2p/go-libp2p-gostream v0.2.1 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
-	github.com/mailgun/mailgun-go/v3 v3.6.4
-	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/manifoldco/promptui v0.7.0
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
@@ -75,8 +71,7 @@ require (
 	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
-	github.com/textileio/go-datastore v0.4.5-0.20200819232101-baa577bf9422 // indirect
-	github.com/textileio/go-ds-mongo v0.1.4-0.20201205032204-63f494d9c3f3
+	github.com/textileio/go-ds-mongo v0.1.4-0.20201211034657-04573e609d85
 	github.com/textileio/go-threads v1.0.3-0.20201209212917-4b2596fd0109
 	github.com/textileio/powergate v1.2.1
 	github.com/textileio/uiprogress v0.0.4

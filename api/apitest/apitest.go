@@ -17,7 +17,6 @@ import (
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 
-	"github.com/textileio/go-ds-mongo/test"
 	billing "github.com/textileio/textile/v2/api/billingd/service"
 
 	"github.com/phayes/freeport"
@@ -45,19 +44,24 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 	require.NoError(t, err)
 
 	return core.Config{
-		Hub:                  true,
-		Debug:                true,
-		AddrAPI:              util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrAPIProxy:         util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrMongoURI:         MongoUri,
-		AddrMongoName:        util.MakeToken(12),
-		AddrThreadsHost:      util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsMongoURI:  MongoUri,
-		AddrThreadsMongoName: util.MakeToken(12),
-		AddrIPFSAPI:          IPFSApiAddr,
-		AddrGatewayHost:      util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayURL:       fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		EmailSessionSecret:   SessionSecret,
+		Hub:                   true,
+		Debug:                 true,
+		AddrAPI:               util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		AddrAPIProxy:          util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrMongoURI:          MongoUri,
+		AddrMongoName:         util.MakeToken(12),
+		AddrThreadsHost:       util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrThreadsMongoURI:   MongoUri,
+		AddrThreadsMongoName:  util.MakeToken(12),
+		AddrIPFSAPI:           IPFSApiAddr,
+		AddrGatewayHost:       util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
+		AddrGatewayURL:        fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		CustomerioAPIKey:      os.Getenv("CUSTOMERIO_API_KEY"),
+		CustomerioConfirmTmpl: os.Getenv("CUSTOMERIO_CONFIRM_TMPL"),
+		CustomerioInviteTmpl:  os.Getenv("CUSTOMERIO_INVITE_TMPL"),
+		EmailSessionSecret:    SessionSecret,
+		SegmentAPIKey:         os.Getenv("SEGMENT_API_KEY"),
+		SegmentPrefix:         "test_",
 	}
 }
 
@@ -91,7 +95,7 @@ func DefaultBillingConfig(t util.TestingTWithCleanup) billing.Config {
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
 		SegmentPrefix:          "test_",
-		DBURI:                  test.MongoUri,
+		DBURI:                  MongoUri,
 		DBName:                 util.MakeToken(8),
 		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		Debug:                  true,
@@ -162,9 +166,8 @@ func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 }
 
 var (
-	MongoUri     = "mongodb://127.0.0.1:27027"
-	IPFSApiAddr  = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
-	IPFSHostAddr = util.MustParseAddr("/ip4/127.0.0.1/tcp/4011")
+	MongoUri    = "mongodb://127.0.0.1:27017"
+	IPFSApiAddr = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
 )
 
 // StartServices starts local mongodb and ipfs services.
@@ -177,7 +180,9 @@ func StartServices() (cleanup func()) {
 			"docker-compose",
 			"-f",
 			fmt.Sprintf("%s/docker-compose.yml", dirpath),
-			"down", "-v",
+			"down",
+			"-v",
+			"--remove-orphans",
 		)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -211,7 +216,7 @@ func StartServices() (cleanup func()) {
 		log.Fatalf("running docker-compose: %s", err)
 	}
 
-	limit := 10
+	limit := 5
 	retries := 0
 	var err error
 	for retries < limit {
@@ -223,6 +228,7 @@ func StartServices() (cleanup func()) {
 		retries++
 	}
 	if retries == limit {
+		makeDown()
 		if err != nil {
 			log.Fatalf("connecting to services: %s", err)
 		}
@@ -234,10 +240,19 @@ func StartServices() (cleanup func()) {
 func checkServices() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	_, err := mongo.Connect(ctx, options.Client().ApplyURI(MongoUri))
+	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(MongoUri))
 	if err != nil {
 		return err
 	}
-	_, err = httpapi.NewApi(IPFSApiAddr)
-	return err
+	if err = mc.Ping(ctx, nil); err != nil {
+		return err
+	}
+	ic, err := httpapi.NewApi(IPFSApiAddr)
+	if err != nil {
+		return err
+	}
+	if _, err = ic.Key().Self(ctx); err != nil {
+		return err
+	}
+	return nil
 }
