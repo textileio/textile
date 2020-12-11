@@ -21,6 +21,13 @@ import (
 	. "github.com/textileio/textile/v2/mail/local"
 )
 
+func TestMain(m *testing.M) {
+	cleanup := apitest.StartServices()
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
+
 func TestMail_NewMailbox(t *testing.T) {
 	mail, key, secret := setup(t)
 
@@ -120,7 +127,14 @@ func TestBuckets_NewConfigFromCmd(t *testing.T) {
 	})
 }
 
-func initCmd(t *testing.T, mail *Mail, id thread.Identity, key, secret string, addFlags, setDefaults bool) *cobra.Command {
+func initCmd(
+	t *testing.T,
+	mail *Mail,
+	id thread.Identity,
+	key, secret string,
+	addFlags,
+	setDefaults bool,
+) *cobra.Command {
 	dir := newDir(t)
 	c := &cobra.Command{
 		Use: "init",
@@ -159,7 +173,11 @@ func setup(t *testing.T) (m *Mail, key string, secret string) {
 	})
 
 	dev := apitest.Signup(t, clients.Hub, conf, apitest.NewUsername(), apitest.NewEmail())
-	res, err := clients.Hub.CreateKey(common.NewSessionContext(context.Background(), dev.Session), hubpb.KeyType_KEY_TYPE_USER, true)
+	res, err := clients.Hub.CreateKey(
+		common.NewSessionContext(context.Background(), dev.Session),
+		hubpb.KeyType_KEY_TYPE_USER,
+		true,
+	)
 	require.NoError(t, err)
 	return NewMail(clients, DefaultConfConfig()), res.KeyInfo.Key, res.KeyInfo.Secret
 }
