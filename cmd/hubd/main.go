@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -65,11 +66,11 @@ var (
 			},
 			"addrThreadsMongoUri": {
 				Key:      "addr.threads.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017",
+				DefValue: "",
 			},
 			"addrThreadsMongoName": {
 				Key:      "addr.threads.mongo_name",
-				DefValue: "textile_threads",
+				DefValue: "",
 			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
@@ -406,24 +407,32 @@ var rootCmd = &cobra.Command{
 		segmentApiKey := config.Viper.GetString("segment.api_key")
 		segmentPrefix := config.Viper.GetString("segment.prefix")
 
+		var opts []core.Option
+		if addrThreadsMongoUri != "" {
+			if addrThreadsMongoName == "" {
+				cmd.Fatal(errors.New("addr.threads.mongo_name is required with addr.threads.mongo_uri"))
+			}
+			opts = append(opts, core.WithMongoThreadsPersistence(addrThreadsMongoUri, addrThreadsMongoName))
+		} else {
+			opts = append(opts, core.WithBadgerThreadsPersistence(config.Viper.GetString("repo")))
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
 			Hub:   true,
 			Debug: debug,
 			// Addresses
-			AddrAPI:              addrApi,
-			AddrAPIProxy:         addrApiProxy,
-			AddrMongoURI:         addrMongoUri,
-			AddrMongoName:        addrMongoName,
-			AddrThreadsHost:      addrThreadsHost,
-			AddrThreadsMongoURI:  addrThreadsMongoUri,
-			AddrThreadsMongoName: addrThreadsMongoName,
-			AddrGatewayHost:      addrGatewayHost,
-			AddrGatewayURL:       addrGatewayUrl,
-			AddrIPFSAPI:          addrIpfsApi,
-			AddrBillingAPI:       addrBillingApi,
-			AddrPowergateAPI:     addrPowergateApi,
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrMongoURI:     addrMongoUri,
+			AddrMongoName:    addrMongoName,
+			AddrThreadsHost:  addrThreadsHost,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
+			AddrIPFSAPI:      addrIpfsApi,
+			AddrBillingAPI:   addrBillingApi,
+			AddrPowergateAPI: addrPowergateApi,
 			// Buckets
 			MaxBucketSize: bucketsMaxSize,
 			// Threads
@@ -447,7 +456,7 @@ var rootCmd = &cobra.Command{
 			// Segment
 			SegmentAPIKey: segmentApiKey,
 			SegmentPrefix: segmentPrefix,
-		})
+		}, opts...)
 		cmd.ErrCheck(err)
 		textile.Bootstrap()
 

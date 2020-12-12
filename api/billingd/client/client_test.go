@@ -26,7 +26,10 @@ const (
 )
 
 func TestMain(m *testing.M) {
-	cleanup := test.StartMongoDB()
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "" {
+		cleanup = test.StartMongoDB()
+	}
 	exitVal := m.Run()
 	cleanup()
 	os.Exit(exitVal)

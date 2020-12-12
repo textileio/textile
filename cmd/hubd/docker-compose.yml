@@ -13,7 +13,7 @@ services:
       - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
       - HUB_ADDR_MONGO_NAME
       - HUB_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
-      - HUB_ADDR_THREADS_MONGO_URI=mongodb://mongo:27017
+      - HUB_ADDR_THREADS_MONGO_URI
       - HUB_ADDR_THREADS_MONGO_NAME
       - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - HUB_ADDR_GATEWAY_URL

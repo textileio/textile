@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
@@ -59,11 +60,11 @@ var (
 			},
 			"addrThreadsMongoUri": {
 				Key:      "addr.threads.mongo_uri",
-				DefValue: "mongodb://127.0.0.1:27017",
+				DefValue: "",
 			},
 			"addrThreadsMongoName": {
 				Key:      "addr.threads.mongo_name",
-				DefValue: "buckets",
+				DefValue: "",
 			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
@@ -249,29 +250,37 @@ var rootCmd = &cobra.Command{
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
 
+		var opts []core.Option
+		if addrThreadsMongoUri != "" {
+			if addrThreadsMongoName == "" {
+				cmd.Fatal(errors.New("addr.threads.mongo_name is required with addr.threads.mongo_uri"))
+			}
+			opts = append(opts, core.WithMongoThreadsPersistence(addrThreadsMongoUri, addrThreadsMongoName))
+		} else {
+			opts = append(opts, core.WithBadgerThreadsPersistence(config.Viper.GetString("repo")))
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
 			Debug: debug,
 
-			AddrAPI:              addrApi,
-			AddrAPIProxy:         addrApiProxy,
-			AddrMongoURI:         addrMongoUri,
-			AddrMongoName:        addrMongoName,
-			AddrThreadsHost:      addrThreadsHost,
-			AddrThreadsMongoURI:  addrThreadsMongoUri,
-			AddrThreadsMongoName: addrThreadsMongoName,
-			AddrGatewayHost:      addrGatewayHost,
-			AddrGatewayURL:       addrGatewayUrl,
-			AddrIPFSAPI:          addrIpfsApi,
-			AddrPowergateAPI:     addrPowergateApi,
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrMongoURI:     addrMongoUri,
+			AddrMongoName:    addrMongoName,
+			AddrThreadsHost:  addrThreadsHost,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
+			AddrIPFSAPI:      addrIpfsApi,
+			AddrPowergateAPI: addrPowergateApi,
 
 			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
 
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
-		})
+		}, opts...)
 		cmd.ErrCheck(err)
 		textile.Bootstrap()
 

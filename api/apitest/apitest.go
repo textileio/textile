@@ -15,11 +15,9 @@ import (
 	"time"
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
-
-	billing "github.com/textileio/textile/v2/api/billingd/service"
-
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	billing "github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/hubd/client"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/core"
@@ -50,8 +48,6 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		AddrMongoURI:          MongoUri,
 		AddrMongoName:         util.MakeToken(12),
 		AddrThreadsHost:       util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsMongoURI:   MongoUri,
-		AddrThreadsMongoName:  util.MakeToken(12),
 		AddrIPFSAPI:           IPFSApiAddr,
 		AddrGatewayHost:       util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayURL:        fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
@@ -65,7 +61,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 }
 
 func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func() {
-	textile, err := core.NewTextile(context.Background(), conf)
+	textile, err := core.NewTextile(context.Background(), conf, core.WithBadgerThreadsPersistence(t.TempDir()))
 	require.NoError(t, err)
 	time.Sleep(5 * time.Second) // Give the api a chance to get ready
 	done := func() {
@@ -74,9 +70,7 @@ func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShu
 		require.NoError(t, err)
 	}
 	if autoShutdown {
-		t.Cleanup(func() {
-			done()
-		})
+		t.Cleanup(done)
 	}
 	return done
 }

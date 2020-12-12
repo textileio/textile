@@ -10,6 +10,17 @@ jobs:
   api:
     name: API
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 127.0.0.1:27017:27017
+      ipfs:
+        image: ipfs/go-ipfs:v0.7.0
+        env:
+          IPFS_PROFILE: test
+        ports:
+          - 127.0.0.1:5011:5001
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -19,11 +30,23 @@ jobs:
         uses: actions/checkout@v1
       - name: test
         env:
+          SKIP_SERVICES: true
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-        run: go test -v -timeout 45m -race -p 1 ./api/... ./mongodb/...
+        run: go test -v -timeout 30m -race ./api/... ./mongodb/...
   buckets:
     name: Buckets
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 127.0.0.1:27017:27017
+      ipfs:
+        image: ipfs/go-ipfs:v0.7.0
+        env:
+          IPFS_PROFILE: test
+        ports:
+          - 127.0.0.1:5011:5001
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -32,7 +55,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: test
-        run: go test -v -timeout 45m -race -p 1 ./buckets/...
+        env:
+          SKIP_SERVICES: true
+        run: go test -v -timeout 30m -race ./buckets/...
   archives:
     name: Archives
     runs-on: self-hosted
@@ -44,10 +69,21 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: test
-        run: go test -v -timeout 45m -race -p 1 ./integrationtest/...
+        run: go test -v -timeout 30m -race ./integrationtest/...
   mail:
     name: Mail
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 127.0.0.1:27017:27017
+      ipfs:
+        image: ipfs/go-ipfs:v0.7.0
+        env:
+          IPFS_PROFILE: test
+        ports:
+          - 127.0.0.1:5011:5001
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -56,4 +92,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: test
-        run: go test -v -timeout 45m -race -p 1 ./mail/...
+        env:
+          SKIP_SERVICES: true
+        run: go test -v -timeout 30m -race ./mail/...

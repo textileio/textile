@@ -29,7 +29,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	cleanup := apitest.StartServices()
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "" {
+		cleanup = apitest.StartServices()
+	}
 	exitVal := m.Run()
 	cleanup()
 	os.Exit(exitVal)
