@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -68,7 +67,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func() {
 	textile, err := core.NewTextile(context.Background(), conf)
 	require.NoError(t, err)
-	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
+	time.Sleep(5 * time.Second) // Give the api a chance to get ready
 	done := func() {
 		time.Sleep(time.Second) // Give threads a chance to finish work
 		err := textile.Close()
@@ -103,14 +102,12 @@ func DefaultBillingConfig(t util.TestingTWithCleanup) billing.Config {
 }
 
 func MakeBillingWithConfig(t util.TestingTWithCleanup, conf billing.Config) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	api, err := billing.NewService(ctx, conf)
+	api, err := billing.NewService(context.Background(), conf)
 	require.NoError(t, err)
 	err = api.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := api.Stop(true)
+		err := api.Stop()
 		require.NoError(t, err)
 	})
 }

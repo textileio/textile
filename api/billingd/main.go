@@ -226,7 +226,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Welcome to Hub Billing!")
 
 		cmd.HandleInterrupt(func() {
-			if err := api.Stop(false); err != nil {
+			if err := api.Stop(); err != nil {
 				fmt.Println(err.Error())
 			}
 		})
