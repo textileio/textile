@@ -25,6 +25,10 @@ jobs:
     name: Buck CLI
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
       - name: checkout
         uses: actions/checkout@v1
       - name: build
@@ -33,6 +37,10 @@ jobs:
     name: Hub CLI
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
       - name: checkout
         uses: actions/checkout@v1
       - name: build
@@ -41,6 +49,10 @@ jobs:
     name: Buck Daemon
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
       - name: checkout
         uses: actions/checkout@v1
       - name: build
@@ -49,6 +61,10 @@ jobs:
     name: Billing Daemon
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
       - name: checkout
         uses: actions/checkout@v1
       - name: build
@@ -57,6 +73,10 @@ jobs:
     name: Hub Daemon
     runs-on: ubuntu-latest
     steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
       - name: checkout
         uses: actions/checkout@v1
       - name: build
