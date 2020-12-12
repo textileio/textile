@@ -30,7 +30,7 @@ const SessionSecret = "hubsession"
 
 func MakeTextile(t *testing.T) core.Config {
 	conf := DefaultTextileConfig(t)
-	MakeTextileWithConfig(t, conf, true)
+	MakeTextileWithConfig(t, conf)
 	return conf
 }
 
@@ -60,8 +60,34 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 	}
 }
 
-func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func() {
-	textile, err := core.NewTextile(context.Background(), conf, core.WithBadgerThreadsPersistence(t.TempDir()))
+type Options struct {
+	RepoPath       string
+	NoAutoShutdown bool
+}
+
+type Option func(*Options)
+
+func WithRepoPath(repoPath string) Option {
+	return func(o *Options) {
+		o.RepoPath = repoPath
+	}
+}
+
+func WithoutAutoShutdown() Option {
+	return func(o *Options) {
+		o.NoAutoShutdown = true
+	}
+}
+
+func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, opts ...Option) func() {
+	var args Options
+	for _, opt := range opts {
+		opt(&args)
+	}
+	if args.RepoPath == "" {
+		args.RepoPath = t.TempDir()
+	}
+	textile, err := core.NewTextile(context.Background(), conf, core.WithBadgerThreadsPersistence(args.RepoPath))
 	require.NoError(t, err)
 	time.Sleep(5 * time.Second) // Give the api a chance to get ready
 	done := func() {
@@ -69,7 +95,7 @@ func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShu
 		err := textile.Close()
 		require.NoError(t, err)
 	}
-	if autoShutdown {
+	if !args.NoAutoShutdown {
 		t.Cleanup(done)
 	}
 	return done

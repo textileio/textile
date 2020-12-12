@@ -264,7 +264,7 @@ func initCmd(t *testing.T, buckets *Buckets, key string, tid thread.ID, addFlags
 func setup(t *testing.T) *Buckets {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.Hub = false
-	apitest.MakeTextileWithConfig(t, conf, true)
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	clients := cmd.NewClients(target, false)

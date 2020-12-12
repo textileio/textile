@@ -202,9 +202,7 @@ type Config struct {
 func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, error) {
 	var args Options
 	for _, opt := range opts {
-		if err := opt(&args); err != nil {
-			return nil, err
-		}
+		opt(&args)
 	}
 
 	if conf.Debug {

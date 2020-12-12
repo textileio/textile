@@ -6,19 +6,17 @@ type Options struct {
 	ThreadsMongoDB        string
 }
 
-type Option func(*Options) error
+type Option func(*Options)
 
 func WithBadgerThreadsPersistence(repoPath string) Option {
-	return func(o *Options) error {
+	return func(o *Options) {
 		o.ThreadsBadgerRepoPath = repoPath
-		return nil
 	}
 }
 
 func WithMongoThreadsPersistence(uri, db string) Option {
-	return func(o *Options) error {
+	return func(o *Options) {
 		o.ThreadsMongoUri = uri
 		o.ThreadsMongoDB = db
-		return nil
 	}
 }
