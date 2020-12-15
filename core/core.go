@@ -301,6 +301,9 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	} else {
 		t.ts, err = tutil.NewBadgerDatastore(args.ThreadsBadgerRepoPath, "eventstore", false)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ts, err := dbapi.NewService(t.ts, t.tn, dbapi.Config{
 		Debug: conf.Debug,

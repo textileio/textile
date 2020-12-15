@@ -2504,11 +2504,11 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 	}
 	res := &pb.ArchivesResponse{}
 	if ba.Archives.Current.JobID != "" {
-		archive, err := toPbArchive(ba.Archives.Current)
+		arc, err := toPbArchive(ba.Archives.Current)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
 		}
-		res.Current = archive
+		res.Current = arc
 	}
 	history := make([]*pb.Archive, len(ba.Archives.History))
 	for i, item := range ba.Archives.History {
