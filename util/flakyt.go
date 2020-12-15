@@ -11,6 +11,7 @@ import (
 // TestingTWithCleanup is an augmented require.TestingT with a Cleanup function.
 type TestingTWithCleanup interface {
 	require.TestingT
+	TempDir() string
 	Cleanup(func())
 }
 
@@ -39,6 +40,13 @@ func (ft *FlakyT) Errorf(format string, args ...interface{}) {
 func (ft *FlakyT) FailNow() {
 	ft.failed = true
 	runtime.Goexit()
+}
+
+// TempDir returns a temporary directory for the test to use.
+// The directory is automatically removed by Cleanup when the test and
+// all its subtests complete.
+func (ft *FlakyT) TempDir() string {
+	return ft.t.TempDir()
 }
 
 // Cleanup registers a cleanup function.

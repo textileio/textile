@@ -18,7 +18,7 @@ import (
 
 func TestPowClient(t *testing.T) {
 	_ = StartPowergate(t)
-	ctx, _, client, cleanup := setupPowClient(t)
+	ctx, _, client := setupPowClient(t)
 
 	t.Run("Addresses", func(t *testing.T) {
 		res, err := client.Addresses(ctx)
@@ -54,16 +54,12 @@ func TestPowClient(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 	})
-
-	cleanup(true)
 }
 
-func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *fc.Client, func(bool)) {
+func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *fc.Client) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
-	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
-	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
-	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -79,5 +75,5 @@ func setupPowClient(t util.TestingTWithCleanup) (context.Context, core.Config, *
 		require.NoError(t, err)
 	})
 
-	return ctx, conf, client, shutdown
+	return ctx, conf, client
 }

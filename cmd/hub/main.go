@@ -86,7 +86,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if hub.Config().Viper.GetString("session") == "" &&
-			hub.Config().Viper.GetString("key") == "" &&
+			hub.Config().Viper.GetString("apiKey") == "" &&
 			c.Use != "init" &&
 			c.Use != "login" &&
 			c.Use != "version" &&

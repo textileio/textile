@@ -1,0 +1,83 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  buf:
+    name: Buf
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v1
+        with:
+          ref: master
+      - name: checkout-master
+        run: git checkout master
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: make local
+        run: make buf-local
+  buck:
+    name: Buck CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: build
+        run: make build-buck
+  hub:
+    name: Hub CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: build
+        run: make build-hub
+  buckd:
+    name: Buck Daemon
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: build
+        run: make build-buckd
+  billingd:
+    name: Billing Daemon
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: build
+        run: make build-billingd
+  hubd:
+    name: Hub Daemon
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: build
+        run: make build-hubd

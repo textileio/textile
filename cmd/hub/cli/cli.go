@@ -38,12 +38,12 @@ var (
 				Key:      "org",
 				DefValue: "",
 			},
-			"key": {
-				Key:      "key",
+			"apiKey": {
+				Key:      "apiKey",
 				DefValue: "",
 			},
-			"secret": {
-				Key:      "secret",
+			"apiSecret": {
+				Key:      "apiSecret",
 				DefValue: "",
 			},
 			"token": {
@@ -79,8 +79,8 @@ func Init(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().String("api", config.Flags["api"].DefValue.(string), "API target")
 	rootCmd.PersistentFlags().StringP("session", "s", config.Flags["session"].DefValue.(string), "User session token")
 	rootCmd.PersistentFlags().StringP("org", "o", config.Flags["org"].DefValue.(string), "Org username")
-	rootCmd.PersistentFlags().String("key", config.Flags["key"].DefValue.(string), "User API key")
-	rootCmd.PersistentFlags().String("secret", config.Flags["secret"].DefValue.(string), "User API secret")
+	rootCmd.PersistentFlags().String("apiKey", config.Flags["apiKey"].DefValue.(string), "User API key")
+	rootCmd.PersistentFlags().String("apiSecret", config.Flags["apiSecret"].DefValue.(string), "User API secret")
 	rootCmd.PersistentFlags().String("token", config.Flags["token"].DefValue.(string), "User identity token")
 	rootCmd.PersistentFlags().String("identity", config.Flags["identity"].DefValue.(string), "User identity")
 
@@ -104,9 +104,9 @@ func SetClients(c *cmd.Clients) {
 }
 
 func Auth(ctx context.Context) context.Context {
-	if config.Viper.GetString("key") != "" {
-		ctx = common.NewAPIKeyContext(ctx, config.Viper.GetString("key"))
-		if config.Viper.GetString("secret") != "" {
+	if config.Viper.GetString("apiKey") != "" {
+		ctx = common.NewAPIKeyContext(ctx, config.Viper.GetString("apiKey"))
+		if config.Viper.GetString("apiSecret") != "" {
 			var err error
 			ctx, err = common.CreateAPISigContext(
 				ctx,

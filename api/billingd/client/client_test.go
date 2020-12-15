@@ -3,22 +3,21 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	stripe "github.com/stripe/stripe-go/v72"
+	"github.com/textileio/go-ds-mongo/test"
 	"github.com/textileio/go-threads/core/thread"
+	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/service"
 	mdb "github.com/textileio/textile/v2/mongodb"
-	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
@@ -26,15 +25,23 @@ const (
 	mib = 1024 * 1024
 )
 
+func TestMain(m *testing.M) {
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "true" {
+		cleanup = test.StartMongoDB()
+	}
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
+
 func TestClient_CheckHealth(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	err := c.CheckHealth(context.Background())
 	require.NoError(t, err)
 }
 
 func TestClient_CreateCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 
 	key := newKey(t)
@@ -71,7 +78,6 @@ func TestClient_CreateCustomer(t *testing.T) {
 }
 
 func TestClient_GetCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -88,7 +94,6 @@ func TestClient_GetCustomer(t *testing.T) {
 }
 
 func TestClient_GetCustomerSession(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -100,7 +105,6 @@ func TestClient_GetCustomerSession(t *testing.T) {
 }
 
 func TestClient_ListDependentCustomers(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	email := apitest.NewEmail()
@@ -141,7 +145,6 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 }
 
 func TestClient_UpdateCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -158,7 +161,6 @@ func TestClient_UpdateCustomer(t *testing.T) {
 }
 
 func TestClient_UpdateCustomerSubscription(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -175,7 +177,6 @@ func TestClient_UpdateCustomerSubscription(t *testing.T) {
 }
 
 func TestClient_RecreateCustomerSubscription(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -198,7 +199,6 @@ func TestClient_RecreateCustomerSubscription(t *testing.T) {
 }
 
 func TestClient_DeleteCustomer(t *testing.T) {
-	t.Parallel()
 	c := setup(t)
 	key := newKey(t)
 	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
@@ -215,15 +215,14 @@ type usageTest struct {
 }
 
 func TestClient_GetCustomerUsage(t *testing.T) {
-	t.Parallel()
 	tests := []usageTest{
 		{"stored_data", mib, 0.000007705471},
 		{"network_egress", mib, 0.000025684903},
 		{"instance_reads", 1, 0.000099999999},
 		{"instance_writes", 1, 0.000199999999},
 	}
-	for _, test := range tests {
-		getCustomerUsage(t, test)
+	for _, tt := range tests {
+		getCustomerUsage(t, tt)
 	}
 }
 
@@ -252,15 +251,14 @@ func getCustomerUsage(t *testing.T, test usageTest) {
 }
 
 func TestClient_IncCustomerUsage(t *testing.T) {
-	t.Parallel()
 	tests := []usageTest{
 		{"stored_data", mib, 0.000007705471},
 		{"network_egress", mib, 0.000025684903},
 		{"instance_reads", 1, 0.000099999999},
 		{"instance_writes", 1, 0.000199999999},
 	}
-	for _, test := range tests {
-		incCustomerUsage(t, test)
+	for _, tt := range tests {
+		incCustomerUsage(t, tt)
 	}
 }
 
@@ -342,34 +340,14 @@ func getFreeUnitsPerInterval(product *service.Product) int64 {
 }
 
 func setup(t *testing.T) *client.Client {
-	apiPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	gwPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	api, err := service.NewService(ctx, service.Config{
-		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
-		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
-		SegmentPrefix:          "test_",
-		DBURI:                  "mongodb://127.0.0.1:27017",
-		DBName:                 util.MakeToken(8),
-		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gwPort)),
-		FreeQuotaGracePeriod:   0,
-		Debug:                  true,
-	})
-	require.NoError(t, err)
-	err = api.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := api.Stop(true)
-		require.NoError(t, err)
-	})
+	bconf := apitest.DefaultBillingConfig(t)
+	bconf.FreeQuotaGracePeriod = 0
+	bconf.DBURI = test.MongoUri
+	apitest.MakeBillingWithConfig(t, bconf)
 
-	c, err := client.NewClient(fmt.Sprintf("127.0.0.1:%d", apiPort), grpc.WithInsecure())
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	c, err := client.NewClient(billingApi, grpc.WithInsecure())
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

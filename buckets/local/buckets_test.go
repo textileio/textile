@@ -23,6 +23,16 @@ import (
 	"github.com/textileio/textile/v2/util"
 )
 
+func TestMain(m *testing.M) {
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "true" {
+		cleanup = apitest.StartServices()
+	}
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
+
 func TestBuckets_NewBucket(t *testing.T) {
 	buckets := setup(t)
 
@@ -254,7 +264,7 @@ func initCmd(t *testing.T, buckets *Buckets, key string, tid thread.ID, addFlags
 func setup(t *testing.T) *Buckets {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.Hub = false
-	apitest.MakeTextileWithConfig(t, conf, true)
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	clients := cmd.NewClients(target, false)
@@ -285,7 +295,7 @@ func newDir(t *testing.T) string {
 }
 
 func createIpfsFolder(t *testing.T) (pth path.Resolved) {
-	ipfs, err := httpapi.NewApi(util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"))
+	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
 	require.NoError(t, err)
 	pth, err = ipfs.Unixfs().Add(
 		context.Background(),

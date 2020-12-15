@@ -411,19 +411,34 @@ func (s *Service) Start() error {
 	return nil
 }
 
-func (s *Service) Stop(force bool) error {
-	if force {
-		s.server.Stop()
-	} else {
-		s.server.GracefulStop()
-	}
-	s.reporter.Stop()
+func (s *Service) Stop() error {
+	rctx := s.reporter.Stop()
+	<-rctx.Done()
+	log.Info("reporter was shutdown")
+
 	s.semaphores.Stop()
+	log.Info("locking customers")
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := s.gateway.Stop(); err != nil {
 		return err
 	}
+
+	stopped := make(chan struct{})
+	go func() {
+		s.server.GracefulStop()
+		close(stopped)
+	}()
+	timer := time.NewTimer(10 * time.Second)
+	select {
+	case <-timer.C:
+		s.server.Stop()
+	case <-stopped:
+		timer.Stop()
+	}
+	log.Info("gRPC was shutdown")
+
 	return s.cdb.Database().Client().Disconnect(ctx)
 }
 

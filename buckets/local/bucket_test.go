@@ -404,7 +404,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 func TestBucket_Watch(t *testing.T) {
 	tconf := apitest.DefaultTextileConfig(t)
 	tconf.Hub = false
-	stopTextile1 := apitest.MakeTextileWithConfig(t, tconf, false)
+	stopTextile1 := apitest.MakeTextileWithConfig(t, tconf, apitest.WithoutAutoShutdown())
 	target, err := tutil.TCPAddrFromMultiAddr(tconf.AddrAPI)
 	require.NoError(t, err)
 	clients := cmd.NewClients(target, false)
@@ -496,10 +496,10 @@ func TestBucket_Watch(t *testing.T) {
 	ec.check(t, 2, 0)
 
 	// Stop and restart the first bucket's remote
-	stopTextile1(false)
-	stopTextile1Again := apitest.MakeTextileWithConfig(t, tconf, false)
-	time.Sleep(time.Second * 5) // Wait a sec for good measure
-	stopTextile1Again(true)
+	stopTextile1()
+	stopTextile1Again := apitest.MakeTextileWithConfig(t, tconf, apitest.WithoutAutoShutdown())
+	time.Sleep(time.Second * 10) // Wait a sec for good measure
+	stopTextile1Again()
 	cancel() // Stop watching
 	wg.Wait()
 	assert.Equal(t, 2, onlineStateCount)    // 1 for the initial start, 1 for the restart

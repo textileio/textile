@@ -14,6 +14,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// MaxPullConcurrency is the maximum number of files that can be pulled concurrently.
+var MaxPullConcurrency = 10
+
 // PullRemote pulls remote files.
 // By default, only missing files are pulled. See PathOption for more info.
 func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Roots, err error) {
@@ -138,9 +141,12 @@ looop:
 			}
 		}
 		eg, gctx := errgroup.WithContext(context.Background())
+		lim := make(chan struct{}, MaxPullConcurrency)
 		for _, o := range missing {
+			lim <- struct{}{}
 			o := o
 			eg.Go(func() error {
+				defer func() { <-lim }()
 				if gctx.Err() != nil {
 					return nil
 				}
@@ -149,6 +155,9 @@ looop:
 				}
 				return b.repo.SetRemotePath(o.path, o.cid)
 			})
+		}
+		for i := 0; i < cap(lim); i++ {
+			lim <- struct{}{}
 		}
 		if err := eg.Wait(); err != nil {
 			return count, err

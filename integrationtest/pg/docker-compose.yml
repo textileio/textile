@@ -1,14 +1,13 @@
-version: "3.7"
-
+version: "3"
 services:
   powergate:
     image: textile/powergate:v1.2.1
     ports:
-      - 8889:8889
-      - 8888:8888
-      - 6060:6060
-      - 5002:5002
-      - 6002:6002
+      - "8889:8889"
+      - "8888:8888"
+      - "6060:6060"
+      - "5002:5002"
+      - "6002:6002"
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -19,7 +18,6 @@ services:
       - POWD_IPFSAPIADDR=/dns4/ipfs/tcp/5001
       - POWD_FFSMINERSELECTOR=reputation
     restart: unless-stopped
-
   lotus:
     image: textile/lotus-devnet:v1.2.0
     environment:
@@ -27,20 +25,17 @@ services:
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=false
       - TEXLOTUSDEVNET_ONLINEMODE=true
-
   ipfs:
     image: ipfs/go-ipfs:v0.7.0
     environment:
       - IPFS_PROFILE=local-discovery
-
   ipfsbuckets:
     image: ipfs/go-ipfs:v0.7.0
     environment:
       - IPFS_PROFILE=local-discovery
     ports:
-      - 5011:5001
-
+      - "5011:5001"
   mongo:
     image: mongo:latest
     ports:
-      - 27027:27017
+      - "27017:27017"

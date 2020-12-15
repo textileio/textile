@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,6 +42,8 @@ var (
 				Key:      "log.file",
 				DefValue: "${HOME}/." + daemonName + "/log",
 			},
+
+			// Addresses
 			"addrApi": {
 				Key:      "addr.api",
 				DefValue: "/ip4/127.0.0.1/tcp/3006",
@@ -60,6 +63,14 @@ var (
 			"addrThreadsHost": {
 				Key:      "addr.threads.host",
 				DefValue: "/ip4/0.0.0.0/tcp/4006",
+			},
+			"addrThreadsMongoUri": {
+				Key:      "addr.threads.mongo_uri",
+				DefValue: "",
+			},
+			"addrThreadsMongoName": {
+				Key:      "addr.threads.mongo_name",
+				DefValue: "",
 			},
 			"addrGatewayHost": {
 				Key:      "addr.gateway.host",
@@ -81,10 +92,42 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
+
+			// Buckets
+			"bucketsMaxSize": {
+				Key:      "buckets.max_size",
+				DefValue: int64(4 * gib),
+			},
+
+			// Threads
+			"threadsMaxNumberPerOwner": {
+				Key:      "threads.max_number_per_owner",
+				DefValue: 100,
+			},
+
+			// Powergate
+			"powergateAdminToken": {
+				Key:      "powergate.admin_token",
+				DefValue: "",
+			},
+
+			// Archives
+			"archivesJobPollIntervalSlow": {
+				Key:      "archives.job_poll_interval_slow",
+				DefValue: time.Minute * 30,
+			},
+			"archivesJobPollIntervalFast": {
+				Key:      "archives.job_poll_interval_fast",
+				DefValue: time.Minute * 15,
+			},
+
+			// Gateway
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
 				DefValue: false,
 			},
+
+			// Cloudflare
 			"dnsDomain": {
 				Key:      "dns.domain",
 				DefValue: "",
@@ -97,6 +140,12 @@ var (
 				Key:      "dns.token",
 				DefValue: "",
 			},
+
+			// Customer.io
+			"customerioApiKey": {
+				Key:      "customerio.api_key",
+				DefValue: "",
+			},
 			"customerioInviteTmpl": {
 				Key:      "customerio.invite_template",
 				DefValue: "2",
@@ -105,14 +154,12 @@ var (
 				Key:      "customerio.confirm_template",
 				DefValue: "3",
 			},
-			"customerioApiKey": {
-				Key:      "customerio.api_key",
-				DefValue: "",
-			},
 			"emailSessionSecret": {
 				Key:      "email.session_secret",
 				DefValue: "",
 			},
+
+			// Segment
 			"segmentApiKey": {
 				Key:      "segment.api_key",
 				DefValue: "",
@@ -120,26 +167,6 @@ var (
 			"segmentPrefix": {
 				Key:      "segment.prefix",
 				DefValue: "",
-			},
-			"bucketsMaxSize": {
-				Key:      "buckets.max_size",
-				DefValue: int64(4 * gib),
-			},
-			"threadsMaxNumberPerOwner": {
-				Key:      "threads.max_number_per_owner",
-				DefValue: 100,
-			},
-			"powergateAdminToken": {
-				Key:      "powergate.admin_token",
-				DefValue: "",
-			},
-			"archivesJobPollIntervalSlow": {
-				Key:      "archives.job_poll_interval_slow",
-				DefValue: time.Minute * 30,
-			},
-			"archivesJobPollIntervalFast": {
-				Key:      "archives.job_poll_interval_fast",
-				DefValue: time.Minute * 15,
 			},
 		},
 		EnvPre: "HUB",
@@ -171,7 +198,7 @@ func init() {
 		config.Flags["logFile"].DefValue.(string),
 		"Write logs to file")
 
-	// Address settings
+	// Addresses
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
@@ -193,6 +220,14 @@ func init() {
 		config.Flags["addrThreadsHost"].DefValue.(string),
 		"Threads peer host listen address")
 	rootCmd.PersistentFlags().String(
+		"addrThreadsMongoUri",
+		config.Flags["addrThreadsMongoUri"].DefValue.(string),
+		"Threads MongoDB connection URI")
+	rootCmd.PersistentFlags().String(
+		"addrThreadsMongoName",
+		config.Flags["addrThreadsMongoName"].DefValue.(string),
+		"Threads MongoDB database name")
+	rootCmd.PersistentFlags().String(
 		"addrGatewayHost",
 		config.Flags["addrGatewayHost"].DefValue.(string),
 		"Local gateway host address")
@@ -213,13 +248,43 @@ func init() {
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
 
-	// Gateway settings
+	// Buckets
+	rootCmd.PersistentFlags().Int64(
+		"bucketsMaxSize",
+		config.Flags["bucketsMaxSize"].DefValue.(int64),
+		"Bucket max size in bytes")
+
+	// Threads
+	rootCmd.PersistentFlags().Int(
+		"threadsMaxNumberPerOwner",
+		config.Flags["threadsMaxNumberPerOwner"].DefValue.(int),
+		"Max number threads per owner")
+
+	// Powergate
+	rootCmd.PersistentFlags().String(
+		"powergateAdminToken",
+		config.Flags["powergateAdminToken"].DefValue.(string),
+		"Auth token for Powergate admin APIs")
+
+	// Archives
+	// @todo: Move these under the powergate namespace
+	rootCmd.PersistentFlags().Duration(
+		"archivesJobPollIntervalSlow",
+		config.Flags["archivesJobPollIntervalSlow"].DefValue.(time.Duration),
+		"How frequently to check archive job status for arcives with deals in the sealing state")
+	rootCmd.PersistentFlags().Duration(
+		"archivesJobPollIntervalFast",
+		config.Flags["archivesJobPollIntervalFast"].DefValue.(time.Duration),
+		"How frequently to check archive job status for arcives with deals in non-sealing states")
+
+	// Gateway
 	rootCmd.PersistentFlags().Bool(
 		"gatewaySubdomains",
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
 
-	// DNS settings
+	// Cloudflare
+	// @todo: Change these to cloudflareDnsDomain, etc.
 	rootCmd.PersistentFlags().String(
 		"dnsDomain",
 		config.Flags["dnsDomain"].DefValue.(string),
@@ -233,7 +298,11 @@ func init() {
 		config.Flags["dnsDomain"].DefValue.(string),
 		"Cloudflare API Token for dnsDomain")
 
-	// Verification email settings
+	// Customer.io
+	rootCmd.PersistentFlags().String(
+		"customerioApiKey",
+		config.Flags["customerioApiKey"].DefValue.(string),
+		"Customer.io API key for sending emails")
 	rootCmd.PersistentFlags().String(
 		"customerioConfirmTmpl",
 		config.Flags["customerioConfirmTmpl"].DefValue.(string),
@@ -242,16 +311,13 @@ func init() {
 		"customerioInviteTmpl",
 		config.Flags["customerioInviteTmpl"].DefValue.(string),
 		"Template ID for invite emails")
-	rootCmd.PersistentFlags().String(
-		"customerioApiKey",
-		config.Flags["customerioApiKey"].DefValue.(string),
-		"Mailgun API key for sending emails")
+	// @todo: Change this to the customerio namespace
 	rootCmd.PersistentFlags().String(
 		"emailSessionSecret",
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
 
-	// Analytics service
+	// Segment
 	rootCmd.PersistentFlags().String(
 		"segmentApiKey",
 		config.Flags["segmentApiKey"].DefValue.(string),
@@ -260,34 +326,6 @@ func init() {
 		"segmentPrefix",
 		config.Flags["segmentPrefix"].DefValue.(string),
 		"Segment trait source prefix")
-
-	// Bucket settings
-	rootCmd.PersistentFlags().Int64(
-		"bucketsMaxSize",
-		config.Flags["bucketsMaxSize"].DefValue.(int64),
-		"Bucket max size in bytes")
-
-	// Thread settings
-	rootCmd.PersistentFlags().Int(
-		"threadsMaxNumberPerOwner",
-		config.Flags["threadsMaxNumberPerOwner"].DefValue.(int),
-		"Max number threads per owner")
-
-	// Powergate
-	rootCmd.PersistentFlags().String(
-		"powergateAdminToken",
-		config.Flags["powergateAdminToken"].DefValue.(string),
-		"Auth token for Powergate admin APIs")
-
-	// Archives
-	rootCmd.PersistentFlags().Duration(
-		"archivesJobPollIntervalSlow",
-		config.Flags["archivesJobPollIntervalSlow"].DefValue.(time.Duration),
-		"How frequently to check archive job status for arcives with deals in the sealing state")
-	rootCmd.PersistentFlags().Duration(
-		"archivesJobPollIntervalFast",
-		config.Flags["archivesJobPollIntervalFast"].DefValue.(time.Duration),
-		"How frequently to check archive job status for arcives with deals in non-sealing states")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -317,91 +355,108 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		log.Debugf("loaded config: %s", string(settings))
 
-		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
-		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
-
-		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
-		addrMongoName := config.Viper.GetString("addr.mongo_name")
-
-		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
-		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
-		addrBillingApi := config.Viper.GetString("addr.billing.api")
-		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
-
-		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
-		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
-
-		dnsDomain := config.Viper.GetString("dns.domain")
-		dnsZoneID := config.Viper.GetString("dns.zone_id")
-		dnsToken := config.Viper.GetString("dns.token")
-
-		customerioConfirmTmpl := config.Viper.GetString("customerio.confirm_template")
-		customerioInviteTmpl := config.Viper.GetString("customerio.invite_template")
-
-		customerioApiKey := config.Viper.GetString("customerio.api_key")
-		emailSessionSecret := config.Viper.GetString("email.session_secret")
-
-		segmentApiKey := config.Viper.GetString("segment.api_key")
-		segmentPrefix := config.Viper.GetString("segment.prefix")
-
-		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
-		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
-
-		powergateAdminToken := config.Viper.GetString("powergate.admin_token")
-
-		archivesJobPollIntervalSlow := config.Viper.GetDuration("archives.job_poll_interval_slow")
-		archivesJobPollIntervalFast := config.Viper.GetDuration("archives.job_poll_interval_fast")
-
+		debug := config.Viper.GetBool("log.debug")
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
 			err = util.SetupDefaultLoggingConfig(logFile)
 			cmd.ErrCheck(err)
 		}
 
+		// Addresses
+		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
+		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
+		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
+		addrMongoName := config.Viper.GetString("addr.mongo_name")
+		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
+		addrThreadsMongoUri := config.Viper.GetString("addr.threads.mongo_uri")
+		addrThreadsMongoName := config.Viper.GetString("addr.threads.mongo_name")
+		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
+		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
+		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
+		addrBillingApi := config.Viper.GetString("addr.billing.api")
+		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
+
+		// Buckets
+		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
+
+		// Threads
+		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
+
+		// Powergate
+		powergateAdminToken := config.Viper.GetString("powergate.admin_token")
+
+		// Archives
+		archivesJobPollIntervalSlow := config.Viper.GetDuration("archives.job_poll_interval_slow")
+		archivesJobPollIntervalFast := config.Viper.GetDuration("archives.job_poll_interval_fast")
+
+		// Gateway
+		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
+
+		// Cloudflare
+		dnsDomain := config.Viper.GetString("dns.domain")
+		dnsZoneID := config.Viper.GetString("dns.zone_id")
+		dnsToken := config.Viper.GetString("dns.token")
+
+		// Customer.io
+		customerioApiKey := config.Viper.GetString("customerio.api_key")
+		customerioConfirmTmpl := config.Viper.GetString("customerio.confirm_template")
+		customerioInviteTmpl := config.Viper.GetString("customerio.invite_template")
+		emailSessionSecret := config.Viper.GetString("email.session_secret")
+
+		// Segment
+		segmentApiKey := config.Viper.GetString("segment.api_key")
+		segmentPrefix := config.Viper.GetString("segment.prefix")
+
+		var opts []core.Option
+		if addrThreadsMongoUri != "" {
+			if addrThreadsMongoName == "" {
+				cmd.Fatal(errors.New("addr.threads.mongo_name is required with addr.threads.mongo_uri"))
+			}
+			opts = append(opts, core.WithMongoThreadsPersistence(addrThreadsMongoUri, addrThreadsMongoName))
+		} else {
+			opts = append(opts, core.WithBadgerThreadsPersistence(config.Viper.GetString("repo")))
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		textile, err := core.NewTextile(ctx, core.Config{
-			RepoPath: config.Viper.GetString("repo"),
-
-			AddrAPI:      addrApi,
-			AddrAPIProxy: addrApiProxy,
-
+			Hub:   true,
+			Debug: debug,
+			// Addresses
+			AddrAPI:          addrApi,
+			AddrAPIProxy:     addrApiProxy,
+			AddrMongoURI:     addrMongoUri,
+			AddrMongoName:    addrMongoName,
 			AddrThreadsHost:  addrThreadsHost,
+			AddrGatewayHost:  addrGatewayHost,
+			AddrGatewayURL:   addrGatewayUrl,
 			AddrIPFSAPI:      addrIpfsApi,
 			AddrBillingAPI:   addrBillingApi,
 			AddrPowergateAPI: addrPowergateApi,
-
-			AddrMongoURI:  addrMongoUri,
-			AddrMongoName: addrMongoName,
-
-			AddrGatewayHost: addrGatewayHost,
-			AddrGatewayURL:  addrGatewayUrl,
-
-			UseSubdomains: config.Viper.GetBool("gateway.subdomains"),
-
+			// Buckets
+			MaxBucketSize: bucketsMaxSize,
+			// Threads
+			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
+			// Powergate
+			PowergateAdminToken: powergateAdminToken,
+			// Archives
+			ArchiveJobPollIntervalSlow: archivesJobPollIntervalSlow,
+			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
+			// Gateway
+			UseSubdomains: gatewaySubdomains,
+			// Cloudflare
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
 			DNSToken:  dnsToken,
-
+			// Customer.io
 			CustomerioConfirmTmpl: customerioConfirmTmpl,
 			CustomerioInviteTmpl:  customerioInviteTmpl,
 			CustomerioAPIKey:      customerioApiKey,
 			EmailSessionSecret:    emailSessionSecret,
-
+			// Segment
 			SegmentAPIKey: segmentApiKey,
 			SegmentPrefix: segmentPrefix,
-
-			MaxBucketSize:            bucketsMaxSize,
-			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
-
-			Hub:   true,
-			Debug: config.Viper.GetBool("log.debug"),
-
-			PowergateAdminToken: powergateAdminToken,
-
-			ArchiveJobPollIntervalSlow: archivesJobPollIntervalSlow,
-			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
-		})
+		}, opts...)
 		cmd.ErrCheck(err)
 		textile.Bootstrap()
 
@@ -409,7 +464,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Your peer ID is " + textile.HostID().String())
 
 		cmd.HandleInterrupt(func() {
-			if err := textile.Close(false); err != nil {
+			if err := textile.Close(); err != nil {
 				fmt.Println(err.Error())
 			}
 		})

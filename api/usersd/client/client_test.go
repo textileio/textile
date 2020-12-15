@@ -3,13 +3,11 @@ package client_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -18,7 +16,6 @@ import (
 	nc "github.com/textileio/go-threads/net/api/client"
 	tutil "github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/apitest"
-	billing "github.com/textileio/textile/v2/api/billingd/service"
 	bc "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
@@ -26,11 +23,20 @@ import (
 	c "github.com/textileio/textile/v2/api/usersd/client"
 	bucks "github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/core"
-	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "true" {
+		cleanup = apitest.StartServices()
+	}
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
 
 func TestClient_GetThread(t *testing.T) {
 	t.Parallel()
@@ -290,7 +296,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 
 	var i int
 	var readID string
-	for i < 100 {
+	for i < 10 {
 		res, err := client.SendMessage(fctx, from, to.GetPublic(), []byte("hi"))
 		require.NoError(t, err)
 		if i == 0 {
@@ -302,7 +308,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	t.Run("check order", func(t *testing.T) {
 		list, err := client.ListInboxMessages(tctx)
 		require.NoError(t, err)
-		assert.Len(t, list, 100)
+		assert.Len(t, list, 10)
 		for i := 0; i < len(list)-1; i++ {
 			assert.True(t, list[i].CreatedAt.After(list[i+1].CreatedAt))
 		}
@@ -312,15 +318,15 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	})
 
 	t.Run("with limit", func(t *testing.T) {
-		list, err := client.ListInboxMessages(tctx, c.WithLimit(10))
+		list, err := client.ListInboxMessages(tctx, c.WithLimit(5))
 		require.NoError(t, err)
-		assert.Len(t, list, 10)
+		assert.Len(t, list, 5)
 	})
 
 	t.Run("with ascending", func(t *testing.T) {
-		list, err := client.ListInboxMessages(tctx, c.WithLimit(10), c.WithAscending(true))
+		list, err := client.ListInboxMessages(tctx, c.WithLimit(5), c.WithAscending(true))
 		require.NoError(t, err)
-		assert.Len(t, list, 10)
+		assert.Len(t, list, 5)
 		for i := 0; i < len(list)-1; i++ {
 			assert.True(t, list[i].CreatedAt.Before(list[i+1].CreatedAt))
 		}
@@ -329,8 +335,8 @@ func TestClient_ListInboxMessages(t *testing.T) {
 	t.Run("with seek", func(t *testing.T) {
 		var all []c.Message
 		var seek string
-		pageSize := 10
-		for { // 10 pages
+		pageSize := 2
+		for { // 5 pages
 			list, err := client.ListInboxMessages(tctx, c.WithLimit(pageSize+1), c.WithSeek(seek))
 			require.NoError(t, err)
 			all = append(all, list[:pageSize]...)
@@ -339,7 +345,7 @@ func TestClient_ListInboxMessages(t *testing.T) {
 			}
 			seek = list[len(list)-1].ID
 		}
-		assert.Len(t, all, 100)
+		assert.Len(t, all, 10)
 		for i := 0; i < len(all)-1; i++ {
 			assert.True(t, all[i].CreatedAt.After(all[i+1].CreatedAt))
 		}
@@ -351,14 +357,14 @@ func TestClient_ListInboxMessages(t *testing.T) {
 
 		list1, err := client.ListInboxMessages(tctx, c.WithStatus(c.All))
 		require.NoError(t, err)
-		assert.Len(t, list1, 100)
+		assert.Len(t, list1, 10)
 		list2, err := client.ListInboxMessages(tctx, c.WithStatus(c.Read))
 		require.NoError(t, err)
 		assert.Len(t, list2, 1)
 		assert.False(t, list2[0].ReadAt.IsZero())
 		list3, err := client.ListInboxMessages(tctx, c.WithStatus(c.Unread))
 		require.NoError(t, err)
-		assert.Len(t, list3, 99)
+		assert.Len(t, list3, 9)
 		assert.True(t, list3[0].ReadAt.IsZero())
 	})
 }
@@ -633,7 +639,7 @@ func setup(t *testing.T, conf *core.Config) (core.Config, *c.Client, *hc.Client,
 }
 
 func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
-	apitest.MakeTextileWithConfig(t, conf, true)
+	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -658,34 +664,13 @@ func setupWithConf(t *testing.T, conf core.Config) (core.Config, *c.Client, *hc.
 }
 
 func setupWithBilling(t *testing.T) (core.Config, *c.Client, *hc.Client, *tc.Client, *nc.Client, *bc.Client) {
-	billingPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	billingGwPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	api, err := billing.NewService(ctx, billing.Config{
-		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingPort)),
-		StripeAPIURL:           "https://api.stripe.com",
-		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
-		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
-		SegmentPrefix:          "test_",
-		DBURI:                  "mongodb://127.0.0.1:27017",
-		DBName:                 util.MakeToken(8),
-		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", billingGwPort)),
-		Debug:                  true,
-	})
-	require.NoError(t, err)
-	err = api.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := api.Stop(true)
-		require.NoError(t, err)
-	})
+	bconf := apitest.DefaultBillingConfig(t)
+	apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	conf.AddrBillingAPI = fmt.Sprintf("127.0.0.1:%d", billingPort)
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	conf.AddrBillingAPI = billingApi
 	return setup(t, &conf)
 }
 

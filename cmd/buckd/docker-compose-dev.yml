@@ -12,6 +12,8 @@ services:
       - BUCK_ADDR_MONGO_URI=mongodb://mongo:27017
       - BUCK_ADDR_MONGO_NAME
       - BUCK_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - BUCK_ADDR_THREADS_MONGO_URI
+      - BUCK_ADDR_THREADS_MONGO_NAME
       - BUCK_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - BUCK_ADDR_GATEWAY_URL
       - BUCK_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
@@ -22,10 +24,19 @@ services:
       - "3007:3007"
       - "4006:4006"
       - "127.0.0.1:8006:8006"
+    depends_on:
+      - mongo
   mongo:
     image: mongo:latest
     ports:
       - "127.0.0.1:27017:27017"
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/bin/mongod --fork --logpath /var/log/mongod.log --bind_ip_all --replSet rs0
+        mongo --eval 'rs.initiate({_id: "rs0", version: 1, members: [{ _id: 0, host: "mongo:27017" }]})'
+        tail -f /var/log/mongod.log
   ipfs:
     image: ipfs/go-ipfs:v0.7.0
     ports:

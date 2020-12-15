@@ -3,81 +3,133 @@ package apitest
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
+	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
+	billing "github.com/textileio/textile/v2/api/billingd/service"
 	"github.com/textileio/textile/v2/api/hubd/client"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const SessionSecret = "hubsession"
 
 func MakeTextile(t *testing.T) core.Config {
 	conf := DefaultTextileConfig(t)
-	MakeTextileWithConfig(t, conf, true)
+	MakeTextileWithConfig(t, conf)
 	return conf
 }
 
 func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
-	dir, err := ioutil.TempDir("", "")
-	require.NoError(t, err)
-
 	apiPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	gatewayPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
 	return core.Config{
-		RepoPath: dir,
-
-		AddrAPI:         util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
-		AddrAPIProxy:    util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrThreadsHost: util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrIPFSAPI:     util.MustParseAddr("/ip4/127.0.0.1/tcp/5001"),
-		AddrGatewayHost: util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
-		AddrGatewayURL:  fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
-		AddrMongoURI:    "mongodb://127.0.0.1:27017",
-
-		AddrMongoName: util.MakeToken(12),
-
-		CustomerioAPIKey: "",
-
-		EmailSessionSecret: SessionSecret,
-
-		Hub:   true,
-		Debug: true,
+		Hub:                   true,
+		Debug:                 true,
+		AddrAPI:               util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		AddrAPIProxy:          util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrMongoURI:          MongoUri,
+		AddrMongoName:         util.MakeToken(12),
+		AddrThreadsHost:       util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
+		AddrIPFSAPI:           IPFSApiAddr,
+		AddrGatewayHost:       util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
+		AddrGatewayURL:        fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		CustomerioAPIKey:      os.Getenv("CUSTOMERIO_API_KEY"),
+		CustomerioConfirmTmpl: os.Getenv("CUSTOMERIO_CONFIRM_TMPL"),
+		CustomerioInviteTmpl:  os.Getenv("CUSTOMERIO_INVITE_TMPL"),
+		EmailSessionSecret:    SessionSecret,
+		SegmentAPIKey:         os.Getenv("SEGMENT_API_KEY"),
+		SegmentPrefix:         "test_",
 	}
 }
 
-func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, autoShutdown bool) func(deleteRepo bool) {
-	textile, err := core.NewTextile(context.Background(), conf)
-	require.NoError(t, err)
-	textile.Bootstrap()
-	time.Sleep(time.Second * time.Duration(rand.Float64()*5)) // Give the api a chance to get ready
-	done := func(deleteRepo bool) {
-		time.Sleep(time.Second) // Give threads a chance to finish work
-		err := textile.Close(true)
-		require.NoError(t, err)
-		if deleteRepo {
-			_ = os.RemoveAll(conf.RepoPath)
-		}
+type Options struct {
+	RepoPath       string
+	NoAutoShutdown bool
+}
+
+type Option func(*Options)
+
+func WithRepoPath(repoPath string) Option {
+	return func(o *Options) {
+		o.RepoPath = repoPath
 	}
-	if autoShutdown {
-		t.Cleanup(func() {
-			done(true)
-		})
+}
+
+func WithoutAutoShutdown() Option {
+	return func(o *Options) {
+		o.NoAutoShutdown = true
+	}
+}
+
+func MakeTextileWithConfig(t util.TestingTWithCleanup, conf core.Config, opts ...Option) func() {
+	var args Options
+	for _, opt := range opts {
+		opt(&args)
+	}
+	if args.RepoPath == "" {
+		args.RepoPath = t.TempDir()
+	}
+	textile, err := core.NewTextile(context.Background(), conf, core.WithBadgerThreadsPersistence(args.RepoPath))
+	require.NoError(t, err)
+	time.Sleep(5 * time.Second) // Give the api a chance to get ready
+	done := func() {
+		time.Sleep(time.Second) // Give threads a chance to finish work
+		err := textile.Close()
+		require.NoError(t, err)
+	}
+	if !args.NoAutoShutdown {
+		t.Cleanup(done)
 	}
 	return done
+}
+
+func DefaultBillingConfig(t util.TestingTWithCleanup) billing.Config {
+	apiPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	gatewayPort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+
+	return billing.Config{
+		ListenAddr:             util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
+		StripeAPIURL:           "https://api.stripe.com",
+		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
+		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
+		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
+		SegmentPrefix:          "test_",
+		DBURI:                  MongoUri,
+		DBName:                 util.MakeToken(8),
+		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
+		Debug:                  true,
+	}
+}
+
+func MakeBillingWithConfig(t util.TestingTWithCleanup, conf billing.Config) {
+	api, err := billing.NewService(context.Background(), conf)
+	require.NoError(t, err)
+	err = api.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := api.Stop()
+		require.NoError(t, err)
+	})
 }
 
 func NewUsername() string {
@@ -128,4 +180,96 @@ func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 	_, err := http.Get(url)
 	require.NoError(t, err)
 	time.Sleep(time.Second)
+}
+
+var (
+	MongoUri    = "mongodb://127.0.0.1:27017"
+	IPFSApiAddr = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
+)
+
+// StartServices starts local mongodb and ipfs services.
+func StartServices() (cleanup func()) {
+	_, currentFilePath, _, _ := runtime.Caller(0)
+	dirpath := path.Dir(currentFilePath)
+
+	makeDown := func() {
+		cmd := exec.Command(
+			"docker-compose",
+			"-f",
+			fmt.Sprintf("%s/docker-compose.yml", dirpath),
+			"down",
+			"-v",
+			"--remove-orphans",
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("docker-compose down: %s", err)
+		}
+	}
+	makeDown()
+
+	cmd := exec.Command(
+		"docker-compose",
+		"-f",
+		fmt.Sprintf("%s/docker-compose.yml", dirpath),
+		"build",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("docker-compose build: %s", err)
+	}
+	cmd = exec.Command(
+		"docker-compose",
+		"-f",
+		fmt.Sprintf("%s/docker-compose.yml", dirpath),
+		"up",
+		"-V",
+	)
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("running docker-compose: %s", err)
+	}
+
+	limit := 5
+	retries := 0
+	var err error
+	for retries < limit {
+		err = checkServices()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+		retries++
+	}
+	if retries == limit {
+		makeDown()
+		if err != nil {
+			log.Fatalf("connecting to services: %s", err)
+		}
+		log.Fatalf("max retries exhausted connecting to services")
+	}
+	return makeDown
+}
+
+func checkServices() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(MongoUri))
+	if err != nil {
+		return err
+	}
+	if err = mc.Ping(ctx, nil); err != nil {
+		return err
+	}
+	ic, err := httpapi.NewApi(IPFSApiAddr)
+	if err != nil {
+		return err
+	}
+	if _, err = ic.Key().Self(ctx); err != nil {
+		return err
+	}
+	return nil
 }

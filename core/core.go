@@ -18,11 +18,13 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	mongods "github.com/textileio/go-ds-mongo"
 	dbapi "github.com/textileio/go-threads/api"
 	threads "github.com/textileio/go-threads/api/client"
 	dbpb "github.com/textileio/go-threads/api/pb"
 	"github.com/textileio/go-threads/broadcast"
 	tc "github.com/textileio/go-threads/common"
+	kt "github.com/textileio/go-threads/db/keytransform"
 	netapi "github.com/textileio/go-threads/net/api"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
@@ -121,7 +123,8 @@ var (
 type Textile struct {
 	collections *mdb.Collections
 
-	ts tc.NetBoostrapper
+	tn tc.NetBoostrapper
+	ts kt.TxnDatastoreExtended
 
 	th  *threads.Client
 	thn *netclient.Client
@@ -148,51 +151,60 @@ type Textile struct {
 }
 
 type Config struct {
-	RepoPath string
+	Hub   bool
+	Debug bool
 
-	AddrAPI      ma.Multiaddr
-	AddrAPIProxy ma.Multiaddr
-
-	AddrMongoURI  string
-	AddrMongoName string
-
+	// Addresses
+	AddrAPI          ma.Multiaddr
+	AddrAPIProxy     ma.Multiaddr
+	AddrMongoURI     string
+	AddrMongoName    string
 	AddrThreadsHost  ma.Multiaddr
+	AddrGatewayHost  ma.Multiaddr
+	AddrGatewayURL   string
 	AddrIPFSAPI      ma.Multiaddr
 	AddrBillingAPI   string
 	AddrPowergateAPI string
 
-	AddrGatewayHost ma.Multiaddr
-	AddrGatewayURL  string
+	// Buckets
+	MaxBucketSize int64
 
-	ThreadsConnManager connmgr.ConnManager
+	// Threads
+	MaxNumberThreadsPerOwner int
+	ThreadsConnManager       connmgr.ConnManager
 
+	// Powergate
+	PowergateAdminToken string
+
+	// Archives
+	ArchiveJobPollIntervalSlow time.Duration
+	ArchiveJobPollIntervalFast time.Duration
+
+	// Gateway
 	UseSubdomains bool
 
+	// Cloudflare
 	DNSDomain string
 	DNSZoneID string
 	DNSToken  string
 
+	// Customer.io
 	CustomerioAPIKey      string
 	CustomerioConfirmTmpl string
 	CustomerioInviteTmpl  string
 	EmailSessionSecret    string
 
+	// Segment
 	SegmentAPIKey string
 	SegmentPrefix string
-
-	MaxBucketSize            int64
-	MaxNumberThreadsPerOwner int
-
-	Hub   bool
-	Debug bool
-
-	PowergateAdminToken string
-
-	ArchiveJobPollIntervalSlow time.Duration
-	ArchiveJobPollIntervalFast time.Duration
 }
 
-func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
+func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, error) {
+	var args Options
+	for _, opt := range opts {
+		opt(&args)
+	}
+
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"core":        logging.LevelDebug,
@@ -239,13 +251,15 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		tc.WithNetHostAddr(conf.AddrThreadsHost),
 		tc.WithNetDebug(conf.Debug),
 	}
+	if args.ThreadsMongoUri != "" {
+		netOptions = append(netOptions, tc.WithNetMongoPersistence(args.ThreadsMongoUri, args.ThreadsMongoDB))
+	} else {
+		netOptions = append(netOptions, tc.WithNetBadgerPersistence(args.ThreadsBadgerRepoPath))
+	}
 	if conf.ThreadsConnManager != nil {
 		netOptions = append(netOptions, tc.WithConnectionManager(conf.ThreadsConnManager))
 	}
-	t.ts, err = tc.DefaultNetwork(
-		conf.RepoPath,
-		netOptions...,
-	)
+	t.tn, err = tc.DefaultNetwork(netOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -275,14 +289,29 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	}
 
 	// Configure gRPC services
-	ts, err := dbapi.NewService(t.ts, dbapi.Config{
-		RepoPath: conf.RepoPath,
-		Debug:    conf.Debug,
+	if args.ThreadsMongoUri != "" {
+		t.ts, err = mongods.New(
+			ctx,
+			args.ThreadsMongoUri,
+			args.ThreadsMongoDB,
+			mongods.WithCollName("eventstore"),
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		t.ts, err = tutil.NewBadgerDatastore(args.ThreadsBadgerRepoPath, "eventstore", false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ts, err := dbapi.NewService(t.ts, t.tn, dbapi.Config{
+		Debug: conf.Debug,
 	})
 	if err != nil {
 		return nil, err
 	}
-	ns, err := netapi.NewService(t.ts, netapi.Config{
+	ns, err := netapi.NewService(t.tn, netapi.Config{
 		Debug: conf.Debug,
 	})
 	if err != nil {
@@ -300,7 +329,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
-		cio, err := email.NewClient(email.Config{ConfirmTmpl: conf.CustomerioConfirmTmpl, InviteTmpl: conf.CustomerioInviteTmpl, APIKey: conf.CustomerioAPIKey, Debug: conf.Debug})
+		cio, err := email.NewClient(
+			email.Config{
+				ConfirmTmpl: conf.CustomerioConfirmTmpl,
+				InviteTmpl:  conf.CustomerioInviteTmpl,
+				APIKey:      conf.CustomerioAPIKey,
+				Debug:       conf.Debug,
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +369,14 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 		}
 	}
 	if conf.Hub {
-		t.archiveTracker, err = archive.New(t.collections, t.bucks, t.pc, t.internalHubSession, conf.ArchiveJobPollIntervalSlow, conf.ArchiveJobPollIntervalFast)
+		t.archiveTracker, err = archive.New(
+			t.collections,
+			t.bucks,
+			t.pc,
+			t.internalHubSession,
+			conf.ArchiveJobPollIntervalSlow,
+			conf.ArchiveJobPollIntervalFast,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +401,7 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 	if err != nil {
 		return nil, err
 	}
-	var opts []grpc.ServerOption
+	var grpcopts []grpc.ServerOption
 	if conf.Hub {
 		var powStub *grpcdynamic.Stub
 		var powergateServiceDesc *desc.ServiceDescriptor
@@ -366,16 +409,27 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			if powStub, err = createPowStub(conf.AddrPowergateAPI); err != nil {
 				return nil, err
 			}
-			if powergateServiceDesc, err = createServiceDesciptor("powergate/user/v1/user.proto", powergateServiceName); err != nil {
+			if powergateServiceDesc, err = createServiceDesciptor(
+				"powergate/user/v1/user.proto",
+				powergateServiceName,
+			); err != nil {
 				return nil, err
 			}
 		}
-		opts = []grpc.ServerOption{
+		grpcopts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(
 				auth.UnaryServerInterceptor(t.authFunc),
 				unaryServerInterceptor(t.preUsageFunc, t.postUsageFunc),
 				t.threadInterceptor(),
-				powInterceptor(powergateServiceName, allowedPowMethods[powergateServiceName], powergateServiceDesc, powStub, t.pc, conf.PowergateAdminToken, t.collections),
+				powInterceptor(
+					powergateServiceName,
+					allowedPowMethods[powergateServiceName],
+					powergateServiceDesc,
+					powStub,
+					t.pc,
+					conf.PowergateAdminToken,
+					t.collections,
+				),
 			),
 			grpcm.WithStreamServerChain(
 				auth.StreamServerInterceptor(t.authFunc),
@@ -384,12 +438,12 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 			grpc.StatsHandler(&StatsHandler{t: t}),
 		}
 	} else {
-		opts = []grpc.ServerOption{
+		grpcopts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
 		}
 	}
-	t.server = grpc.NewServer(opts...)
+	t.server = grpc.NewServer(grpcopts...)
 	listener, err := net.Listen("tcp", target)
 	if err != nil {
 		return nil, err
@@ -461,39 +515,44 @@ func NewTextile(ctx context.Context, conf Config) (*Textile, error) {
 }
 
 func (t *Textile) Bootstrap() {
-	t.ts.Bootstrap(tutil.DefaultBoostrapPeers())
+	t.tn.Bootstrap(tutil.DefaultBoostrapPeers())
 }
 
-func (t *Textile) Close(force bool) error {
+func (t *Textile) Close() error {
 	if t.emailSessionBus != nil {
 		t.emailSessionBus.Discard()
 	}
+	log.Info("session bus was discarded")
+
 	if err := t.gateway.Stop(); err != nil {
 		return err
 	}
+
 	t.buckLocks.Stop()
+	log.Info("locking buckets")
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := t.proxy.Shutdown(ctx); err != nil {
 		return err
 	}
-	if force {
-		t.server.Stop()
-	} else {
+	log.Info("gRPC proxy was shutdown")
+
+	stopped := make(chan struct{})
+	go func() {
 		t.server.GracefulStop()
+		close(stopped)
+	}()
+	timer := time.NewTimer(10 * time.Second)
+	select {
+	case <-timer.C:
+		t.server.Stop()
+	case <-stopped:
+		timer.Stop()
 	}
-	if t.archiveTracker != nil {
-		if err := t.archiveTracker.Close(); err != nil {
-			return err
-		}
-	}
-	if err := t.bucks.Close(); err != nil {
-		return err
-	}
+	log.Info("gRPC was shutdown")
+
 	if err := t.th.Close(); err != nil {
-		return err
-	}
-	if err := t.ts.Close(); err != nil {
 		return err
 	}
 	if t.bc != nil {
@@ -506,15 +565,37 @@ func (t *Textile) Close(force bool) error {
 			return err
 		}
 	}
+	log.Info("local clients were shutdown")
+
+	t.ipnsm.Cancel()
+	if t.archiveTracker != nil {
+		if err := t.archiveTracker.Close(); err != nil {
+			return err
+		}
+	}
+	if err := t.bucks.Close(); err != nil {
+		return err
+	}
+	log.Info("buckets was shutdown")
+
+	if err := t.tn.Close(); err != nil {
+		return err
+	}
+	if err := t.ts.Close(); err != nil {
+		return err
+	}
+	log.Info("threads was shutdown")
+
 	if err := t.collections.Close(); err != nil {
 		return err
 	}
-	t.ipnsm.Cancel()
+	log.Info("mongo collections were shutdown")
+
 	return nil
 }
 
 func (t *Textile) HostID() peer.ID {
-	return t.ts.Host().ID()
+	return t.tn.Host().ID()
 }
 
 func createServiceDesciptor(file string, serviceName string) (*desc.ServiceDescriptor, error) {

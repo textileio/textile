@@ -2,14 +2,26 @@ package migrations
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/textileio/go-ds-mongo/test"
 	migrate "github.com/xakep666/mongo-migrate"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := func() {}
+	if os.Getenv("SKIP_SERVICES") != "true" {
+		cleanup = test.StartMongoDB()
+	}
+	exitVal := m.Run()
+	cleanup()
+	os.Exit(exitVal)
+}
 
 // Test make customer_id index sparse
 func TestMigrations_m001(t *testing.T) {
@@ -55,8 +67,7 @@ func TestMigrations_m001(t *testing.T) {
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
-	uri := "mongodb://127.0.0.1:27017"
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.MongoUri))
 	require.NoError(t, err)
 	db := client.Database("test_billing_migrations")
 	t.Cleanup(func() {

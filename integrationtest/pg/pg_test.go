@@ -31,8 +31,8 @@ func TestMain(m *testing.M) {
 
 func TestCreateBucket(t *testing.T) {
 	powc := StartPowergate(t)
-	ctx, _, client, shutdown := setup(t)
-	defer shutdown(true)
+	ctx, _, client, _, shutdown := setup(t)
+	defer shutdown()
 
 	// User is now created, so it should exist after spinup.
 	res, err := powc.Admin.Users.List(ctx)
@@ -51,7 +51,7 @@ func TestCreateBucket(t *testing.T) {
 func TestArchiveTracker(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
-		ctx, conf, client, shutdown := setup(t)
+		ctx, conf, client, repo, shutdown := setup(t)
 
 		// Create bucket with a file.
 		b, err := client.Create(ctx)
@@ -67,12 +67,12 @@ func TestArchiveTracker(t *testing.T) {
 
 		// Force stop the Hub.
 		fmt.Println("<<< Force stopping Hub")
-		shutdown(false)
+		shutdown()
 		fmt.Println("<<< Hub stopped")
 
 		// Re-spin up Hub.
 		fmt.Println(">>> Re-spinning the Hub")
-		client = reSetup(t, conf)
+		client = reSetup(t, conf, repo)
 		time.Sleep(5 * time.Second) // Wait for Hub to spinup and resume archives tracking.
 		fmt.Println(">>> Hub started")
 
@@ -97,8 +97,8 @@ func TestArchiveTracker(t *testing.T) {
 func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
-		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		ctx, _, client, _, shutdown := setup(t)
+		defer shutdown()
 
 		// Create bucket with a file.
 		b, err := client.Create(ctx)
@@ -146,8 +146,8 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
-		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		ctx, _, client, _, shutdown := setup(t)
+		defer shutdown()
 
 		b, err := client.Create(ctx)
 		require.NoError(t, err)
@@ -180,8 +180,8 @@ func TestArchiveWatch(t *testing.T) {
 func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
-		ctx, _, client, shutdown := setup(t)
-		defer shutdown(true)
+		ctx, _, client, _, shutdown := setup(t)
+		defer shutdown()
 
 		b, err := client.Create(ctx)
 		require.NoError(t, err)
@@ -242,14 +242,13 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 	return strings.SplitN(root.String(), "/", 4)[2]
 }
 
-func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, func(bool)) {
+func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, string, func()) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
-	conf.AddrIPFSAPI = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
-	conf.AddrMongoURI = "mongodb://127.0.0.1:27027"
 	conf.ArchiveJobPollIntervalFast = time.Second * 5
 	conf.ArchiveJobPollIntervalSlow = time.Second * 10
-	shutdown := apitest.MakeTextileWithConfig(t, conf, false)
+	repo := t.TempDir()
+	shutdown := apitest.MakeTextileWithConfig(t, conf, apitest.WithRepoPath(repo), apitest.WithoutAutoShutdown())
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
@@ -272,11 +271,11 @@ func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client,
 		require.NoError(t, err)
 	})
 
-	return ctx, conf, client, shutdown
+	return ctx, conf, client, repo, shutdown
 }
 
-func reSetup(t util.TestingTWithCleanup, conf core.Config) *c.Client {
-	apitest.MakeTextileWithConfig(t, conf, true)
+func reSetup(t util.TestingTWithCleanup, conf core.Config, repo string) *c.Client {
+	apitest.MakeTextileWithConfig(t, conf, apitest.WithRepoPath(repo))
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.Nil(t, err)
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
