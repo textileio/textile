@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	cron "github.com/robfig/cron/v3"
 	stripe "github.com/stripe/stripe-go/v72"

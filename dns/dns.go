@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	cf "github.com/cloudflare/cloudflare-go"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/util"
 )
 

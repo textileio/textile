@@ -7,7 +7,6 @@ services:
       - "${REPO_PATH}/textile:/data/textile"
     environment:
       - HUB_LOG_DEBUG
-      - HUB_LOG_FILE
       - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - HUB_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
       - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
@@ -30,10 +29,10 @@ services:
       - HUB_SEGMENT_API_KEY
       - HUB_SEGMENT_PREFIX
     ports:
-      - "127.0.0.1:3006:3006"
+      - "3006:3006"
       - "3007:3007"
       - "4006:4006"
-      - "127.0.0.1:8006:8006"
+      - "8006:8006"
     depends_on:
       - mongo
   billing:
@@ -41,7 +40,6 @@ services:
     restart: always
     environment:
       - BILLING_LOG_DEBUG
-      - BILLING_LOG_FILE
       - BILLING_ADDR_API=/ip4/0.0.0.0/tcp/10006
       - BILLING_ADDR_MONGO_URI=mongodb://mongo:27017
       - BILLING_ADDR_MONGO_NAME
@@ -51,8 +49,8 @@ services:
       - BILLING_SEGMENT_API_KEY
       - BILLING_SEGMENT_PREFIX
     ports:
-      - "127.0.0.1:10006:10006"
-      - "127.0.0.1:8010:8010"
+      - "10006:10006"
+      - "8010:8010"
     depends_on:
       - mongo
   mongo:
@@ -76,5 +74,6 @@ services:
       - "${REPO_PATH}/ipfs:/data/ipfs"
     ports:
       - "4001:4001"
+      - "4001:4001/udp"
       - "127.0.0.1:5001:5001"
       - "8080:8080"

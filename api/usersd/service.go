@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	ulid "github.com/oklog/ulid/v2"
 	coredb "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"

@@ -3,8 +3,7 @@ package analytics
 import (
 	"time"
 
-	logging "github.com/ipfs/go-log"
-	"gopkg.in/segmentio/analytics-go.v3"
+	logging "github.com/ipfs/go-log/v2"
 	segment "gopkg.in/segmentio/analytics-go.v3"
 )
 
@@ -42,7 +41,7 @@ func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
 // Update updates the user metadata
 func (c *Client) Update(userID, email string, active bool, properties map[string]interface{}) {
 	if c.api != nil && email != "" {
-		traits := analytics.NewTraits()
+		traits := segment.NewTraits()
 		traits.SetEmail(email)
 		for key, value := range properties {
 			traits.Set(key, value)
@@ -51,7 +50,7 @@ func (c *Client) Update(userID, email string, active bool, properties map[string
 		if err := c.api.Enqueue(segment.Identify{
 			UserId: userID,
 			Traits: traits,
-			Context: &analytics.Context{
+			Context: &segment.Context{
 				Extra: map[string]interface{}{
 					"active": active,
 				},
@@ -65,7 +64,7 @@ func (c *Client) Update(userID, email string, active bool, properties map[string
 // NewEvent logs a new event
 func (c *Client) NewEvent(userID, email, eventName string, active bool, properties map[string]interface{}) {
 	if c.api != nil && email != "" {
-		props := analytics.NewProperties()
+		props := segment.NewProperties()
 		for key, value := range properties {
 			props.Set(key, value)
 		}
@@ -74,7 +73,7 @@ func (c *Client) NewEvent(userID, email, eventName string, active bool, properti
 			UserId:     userID,
 			Event:      eventName,
 			Properties: props,
-			Context: &analytics.Context{
+			Context: &segment.Context{
 				Extra: map[string]interface{}{
 					"active": active,
 				},

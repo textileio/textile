@@ -4,24 +4,11 @@ MAINTAINER Textile <contact@textile.io>
 # This is (in large part) copied (with love) from
 # https://hub.docker.com/r/ipfs/go-ipfs/dockerfile
 
-# Get the TLS CA certificates, they're not provided by busybox.
-RUN apt-get update && apt-get install -y ca-certificates
+# Install deps
+RUN apt-get update && apt-get install -y \
+  libssl-dev \
+  ca-certificates
 
-# Get su-exec, a very minimal tool for dropping privileges,
-# and tini, a very minimal init daemon for containers
-ENV SUEXEC_VERSION v0.2
-ENV TINI_VERSION v0.16.1
-RUN set -x \
-  && cd /tmp \
-  && git clone https://github.com/ncopa/su-exec.git \
-  && cd su-exec \
-  && git checkout -q $SUEXEC_VERSION \
-  && make \
-  && cd /tmp \
-  && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
-  && chmod +x tini
-
-# Get source
 ENV SRC_DIR /textile
 
 # Download packages first so they can be cached.
@@ -31,28 +18,59 @@ RUN cd $SRC_DIR \
 
 COPY . $SRC_DIR
 
-# Install the daemon
-RUN cd $SRC_DIR && TXTL_BUILD_FLAGS="CGO_ENABLED=0 GOOS=linux" make build-billingd
+# Build the thing.
+RUN cd $SRC_DIR \
+  && TXTL_BUILD_FLAGS="CGO_ENABLED=0 GOOS=linux" make build-billingd
+
+# Get su-exec, a very minimal tool for dropping privileges,
+# and tini, a very minimal init daemon for containers
+ENV SUEXEC_VERSION v0.2
+ENV TINI_VERSION v0.19.0
+RUN set -eux; \
+    dpkgArch="$(dpkg --print-architecture)"; \
+    case "${dpkgArch##*-}" in \
+        "amd64" | "armhf" | "arm64") tiniArch="tini-static-$dpkgArch" ;;\
+        *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
+    esac; \
+  cd /tmp \
+  && git clone https://github.com/ncopa/su-exec.git \
+  && cd su-exec \
+  && git checkout -q $SUEXEC_VERSION \
+  && make su-exec-static \
+  && cd /tmp \
+  && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/$tiniArch \
+  && chmod +x tini
 
 # Now comes the actual target image, which aims to be as small as possible.
-FROM busybox:1.31.0-glibc
+FROM busybox:1.31.1-glibc
 LABEL maintainer="Textile <contact@textile.io>"
 
 # Get the textile binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /textile
-COPY --from=0 /textile/billingd /usr/local/bin/billingd
-COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
+COPY --from=0 $SRC_DIR/billingd /usr/local/bin/billingd
+COPY --from=0 /tmp/su-exec/su-exec-static /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
-COPY --from=0 /lib/x86_64-linux-gnu/libdl.so.2 /lib/libdl.so.2
+COPY --from=0 /lib/*-linux-gnu*/libdl.so.2 /lib/
 
-# addrApi; should be exposed to the public
+# Copy over SSL libraries.
+COPY --from=0 /usr/lib/*-linux-gnu*/libssl.so* /usr/lib/
+COPY --from=0 /usr/lib/*-linux-gnu*/libcrypto.so* /usr/lib/
+
+# addrApi; can be exposed to the public
 EXPOSE 10006
+# addrGatewayHost; can be exposed to the public.
+EXPOSE 8010
+
+# Create the repo directory.
+ENV BILLING_PATH /data/billing
+RUN mkdir -p $BILLING_PATH \
+  && adduser -D -h $BILLING_PATH -u 1000 -G users billing \
+  && chown billing:users $BILLING_PATH
 
 # Switch to a non-privileged user.
-RUN addgroup textile && adduser -D -G textile textile
-USER textile
+USER billing
 
 ENTRYPOINT ["/sbin/tini", "--", "billingd"]
