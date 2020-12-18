@@ -90,7 +90,7 @@ Use the --user flag to get usage for a dependent user.`,
 		cmd.RenderTable(header, rows)
 		if !cus.Billable && cus.GracePeriodEnd > 0 {
 			ends := time.Unix(cus.GracePeriodEnd, 0).Format("02-Jan-06 15:04 -0700")
-			cmd.Warn("Free quota grace period ends: %d", aurora.Bold(ends))
+			cmd.Warn("Free quota grace period ends: %s", aurora.Bold(ends))
 		}
 	},
 }
