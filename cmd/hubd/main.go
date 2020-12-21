@@ -100,7 +100,7 @@ var (
 			},
 			"bucketsArchiveMaxRepFactor": {
 				Key:      "buckets.max_archive_rep_factor",
-				DefValue: 3,
+				DefValue: 4,
 			},
 
 			// Threads
