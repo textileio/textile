@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -120,9 +121,9 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 		require.Equal(t, rootCid1, res.Current.Cid)
 		require.Len(t, res.Current.DealInfo, 1)
-		deal := res.Current.DealInfo[0]
-		require.NotEmpty(t, deal.ProposalCid)
-		require.NotEmpty(t, deal.Miner)
+		deal1 := res.Current.DealInfo[0]
+		require.NotEmpty(t, deal1.ProposalCid)
+		require.NotEmpty(t, deal1.Miner)
 
 		// Add another file to the bucket.
 		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
@@ -137,9 +138,69 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 		require.Equal(t, rootCid2, res.Current.Cid)
 		require.Len(t, res.Current.DealInfo, 1)
-		deal = res.Current.DealInfo[0]
-		require.NotEmpty(t, deal.ProposalCid)
-		require.NotEmpty(t, deal.Miner)
+		deal2 := res.Current.DealInfo[0]
+		require.NotEmpty(t, deal2.ProposalCid)
+		require.NotEmpty(t, deal2.Miner)
+
+		// List archives.
+		as, err := client.ArchivesLs(ctx)
+		require.NoError(t, err)
+		require.Len(t, as, 2)
+		sort.Slice(as, func(i, j int) bool {
+			return as[i].Cid.String() < as[j].Cid.String()
+		})
+
+		require.Equal(t, rootCid1, as[0].Cid)
+		require.Len(t, as[0].DealIDs, 1)
+		require.Equal(t, as[0].DealIds[0], deal1.DealId)
+
+		require.Equal(t, rootCid2, as[1].Cid)
+		require.Len(t, as[1].DealIDs, 1)
+		require.Equal(t, as[1].DealIds[1], deal2.DealId)
+	})
+}
+
+func TestArchivesImport(t *testing.T) {
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = StartPowergate(t)
+		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
+		defer shutdown()
+
+		// Create an archive for account-1.
+		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
+		b, err := client.Create(ctxAccount1)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, b.Root.Key, "Data1.txt")
+		err = client.Archive(ctxAccount1, b.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := client.Archives(ctxAccount1, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
+		deal := res.Current.DealInfo[0]
+
+		// Create account-2, and import the DealID
+		// created by account-1.
+		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
+
+		// Check no archives exist for account-2
+		as, err := client.ArchivesLs(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, as, 0)
+
+		// Import deal made by account-1.
+		err = client.ArchivesImport(ctxAccount2, rootCid1, []uint64{deal.DealId})
+		require.NoError(t, err)
+
+		// Assert archives listing includes imported archive.
+		as, err = client.ArchivesLs(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, as, 1)
+
+		require.Equal(t, rootCid1, as[0].Cid)
+		require.Len(t, as[0].DealIDs, 1)
+		require.Equal(t, as[0].DealIds[0], deal.DealId)
 	})
 }
 
@@ -243,6 +304,13 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 }
 
 func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, string, func()) {
+	hubclient, threadsclient, client, conf, repo, shutdown := createInfra(t)
+	ctx := createAccount(t, hubclient, threadsclient, conf)
+
+	return ctx, conf, client, repo, shutdown
+}
+
+func createInfra(t util.TestingTWithCleanup) (*hc.Client, *tc.Client, *c.Client, core.Config, string, func()) {
 	conf := apitest.DefaultTextileConfig(t)
 	conf.AddrPowergateAPI = powAddr
 	conf.ArchiveJobPollIntervalFast = time.Second * 5
@@ -254,24 +322,28 @@ func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client,
 	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(common.Credentials{})}
 	client, err := c.NewClient(target, opts...)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := client.Close()
+		require.NoError(t, err)
+	})
 	hubclient, err := hc.NewClient(target, opts...)
 	require.NoError(t, err)
 	threadsclient, err := tc.NewClient(target, opts...)
 	require.NoError(t, err)
 
+	return hubclient, threadsclient, client, conf, repo, shutdown
+
+}
+
+func createAccount(t util.TestingTWithCleanup, hubclient *hc.Client, threadsclient *tc.Client, conf core.Config) context.Context {
 	user := apitest.Signup(t, hubclient, conf, apitest.NewUsername(), apitest.NewEmail())
 	ctx := common.NewSessionContext(context.Background(), user.Session)
 	id := thread.NewIDV1(thread.Raw, 32)
 	ctx = common.NewThreadNameContext(ctx, "buckets")
-	err = threadsclient.NewDB(ctx, id)
+	err := threadsclient.NewDB(ctx, id)
 	require.NoError(t, err)
-	ctx = common.NewThreadIDContext(ctx, id)
-	t.Cleanup(func() {
-		err := client.Close()
-		require.NoError(t, err)
-	})
 
-	return ctx, conf, client, repo, shutdown
+	return common.NewThreadIDContext(ctx, id)
 }
 
 func reSetup(t util.TestingTWithCleanup, conf core.Config, repo string) *c.Client {
