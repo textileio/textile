@@ -1,14 +1,17 @@
 package pg
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -201,6 +204,91 @@ func TestArchivesImport(t *testing.T) {
 		require.Equal(t, rootCid1, as[0].Cid)
 		require.Len(t, as[0].DealIDs, 1)
 		require.Equal(t, as[0].DealIds[0], deal.DealId)
+	})
+}
+
+func TestArchiveUnfreeze(t *testing.T) {
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = StartPowergate(t)
+		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
+		defer shutdown()
+
+		// Create an archive for account-1.
+		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
+		b, err := client.Create(ctxAccount1)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, b.Root.Key, "Data1.txt")
+		err = client.Archive(ctxAccount1, b.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := client.Archives(ctxAccount1, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
+		deal := res.Current.DealInfo[0]
+		ccid, err := cid.Decode(rootCid1)
+		require.NoError(t, err)
+
+		// Create account-2, and import the DealID
+		// created by account-1.
+		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
+
+		// Obvious assertion about no existing retrievals.
+		rs, err := client.RetrievalLs(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, len(rs), 0)
+
+		// Import deal made by account-1.
+		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
+		require.NoError(t, err)
+
+		// Unfreeze to a bucket.
+		b, err = client.Create(ctxAccount2, c.WithCid(ccid), hc.WithUnfreeze(true))
+		require.NoError(t, err)
+
+		// Wait for the retrieval to finish.
+		var r c.Retrieval
+		require.Eventually(t, func() bool {
+			rs, err = client.RetrievalLs(ctxAccount2)
+			require.NoError(t, err)
+			require.Len(t, len(rs), 1)
+			r = rs[0]
+
+			require.NotEqual(t, c.RetrievalStatusFailed, r.Status)
+
+			return r.Status == c.RetrievalStatusSuccess
+		}, 2*time.Minute, 2*time.Second)
+
+		// Check if what we got from Filecoin is the same file that
+		// account-1 saved in the archived bucket.
+		buf := bytes.NewBuffer(nil)
+		err = client.PullPath(ctxAccount2, b.Root.Key, "Data1.txt", buf)
+		require.NoError(t, err)
+		f, err := os.Open("testdata/Data1.txt")
+		require.NoError(t, err)
+		t.Cleanup(func() { f.Close() })
+		originalFile, err := ioutil.ReadAll(f)
+		require.NoError(t, err)
+		require.True(t, bytes.Equal(originalFile, buf.Bytes()))
+
+		// Assert there're things in the retrieval log.
+		ctxAccount2, cancel := context.WithCancel(ctxAccount2)
+		defer cancel()
+		ch := make(chan string, 100)
+		go func() {
+			err = client.RetrievalLogs(ctxAccount2, r.Id, ch)
+			close(ch)
+		}()
+		count := 0
+		for s := range ch {
+			require.NotEmpty(t, s)
+			count++
+			if count > 4 {
+				cancel()
+			}
+		}
+		require.NoError(t, err)
+		require.Greater(t, count, 3)
 	})
 }
 
