@@ -99,7 +99,7 @@ var (
 				DefValue: int64(4 * gib),
 			},
 			"bucketsArchiveMaxRepFactor": {
-				Key:      "buckets.max_archive_rep_factor",
+				Key:      "buckets.archive_max_rep_factor",
 				DefValue: 4,
 			},
 
@@ -386,7 +386,7 @@ var rootCmd = &cobra.Command{
 
 		// Buckets
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
-		bucketsArchiveMaxRepFactor := config.Viper.GetInt("buckets.max_archive_rep_factor")
+		bucketsArchiveMaxRepFactor := config.Viper.GetInt("buckets.archive_max_rep_factor")
 
 		// Threads
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
@@ -444,7 +444,7 @@ var rootCmd = &cobra.Command{
 			AddrPowergateAPI: addrPowergateApi,
 			// Buckets
 			MaxBucketSize:             bucketsMaxSize,
-			MaxBucketArchiveRepFactor: bucketsArchiveMaxRepFactor,
+			BucketArchiveMaxRepFactor: bucketsArchiveMaxRepFactor,
 			// Threads
 			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
 			// Powergate

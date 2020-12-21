@@ -168,7 +168,7 @@ type Config struct {
 
 	// Buckets
 	MaxBucketSize             int64
-	MaxBucketArchiveRepFactor int
+	BucketArchiveMaxRepFactor int
 
 	// Threads
 	MaxNumberThreadsPerOwner int
@@ -395,7 +395,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		ArchiveTracker:            t.archiveTracker,
 		Semaphores:                t.buckLocks,
 		MaxBucketSize:             conf.MaxBucketSize,
-		MaxBucketArchiveRepFactor: conf.MaxBucketArchiveRepFactor,
+		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
 	}
 
 	// Start serving
