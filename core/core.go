@@ -167,7 +167,8 @@ type Config struct {
 	AddrPowergateAPI string
 
 	// Buckets
-	MaxBucketSize int64
+	MaxBucketSize             int64
+	BucketArchiveMaxRepFactor int
 
 	// Threads
 	MaxNumberThreadsPerOwner int
@@ -383,17 +384,18 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	}
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &bucketsd.Service{
-		Collections:         t.collections,
-		Buckets:             t.bucks,
-		GatewayURL:          conf.AddrGatewayURL,
-		GatewayBucketsHost:  conf.DNSDomain,
-		IPFSClient:          ic,
-		IPNSManager:         t.ipnsm,
-		PowergateClient:     t.pc,
-		PowergateAdminToken: conf.PowergateAdminToken,
-		ArchiveTracker:      t.archiveTracker,
-		Semaphores:          t.buckLocks,
-		MaxBucketSize:       conf.MaxBucketSize,
+		Collections:               t.collections,
+		Buckets:                   t.bucks,
+		GatewayURL:                conf.AddrGatewayURL,
+		GatewayBucketsHost:        conf.DNSDomain,
+		IPFSClient:                ic,
+		IPNSManager:               t.ipnsm,
+		PowergateClient:           t.pc,
+		PowergateAdminToken:       conf.PowergateAdminToken,
+		ArchiveTracker:            t.archiveTracker,
+		Semaphores:                t.buckLocks,
+		MaxBucketSize:             conf.MaxBucketSize,
+		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
 	}
 
 	// Start serving

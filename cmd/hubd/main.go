@@ -98,6 +98,10 @@ var (
 				Key:      "buckets.max_size",
 				DefValue: int64(4 * gib),
 			},
+			"bucketsArchiveMaxRepFactor": {
+				Key:      "buckets.archive_max_rep_factor",
+				DefValue: 4,
+			},
 
 			// Threads
 			"threadsMaxNumberPerOwner": {
@@ -253,6 +257,10 @@ func init() {
 		"bucketsMaxSize",
 		config.Flags["bucketsMaxSize"].DefValue.(int64),
 		"Bucket max size in bytes")
+	rootCmd.PersistentFlags().Int(
+		"bucketsArchiveMaxRepFactor",
+		config.Flags["bucketsArchiveMaxRepFactor"].DefValue.(int),
+		"Bucket archive max replication factor")
 
 	// Threads
 	rootCmd.PersistentFlags().Int(
@@ -378,6 +386,7 @@ var rootCmd = &cobra.Command{
 
 		// Buckets
 		bucketsMaxSize := config.Viper.GetInt64("buckets.max_size")
+		bucketsArchiveMaxRepFactor := config.Viper.GetInt("buckets.archive_max_rep_factor")
 
 		// Threads
 		threadsMaxNumberPerOwner := config.Viper.GetInt("threads.max_number_per_owner")
@@ -434,7 +443,8 @@ var rootCmd = &cobra.Command{
 			AddrBillingAPI:   addrBillingApi,
 			AddrPowergateAPI: addrPowergateApi,
 			// Buckets
-			MaxBucketSize: bucketsMaxSize,
+			MaxBucketSize:             bucketsMaxSize,
+			BucketArchiveMaxRepFactor: bucketsArchiveMaxRepFactor,
 			// Threads
 			MaxNumberThreadsPerOwner: threadsMaxNumberPerOwner,
 			// Powergate
