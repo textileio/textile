@@ -94,17 +94,18 @@ type ctxKey string
 
 // Service is a gRPC service for buckets.
 type Service struct {
-	Collections         *mdb.Collections
-	Buckets             *tdb.Buckets
-	GatewayURL          string
-	GatewayBucketsHost  string
-	IPFSClient          iface.CoreAPI
-	IPNSManager         *ipns.Manager
-	PowergateClient     *pow.Client
-	PowergateAdminToken string
-	ArchiveTracker      *archive.Tracker
-	Semaphores          *nutil.SemaphorePool
-	MaxBucketSize       int64
+	Collections               *mdb.Collections
+	Buckets                   *tdb.Buckets
+	GatewayURL                string
+	GatewayBucketsHost        string
+	IPFSClient                iface.CoreAPI
+	IPNSManager               *ipns.Manager
+	PowergateClient           *pow.Client
+	PowergateAdminToken       string
+	ArchiveTracker            *archive.Tracker
+	Semaphores                *nutil.SemaphorePool
+	MaxBucketSize             int64
+	MaxBucketArchiveRepFactor int
 }
 
 var (
@@ -2256,7 +2257,12 @@ func (s *Service) SetDefaultArchiveConfig(
 		return nil, fmt.Errorf("getting bucket archive data: %s", err)
 	}
 
-	ba.DefaultArchiveConfig = fromPbArchiveConfig(req.ArchiveConfig)
+	c := fromPbArchiveConfig(req.ArchiveConfig)
+	if err := s.validateArchiveConfig(c); err != nil {
+		return nil, fmt.Errorf("validating archive config: %s", err)
+	}
+
+	ba.DefaultArchiveConfig = c
 	err = s.Collections.BucketArchives.Replace(ctx, ba)
 	if err != nil {
 		return nil, fmt.Errorf("saving default archive config: %s", err)
@@ -2349,14 +2355,14 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		archiveConfig = &defaultDefaultArchiveConfig
 	}
 
+	if err := s.validateArchiveConfig(archiveConfig); err != nil {
+		return nil, fmt.Errorf("validating archive config: %s", err)
+	}
+
 	storageConfig := baseArchiveStorageConfig
 	storageConfig.Cold.Filecoin = toFilConfig(archiveConfig)
-
-	if storageConfig.Cold.Filecoin.Address == "" {
-		// We don't have an address to use, which is the case for a BucketArchive.DefaultArchiveConfig
-		// that is the default value, get the default address from the user
-		storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
-	}
+	// Get the address from the default storage config for this user.
+	storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 
 	// Check that user wallet addr balance is > 0, if not, fail fast.
 	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
@@ -2604,7 +2610,6 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 				Enabled:   config.Renew.Enabled,
 				Threshold: int32(config.Renew.Threshold),
 			},
-			Addr:            config.Addr,
 			MaxPrice:        config.MaxPrice,
 			FastRetrieval:   config.FastRetrieval,
 			DealStartOffset: config.DealStartOffset,
@@ -2622,7 +2627,6 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 			ExcludedMiners:  pbConfig.ExcludedMiners,
 			TrustedMiners:   pbConfig.TrustedMiners,
 			CountryCodes:    pbConfig.CountryCodes,
-			Addr:            pbConfig.Addr,
 			MaxPrice:        pbConfig.MaxPrice,
 			FastRetrieval:   pbConfig.FastRetrieval,
 			DealStartOffset: pbConfig.DealStartOffset,
@@ -2643,7 +2647,6 @@ func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 	}
 	return &userPb.FilConfig{
 		ReplicationFactor: int64(config.RepFactor),
-		Address:           config.Addr,
 		CountryCodes:      config.CountryCodes,
 		DealMinDuration:   config.DealMinDuration,
 		DealStartOffset:   config.DealStartOffset,
@@ -2656,4 +2659,17 @@ func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 		},
 		TrustedMiners: config.TrustedMiners,
 	}
+}
+
+func (s *Service) validateArchiveConfig(c *mdb.ArchiveConfig) error {
+	if c.RepFactor > s.MaxBucketArchiveRepFactor {
+		return fmt.Errorf("rep factor %d is greater than max allowed of %d", c.RepFactor, s.MaxBucketArchiveRepFactor)
+	}
+	if c.DealMinDuration < powUtil.MinDealDuration {
+		return fmt.Errorf("min deal duration %d is less than the allowed minimum of %d", c.DealMinDuration, powUtil.MinDealDuration)
+	}
+	if c.DealStartOffset <= 0 {
+		return fmt.Errorf("deal start offset of %d is less than required minimum of 1, and really should be higher than 1", c.DealStartOffset)
+	}
+	return nil
 }

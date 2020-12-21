@@ -193,10 +193,9 @@ message ArchiveConfig {
     repeated string trusted_miners = 4;
     repeated string country_codes = 5;
     ArchiveRenew renew = 6;
-    string addr = 7;
-    uint64 max_price = 8;
-    bool fast_retrieval = 9;
-    int64 deal_start_offset = 10;
+    uint64 max_price = 7;
+    bool fast_retrieval = 8;
+    int64 deal_start_offset = 9;
 }
 
 message Archive {

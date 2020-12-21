@@ -66,8 +66,6 @@ type ArchiveConfig struct {
 	CountryCodes []string `bson:"country_codes"`
 	// Renew indicates deal-renewal configuration.
 	Renew ArchiveRenew `bson:"renew"`
-	// Addr is the wallet address used to store the data in filecoin
-	Addr string `bson:"addr"`
 	// MaxPrice is the maximum price that will be spent to store the data
 	MaxPrice uint64 `bson:"max_price"`
 	// FastRetrieval indicates that created deals should enable the
