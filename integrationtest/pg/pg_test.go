@@ -128,6 +128,14 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.NotEmpty(t, deal1.ProposalCid)
 		require.NotEmpty(t, deal1.Miner)
 
+		// List archives.
+		as, err := client.ArchivesLs(ctx)
+		require.NoError(t, err)
+		require.Len(t, as.Archives, 1)
+		require.Equal(t, rootCid1, as.Archives[0].Cid)
+		require.Len(t, as.Archives[0].Info, 1)
+		require.Equal(t, as.Archives[0].Info[0].DealId, deal1.DealId)
+
 		// Add another file to the bucket.
 		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
 
@@ -146,20 +154,70 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.NotEmpty(t, deal2.Miner)
 
 		// List archives.
+		as, err = client.ArchivesLs(ctx)
+		require.NoError(t, err)
+		require.Len(t, as.Archives, 1)
+		require.Equal(t, rootCid2, as.Archives[0].Cid)
+		require.Len(t, as.Archives[0].Info, 1)
+		require.Equal(t, as.Archives[0].Info[0].DealId, deal2.DealId)
+	})
+}
+
+func TestArchivesLs(t *testing.T) {
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_ = StartPowergate(t)
+		ctx, _, client, _, shutdown := setup(t)
+		defer shutdown()
+
+		// Create Bucket 1, and archive it.
+		b, err := client.Create(ctx)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second)
+		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+		err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := client.Archives(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
+		deal1 := res.Current.DealInfo[0]
+
+		// List archives, length should be 1.
 		as, err := client.ArchivesLs(ctx)
 		require.NoError(t, err)
-		require.Len(t, as, 2)
-		sort.Slice(as, func(i, j int) bool {
-			return as[i].Cid.String() < as[j].Cid.String()
+		require.Len(t, as.Archives, 1)
+		require.Equal(t, rootCid1, as.Archives[0].Cid)
+		require.Len(t, as.Archives[0].Info, 1)
+		require.Equal(t, deal1.DealId, as.Archives[0].Info[0].DealId)
+
+		// Create Bucket 2, and archive it.
+		b, err = client.Create(ctx)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second)
+		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
+		err = client.Archive(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err = client.Archives(ctx, b.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
+		deal2 := res.Current.DealInfo[0]
+
+		// List archives, length should be 2.
+		as, err = client.ArchivesLs(ctx)
+		require.NoError(t, err)
+		require.Len(t, as.Archives, 2)
+		sort.Slice(as.Archives, func(i, j int) bool {
+			return as.Archives[i].Cid < as.Archives[j].Cid
 		})
 
-		require.Equal(t, rootCid1, as[0].Cid)
-		require.Len(t, as[0].DealIDs, 1)
-		require.Equal(t, as[0].DealIds[0], deal1.DealId)
-
-		require.Equal(t, rootCid2, as[1].Cid)
-		require.Len(t, as[1].DealIDs, 1)
-		require.Equal(t, as[1].DealIds[1], deal2.DealId)
+		// Verify data is correct.
+		require.Equal(t, rootCid1, as.Archives[0].Cid)
+		require.Len(t, as.Archives[0].Info, 1)
+		require.Equal(t, deal1.DealId, as.Archives[0].Info[0].DealId)
+		require.Equal(t, rootCid2, as.Archives[1].Cid)
+		require.Len(t, as.Archives[1].Info, 1)
+		require.Equal(t, deal2.DealId, as.Archives[1].Info[0].DealId)
 	})
 }
 
@@ -175,6 +233,8 @@ func TestArchivesImport(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, b.Root.Key, "Data1.txt")
+		cid1, err := cid.Decode(rootCid1)
+		require.NoError(t, err)
 		err = client.Archive(ctxAccount1, b.Root.Key)
 		require.NoError(t, err)
 		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
@@ -193,7 +253,7 @@ func TestArchivesImport(t *testing.T) {
 		require.Len(t, as, 0)
 
 		// Import deal made by account-1.
-		err = client.ArchivesImport(ctxAccount2, rootCid1, []uint64{deal.DealId})
+		err = client.ArchivesImport(ctxAccount2, cid1, []uint64{deal.DealId})
 		require.NoError(t, err)
 
 		// Assert archives listing includes imported archive.
@@ -201,9 +261,9 @@ func TestArchivesImport(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, as, 1)
 
-		require.Equal(t, rootCid1, as[0].Cid)
-		require.Len(t, as[0].DealIDs, 1)
-		require.Equal(t, as[0].DealIds[0], deal.DealId)
+		require.Equal(t, rootCid1, as.Archives[0].Cid)
+		require.Len(t, as.Archives[0].Info, 1)
+		require.Equal(t, as.Archives[0].Info[0].DealId, deal.DealId)
 	})
 }
 
@@ -215,14 +275,14 @@ func TestArchiveUnfreeze(t *testing.T) {
 
 		// Create an archive for account-1.
 		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
-		b, err := client.Create(ctxAccount1)
+		buck, err := client.Create(ctxAccount1)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
-		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, b.Root.Key, "Data1.txt")
-		err = client.Archive(ctxAccount1, b.Root.Key)
+		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, buck.Root.Key, "Data1.txt")
+		err = client.Archive(ctxAccount1, buck.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		res, err := client.Archives(ctxAccount1, b.Root.Key)
+		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, buck.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := client.Archives(ctxAccount1, buck.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
 		deal := res.Current.DealInfo[0]
@@ -234,35 +294,35 @@ func TestArchiveUnfreeze(t *testing.T) {
 		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
 
 		// Obvious assertion about no existing retrievals.
-		rs, err := client.RetrievalLs(ctxAccount2)
+		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, len(rs), 0)
+		require.Len(t, len(rs.Archives), 0)
 
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
 		require.NoError(t, err)
 
 		// Unfreeze to a bucket.
-		b, err = client.Create(ctxAccount2, c.WithCid(ccid), hc.WithUnfreeze(true))
+		buck, err = client.Create(ctxAccount2, c.WithCid(ccid), c.WithUnfreeze(true))
 		require.NoError(t, err)
 
 		// Wait for the retrieval to finish.
-		var r c.Retrieval
+		var r *pb.ArchiveRetrievalLsItem
 		require.Eventually(t, func() bool {
-			rs, err = client.RetrievalLs(ctxAccount2)
+			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
 			require.NoError(t, err)
-			require.Len(t, len(rs), 1)
-			r = rs[0]
+			require.Len(t, len(rs.Archives), 1)
+			r = rs.Archives[0]
 
-			require.NotEqual(t, c.RetrievalStatusFailed, r.Status)
+			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)
 
-			return r.Status == c.RetrievalStatusSuccess
+			return r.Status == pb.ArchiveRetrievalStatus_SUCCESS
 		}, 2*time.Minute, 2*time.Second)
 
 		// Check if what we got from Filecoin is the same file that
 		// account-1 saved in the archived bucket.
 		buf := bytes.NewBuffer(nil)
-		err = client.PullPath(ctxAccount2, b.Root.Key, "Data1.txt", buf)
+		err = client.PullPath(ctxAccount2, buck.Root.Key, "Data1.txt", buf)
 		require.NoError(t, err)
 		f, err := os.Open("testdata/Data1.txt")
 		require.NoError(t, err)
@@ -276,7 +336,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		defer cancel()
 		ch := make(chan string, 100)
 		go func() {
-			err = client.RetrievalLogs(ctxAccount2, r.Id, ch)
+			err = client.ArchiveRetrievalLogs(ctxAccount2, r.Id, ch)
 			close(ch)
 		}()
 		count := 0

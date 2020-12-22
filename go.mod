@@ -12,7 +12,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/customerio/go-customerio v2.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/filecoin-project/go-fil-markets v1.0.9
+	github.com/filecoin-project/go-fil-markets v1.0.10
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
@@ -72,7 +72,7 @@ require (
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5
 	github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80
-	github.com/textileio/powergate v1.2.4
+	github.com/textileio/powergate v1.2.7-0.20201222130602-0654803b619d
 	github.com/textileio/uiprogress v0.0.4
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect

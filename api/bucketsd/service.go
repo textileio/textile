@@ -2597,6 +2597,54 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 	return nil
 }
 
+func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*pb.ArchivesLsResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	if account.Owner().PowInfo == nil {
+		return nil, fmt.Errorf("no powergate info associated with account")
+	}
+
+	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
+	r, err := s.PowergateClient.Data.CidInfo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting archived cids: %s", err)
+	}
+
+	res := &pb.ArchivesLsResponse{
+		Archives: make([]*pb.ArchiveLsItem, len(r.CidInfos)),
+	}
+	for i, ci := range r.CidInfos {
+		props := ci.CurrentStorageInfo.Cold.Filecoin.Proposals
+		ali := &pb.ArchiveLsItem{
+			Cid:  ci.Cid,
+			Info: make([]*pb.ArchiveLsItemMetadata, len(props)),
+		}
+		res.Archives[i] = ali
+
+		for j, p := range props {
+			ali.Info[j] = &pb.ArchiveLsItemMetadata{
+				DealId: uint64(p.DealId),
+			}
+		}
+	}
+
+	return res, nil
+}
+
+func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequest) (*pb.ArchivesImportResponse, error) {
+	panic("TODO")
+	return nil, nil
+}
+
+func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
+	panic("TODO")
+	return nil, nil
+}
+
+func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, server pb.APIService_ArchiveRetrievalLogsServer) error {
+	panic("TODO")
+	return nil
+}
+
 func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 	var pbConfig *pb.ArchiveConfig
 	if config != nil {

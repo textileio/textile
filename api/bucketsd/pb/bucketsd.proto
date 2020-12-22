@@ -29,6 +29,7 @@ message CreateRequest {
     string name = 1;
     string bootstrap_cid = 2;
     bool private = 3;
+    bool unfreeze = 4;
 }
 
 message CreateResponse {
@@ -277,6 +278,63 @@ message ArchiveWatchResponse {
     string msg = 1;
 }
 
+message ArchivesLsRequest {
+}
+
+message ArchivesLsResponse {
+    repeated ArchiveLsItem archives = 1;
+}
+
+message ArchiveLsItem {
+    string cid = 1;
+    repeated ArchiveLsItemMetadata info = 2;
+}
+
+message ArchiveLsItemMetadata {
+    uint64 deal_id = 1;
+}
+
+message ArchivesImportRequest {
+    repeated uint64 deal_ids = 1;
+}
+
+message ArchivesImportResponse {
+}
+
+message ArchiveRetrievalLsRequest {
+}
+
+message ArchiveRetrievalLsResponse {
+    repeated ArchiveRetrievalLsItem archives = 1;
+}
+
+message ArchiveRetrievalLsItem {
+	uint64 id = 1;
+	ArchiveRetrievalStatus status = 2;
+	string cid = 3;
+	string selector = 4;
+	string buck_key = 5;
+	string buck_path = 6;
+}
+
+enum ArchiveRetrievalStatus {
+    UNSPECIFIED = 0;
+    QUEUED = 1;
+    EXECUTING = 2;
+    FAILED = 3;
+    CANCELED = 4;
+    SUCCESS = 5;
+}
+
+message ArchiveRetrievalLogsRequest {
+    uint64 id = 1;
+}
+
+message ArchiveRetrievalLogsResponse {
+    string msg = 1;
+}
+
+
 service APIService {
     rpc List(ListRequest) returns (ListResponse) {}
     rpc Create(CreateRequest) returns (CreateResponse) {}
@@ -299,4 +357,12 @@ service APIService {
     rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
     rpc Archives(ArchivesRequest) returns (ArchivesResponse) {}
     rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchResponse) {}
+
+    // Archives Import
+    rpc ArchivesLs(ArchivesLsRequest) returns (ArchivesLsResponse) {}
+    rpc ArchivesImport(ArchivesImportRequest) returns (ArchivesImportResponse) {}
+
+    // Archive Retrieval
+    rpc ArchiveRetrievalLs(ArchiveRetrievalLsRequest) returns (ArchiveRetrievalLsResponse){}
+    rpc ArchiveRetrievalLogs(ArchiveRetrievalLogsRequest) returns (stream ArchiveRetrievalLogsResponse) {}
 }

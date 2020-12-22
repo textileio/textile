@@ -91,8 +91,8 @@ type Archive struct {
 
 // Deal contains details about a Filecoin deal.
 type Deal struct {
-	ProposalCid string `json:"proposal_cid"`
-	Miner       string `json:"miner"`
+	DealID int64  `json:"deal_id"`
+	Miner  string `json:"miner"`
 }
 
 // IsPrivate returns whether or not the bucket is private.

@@ -7,9 +7,10 @@ import (
 )
 
 type createOptions struct {
-	name    string
-	private bool
-	fromCid cid.Cid
+	name     string
+	private  bool
+	fromCid  cid.Cid
+	unfreeze bool
 }
 
 type CreateOption func(*createOptions)
@@ -33,6 +34,14 @@ func WithPrivate(private bool) CreateOption {
 func WithCid(c cid.Cid) CreateOption {
 	return func(args *createOptions) {
 		args.fromCid = c
+	}
+}
+
+// WithUnfreeze indicates that an inited bucket should be boostraped
+// from an imported archive.
+func WithUnfreeze(enabled bool) CreateOption {
+	return func(args *createOptions) {
+		args.unfreeze = enabled
 	}
 }
 

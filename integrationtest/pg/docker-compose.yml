@@ -1,7 +1,7 @@
 version: "3"
 services:
   powergate:
-    image: textile/powergate:v1.2.1
+    image: textile/powergate:v1.3.0-local1
     ports:
       - "8889:8889"
       - "8888:8888"
@@ -21,7 +21,7 @@ services:
   lotus:
     image: textile/lotus-devnet:v1.2.0
     environment:
-      - TEXLOTUSDEVNET_SPEED=300
+      - TEXLOTUSDEVNET_SPEED=100
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=false
       - TEXLOTUSDEVNET_ONLINEMODE=true

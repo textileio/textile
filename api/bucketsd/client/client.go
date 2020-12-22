@@ -58,6 +58,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*pb.CreateRe
 		Name:         args.name,
 		Private:      args.private,
 		BootstrapCid: strCid,
+		Unfreeze:     args.unfreeze,
 	})
 }
 
@@ -369,6 +370,48 @@ func (c *Client) Archive(ctx context.Context, key string, opts ...ArchiveOption)
 	}
 	_, err := c.c.Archive(ctx, req)
 	return err
+}
+
+// ArchivesLs (TODO)
+func (c *Client) ArchivesLs(ctx context.Context) (*pb.ArchivesLsResponse, error) {
+	req := &pb.ArchivesLsRequest{}
+	return c.c.ArchivesLs(ctx, req)
+}
+
+// ArchivesImport (TODO)
+func (c *Client) ArchivesImport(ctx context.Context, dataCid cid.Cid, dealIDs []uint64) error {
+	req := &pb.ArchivesImportRequest{
+		DealIds: dealIDs,
+	}
+	_, err := c.c.ArchivesImport(ctx, req)
+	return err
+}
+
+// ArchiveRetrievalLs (TODO)
+func (c *Client) ArchiveRetrievalLs(ctx context.Context) (*pb.ArchiveRetrievalLsResponse, error) {
+	req := &pb.ArchiveRetrievalLsRequest{}
+	return c.c.ArchiveRetrievalLs(ctx, req)
+}
+
+// ArchiveRetrievalLogs (TODO)
+func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id uint64, ch chan<- string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.c.ArchiveRetrievalLogs(ctx, &pb.ArchiveRetrievalLogsRequest{Id: id})
+	if err != nil {
+		return err
+	}
+	for {
+		reply, err := stream.Recv()
+		if err == io.EOF || status.Code(err) == codes.Canceled {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		ch <- reply.Msg
+	}
+	return nil
 }
 
 // Archives returns information about current and historical archives.
