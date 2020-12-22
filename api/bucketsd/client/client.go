@@ -381,6 +381,7 @@ func (c *Client) ArchivesLs(ctx context.Context) (*pb.ArchivesLsResponse, error)
 // ArchivesImport (TODO)
 func (c *Client) ArchivesImport(ctx context.Context, dataCid cid.Cid, dealIDs []uint64) error {
 	req := &pb.ArchivesImportRequest{
+		Cid:     dataCid.String(),
 		DealIds: dealIDs,
 	}
 	_, err := c.c.ArchivesImport(ctx, req)

@@ -295,7 +295,8 @@ message ArchiveLsItemMetadata {
 }
 
 message ArchivesImportRequest {
-    repeated uint64 deal_ids = 1;
+    string cid = 1;
+    repeated uint64 deal_ids = 2;
 }
 
 message ArchivesImportResponse {

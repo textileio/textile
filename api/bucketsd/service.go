@@ -2631,8 +2631,53 @@ func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*p
 }
 
 func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequest) (*pb.ArchivesImportResponse, error) {
-	panic("TODO")
-	return nil, nil
+	account, _ := mdb.AccountFromContext(ctx)
+	if account.Owner().PowInfo == nil {
+		return nil, fmt.Errorf("no powergate info associated with account")
+	}
+
+	var scfg *userPb.StorageConfig
+
+	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
+	ci, err := s.PowergateClient.Data.CidInfo(ctx, req.Cid)
+	var notFound bool
+	if err != nil {
+		sc, ok := status.FromError(err)
+		if !ok || sc.Code() != codes.NotFound {
+			return nil, fmt.Errorf("getting current storage information: %s", err)
+		}
+		notFound = true
+	}
+
+	// If deal import is for a new Cid, just use the default Storage Config
+	// with both storages disabled and without running any jobs: only deal importing.
+	if notFound {
+		defConfRes, err := s.PowergateClient.StorageConfig.Default(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("getting default storage-config: %s", err)
+		}
+		scfg = defConfRes.DefaultStorageConfig
+		scfg.Cold.Enabled = false
+		scfg.Hot.Enabled = false
+
+	} else {
+		// If deal import is to augment an existing Cid, just use the latest storage config.
+		// A Job won't run anyway, so it would only import the deals.
+		scfg = ci.CidInfos[0].LatestPushedStorageConfig
+	}
+
+	if _, err = s.PowergateClient.StorageConfig.Apply(
+		ctx,
+		req.Cid,
+		pow.WithStorageConfig(scfg),
+		pow.WithOverride(true),
+		pow.WithImportDealIDs(req.DealIds),
+		pow.WithNoExec(true),
+	); err != nil {
+		return nil, fmt.Errorf("importing deals: %s", err)
+	}
+
+	return &pb.ArchivesImportResponse{}, nil
 }
 
 func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {

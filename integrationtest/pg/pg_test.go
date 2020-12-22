@@ -250,7 +250,7 @@ func TestArchivesImport(t *testing.T) {
 		// Check no archives exist for account-2
 		as, err := client.ArchivesLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, as, 0)
+		require.Len(t, as.Archives, 0)
 
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, cid1, []uint64{deal.DealId})
@@ -259,7 +259,7 @@ func TestArchivesImport(t *testing.T) {
 		// Assert archives listing includes imported archive.
 		as, err = client.ArchivesLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, as, 1)
+		require.Len(t, as.Archives, 1)
 
 		require.Equal(t, rootCid1, as.Archives[0].Cid)
 		require.Len(t, as.Archives[0].Info, 1)
