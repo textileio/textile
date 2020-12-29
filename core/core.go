@@ -511,6 +511,9 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	}
 	t.gateway.Start()
 
+	// Start pulling threads
+	t.tn.StartPulling()
+
 	log.Info("started")
 
 	return t, nil
