@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/textile/v2/api/apitest"
 	migrate "github.com/xakep666/mongo-migrate"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -151,7 +150,7 @@ func TestMigrations_m003(t *testing.T) {
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(apitest.GetMongoUri()))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)
 	db := client.Database("test_textile_migrations")
 	t.Cleanup(func() {

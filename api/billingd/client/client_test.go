@@ -342,7 +342,7 @@ func getFreeUnitsPerInterval(product *service.Product) int64 {
 func setup(t *testing.T) *client.Client {
 	bconf := apitest.DefaultBillingConfig(t)
 	bconf.FreeQuotaGracePeriod = 0
-	bconf.DBURI = apitest.GetMongoUri()
+	bconf.DBURI = test.GetMongoUri()
 	apitest.MakeBillingWithConfig(t, bconf)
 
 	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)

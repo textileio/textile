@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +24,7 @@ func TestMain(m *testing.M) {
 
 func newDB(t *testing.T) *mongo.Database {
 	ctx, cancel := context.WithCancel(context.Background())
-	m, err := mongo.Connect(ctx, options.Client().ApplyURI(apitest.GetMongoUri()))
+	m, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)
 	db := m.Database(util.MakeToken(12))
 
