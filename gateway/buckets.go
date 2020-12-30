@@ -21,6 +21,7 @@ import (
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
+	"github.com/textileio/textile/v2/util"
 )
 
 type fileSystem struct {
@@ -102,7 +103,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 			links = append(links, link{
 				Name:  item.Name,
 				Path:  pth,
-				Size:  byteCountDecimal(item.Size),
+				Size:  util.ByteCountDecimal(item.Size),
 				Links: strconv.Itoa(len(item.Items)),
 			})
 		}

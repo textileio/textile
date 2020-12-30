@@ -67,7 +67,7 @@ func TestMigrations_m001(t *testing.T) {
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.MongoUri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)
 	db := client.Database("test_billing_migrations")
 	t.Cleanup(func() {

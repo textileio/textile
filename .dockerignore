@@ -1,4 +1,0 @@
-docker-compose.yml
-docker-compose-dev.yml
-integrationtest/**
-cmd/tt

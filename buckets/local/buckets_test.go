@@ -295,7 +295,7 @@ func newDir(t *testing.T) string {
 }
 
 func createIpfsFolder(t *testing.T) (pth path.Resolved) {
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	pth, err = ipfs.Unixfs().Add(
 		context.Background(),

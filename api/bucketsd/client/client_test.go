@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -96,7 +97,7 @@ func createWithCid(t *testing.T, ctx context.Context, client *c.Client, private 
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -254,7 +255,7 @@ func TestClient_ListIpfsPath(t *testing.T) {
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -295,7 +296,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	progress1 := make(chan int64)
 	go func() {
 		for p := range progress1 {
-			t.Logf("progress: %d", p)
+			fmt.Println(fmt.Sprintf("progress: %d", p))
 		}
 	}()
 	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1, c.WithProgress(progress1))
@@ -309,7 +310,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	progress2 := make(chan int64)
 	go func() {
 		for p := range progress2 {
-			t.Logf("progress: %d", p)
+			fmt.Println(fmt.Sprintf("progress: %d", p))
 		}
 	}()
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
@@ -427,14 +428,14 @@ func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	progress := make(chan int64)
 	go func() {
 		for p := range progress {
-			t.Logf("progress: %d", p)
+			fmt.Println(fmt.Sprintf("progress: %d", p))
 		}
 	}()
 	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
 	require.NoError(t, err)
 	info, err := tmp.Stat()
 	require.NoError(t, err)
-	t.Logf("wrote file with size %d", info.Size())
+	fmt.Println(fmt.Sprintf("wrote file with size %d", info.Size()))
 
 	note := "baps!"
 	_, _, err = client.PushPath(ctx, buck.Root.Key, "one/two/note.txt", strings.NewReader(note))
@@ -456,7 +457,7 @@ func TestClient_PullIpfsPath(t *testing.T) {
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -555,7 +556,7 @@ func setPath(t *testing.T, private bool) {
 			require.NoError(t, err)
 			defer file2.Close()
 
-			ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+			ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 			require.NoError(t, err)
 			p, err := ipfs.Unixfs().Add(
 				ctx,

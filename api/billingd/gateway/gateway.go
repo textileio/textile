@@ -137,6 +137,7 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 		}
 	}
 
+	log.Debugf("received event type: %s", event.Type)
 	switch event.Type {
 	case "customer.updated":
 		var cus stripe.Customer
@@ -186,8 +187,6 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			return
 		}
 		log.Debugf("%s subscription was updated", sub.ID)
-	default:
-		log.Debugf("unhandled event type: %s\n", event.Type)
 	}
 
 	c.Status(http.StatusOK)

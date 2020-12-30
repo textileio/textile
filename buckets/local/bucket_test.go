@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -429,7 +430,7 @@ func TestBucket_Watch(t *testing.T) {
 		state, err := buck1.Watch(ctx, WithWatchEvents(events), WithOffline(true))
 		require.NoError(t, err)
 		for s := range state {
-			t.Logf("received watch state: %s", s.State)
+			fmt.Println(fmt.Sprintf("received watch state: %s", s.State))
 			switch s.State {
 			case cmd.Online:
 				onlineStateCount++

@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 
 func newDB(t *testing.T) *mongo.Database {
 	ctx, cancel := context.WithCancel(context.Background())
-	m, err := mongo.Connect(ctx, options.Client().ApplyURI(test.MongoUri))
+	m, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)
 	db := m.Database(util.MakeToken(12))
 

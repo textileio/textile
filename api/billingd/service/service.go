@@ -612,13 +612,6 @@ func getCost(product Product, paidUnits int64) float64 {
 	return 0
 }
 
-func getDesc(product Product) string {
-	if product.Units != "" {
-		return fmt.Sprintf("%s (%s)", product.Name, product.Units)
-	}
-	return product.Name
-}
-
 func getUsage(product Product, total int64, period Period) *pb.Usage {
 	freeUnits, paidUnits := getUnits(product, total)
 	free := product.FreeQuotaSize - total
@@ -630,7 +623,7 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 		free = 0
 	}
 	return &pb.Usage{
-		Description: getDesc(product),
+		Description: product.Name,
 		Units:       freeUnits + paidUnits,
 		Total:       total,
 		Free:        free,
@@ -656,14 +649,13 @@ func getUnits(product Product, total int64) (freeUnits, paidUnits int64) {
 func addProductToSummary(summary map[string]interface{}, product Product, total int64) {
 	_, paidUnits := getUnits(product, total)
 	cost := getCost(product, paidUnits)
-	desc := getDesc(product)
 	summary[product.Key+"_name"] = product.Name
-	summary[product.Key+"_units"] = product.Units
+	if product.Units != "" {
+		summary[product.Key+"_units"] = product.Units
+	}
 	summary[product.Key+"_free_quota_size"] = product.FreeQuotaSize
 	summary[product.Key+"_total"] = total
 	summary[product.Key+"_cost"] = cost
-	summary[product.Key+"_description"] = desc
-
 }
 
 func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
@@ -922,6 +914,7 @@ func (s *Service) getPeriodUsageItem(id string) (sum *stripe.UsageRecordSummary,
 		SubscriptionItem: stripe.String(id),
 	}
 	params.Filters.AddFilter("limit", "", "1")
+	params.Single = true
 	i := s.stripe.UsageRecordSummaries.List(params)
 	for i.Next() {
 		sum = i.UsageRecordSummary()

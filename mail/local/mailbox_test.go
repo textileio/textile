@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -79,7 +80,7 @@ func TestMailbox_Watch(t *testing.T) {
 		state, err := box1.WatchInbox(ctx, events1, true)
 		require.NoError(t, err)
 		for s := range state {
-			t.Logf("received inbox watch state: %s", s.State)
+			fmt.Println(fmt.Sprintf("received inbox watch state: %s", s.State))
 		}
 	}()
 
@@ -93,7 +94,7 @@ func TestMailbox_Watch(t *testing.T) {
 		state, err := box2.WatchSentbox(ctx, events2, true)
 		require.NoError(t, err)
 		for s := range state {
-			t.Logf("received sentbox watch state: %s", s.State)
+			fmt.Println(fmt.Sprintf("received sentbox watch state: %s", s.State))
 		}
 	}()
 
