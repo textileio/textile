@@ -26,6 +26,7 @@ node_modules/
 .hubd/
 .buckd/
 .env
+.DS_Store
 buildtools/protoc
 buildtools/protoc-gen-go
 build/

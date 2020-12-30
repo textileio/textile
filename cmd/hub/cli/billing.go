@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/textileio/textile/v2/util"
-
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/billingd/pb"
 	hub "github.com/textileio/textile/v2/api/hubd/client"
 	users "github.com/textileio/textile/v2/api/usersd/client"
 	"github.com/textileio/textile/v2/cmd"
+	"github.com/textileio/textile/v2/util"
 )
 
 var billingCmd = &cobra.Command{
