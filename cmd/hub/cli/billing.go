@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/textileio/textile/v2/util"
+
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/billingd/pb"
 	hub "github.com/textileio/textile/v2/api/hubd/client"
@@ -84,8 +86,15 @@ Use the --user flag to get usage for a dependent user.`,
 		}
 		header := []string{"", "usage", "free quota", "daily cost", "start", "end"}
 		var rows [][]string
-		for _, usage := range info.Usage.Usage {
-			rows = append(rows, getUsageRow(usage))
+		products := make([]string, len(info.Usage.Usage))
+		i := 0
+		for k := range info.Usage.Usage {
+			products[i] = k
+			i++
+		}
+		sort.Strings(products)
+		for _, k := range products {
+			rows = append(rows, getUsageRow(info.Usage.Usage[k]))
 		}
 		cmd.RenderTable(header, rows)
 		if !cus.Billable && cus.GracePeriodEnd > 0 {
@@ -96,12 +105,21 @@ Use the --user flag to get usage for a dependent user.`,
 }
 
 func getUsageRow(usage *pb.Usage) []string {
+	var total, free string
+	switch usage.Description {
+	case "ThreadDB reads", "ThreadDB writes":
+		total = strconv.Itoa(int(usage.Total))
+		free = strconv.Itoa(int(usage.Free))
+	case "Stored data", "Network egress":
+		total = util.ByteCountDecimal(usage.Total)
+		free = util.ByteCountDecimal(usage.Free)
+	}
 	return []string{
 		usage.Description,
-		strconv.Itoa(int(usage.Total)),
+		total,
 		fmt.Sprintf(
 			"%s (%d%%)",
-			strconv.Itoa(int(usage.Free)),
+			free,
 			int(math.Round(100*float64(usage.Free)/float64(usage.Total+usage.Free)))),
 		fmt.Sprintf("$%.4f", usage.Cost),
 		time.Unix(usage.Period.UnixStart, 0).Format("02-Jan-06"),
