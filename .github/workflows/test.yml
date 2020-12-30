@@ -32,7 +32,7 @@ jobs:
         env:
           SKIP_SERVICES: true
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-        run: go test -v -timeout 30m -race ./api/... ./mongodb/...
+        run: go test -v -timeout 60m -race ./api/... ./mongodb/...
   buckets:
     name: Buckets
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
       - name: test
         env:
           SKIP_SERVICES: true
-        run: go test -v -timeout 30m -race ./buckets/...
+        run: go test -v -timeout 60m -race ./buckets/...
   archives:
     name: Archives
     runs-on: self-hosted
@@ -69,7 +69,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
       - name: test
-        run: go test -v -timeout 30m -race ./integrationtest/...
+        run: go test -v -timeout 60m -race ./integrationtest/...
   mail:
     name: Mail
     runs-on: ubuntu-latest
@@ -94,4 +94,4 @@ jobs:
       - name: test
         env:
           SKIP_SERVICES: true
-        run: go test -v -timeout 30m -race ./mail/...
+        run: go test -v -timeout 60m -race ./mail/...
