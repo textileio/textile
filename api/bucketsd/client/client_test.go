@@ -96,7 +96,7 @@ func createWithCid(t *testing.T, ctx context.Context, client *c.Client, private 
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -254,7 +254,7 @@ func TestClient_ListIpfsPath(t *testing.T) {
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -456,7 +456,7 @@ func TestClient_PullIpfsPath(t *testing.T) {
 	require.NoError(t, err)
 	defer file2.Close()
 
-	ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+	ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 	require.NoError(t, err)
 	p, err := ipfs.Unixfs().Add(
 		ctx,
@@ -555,7 +555,7 @@ func setPath(t *testing.T, private bool) {
 			require.NoError(t, err)
 			defer file2.Close()
 
-			ipfs, err := httpapi.NewApi(apitest.IPFSApiAddr)
+			ipfs, err := httpapi.NewApi(apitest.GetIPFSApiAddr())
 			require.NoError(t, err)
 			p, err := ipfs.Unixfs().Add(
 				ctx,

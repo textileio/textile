@@ -15,6 +15,7 @@ import (
 	"time"
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	billing "github.com/textileio/textile/v2/api/billingd/service"
@@ -45,10 +46,10 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		Debug:                     true,
 		AddrAPI:                   util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort)),
 		AddrAPIProxy:              util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrMongoURI:              MongoUri,
+		AddrMongoURI:              GetMongoUri(),
 		AddrMongoName:             util.MakeToken(12),
 		AddrThreadsHost:           util.MustParseAddr("/ip4/0.0.0.0/tcp/0"),
-		AddrIPFSAPI:               IPFSApiAddr,
+		AddrIPFSAPI:               GetIPFSApiAddr(),
 		AddrGatewayHost:           util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayURL:            fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
 		CustomerioAPIKey:          os.Getenv("CUSTOMERIO_API_KEY"),
@@ -115,7 +116,7 @@ func DefaultBillingConfig(t util.TestingTWithCleanup) billing.Config {
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
 		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
 		SegmentPrefix:          "test_",
-		DBURI:                  MongoUri,
+		DBURI:                  GetMongoUri(),
 		DBName:                 util.MakeToken(8),
 		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		Debug:                  true,
@@ -183,10 +184,23 @@ func ConfirmEmail(t util.TestingTWithCleanup, gurl string, secret string) {
 	time.Sleep(time.Second)
 }
 
-var (
-	MongoUri    = "mongodb://127.0.0.1:27017"
-	IPFSApiAddr = util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
-)
+// GetMongoUri returns env value or default.
+func GetMongoUri() string {
+	env := os.Getenv("MONGO_URI")
+	if env != "" {
+		return env
+	}
+	return "mongodb://127.0.0.1:27017"
+}
+
+// GetIPFSApiAddr returns env value or default.
+func GetIPFSApiAddr() ma.Multiaddr {
+	env := os.Getenv("IPFS_API_ADDR")
+	if env != "" {
+		return util.MustParseAddr(env)
+	}
+	return util.MustParseAddr("/ip4/127.0.0.1/tcp/5011")
+}
 
 // StartServices starts local mongodb and ipfs services.
 func StartServices() (cleanup func()) {
@@ -258,14 +272,14 @@ func StartServices() (cleanup func()) {
 func checkServices() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(MongoUri))
+	mc, err := mongo.Connect(ctx, options.Client().ApplyURI(GetMongoUri()))
 	if err != nil {
 		return err
 	}
 	if err = mc.Ping(ctx, nil); err != nil {
 		return err
 	}
-	ic, err := httpapi.NewApi(IPFSApiAddr)
+	ic, err := httpapi.NewApi(GetIPFSApiAddr())
 	if err != nil {
 		return err
 	}
