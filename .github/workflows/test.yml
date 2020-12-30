@@ -9,7 +9,7 @@ on:
 jobs:
   api:
     name: API
-    runs-on: self-hosted
+    runs-on: [self-hosted, hub1]
     services:
       mongodb:
         image: mongo:latest
@@ -37,7 +37,7 @@ jobs:
         run: go test -v -timeout 60m -race ./api/... ./mongodb/...
   buckets:
     name: Buckets
-    runs-on: self-hosted
+    runs-on: [self-hosted, hub2]
     services:
       mongodb:
         image: mongo:latest
@@ -64,7 +64,7 @@ jobs:
         run: go test -v -timeout 60m -race ./buckets/...
   archives:
     name: Archives
-    runs-on: self-hosted
+    runs-on: [self-hosted, hub3]
     steps:
       - name: setup
         uses: actions/setup-go@v1
@@ -76,7 +76,7 @@ jobs:
         run: go test -v -timeout 60m -race ./integrationtest/...
   mail:
     name: Mail
-    runs-on: self-hosted
+    runs-on: [self-hosted, hub4]
     services:
       mongodb:
         image: mongo:latest
