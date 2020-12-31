@@ -20,9 +20,11 @@ var defaultArchiveConfigCmd = &cobra.Command{
 	Long:  `Print the default archive storage configuration for the specified Bucket.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		config, err := buck.DefaultArchiveConfig(ctx)
 		cmd.ErrCheck(err)
@@ -58,9 +60,11 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 		config := local.ArchiveConfig{}
 		cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
 
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		err = buck.SetDefaultArchiveConfig(ctx, config)
 		cmd.ErrCheck(err)
@@ -130,9 +134,11 @@ var archiveCmd = &cobra.Command{
 			opts = append(opts, local.WithArchiveConfig(config))
 		}
 
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
@@ -146,9 +152,11 @@ var archivesCmd = &cobra.Command{
 	Long:  `Shows information about current and historical archives.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		res, err := buck.Archives(ctx)
 		cmd.ErrCheck(err)
@@ -166,9 +174,11 @@ var archiveWatchCmd = &cobra.Command{
 	Long:  `Watch the status of the most recent bucket archive.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.ArchiveWatchTimeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		msgs, err := buck.ArchiveWatch(ctx)
 		cmd.ErrCheck(err)

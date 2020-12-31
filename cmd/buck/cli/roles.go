@@ -37,9 +37,11 @@ Access roles:
 	Run: func(c *cobra.Command, args []string) {
 		roleStr, err := c.Flags().GetString("role")
 		cmd.ErrCheck(err)
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		if roleStr == "" {
 			roles := []string{"None", "Reader", "Writer", "Admin"}
@@ -90,9 +92,11 @@ var rolesLsCmd = &cobra.Command{
 	Long:  `Lists top-level or nested bucket object access roles.`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		var pth string
 		if len(args) > 0 {

@@ -243,8 +243,8 @@ func (b *Buckets) repoName() string {
 }
 
 // GetLocalBucket loads and returns the bucket at path if it exists.
-func (b *Buckets) GetLocalBucket(ctx context.Context, pth string) (*Bucket, error) {
-	cwd, err := filepath.Abs(pth)
+func (b *Buckets) GetLocalBucket(ctx context.Context, conf Config) (*Bucket, error) {
+	cwd, err := filepath.Abs(conf.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,13 @@ func (b *Buckets) GetLocalBucket(ctx context.Context, pth string) (*Bucket, erro
 	if err != nil {
 		return nil, err
 	}
-	if !found {
+	if conf.Thread.Defined() {
+		bc.Viper.Set("thread", conf.Thread.String())
+	}
+	if conf.Key != "" {
+		bc.Viper.Set("key", conf.Key)
+	}
+	if bc.Viper.Get("thread") == "" || bc.Viper.Get("key") == "" {
 		return nil, ErrNotABucket
 	}
 	cmd.ExpandConfigVars(bc.Viper, bc.Flags)
@@ -263,12 +269,14 @@ func (b *Buckets) GetLocalBucket(ctx context.Context, pth string) (*Bucket, erro
 		auth:      b.auth,
 		pushBlock: make(chan struct{}, 1),
 	}
-	bp, err := buck.Path()
-	if err != nil {
-		return nil, err
-	}
-	if err = buck.loadLocalRepo(ctx, bp, b.repoName(), true); err != nil {
-		return nil, err
+	if found {
+		bp, err := buck.Path()
+		if err != nil {
+			return nil, err
+		}
+		if err = buck.loadLocalRepo(ctx, bp, b.repoName(), true); err != nil {
+			return nil, err
+		}
 	}
 	return buck, nil
 }
