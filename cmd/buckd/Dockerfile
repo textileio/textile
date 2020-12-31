@@ -78,7 +78,7 @@ RUN mkdir -p $BUCKETS_PATH \
 USER buckets
 
 # Expose the repo as a volume.
-# Important this happens after adduser so permission are correct.
+# Important this happens after the USER directive so permission are correct.
 VOLUME $BUCKETS_PATH
 
 ENTRYPOINT ["/sbin/tini", "--", "buckd"]

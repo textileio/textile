@@ -20,7 +20,7 @@ LABEL maintainer="Textile <contact@textile.io>"
 
 ENV SRC_DIR /textile
 COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
-COPY --from=0 /textile/hubd /usr/local/bin/hubd
+COPY --from=0 $SRC_DIR/hubd /usr/local/bin/hubd
 
 EXPOSE 3006
 EXPOSE 3007

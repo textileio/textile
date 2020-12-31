@@ -20,7 +20,7 @@ LABEL maintainer="Textile <contact@textile.io>"
 
 ENV SRC_DIR /textile
 COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
-COPY --from=0 /textile/billingd /usr/local/bin/billingd
+COPY --from=0 $SRC_DIR/billingd /usr/local/bin/billingd
 
 EXPOSE 10006
 EXPOSE 8010
