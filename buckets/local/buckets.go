@@ -258,7 +258,7 @@ func (b *Buckets) GetLocalBucket(ctx context.Context, conf Config) (*Bucket, err
 	if conf.Key != "" {
 		bc.Viper.Set("key", conf.Key)
 	}
-	if bc.Viper.Get("thread") == "" || bc.Viper.Get("key") == "" {
+	if bc.Viper.Get("thread") == nil || bc.Viper.Get("key") == nil {
 		return nil, ErrNotABucket
 	}
 	cmd.ExpandConfigVars(bc.Viper, bc.Flags)
