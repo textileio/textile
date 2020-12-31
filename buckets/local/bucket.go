@@ -138,15 +138,24 @@ func (b *Bucket) LocalSize() (int64, error) {
 
 // Info wraps info about a bucket.
 type Info struct {
-	Key       string        `json:"key"`
-	Owner     string        `json:"owner"`
-	Name      string        `json:"name"`
-	Version   int           `json:"version"`
-	Path      path.Resolved `json:"path"`
-	Metadata  Metadata      `json:"metadata"`
-	Thread    thread.ID     `json:"id"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	Key       string    `json:"key"`
+	Owner     string    `json:"owner"`
+	Name      string    `json:"name"`
+	Version   int       `json:"version"`
+	Path      Path      `json:"path"`
+	Metadata  Metadata  `json:"metadata"`
+	Thread    thread.ID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Path wraps path.Resolved so it can be JSON-marshalable.
+type Path struct {
+	path.Resolved
+}
+
+func (p Path) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + p.String() + "\""), nil
 }
 
 // Metadata wraps metadata about a bucket item.
@@ -197,7 +206,7 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 		Owner:     r.Owner,
 		Name:      name,
 		Version:   int(r.Version),
-		Path:      pth,
+		Path:      Path{pth},
 		Metadata:  md,
 		Thread:    id,
 		CreatedAt: time.Unix(0, r.CreatedAt),

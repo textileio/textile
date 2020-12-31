@@ -91,7 +91,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 				cmd.Fatal(fmt.Errorf("no existing buckets found"))
 			}
 			prompt := promptui.Select{
-				Label: "Which exiting bucket do you want to init from?",
+				Label: "Which existing bucket do you want to init from?",
 				Items: list,
 				Templates: &promptui.SelectTemplates{
 					Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Key | faint | bold }}`, promptui.IconSelect),

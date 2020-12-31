@@ -27,7 +27,25 @@ func init() {
 }
 
 func Init(baseCmd *cobra.Command) {
-	baseCmd.AddCommand(initCmd, linksCmd, rootCmd, statusCmd, lsCmd, pushCmd, pullCmd, addCmd, watchCmd, catCmd, destroyCmd, encryptCmd, decryptCmd, archiveCmd, rolesCmd)
+	baseCmd.AddCommand(
+		initCmd,
+		getCmd,
+		existingCmd,
+		linksCmd,
+		rootCmd,
+		statusCmd,
+		lsCmd,
+		pushCmd,
+		pullCmd,
+		addCmd,
+		watchCmd,
+		catCmd,
+		destroyCmd,
+		encryptCmd,
+		decryptCmd,
+		archiveCmd,
+		rolesCmd,
+	)
 	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archivesCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
 
@@ -63,6 +81,54 @@ func Init(baseCmd *cobra.Command) {
 
 func SetBucks(b *local.Buckets) {
 	bucks = b
+}
+
+var getCmd = &cobra.Command{
+	Use:   "get",
+	Short: "Get a bucket",
+	Long:  `Gets bucket metadata.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, conf)
+		cmd.ErrCheck(err)
+		info, err := buck.Info(ctx)
+		cmd.ErrCheck(err)
+		cmd.JSON(info)
+	},
+}
+
+var existingCmd = &cobra.Command{
+	Use:   "existing",
+	Short: "List buckets",
+	Long:  `Lists all buckets.`,
+	Args:  cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		list, err := bucks.RemoteBuckets(ctx, conf.Thread)
+		cmd.ErrCheck(err)
+		var data [][]string
+		if len(list) > 0 {
+			for _, item := range list {
+				data = append(data, []string{
+					item.Name,
+					item.Thread.String(),
+					item.Key,
+					item.Path.Cid().String(),
+				})
+			}
+		}
+		if len(data) > 0 {
+			cmd.RenderTable([]string{"name", "thread", "key", "root"}, data)
+		}
+		cmd.Message("Found %d buckets", aurora.White(len(data)).Bold())
+	},
 }
 
 var statusCmd = &cobra.Command{

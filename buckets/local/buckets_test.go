@@ -46,7 +46,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, info)
 
-		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf)
 		require.NoError(t, err)
 		assert.NotEmpty(t, reloaded)
 	})
@@ -61,7 +61,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "bucky", info.Name)
 
-		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf)
 		require.NoError(t, err)
 		assert.NotEmpty(t, reloaded)
 	})
@@ -76,7 +76,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, info)
 
-		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf)
 		require.NoError(t, err)
 		assert.NotEmpty(t, reloaded)
 	})
@@ -108,7 +108,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		_, err = os.Stat(filepath.Join(bp, "folder1", "file2.txt"))
 		require.NoError(t, err)
 
-		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf)
 		require.NoError(t, err)
 		assert.NotEmpty(t, reloaded)
 	})
@@ -143,7 +143,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		_, err = os.Stat(filepath.Join(bp, "folder", "file2"))
 		require.NoError(t, err)
 
-		reloaded, err := buckets.GetLocalBucket(context.Background(), conf.Path)
+		reloaded, err := buckets.GetLocalBucket(context.Background(), conf)
 		require.NoError(t, err)
 		assert.NotEmpty(t, reloaded)
 	})

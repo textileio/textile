@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -34,6 +35,12 @@ func Warn(format string, args ...interface{}) {
 func Success(format string, args ...interface{}) {
 	fmt.Println(aurora.Sprintf(aurora.Cyan("> Success! %s"),
 		aurora.Sprintf(aurora.BrightBlack(format), args...)))
+}
+
+func JSON(data interface{}) {
+	bytes, err := json.MarshalIndent(data, "", "  ")
+	ErrCheck(err)
+	fmt.Println(aurora.BrightBlack(string(bytes)))
 }
 
 func End(format string, args ...interface{}) {

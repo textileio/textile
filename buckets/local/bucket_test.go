@@ -98,7 +98,7 @@ func TestBucket(t *testing.T) {
 		err = buck.Destroy(context.Background())
 		require.NoError(t, err)
 		// Ensure the local bucket was removed
-		_, err = buckets.GetLocalBucket(context.Background(), conf.Path)
+		_, err = buckets.GetLocalBucket(context.Background(), conf)
 		require.Error(t, err)
 		// Ensure the remote bucket was removed
 		list, err := buckets.RemoteBuckets(context.Background(), thread.Undef)
@@ -230,7 +230,7 @@ func TestBucket_PullRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use a bucket from a nested folder to test if the relative path matching is working
-	buck2, err := buckets.GetLocalBucket(context.Background(), filepath.Join(conf2.Path, "dir"))
+	buck2, err := buckets.GetLocalBucket(context.Background(), Config{Path: filepath.Join(conf2.Path, "dir")})
 	require.NoError(t, err)
 
 	// Delete the file locally from the first bucket
@@ -360,7 +360,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 	assert.Equal(t, diff[0].Type, dagutils.Add)
 
 	// Test diff from a nested folder
-	buck2, err := buckets.GetLocalBucket(context.Background(), filepath.Join(conf.Path, "folder"))
+	buck2, err := buckets.GetLocalBucket(context.Background(), Config{Path: filepath.Join(conf.Path, "folder")})
 	require.NoError(t, err)
 	diff, err = buck2.DiffLocal()
 	require.NoError(t, err)
