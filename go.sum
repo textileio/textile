@@ -1729,6 +1729,8 @@ github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80 h1:UJbiLtEm
 github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80/go.mod h1:kvIXqo4T4fS6fDyNeqRAIE5CXDguBXUi8kZVb4FGg0U=
 github.com/textileio/powergate v1.2.7-0.20201222165926-9907e1214ca5 h1:WhEmgVnmhQzkYATRkFNq6RM2gvfn8uw/kzc6U/MT3XU=
 github.com/textileio/powergate v1.2.7-0.20201222165926-9907e1214ca5/go.mod h1:0WcLiKVYi5Zy3BNnIOQUTwZMPH9omQ0SZ+hnW6MRI7k=
+github.com/textileio/powergate v1.2.7-0.20201223191110-c247bcb2e8b5 h1:U3BsnXq0MNwS+HhSja+EB7dEzy4/k8zWkdOylIsT3J0=
+github.com/textileio/powergate v1.2.7-0.20201223191110-c247bcb2e8b5/go.mod h1:0WcLiKVYi5Zy3BNnIOQUTwZMPH9omQ0SZ+hnW6MRI7k=
 github.com/textileio/uiprogress v0.0.4 h1:7FWXEKK/h54ssNOW24q9MeJ9Eujptsr8eDPq35aPHjo=
 github.com/textileio/uiprogress v0.0.4/go.mod h1:ijtyLXHP6vw9MbbT4tmCKZonLPE3LN4mD9C/XRJkrgg=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
