@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 
+	logging "github.com/ipfs/go-log/v2"
 	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
 	"github.com/textileio/textile/v2/api/billingd/common"
@@ -94,15 +96,6 @@ func ErrCheck(err error, args ...interface{}) {
 	}
 }
 
-func HandleInterrupt(stop func()) {
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
-	stop()
-	os.Exit(1)
-}
-
 func RenderTable(header []string, data [][]string) {
 	fmt.Println()
 	table := tablewriter.NewWriter(os.Stdout)
@@ -126,4 +119,29 @@ func RenderTable(header []string, data [][]string) {
 	table.AppendBulk(data)
 	table.Render()
 	fmt.Println()
+}
+
+func HandleInterrupt(stop func()) {
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	fmt.Println("Gracefully stopping... (press Ctrl+C again to force)")
+	stop()
+	os.Exit(1)
+}
+
+func SetupDefaultLoggingConfig(file string) error {
+	if file != "" {
+		if err := os.MkdirAll(filepath.Dir(file), os.ModePerm); err != nil {
+			return err
+		}
+	}
+	c := logging.Config{
+		Format: logging.ColorizedOutput,
+		Stderr: true,
+		File:   file,
+		Level:  logging.LevelError,
+	}
+	logging.SetupLogging(c)
+	return nil
 }
