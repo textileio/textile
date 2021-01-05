@@ -7,7 +7,6 @@ services:
       - "${REPO_PATH}/buckets:/data/buckets"
     environment:
       - BUCK_LOG_DEBUG
-      - BUCK_LOG_FILE
       - BUCK_ADDR_API=/ip4/0.0.0.0/tcp/3006
       - BUCK_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
       - BUCK_ADDR_MONGO_URI=mongodb://mongo:27017
@@ -24,10 +23,10 @@ services:
       - BUCK_DNS_ZONE_ID
       - BUCK_DNS_TOKEN
     ports:
-      - "127.0.0.1:3006:3006"
+      - "3006:3006"
       - "3007:3007"
       - "4006:4006"
-      - "127.0.0.1:8006:8006"
+      - "8006:8006"
     depends_on:
       - mongo
   mongo:
@@ -51,5 +50,6 @@ services:
       - "${REPO_PATH}/ipfs:/data/ipfs"
     ports:
       - "4001:4001"
+      - "4001:4001/udp"
       - "127.0.0.1:5001:5001"
       - "8080:8080"

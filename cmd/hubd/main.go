@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -40,7 +40,7 @@ var (
 			},
 			"logFile": {
 				Key:      "log.file",
-				DefValue: "${HOME}/." + daemonName + "/log",
+				DefValue: "", // no log file
 			},
 
 			// Addresses
@@ -366,7 +366,7 @@ var rootCmd = &cobra.Command{
 		debug := config.Viper.GetBool("log.debug")
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
-			err = util.SetupDefaultLoggingConfig(logFile)
+			err = cmd.SetupDefaultLoggingConfig(logFile)
 			cmd.ErrCheck(err)
 		}
 

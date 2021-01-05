@@ -15,7 +15,7 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	isd "github.com/jbenet/go-is-domain"
 	"github.com/libp2p/go-libp2p-core/peer"

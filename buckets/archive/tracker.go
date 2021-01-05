@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
-	logger "github.com/ipfs/go-log"
+	logger "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
