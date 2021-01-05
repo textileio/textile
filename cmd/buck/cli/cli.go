@@ -77,6 +77,9 @@ func Init(baseCmd *cobra.Command) {
 	archiveCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
+
+	linksCmd.Flags().BoolP("json", "", false, "Display URL links as json object")
+	linksCmd.Flags().StringP("format", "", "", "Display URL links in the provided format. Options: [json]")
 }
 
 func SetBucks(b *local.Buckets) {
@@ -200,16 +203,30 @@ var linksCmd = &cobra.Command{
 		}
 		links, err := buck.RemoteLinks(ctx, pth)
 		cmd.ErrCheck(err)
-		printLinks(links)
+
+		jsonFormat, err := c.Flags().GetBool("json")
+		cmd.ErrCheck(err)
+		format, err := c.Flags().GetString("format")
+		cmd.ErrCheck(err)
+
+		if jsonFormat == true {
+			format = "json"
+		}
+
+		printLinks(links, format)
 	},
 }
 
-func printLinks(reply local.Links) {
-	cmd.Message("Your bucket links:")
-	cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
-	cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
-	if reply.WWW != "" {
-		cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
+func printLinks(reply local.Links, format string) {
+	if format == "json" {
+		cmd.JSON(reply)
+	} else {
+		cmd.Message("Your bucket links:")
+		cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
+		cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
+		if reply.WWW != "" {
+			cmd.Message("%s Bucket website", aurora.White(reply.WWW).Bold())
+		}
 	}
 }
 

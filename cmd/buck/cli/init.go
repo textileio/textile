@@ -163,7 +163,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
-		printLinks(links)
+		printLinks(links, "")
 
 		var msg string
 		if !existing {
