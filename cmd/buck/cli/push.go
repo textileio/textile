@@ -35,9 +35,11 @@ var pushCmd = &cobra.Command{
 		if err != nil {
 			cmd.Fatal(err)
 		}
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PushTimeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 
 		// Check total bucket size limit.

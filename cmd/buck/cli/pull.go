@@ -24,9 +24,11 @@ var pullCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		var events chan local.PathEvent
 		var progress *uiprogress.Progress

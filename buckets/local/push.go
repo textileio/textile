@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,9 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 	}
 
 	diff, err := b.DiffLocal()
-	if err != nil {
+	if errors.Is(err, ErrNotABucket) {
+		args.force = true
+	} else if err != nil {
 		return
 	}
 	bp, err := b.Path()
@@ -89,8 +92,10 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err != nil {
 				return roots, err
 			}
-			if err := b.repo.SetRemotePath(c.Path, added.Cid()); err != nil {
-				return roots, err
+			if b.repo != nil {
+				if err := b.repo.SetRemotePath(c.Path, added.Cid()); err != nil {
+					return roots, err
+				}
 			}
 		case dagutils.Remove:
 			rm = append(rm, c)
@@ -103,8 +108,10 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err != nil {
 				return roots, err
 			}
-			if err := b.repo.RemovePath(ctx, c.Name); err != nil {
-				return roots, err
+			if b.repo != nil {
+				if err := b.repo.RemovePath(ctx, c.Name); err != nil {
+					return roots, err
+				}
 			}
 		}
 	}
@@ -115,15 +122,17 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 		}
 	}
 
-	if err = b.repo.Save(ctx); err != nil {
-		return
-	}
-	rc, err := b.getRemoteRoot(ctx)
-	if err != nil {
-		return roots, err
-	}
-	if err = b.repo.SetRemotePath("", rc); err != nil {
-		return
+	if b.repo != nil {
+		if err := b.repo.Save(ctx); err != nil {
+			return roots, err
+		}
+		rc, err := b.getRemoteRoot(ctx)
+		if err != nil {
+			return roots, err
+		}
+		if err := b.repo.SetRemotePath("", rc); err != nil {
+			return roots, err
+		}
 	}
 	return b.Roots(ctx)
 }

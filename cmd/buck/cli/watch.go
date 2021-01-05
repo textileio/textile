@@ -14,9 +14,11 @@ var watchCmd = &cobra.Command{
 	Long:  `Watch auto-pushes local changes to the remote.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, ".")
+		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		bp, err := buck.Path()
 		cmd.ErrCheck(err)

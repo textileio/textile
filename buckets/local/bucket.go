@@ -105,13 +105,16 @@ func (b *Bucket) Thread() (id thread.ID, err error) {
 func (b *Bucket) Path() (string, error) {
 	conf := b.conf.Viper.ConfigFileUsed()
 	if conf == "" {
-		return "", ErrNotABucket
+		return b.cwd, nil
 	}
 	return filepath.Dir(filepath.Dir(conf)), nil
 }
 
 // LocalSize returns the cumalative size of the bucket's local files.
 func (b *Bucket) LocalSize() (int64, error) {
+	if b.repo == nil {
+		return 0, nil
+	}
 	bp, err := b.Path()
 	if err != nil {
 		return 0, err
@@ -135,15 +138,24 @@ func (b *Bucket) LocalSize() (int64, error) {
 
 // Info wraps info about a bucket.
 type Info struct {
-	Key       string        `json:"key"`
-	Owner     string        `json:"owner"`
-	Name      string        `json:"name"`
-	Version   int           `json:"version"`
-	Path      path.Resolved `json:"path"`
-	Metadata  Metadata      `json:"metadata"`
-	Thread    thread.ID     `json:"id"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	Key       string    `json:"key"`
+	Owner     string    `json:"owner"`
+	Name      string    `json:"name"`
+	Version   int       `json:"version"`
+	Path      Path      `json:"path"`
+	Metadata  Metadata  `json:"metadata"`
+	Thread    thread.ID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Path wraps path.Resolved so it can be JSON-marshalable.
+type Path struct {
+	path.Resolved
+}
+
+func (p Path) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + p.String() + "\""), nil
 }
 
 // Metadata wraps metadata about a bucket item.
@@ -194,7 +206,7 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 		Owner:     r.Owner,
 		Name:      name,
 		Version:   int(r.Version),
-		Path:      pth,
+		Path:      Path{pth},
 		Metadata:  md,
 		Thread:    id,
 		CreatedAt: time.Unix(0, r.CreatedAt),
@@ -211,9 +223,12 @@ type Roots struct {
 
 // Roots returns the bucket's current local and remote root cids.
 func (b *Bucket) Roots(ctx context.Context) (roots Roots, err error) {
-	lc, rc, err := b.repo.Root()
-	if err != nil {
-		return
+	var lc, rc cid.Cid
+	if b.repo != nil {
+		lc, rc, err = b.repo.Root()
+		if err != nil {
+			return
+		}
 	}
 	if !rc.Defined() {
 		rc, err = b.getRemoteRoot(ctx)
@@ -318,6 +333,9 @@ func (b *Bucket) loadLocalRepo(ctx context.Context, pth, name string, setCidVers
 }
 
 func (b *Bucket) setRepoCidVersion(ctx context.Context) error {
+	if b.repo == nil {
+		return nil
+	}
 	r, err := b.Roots(ctx)
 	if err != nil {
 		return err

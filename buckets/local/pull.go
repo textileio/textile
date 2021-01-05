@@ -32,7 +32,9 @@ func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Root
 	}
 
 	diff, err := b.DiffLocal()
-	if err != nil {
+	if errors.Is(err, ErrNotABucket) {
+		args.force = true
+	} else if err != nil {
 		return
 	}
 	if args.confirm != nil && args.hard && len(diff) > 0 {
@@ -65,15 +67,17 @@ func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Root
 		return roots, ErrUpToDate
 	}
 
-	if err = b.repo.Save(ctx); err != nil {
-		return
-	}
-	rc, err := b.getRemoteRoot(ctx)
-	if err != nil {
-		return
-	}
-	if err = b.repo.SetRemotePath("", rc); err != nil {
-		return
+	if b.repo != nil {
+		if err := b.repo.Save(ctx); err != nil {
+			return roots, err
+		}
+		rc, err := b.getRemoteRoot(ctx)
+		if err != nil {
+			return roots, err
+		}
+		if err := b.repo.SetRemotePath("", rc); err != nil {
+			return roots, err
+		}
 	}
 
 	// Re-apply local changes if not pulling hard
@@ -153,7 +157,10 @@ looop:
 				if err := b.getFile(ctx, key, o, events); err != nil {
 					return err
 				}
-				return b.repo.SetRemotePath(o.path, o.cid)
+				if b.repo != nil {
+					return b.repo.SetRemotePath(o.path, o.cid)
+				}
+				return nil
 			})
 		}
 		for i := 0; i < cap(lim); i++ {
@@ -218,7 +225,7 @@ func (b *Bucket) listPath(ctx context.Context, key, pth, dest string, force bool
 		}
 		o := object{path: pth, name: name, size: rep.Item.Size, cid: c}
 		all = append(all, o)
-		if !force {
+		if !force && b.repo != nil {
 			c, err := cid.Decode(rep.Item.Cid)
 			if err != nil {
 				return nil, nil, err

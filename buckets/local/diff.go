@@ -53,6 +53,9 @@ func ChangeColor(t dagutils.ChangeType) func(arg interface{}) aurora2.Value {
 
 // DiffLocal returns a list of locally staged bucket file changes.
 func (b *Bucket) DiffLocal() ([]Change, error) {
+	if b.repo == nil {
+		return nil, ErrNotABucket
+	}
 	bp, err := b.Path()
 	if err != nil {
 		return nil, err
