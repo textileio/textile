@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	du "github.com/ipfs/go-merkledag/dagutils"
-
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 	"golang.org/x/sync/errgroup"
 )

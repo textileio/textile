@@ -3,8 +3,7 @@ package client
 import (
 	"context"
 	"io"
-	"runtime"
-	"strings"
+	"path/filepath"
 
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
@@ -73,7 +72,7 @@ func (c *Client) Root(ctx context.Context, key string) (*pb.RootResponse, error)
 func (c *Client) Links(ctx context.Context, key, pth string) (*pb.LinksResponse, error) {
 	return c.c.Links(ctx, &pb.LinksRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 	})
 }
 
@@ -91,7 +90,7 @@ func (c *Client) ListIpfsPath(ctx context.Context, pth path.Path) (*pb.ListIpfsP
 func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathResponse, error) {
 	return c.c.ListPath(ctx, &pb.ListPathRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 	})
 }
 
@@ -99,7 +98,7 @@ func (c *Client) ListPath(ctx context.Context, key, pth string) (*pb.ListPathRes
 func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid) (*pb.SetPathResponse, error) {
 	return c.c.SetPath(ctx, &pb.SetPathRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 		Cid:  remoteCid.String(),
 	})
 }
@@ -133,7 +132,7 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 		Payload: &pb.PushPathRequest_Header_{
 			Header: &pb.PushPathRequest_Header{
 				Key:  key,
-				Path: normalizePath(pth),
+				Path: filepath.ToSlash(pth),
 				Root: xr,
 			},
 		},
@@ -218,7 +217,7 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 
 	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 	})
 	if err != nil {
 		return err
@@ -303,7 +302,7 @@ func (c *Client) RemovePath(ctx context.Context, key, pth string, opts ...Option
 	}
 	res, err := c.c.RemovePath(ctx, &pb.RemovePathRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 		Root: xr,
 	})
 	if err != nil {
@@ -323,7 +322,7 @@ func (c *Client) PushPathAccessRoles(ctx context.Context, key, pth string, roles
 	}
 	_, err = c.c.PushPathAccessRoles(ctx, &pb.PushPathAccessRolesRequest{
 		Key:   key,
-		Path:  normalizePath(pth),
+		Path:  filepath.ToSlash(pth),
 		Roles: pbroles,
 	})
 	return err
@@ -333,7 +332,7 @@ func (c *Client) PushPathAccessRoles(ctx context.Context, key, pth string, roles
 func (c *Client) PullPathAccessRoles(ctx context.Context, key, pth string) (map[string]buckets.Role, error) {
 	res, err := c.c.PullPathAccessRoles(ctx, &pb.PullPathAccessRolesRequest{
 		Key:  key,
-		Path: normalizePath(pth),
+		Path: filepath.ToSlash(pth),
 	})
 	if err != nil {
 		return nil, err
@@ -396,11 +395,4 @@ func (c *Client) ArchiveWatch(ctx context.Context, key string, ch chan<- string)
 		ch <- reply.Msg
 	}
 	return nil
-}
-
-func normalizePath(pth string) string {
-	if runtime.GOOS == "windows" {
-		pth = strings.ReplaceAll(pth, "\\", "/")
-	}
-	return pth
 }
