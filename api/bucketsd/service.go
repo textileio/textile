@@ -103,6 +103,7 @@ type Service struct {
 	PowergateClient           *pow.Client
 	PowergateAdminToken       string
 	ArchiveTracker            *archive.Tracker
+	FilRetrieval              *archive.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketSize             int64
 	MaxBucketArchiveRepFactor int
@@ -2681,12 +2682,52 @@ func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequ
 }
 
 func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
-	panic("TODO")
-	return nil, nil
+	account, _ := mdb.AccountFromContext(ctx)
+	owner := account.Owner().Key
+
+	rs, err := s.FilRetrieval.GetAllByAccount(owner.String())
+	if err != nil {
+		return nil, fmt.Errorf("listing retrievals: %s", err)
+	}
+
+	res := &pb.ArchiveRetrievalLsResponse{
+		Archives: make([]*pb.ArchiveRetrievalLsItem, len(rs)),
+	}
+	for i, r := range rs {
+		res.Archives[i] = &pb.ArchiveRetrievalLsItem{
+			Id:       r.Id,
+			Cid:      r.Cid.String(),
+			Selector: r.Selector,
+			BuckKey:  r.BuckKey,
+			BuckPath: r.BuckPath,
+			Status:   toPbRetrievalStatus(r.Status),
+		}
+	}
+
+	return res, nil
 }
 
 func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, server pb.APIService_ArchiveRetrievalLogsServer) error {
-	panic("TODO")
+	account, _ := mdb.AccountFromContext(server.Context())
+	owner := account.Owner().Key
+
+	var err error
+	ctx, cancel := context.WithCancel(server.Context())
+	defer cancel()
+	ch := make(chan string)
+	go func() {
+		err = s.FilRetrievals.Logs(ctx, req.Key, account.Owner().PowInfo.Token, ch)
+		close(ch)
+	}()
+	for s := range ch {
+		if err := server.Send(&pb.ArchiveWatchResponse{Msg: s}); err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("watching cid logs: %s", err)
+	}
+
 	return nil
 }
 
@@ -2709,6 +2750,21 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 		}
 	}
 	return pbConfig
+}
+
+func toPbRetrievalStatus(s archive.Status) pb.ArchiveRetrievalStatus {
+	switch s {
+	case archive.StatusQueued:
+		return pb.ArchiveRetrievalStatus_QUEUED
+	case archive.StatusExecuting:
+		return pb.ArchiveRetrievalStatus_EXECUTING
+	case archive.StatusSuccess:
+		return pb.ArchiveRetrievalStatus_SUCCESS
+	case archive.StatusFailed:
+		return pb.ArchiveRetrievalStatus_FAILED
+	default:
+		return pb.ArchiveRetrievalStatus_UNSPECIFIED
+	}
 }
 
 func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
