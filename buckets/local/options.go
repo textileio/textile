@@ -8,6 +8,7 @@ type newOptions struct {
 	name    string
 	private bool
 	fromCid cid.Cid
+	sync    bool
 	events  chan<- PathEvent
 }
 
@@ -33,6 +34,13 @@ func WithPrivate(private bool) NewOption {
 func WithCid(c cid.Cid) NewOption {
 	return func(args *newOptions) {
 		args.fromCid = c
+	}
+}
+
+// WithSync syncs bucket state with the remote. All local changes will be discarded.
+func WithSync(sync bool) NewOption {
+	return func(args *newOptions) {
+		args.sync = sync
 	}
 }
 

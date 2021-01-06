@@ -228,11 +228,33 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 
 	// Pull remote bucket contents
 	if !initRemote || args.fromCid.Defined() {
-		if _, err := buck.getPath(ctx, "", cwd, nil, false, args.events); err != nil {
+		if err := buck.repo.Save(ctx); err != nil {
 			return nil, err
 		}
-		if err = buck.repo.Save(ctx); err != nil {
-			return nil, err
+		if args.sync {
+			if _, err := buck.getPath(ctx, "", cwd, nil, false, args.events); err != nil {
+				return nil, err
+			}
+			if err := buck.repo.Save(ctx); err != nil {
+				return nil, err
+			}
+		} else {
+			diff, missing, removed, err := buck.diffPath(ctx, "", cwd)
+			if err != nil {
+				return nil, err
+			}
+			if err = stashChanges(diff); err != nil {
+				return nil, err
+			}
+			if _, err = buck.handleChanges(ctx, "", missing, removed, args.events); err != nil {
+				return nil, err
+			}
+			if err := buck.repo.Save(ctx); err != nil {
+				return nil, err
+			}
+			if err = applyChanges(diff); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return buck, nil

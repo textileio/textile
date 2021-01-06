@@ -200,7 +200,11 @@ func (b *Repo) putPathMap(k ds.Key, pm pathMap) error {
 
 // recursiveAddPath walks path and adds files to the dag service.
 // This method returns the resulting root node and a list of path maps.
-func (b *Repo) recursiveAddPath(ctx context.Context, pth string, dag ipld.DAGService) (ipld.Node, map[string]cid.Cid, error) {
+func (b *Repo) recursiveAddPath(
+	ctx context.Context,
+	pth string,
+	dag ipld.DAGService,
+) (ipld.Node, map[string]cid.Cid, error) {
 	root := unixfs.EmptyDirNode()
 	prefix, err := md.PrefixForCidVersion(b.cidver)
 	if err != nil {
@@ -281,7 +285,7 @@ func copyLinks(ctx context.Context, nd ipld.Node, from, to ipld.DAGService) erro
 	return nil
 }
 
-// SaveFile saves the bucket as a node describing a directory containing reader.
+// SaveFile saves the file at path to the repo.
 func (b *Repo) SaveFile(ctx context.Context, pth string, name string) error {
 	r, err := os.Open(pth)
 	if err != nil {
@@ -573,4 +577,33 @@ func isFileNode(n ipld.Node) bool {
 		}
 	}
 	return false
+}
+
+func stashChanges(diff []Change) error {
+	for _, c := range diff {
+		switch c.Type {
+		case du.Mod, du.Add:
+			if err := os.Rename(c.Name, c.Name+patchExt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func applyChanges(diff []Change) error {
+	for _, c := range diff {
+		switch c.Type {
+		case du.Mod, du.Add:
+			if err := os.Rename(c.Name+patchExt, c.Name); err != nil {
+				return err
+			}
+		case du.Remove:
+			// If the file was also deleted on the remote,
+			// the local deletion will already have been handled by getPath.
+			// So, we just ignore the error here.
+			_ = os.RemoveAll(c.Name)
+		}
+	}
+	return nil
 }

@@ -25,6 +25,7 @@ A .textile config directory and a seed file will be created in the current worki
 Existing configs will not be overwritten.
 
 Use the '--existing' flag to initialize from an existing remote bucket.
+Use the '--sync' flag with '--existing' to discard local changes. 
 Use the '--cid' flag to initialize from an existing UnixFS DAG.
 `,
 	Args: cobra.ExactArgs(0),
@@ -41,6 +42,8 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 		if existing && chooseExisting {
 			chooseExisting = false // Nothing left to choose
 		}
+		sync, err := c.Flags().GetBool("sync")
+		cmd.ErrCheck(err)
 
 		var xcid cid.Cid
 		xcids, err := c.Flags().GetString("cid")
@@ -155,6 +158,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			local.WithName(name),
 			local.WithPrivate(private),
 			local.WithCid(xcid),
+			local.WithSync(sync),
 			local.WithExistingPathEvents(events))
 		if progress != nil {
 			progress.Stop()

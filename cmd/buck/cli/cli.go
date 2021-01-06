@@ -56,6 +56,7 @@ func Init(baseCmd *cobra.Command) {
 	initCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
 	initCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid from the IPFS network")
 	initCmd.Flags().BoolP("existing", "e", false, "Initializes from an existing remote bucket if true")
+	initCmd.Flags().Bool("sync", false, "Syncs local state with remote, i.e., discards local changes if true")
 	initCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
 
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
