@@ -4,31 +4,48 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/textileio/go-threads/core/thread"
 	powc "github.com/textileio/powergate/api/client"
 )
 
 type RetrievalID uint64
-type Status int
+
+type RetrievalStatus int
 
 const (
-	StatusQueued Status = iota
-	StatusExecuting
-	StatusSuccess
-	StatusFailed
+	RetrievalStatusQueued RetrievalStatus = iota
+	RetrievalStatusExecuting
+	RetrievalStatusSuccess
+	RetrievalStatusFailed
+)
+
+type RetrievalType int
+
+const (
+	RetrievalTypeNewBucket RetrievalType = iota
+	RetrievalTypeExistingBucket
 )
 
 type Retrieval struct {
-	Id       RetrievalID
-	Cid      cid.Cid
-	Selector string
+	Type      RetrievalType
+	JobID     string
+	Cid       cid.Cid
+	Selector  string
+	Status    RetrievalStatus
+	CreatedAt uint64
+
+	// If Type == RetrievalTypeNewBucket
+	Name    string
+	Private bool
+
+	// If Type == RetrievalTypeExistingBucket
 	BuckKey  string
 	BuckPath string
-	JobID    string
-	Status   Status
 }
 
 // FilRetrieval manages Retrievals from Accounts in
@@ -43,6 +60,24 @@ func NewFilRetrieval(ds datastore.Datastore, pgClient *powc.Client) (*FilRetriev
 		ds:       ds,
 		pgClient: pgClient,
 	}, nil
+}
+
+func (fr *FilRetrieval) CreateForNewBucket(
+	dbID thread.ID,
+	dbToken thread.Token,
+	bucketName string,
+	bucketPrivate bool,
+	dataCid cid.Cid,
+) error {
+	r := Retrieval{
+		Type:      RetrievalTypeNewBucket,
+		JobID:     XXXX,
+		Cid:       dataCid,
+		Selector:  "",
+		Status:    RetrievalStatusQueued,
+		CreatedAt: time.Now().Unix(),
+	}
+
 }
 
 func (fr *FilRetrieval) GetAllByAccount(accKey string) ([]Retrieval, error) {
@@ -122,15 +157,15 @@ func (fr *FilRetrieval) Logs(ctx context.Context, accKey string, ID RetrievalID,
 }
 
 // ToDo: Delete?
-func (s Status) String() string {
+func (s RetrievalStatus) String() string {
 	switch s {
-	case StatusQueued:
+	case RetrievalStatusQueued:
 		return "Queued"
-	case StatusExecuting:
+	case RetrievalStatusExecuting:
 		return "Executing"
-	case StatusSuccess:
+	case RetrievalStatusSuccess:
 		return "Success"
-	case StatusFailed:
+	case RetrievalStatusFailed:
 		return "Failed"
 	default:
 		return "Invalid"
@@ -145,4 +180,5 @@ func dsAccountKey(accKey string) datastore.Key {
 
 func dsAccountAndIDKey(accKey string, ID RetrievalID) datastore.Key {
 	return dsAccountKey(accKey).ChildString(fmt.Sprintf("%d", ID))
+
 }

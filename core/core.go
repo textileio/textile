@@ -11,6 +11,8 @@ import (
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/ipfs/go-datastore"
+	ktipfs "github.com/ipfs/go-datastore/keytransform"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/jhump/protoreflect/desc"
@@ -25,6 +27,7 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	tc "github.com/textileio/go-threads/common"
 	kt "github.com/textileio/go-threads/db/keytransform"
+
 	netapi "github.com/textileio/go-threads/net/api"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
@@ -134,6 +137,7 @@ type Textile struct {
 	mail  *tdb.Mail
 
 	archiveTracker *archive.Tracker
+	filRetrieval   *archive.FilRetrieval
 	buckLocks      *nutil.SemaphorePool
 
 	ipnsm *ipns.Manager
@@ -371,6 +375,15 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			return nil, err
 		}
 	}
+
+	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
+		Prefix: datastore.NewKey("buckets/filretrieval"),
+	})
+	t.filRetrieval, err = archive.NewFilRetrieval(filRetrievalDS, t.pc)
+	if err != nil {
+		return nil, err
+	}
+
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &bucketsd.Service{
 		Collections:               t.collections,
@@ -382,6 +395,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		PowergateClient:           t.pc,
 		PowergateAdminToken:       conf.PowergateAdminToken,
 		ArchiveTracker:            t.archiveTracker,
+		FilRetrieval:              t.filRetrieval,
 		Semaphores:                t.buckLocks,
 		MaxBucketSize:             conf.MaxBucketSize,
 		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,

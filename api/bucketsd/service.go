@@ -207,6 +207,18 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 			return nil, fmt.Errorf("invalid bootstrap cid: %s", err)
 		}
 	}
+
+	// If the bucket is created from some imported archive,
+	// create the retrieval request, and let all the process
+	// happend async in the background.
+	if req.Unfreeze {
+		if err := s.FilRetrieval.Create(dbID, dbToken, req.Name, req.Private, bootCid); err != nil {
+			return nil, fmt.Errorf("creating retrieval: %s", err)
+		}
+		return &pb.CreateResponse{}, nil
+	}
+
+	// If not created with --unfreeze, just do the normal case.
 	ctx, buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, req.Private, bootCid)
 	if err != nil {
 		return nil, err
@@ -2695,7 +2707,7 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 	}
 	for i, r := range rs {
 		res.Archives[i] = &pb.ArchiveRetrievalLsItem{
-			Id:       r.Id,
+			Id:       uint64(r.Id),
 			Cid:      r.Cid.String(),
 			Selector: r.Selector,
 			BuckKey:  r.BuckKey,
@@ -2709,23 +2721,25 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 
 func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, server pb.APIService_ArchiveRetrievalLogsServer) error {
 	account, _ := mdb.AccountFromContext(server.Context())
-	owner := account.Owner().Key
+	owner := account.Owner()
+	accKey := owner.Key.String()
+	powToken := owner.PowInfo.Token
 
 	var err error
 	ctx, cancel := context.WithCancel(server.Context())
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.FilRetrievals.Logs(ctx, req.Key, account.Owner().PowInfo.Token, ch)
+		err = s.FilRetrieval.Logs(ctx, accKey, archive.RetrievalID(req.Id), powToken, ch)
 		close(ch)
 	}()
 	for s := range ch {
-		if err := server.Send(&pb.ArchiveWatchResponse{Msg: s}); err != nil {
+		if err := server.Send(&pb.ArchiveRetrievalLogsResponse{Msg: s}); err != nil {
 			return err
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("watching cid logs: %s", err)
+		return fmt.Errorf("watching retrieval logs: %s", err)
 	}
 
 	return nil
@@ -2752,15 +2766,15 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 	return pbConfig
 }
 
-func toPbRetrievalStatus(s archive.Status) pb.ArchiveRetrievalStatus {
+func toPbRetrievalStatus(s archive.RetrievalStatus) pb.ArchiveRetrievalStatus {
 	switch s {
-	case archive.StatusQueued:
+	case archive.RetrievalStatusQueued:
 		return pb.ArchiveRetrievalStatus_QUEUED
-	case archive.StatusExecuting:
+	case archive.RetrievalStatusExecuting:
 		return pb.ArchiveRetrievalStatus_EXECUTING
-	case archive.StatusSuccess:
+	case archive.RetrievalStatusSuccess:
 		return pb.ArchiveRetrievalStatus_SUCCESS
-	case archive.StatusFailed:
+	case archive.RetrievalStatusFailed:
 		return pb.ArchiveRetrievalStatus_FAILED
 	default:
 		return pb.ArchiveRetrievalStatus_UNSPECIFIED

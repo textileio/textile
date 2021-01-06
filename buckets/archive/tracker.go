@@ -158,7 +158,7 @@ func (t *Tracker) Track(
 	bucketRoot cid.Cid,
 	owner thread.PubKey,
 ) error {
-	if err := t.colls.ArchiveTracking.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, owner); err != nil {
+	if err := t.colls.ArchiveTracking.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, owner); err != nil {
 		return fmt.Errorf("saving tracking information: %s", err)
 	}
 	return nil

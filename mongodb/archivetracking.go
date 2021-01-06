@@ -49,7 +49,7 @@ func NewArchiveTracking(_ context.Context, db *mongo.Database) (*ArchiveTracking
 	return s, nil
 }
 
-func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid string, bucketRoot cid.Cid, owner thread.PubKey) error {
+func (at *ArchiveTracking) CreateArchive(ctx context.Context, dbID thread.ID, dbToken thread.Token, bucketKey string, jid string, bucketRoot cid.Cid, owner thread.PubKey) error {
 	ownerBytes, err := owner.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("marshaling owner to bytes: %v", err)
@@ -70,6 +70,10 @@ func (at *ArchiveTracking) Create(ctx context.Context, dbID thread.ID, dbToken t
 		return fmt.Errorf("inserting in collection: %s", err)
 	}
 	return nil
+}
+
+func (at *ArchiveTracking) CreateRetrieval() error {
+	panic("TODO")
 }
 
 func (at *ArchiveTracking) GetReadyToCheck(ctx context.Context, n int64) ([]*TrackedArchive, error) {
