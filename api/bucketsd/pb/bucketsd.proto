@@ -322,9 +322,10 @@ enum ArchiveRetrievalStatus {
     UNSPECIFIED = 0;
     QUEUED = 1;
     EXECUTING = 2;
-    FAILED = 3;
-    CANCELED = 4;
-    SUCCESS = 5;
+    MOVETOBUCKET = 3;
+    FAILED = 4;
+    CANCELED = 5;
+    SUCCESS = 6;
 }
 
 message ArchiveRetrievalLogsRequest {

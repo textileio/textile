@@ -2617,18 +2617,18 @@ func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*p
 	}
 
 	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-	r, err := s.PowergateClient.Data.CidInfo(ctx)
+	r, err := s.PowergateClient.StorageInfo.ListStorageInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting archived cids: %s", err)
 	}
 
 	res := &pb.ArchivesLsResponse{
-		Archives: make([]*pb.ArchiveLsItem, len(r.CidInfos)),
+		Archives: make([]*pb.ArchiveLsItem, len(r.StorageInfo)),
 	}
-	for i, ci := range r.CidInfos {
-		props := ci.CurrentStorageInfo.Cold.Filecoin.Proposals
+	for i, si := range r.StorageInfo {
+		props := si.Cold.Filecoin.Proposals
 		ali := &pb.ArchiveLsItem{
-			Cid:  ci.Cid,
+			Cid:  si.Cid,
 			Info: make([]*pb.ArchiveLsItemMetadata, len(props)),
 		}
 		res.Archives[i] = ali
@@ -2730,7 +2730,7 @@ func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, serv
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		err = s.FilRetrieval.Logs(ctx, accKey, archive.RetrievalID(req.Id), powToken, ch)
+		err = s.FilRetrieval.Logs(ctx, accKey, req.Id, powToken, ch)
 		close(ch)
 	}()
 	for s := range ch {
@@ -2772,6 +2772,8 @@ func toPbRetrievalStatus(s archive.RetrievalStatus) pb.ArchiveRetrievalStatus {
 		return pb.ArchiveRetrievalStatus_QUEUED
 	case archive.RetrievalStatusExecuting:
 		return pb.ArchiveRetrievalStatus_EXECUTING
+	case archive.RetrievalStatusMoveToBucket:
+		return pb.ArchiveRetrievalStatus_MOVETOBUCKET
 	case archive.RetrievalStatusSuccess:
 		return pb.ArchiveRetrievalStatus_SUCCESS
 	case archive.RetrievalStatusFailed:

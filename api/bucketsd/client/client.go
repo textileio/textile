@@ -372,13 +372,13 @@ func (c *Client) Archive(ctx context.Context, key string, opts ...ArchiveOption)
 	return err
 }
 
-// ArchivesLs (TODO)
+// ArchivesLs list all imported archives.
 func (c *Client) ArchivesLs(ctx context.Context) (*pb.ArchivesLsResponse, error) {
 	req := &pb.ArchivesLsRequest{}
 	return c.c.ArchivesLs(ctx, req)
 }
 
-// ArchivesImport (TODO)
+// ArchivesImport imports deals information for a Cid.
 func (c *Client) ArchivesImport(ctx context.Context, dataCid cid.Cid, dealIDs []uint64) error {
 	req := &pb.ArchivesImportRequest{
 		Cid:     dataCid.String(),
@@ -388,13 +388,13 @@ func (c *Client) ArchivesImport(ctx context.Context, dataCid cid.Cid, dealIDs []
 	return err
 }
 
-// ArchiveRetrievalLs (TODO)
+// ArchiveRetrievalLs lists existing retrievals.
 func (c *Client) ArchiveRetrievalLs(ctx context.Context) (*pb.ArchiveRetrievalLsResponse, error) {
 	req := &pb.ArchiveRetrievalLsRequest{}
 	return c.c.ArchiveRetrievalLs(ctx, req)
 }
 
-// ArchiveRetrievalLogs (TODO)
+// ArchiveRetrievalLogs returns the existing logs from the retrieval.
 func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id uint64, ch chan<- string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
