@@ -14,20 +14,29 @@ import (
 	powc "github.com/textileio/powergate/api/client"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/common"
+	"github.com/textileio/textile/v2/buckets/retrieval"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
 )
 
 const (
+	// maxConcurrent is the maximum amount of concurrent
+	// tracked jobs that are processed in parallel.
 	maxConcurrent = 20
 )
 
 var (
+	// CheckInterval is the frequency in which new ready-to-check
+	// tracked jobs are queried.
 	CheckInterval = time.Second * 15
 
-	log = logger.Logger("pow-archive")
+	log = logger.Logger("pow-job-tracker")
 )
 
+// Tracker tracks Powergate jobs to their final status.
+// Tracked jobs corresponds to Archives or Retrievals. Depending
+// of the case, is what logic is applied when the Job reach a final
+// status.
 type Tracker struct {
 	lock   sync.Mutex
 	ctx    context.Context
@@ -38,11 +47,13 @@ type Tracker struct {
 	colls           *mdb.Collections
 	buckets         *tdb.Buckets
 	pgClient        *powc.Client
+	filRetrieval    *retrieval.FilRetrieval
 
 	jobPollIntervalSlow time.Duration
 	jobPollIntervalFast time.Duration
 }
 
+// New returns a *Tracker.
 func New(
 	colls *mdb.Collections,
 	buckets *tdb.Buckets,
@@ -50,6 +61,7 @@ func New(
 	internalSession string,
 	jobPollIntervalSlow time.Duration,
 	jobPollIntervalFast time.Duration,
+	filRetrieval *retrieval.FilRetrieval,
 ) (*Tracker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &Tracker{
@@ -61,95 +73,19 @@ func New(
 		colls:           colls,
 		buckets:         buckets,
 		pgClient:        pgClient,
+		filRetrieval:    filRetrieval,
 
 		jobPollIntervalSlow: jobPollIntervalSlow,
 		jobPollIntervalFast: jobPollIntervalFast,
 	}
 	go t.run()
+
 	return t, nil
 }
 
-func (t *Tracker) Close() error {
-	t.cancel()
-	<-t.closed
-	return nil
-}
-
-func (t *Tracker) run() {
-	defer close(t.closed)
-	for {
-		select {
-		case <-t.ctx.Done():
-			log.Info("shutting down archive tracker daemon")
-			return
-		case <-time.After(CheckInterval):
-			for {
-				archives, err := t.colls.ArchiveTracking.GetReadyToCheck(t.ctx, maxConcurrent)
-				if err != nil {
-					log.Errorf("getting tracked archives: %s", err)
-					break
-				}
-				log.Debugf("got %d ready archives to check", len(archives))
-				if len(archives) == 0 {
-					break
-				}
-				var wg sync.WaitGroup
-				wg.Add(len(archives))
-				for _, a := range archives {
-					go func(a *mdb.TrackedArchive) {
-						defer wg.Done()
-
-						ctx, cancel := context.WithTimeout(t.ctx, time.Second*10)
-						defer cancel()
-
-						account, err := t.colls.Accounts.Get(ctx, a.Owner)
-						if err != nil {
-							log.Errorf("getting account: %s", err)
-							return
-						}
-
-						if account.PowInfo == nil {
-							err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "no powergate info found")
-							if err != nil {
-								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
-							}
-							return
-						}
-
-						rescheduleDuration, cause, err := t.trackArchiveProgress(
-							ctx,
-							a.BucketKey,
-							a.DbID,
-							a.DbToken,
-							a.JID,
-							a.BucketRoot,
-							account.PowInfo,
-						)
-						if err != nil || rescheduleDuration == 0 {
-							if err != nil {
-								cause = err.Error()
-							}
-							log.Infof("tracking archive finalized with cause: %s", cause)
-							if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, cause); err != nil {
-								log.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
-							}
-							return
-						}
-						log.Infof("rescheduling tracking archive with job %s, cause %s", a.JID, cause)
-						err = t.colls.ArchiveTracking.Reschedule(ctx, a.JID, rescheduleDuration, cause)
-						if err != nil {
-							log.Errorf("rescheduling tracked archive: %s", err)
-						}
-					}(a)
-				}
-				wg.Wait()
-			}
-
-		}
-	}
-}
-
-func (t *Tracker) Track(
+// TrackArchive registers a new tracking for a Job, which corresponds
+// to an bucket Archive action.
+func (t *Tracker) TrackArchive(
 	ctx context.Context,
 	dbID thread.ID,
 	dbToken thread.Token,
@@ -159,9 +95,196 @@ func (t *Tracker) Track(
 	owner thread.PubKey,
 ) error {
 	if err := t.colls.ArchiveTracking.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, owner); err != nil {
-		return fmt.Errorf("saving tracking information: %s", err)
+		return fmt.Errorf("saving tracking archive information: %s", err)
 	}
 	return nil
+}
+
+// TrackRetrieval registers a new tracking for a Job, which corresponds
+// to a Retrieval.
+func (t *Tracker) TrackRetrieval(ctx context.Context, accKey, jobID, powToken string) error {
+	if err := t.colls.ArchiveTracking.CreateRetrieval(ctx, accKey, jobID, powToken); err != nil {
+		return fmt.Errorf("saving tracking retrieval information: %s", err)
+	}
+	return nil
+}
+
+// Close closes the module gracefully.
+func (t *Tracker) Close() error {
+	t.cancel()
+	<-t.closed
+
+	return nil
+}
+
+// run is the main daemon logic. It checks on a defined interval
+// all non-finalized tracked jobs.
+func (t *Tracker) run() {
+	defer close(t.closed)
+	for {
+		select {
+		case <-t.ctx.Done():
+			log.Info("shutting down archive tracker daemon")
+			return
+		case <-time.After(CheckInterval):
+			t.checkPendingTrackings()
+		}
+	}
+}
+
+// checkPendingTrackings scans for pending trackings in `maxConcurrent`
+// batches until all are handeled.
+func (t *Tracker) checkPendingTrackings() {
+	for {
+		archives, err := t.colls.ArchiveTracking.GetReadyToCheck(t.ctx, maxConcurrent)
+		if err != nil {
+			log.Errorf("getting tracked archives: %s", err)
+			break
+		}
+		log.Debugf("got %d ready archives to check", len(archives))
+		if len(archives) == 0 {
+			break
+		}
+		var wg sync.WaitGroup
+		wg.Add(len(archives))
+		for _, a := range archives {
+			go func(a *mdb.TrackedJob) {
+				defer wg.Done()
+
+				if err := t.processTrackedJob(a); err != nil {
+					log.Errorf("processing tracked archive: %s", err)
+				}
+			}(a)
+		}
+		wg.Wait()
+	}
+}
+
+// processTrackedJob checks the status of the Job in Powergate, which
+// corresponds to bucket Archive action.
+// - If Job was successful: change its status as to not be tracked anymore,
+//   and call corresponding logic depending if was created for an Archive or Retrieval.
+// - If Job failed: change its status to not being tracked anymore.
+// - If encountered a transient error: It will reschedule the tracked job to
+//   be evaluated in a further iteration.
+func (t *Tracker) processTrackedJob(a *mdb.TrackedJob) error {
+	ctx, cancel := context.WithTimeout(t.ctx, time.Second*10)
+	defer cancel()
+
+	var rescheduleDuration time.Duration
+	var finCause string
+	var err error
+	switch a.Type {
+	case mdb.TrackedJobTypeArchive:
+		// TODO: Unfortunately, we can't use a.PowToken to avoid
+		// this `t.colls.Accounts` boilerplate to get it. Mostly
+		// because a.PowToken was a field created when we implemented
+		// Retrievals; so *most of existing mdb.TrackedJob* of type
+		// TrackedJobTypeArchive have that value empty, but have
+		// set `a.Owner`.
+		//
+		// Whenever we do the migration to go-datastore, we could include
+		// populating all a.PowToken with using this below logic,
+		// and after we know all `mdb.TrackedJob` have a.PowToken set,
+		// we can delete this `t.cools.Accounts.Get` and just use
+		// `a.PowToken` (as is used in `case mdb.TrackedJobTypeRetrieval`.
+		// We should also change `Tracker.TrackArchive` to receive
+		// a `PowToken string` instead of `owner thread.PublicKey`, and
+		// just save `PowToken` to make `a.PowToken` available from that
+		// moment forward.
+		account, err := t.colls.Accounts.Get(ctx, a.Owner)
+		if err != nil {
+			return fmt.Errorf("getting account: %s", err)
+		}
+		if account.PowInfo == nil {
+			err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, "no powergate info found")
+			if err != nil {
+				return fmt.Errorf("finalizing errored/rescheduled job tracking: %s", err)
+			}
+		}
+
+		ctx = context.WithValue(ctx, powc.AuthKey, account.PowInfo.Token)
+		rescheduleDuration, finCause, err = t.trackArchiveProgress(
+			ctx,
+			a.BucketKey,
+			a.DbID,
+			a.DbToken,
+			a.JID,
+			a.BucketRoot,
+		)
+	case mdb.TrackedJobTypeRetrieval:
+		ctx = context.WithValue(ctx, powc.AuthKey, a.PowToken)
+		rescheduleDuration, finCause, err = t.trackRetrievalProgress(ctx, a.AccKey, a.JID)
+	default:
+		return fmt.Errorf("unkown tracked job type %d", a.Type)
+	}
+
+	if err != nil || rescheduleDuration == 0 {
+		if err != nil {
+			finCause = err.Error()
+		}
+		log.Infof("tracking archive finalized with cause: %s", finCause)
+		if err := t.colls.ArchiveTracking.Finalize(ctx, a.JID, finCause); err != nil {
+			return fmt.Errorf("finalizing errored/rescheduled archive tracking: %s", err)
+		}
+	}
+	log.Infof("rescheduling tracking archive with job %s, cause %s", a.JID, finCause)
+	err = t.colls.ArchiveTracking.Reschedule(ctx, a.JID, rescheduleDuration, finCause)
+	if err != nil {
+		return fmt.Errorf("rescheduling tracked archive: %s", err)
+	}
+
+	return nil
+}
+
+// trackRetrievalProgress queries the current archive status.
+// The return values have the same semantics as `trackArchiveProgress`
+func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string) (time.Duration, string, error) {
+	log.Debugf("querying archive status of job %s", jid)
+	defer log.Debugf("finished querying retrieval status of job %s", jid)
+
+	// Step 1: Get the Job status.
+	res, err := t.pgClient.StorageJobs.StorageJob(ctx, jid)
+	if err != nil {
+		// if error specifies that the auth token isn't found, powergate must have been reset.
+		// return the error as fatal so the archive will be untracked
+		if strings.Contains(err.Error(), "auth token not found") {
+			return 0, "", err
+		}
+		return t.jobPollIntervalSlow, fmt.Sprintf("getting current job %s for retrieval: %s", jid, err), nil
+	}
+
+	// Step 2: If we reached some final status, notify `retrieval.FilRetrieval` as it can
+	// continues the retrieval workflow. If isn't the case, just keep tracking the Job
+	// in the next iteration.
+	var (
+		rescheduleDuration time.Duration
+		message            string
+		success            bool
+	)
+	switch res.StorageJob.Status {
+	case userPb.JobStatus_JOB_STATUS_SUCCESS:
+		rescheduleDuration = 0
+		message = "success"
+		success = true
+	case userPb.JobStatus_JOB_STATUS_CANCELED:
+		rescheduleDuration = 0
+		message = "canceled"
+		success = false
+	case userPb.JobStatus_JOB_STATUS_FAILED:
+		rescheduleDuration = 0
+		message = "job failed"
+		success = false
+	default:
+		rescheduleDuration = t.jobPollIntervalFast
+		message = "non-final status"
+	}
+
+	if rescheduleDuration == 0 {
+		t.filRetrieval.UpdateRetrievalStatus(accKey, jid, success, message)
+	}
+
+	return rescheduleDuration, message, nil
 }
 
 // trackArchiveProgress queries the current archive status.
@@ -176,14 +299,11 @@ func (t *Tracker) trackArchiveProgress(
 	dbToken thread.Token,
 	jid string,
 	bucketRoot cid.Cid,
-	powInfo *mdb.PowInfo,
 ) (time.Duration, string, error) {
-	log.Infof("querying archive status of job %s", jid)
-	defer log.Infof("finished querying archive status of job %s", jid)
+	log.Debugf("querying archive status of job %s", jid)
+	defer log.Debugf("finished querying archive status of job %s", jid)
+
 	// Step 1: Get the Job status.
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	ctx = context.WithValue(ctx, powc.AuthKey, powInfo.Token)
 	res, err := t.pgClient.StorageJobs.StorageJob(ctx, jid)
 	if err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
@@ -197,7 +317,7 @@ func (t *Tracker) trackArchiveProgress(
 	// Step 2: On job success, save Deal data in the underlying Bucket thread. On
 	// failure save the error message.
 	if res.StorageJob.Status == userPb.JobStatus_JOB_STATUS_SUCCESS {
-		if err := t.saveDealsInBucket(ctx, buckKey, dbID, dbToken, powInfo.Token, bucketRoot); err != nil {
+		if err := t.saveDealsInBucket(ctx, buckKey, dbID, dbToken, bucketRoot); err != nil {
 			return t.jobPollIntervalSlow, fmt.Sprintf("saving deal data in archive: %s", err), nil
 		}
 	}
@@ -210,7 +330,7 @@ func (t *Tracker) trackArchiveProgress(
 	message := "non-final status"
 	if isJobStatusFinal(res.StorageJob.Status) {
 		message = "reached final status"
-		rescheduleDuration = 0
+		rescheduleDuration = 0 // Finalize tracking.
 	}
 
 	if rescheduleDuration > 0 {
@@ -292,7 +412,6 @@ func (t *Tracker) saveDealsInBucket(
 	buckKey string,
 	dbID thread.ID,
 	dbToken thread.Token,
-	authToken string,
 	c cid.Cid,
 ) error {
 	opts := tdb.WithToken(dbToken)
@@ -301,8 +420,7 @@ func (t *Tracker) saveDealsInBucket(
 	if err := t.buckets.Get(ctx, dbID, buckKey, &buck, opts); err != nil {
 		return fmt.Errorf("getting bucket for save deals: %s", err)
 	}
-	ctxAuth := context.WithValue(ctx, powc.AuthKey, authToken)
-	res, err := t.pgClient.Data.CidInfo(ctxAuth, c.String())
+	res, err := t.pgClient.Data.CidInfo(ctx, c.String())
 	if err != nil {
 		return fmt.Errorf("getting cid info: %s", err)
 	}

@@ -2527,7 +2527,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
 	}
 
-	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
+	if err := s.ArchiveTracker.TrackArchive(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
 		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
 	}
 

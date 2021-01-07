@@ -23,13 +23,21 @@ var (
 	maxConcurrentBucketCreation = 10
 )
 
+// BucketCreator provides creating bucket functionality.
 type BucketCreator interface {
+	// CreateBucket creates a bucket with the provided information.
 	CreateBucket(ctx context.Context,
 		threadID thread.ID,
 		threadToken thread.Token,
 		buckName string,
 		buckPrivate bool,
 		dataCid cid.Cid) error
+}
+
+// TrackerRegistrator manages retrieval Job tracking.
+type TrackerRetrievalRegistrator interface {
+	// TrackRetrieval tracks JobID job.
+	TrackRetrieval(ctx context.Context, jobID string, powToken string) error
 }
 
 type Status int
@@ -74,9 +82,10 @@ type Retrieval struct {
 // FilRetrieval manages Retrievals from Accounts in
 // go-datastore.
 type FilRetrieval struct {
-	ds       datastore.TxnDatastore
-	pgClient *powc.Client
-	bc       BucketCreator
+	ds  datastore.TxnDatastore
+	bc  BucketCreator
+	trr TrackerRetrievalRegistrator
+	pgc *powc.Client
 
 	// daemon vars
 	daemonWork chan struct{}
@@ -86,12 +95,18 @@ type FilRetrieval struct {
 	closed     bool
 }
 
-func NewFilRetrieval(ds datastore.TxnDatastore, pgClient *powc.Client, bc BucketCreator) (*FilRetrieval, error) {
+func NewFilRetrieval(
+	ds datastore.TxnDatastore,
+	pgc *powc.Client,
+	bc BucketCreator,
+	trr TrackerRetrievalRegistrator,
+) (*FilRetrieval, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	fr := &FilRetrieval{
-		ds:       ds,
-		pgClient: pgClient,
-		bc:       bc,
+		ds:  ds,
+		bc:  bc,
+		pgc: pgc,
+		trr: trr,
 
 		ctx:        ctx,
 		cancel:     cancel,
@@ -151,7 +166,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	// # Step 1.
 	// Check that we have imported DealIDs for that Cid. Fail fast mechanism.
 	ctx = context.WithValue(ctx, pow.AuthKey, powToken)
-	r, err := fr.pgClient.StorageInfo.ListStorageInfo(ctx, c.String())
+	r, err := fr.pgc.StorageInfo.ListStorageInfo(ctx, c.String())
 	if err != nil {
 		return "", fmt.Errorf("getting archived cids: %s", err)
 	}
@@ -185,7 +200,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	// At this point we're sure we have imported DealIDs and the data isn't
 	// in hot-storage. We proceed to pushing the current StorageConfig with
 	// hot-storage enabled. This will signal attempting a retrieval.
-	ci, err := fr.pgClient.Data.CidInfo(ctx, c.String())
+	ci, err := fr.pgc.Data.CidInfo(ctx, c.String())
 	if err != nil {
 		return "", fmt.Errorf("getting latest storage-config: %s", err)
 	}
@@ -196,7 +211,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	sc := ci.CidInfos[0].LatestPushedStorageConfig
 	sc.Hot.Enabled = true
 	opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}
-	a, err := fr.pgClient.StorageConfig.Apply(ctx, c.String(), opts...)
+	a, err := fr.pgc.StorageConfig.Apply(ctx, c.String(), opts...)
 	if err != nil {
 		return "", fmt.Errorf("applying new storage-config: %s", err)
 	}
@@ -207,7 +222,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	// status in Tracker. When Tracker updates the Job status, it will call
 	// fr.UpdateRetrievalStatus, so the retrieval process can continue with
 	// further phases.
-	if err := fr.tracker.TrackRetrieval(createdJobID, powToken); err != nil {
+	if err := fr.trr.TrackRetrieval(ctx, createdJobID, powToken); err != nil {
 		return "", fmt.Errorf("tracking retrieval job: %s", err)
 	}
 
@@ -326,6 +341,7 @@ func (fr *FilRetrieval) processQueuedMoveToBucket() {
 			break
 		}
 		lim <- struct{}{}
+		item := item
 		go func() {
 			defer func() { <-lim }()
 
@@ -392,7 +408,7 @@ func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 		// Now that the bucket was bootstraped, we're ready to push a new StorageConfig
 		// disabling hot-storage. We don't need to hold the data in Powergate anymore.
 		ctx = context.WithValue(ctx, pow.AuthKey, r.PowToken)
-		ci, err := fr.pgClient.Data.CidInfo(ctx, r.Cid.String())
+		ci, err := fr.pgc.Data.CidInfo(ctx, r.Cid.String())
 		if err != nil {
 			return fmt.Errorf("getting latest storage-config: %s", err)
 		}
@@ -402,7 +418,7 @@ func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 		sc := ci.CidInfos[0].LatestPushedStorageConfig
 		sc.Hot.Enabled = false
 		opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}
-		_, err = fr.pgClient.StorageConfig.Apply(ctx, r.Cid.String(), opts...)
+		_, err = fr.pgc.StorageConfig.Apply(ctx, r.Cid.String(), opts...)
 		if err != nil {
 			log.Errorf("applying new storage-config: %s", err)
 		}
@@ -508,7 +524,7 @@ func (fr *FilRetrieval) Logs(ctx context.Context, accKey string, jobID string, p
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	logsCh := make(chan powc.WatchLogsEvent)
-	if err := fr.pgClient.Data.WatchLogs(
+	if err := fr.pgc.Data.WatchLogs(
 		ctx,
 		logsCh,
 		r.Cid.String(),
