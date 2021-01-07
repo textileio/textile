@@ -5,11 +5,11 @@ import (
 )
 
 type newOptions struct {
-	name    string
-	private bool
-	fromCid cid.Cid
-	sync    bool
-	events  chan<- PathEvent
+	name     string
+	private  bool
+	fromCid  cid.Cid
+	strategy InitStrategy
+	events   chan<- PathEvent
 }
 
 // NewOption is used when creating a new bucket.
@@ -29,24 +29,35 @@ func WithPrivate(private bool) NewOption {
 	}
 }
 
-// WithCid indicates that an inited bucket should be boostraped
-// with a particular UnixFS DAG.
+// WithCid indicates an inited bucket should be boostraped with a particular UnixFS DAG.
 func WithCid(c cid.Cid) NewOption {
 	return func(args *newOptions) {
 		args.fromCid = c
 	}
 }
 
-// WithSync syncs bucket state with the remote. All local changes will be discarded.
-func WithSync(sync bool) NewOption {
+// InitStrategy describes the type of init strategy.
+type InitStrategy int
+
+const (
+	// Hybrid indicates locally staged changes should be accepted, excluding deletions.
+	Hybrid InitStrategy = iota
+	// Soft indicates locally staged changes should be accepted, including deletions.
+	Soft
+	// Hard indicates locally staged changes should be discarded.
+	Hard
+)
+
+// WithStrategy allows for selecting the init strategy. Hybrid is the default.
+func WithStrategy(strategy InitStrategy) NewOption {
 	return func(args *newOptions) {
-		args.sync = sync
+		args.strategy = strategy
 	}
 }
 
-// WithExistingPathEvents allows the caller to receive path events when pulling
+// WithInitPathEvents allows the caller to receive path events when pulling
 // files from an existing bucket on initialization.
-func WithExistingPathEvents(ch chan<- PathEvent) NewOption {
+func WithInitPathEvents(ch chan<- PathEvent) NewOption {
 	return func(args *newOptions) {
 		args.events = ch
 	}
@@ -72,14 +83,14 @@ func WithConfirm(f ConfirmDiffFunc) PathOption {
 	}
 }
 
-// WithForce indicates that all remote files should be pulled even if they already exist.
+// WithForce indicates all remote files should be pulled even if they already exist.
 func WithForce(b bool) PathOption {
 	return func(args *pathOptions) {
 		args.force = b
 	}
 }
 
-// WithHard indicates that locally staged changes should be pruned.
+// WithHard indicates locally staged changes should be discarded.
 func WithHard(b bool) PathOption {
 	return func(args *pathOptions) {
 		args.hard = b

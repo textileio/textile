@@ -13,8 +13,12 @@ import (
 var pullCmd = &cobra.Command{
 	Use:   "pull",
 	Short: "Pull bucket object changes",
-	Long:  `Pulls paths that have been added to and paths that have been removed or differ from the remote bucket root.`,
-	Args:  cobra.ExactArgs(0),
+	Long: `Pulls paths that have been added to and paths that have been removed or differ from the remote bucket root.
+
+Use the '--hard' flag to discard all local changes.
+Use the '--force' flag to pull all remote objects, even if they already exist locally.
+`,
+	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		force, err := c.Flags().GetBool("force")
 		cmd.ErrCheck(err)

@@ -752,7 +752,7 @@ diff, err := mybuck.DiffLocal() // diff contains staged changes
 
 `buckets.NewBucket` will write a local config file and data repo.
 
-See `local.WithName`, `local.WithPrivate`, `local.WithCid`, `local.WithExistingPathEvents` for more options when creating buckets.
+See `local.WithName`, `local.WithStrategy`, `local.WithPrivate`, `local.WithCid`, `local.WithInitPathEvents` for more options when creating buckets.
 
 To create a bucket from an existing remote, use its thread ID and instance ID (bucket `key`) in the config.
 

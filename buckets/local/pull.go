@@ -11,6 +11,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
+	"github.com/textileio/textile/v2/buckets"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -95,7 +96,7 @@ func (b *Bucket) getPath(
 	if err != nil {
 		return
 	}
-	removed := make(map[string]string)
+	remove := make(map[string]string)
 	list, err := b.walkPath(dest)
 	if err != nil {
 		return
@@ -108,7 +109,7 @@ loop:
 			}
 		}
 		p := strings.TrimPrefix(n, dest+string(os.PathSeparator))
-		removed[p] = n
+		remove[p] = n
 	}
 looop:
 	for _, l := range diff {
@@ -117,23 +118,23 @@ looop:
 				continue looop
 			}
 		}
-		if _, ok := removed[l.Path]; !ok {
-			removed[l.Path] = l.Name
+		if _, ok := remove[l.Path]; !ok {
+			remove[l.Path] = l.Name
 		}
 	}
 
-	return b.handleChanges(ctx, pth, missing, removed, events)
+	return b.handleChanges(ctx, pth, missing, remove, events)
 }
 
 func (b *Bucket) handleChanges(
 	ctx context.Context,
 	pth string,
 	missing []object,
-	removed map[string]string,
+	remove map[string]string,
 	events chan<- PathEvent,
 ) (count int, err error) {
 	count = len(missing)
-	count += len(removed)
+	count += len(remove)
 	if count == 0 {
 		return
 	}
@@ -171,8 +172,8 @@ func (b *Bucket) handleChanges(
 			return count, err
 		}
 	}
-	if len(removed) > 0 {
-		for p, n := range removed {
+	if len(remove) > 0 {
+		for p, n := range remove {
 			// The file may have been modified locally, in which case it will have been moved to a patch.
 			// So, we just ignore the error here.
 			_ = os.RemoveAll(n)
@@ -205,12 +206,13 @@ func (b *Bucket) handleChanges(
 func (b *Bucket) diffPath(
 	ctx context.Context,
 	pth, dest string,
-) (diff []Change, missing []object, removed map[string]string, err error) {
+	ignoreDeletions bool,
+) (diff []Change, missing []object, remove map[string]string, err error) {
 	all, missing, err := b.listPath(ctx, pth, dest, false)
 	if err != nil {
 		return
 	}
-	removed = make(map[string]string)
+	remove = make(map[string]string)
 	list, err := b.walkPath(dest)
 	if err != nil {
 		return
@@ -228,13 +230,19 @@ loop:
 			return nil, nil, nil, err
 		}
 		diff = append(diff, Change{Type: du.Add, Name: n, Path: p, Rel: r})
-		removed[p] = n
+		remove[p] = n
 	}
 	for _, o := range missing {
+		if o.path == buckets.SeedName {
+			continue
+		}
 		var ct du.ChangeType
 		if _, err = os.Stat(o.name); err == nil {
 			ct = du.Mod
 		} else if os.IsNotExist(err) {
+			if ignoreDeletions {
+				continue
+			}
 			ct = du.Remove
 		} else {
 			return
@@ -245,7 +253,7 @@ loop:
 		}
 		diff = append(diff, Change{Type: ct, Name: o.name, Path: o.path, Rel: r})
 	}
-	return diff, missing, removed, nil
+	return diff, missing, remove, nil
 }
 
 type object struct {

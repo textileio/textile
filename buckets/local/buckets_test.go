@@ -88,7 +88,7 @@ func TestBuckets_NewBucket(t *testing.T) {
 		defer close(events)
 		ec := &eventCollector{}
 		go ec.collect(events)
-		buck, err := buckets.NewBucket(context.Background(), conf, WithCid(pth.Cid()), WithExistingPathEvents(events))
+		buck, err := buckets.NewBucket(context.Background(), conf, WithCid(pth.Cid()), WithInitPathEvents(events))
 		require.NoError(t, err)
 		assert.NotEmpty(t, buck)
 		ec.check(t, 2, 0)
