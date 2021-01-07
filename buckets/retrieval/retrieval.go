@@ -1,17 +1,23 @@
-package archive
+package retrieval
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log"
 	"github.com/textileio/go-threads/core/thread"
 	pow "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
+)
+
+var (
+	log = logging.Logger("fil-retrieval")
 )
 
 type RetrievalStatus int
@@ -32,13 +38,12 @@ const (
 )
 
 type Retrieval struct {
-	Type       RetrievalType
-	AccountKey string
-	JobID      string
-	Cid        cid.Cid
-	Selector   string
-	Status     RetrievalStatus
-	// TODO: do this.
+	Type         RetrievalType
+	AccountKey   string
+	JobID        string
+	Cid          cid.Cid
+	Selector     string
+	Status       RetrievalStatus
 	FailureCause string
 	CreatedAt    int64
 
@@ -58,13 +63,27 @@ type Retrieval struct {
 type FilRetrieval struct {
 	ds       datastore.TxnDatastore
 	pgClient *powc.Client
+
+	// daemon shutdown
+	ctx        context.Context
+	cancel     context.CancelFunc
+	closedChan chan struct{}
+	closed     bool
 }
 
 func NewFilRetrieval(ds datastore.TxnDatastore, pgClient *powc.Client) (*FilRetrieval, error) {
-	return &FilRetrieval{
+	ctx, cancel := context.WithCancel(context.Background())
+	fr := &FilRetrieval{
 		ds:       ds,
 		pgClient: pgClient,
-	}, nil
+
+		ctx:        ctx,
+		cancel:     cancel,
+		closedChan: make(chan struct{}),
+	}
+	go fr.daemon()
+
+	return fr, nil
 }
 
 func (fr *FilRetrieval) CreateForNewBucket(
@@ -181,7 +200,7 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 		// go-datastore is unavailable, which is a very rare-case.
 		// keep a log fo what should have happened in case we wan't to recover this
 		// case manually.
-		log.Errorf("getting retrieval from store (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
+		log.Errorf("getting retrieval from store (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
 
@@ -194,7 +213,7 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 
 	txn, err := fr.ds.NewTransaction(false)
 	if err != nil {
-		log.Errorf("creating txn (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
+		log.Errorf("creating txn (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
 	defer txn.Discard()
@@ -202,8 +221,8 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 	// Save Retrieval with new status *and* insert this retrieval
 	// in the special MoveToBucket stage, to jump into next phase
 	// handeled by the daemon().
-	if err := fr.save(txn, accKey, r); err != nil {
-		log.Errorf("saving to datastore (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
+	if err := fr.save(txn, r); err != nil {
+		log.Errorf("saving to datastore (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
 
@@ -223,18 +242,94 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 	// it will be removed from the pending list (reached final status).
 	key := dsMoveToBucketQueueKey(accKey, jobID)
 	if err := txn.Put(key, []byte{}); err != nil {
-		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
+		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
 
 	if err := txn.Commit(); err != nil {
-		log.Errorf("commiting txn (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
+		log.Errorf("commiting txn (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
 }
 
-// TODO
+// Close closes gracefully all background work that
+// is being executed.
 func (fr *FilRetrieval) Close() error {
+	if fr.closed {
+		return nil
+	}
+	fr.cancel()
+	<-fr.closedChan
+
+	return nil
+}
+
+func (fr *FilRetrieval) daemon() {
+	defer func() { close(fr.closedChan) }()
+	for {
+		select {
+		case <-fr.ctx.Done():
+			return
+		// TODO: Improve this part. No timer.
+		case <-time.After(time.Second):
+			fr.processQueuedMoveToBucket()
+		}
+	}
+}
+
+func (fr *FilRetrieval) processQueuedMoveToBucket() {
+	prefixKey := dsMoveToBucketQueueBaseKey()
+	q := query.Query{Prefix: prefixKey.String()}
+	qr, err := fr.ds.Query(q)
+	if err != nil {
+		log.Errorf("querying datastore for pending move-to-bucket: %s", err)
+		return
+	}
+	defer qr.Close()
+
+	// TODO: parallelize?
+	for item := range qr.Next() {
+		key := datastore.NewKey(item.Key)
+		accKey := key.Namespaces()[2]
+		jobID := key.Namespaces()[3]
+
+		r, err := fr.GetByAccountAndID(accKey, jobID)
+		if err != nil {
+			log.Errorf("get move-to-bucket retrieval: %s", err)
+			continue
+		}
+
+		if err := fr.processMoveToBucket(r); err != nil {
+			log.Errorf("processing move-to-bucket: %s", err)
+			r.Status = RetrievalStatusFailed
+			r.FailureCause = err.Error()
+		} else {
+			r.Status = RetrievalStatusSuccess
+		}
+
+		txn, err := fr.ds.NewTransaction(false)
+		if err != nil {
+			log.Errorf("creating txn: %s", err)
+			continue
+		}
+
+		if err := fr.save(txn, r); err != nil {
+			txn.Discard()
+			log.Errorf("saving finalized status: %s", err)
+			continue
+		}
+
+		if err := txn.Delete(key); err != nil {
+			txn.Discard()
+			log.Errorf("deleting from move-to-bucket queue: %s", err)
+			continue
+		}
+
+		if err := txn.Commit(); err != nil {
+			txn.Discard()
+			log.Errorf("committing transaction: %s", err)
+		}
+	}
 }
 
 // TODO: daemon
@@ -242,15 +337,23 @@ func (fr *FilRetrieval) Close() error {
 // Finalizing statuses:
 // 1. Create bucket from Cid.
 // 2. If all good, switch to Success and push config with Hot disabled.
-func (fr *FilRetrieval) daemon() {
+func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
+	switch r.Type {
+	case RetrievalTypeNewBucket:
+
+	default:
+		return fmt.Errorf("retrieval type %d not implemented", r.Type)
+	}
+
+	return nil
 }
 
-func (fr *FilRetrieval) save(txn datastore.Txn, accKey string, r Retrieval) error {
-	if len(accKey) == 0 || len(r.JobID) == 0 {
+func (fr *FilRetrieval) save(txn datastore.Txn, r Retrieval) error {
+	if len(r.AccountKey) == 0 || len(r.JobID) == 0 {
 		return fmt.Errorf("account key and job-id can't be empty")
 	}
 
-	key := dsAccountAndIDKey(accKey, r.JobID)
+	key := dsAccountAndIDKey(r.AccountKey, r.JobID)
 	buf, err := json.Marshal(r)
 	if err != nil {
 		return fmt.Errorf("mashaling retrieval: %s", err)
@@ -346,7 +449,7 @@ func (fr *FilRetrieval) Logs(ctx context.Context, accKey string, jobID string, p
 
 // Datastore keys
 // Requests: /retrievals/<account-key>/<job-id> -> json(Request)
-// MoveToBucketQueue: /movetobucket/<account-key>/<job-id> -> Empty
+// MoveToBucketQueue: /movetobucket/<timestamp>/<account-key>/<job-id> -> Empty
 func dsAccountKey(accKey string) datastore.Key {
 	return datastore.NewKey("retrieval").ChildString(accKey)
 }
@@ -355,6 +458,15 @@ func dsAccountAndIDKey(accKey, jobID string) datastore.Key {
 	return dsAccountKey(accKey).ChildString(jobID)
 }
 
+func dsMoveToBucketQueueBaseKey() datastore.Key {
+	key := datastore.NewKey("movetobucket")
+	key = key.ChildString(strconv.FormatInt(time.Now().Unix(), 10))
+	return key
+}
+
 func dsMoveToBucketQueueKey(accKey, jobID string) datastore.Key {
-	return datastore.NewKey("movetobucket").ChildString(accKey).ChildString(jobID)
+	key := dsMoveToBucketQueueBaseKey()
+	key.ChildString(accKey)
+	key = key.ChildString(jobID)
+	return key
 }
