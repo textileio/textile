@@ -18,7 +18,7 @@ import (
 	stripec "github.com/stripe/stripe-go/v72/client"
 	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
-	analytics "github.com/textileio/textile/v2/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	"github.com/textileio/textile/v2/api/billingd/migrations"
@@ -505,10 +505,10 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.Update(doc.Key, doc.Email, false, map[string]interface{}{
-		"parent_key":   doc.ParentKey,
-		"customer_id":  doc.CustomerID,
-		"account_type": doc.AccountType,
+	go s.analytics.CreateOrUpdate(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
+		"parent_key":  doc.ParentKey,
+		"customer_id": doc.CustomerID,
+		"username":    params.Username,
 	})
 
 	return doc, nil
@@ -994,13 +994,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_start", false, summary)
+			go s.analytics.NewEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, map[string]string{})
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.NewEvent(cus.Key, cus.Email, "grace_period_end", false, summary)
+			go s.analytics.NewEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, map[string]string{})
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -1075,7 +1075,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
 	}
-	go s.analytics.Update(cus.Key, cus.Email, false, summary)
+	go s.analytics.CreateOrUpdate(cus.Key, cus.AccountType, false, "", summary)
 	return nil
 }
 
@@ -1106,4 +1106,23 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 		}
 	}
 	return nil
+}
+
+// CustomerEvent records a new event
+func (s *Service) CustomerEvent(
+	ctx context.Context,
+	req *pb.CustomerEventRequest,
+) (*pb.CustomerEventResponse, error) {
+	err := s.analytics.NewEvent(
+		req.Key,
+		mdb.AccountType(req.AccountType),
+		req.Active,
+		analytics.Event(req.Event),
+		req.Properties,
+		// map[string]interface{}{}, // todo: correct
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.CustomerEventResponse{}, nil
 }

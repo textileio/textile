@@ -32,7 +32,6 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	pow "github.com/textileio/powergate/api/client"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
-	"github.com/textileio/textile/v2/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -194,10 +193,6 @@ type Config struct {
 	CustomerioConfirmTmpl string
 	CustomerioInviteTmpl  string
 	EmailSessionSecret    string
-
-	// Segment
-	SegmentAPIKey string
-	SegmentPrefix string
 }
 
 func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, error) {
@@ -342,11 +337,6 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			return nil, err
 		}
 
-		ac, err := analytics.NewClient(conf.SegmentAPIKey, conf.SegmentPrefix, conf.Debug)
-		if err != nil {
-			return nil, err
-		}
-
 		t.emailSessionBus = broadcast.NewBroadcaster(0)
 		hs = &hubd.Service{
 			Collections:         t.collections,
@@ -361,7 +351,6 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
-			Analytics:           ac,
 		}
 		us = &usersd.Service{
 			Collections:   t.collections,

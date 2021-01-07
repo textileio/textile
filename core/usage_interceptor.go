@@ -120,10 +120,12 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 				}
 				opts = append(opts, billing.WithParent(parent.Key, email, parent.Type))
 			}
+			// TODO: Add username, name to Create call
 			if _, err := t.bc.CreateCustomer(
 				ctx,
 				account.Owner().Key,
 				email,
+				account.Owner().Username,
 				account.Owner().Type,
 				opts...,
 			); err != nil {
