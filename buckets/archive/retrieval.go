@@ -170,16 +170,11 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	return createdJobID, nil
 }
 
-// TODO: UpdateRetrievalStatus
-// Receives updates about how the jobID is running.
-//
-// If success:
-// 1. Update the retrieval status to Finalizing
-// 2. Put this acckey/jobID in some other datastore namespace
-// 3. Have some other daemon deal with now on.
-//
-// If failed:
-// 1. Switch status to failed. The end.
+// UpdateRetrievalStatus updates the status and continues with the process.
+// If `successful` is true, its status is changed to RetrievalStatusMoveToBucket,
+// and it continues with the process of copying the data to the bucket.
+// If `successful` is false, its status is changed to RetrievalStatusFailed and the
+// FailureCause is set to `failureCause`.
 func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, success bool, failureCause string) {
 	r, err := fr.GetByAccountAndID(accKey, jobID)
 	if err != nil {
@@ -226,7 +221,8 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 	//
 	// The daemon() will take these retrievals, and continue with the process. After it finishes,
 	// it will be removed from the pending list (reached final status).
-	if err := fr.insertIntoMoveToBucketQueue(accKey, jobID); err != nil {
+	key := dsMoveToBucketQueueKey(accKey, jobID)
+	if err := txn.Put(key, []byte{}); err != nil {
 		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, success:%s, failureCause: %s)", accKey, jobID, success, failureCause)
 		return
 	}
@@ -348,31 +344,17 @@ func (fr *FilRetrieval) Logs(ctx context.Context, accKey string, jobID string, p
 	return nil
 }
 
-// ToDo: Delete?
-func (s RetrievalStatus) String() string {
-	switch s {
-	case RetrievalStatusQueued:
-		return "Queued"
-	case RetrievalStatusExecuting:
-		return "Executing"
-	case RetrievalStatusMoveToBucket:
-		return "Move to bucket"
-	case RetrievalStatusSuccess:
-		return "Success"
-	case RetrievalStatusFailed:
-		return "Failed"
-	default:
-		return "Invalid"
-	}
-}
-
 // Datastore keys
-// Keyspace is: /<account-key>/<id> -> json(Request)
+// Requests: /retrievals/<account-key>/<job-id> -> json(Request)
+// MoveToBucketQueue: /movetobucket/<account-key>/<job-id> -> Empty
 func dsAccountKey(accKey string) datastore.Key {
-	return datastore.NewKey(accKey)
+	return datastore.NewKey("retrieval").ChildString(accKey)
 }
 
-func dsAccountAndIDKey(accKey string, jobID string) datastore.Key {
+func dsAccountAndIDKey(accKey, jobID string) datastore.Key {
 	return dsAccountKey(accKey).ChildString(jobID)
+}
 
+func dsMoveToBucketQueueKey(accKey, jobID string) datastore.Key {
+	return datastore.NewKey("movetobucket").ChildString(accKey).ChildString(jobID)
 }
