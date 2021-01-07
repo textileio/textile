@@ -303,7 +303,7 @@ func init() {
 		"Cloudflare ZoneID for dnsDomain")
 	rootCmd.PersistentFlags().String(
 		"dnsToken",
-		config.Flags["dnsDomain"].DefValue.(string),
+		config.Flags["dnsToken"].DefValue.(string),
 		"Cloudflare API Token for dnsDomain")
 
 	// Customer.io
