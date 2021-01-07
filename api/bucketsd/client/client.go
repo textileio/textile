@@ -395,7 +395,7 @@ func (c *Client) ArchiveRetrievalLs(ctx context.Context) (*pb.ArchiveRetrievalLs
 }
 
 // ArchiveRetrievalLogs returns the existing logs from the retrieval.
-func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id uint64, ch chan<- string) error {
+func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id string, ch chan<- string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream, err := c.c.ArchiveRetrievalLogs(ctx, &pb.ArchiveRetrievalLogsRequest{Id: id})

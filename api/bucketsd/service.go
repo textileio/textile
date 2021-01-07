@@ -36,6 +36,7 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/buckets/retrieval"
 	"github.com/textileio/textile/v2/ipns"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
@@ -103,7 +104,7 @@ type Service struct {
 	PowergateClient           *pow.Client
 	PowergateAdminToken       string
 	ArchiveTracker            *archive.Tracker
-	FilRetrieval              *archive.FilRetrieval
+	FilRetrieval              *retrieval.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketSize             int64
 	MaxBucketArchiveRepFactor int
@@ -212,7 +213,12 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 	// create the retrieval request, and let all the process
 	// happend async in the background.
 	if req.Unfreeze {
-		if err := s.FilRetrieval.Create(dbID, dbToken, req.Name, req.Private, bootCid); err != nil {
+		account, _ := mdb.AccountFromContext(ctx)
+		owner := account.Owner()
+		accKey := owner.Key.String()
+		powToken := owner.PowInfo.Token
+
+		if err := s.FilRetrieval.CreateForNewBucket(ctx, accKey, dbID, dbToken, req.Name, req.Private, bootCid, powToken); err != nil {
 			return nil, fmt.Errorf("creating retrieval: %s", err)
 		}
 		return &pb.CreateResponse{}, nil
@@ -252,6 +258,19 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		SeedCid: seed.Cid().String(),
 		Pinned:  s.getPinnedBytes(ctx),
 	}, nil
+}
+
+// CreateBucket is a wrapper to enable creating a bucket from an internal method.
+// TODO: We should consider refactor createBucket code (and other related stuff) out of
+// `Service`, since this logic is useful for other cases than serving APIs.
+func (s *Service) CreateBucket(ctx context.Context,
+	threadID thread.ID,
+	threadToken thread.Token,
+	buckName string,
+	buckPrivate bool,
+	dataCid cid.Cid) error {
+	_, _, _, err := s.createBucket(ctx, threadID, threadToken, buckName, buckPrivate, dataCid)
+	return err
 }
 
 // createBucket returns a new bucket and seed node.
@@ -2707,12 +2726,23 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 	}
 	for i, r := range rs {
 		res.Archives[i] = &pb.ArchiveRetrievalLsItem{
-			Id:       uint64(r.Id),
-			Cid:      r.Cid.String(),
-			Selector: r.Selector,
-			BuckKey:  r.BuckKey,
-			BuckPath: r.BuckPath,
-			Status:   toPbRetrievalStatus(r.Status),
+			Id:           r.JobID,
+			Cid:          r.Cid.String(),
+			Status:       toPbRetrievalStatus(r.Status),
+			FailureCause: r.FailureCause,
+			CreatedAt:    r.CreatedAt,
+		}
+		switch r.Type {
+		case retrieval.TypeNewBucket:
+			rt := &pb.ArchiveRetrievalLsItem_NewBucket{
+				NewBucket: &pb.ArchiveRetrievalLsItemNewBucket{
+					Name:    r.Name,
+					Private: r.Private,
+				},
+			}
+			res.Archives[i].RetrievalType = rt
+		default:
+			return nil, fmt.Errorf("unkown retrieval type")
 		}
 	}
 
@@ -2766,17 +2796,17 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 	return pbConfig
 }
 
-func toPbRetrievalStatus(s archive.RetrievalStatus) pb.ArchiveRetrievalStatus {
+func toPbRetrievalStatus(s retrieval.Status) pb.ArchiveRetrievalStatus {
 	switch s {
-	case archive.RetrievalStatusQueued:
+	case retrieval.StatusQueued:
 		return pb.ArchiveRetrievalStatus_QUEUED
-	case archive.RetrievalStatusExecuting:
+	case retrieval.StatusExecuting:
 		return pb.ArchiveRetrievalStatus_EXECUTING
-	case archive.RetrievalStatusMoveToBucket:
+	case retrieval.StatusMoveToBucket:
 		return pb.ArchiveRetrievalStatus_MOVETOBUCKET
-	case archive.RetrievalStatusSuccess:
+	case retrieval.StatusSuccess:
 		return pb.ArchiveRetrievalStatus_SUCCESS
-	case archive.RetrievalStatusFailed:
+	case retrieval.StatusFailed:
 		return pb.ArchiveRetrievalStatus_FAILED
 	default:
 		return pb.ArchiveRetrievalStatus_UNSPECIFIED

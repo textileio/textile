@@ -26,7 +26,7 @@ func TestArchiveTracking_Create(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
+	err = col.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 }
 
@@ -43,7 +43,7 @@ func TestArchiveTracking_Get(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
+	err = col.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	ta, err := col.Get(ctx, jid)
@@ -75,7 +75,7 @@ func TestArchiveTracking_GetReadyToCheck(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
+	err = col.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	tas, err = col.GetReadyToCheck(ctx, 10)
@@ -103,7 +103,7 @@ func TestArchiveTracking_Finalize(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
+	err = col.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	cause := "all good"
@@ -133,7 +133,7 @@ func TestArchiveTracking_Reschedule(t *testing.T) {
 	bucketRoot, _ := cid.Decode("QmSnuWmxptJZdLJpKRarxBMS2Ju2oANVrgbr2xWbie9b2D")
 	_, key, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
-	err = col.Create(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
+	err = col.CreateArchive(ctx, dbID, dbToken, bucketKey, jid, bucketRoot, thread.NewLibp2pPubKey(key))
 	require.NoError(t, err)
 
 	err = col.Reschedule(ctx, jid, time.Hour+time.Second*5, "retry me")

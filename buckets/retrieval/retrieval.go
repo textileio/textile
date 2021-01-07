@@ -32,31 +32,31 @@ type BucketCreator interface {
 		dataCid cid.Cid) error
 }
 
-type RetrievalStatus int
+type Status int
 
 const (
-	RetrievalStatusQueued RetrievalStatus = iota
-	RetrievalStatusExecuting
-	RetrievalStatusMoveToBucket
-	RetrievalStatusSuccess
-	RetrievalStatusFailed
+	StatusQueued Status = iota
+	StatusExecuting
+	StatusMoveToBucket
+	StatusSuccess
+	StatusFailed
 )
 
-type RetrievalType int
+type Type int
 
 const (
-	RetrievalTypeNewBucket RetrievalType = iota
-	RetrievalTypeExistingBucket
+	TypeNewBucket Type = iota
+	TypeExistingBucket
 )
 
 type Retrieval struct {
-	Type         RetrievalType
+	Type         Type
 	AccountKey   string
 	PowToken     string
 	JobID        string
 	Cid          cid.Cid
 	Selector     string
-	Status       RetrievalStatus
+	Status       Status
 	FailureCause string
 	CreatedAt    int64
 
@@ -113,18 +113,25 @@ func (fr *FilRetrieval) CreateForNewBucket(
 	dataCid cid.Cid,
 	powToken string,
 ) error {
+	if powToken == "" {
+		return fmt.Errorf("powergate token can't be empty")
+	}
+	if accKey == "" {
+		return fmt.Errorf("account key can't be empty")
+	}
+
 	jobID, err := fr.createRetrieval(ctx, dataCid, powToken)
 	if err != nil {
 		return fmt.Errorf("creating retrieval in Powergate: %s", err)
 	}
 	r := Retrieval{
-		Type:       RetrievalTypeNewBucket,
+		Type:       TypeNewBucket,
 		AccountKey: accKey,
 		PowToken:   powToken,
 		JobID:      jobID,
 		Cid:        dataCid,
 		Selector:   "",
-		Status:     RetrievalStatusQueued,
+		Status:     StatusQueued,
 		CreatedAt:  time.Now().Unix(),
 
 		DbID:    dbID,
@@ -133,7 +140,7 @@ func (fr *FilRetrieval) CreateForNewBucket(
 		Private: buckPrivate,
 	}
 
-	if err := fr.save(r); err != nil {
+	if err := fr.save(nil, r); err != nil {
 		return fmt.Errorf("saving retrieval request: %s", err)
 	}
 
@@ -223,10 +230,10 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 	}
 
 	if !success {
-		r.Status = RetrievalStatusFailed
+		r.Status = StatusFailed
 		r.FailureCause = failureCause
 	} else {
-		r.Status = RetrievalStatusMoveToBucket
+		r.Status = StatusMoveToBucket
 	}
 
 	txn, err := fr.ds.NewTransaction(false)
@@ -334,10 +341,10 @@ func (fr *FilRetrieval) processQueuedMoveToBucket() {
 
 			if err := fr.processMoveToBucket(r); err != nil {
 				log.Errorf("processing move-to-bucket: %s", err)
-				r.Status = RetrievalStatusFailed
+				r.Status = StatusFailed
 				r.FailureCause = err.Error()
 			} else {
-				r.Status = RetrievalStatusSuccess
+				r.Status = StatusSuccess
 			}
 
 			txn, err := fr.ds.NewTransaction(false)
@@ -372,7 +379,7 @@ func (fr *FilRetrieval) processQueuedMoveToBucket() {
 
 func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 	switch r.Type {
-	case RetrievalTypeNewBucket:
+	case TypeNewBucket:
 		// # Step 1.
 		// Create the bucket.
 		ctx, cancel := context.WithTimeout(context.Background(), buckCreationTimeout)

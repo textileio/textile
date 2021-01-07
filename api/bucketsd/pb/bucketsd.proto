@@ -310,12 +310,20 @@ message ArchiveRetrievalLsResponse {
 }
 
 message ArchiveRetrievalLsItem {
-	uint64 id = 1;
-	ArchiveRetrievalStatus status = 2;
-	string cid = 3;
-	string selector = 4;
-	string buck_key = 5;
-	string buck_path = 6;
+	string id = 1;
+	string cid = 2;
+	ArchiveRetrievalStatus status = 3;
+	string FailureCause = 4;
+	int64 created_at = 5;
+
+	oneof retrieval_type {
+		ArchiveRetrievalLsItemNewBucket newBucket = 6;
+	}
+}
+
+message ArchiveRetrievalLsItemNewBucket {
+	string name = 1;
+	bool private = 2;
 }
 
 enum ArchiveRetrievalStatus {
@@ -329,7 +337,7 @@ enum ArchiveRetrievalStatus {
 }
 
 message ArchiveRetrievalLogsRequest {
-    uint64 id = 1;
+    string id = 1;
 }
 
 message ArchiveRetrievalLogsResponse {
