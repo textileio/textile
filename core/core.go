@@ -560,6 +560,13 @@ func (t *Textile) Close() error {
 	}
 	log.Info("gRPC was shutdown")
 
+	log.Info("closing fil-retrieval module")
+	if err := t.filRetrieval.Close(); err != nil {
+		log.Errorf("closing fil-retrieval module: %s", err)
+	} else {
+		log.Info("fil-retrieval was shutdown")
+	}
+
 	if err := t.th.Close(); err != nil {
 		return err
 	}

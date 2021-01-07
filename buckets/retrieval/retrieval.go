@@ -18,7 +18,19 @@ import (
 
 var (
 	log = logging.Logger("fil-retrieval")
+
+	buckCreationTimeout         = time.Minute * 30
+	maxConcurrentBucketCreation = 10
 )
+
+type BucketCreator interface {
+	CreateBucket(ctx context.Context,
+		threadID thread.ID,
+		threadToken thread.Token,
+		buckName string,
+		buckPrivate bool,
+		dataCid cid.Cid) error
+}
 
 type RetrievalStatus int
 
@@ -40,6 +52,7 @@ const (
 type Retrieval struct {
 	Type         RetrievalType
 	AccountKey   string
+	PowToken     string
 	JobID        string
 	Cid          cid.Cid
 	Selector     string
@@ -63,23 +76,27 @@ type Retrieval struct {
 type FilRetrieval struct {
 	ds       datastore.TxnDatastore
 	pgClient *powc.Client
+	bc       BucketCreator
 
-	// daemon shutdown
+	// daemon vars
+	daemonWork chan struct{}
 	ctx        context.Context
 	cancel     context.CancelFunc
 	closedChan chan struct{}
 	closed     bool
 }
 
-func NewFilRetrieval(ds datastore.TxnDatastore, pgClient *powc.Client) (*FilRetrieval, error) {
+func NewFilRetrieval(ds datastore.TxnDatastore, pgClient *powc.Client, bc BucketCreator) (*FilRetrieval, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	fr := &FilRetrieval{
 		ds:       ds,
 		pgClient: pgClient,
+		bc:       bc,
 
 		ctx:        ctx,
 		cancel:     cancel,
 		closedChan: make(chan struct{}),
+		daemonWork: make(chan struct{}, 1),
 	}
 	go fr.daemon()
 
@@ -103,6 +120,7 @@ func (fr *FilRetrieval) CreateForNewBucket(
 	r := Retrieval{
 		Type:       RetrievalTypeNewBucket,
 		AccountKey: accKey,
+		PowToken:   powToken,
 		JobID:      jobID,
 		Cid:        dataCid,
 		Selector:   "",
@@ -115,7 +133,7 @@ func (fr *FilRetrieval) CreateForNewBucket(
 		Private: buckPrivate,
 	}
 
-	if err := fr.save(accKey, r); err != nil {
+	if err := fr.save(r); err != nil {
 		return fmt.Errorf("saving retrieval request: %s", err)
 	}
 
@@ -250,6 +268,13 @@ func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, succe
 		log.Errorf("commiting txn (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
 		return
 	}
+
+	// Signal daemon that new work exist.
+	select {
+	case fr.daemonWork <- struct{}{}:
+	default:
+	}
+
 }
 
 // Close closes gracefully all background work that
@@ -270,8 +295,8 @@ func (fr *FilRetrieval) daemon() {
 		select {
 		case <-fr.ctx.Done():
 			return
-		// TODO: Improve this part. No timer.
-		case <-time.After(time.Second):
+		case <-fr.daemonWork:
+		case <-time.After(time.Minute * 30):
 			fr.processQueuedMoveToBucket()
 		}
 	}
@@ -287,60 +312,107 @@ func (fr *FilRetrieval) processQueuedMoveToBucket() {
 	}
 	defer qr.Close()
 
-	// TODO: parallelize?
+	lim := make(chan struct{}, maxConcurrentBucketCreation)
 	for item := range qr.Next() {
-		key := datastore.NewKey(item.Key)
-		accKey := key.Namespaces()[2]
-		jobID := key.Namespaces()[3]
-
-		r, err := fr.GetByAccountAndID(accKey, jobID)
-		if err != nil {
-			log.Errorf("get move-to-bucket retrieval: %s", err)
-			continue
+		if item.Error != nil {
+			log.Errorf("getting next item result: %s", err)
+			break
 		}
+		lim <- struct{}{}
+		go func() {
+			defer func() { <-lim }()
 
-		if err := fr.processMoveToBucket(r); err != nil {
-			log.Errorf("processing move-to-bucket: %s", err)
-			r.Status = RetrievalStatusFailed
-			r.FailureCause = err.Error()
-		} else {
-			r.Status = RetrievalStatusSuccess
-		}
+			key := datastore.NewKey(item.Key)
+			accKey := key.Namespaces()[2]
+			jobID := key.Namespaces()[3]
 
-		txn, err := fr.ds.NewTransaction(false)
-		if err != nil {
-			log.Errorf("creating txn: %s", err)
-			continue
-		}
+			r, err := fr.GetByAccountAndID(accKey, jobID)
+			if err != nil {
+				log.Errorf("get move-to-bucket retrieval: %s", err)
+				return
+			}
 
-		if err := fr.save(txn, r); err != nil {
-			txn.Discard()
-			log.Errorf("saving finalized status: %s", err)
-			continue
-		}
+			if err := fr.processMoveToBucket(r); err != nil {
+				log.Errorf("processing move-to-bucket: %s", err)
+				r.Status = RetrievalStatusFailed
+				r.FailureCause = err.Error()
+			} else {
+				r.Status = RetrievalStatusSuccess
+			}
 
-		if err := txn.Delete(key); err != nil {
-			txn.Discard()
-			log.Errorf("deleting from move-to-bucket queue: %s", err)
-			continue
-		}
+			txn, err := fr.ds.NewTransaction(false)
+			if err != nil {
+				log.Errorf("creating txn: %s", err)
+				return
+			}
 
-		if err := txn.Commit(); err != nil {
-			txn.Discard()
-			log.Errorf("committing transaction: %s", err)
-		}
+			if err := fr.save(txn, r); err != nil {
+				txn.Discard()
+				log.Errorf("saving finalized status: %s", err)
+				return
+			}
+
+			if err := txn.Delete(key); err != nil {
+				txn.Discard()
+				log.Errorf("deleting from move-to-bucket queue: %s", err)
+				return
+			}
+
+			if err := txn.Commit(); err != nil {
+				txn.Discard()
+				log.Errorf("committing transaction: %s", err)
+			}
+		}()
+	}
+
+	for i := 0; i < maxConcurrentBucketCreation; i++ {
+		lim <- struct{}{}
 	}
 }
 
-// TODO: daemon
-//
-// Finalizing statuses:
-// 1. Create bucket from Cid.
-// 2. If all good, switch to Success and push config with Hot disabled.
 func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 	switch r.Type {
 	case RetrievalTypeNewBucket:
+		// # Step 1.
+		// Create the bucket.
+		ctx, cancel := context.WithTimeout(context.Background(), buckCreationTimeout)
+		defer cancel()
+		if err := fr.bc.CreateBucket(ctx, r.DbID, r.DbToken, r.Name, r.Private, r.Cid); err != nil {
+			return fmt.Errorf("creating bucket: %s", err)
+		}
 
+		// # Step 2.
+		// Now that the bucket was bootstraped, we're ready to push a new StorageConfig
+		// disabling hot-storage. We don't need to hold the data in Powergate anymore.
+		ctx = context.WithValue(ctx, pow.AuthKey, r.PowToken)
+		ci, err := fr.pgClient.Data.CidInfo(ctx, r.Cid.String())
+		if err != nil {
+			return fmt.Errorf("getting latest storage-config: %s", err)
+		}
+		if len(ci.CidInfos) != 1 {
+			return fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
+		}
+		sc := ci.CidInfos[0].LatestPushedStorageConfig
+		sc.Hot.Enabled = false
+		opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}
+		_, err = fr.pgClient.StorageConfig.Apply(ctx, r.Cid.String(), opts...)
+		if err != nil {
+			log.Errorf("applying new storage-config: %s", err)
+		}
+
+		// Note: Notice that we're ignoring the JobID or error for Apply().
+		// At this point the bucket was created, and all is fine for the user.
+		//
+		// Disabling hot-storage is rather uninteresting. It's a change that
+		// will most probably be executed correctly since it's only unpinning from go-ipfs.
+		// Even if this failed for whatever reason its kind of independant of
+		// the retrieval success; since the bucket got created correctly and
+		// all is ready now for the user.
+		//
+		// If we think this should require attention, we can create some
+		// process thatkeeps track of that job in the background but completely
+		// unattached from the retrieval use-case. This sounds more like something
+		// that an external daemon should do.
 	default:
 		return fmt.Errorf("retrieval type %d not implemented", r.Type)
 	}
