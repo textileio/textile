@@ -53,7 +53,7 @@ func FindConfigFile(conf *Config, pth string) bool {
 	for h <= maxSearchHeight && !found {
 		found = initConfig(conf.Viper, conf.File, pth, conf.Dir, conf.Name, conf.EnvPre, conf.Global)
 		npth := filepath.Dir(pth)
-		if npth == "/" && pth == "/" {
+		if npth == string(os.PathSeparator) && pth == string(os.PathSeparator) {
 			return found
 		}
 		pth = npth

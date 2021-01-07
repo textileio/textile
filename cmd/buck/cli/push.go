@@ -22,8 +22,11 @@ var (
 var pushCmd = &cobra.Command{
 	Use:   "push",
 	Short: "Push bucket object changes",
-	Long:  `Pushes paths that have been added to and paths that have been removed or differ from the local bucket root.`,
-	Args:  cobra.ExactArgs(0),
+	Long: `Pushes paths that have been added to and paths that have been removed or differ from the local bucket root.
+
+Use the '--force' flag to allow a non-fast-forward update.
+`,
+	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		force, err := c.Flags().GetBool("force")
 		cmd.ErrCheck(err)

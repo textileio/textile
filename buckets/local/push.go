@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 )
@@ -48,7 +48,7 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 				return roots, err
 			}
 			p := strings.TrimPrefix(n, bp+string(os.PathSeparator))
-			reset = append(reset, Change{Type: dagutils.Add, Name: n, Path: p, Rel: r})
+			reset = append(reset, Change{Type: du.Add, Name: n, Path: p, Rel: r})
 		}
 		// Add unique additions
 	loop:
@@ -85,7 +85,7 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 	key := b.Key()
 	for _, c := range diff {
 		switch c.Type {
-		case dagutils.Mod, dagutils.Add:
+		case du.Mod, du.Add:
 			var added path.Resolved
 			var err error
 			added, xr, err = b.addFile(ctx, key, xr, c, args.force, args.events)
@@ -97,7 +97,7 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 					return roots, err
 				}
 			}
-		case dagutils.Remove:
+		case du.Remove:
 			rm = append(rm, c)
 		}
 	}
@@ -109,7 +109,7 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 				return roots, err
 			}
 			if b.repo != nil {
-				if err := b.repo.RemovePath(ctx, c.Name); err != nil {
+				if err := b.repo.RemovePath(ctx, c.Path); err != nil {
 					return roots, err
 				}
 			}

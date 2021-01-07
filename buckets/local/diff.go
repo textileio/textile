@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	aurora2 "github.com/logrusorgru/aurora"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/cmd"
@@ -17,20 +17,20 @@ var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
 // Change describes a local bucket change.
 type Change struct {
-	Type dagutils.ChangeType
+	Type du.ChangeType
 	Name string // Absolute file name
 	Path string // File name relative to the bucket root
 	Rel  string // File name relative to the bucket current working directory
 }
 
 // ChangeType returns a string representation of a change type.
-func ChangeType(t dagutils.ChangeType) string {
+func ChangeType(t du.ChangeType) string {
 	switch t {
-	case dagutils.Mod:
+	case du.Mod:
 		return "modified:"
-	case dagutils.Add:
+	case du.Add:
 		return "new file:"
-	case dagutils.Remove:
+	case du.Remove:
 		return "deleted: "
 	default:
 		return ""
@@ -38,13 +38,13 @@ func ChangeType(t dagutils.ChangeType) string {
 }
 
 // ChangeColor returns an appropriate color for the given change type.
-func ChangeColor(t dagutils.ChangeType) func(arg interface{}) aurora2.Value {
+func ChangeColor(t du.ChangeType) func(arg interface{}) aurora2.Value {
 	switch t {
-	case dagutils.Mod:
+	case du.Mod:
 		return aurora.Yellow
-	case dagutils.Add:
+	case du.Add:
 		return aurora.Green
-	case dagutils.Remove:
+	case du.Remove:
 		return aurora.Red
 	default:
 		return nil
@@ -74,7 +74,7 @@ func (b *Bucket) DiffLocal() ([]Change, error) {
 	for _, c := range diff {
 		fp := filepath.Join(bp, c.Path)
 		switch c.Type {
-		case dagutils.Mod, dagutils.Add:
+		case du.Mod, du.Add:
 			names, err := b.walkPath(fp)
 			if err != nil {
 				return nil, err
@@ -87,7 +87,7 @@ func (b *Bucket) DiffLocal() ([]Change, error) {
 				}
 				all = append(all, Change{Type: c.Type, Name: n, Path: p, Rel: r})
 			}
-		case dagutils.Remove:
+		case du.Remove:
 			r, err := filepath.Rel(b.cwd, fp)
 			if err != nil {
 				return nil, err
