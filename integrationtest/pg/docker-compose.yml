@@ -29,6 +29,8 @@ services:
     image: ipfs/go-ipfs:v0.7.0
     environment:
       - IPFS_PROFILE=local-discovery
+    ports:
+      - "5012:5001"
   ipfsbuckets:
     image: ipfs/go-ipfs:v0.7.0
     environment:

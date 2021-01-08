@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/stretchr/testify/require"
 	pc "github.com/textileio/powergate/api/client"
 	"github.com/textileio/textile/v2/util"
@@ -16,8 +17,9 @@ import (
 )
 
 var powAddr = "127.0.0.1:5002"
+var ipfsAddr = "/ip4/127.0.0.1/tcp/5012"
 
-func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
+func StartPowergate(t util.TestingTWithCleanup) (*pc.Client, *httpapi.HttpApi) {
 	_, currentFilePath, _, _ := runtime.Caller(0)
 	dirpath := path.Dir(currentFilePath)
 
@@ -93,5 +95,10 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 		t.Errorf("max retries to connect with Powergate")
 		t.FailNow()
 	}
-	return powc
+
+	ia := util.MustParseAddr(ipfsAddr)
+	ipfs, err := httpapi.NewApi(ia)
+	require.NoError(t, err)
+
+	return powc, ipfs
 }

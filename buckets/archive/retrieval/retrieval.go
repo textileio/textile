@@ -220,6 +220,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	}
 	sc := ci.CidInfos[0].LatestPushedStorageConfig
 	sc.Hot.Enabled = true
+	sc.Hot.AllowUnfreeze = true
 	opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}
 	a, err := fr.pgc.StorageConfig.Apply(ctx, c.String(), opts...)
 	if err != nil {
@@ -431,6 +432,7 @@ func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 		}
 		sc := ci.CidInfos[0].LatestPushedStorageConfig
 		sc.Hot.Enabled = false
+		sc.Hot.AllowUnfreeze = false
 		opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}
 		_, err = fr.pgc.StorageConfig.Apply(ctx, r.Cid.String(), opts...)
 		if err != nil {

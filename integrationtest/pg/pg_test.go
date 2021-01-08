@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
+	"github.com/ipfs/interface-go-ipfs-core/options"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/textileio/go-threads/api/client"
@@ -34,7 +37,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateBucket(t *testing.T) {
-	powc := StartPowergate(t)
+	powc, _ := StartPowergate(t)
 	ctx, _, client, _, shutdown := setup(t)
 	defer shutdown()
 
@@ -54,7 +57,7 @@ func TestCreateBucket(t *testing.T) {
 
 func TestArchiveTracker(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		ctx, conf, client, repo, shutdown := setup(t)
 
 		// Create bucket with a file.
@@ -100,7 +103,7 @@ func TestArchiveTracker(t *testing.T) {
 
 func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		ctx, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -165,7 +168,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 func TestArchivesLs(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		ctx, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -232,7 +235,7 @@ func TestArchivesLs(t *testing.T) {
 
 func TestArchivesImport(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 
@@ -276,9 +279,9 @@ func TestArchivesImport(t *testing.T) {
 	})
 }
 
-func TestArchiveUnfreeze(t *testing.T) {
+func TestArchiveTrickUnfreeze(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, ipfsPow := StartPowergate(t)
 		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 
@@ -288,6 +291,12 @@ func TestArchiveUnfreeze(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, buck.Root.Key, "Data1.txt")
+
+		// <LOTUS-BUG-HACK>
+		ccid2, _ := cid.Decode(rootCid1)
+		err = ipfsPow.Pin().Add(context.Background(), path.IpldPath(ccid2))
+		// </LOTUS-BUG-HACK>
+
 		err = client.Archive(ctxAccount1, buck.Root.Key)
 		require.NoError(t, err)
 		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, buck.Root.Key), 2*time.Minute, 2*time.Second)
@@ -310,6 +319,153 @@ func TestArchiveUnfreeze(t *testing.T) {
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
 		require.NoError(t, err)
+
+		// Delete `ccid` from go-ipfs of Powergate, and go-ipfs of Hub.
+		// We need to do this to be sure that we're unfreezing from Filecoin,
+		// and not leveraging that the Cid is already in the 'network'.
+		// If people unfreeze archived data from the Hub, then most probably
+		// Powergate will leverage that the data is still available in the Hub.
+		// But in this test we want to *force* a real unfreeze.
+
+		ctx := context.Background()
+
+		// <LOTUS-BUG-HACK>
+		err = ipfsPow.Pin().Rm(context.Background(), path.IpldPath(ccid2), options.Pin.RmRecursive(true))
+		// </LOTUS-BUG-HACK>
+
+		err = ipfsPow.Dag().Remove(context.Background(), ccid)
+		require.NoError(t, err)
+
+		ipfsHub, err := httpapi.NewApi(conf.AddrIPFSAPI)
+		require.NoError(t, err)
+		err = ipfsHub.Pin().Rm(ctx, path.IpldPath(ccid), options.Pin.RmRecursive(true))
+		require.NoError(t, err)
+		err = ipfsHub.Dag().Remove(context.Background(), ccid)
+		require.NoError(t, err)
+
+		// Unfreeze to a bucket.
+		buck, err = client.Create(ctxAccount2, c.WithCid(ccid), c.WithUnfreeze(true))
+		require.NoError(t, err)
+
+		// Wait for the retrieval to finish.
+		var r *pb.ArchiveRetrievalLsItem
+		require.Eventually(t, func() bool {
+			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
+			require.NoError(t, err)
+			require.Len(t, rs.Archives, 1)
+			r = rs.Archives[0]
+
+			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)
+
+			return r.Status == pb.ArchiveRetrievalStatus_SUCCESS
+		}, 2*time.Minute, 2*time.Second)
+
+		// Check if what we got from Filecoin is the same file that
+		// account-1 saved in the archived bucket.
+		lr, err := client.List(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, lr.Roots, 1)
+
+		buf := bytes.NewBuffer(nil)
+		err = client.PullPath(ctxAccount2, lr.Roots[0].Key, "Data1.txt", buf)
+		require.NoError(t, err)
+		f, err := os.Open("testdata/Data1.txt")
+		require.NoError(t, err)
+		t.Cleanup(func() { f.Close() })
+		originalFile, err := ioutil.ReadAll(f)
+		require.NoError(t, err)
+		require.True(t, bytes.Equal(originalFile, buf.Bytes()))
+
+		// Assert there're things in the retrieval log.
+		ctxAccount2, cancel := context.WithCancel(ctxAccount2)
+		defer cancel()
+		ch := make(chan string, 100)
+		go func() {
+			err = client.ArchiveRetrievalLogs(ctxAccount2, r.Id, ch)
+			close(ch)
+		}()
+		count := 0
+		for s := range ch {
+			require.NotEmpty(t, s)
+			count++
+			if count > 4 {
+				cancel()
+			}
+		}
+		require.NoError(t, err)
+		require.Greater(t, count, 3)
+	})
+}
+
+func TestArchiveUnfreeze(t *testing.T) {
+	util.RunFlaky(t, func(t *util.FlakyT) {
+		_, ipfsPow := StartPowergate(t)
+		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
+		defer shutdown()
+
+		// Create an archive for account-1.
+		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
+		buck, err := client.Create(ctxAccount1)
+		require.NoError(t, err)
+		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
+		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, buck.Root.Key, "Data1.txt")
+
+		err = client.Archive(ctxAccount1, buck.Root.Key)
+		require.NoError(t, err)
+		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, buck.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := client.Archives(ctxAccount1, buck.Root.Key)
+		require.NoError(t, err)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
+		deal := res.Current.DealInfo[0]
+		ccid, err := cid.Decode(rootCid1)
+		require.NoError(t, err)
+
+		// Create account-2, and import the DealID
+		// created by account-1.
+		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
+
+		// Obvious assertion about no existing retrievals.
+		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, rs.Archives, 0)
+
+		// Import deal made by account-1.
+		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
+		require.NoError(t, err)
+
+		// Delete `ccid` from go-ipfs of Powergate, and go-ipfs of Hub.
+		// We need to do this to be sure that we're unfreezing from Filecoin,
+		// and not leveraging that the Cid is already in the 'network'.
+		//
+		// In the real world, if people unfreeze archived data from the Hub, then
+		// most probably Powergate will leverage that the data is still available
+		// in the Hub. But in this test we want to *force* a real unfreeze, we
+		// we'll delete now the archive bucket data from both go-ipfs nodes (Hub's
+		// and Powergate).
+		ctx := context.Background()
+
+		// Delete from Powergates go-ipfs node.
+		err = ipfsPow.Dag().Remove(context.Background(), ccid)
+		require.NoError(t, err)
+
+		// Delete the bucket data from Hub's go-ipfs, basically
+		// force deleting the bucket. This is to avoid that go-ipfs from
+		// Powergate finds the data since both are conneted.
+		// We have to do an extra .Pin().Rm() call since you can't
+		// simply remove pinned data without an error.
+		ipfsHub, err := httpapi.NewApi(conf.AddrIPFSAPI)
+		require.NoError(t, err)
+		err = ipfsHub.Pin().Rm(ctx, path.IpldPath(ccid), options.Pin.RmRecursive(true))
+		require.NoError(t, err)
+		err = ipfsHub.Dag().Remove(context.Background(), ccid)
+		require.NoError(t, err)
+
+		// At this point, the archived bucket data was remove from
+		// both go-ipfs nodes; so the only way to get this data back if it
+		// comes from the miners sector.
+		// This was verified anyway. If you change the code below to see
+		// Powergate logs, you can doble-check this is the case (since Powergate
+		// logs explain from where the data was retrieved).
 
 		// Unfreeze to a bucket.
 		buck, err = client.Create(ctxAccount2, c.WithCid(ccid), c.WithUnfreeze(true))
@@ -367,7 +523,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 
 func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		ctx, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -401,7 +557,7 @@ func TestArchiveWatch(t *testing.T) {
 
 func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_ = StartPowergate(t)
+		_, _ = StartPowergate(t)
 		ctx, _, client, _, shutdown := setup(t)
 		defer shutdown()
 

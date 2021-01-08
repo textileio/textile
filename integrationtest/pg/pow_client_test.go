@@ -17,7 +17,7 @@ import (
 )
 
 func TestPowClient(t *testing.T) {
-	_ = StartPowergate(t)
+	_, _ = StartPowergate(t)
 	ctx, _, client := setupPowClient(t)
 
 	t.Run("Addresses", func(t *testing.T) {
