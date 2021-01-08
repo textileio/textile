@@ -156,7 +156,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		// List archives.
 		as, err = client.ArchivesLs(ctx)
 		require.NoError(t, err)
-		require.Len(t, as.Archives, 1)
+		require.Len(t, as.Archives, 2)
 		require.Equal(t, rootCid2, as.Archives[0].Cid)
 		require.Len(t, as.Archives[0].Info, 1)
 		require.Equal(t, as.Archives[0].Info[0].DealId, deal2.DealId)
@@ -210,15 +210,23 @@ func TestArchivesLs(t *testing.T) {
 		sort.Slice(as.Archives, func(i, j int) bool {
 			return as.Archives[i].Cid < as.Archives[j].Cid
 		})
+		cids := []struct {
+			c      string
+			dealID uint64
+		}{
+			{c: rootCid1, dealID: deal1.DealId},
+			{c: rootCid2, dealID: deal2.DealId},
+		}
+		sort.Slice(cids, func(i, j int) bool {
+			return cids[i].c < cids[j].c
+		})
 
-		// Verify data is correct, notice that the order is flipped
-		// due to sort.Slice cids. That's fine.
-		require.Equal(t, rootCid2, as.Archives[0].Cid)
+		require.Equal(t, cids[0].c, as.Archives[0].Cid)
 		require.Len(t, as.Archives[0].Info, 1)
-		require.Equal(t, deal2.DealId, as.Archives[0].Info[0].DealId)
-		require.Equal(t, rootCid1, as.Archives[1].Cid)
+		require.Equal(t, cids[0].dealID, as.Archives[0].Info[0].DealId)
+		require.Equal(t, cids[1].c, as.Archives[1].Cid)
 		require.Len(t, as.Archives[1].Info, 1)
-		require.Equal(t, deal1.DealId, as.Archives[1].Info[0].DealId)
+		require.Equal(t, cids[1].dealID, as.Archives[1].Info[0].DealId)
 	})
 }
 
@@ -269,7 +277,6 @@ func TestArchivesImport(t *testing.T) {
 }
 
 func TestArchiveUnfreeze(t *testing.T) {
-	t.Skipf("TTODO API")
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_ = StartPowergate(t)
 		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
@@ -298,7 +305,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		// Obvious assertion about no existing retrievals.
 		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, len(rs.Archives), 0)
+		require.Len(t, rs.Archives, 0)
 
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
@@ -313,7 +320,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		require.Eventually(t, func() bool {
 			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
 			require.NoError(t, err)
-			require.Len(t, len(rs.Archives), 1)
+			require.Len(t, rs.Archives, 1)
 			r = rs.Archives[0]
 
 			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)

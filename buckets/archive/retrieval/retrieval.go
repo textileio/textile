@@ -209,6 +209,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 		return "", fmt.Errorf("getting latest storage-config: %s", err)
 	}
 	// Paranoid check to avoid panic. Shouldn't happen.
+	// TTODO: Wrong, it can happen. Fix.
 	if len(ci.CidInfos) != 1 {
 		return "", fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
 	}
@@ -473,6 +474,9 @@ func (fr *FilRetrieval) save(txn datastore.Txn, r Retrieval) error {
 func (fr *FilRetrieval) GetAllByAccount(accKey string) ([]Retrieval, error) {
 	q := query.Query{
 		Prefix: dsAccountKey(accKey).String(),
+	}
+	if fr == nil {
+		panic(1)
 	}
 	res, err := fr.ds.Query(q)
 	if err != nil {

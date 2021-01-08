@@ -181,29 +181,35 @@ func (at *ArchiveTracking) Reschedule(ctx context.Context, jid string, dur time.
 }
 
 func cast(ta *trackedJob) (*TrackedJob, error) {
-	bckCid, err := cid.Cast(ta.BucketRoot)
-	if err != nil {
-		return nil, fmt.Errorf("casting bucket root: %s", err)
+
+	tj := &TrackedJob{
+		JID:       ta.JID,
+		Type:      ta.Type,
+		DbID:      ta.DbID,
+		DbToken:   ta.DbToken,
+		BucketKey: ta.BucketKey,
+		ReadyAt:   ta.ReadyAt,
+		Cause:     ta.Cause,
+		Active:    ta.Active,
+		PowToken:  ta.PowToken,
+		AccKey:    ta.AccKey,
 	}
-	owner := &thread.Libp2pPubKey{}
-	err = owner.UnmarshalBinary(ta.Owner)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshaling public key: %s", err)
+
+	if ta.Type == TrackedJobTypeArchive {
+		var err error
+		tj.BucketRoot, err = cid.Cast(ta.BucketRoot)
+		if err != nil {
+			return nil, fmt.Errorf("casting bucket root: %s", err)
+		}
+		owner := &thread.Libp2pPubKey{}
+		err = owner.UnmarshalBinary(ta.Owner)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling public key: %s", err)
+		}
+		tj.Owner = owner
 	}
-	return &TrackedJob{
-		JID:        ta.JID,
-		Type:       ta.Type,
-		DbID:       ta.DbID,
-		DbToken:    ta.DbToken,
-		BucketKey:  ta.BucketKey,
-		BucketRoot: bckCid,
-		Owner:      owner,
-		ReadyAt:    ta.ReadyAt,
-		Cause:      ta.Cause,
-		Active:     ta.Active,
-		PowToken:   ta.PowToken,
-		AccKey:     ta.AccKey,
-	}, nil
+
+	return tj, nil
 }
 
 func castSlice(tas []*trackedJob) ([]*TrackedJob, error) {

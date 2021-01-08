@@ -261,7 +261,7 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 }
 
 // CreateBucket is a wrapper to enable creating a bucket from an internal method.
-// TODO: We should consider refactor createBucket code (and other related stuff) out of
+// TODO(**): We should consider refactor createBucket code (and other related stuff) out of
 // `Service`, since this logic is useful for other cases than serving APIs.
 func (s *Service) CreateBucket(ctx context.Context,
 	threadID thread.ID,

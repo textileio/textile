@@ -382,10 +382,6 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
-	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
-		Prefix: datastore.NewKey("buckets/filretrieval"),
-	})
-
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &bucketsd.Service{
 		Collections:               t.collections,
@@ -397,16 +393,21 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		PowergateClient:           t.pc,
 		PowergateAdminToken:       conf.PowergateAdminToken,
 		ArchiveTracker:            t.archiveTracker,
-		FilRetrieval:              t.filRetrieval,
 		Semaphores:                t.buckLocks,
 		MaxBucketSize:             conf.MaxBucketSize,
 		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
 	}
 
+	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
+		Prefix: datastore.NewKey("buckets/filretrieval"),
+	})
 	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, t.archiveTracker, jobFinalizedEvents)
 	if err != nil {
 		return nil, err
 	}
+	// We can avoid the chicken-egg-problem of below line in the future.
+	// For more info, see "TODO(**)" in buckd/service.go
+	bs.FilRetrieval = t.filRetrieval
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
