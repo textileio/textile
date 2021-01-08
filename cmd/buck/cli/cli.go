@@ -20,6 +20,13 @@ var bucks *local.Buckets
 
 var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
+type Format string
+
+const (
+	Default Format = "default"
+	JSON           = "json"
+)
+
 func init() {
 	uiprogress.Empty = ' '
 	uiprogress.Fill = '-'
@@ -79,7 +86,7 @@ func Init(baseCmd *cobra.Command) {
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
 	linksCmd.Flags().Bool("json", false, "Display URL links as json object")
-	linksCmd.Flags().String("format", "", "Display URL links in the provided format. Options: [json]")
+	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [json]")
 }
 
 func SetBucks(b *local.Buckets) {
@@ -213,11 +220,11 @@ var linksCmd = &cobra.Command{
 			format = "json"
 		}
 
-		printLinks(links, format)
+		printLinks(links, Format(format))
 	},
 }
 
-func printLinks(reply local.Links, format string) {
+func printLinks(reply local.Links, format Format) {
 	if format == "json" {
 		cmd.JSON(reply)
 	} else {
