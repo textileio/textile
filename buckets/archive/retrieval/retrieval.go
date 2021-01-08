@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/core/thread"
 	pow "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
