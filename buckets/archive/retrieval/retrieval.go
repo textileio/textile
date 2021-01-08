@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	pow "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/textile/v2/buckets/archive"
 )
 
 var (
@@ -37,7 +38,7 @@ type BucketCreator interface {
 // TrackerRegistrator manages retrieval Job tracking.
 type TrackerRetrievalRegistrator interface {
 	// TrackRetrieval tracks JobID job.
-	TrackRetrieval(ctx context.Context, jobID string, powToken string) error
+	TrackRetrieval(ctx context.Context, accKey, jobID, powToken string) error
 }
 
 type Status int
@@ -86,6 +87,7 @@ type FilRetrieval struct {
 	bc  BucketCreator
 	trr TrackerRetrievalRegistrator
 	pgc *powc.Client
+	jfe <-chan archive.JobFinalizedEvent
 
 	// daemon vars
 	daemonWork chan struct{}
@@ -100,6 +102,7 @@ func NewFilRetrieval(
 	pgc *powc.Client,
 	bc BucketCreator,
 	trr TrackerRetrievalRegistrator,
+	jfe <-chan archive.JobFinalizedEvent,
 ) (*FilRetrieval, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	fr := &FilRetrieval{
@@ -107,6 +110,7 @@ func NewFilRetrieval(
 		bc:  bc,
 		pgc: pgc,
 		trr: trr,
+		jfe: jfe,
 
 		ctx:        ctx,
 		cancel:     cancel,
@@ -135,7 +139,7 @@ func (fr *FilRetrieval) CreateForNewBucket(
 		return fmt.Errorf("account key can't be empty")
 	}
 
-	jobID, err := fr.createRetrieval(ctx, dataCid, powToken)
+	jobID, err := fr.createRetrieval(ctx, dataCid, accKey, powToken)
 	if err != nil {
 		return fmt.Errorf("creating retrieval in Powergate: %s", err)
 	}
@@ -162,7 +166,7 @@ func (fr *FilRetrieval) CreateForNewBucket(
 	return nil
 }
 
-func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken string) (string, error) {
+func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, powToken string) (string, error) {
 	// # Step 1.
 	// Check that we have imported DealIDs for that Cid. Fail fast mechanism.
 	ctx = context.WithValue(ctx, pow.AuthKey, powToken)
@@ -222,19 +226,19 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, powToken
 	// status in Tracker. When Tracker updates the Job status, it will call
 	// fr.UpdateRetrievalStatus, so the retrieval process can continue with
 	// further phases.
-	if err := fr.trr.TrackRetrieval(ctx, createdJobID, powToken); err != nil {
+	if err := fr.trr.TrackRetrieval(ctx, accKey, createdJobID, powToken); err != nil {
 		return "", fmt.Errorf("tracking retrieval job: %s", err)
 	}
 
 	return createdJobID, nil
 }
 
-// UpdateRetrievalStatus updates the status and continues with the process.
+// updateRetrievalStatus updates the status and continues with the process.
 // If `successful` is true, its status is changed to RetrievalStatusMoveToBucket,
 // and it continues with the process of copying the data to the bucket.
 // If `successful` is false, its status is changed to RetrievalStatusFailed and the
 // FailureCause is set to `failureCause`.
-func (fr *FilRetrieval) UpdateRetrievalStatus(accKey string, jobID string, success bool, failureCause string) {
+func (fr *FilRetrieval) updateRetrievalStatus(accKey string, jobID string, success bool, failureCause string) {
 	r, err := fr.GetByAccountAndID(accKey, jobID)
 	if err != nil {
 		// go-datastore is unavailable, which is a very rare-case.

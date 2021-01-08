@@ -1,4 +1,4 @@
-package archive
+package tracker
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	powc "github.com/textileio/powergate/api/client"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/common"
-	"github.com/textileio/textile/v2/buckets/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
 )
@@ -30,7 +30,7 @@ var (
 	// tracked jobs are queried.
 	CheckInterval = time.Second * 15
 
-	log = logger.Logger("pow-job-tracker")
+	log = logger.Logger("job-tracker")
 )
 
 // Tracker tracks Powergate jobs to their final status.
@@ -47,7 +47,7 @@ type Tracker struct {
 	colls           *mdb.Collections
 	buckets         *tdb.Buckets
 	pgClient        *powc.Client
-	filRetrieval    *retrieval.FilRetrieval
+	jfe             chan<- archive.JobFinalizedEvent
 
 	jobPollIntervalSlow time.Duration
 	jobPollIntervalFast time.Duration
@@ -61,7 +61,7 @@ func New(
 	internalSession string,
 	jobPollIntervalSlow time.Duration,
 	jobPollIntervalFast time.Duration,
-	filRetrieval *retrieval.FilRetrieval,
+	jfe chan<- archive.JobFinalizedEvent,
 ) (*Tracker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &Tracker{
@@ -73,7 +73,7 @@ func New(
 		colls:           colls,
 		buckets:         buckets,
 		pgClient:        pgClient,
-		filRetrieval:    filRetrieval,
+		jfe:             jfe,
 
 		jobPollIntervalSlow: jobPollIntervalSlow,
 		jobPollIntervalFast: jobPollIntervalFast,
@@ -281,7 +281,11 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 	}
 
 	if rescheduleDuration == 0 {
-		t.filRetrieval.UpdateRetrievalStatus(accKey, jid, success, message)
+		t.jfe <- archive.JobFinalizedEvent{
+			JobID:        jid,
+			Success:      success,
+			FailureCause: message,
+		}
 	}
 
 	return rescheduleDuration, message, nil

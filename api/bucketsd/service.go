@@ -35,8 +35,8 @@ import (
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
-	"github.com/textileio/textile/v2/buckets/archive"
-	"github.com/textileio/textile/v2/buckets/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/ipns"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
@@ -103,7 +103,7 @@ type Service struct {
 	IPNSManager               *ipns.Manager
 	PowergateClient           *pow.Client
 	PowergateAdminToken       string
-	ArchiveTracker            *archive.Tracker
+	ArchiveTracker            *tracker.Tracker
 	FilRetrieval              *retrieval.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketSize             int64

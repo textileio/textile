@@ -22,14 +22,14 @@ import (
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
-	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
 func TestMain(m *testing.M) {
-	archive.CheckInterval = time.Second * 5
+	tracker.CheckInterval = time.Second * 5
 	os.Exit(m.Run())
 }
 

@@ -44,7 +44,8 @@ import (
 	"github.com/textileio/textile/v2/api/usersd"
 	upb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/buckets/archive"
-	"github.com/textileio/textile/v2/buckets/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/dns"
 	"github.com/textileio/textile/v2/email"
 	"github.com/textileio/textile/v2/gateway"
@@ -137,7 +138,7 @@ type Textile struct {
 	bucks *tdb.Buckets
 	mail  *tdb.Mail
 
-	archiveTracker *archive.Tracker
+	archiveTracker *tracker.Tracker
 	filRetrieval   *retrieval.FilRetrieval
 	buckLocks      *nutil.SemaphorePool
 
@@ -208,11 +209,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":        logging.LevelDebug,
-			"hubapi":      logging.LevelDebug,
-			"bucketsapi":  logging.LevelDebug,
-			"usersapi":    logging.LevelDebug,
-			"pow-archive": logging.LevelDebug,
+			"core":          logging.LevelDebug,
+			"hubapi":        logging.LevelDebug,
+			"bucketsapi":    logging.LevelDebug,
+			"usersapi":      logging.LevelDebug,
+			"job-tracker":   logging.LevelDebug,
+			"fil-retrieval": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -364,6 +366,22 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
+	jobFinalizedEvents := make(chan archive.JobFinalizedEvent, 100)
+	if conf.Hub {
+		t.archiveTracker, err = tracker.New(
+			t.collections,
+			t.bucks,
+			t.pc,
+			t.internalHubSession,
+			conf.ArchiveJobPollIntervalSlow,
+			conf.ArchiveJobPollIntervalFast,
+			jobFinalizedEvents,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
 		Prefix: datastore.NewKey("buckets/filretrieval"),
 	})
@@ -385,24 +403,9 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
 	}
 
-	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, CYLCIC)
+	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, t.archiveTracker, jobFinalizedEvents)
 	if err != nil {
 		return nil, err
-	}
-
-	if conf.Hub {
-		t.archiveTracker, err = archive.New(
-			t.collections,
-			t.bucks,
-			t.pc,
-			t.internalHubSession,
-			conf.ArchiveJobPollIntervalSlow,
-			conf.ArchiveJobPollIntervalFast,
-			t.filRetrieval,
-		)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Start serving
