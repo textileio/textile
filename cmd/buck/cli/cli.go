@@ -78,8 +78,8 @@ func Init(baseCmd *cobra.Command) {
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
-	linksCmd.Flags().BoolP("json", "", false, "Display URL links as json object")
-	linksCmd.Flags().StringP("format", "", "", "Display URL links in the provided format. Options: [json]")
+	linksCmd.Flags().Bool("json", false, "Display URL links as json object")
+	linksCmd.Flags().String("format", "", "Display URL links in the provided format. Options: [json]")
 }
 
 func SetBucks(b *local.Buckets) {
