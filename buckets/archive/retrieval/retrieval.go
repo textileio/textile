@@ -23,6 +23,8 @@ var (
 
 	buckCreationTimeout         = time.Minute * 30
 	maxConcurrentBucketCreation = 10
+
+	CITest = false
 )
 
 // BucketCreator provides creating bucket functionality.
@@ -219,6 +221,9 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 		return "", fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
 	}
 	sc := ci.CidInfos[0].LatestPushedStorageConfig
+	if CITest {
+		sc.Hot.Ipfs.AddTimeout = 3
+	}
 	sc.Hot.Enabled = true
 	sc.Hot.AllowUnfreeze = true
 	opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}

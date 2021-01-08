@@ -25,6 +25,7 @@ import (
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
+	"github.com/textileio/textile/v2/buckets/archive/retrieval"
 	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/core"
 	"github.com/textileio/textile/v2/util"
@@ -32,6 +33,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	retrieval.CITest = true
 	tracker.CheckInterval = time.Second * 5
 	os.Exit(m.Run())
 }
