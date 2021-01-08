@@ -401,7 +401,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
 		Prefix: datastore.NewKey("buckets/filretrieval"),
 	})
-	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, t.archiveTracker, jobFinalizedEvents)
+	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
 	if err != nil {
 		return nil, err
 	}

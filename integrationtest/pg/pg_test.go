@@ -330,8 +330,12 @@ func TestArchiveUnfreeze(t *testing.T) {
 
 		// Check if what we got from Filecoin is the same file that
 		// account-1 saved in the archived bucket.
+		lr, err := client.List(ctxAccount2)
+		require.NoError(t, err)
+		require.Len(t, lr.Roots, 1)
+
 		buf := bytes.NewBuffer(nil)
-		err = client.PullPath(ctxAccount2, buck.Root.Key, "Data1.txt", buf)
+		err = client.PullPath(ctxAccount2, lr.Roots[0].Key, "Data1.txt", buf)
 		require.NoError(t, err)
 		f, err := os.Open("testdata/Data1.txt")
 		require.NoError(t, err)

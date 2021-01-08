@@ -175,7 +175,7 @@ func (t *Tracker) processTrackedJob(a *mdb.TrackedJob) error {
 	var finCause string
 	var err error
 	switch a.Type {
-	case mdb.TrackedJobTypeArchive:
+	case archive.TrackedJobTypeArchive:
 		// TODO: Unfortunately, we can't use a.PowToken to avoid
 		// this `t.colls.Accounts` boilerplate to get it. Mostly
 		// because a.PowToken was a field created when we implemented
@@ -212,7 +212,7 @@ func (t *Tracker) processTrackedJob(a *mdb.TrackedJob) error {
 			a.JID,
 			a.BucketRoot,
 		)
-	case mdb.TrackedJobTypeRetrieval:
+	case archive.TrackedJobTypeRetrieval:
 		ctx = context.WithValue(ctx, powc.AuthKey, a.PowToken)
 		rescheduleDuration, finCause, err = t.trackRetrievalProgress(ctx, a.AccKey, a.JID)
 	default:
@@ -283,6 +283,8 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 	if rescheduleDuration == 0 {
 		t.jfe <- archive.JobFinalizedEvent{
 			JobID:        jid,
+			Type:         archive.TrackedJobTypeRetrieval,
+			AccKey:       accKey,
 			Success:      success,
 			FailureCause: message,
 		}

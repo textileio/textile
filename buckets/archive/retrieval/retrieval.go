@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	pow "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets/archive"
 )
 
@@ -83,11 +84,12 @@ type Retrieval struct {
 // FilRetrieval manages Retrievals from Accounts in
 // go-datastore.
 type FilRetrieval struct {
-	ds  datastore.TxnDatastore
-	bc  BucketCreator
-	trr TrackerRetrievalRegistrator
-	pgc *powc.Client
-	jfe <-chan archive.JobFinalizedEvent
+	ds              datastore.TxnDatastore
+	bc              BucketCreator
+	trr             TrackerRetrievalRegistrator
+	pgc             *powc.Client
+	jfe             <-chan archive.JobFinalizedEvent
+	internalSession string
 
 	// daemon vars
 	daemonWork chan struct{}
@@ -103,6 +105,7 @@ func NewFilRetrieval(
 	bc BucketCreator,
 	trr TrackerRetrievalRegistrator,
 	jfe <-chan archive.JobFinalizedEvent,
+	is string,
 ) (*FilRetrieval, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	fr := &FilRetrieval{
@@ -111,6 +114,8 @@ func NewFilRetrieval(
 		pgc: pgc,
 		trr: trr,
 		jfe: jfe,
+
+		internalSession: is,
 
 		ctx:        ctx,
 		cancel:     cancel,
@@ -318,13 +323,16 @@ func (fr *FilRetrieval) Close() error {
 
 func (fr *FilRetrieval) daemon() {
 	defer func() { close(fr.closedChan) }()
+
+	fr.daemonWork <- struct{}{} // Force first run.
 	for {
 		select {
 		case <-fr.ctx.Done():
 			return
 		case <-fr.daemonWork:
-		case <-time.After(time.Minute * 30):
 			fr.processQueuedMoveToBucket()
+		case ju := <-fr.jfe:
+			fr.updateRetrievalStatus(ju.AccKey, ju.JobID, ju.Success, ju.FailureCause)
 		}
 	}
 }
@@ -405,6 +413,7 @@ func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 		// Create the bucket.
 		ctx, cancel := context.WithTimeout(context.Background(), buckCreationTimeout)
 		defer cancel()
+		ctx = common.NewSessionContext(ctx, fr.internalSession)
 		if err := fr.bc.CreateBucket(ctx, r.DbID, r.DbToken, r.Name, r.Private, r.Cid); err != nil {
 			return fmt.Errorf("creating bucket: %s", err)
 		}
@@ -563,13 +572,13 @@ func dsAccountAndIDKey(accKey, jobID string) datastore.Key {
 
 func dsMoveToBucketQueueBaseKey() datastore.Key {
 	key := datastore.NewKey("movetobucket")
-	key = key.ChildString(strconv.FormatInt(time.Now().Unix(), 10))
 	return key
 }
 
 func dsMoveToBucketQueueKey(accKey, jobID string) datastore.Key {
 	key := dsMoveToBucketQueueBaseKey()
-	key.ChildString(accKey)
+	key = key.ChildString(strconv.FormatInt(time.Now().Unix(), 10))
+	key = key.ChildString(accKey)
 	key = key.ChildString(jobID)
 	return key
 }

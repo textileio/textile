@@ -7,21 +7,15 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/textile/v2/buckets/archive"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type TrackedJobType int
-
-const (
-	TrackedJobTypeArchive TrackedJobType = iota
-	TrackedJobTypeRetrieval
-)
-
 type TrackedJob struct {
 	JID     string
-	Type    TrackedJobType
+	Type    archive.TrackedJobType
 	ReadyAt time.Time
 	Cause   string
 	Active  bool
@@ -41,11 +35,11 @@ type TrackedJob struct {
 // trackedJob is an internal representation for storage.
 // Any field modifications should be reflected in the cast() func.
 type trackedJob struct {
-	JID     string         `bson:"_id"`
-	Type    TrackedJobType `bson:"type"`
-	ReadyAt time.Time      `bson:"ready_at"`
-	Cause   string         `bson:"cause"`
-	Active  bool           `bson:"active"`
+	JID     string                 `bson:"_id"`
+	Type    archive.TrackedJobType `bson:"type"`
+	ReadyAt time.Time              `bson:"ready_at"`
+	Cause   string                 `bson:"cause"`
+	Active  bool                   `bson:"active"`
 
 	// Set by TrackedJobTypeArchive type.
 	DbID       thread.ID    `bson:"db_id"`
@@ -76,7 +70,7 @@ func (at *ArchiveTracking) CreateArchive(ctx context.Context, dbID thread.ID, db
 		return fmt.Errorf("marshaling owner to bytes: %v", err)
 	}
 	newTA := trackedJob{
-		Type:       TrackedJobTypeArchive,
+		Type:       archive.TrackedJobTypeArchive,
 		JID:        jid,
 		DbID:       dbID,
 		DbToken:    dbToken,
@@ -96,8 +90,9 @@ func (at *ArchiveTracking) CreateArchive(ctx context.Context, dbID thread.ID, db
 
 func (at *ArchiveTracking) CreateRetrieval(ctx context.Context, accKey, jobID, powToken string) error {
 	newTA := trackedJob{
-		Type:     TrackedJobTypeRetrieval,
+		Type:     archive.TrackedJobTypeRetrieval,
 		JID:      jobID,
+		AccKey:   accKey,
 		PowToken: powToken,
 		ReadyAt:  time.Now(),
 		Cause:    "",
@@ -181,7 +176,6 @@ func (at *ArchiveTracking) Reschedule(ctx context.Context, jid string, dur time.
 }
 
 func cast(ta *trackedJob) (*TrackedJob, error) {
-
 	tj := &TrackedJob{
 		JID:       ta.JID,
 		Type:      ta.Type,
@@ -195,12 +189,14 @@ func cast(ta *trackedJob) (*TrackedJob, error) {
 		AccKey:    ta.AccKey,
 	}
 
-	if ta.Type == TrackedJobTypeArchive {
-		var err error
+	var err error
+	if len(ta.BucketRoot) > 0 {
 		tj.BucketRoot, err = cid.Cast(ta.BucketRoot)
 		if err != nil {
 			return nil, fmt.Errorf("casting bucket root: %s", err)
 		}
+	}
+	if len(ta.Owner) > 0 {
 		owner := &thread.Libp2pPubKey{}
 		err = owner.UnmarshalBinary(ta.Owner)
 		if err != nil {
