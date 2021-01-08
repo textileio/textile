@@ -15,54 +15,65 @@ type Event int
 
 const (
 	SignIn Event = iota
-	AccountKeyCreated
-	UserGroupKeyCreated
-	MailboxCreated
+	AccountDestroyed
+	KeyAccountCreated
+	KeyUserGroupCreated
 	OrgCreated
 	OrgLeave
-	OrgRemoved
-	InviteCreated
+	OrgDestroyed
+	OrgInviteCreated
 	GracePeriodStart
 	GracePeriodEnd
 	BillingSetup
-	AccountDestroyed
+	BucketCreated
+	BucketArchiveCreated
+	MailboxCreated
+	ThreadDbCreated
 )
 
 func (e Event) String() string {
 	switch e {
 	case SignIn:
 		return "signin"
-	case AccountKeyCreated:
+	case AccountDestroyed:
+		return "account_destroyed"
+	case KeyAccountCreated:
 		return "account_key_created"
-	case UserGroupKeyCreated:
+	case KeyUserGroupCreated:
 		return "user_group_key_created"
-	case MailboxCreated:
-		return "mailbox_created"
 	case OrgCreated:
 		return "org_created"
 	case OrgLeave:
 		return "org_leave"
-	case OrgRemoved:
-		return "org_removed"
+	case OrgDestroyed:
+		return "org_destroyed"
+	case OrgInviteCreated:
+		return "org_invite_created"
 	case GracePeriodStart:
 		return "grace_period_start"
 	case GracePeriodEnd:
 		return "grace_period_end"
 	case BillingSetup:
 		return "billing_setup"
-	case AccountDestroyed:
-		return "account_destroyed"
+	case BucketCreated:
+		return "bucket_created"
+	case BucketArchiveCreated:
+		return "bucket_archive_created"
+	case MailboxCreated:
+		return "mailbox_created"
+	case ThreadDbCreated:
+		return "threaddb_created"
 	default:
 		return fmt.Sprintf("%d", int(e))
 	}
 }
 
-// GetCorrespondingTrait returns nil or a bool trait that can be set on the profile
+// GetCorrespondingTrait returns nil or a bool trait that should be set on the profile
 func (e Event) GetCorrespondingTrait() *Trait {
 	switch e {
-	case AccountDestroyed, AccountKeyCreated, BillingSetup, UserGroupKeyCreated, MailboxCreated, OrgCreated, OrgRemoved:
+	case AccountDestroyed:
 		return &Trait{
-			name:  e.String(),
+			name:  "destroyed",
 			value: true,
 		}
 	case GracePeriodStart:

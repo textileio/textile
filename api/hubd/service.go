@@ -185,7 +185,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, map[string]string{})
+		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, map[string]string{})
 	}
 
 	return &pb.SigninResponse{
@@ -314,10 +314,11 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	}
 	if s.BillingClient != nil {
 		// Same "member" based payload for Dev or Org account types so that same downstream logic/templating can be used.
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, event, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, event, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
+			"secure_key":      fmt.Sprintf("%t", req.Secure),
 		})
 	}
 
@@ -427,7 +428,15 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.User.Key, account.User.Type, true, analytics.OrgCreated, map[string]string{
+		// Identify the Org
+		s.BillingClient.Identify(ctx, org.Key, org.Type, true, account.User.Email, map[string]string{
+			"username":            org.Username,
+			"created_by":          account.User.Key.String(),
+			"created_by_username": account.User.Username,
+			"created_by_email":    account.User.Email,
+		})
+		// Attribute event to Dev
+		s.BillingClient.TrackEvent(ctx, account.User.Key, account.User.Type, true, analytics.OrgCreated, map[string]string{
 			"org_name": org.Name,
 			"org_key":  org.Key.String(),
 		})
@@ -534,7 +543,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgRemoved, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgRemoved, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
@@ -573,7 +582,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.InviteCreated, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgInviteCreated, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
@@ -605,7 +614,7 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgLeave, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgLeave, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
@@ -634,7 +643,7 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	}
 
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BillingSetup, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BillingSetup, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
@@ -721,7 +730,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 		return nil, err
 	}
 	if s.BillingClient != nil {
-		go s.BillingClient.CustomerEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, map[string]string{})
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, map[string]string{})
 	}
 
 	return &pb.DestroyAccountResponse{}, nil

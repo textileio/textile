@@ -170,8 +170,27 @@ func (c *Client) ReportCustomerUsage(ctx context.Context, key thread.PubKey) err
 	return err
 }
 
-// CustomerEvent records a new event
-func (c *Client) CustomerEvent(
+// Identify creates or updates the user traits
+func (c *Client) Identify(
+	ctx context.Context,
+	key thread.PubKey,
+	accountType mdb.AccountType,
+	active bool,
+	email string,
+	properties map[string]string,
+) error {
+	_, err := c.c.Identify(ctx, &pb.IdentifyRequest{
+		Key:         key.String(),
+		AccountType: int32(accountType),
+		Active:      active,
+		Email:       email,
+		Properties:  properties,
+	})
+	return err
+}
+
+// TrackEvent records a new event
+func (c *Client) TrackEvent(
 	ctx context.Context,
 	key thread.PubKey,
 	accountType mdb.AccountType,
@@ -179,7 +198,7 @@ func (c *Client) CustomerEvent(
 	event analytics.Event,
 	properties map[string]string,
 ) error {
-	_, err := c.c.CustomerEvent(ctx, &pb.CustomerEventRequest{
+	_, err := c.c.TrackEvent(ctx, &pb.TrackEventRequest{
 		Key:         key.String(),
 		AccountType: int32(accountType),
 		Active:      active,

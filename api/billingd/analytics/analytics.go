@@ -39,19 +39,19 @@ func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
 	return client, err
 }
 
-// CreateOrUpdate updates the user traits
-func (c *Client) CreateOrUpdate(userID string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) {
+// Identify creates or updates the user traits
+func (c *Client) Identify(userID string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) error {
 	if c.api != nil && accountType != mdb.User {
 		traits := segment.NewTraits()
+		traits.Set("account_type", accountType)
+		traits.Set(c.prefix+"signup", "true")
 		if email != "" {
 			traits.SetEmail(email)
 		}
 		for key, value := range properties {
 			traits.Set(key, value)
 		}
-		traits.Set("account_type", accountType)
-		traits.Set(c.prefix+"signup", "true")
-		if err := c.api.Enqueue(segment.Identify{
+		return c.api.Enqueue(segment.Identify{
 			UserId: userID,
 			Traits: traits,
 			Context: &segment.Context{
@@ -59,17 +59,15 @@ func (c *Client) CreateOrUpdate(userID string, accountType mdb.AccountType, acti
 					"active": active,
 				},
 			},
-		}); err != nil {
-			log.Error("segmenting new customer: %v", err)
-		}
+		})
 	}
+	return nil
 }
 
-// NewEvent logs a new event
-func (c *Client) NewEvent(userID string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
-	if c.api != nil {
+// TrackEvent logs a new event
+func (c *Client) TrackEvent(userID string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
+	if c.api != nil && accountType != mdb.User {
 		props := segment.NewProperties()
-		// todo: properties map[string]interface{}
 		for key, value := range properties {
 			props.Set(key, value)
 		}
@@ -90,7 +88,7 @@ func (c *Client) NewEvent(userID string, accountType mdb.AccountType, active boo
 
 		trait := event.GetCorrespondingTrait()
 		if trait != nil {
-			c.CreateOrUpdate(userID, accountType, false, "", map[string]interface{}{
+			c.Identify(userID, accountType, false, "", map[string]interface{}{
 				trait.name: trait.value,
 			})
 		}

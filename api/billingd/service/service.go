@@ -505,7 +505,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.CreateOrUpdate(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
+	go s.analytics.Identify(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
 		"parent_key":  doc.ParentKey,
 		"customer_id": doc.CustomerID,
 		"username":    params.Username,
@@ -994,13 +994,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.NewEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, map[string]string{})
+			go s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, map[string]string{})
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.NewEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, map[string]string{})
+			go s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, map[string]string{})
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -1075,7 +1075,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
 	}
-	go s.analytics.CreateOrUpdate(cus.Key, cus.AccountType, false, "", summary)
+	go s.analytics.Identify(cus.Key, cus.AccountType, false, "", summary)
 	return nil
 }
 
@@ -1108,21 +1108,42 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 	return nil
 }
 
-// CustomerEvent records a new event
-func (s *Service) CustomerEvent(
+// Identify creates or updates the user traits
+func (s *Service) Identify(
 	ctx context.Context,
-	req *pb.CustomerEventRequest,
-) (*pb.CustomerEventResponse, error) {
-	err := s.analytics.NewEvent(
+	req *pb.IdentifyRequest,
+) (*pb.IdentifyResponse, error) {
+	props := map[string]interface{}{}
+	for k, v := range req.Properties {
+		props[k] = v
+	}
+	err := s.analytics.Identify(
+		req.Key,
+		mdb.AccountType(req.AccountType),
+		req.Active,
+		req.Email,
+		props,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.IdentifyResponse{}, nil
+}
+
+// TrackEvent records a new event
+func (s *Service) TrackEvent(
+	ctx context.Context,
+	req *pb.TrackEventRequest,
+) (*pb.TrackEventResponse, error) {
+	err := s.analytics.TrackEvent(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
 		analytics.Event(req.Event),
 		req.Properties,
-		// map[string]interface{}{}, // todo: correct
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.CustomerEventResponse{}, nil
+	return &pb.TrackEventResponse{}, nil
 }

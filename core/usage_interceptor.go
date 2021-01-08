@@ -10,6 +10,7 @@ import (
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/pb"
@@ -235,6 +236,30 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 			return err
 		}
 	}
+
+	if t.bc != nil {
+		switch method {
+		case "/api.bucketsd.pb.APIService/Create":
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketCreated, map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			})
+		case "/api.bucketsd.pb.APIService/Archive":
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketArchiveCreated, map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			})
+		case "/threads.pb.API/NewDB":
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.ThreadDbCreated, map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			})
+		}
+	}
+
 	return nil
 }
 
