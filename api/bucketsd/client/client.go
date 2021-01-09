@@ -103,106 +103,152 @@ func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid
 	})
 }
 
-type pushPathResult struct {
-	path path.Resolved
-	root path.Resolved
-	err  error
+// Push describes a single file for pushing.
+type Push struct {
+	Path   string
+	Reader io.Reader
+}
+
+// PushResult contains the result of a Push.
+type PushResult struct {
+	Path path.Resolved
+	Root path.Resolved
+	Err  error
 }
 
 // PushPath pushes a file to a bucket path.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Resolved, err error) {
+func (c *Client) PushPath(
+	ctx context.Context,
+	key string,
+	pushes <-chan Push,
+	opts ...Option,
+) (<-chan PushResult, error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	if args.progress != nil {
-		defer close(args.progress)
-	}
 
 	stream, err := c.c.PushPath(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var xr string
 	if args.root != nil {
 		xr = args.root.String()
 	}
-	if err = stream.Send(&pb.PushPathRequest{
+
+	if err := stream.Send(&pb.PushPathRequest{
 		Payload: &pb.PushPathRequest_Header_{
 			Header: &pb.PushPathRequest_Header{
 				Key:  key,
-				Path: filepath.ToSlash(pth),
 				Root: xr,
 			},
 		},
 	}); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	waitCh := make(chan pushPathResult)
+	resCh := make(chan PushResult)
+	end := func(err error) {
+		e := stream.CloseSend()
+		if err == nil {
+			err = e
+		}
+		if err != nil {
+			resCh <- PushResult{Err: err}
+		}
+		if args.progress != nil {
+			close(args.progress)
+		}
+	}
+
 	go func() {
-		defer close(waitCh)
 		for {
-			rep, err := stream.Recv()
-			if err == io.EOF {
-				return
-			} else if err != nil {
-				waitCh <- pushPathResult{err: err}
-				return
-			}
-			if rep.Event.Path != "" {
-				id, err := cid.Parse(rep.Event.Path)
-				if err != nil {
-					waitCh <- pushPathResult{err: err}
+			select {
+			case push, ok := <-pushes:
+				if !ok {
+					err := stream.Send(&pb.PushPathRequest{
+						Payload: &pb.PushPathRequest_Footer_{
+							Footer: &pb.PushPathRequest_Footer{},
+						},
+					})
+					end(err)
 					return
 				}
-				r, err := util.NewResolvedPath(rep.Event.Root.Path)
-				if err != nil {
-					waitCh <- pushPathResult{err: err}
-					return
+
+				waitCh := make(chan PushResult)
+				go func() {
+					defer close(waitCh)
+					for {
+						rep, err := stream.Recv()
+						if err == io.EOF {
+							return
+						} else if err != nil {
+							waitCh <- PushResult{Err: err}
+							return
+						}
+						if rep.Event.Path != "" {
+							id, err := cid.Parse(rep.Event.Path)
+							if err != nil {
+								waitCh <- PushResult{Err: err}
+								return
+							}
+							r, err := util.NewResolvedPath(rep.Event.Root.Path)
+							if err != nil {
+								waitCh <- PushResult{Err: err}
+								return
+							}
+							waitCh <- PushResult{
+								Path: path.IpfsPath(id),
+								Root: r,
+							}
+						} else if args.progress != nil {
+							args.progress <- rep.Event.Bytes
+						}
+					}
+				}()
+
+				buf := make([]byte, chunkSize)
+				for {
+					n, err := push.Reader.Read(buf)
+					if n > 0 {
+						if err := stream.Send(&pb.PushPathRequest{
+							Payload: &pb.PushPathRequest_Chunk_{
+								Chunk: &pb.PushPathRequest_Chunk{
+									Path: filepath.ToSlash(push.Path),
+									Data: buf[:n],
+								},
+							},
+						}); err != nil {
+							end(err)
+							return
+						}
+					} else if err == io.EOF {
+						if err := stream.Send(&pb.PushPathRequest{
+							Payload: &pb.PushPathRequest_Chunk_{
+								Chunk: &pb.PushPathRequest_Chunk{
+									Path: filepath.ToSlash(push.Path),
+								},
+							},
+						}); err != nil {
+							end(err)
+							return
+						}
+						break
+					} else if err != nil {
+						end(err)
+						return
+					}
 				}
-				waitCh <- pushPathResult{
-					path: path.IpfsPath(id),
-					root: r,
-				}
-			} else if args.progress != nil {
-				args.progress <- rep.Event.Bytes
+
+				res := <-waitCh
+				resCh <- res
 			}
 		}
 	}()
 
-	end := func(err error) error {
-		if err := stream.CloseSend(); err != nil {
-			return err
-		}
-		return err
-	}
-
-	buf := make([]byte, chunkSize)
-	for {
-		n, err := reader.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&pb.PushPathRequest{
-				Payload: &pb.PushPathRequest_Chunk{
-					Chunk: buf[:n],
-				},
-			}); err == io.EOF {
-				break
-			} else if err != nil {
-				return nil, nil, end(err)
-			}
-		} else if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, nil, end(err)
-		}
-	}
-	if err := end(nil); err != nil {
-		return nil, nil, err
-	}
-	res := <-waitCh
-	return res.path, res.root, res.err
+	return resCh, nil
 }
 
 // PullPath pulls the bucket path, writing it to writer if it's a file.

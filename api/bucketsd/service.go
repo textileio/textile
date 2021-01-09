@@ -203,7 +203,7 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		var err error
 		bootCid, err = cid.Decode(req.BootstrapCid)
 		if err != nil {
-			return nil, fmt.Errorf("invalid bootstrap cid: %s", err)
+			return nil, fmt.Errorf("invalid bootstrap cid: %v", err)
 		}
 	}
 	ctx, buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, req.Private, bootCid)
@@ -283,12 +283,12 @@ func (s *Service) createBucket(
 	if bootCid.Defined() {
 		ctx, buckPath, err = s.createBootstrappedPath(ctx, "", seed, bootCid, linkKey, fileKey)
 		if err != nil {
-			return ctx, nil, nil, fmt.Errorf("creating prepared bucket: %s", err)
+			return ctx, nil, nil, fmt.Errorf("creating prepared bucket: %v", err)
 		}
 	} else {
 		ctx, buckPath, err = s.createPristinePath(ctx, seed, linkKey)
 		if err != nil {
-			return ctx, nil, nil, fmt.Errorf("creating pristine bucket: %s", err)
+			return ctx, nil, nil, fmt.Errorf("creating pristine bucket: %v", err)
 		}
 	}
 
@@ -394,7 +394,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 	for _, n := range nodes {
 		s, err := n.Stat()
 		if err != nil {
-			return ctx, fmt.Errorf("getting size of node: %s", err)
+			return ctx, fmt.Errorf("getting size of node: %v", err)
 		}
 		totalAddedSize += int64(s.CumulativeSize)
 	}
@@ -406,7 +406,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 	}
 
 	if err := s.IPFSClient.Dag().Pinning().AddMany(ctx, nodes); err != nil {
-		return ctx, fmt.Errorf("pinning set of nodes: %s", err)
+		return ctx, fmt.Errorf("pinning set of nodes: %v", err)
 	}
 	return s.addPinnedBytes(ctx, totalAddedSize), nil
 }
@@ -445,7 +445,7 @@ func (s *Service) createBootstrappedPath(
 	pth := path.IpfsPath(bootCid)
 	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
 	if err != nil {
-		return ctx, nil, fmt.Errorf("resolving boot cid node: %s", err)
+		return ctx, nil, fmt.Errorf("resolving boot cid node: %v", err)
 	}
 
 	// Check context owner's storage allowance
@@ -897,7 +897,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	destPath := cleanPath(req.Path)
 	bootCid, err := cid.Decode(req.Cid)
 	if err != nil {
-		return nil, fmt.Errorf("invalid remote cid: %s", err)
+		return nil, fmt.Errorf("invalid remote cid: %v", err)
 	}
 
 	lck := s.Semaphores.Get(buckLock(req.Key))
@@ -906,7 +906,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 
 	buck := &tdb.Bucket{}
 	if err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("get bucket: %s", err)
+		return nil, fmt.Errorf("get bucket: %v", err)
 	}
 
 	buck.UpdatedAt = time.Now().UnixNano()
@@ -956,25 +956,25 @@ func (s *Service) setPathFromExistingCid(
 	if destPath == "" {
 		sn, err := makeSeed(fileKey)
 		if err != nil {
-			return ctx, nil, fmt.Errorf("generating new seed: %s", err)
+			return ctx, nil, fmt.Errorf("generating new seed: %v", err)
 		}
 		ctx, dirPath, err = s.createBootstrappedPath(ctx, destPath, sn, bootCid, linkKey, fileKey)
 		if err != nil {
-			return ctx, nil, fmt.Errorf("generating bucket new root: %s", err)
+			return ctx, nil, fmt.Errorf("generating bucket new root: %v", err)
 		}
 		if buck.IsPrivate() {
 			buckPathResolved, err := s.IPFSClient.ResolvePath(ctx, buckPath)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("resolving path: %s", err)
+				return ctx, nil, fmt.Errorf("resolving path: %v", err)
 			}
 			ctx, err = s.unpinNodeAndBranch(ctx, buckPathResolved, linkKey)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("unpinning pinned root: %s", err)
+				return ctx, nil, fmt.Errorf("unpinning pinned root: %v", err)
 			}
 		} else {
 			ctx, err = s.unpinPath(ctx, buckPath)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("updating pinned root: %s", err)
+				return ctx, nil, fmt.Errorf("updating pinned root: %v", err)
 			}
 		}
 	} else {
@@ -982,11 +982,11 @@ func (s *Service) setPathFromExistingCid(
 		if buck.IsPrivate() {
 			n, nodes, err := s.newDirFromExistingPath(ctx, bootPath, destPath, linkKey, fileKey, nil, "")
 			if err != nil {
-				return ctx, nil, fmt.Errorf("resolving remote path: %s", err)
+				return ctx, nil, fmt.Errorf("resolving remote path: %v", err)
 			}
 			ctx, dirPath, err = s.insertNodeAtPath(ctx, n, path.Join(buckPath, destPath), linkKey)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("updating pinned root: %s", err)
+				return ctx, nil, fmt.Errorf("updating pinned root: %v", err)
 			}
 			ctx, err = s.addAndPinNodes(ctx, nodes)
 			if err != nil {
@@ -1002,11 +1002,11 @@ func (s *Service) setPathFromExistingCid(
 				options.Object.Create(true),
 			)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("adding folder: %s", err)
+				return ctx, nil, fmt.Errorf("adding folder: %v", err)
 			}
 			ctx, err = s.updateOrAddPin(ctx, buckPath, dirPath)
 			if err != nil {
-				return ctx, nil, fmt.Errorf("updating pinned root: %s", err)
+				return ctx, nil, fmt.Errorf("updating pinned root: %v", err)
 			}
 		}
 	}
@@ -1020,7 +1020,7 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Contex
 	}
 	stat, err := s.IPFSClient.Object().Stat(ctx, path)
 	if err != nil {
-		return ctx, fmt.Errorf("getting size of removed node: %s", err)
+		return ctx, fmt.Errorf("getting size of removed node: %v", err)
 	}
 	return s.addPinnedBytes(ctx, int64(-stat.CumulativeSize)), nil
 }
@@ -1288,113 +1288,60 @@ func (s *Service) pathToPb(
 	}, nil
 }
 
-func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
-	log.Debugf("received push path request")
+type fileAdder struct {
+	reader io.ReadCloser
+	writer io.WriteCloser
+}
 
-	dbID, ok := common.ThreadIDFromContext(server.Context())
-	if !ok {
-		return errDBRequired
-	}
-	dbToken, _ := thread.TokenFromContext(server.Context())
+type addedFile struct {
+	path     string
+	resolved path.Resolved
+	size     string
+	err      error
+}
 
-	storageAvailable := int64(math.MaxInt64)
-	owner, ok := buckets.BucketOwnerFromContext(server.Context())
+type fileQueue struct {
+	q    map[string]*fileAdder
+	lock sync.Mutex
+}
+
+func newFileQueue() *fileQueue {
+	return &fileQueue{q: make(map[string]*fileAdder)}
+}
+
+func (q *fileQueue) add(
+	server pb.APIService_PushPathServer,
+	ufs iface.UnixfsAPI,
+	pth string,
+	addFunc func(string) ([]byte, error),
+	doneCh chan<- addedFile,
+) (*fileAdder, error) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	fa, ok := q.q[pth]
 	if ok {
-		storageAvailable = owner.StorageAvailable
+		return fa, nil
 	}
 
-	req, err := server.Recv()
+	ppth, err := parsePath(pth)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("parsing path: %v", err)
 	}
-	var buckKey, headerPath, root string
-	switch payload := req.Payload.(type) {
-	case *pb.PushPathRequest_Header_:
-		buckKey = payload.Header.Key
-		headerPath = payload.Header.Path
-		root = payload.Header.Root
-	default:
-		return fmt.Errorf("push bucket path header is required")
-	}
-	filePath, err := parsePath(headerPath)
+
+	key, err := addFunc(ppth)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	lck := s.Semaphores.Get(buckLock(buckKey))
-	lck.Acquire()
-	defer lck.Release()
-
-	buck := &tdb.Bucket{}
-	err = s.Buckets.GetSafe(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
-	if err != nil {
-		return err
-	}
-	if root != "" && root != buck.Path {
-		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
-	}
-
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.SetMetadataAtPath(filePath, tdb.Metadata{
-		UpdatedAt: buck.UpdatedAt,
-	})
-	buck.UnsetMetadataWithPrefix(filePath + "/")
-
-	if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return err
-	}
-
-	fileKey, err := buck.GetFileEncryptionKeyForPath(filePath)
-	if err != nil {
-		return err
-	}
-
-	buckPath := path.New(buck.Path)
-	stat, err := s.IPFSClient.Object().Stat(server.Context(), buckPath)
-	if err != nil {
-		return fmt.Errorf("get stat of current bucket: %s", err)
-	}
 	reader, writer := io.Pipe()
-	var writerErr error
-	assignErr := func(err error) {
-		writerErr = err
-		_ = writer.CloseWithError(err)
+	fa = &fileAdder{
+		reader: reader,
+		writer: writer,
 	}
-	go func() {
-		cummSize := int64(stat.CumulativeSize)
-		for {
-			req, err := server.Recv()
-			if err == io.EOF {
-				_ = writer.Close()
-				return
-			} else if err != nil {
-				assignErr(fmt.Errorf("error on receive: %v", err))
-				return
-			}
-			switch payload := req.Payload.(type) {
-			case *pb.PushPathRequest_Chunk:
-				n, err := writer.Write(payload.Chunk)
-				if err != nil {
-					assignErr(fmt.Errorf("error writing chunk: %v", err))
-					return
-				}
-				cummSize += int64(n)
-				if s.MaxBucketSize > 0 && cummSize > s.MaxBucketSize {
-					assignErr(ErrMaxBucketSizeExceeded)
-					return
-				} else if storageAvailable > 0 && cummSize > storageAvailable {
-					assignErr(ErrStorageQuotaExhausted)
-					return
-				}
-			default:
-				assignErr(fmt.Errorf("invalid request"))
-				return
-			}
-		}
-	}()
+	q.q[ppth] = fa
 
 	eventCh := make(chan interface{})
-	defer close(eventCh)
 	chSize := make(chan string)
 	go func() {
 		for e := range eventCh {
@@ -1419,82 +1366,256 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
 	}()
 
 	var r io.Reader
-	if fileKey != nil {
-		r, err = dcrypto.NewEncrypter(reader, fileKey)
+	if key != nil {
+		r, err = dcrypto.NewEncrypter(reader, key)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("creating decrypter: %v", err)
 		}
 	} else {
 		r = reader
 	}
-	newPath, err := s.IPFSClient.Unixfs().Add(
-		server.Context(),
-		ipfsfiles.NewReaderFile(r),
-		options.Unixfs.CidVersion(1),
-		options.Unixfs.Pin(false),
-		options.Unixfs.Progress(true),
-		options.Unixfs.Events(eventCh),
-	)
-	if writerErr != nil {
-		return writerErr
-	}
-	if err != nil {
-		return err
-	}
-	fn, err := s.IPFSClient.ResolveNode(server.Context(), newPath)
-	if err != nil {
-		return err
-	}
 
-	ctx := server.Context()
-	var dirPath path.Resolved
-	if buck.IsPrivate() {
-		ctx, dirPath, err = s.insertNodeAtPath(ctx, fn, path.Join(buckPath, filePath), buck.GetLinkEncryptionKey())
-		if err != nil {
-			return err
-		}
-	} else {
-		dirPath, err = s.IPFSClient.Object().AddLink(
-			ctx,
-			buckPath,
-			filePath,
-			newPath,
-			options.Object.Create(true),
+	go func() {
+		defer close(eventCh)
+		res, err := ufs.Add(
+			server.Context(),
+			ipfsfiles.NewReaderFile(r),
+			options.Unixfs.CidVersion(1),
+			options.Unixfs.Pin(false),
+			options.Unixfs.Progress(true),
+			options.Unixfs.Events(eventCh),
 		)
 		if err != nil {
-			return err
+			doneCh <- addedFile{err: fmt.Errorf("adding file: %v", err)}
+			return
 		}
-		ctx, err = s.updateOrAddPin(ctx, buckPath, dirPath)
-		if err != nil {
-			return err
-		}
+		size := <-chSize
+		doneCh <- addedFile{path: ppth, resolved: res, size: size}
+	}()
+
+	return fa, nil
+}
+
+//func (q *fileQueue) close() {
+//	q.lock.Lock()
+//	defer q.lock.Unlock()
+//
+//	for _, fa := range q.q {
+//		fa.writer
+//	}
+//}
+
+type pushResult struct {
+	dir path.Resolved
+	err error
+}
+
+func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
+	log.Debugf("received push path request")
+
+	dbID, ok := common.ThreadIDFromContext(server.Context())
+	if !ok {
+		return errDBRequired
+	}
+	dbToken, _ := thread.TokenFromContext(server.Context())
+
+	storageAvailable := int64(math.MaxInt64)
+	owner, ok := buckets.BucketOwnerFromContext(server.Context())
+	if ok {
+		storageAvailable = owner.StorageAvailable
 	}
 
-	buck.Path = dirPath.String()
-	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return err
-	}
-
-	size := <-chSize
-	pbroot, err := getPbRoot(dbID, buck)
+	req, err := server.Recv()
 	if err != nil {
-		return err
+		return fmt.Errorf("on receive: %v", err)
 	}
-	if err = server.Send(&pb.PushPathResponse{
-		Event: &pb.PushPathResponse_Event{
-			Path:   newPath.String(),
-			Size:   size,
-			Root:   pbroot,
-			Pinned: s.getPinnedBytes(ctx),
-		},
-	}); err != nil {
-		return err
+	var buckKey, buckRoot string
+	switch payload := req.Payload.(type) {
+	case *pb.PushPathRequest_Header_:
+		buckKey = payload.Header.Key
+		buckRoot = payload.Header.Root
+	default:
+		return fmt.Errorf("push bucket path header is required")
 	}
 
-	go s.IPNSManager.Publish(dirPath, buck.Key)
+	lck := s.Semaphores.Get(buckLock(buckKey))
+	lck.Acquire()
+	defer lck.Release()
 
-	log.Debugf("pushed %s to bucket: %s", filePath, buck.Key)
-	return nil
+	buck := &tdb.Bucket{}
+	err = s.Buckets.GetSafe(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
+	if err != nil {
+		return fmt.Errorf("getting bucket: %v", err)
+	}
+	if buckRoot != "" && buckRoot != buck.Path {
+		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	buckPath := path.New(buck.Path)
+	stat, err := s.IPFSClient.Object().Stat(server.Context(), buckPath)
+	if err != nil {
+		return fmt.Errorf("getting bucket stat: %v", err)
+	}
+	buckSize := int64(stat.CumulativeSize)
+
+	addedCh := make(chan addedFile)
+	pushCh := make(chan pushResult)
+	go func() {
+		defer close(addedCh)
+		for {
+			select {
+			case res, ok := <-addedCh:
+				if !ok {
+					return
+				}
+				if res.err != nil {
+					pushCh <- pushResult{err: res.err}
+					break
+				}
+
+				fn, err := s.IPFSClient.ResolveNode(server.Context(), res.resolved)
+				if err != nil {
+					pushCh <- pushResult{err: fmt.Errorf("resolving added node: %v", err)}
+					break
+				}
+
+				ctx := server.Context()
+				var dir path.Resolved
+				if buck.IsPrivate() {
+					ctx, dir, err = s.insertNodeAtPath(ctx, fn, path.Join(buckPath, res.path), buck.GetLinkEncryptionKey())
+					if err != nil {
+						pushCh <- pushResult{err: fmt.Errorf("inserting added node: %v", err)}
+						break
+					}
+				} else {
+					dir, err = s.IPFSClient.Object().AddLink(
+						ctx,
+						buckPath,
+						res.path,
+						res.resolved,
+						options.Object.Create(true),
+					)
+					if err != nil {
+						pushCh <- pushResult{err: fmt.Errorf("adding bucket link: %v", err)}
+						break
+					}
+					ctx, err = s.updateOrAddPin(ctx, buckPath, dir)
+					if err != nil {
+						pushCh <- pushResult{err: fmt.Errorf("updating bucket pin: %v", err)}
+						break
+					}
+				}
+
+				buck.Path = dir.String()
+				buck.UpdatedAt = time.Now().UnixNano()
+				if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+					pushCh <- pushResult{err: fmt.Errorf("saving bucket: %v", err)}
+					break
+				}
+
+				root, err := getPbRoot(dbID, buck)
+				if err != nil {
+					pushCh <- pushResult{err: fmt.Errorf("preparing result: %v", err)}
+					break
+				}
+				if err := server.Send(&pb.PushPathResponse{
+					Event: &pb.PushPathResponse_Event{
+						Path:   res.resolved.String(),
+						Size:   res.size,
+						Root:   root,
+						Pinned: s.getPinnedBytes(ctx),
+					},
+				}); err != nil {
+					pushCh <- pushResult{err: fmt.Errorf("sending event: %v", err)}
+					break
+				}
+
+				log.Debugf("pushed %s to bucket: %s", res.path, buck.Key)
+				pushCh <- pushResult{dir: dir}
+			}
+		}
+	}()
+
+	var wg sync.WaitGroup
+	go func() {
+		defer close(pushCh)
+		queue := newFileQueue()
+		for {
+			req, err := server.Recv()
+			if err != nil {
+				return
+			}
+			switch payload := req.Payload.(type) {
+			case *pb.PushPathRequest_Chunk_:
+				fa, err := queue.add(server, s.IPFSClient.Unixfs(), payload.Chunk.Path, func(pth string) ([]byte, error) {
+					buck.SetMetadataAtPath(pth, tdb.Metadata{
+						UpdatedAt: buck.UpdatedAt,
+					})
+					buck.UnsetMetadataWithPrefix(pth + "/")
+					if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+						return nil, fmt.Errorf("verifying bucket update: %v", err)
+					}
+					key, err := buck.GetFileEncryptionKeyForPath(pth)
+					if err != nil {
+						return nil, fmt.Errorf("getting bucket key: %v", err)
+					}
+					wg.Add(1)
+					return key, nil
+				}, addedCh)
+				if err != nil {
+					pushCh <- pushResult{err: fmt.Errorf("enqueueing file: %v", err)}
+					return
+				}
+
+				if len(payload.Chunk.Data) > 0 {
+					n, err := fa.writer.Write(payload.Chunk.Data)
+					if err != nil {
+						pushCh <- pushResult{err: fmt.Errorf("writing chunk: %v", err)}
+						return
+					}
+					buckSize += int64(n)
+					if s.MaxBucketSize > 0 && buckSize > s.MaxBucketSize {
+						pushCh <- pushResult{err: ErrMaxBucketSizeExceeded}
+						return
+					} else if storageAvailable > 0 && buckSize > storageAvailable {
+						pushCh <- pushResult{err: ErrStorageQuotaExhausted}
+						return
+					}
+				} else {
+					if err := fa.writer.Close(); err != nil {
+						pushCh <- pushResult{err: fmt.Errorf("closing writer: %v", err)}
+						return
+					}
+				}
+			case *pb.PushPathRequest_Footer_:
+				// @todo: close all pending writers?
+				wg.Wait()
+				return
+
+			default:
+				pushCh <- pushResult{err: fmt.Errorf("invalid request")}
+				return
+			}
+		}
+	}()
+
+	var root path.Resolved
+	for {
+		select {
+		case res, ok := <-pushCh:
+			if !ok {
+				if root != nil {
+					go s.IPNSManager.Publish(root, buck.Key)
+				}
+				return nil
+			}
+			wg.Done()
+			if res.err != nil {
+				return err
+			}
+			root = res.dir
+		}
+	}
 }
 
 // insertNodeAtPath inserts a node at the location of path.
@@ -1684,7 +1805,7 @@ func getLink(lnks []*ipld.Link, name string) *ipld.Link {
 func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (context.Context, error) {
 	toSize, err := s.dagSize(ctx, to)
 	if err != nil {
-		return ctx, fmt.Errorf("getting size of destination dag: %s", err)
+		return ctx, fmt.Errorf("getting size of destination dag: %v", err)
 	}
 	if s.MaxBucketSize > 0 && toSize > s.MaxBucketSize {
 		return ctx, ErrMaxBucketSizeExceeded
@@ -1692,7 +1813,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	fromSize, err := s.dagSize(ctx, from)
 	if err != nil {
-		return ctx, fmt.Errorf("getting size of current dag: %s", err)
+		return ctx, fmt.Errorf("getting size of current dag: %v", err)
 	}
 	deltaSize := -fromSize + toSize
 
@@ -1724,7 +1845,7 @@ func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
 	}
 	stat, err := s.IPFSClient.Object().Stat(ctx, root)
 	if err != nil {
-		return 0, fmt.Errorf("get stats of pin destination: %s", err)
+		return 0, fmt.Errorf("get stats of pin destination: %v", err)
 	}
 	return int64(stat.CumulativeSize), nil
 }
@@ -2164,7 +2285,7 @@ func (s *Service) PushPathAccessRoles(
 			var dirPath path.Resolved
 			ctx, dirPath, err = s.insertNodeAtPath(ctx, pn, path.Join(path.New(buck.Path), reqPath), linkKey)
 			if err != nil {
-				return nil, fmt.Errorf("updating pinned root: %s", err)
+				return nil, fmt.Errorf("updating pinned root: %v", err)
 			}
 			ctx, err = s.addAndPinNodes(ctx, nodes)
 			if err != nil {
@@ -2230,7 +2351,7 @@ func (s *Service) DefaultArchiveConfig(
 
 	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
 	if err != nil {
-		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
 	archiveConfig := ba.DefaultArchiveConfig
 	if archiveConfig == nil {
@@ -2254,18 +2375,18 @@ func (s *Service) SetDefaultArchiveConfig(
 
 	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
 	if err != nil {
-		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
 
 	c := fromPbArchiveConfig(req.ArchiveConfig)
 	if err := s.validateArchiveConfig(c); err != nil {
-		return nil, fmt.Errorf("validating archive config: %s", err)
+		return nil, fmt.Errorf("validating archive config: %v", err)
 	}
 
 	ba.DefaultArchiveConfig = c
 	err = s.Collections.BucketArchives.Replace(ctx, ba)
 	if err != nil {
-		return nil, fmt.Errorf("saving default archive config: %s", err)
+		return nil, fmt.Errorf("saving default archive config: %v", err)
 	}
 	return &pb.SetDefaultArchiveConfigResponse{}, nil
 }
@@ -2295,7 +2416,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 	p, err := util.NewResolvedPath(buck.Path)
 	if err != nil {
-		return nil, fmt.Errorf("parsing cid path: %s", err)
+		return nil, fmt.Errorf("parsing cid path: %v", err)
 	}
 
 	createNewUser := func() error {
@@ -2341,7 +2462,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 
 	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
 	if err != nil {
-		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
 
 	var archiveConfig *mdb.ArchiveConfig
@@ -2356,7 +2477,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	if err := s.validateArchiveConfig(archiveConfig); err != nil {
-		return nil, fmt.Errorf("validating archive config: %s", err)
+		return nil, fmt.Errorf("validating archive config: %v", err)
 	}
 
 	storageConfig := baseArchiveStorageConfig
@@ -2367,7 +2488,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	// Check that user wallet addr balance is > 0, if not, fail fast.
 	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
 	if err != nil {
-		return nil, fmt.Errorf("getting powergate wallet address balance: %s", err)
+		return nil, fmt.Errorf("getting powergate wallet address balance: %v", err)
 	}
 	bal, ok := new(big.Int).SetString(balRes.Balance, 10)
 	if !ok {
@@ -2397,13 +2518,13 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			pow.WithOverride(true),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("pushing config: %s", err)
+			return nil, fmt.Errorf("pushing config: %v", err)
 		}
 		jid = res.JobId
 	} else {
 		oldCid, err := cid.Cast(ba.Archives.Current.Cid)
 		if err != nil {
-			return nil, fmt.Errorf("parsing old Cid archive: %s", err)
+			return nil, fmt.Errorf("parsing old Cid archive: %v", err)
 		}
 
 		statusName, found := userPb.JobStatus_name[int32(ba.Archives.Current.Status)]
@@ -2430,7 +2551,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 					pow.WithOverride(true),
 				)
 				if err != nil {
-					return nil, fmt.Errorf("pushing config: %s", err)
+					return nil, fmt.Errorf("pushing config: %v", err)
 				}
 				jid = res.JobId
 			default:
@@ -2439,7 +2560,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		} else { // Case 2.
 			res, err := s.PowergateClient.Data.CidInfo(ctxPow, oldCid.String())
 			if err != nil {
-				return nil, fmt.Errorf("looking up old storage config: %s", err)
+				return nil, fmt.Errorf("looking up old storage config: %v", err)
 			}
 			if len(res.CidInfos) == 0 {
 				return nil, fmt.Errorf("no cid info returned")
@@ -2449,7 +2570,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				// Old storage config is the same as the new so use replace.
 				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
-					return nil, fmt.Errorf("replacing cid: %s", err)
+					return nil, fmt.Errorf("replacing cid: %v", err)
 				}
 				jid = res.JobId
 			} else {
@@ -2461,11 +2582,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 					pow.WithOverride(true),
 				)
 				if err != nil {
-					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %s", err)
+					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %v", err)
 				}
 				_, err = s.PowergateClient.StorageConfig.Remove(ctxPow, oldCid.String())
 				if err != nil {
-					return nil, fmt.Errorf("removing old cid storage: %s", err)
+					return nil, fmt.Errorf("removing old cid storage: %v", err)
 				}
 				res, err := s.PowergateClient.StorageConfig.Apply(
 					ctxPow,
@@ -2474,7 +2595,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 					pow.WithOverride(true),
 				)
 				if err != nil {
-					return nil, fmt.Errorf("pushing config: %s", err)
+					return nil, fmt.Errorf("pushing config: %v", err)
 				}
 				jid = res.JobId
 			}
@@ -2492,11 +2613,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		Status:    int(userPb.JobStatus_JOB_STATUS_QUEUED),
 	}
 	if err := s.Collections.BucketArchives.Replace(ctx, ba); err != nil {
-		return nil, fmt.Errorf("updating bucket archives data: %s", err)
+		return nil, fmt.Errorf("updating bucket archives data: %v", err)
 	}
 
 	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
-		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
+		return nil, fmt.Errorf("scheduling archive tracking: %v", err)
 	}
 
 	log.Debug("archived bucket")
@@ -2506,7 +2627,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.ArchivesResponse, error) {
 	ba, err := s.Collections.BucketArchives.GetOrCreate(ctx, req.Key)
 	if err != nil {
-		return nil, fmt.Errorf("getting bucket archive data: %s", err)
+		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
 	res := &pb.ArchivesResponse{}
 	if ba.Archives.Current.JobID != "" {
@@ -2592,7 +2713,7 @@ func (s *Service) ArchiveWatch(req *pb.ArchiveWatchRequest, server pb.APIService
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("watching cid logs: %s", err)
+		return fmt.Errorf("watching cid logs: %v", err)
 	}
 	return nil
 }

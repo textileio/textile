@@ -90,14 +90,21 @@ message ListIpfsPathResponse {
 message PushPathRequest {
     oneof payload {
         Header header = 1;
-        bytes chunk = 2;
+        Chunk chunk = 2;
+        Footer footer = 3;
     }
 
     message Header {
         string key = 1;
-        string path = 2;
-        string root = 3;
+        string root = 2;
     }
+
+    message Chunk {
+        string path = 1;
+        bytes data = 2;
+    }
+
+    message Footer {}
 }
 
 message PushPathResponse {
@@ -121,7 +128,6 @@ message PullPathRequest {
 message PullPathResponse {
     bytes chunk = 1;
 }
-
 
 message PullIpfsPathRequest {
     string path = 1;
@@ -216,7 +222,7 @@ enum ArchiveStatus {
     ARCHIVE_STATUS_FAILED = 3;
     ARCHIVE_STATUS_CANCELED = 4;
     ARCHIVE_STATUS_SUCCESS = 5;
-  }
+}
 
 message DealInfo {
     string proposal_cid = 1;
@@ -231,7 +237,7 @@ message DealInfo {
     uint64 deal_id = 10;
     int64 activation_epoch = 11;
     string message = 12;
-  }
+}
 
 message ArchiveRenew {
     bool enabled = 1;
