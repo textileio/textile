@@ -14,6 +14,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	pow "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/api/client"
+	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets/archive"
 )
@@ -215,13 +216,33 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	if err != nil {
 		return "", fmt.Errorf("getting latest storage-config: %s", err)
 	}
-	// Paranoid check to avoid panic. Shouldn't happen.
-	// TTODO: Wrong, it can happen. Fix.
-	if len(ci.CidInfos) != 1 {
+	// If no storage-config is available, then create one using the users default
+	// but disabled.
+
+	var sc *userPb.StorageConfig
+	if len(ci.CidInfos) == 1 {
+		sc = ci.CidInfos[0].LatestPushedStorageConfig
+	} else if len(ci.CidInfos) == 0 {
+		// If no storage-config exist for this Cid, then the user
+		// had Remove or Replace the storage-config.
+		// We ne need a storage-config to do the retrieval, so we
+		// use the default one but with cold-storage disabled as
+		// to avoid any other cold-storage work that might be
+		// enabled as default.
+		dfsc, err := fr.pgc.StorageConfig.Default(ctx)
+		if err != nil {
+			return "", fmt.Errorf("no storage-config, getting default: %s", err)
+		}
+		sc := dfsc.DefaultStorageConfig
+		sc.Cold.Enabled = false
+	} else { // Paranoid check, must not hapen.
 		return "", fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
 	}
-	sc := ci.CidInfos[0].LatestPushedStorageConfig
-	if CITest {
+	// Flag only used for tests, to speed-up Filecoin unfreezing
+	// behaviour. Under normal circumstances, this timeout would be
+	// in the order of minutes to give a good chance of finding the
+	// data in the IPFS network.
+	if CITest { // Flag only used
 		sc.Hot.Ipfs.AddTimeout = 3
 	}
 	sc.Hot.Enabled = true
