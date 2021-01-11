@@ -52,8 +52,9 @@ func Init(baseCmd *cobra.Command) {
 		decryptCmd,
 		archiveCmd,
 		rolesCmd,
+		archivesCmd,
 	)
-	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archivesCmd)
+	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archiveLsCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
 
 	baseCmd.PersistentFlags().String("key", "", "Bucket key")
@@ -89,6 +90,8 @@ func Init(baseCmd *cobra.Command) {
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
 	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [json]")
+
+	archivesCmd.AddCommand(archivesLsCmd, archivesImportCmd)
 }
 
 func SetBucks(b *local.Buckets) {
