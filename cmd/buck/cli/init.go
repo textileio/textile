@@ -26,6 +26,7 @@ Existing configs will not be overwritten.
 
 Use the '--existing' flag to interactively select an existing remote bucket.
 Use the '--cid' flag to initialize from an existing UnixFS DAG.
+Use the '--unfreeze' flag to retrieve '--cid' from known or imported deals.
 
 By default, if the remote bucket exists, remote objects are pulled and merged with local changes.
 Use the '--soft' flag to accept all local changes, including deletions.
@@ -71,6 +72,12 @@ Use the '--hard' flag to discard all local changes.
 		}
 		if (existing || chooseExisting) && xcid.Defined() {
 			cmd.Fatal(errors.New("--cid cannot be used with an existing bucket"))
+		}
+
+		unfreeze, err := c.Flags().GetBool("unfreeze")
+		cmd.ErrCheck(err)
+		if xcid == cid.Undef {
+			cmd.Fatal(errors.New("--unfreeze requires specifying --cid"))
 		}
 
 		var name string
@@ -176,6 +183,7 @@ Use the '--hard' flag to discard all local changes.
 			local.WithName(name),
 			local.WithPrivate(private),
 			local.WithCid(xcid),
+			local.WithUnfreeze(unfreeze),
 			local.WithStrategy(strategy),
 			local.WithInitPathEvents(events))
 		if progress != nil {

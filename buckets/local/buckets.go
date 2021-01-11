@@ -154,7 +154,8 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 			ctx,
 			client.WithName(args.name),
 			client.WithPrivate(args.private),
-			client.WithCid(args.fromCid))
+			client.WithCid(args.fromCid),
+			client.WithUnfreeze(args.unfreeze))
 		if err != nil {
 			return nil, err
 		}
