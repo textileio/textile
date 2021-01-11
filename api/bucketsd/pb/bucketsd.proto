@@ -91,7 +91,6 @@ message PushPathRequest {
     oneof payload {
         Header header = 1;
         Chunk chunk = 2;
-        Footer footer = 3;
     }
 
     message Header {
@@ -114,9 +113,10 @@ message PushPathResponse {
         string name = 1;
         string path = 2;
         int64 bytes = 3;
-        string size = 4;
-        Root root = 5;
-        int64 pinned = 6;
+        string cid = 4;
+        string size = 5;
+        Root root = 6;
+        int64 pinned = 7;
     }
 }
 

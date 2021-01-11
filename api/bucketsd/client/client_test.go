@@ -286,25 +286,30 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	file1, err := os.Open("testdata/file1.jpg")
 	require.NoError(t, err)
 	defer file1.Close()
-	progress1 := make(chan int64)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+
+	progress1 := make(chan c.Progress)
 	go func() {
 		for p := range progress1 {
-			fmt.Println(fmt.Sprintf("progress: %d", p))
+			fmt.Println(fmt.Sprintf("progress for %s: %d", p.Path, p.Bytes))
 		}
 	}()
 
-	pushes := make(chan c.Push)
-	results, err := client.PushPath(ctx, buck.Root.Key, pushes, c.WithProgress(progress1))
+	queue, err := client.PushPath(ctx, buck.Root.Key, c.WithProgress(progress1))
 	require.NoError(t, err)
 
-	pushes <- c.Push{Path: "file1.jpg", Reader: file1}
-	result := <-results
-	close(pushes)
+	queue.Push("file1.jpg", file1)
+	queue.Push("path/to/file2.jpg", file2)
+	queue.Close()
 
-	assert.NotEmpty(t, result.Path)
-	assert.NotEmpty(t, result.Root)
-
-	select {}
+	for queue.Next() {
+		require.NoError(t, queue.Err())
+		assert.NotEmpty(t, queue.Current.Path)
+		assert.NotEmpty(t, queue.Current.Root)
+	}
 
 	//file2, err := os.Open("testdata/file2.jpg")
 	//require.NoError(t, err)
@@ -930,13 +935,13 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
-	bconf := apitest.DefaultBillingConfig(t)
-	apitest.MakeBillingWithConfig(t, bconf)
+	//bconf := apitest.DefaultBillingConfig(t)
+	//apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
-	require.NoError(t, err)
-	conf.AddrBillingAPI = billingApi
+	//billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	//require.NoError(t, err)
+	//conf.AddrBillingAPI = billingApi
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }

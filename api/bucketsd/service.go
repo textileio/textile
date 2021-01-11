@@ -1354,6 +1354,7 @@ func (q *fileQueue) add(
 				if err := server.Send(&pb.PushPathResponse{
 					Event: &pb.PushPathResponse_Event{
 						Name:  event.Name,
+						Path:  ppth,
 						Bytes: event.Bytes,
 					},
 				}); err != nil {
@@ -1396,16 +1397,7 @@ func (q *fileQueue) add(
 	return fa, nil
 }
 
-//func (q *fileQueue) close() {
-//	q.lock.Lock()
-//	defer q.lock.Unlock()
-//
-//	for _, fa := range q.q {
-//		fa.writer
-//	}
-//}
-
-type pushResult struct {
+type pushPathResult struct {
 	dir path.Resolved
 	err error
 }
@@ -1451,17 +1443,17 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
 
-	buckPath := path.New(buck.Path)
-	stat, err := s.IPFSClient.Object().Stat(server.Context(), buckPath)
+	stat, err := s.IPFSClient.Object().Stat(server.Context(), path.New(buck.Path))
 	if err != nil {
 		return fmt.Errorf("getting bucket stat: %v", err)
 	}
 	buckSize := int64(stat.CumulativeSize)
+	log.Debugf("initial bucket size: %d", buckSize)
 
 	addedCh := make(chan addedFile)
-	pushCh := make(chan pushResult)
+	defer close(addedCh)
+	pushCh := make(chan pushPathResult)
 	go func() {
-		defer close(addedCh)
 		for {
 			select {
 			case res, ok := <-addedCh:
@@ -1469,39 +1461,44 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 					return
 				}
 				if res.err != nil {
-					pushCh <- pushResult{err: res.err}
+					pushCh <- pushPathResult{err: res.err}
 					break
 				}
 
 				fn, err := s.IPFSClient.ResolveNode(server.Context(), res.resolved)
 				if err != nil {
-					pushCh <- pushResult{err: fmt.Errorf("resolving added node: %v", err)}
+					pushCh <- pushPathResult{err: fmt.Errorf("resolving added node: %v", err)}
 					break
 				}
 
 				ctx := server.Context()
 				var dir path.Resolved
 				if buck.IsPrivate() {
-					ctx, dir, err = s.insertNodeAtPath(ctx, fn, path.Join(buckPath, res.path), buck.GetLinkEncryptionKey())
+					ctx, dir, err = s.insertNodeAtPath(
+						ctx,
+						fn,
+						path.Join(path.New(buck.Path), res.path),
+						buck.GetLinkEncryptionKey(),
+					)
 					if err != nil {
-						pushCh <- pushResult{err: fmt.Errorf("inserting added node: %v", err)}
+						pushCh <- pushPathResult{err: fmt.Errorf("inserting added node: %v", err)}
 						break
 					}
 				} else {
 					dir, err = s.IPFSClient.Object().AddLink(
 						ctx,
-						buckPath,
+						path.New(buck.Path),
 						res.path,
 						res.resolved,
 						options.Object.Create(true),
 					)
 					if err != nil {
-						pushCh <- pushResult{err: fmt.Errorf("adding bucket link: %v", err)}
+						pushCh <- pushPathResult{err: fmt.Errorf("adding bucket link: %v", err)}
 						break
 					}
-					ctx, err = s.updateOrAddPin(ctx, buckPath, dir)
+					ctx, err = s.updateOrAddPin(ctx, path.New(buck.Path), dir)
 					if err != nil {
-						pushCh <- pushResult{err: fmt.Errorf("updating bucket pin: %v", err)}
+						pushCh <- pushPathResult{err: fmt.Errorf("updating bucket pin: %v", err)}
 						break
 					}
 				}
@@ -1509,36 +1506,40 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 				buck.Path = dir.String()
 				buck.UpdatedAt = time.Now().UnixNano()
 				if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-					pushCh <- pushResult{err: fmt.Errorf("saving bucket: %v", err)}
+					pushCh <- pushPathResult{err: fmt.Errorf("saving bucket: %v", err)}
 					break
 				}
 
 				root, err := getPbRoot(dbID, buck)
 				if err != nil {
-					pushCh <- pushResult{err: fmt.Errorf("preparing result: %v", err)}
+					pushCh <- pushPathResult{err: fmt.Errorf("preparing result: %v", err)}
 					break
 				}
 				if err := server.Send(&pb.PushPathResponse{
 					Event: &pb.PushPathResponse_Event{
-						Path:   res.resolved.String(),
+						Path:   res.path,
+						Cid:    res.resolved.Cid().String(),
 						Size:   res.size,
 						Root:   root,
 						Pinned: s.getPinnedBytes(ctx),
 					},
 				}); err != nil {
-					pushCh <- pushResult{err: fmt.Errorf("sending event: %v", err)}
+					pushCh <- pushPathResult{err: fmt.Errorf("sending event: %v", err)}
 					break
 				}
 
 				log.Debugf("pushed %s to bucket: %s", res.path, buck.Key)
-				pushCh <- pushResult{dir: dir}
+				pushCh <- pushPathResult{dir: dir}
 			}
 		}
 	}()
 
 	var wg sync.WaitGroup
 	go func() {
-		defer close(pushCh)
+		defer func() {
+			wg.Wait()
+			close(pushCh)
+		}()
 		queue := newFileQueue()
 		for {
 			req, err := server.Recv()
@@ -1563,37 +1564,33 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 					return key, nil
 				}, addedCh)
 				if err != nil {
-					pushCh <- pushResult{err: fmt.Errorf("enqueueing file: %v", err)}
+					pushCh <- pushPathResult{err: fmt.Errorf("enqueueing file: %v", err)}
 					return
 				}
 
 				if len(payload.Chunk.Data) > 0 {
 					n, err := fa.writer.Write(payload.Chunk.Data)
 					if err != nil {
-						pushCh <- pushResult{err: fmt.Errorf("writing chunk: %v", err)}
+						pushCh <- pushPathResult{err: fmt.Errorf("writing chunk: %v", err)}
 						return
 					}
 					buckSize += int64(n)
 					if s.MaxBucketSize > 0 && buckSize > s.MaxBucketSize {
-						pushCh <- pushResult{err: ErrMaxBucketSizeExceeded}
+						pushCh <- pushPathResult{err: ErrMaxBucketSizeExceeded}
 						return
 					} else if storageAvailable > 0 && buckSize > storageAvailable {
-						pushCh <- pushResult{err: ErrStorageQuotaExhausted}
+						pushCh <- pushPathResult{err: ErrStorageQuotaExhausted}
 						return
 					}
 				} else {
 					if err := fa.writer.Close(); err != nil {
-						pushCh <- pushResult{err: fmt.Errorf("closing writer: %v", err)}
+						pushCh <- pushPathResult{err: fmt.Errorf("closing writer: %v", err)}
 						return
 					}
+					log.Debugf("new bucket size: %d", buckSize)
 				}
-			case *pb.PushPathRequest_Footer_:
-				// @todo: close all pending writers?
-				wg.Wait()
-				return
-
 			default:
-				pushCh <- pushResult{err: fmt.Errorf("invalid request")}
+				pushCh <- pushPathResult{err: fmt.Errorf("invalid request")}
 				return
 			}
 		}
