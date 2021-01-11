@@ -306,7 +306,7 @@ message ArchiveRetrievalLsRequest {
 }
 
 message ArchiveRetrievalLsResponse {
-    repeated ArchiveRetrievalLsItem archives = 1;
+    repeated ArchiveRetrievalLsItem retrievals = 1;
 }
 
 message ArchiveRetrievalLsItem {

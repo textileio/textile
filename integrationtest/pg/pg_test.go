@@ -316,7 +316,7 @@ func TestArchiveTrickUnfreeze(t *testing.T) {
 		// Obvious assertion about no existing retrievals.
 		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, rs.Archives, 0)
+		require.Len(t, rs.Retrievals, 0)
 
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
@@ -346,7 +346,7 @@ func TestArchiveTrickUnfreeze(t *testing.T) {
 		require.NoError(t, err)
 
 		// Unfreeze to a bucket.
-		buck, err = client.Create(ctxAccount2, c.WithCid(ccid), c.WithUnfreeze(true))
+		buck, err = client.Create(ctxAccount2, c.WithName("super-bucket"), c.WithCid(ccid), c.WithUnfreeze(true))
 		require.NoError(t, err)
 
 		// Wait for the retrieval to finish.
@@ -354,8 +354,8 @@ func TestArchiveTrickUnfreeze(t *testing.T) {
 		require.Eventually(t, func() bool {
 			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
 			require.NoError(t, err)
-			require.Len(t, rs.Archives, 1)
-			r = rs.Archives[0]
+			require.Len(t, rs.Retrievals, 1)
+			r = rs.Retrievals[0]
 
 			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)
 
@@ -367,6 +367,7 @@ func TestArchiveTrickUnfreeze(t *testing.T) {
 		lr, err := client.List(ctxAccount2)
 		require.NoError(t, err)
 		require.Len(t, lr.Roots, 1)
+		require.Equal(t, "super-bucket", lr.Roots[0].Name)
 
 		buf := bytes.NewBuffer(nil)
 		err = client.PullPath(ctxAccount2, lr.Roots[0].Key, "Data1.txt", buf)
@@ -429,7 +430,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		// Obvious assertion about no existing retrievals.
 		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
 		require.NoError(t, err)
-		require.Len(t, rs.Archives, 0)
+		require.Len(t, rs.Retrievals, 0)
 
 		// Import deal made by account-1.
 		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
@@ -478,8 +479,8 @@ func TestArchiveUnfreeze(t *testing.T) {
 		require.Eventually(t, func() bool {
 			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
 			require.NoError(t, err)
-			require.Len(t, rs.Archives, 1)
-			r = rs.Archives[0]
+			require.Len(t, rs.Retrievals, 1)
+			r = rs.Retrievals[0]
 
 			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)
 
@@ -491,6 +492,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		lr, err := client.List(ctxAccount2)
 		require.NoError(t, err)
 		require.Len(t, lr.Roots, 1)
+		require.Equal(t, "super-bucket", lr.Roots[0].Name)
 
 		buf := bytes.NewBuffer(nil)
 		err = client.PullPath(ctxAccount2, lr.Roots[0].Key, "Data1.txt", buf)

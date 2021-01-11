@@ -23,12 +23,12 @@ var archivesLsCmd = &cobra.Command{
 	Long:  `List all known archive data in the Filecoin network. This includes made bucket archives, or imported deals.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		archives, err := bucks.Clients().Buckets.ArchivesLs(c.Context())
+		as, err := bucks.Clients().Buckets.ArchivesLs(c.Context())
 		cmd.ErrCheck(err)
 
-		if len(archives.Archives) > 0 {
-			data := make([][]string, len(archives.Archives))
-			for i, a := range archives.Archives {
+		if len(as.Archives) > 0 {
+			data := make([][]string, len(as.Archives))
+			for i, a := range as.Archives {
 				dealIDsStr := make([]string, len(a.Info))
 				for i, inf := range a.Info {
 					dealIDsStr[i] = strconv.FormatUint(inf.DealId, 10)
@@ -40,7 +40,7 @@ var archivesLsCmd = &cobra.Command{
 			}
 			cmd.RenderTable([]string{"Cid", "Deal IDs"}, data)
 		}
-		cmd.Message("Found %d account archives", aurora.White(len(archives.Archives)).Bold())
+		cmd.Message("Found %d account archives", aurora.White(len(as.Archives)).Bold())
 	},
 }
 

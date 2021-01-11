@@ -2722,10 +2722,10 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 	}
 
 	res := &pb.ArchiveRetrievalLsResponse{
-		Archives: make([]*pb.ArchiveRetrievalLsItem, len(rs)),
+		Retrievals: make([]*pb.ArchiveRetrievalLsItem, len(rs)),
 	}
 	for i, r := range rs {
-		res.Archives[i] = &pb.ArchiveRetrievalLsItem{
+		res.Retrievals[i] = &pb.ArchiveRetrievalLsItem{
 			Id:           r.JobID,
 			Cid:          r.Cid.String(),
 			Status:       toPbRetrievalStatus(r.Status),
@@ -2740,7 +2740,7 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 					Private: r.Private,
 				},
 			}
-			res.Archives[i].RetrievalType = rt
+			res.Retrievals[i].RetrievalType = rt
 		default:
 			return nil, fmt.Errorf("unkown retrieval type")
 		}
