@@ -1709,7 +1709,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	} else {
 		if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
 			if err.Error() == pinNotRecursiveMsg {
-				return nil, s.IPFSClient.Pin().Add(ctx, to)
+				return ctx, s.IPFSClient.Pin().Add(ctx, to)
 			}
 			return ctx, err
 		}
