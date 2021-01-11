@@ -308,9 +308,9 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 
 	var event analytics.Event
 	if keyType == mdb.AccountKey {
-		event = analytics.AccountKeyCreated
+		event = analytics.KeyAccountCreated
 	} else {
-		event = analytics.UserGroupKeyCreated
+		event = analytics.KeyUserGroupCreated
 	}
 	if s.BillingClient != nil {
 		// Same "member" based payload for Dev or Org account types so that same downstream logic/templating can be used.
@@ -543,7 +543,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgRemoved, map[string]string{
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgDestroyed, map[string]string{
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
