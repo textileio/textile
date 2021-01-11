@@ -4,28 +4,48 @@ services:
   textile:
     build:
       context: ../../../
-      dockerfile: ./cmd/buckd/Dockerfile
+      dockerfile: ./cmd/hubd/Dockerfile.dev
+    volumes:
+      - "${REPO_PATH}/textile:/data/textile"
     environment:
-      - BUCK_ADDR_API=/ip4/0.0.0.0/tcp/3006
-      - BUCK_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
-      - BUCK_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
-      - BUCK_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
-      - BUCK_ADDR_MONGO_URI=mongodb://mongo:27017
-      - BUCK_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
-      - BUCK_ADDR_POWERGATE_API=/dns4/powergate/tcp/5002
-      - BUCK_LOG_DEBUG=true
+      - HUB_LOG_DEBUG=true
+      - HUB_ADDR_API=/ip4/0.0.0.0/tcp/3006
+      - HUB_ADDR_API_PROXY=/ip4/0.0.0.0/tcp/3007
+      - HUB_ADDR_MONGO_URI=mongodb://mongo:27017
+      - HUB_ADDR_MONGO_NAME=textile
+      - HUB_ADDR_THREADS_HOST=/ip4/0.0.0.0/tcp/4006
+      - HUB_ADDR_THREADS_MONGO_URI=mongodb://mongo:27017
+      - HUB_ADDR_THREADS_MONGO_NAME=textile_threads
+      - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
+      - HUB_ADDR_GATEWAY_URL
+      - HUB_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
+      - HUB_ADDR_BILLING_API=billing:10006
+      - HUB_ADDR_POWERGATE_API
+      - HUB_GATEWAY_SUBDOMAINS
+      - HUB_BUCKETS_MAX_SIZE
+      - HUB_THREADS_MAX_NUMBER_PER_OWNER
+      - HUB_CUSTOMERIO_API_KEY
+      - HUB_EMAIL_SESSION_SECRET=hubsession
+      - HUB_SEGMENT_API_KEY
+      - HUB_SEGMENT_PREFIX
     ports:
       - "127.0.0.1:3006:3006"
-      - "3007:3007"
+      - "127.0.0.1:3007:3007"
       - "4006:4006"
       - "127.0.0.1:8006:8006"
+      - "127.0.0.1:40000:40000"
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
     depends_on:
       - ipfsbuckets
       - mongo
       - powergate
+      - billing
 
   powergate:
-    image: textile/powergate:v1.2.1
+    image: textile/powergate:v1.3.0-local2
     depends_on:
       - ipfs
       - ipfsbuckets
@@ -44,13 +64,45 @@ services:
 
   mongo:
     image: mongo:latest
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/bin/mongod --fork --logpath /var/log/mongod.log --bind_ip_all --replSet rs0
+        mongo --eval 'rs.initiate({_id: "rs0", version: 1, members: [{ _id: 0, host: "mongo:27017" }]})'
+        tail -f /var/log/mongod.log
 
   lotus:
     image: textile/lotus-devnet:v1.3.0
     environment:
-      - TEXLOTUSDEVNET_SPEED=1500
+      - TEXLOTUSDEVNET_SPEED=300
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=true
       - TEXLOTUSDEVNET_ONLINEMODE=true
     ports:
       - 1234:7777
+  billing:
+    build:
+      context: ../../../
+      dockerfile: ./api/billingd/Dockerfile.dev
+    environment:
+      - BILLING_LOG_DEBUG=true
+      - BILLING_ADDR_API=/ip4/0.0.0.0/tcp/10006
+      - BILLING_ADDR_MONGO_URI=mongodb://mongo:27017
+      - BILLING_ADDR_MONGO_NAME=textile_billing
+      - BILLING_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8010
+      - BILLING_ADDR_GATEWAY_URL
+      - BILLING_STRIPE_API_KEY
+      - BILLING_SEGMENT_API_KEY
+      - BILLING_SEGMENT_PREFIX
+    ports:
+      - "127.0.0.1:10006:10006"
+      - "127.0.0.1:8010:8010"
+      - "127.0.0.1:40001:40000"
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
+    depends_on:
+      - mongo
+
