@@ -85,7 +85,6 @@ func Init(baseCmd *cobra.Command) {
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
-	linksCmd.Flags().Bool("json", false, "Display URL links as json object")
 	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [json]")
 }
 
@@ -211,14 +210,8 @@ var linksCmd = &cobra.Command{
 		links, err := buck.RemoteLinks(ctx, pth)
 		cmd.ErrCheck(err)
 
-		jsonFormat, err := c.Flags().GetBool("json")
-		cmd.ErrCheck(err)
 		format, err := c.Flags().GetString("format")
 		cmd.ErrCheck(err)
-
-		if jsonFormat == true {
-			format = "json"
-		}
 
 		printLinks(links, Format(format))
 	},
