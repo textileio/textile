@@ -238,26 +238,20 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	}
 
 	if t.bc != nil {
+		var tp analytics.Event
 		switch method {
 		case "/api.bucketsd.pb.APIService/Create":
-			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketCreated, map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			})
+			tp = analytics.BucketCreated
 		case "/api.bucketsd.pb.APIService/Archive":
-			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketArchiveCreated, map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			})
+			tp = analytics.BucketArchiveCreated
 		case "/threads.pb.API/NewDB":
-			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.ThreadDbCreated, map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			})
+			tp = analytics.ThreadDbCreated
 		}
+		t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, tp, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		})
 	}
 
 	return nil
