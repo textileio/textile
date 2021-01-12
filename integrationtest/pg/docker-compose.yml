@@ -21,10 +21,10 @@ services:
   lotus:
     image: textile/lotus-devnet:v1.3.0
     environment:
-      - TEXLOTUSDEVNET_SPEED=300
+      - TEXLOTUSDEVNET_SPEED=100
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=false
-      - TEXLOTUSDEVNET_ONLINEMODE=true
+      - TEXLOTUSDEVNET_ONLINEMODE=${LOTUS_ONLINEMODE}
   ipfs:
     image: ipfs/go-ipfs:v0.7.0
     environment:

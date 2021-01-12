@@ -76,7 +76,7 @@ Use the '--hard' flag to discard all local changes.
 
 		unfreeze, err := c.Flags().GetBool("unfreeze")
 		cmd.ErrCheck(err)
-		if xcid == cid.Undef {
+		if unfreeze && xcid == cid.Undef {
 			cmd.Fatal(errors.New("--unfreeze requires specifying --cid"))
 		}
 

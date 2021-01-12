@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"time"
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -19,7 +20,8 @@ import (
 var powAddr = "127.0.0.1:5002"
 var ipfsAddr = "/ip4/127.0.0.1/tcp/5012"
 
-func StartPowergate(t util.TestingTWithCleanup) (*pc.Client, *httpapi.HttpApi) {
+func StartPowergate(t util.TestingTWithCleanup, onlineMode bool) (*pc.Client, *httpapi.HttpApi) {
+	os.Setenv("LOTUS_ONLINEMODE", strconv.FormatBool(onlineMode))
 	_, currentFilePath, _, _ := runtime.Caller(0)
 	dirpath := path.Dir(currentFilePath)
 
@@ -61,6 +63,7 @@ func StartPowergate(t util.TestingTWithCleanup) (*pc.Client, *httpapi.HttpApi) {
 		"up",
 		"-V",
 	)
+
 	//cmd.Stdout = os.Stdout
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

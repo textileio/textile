@@ -406,10 +406,10 @@ func (t *Tracker) updateArchiveStatus(
 		}
 	}
 	archiveToUpdate.DealInfo = dealInfo
-
 	if err := t.colls.BucketArchives.Replace(ctx, ba); err != nil {
 		return fmt.Errorf("updating bucket archives status: %s", err)
 	}
+
 	return nil
 }
 

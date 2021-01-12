@@ -18,9 +18,9 @@ services:
       - HUB_ADDR_THREADS_MONGO_NAME=textile_threads
       - HUB_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8006
       - HUB_ADDR_GATEWAY_URL
-      - HUB_ADDR_IPFS_API=/dns4/ipfs/tcp/5001
-      - HUB_ADDR_BILLING_API=billing:10006
-      - HUB_ADDR_POWERGATE_API
+      - HUB_ADDR_IPFS_API=/dns4/ipfsbuckets/tcp/5001
+      - HUB_ADDR_BILLING_API=
+      - HUB_ADDR_POWERGATE_API=powergate:5002
       - HUB_GATEWAY_SUBDOMAINS
       - HUB_BUCKETS_MAX_SIZE
       - HUB_THREADS_MAX_NUMBER_PER_OWNER
@@ -28,6 +28,8 @@ services:
       - HUB_EMAIL_SESSION_SECRET=hubsession
       - HUB_SEGMENT_API_KEY
       - HUB_SEGMENT_PREFIX
+      - HUB_ARCHIVES_JOB_POLL_INTERVAL_SLOW=5s
+      - HUB_ARCHIVES_JOB_POLL_INTERVAL_FAST=5s
     ports:
       - "127.0.0.1:3006:3006"
       - "127.0.0.1:3007:3007"
@@ -61,6 +63,8 @@ services:
 
   ipfsbuckets:
     image: ipfs/go-ipfs:v0.7.0
+    volumes:
+      - "${REPO_PATH}/ipfs:/data/ipfs"
 
   mongo:
     image: mongo:latest
