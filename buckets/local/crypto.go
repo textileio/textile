@@ -98,7 +98,13 @@ func (b *Bucket) DecryptRemotePathWithPassword(ctx context.Context, pth, passwor
 	return b.decryptRemotePath(ctx, pth, []byte(password), dcrypto.NewDecrypterWithPassword, w)
 }
 
-func (b *Bucket) decryptRemotePath(ctx context.Context, pth string, keyOrPassword []byte, fn decryptFunc, w io.Writer) error {
+func (b *Bucket) decryptRemotePath(
+	ctx context.Context,
+	pth string,
+	keyOrPassword []byte,
+	fn decryptFunc,
+	w io.Writer,
+) error {
 	ctx, err := b.context(ctx)
 	if err != nil {
 		return err

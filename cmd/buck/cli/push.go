@@ -9,7 +9,6 @@ import (
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
@@ -54,13 +53,10 @@ Use the '--force' flag to allow a non-fast-forward update.
 		}
 
 		var events chan local.PathEvent
-		var progress *uiprogress.Progress
 		if !quiet {
 			events = make(chan local.PathEvent)
 			defer close(events)
-			progress = uiprogress.New()
-			progress.Start()
-			go handleProgressBars(progress, events)
+			go handleEvents(events)
 		}
 		roots, err := buck.PushLocal(
 			ctx,
@@ -68,9 +64,6 @@ Use the '--force' flag to allow a non-fast-forward update.
 			local.WithForce(force),
 			local.WithPathEvents(events),
 		)
-		if progress != nil {
-			progress.Stop()
-		}
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {

@@ -13,7 +13,6 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 var initCmd = &cobra.Command{
@@ -162,13 +161,10 @@ Use the '--hard' flag to discard all local changes.
 		defer cancel()
 
 		var events chan local.PathEvent
-		var progress *uiprogress.Progress
 		if !quiet {
 			events = make(chan local.PathEvent)
 			defer close(events)
-			progress = uiprogress.New()
-			progress.Start()
-			go handleProgressBars(progress, events)
+			go handleEvents(events)
 		}
 		buck, err := bucks.NewBucket(
 			ctx,
@@ -178,14 +174,11 @@ Use the '--hard' flag to discard all local changes.
 			local.WithCid(xcid),
 			local.WithStrategy(strategy),
 			local.WithInitPathEvents(events))
-		if progress != nil {
-			progress.Stop()
-		}
 		cmd.ErrCheck(err)
 
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
-		printLinks(links, Default)
+		printLinks(links, DefaultFormat)
 
 		var msg string
 		if !existing {

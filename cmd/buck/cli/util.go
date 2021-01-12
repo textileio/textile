@@ -3,14 +3,11 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 
-	"github.com/ipfs/go-cid"
+	pb "github.com/cheggaaa/pb/v3"
 	"github.com/manifoldco/promptui"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
@@ -33,78 +30,45 @@ func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
 	}
 }
 
-func handleProgressBars(p *uiprogress.Progress, events chan local.PathEvent) {
-	bars := make(map[string]*uiprogress.Bar)
+func handleEvents(events chan local.PathEvent) {
+	bar := pb.New(0)
+	bar.Set(pb.Bytes, true)
+
+	tmp := `{{string . "prefix"}}{{counters . }} {{bar . "[" "=" ">" "-" "]"}} {{percent . }} {{etime . }}{{string . "suffix"}}`
+	bar.SetTemplate(pb.ProgressBarTemplate(tmp))
+
+	clear := func() {
+		_, _ = fmt.Fprintf(os.Stderr, "\033[2K\r")
+	}
+
 	for e := range events {
 		switch e.Type {
-		case local.FileStart:
-			if runtime.GOOS == "windows" {
-				cmd.Message("Uploading %s", e.Path)
-				continue
+		case local.FileProgress:
+			bar.SetTotal(e.Size)
+			bar.SetCurrent(e.Progress)
+			if !bar.IsStarted() {
+				bar.Start()
 			}
-			bars[e.Path] = addBar(p, e.Path, e.Size)
-		case local.FileProgress, local.FileComplete:
-			if runtime.GOOS == "windows" {
-				continue
-			}
-			bar, ok := bars[e.Path]
-			if ok {
-				_ = bar.Set(int(e.Progress))
-				if e.Type == local.FileComplete {
-					finishBar(p, bar, e.Path, e.Cid, false)
-					delete(bars, e.Path)
-				}
+			bar.Write()
+		case local.FileComplete:
+			clear()
+			_, _ = fmt.Fprintf(os.Stdout,
+				"+ %s %s %s\n",
+				e.Cid,
+				e.Path,
+				formatBytes(e.Size, false),
+			)
+			if bar.IsStarted() {
+				bar.Write()
 			}
 		case local.FileRemoved:
-			if runtime.GOOS == "windows" {
-				cmd.Message("Removing %s", e.Path)
-				continue
+			clear()
+			_, _ = fmt.Fprintf(os.Stdout, "- %s\n", e.Path)
+			if bar.IsStarted() {
+				bar.Write()
 			}
-			bar := p.AddBar(int(e.Size))
-			finishBar(p, bar, e.Path, e.Cid, true)
 		}
 	}
-}
-
-func addBar(p *uiprogress.Progress, pth string, size int64) *uiprogress.Bar {
-	bar := p.AddBar(int(size)).AppendCompleted()
-	pre := "+ " + pth + ":"
-	total := formatBytes(size, true)
-	setBarWidth(bar, pre, total, 9)
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		c := formatBytes(int64(b.Current()), true)
-		return pre + "  " + c + " / " + total
-	})
-	return bar
-}
-
-func finishBar(p *uiprogress.Progress, bar *uiprogress.Bar, pth string, c cid.Cid, removal bool) {
-	if removal {
-		bar.Final = "- " + pth
-	} else {
-		bar.Final = "+ " + pth + ": " + c.String()
-	}
-	p.Print()
-}
-
-func setBarWidth(bar *uiprogress.Bar, pre, size string, of int) {
-	tw, _ := getTermDim()
-	w := tw - len(pre) - (2*len(size) + 3) - of // Make space for overflow chars
-	if w > 0 {
-		bar.Width = w
-	} else {
-		bar.Width = 10
-	}
-}
-
-func getTermDim() (w, h int) {
-	c := exec.Command("stty", "size")
-	c.Stdin = os.Stdin
-	termDim, err := c.Output()
-	cmd.ErrCheck(err)
-	_, err = fmt.Sscan(string(termDim), &h, &w)
-	cmd.ErrCheck(err)
-	return w, h
 }
 
 // Copied from https://github.com/cheggaaa/pb/blob/master/v3/util.go

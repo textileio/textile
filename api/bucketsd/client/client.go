@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
@@ -106,9 +107,11 @@ func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid
 
 // PushPathResult contains the result of a Push.
 type PushPathResult struct {
-	Path string
-	Cid  cid.Cid
-	Root path.Resolved
+	Path   string
+	Cid    cid.Cid
+	Size   int64
+	Pinned int64
+	Root   path.Resolved
 
 	err error
 }
@@ -123,23 +126,37 @@ type PushPathQueue struct {
 	done   bool
 	closed bool
 	wg     sync.WaitGroup
+
+	size     int64
+	complete int64
 }
 
 type pushPath struct {
 	path string
-	r    io.Reader
+	r    io.ReadCloser
 }
 
 // Push adds one or more files to the queue.
-func (c *PushPathQueue) Push(pth string, reader io.Reader) {
+func (c *PushPathQueue) Push(pth string, reader io.ReadCloser, size int64) {
 	if c.closed {
 		return
 	}
 	c.wg.Add(1)
+	atomic.AddInt64(&c.size, size)
 	c.inCh <- pushPath{
 		path: filepath.ToSlash(pth),
 		r:    reader,
 	}
+}
+
+// Size returns the queue size in bytes.
+func (c *PushPathQueue) Size() int64 {
+	return atomic.LoadInt64(&c.size)
+}
+
+// Complete returns the portion of the queue size that has been pushed.
+func (c *PushPathQueue) Complete() int64 {
+	return atomic.LoadInt64(&c.complete)
 }
 
 // Next blocks while the queue is open, returning true when a result is ready.
@@ -226,27 +243,23 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 			if err != nil {
 				return
 			}
-			if rep.Event.Cid != "" {
-				id, err := cid.Parse(rep.Event.Cid)
-				if err != nil {
-					q.outCh <- PushPathResult{err: err}
-					return
-				}
-				root, err := util.NewResolvedPath(rep.Event.Root.Path)
-				if err != nil {
-					q.outCh <- PushPathResult{err: err}
-					return
-				}
-				q.outCh <- PushPathResult{
-					Path: rep.Event.Path,
-					Cid:  id,
-					Root: root,
-				}
-			} else if args.progress != nil {
-				args.progress <- Progress{
-					Path:  rep.Event.Path,
-					Bytes: rep.Event.Bytes,
-				}
+
+			id, err := cid.Parse(rep.Cid)
+			if err != nil {
+				q.outCh <- PushPathResult{err: err}
+				return
+			}
+			root, err := util.NewResolvedPath(rep.Root.Path)
+			if err != nil {
+				q.outCh <- PushPathResult{err: err}
+				return
+			}
+			q.outCh <- PushPathResult{
+				Path:   rep.Path,
+				Cid:    id,
+				Size:   rep.Size,
+				Pinned: rep.Pinned,
+				Root:   root,
 			}
 		}
 	}()
@@ -260,6 +273,10 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				},
 			}); err != nil {
 				q.outCh <- PushPathResult{err: err}
+			}
+			atomic.AddInt64(&q.complete, int64(len(c.Data)))
+			if args.progress != nil {
+				args.progress <- q.complete
 			}
 		}
 	}()
@@ -294,6 +311,7 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 							chunkCh <- &pb.PushPathRequest_Chunk{
 								Path: p.path,
 							}
+							p.r.Close()
 							return
 						} else if err != nil {
 							q.outCh <- PushPathResult{err: err}
@@ -341,10 +359,7 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 		}
 		written += int64(n)
 		if args.progress != nil {
-			args.progress <- Progress{
-				Path:  pth,
-				Bytes: written,
-			}
+			args.progress <- written
 		}
 	}
 	return nil
@@ -381,10 +396,7 @@ func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writ
 		}
 		written += int64(n)
 		if args.progress != nil {
-			args.progress <- Progress{
-				Path:  pth.String(),
-				Bytes: written,
-			}
+			args.progress <- written
 		}
 	}
 	return nil

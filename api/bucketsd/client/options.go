@@ -36,15 +36,9 @@ func WithCid(c cid.Cid) CreateOption {
 	}
 }
 
-// Progress wraps progress bytes for a path.
-type Progress struct {
-	Path  string
-	Bytes int64
-}
-
 type options struct {
 	root     path.Resolved
-	progress chan<- Progress
+	progress chan<- int64
 }
 
 type Option func(*options)
@@ -57,7 +51,7 @@ func WithFastForwardOnly(root path.Resolved) Option {
 }
 
 // WithProgress writes progress updates to the given channel.
-func WithProgress(ch chan<- Progress) Option {
+func WithProgress(ch chan<- int64) Option {
 	return func(args *options) {
 		args.progress = ch
 	}

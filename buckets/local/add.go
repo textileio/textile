@@ -29,7 +29,13 @@ func (b *Bucket) AddRemoteCid(ctx context.Context, c cid.Cid, dest string, opts 
 	return b.mergeIpfsPath(ctx, path.IpfsPath(c), dest, args.merge, args.events)
 }
 
-func (b *Bucket) mergeIpfsPath(ctx context.Context, ipfsBasePth path.Path, dest string, merge SelectMergeFunc, events chan<- PathEvent) error {
+func (b *Bucket) mergeIpfsPath(
+	ctx context.Context,
+	ipfsBasePth path.Path,
+	dest string,
+	merge SelectMergeFunc,
+	events chan<- PathEvent,
+) error {
 	ok, err := b.containsPath(dest)
 	if err != nil {
 		return err
@@ -92,7 +98,12 @@ func (b *Bucket) mergeIpfsPath(ctx context.Context, ipfsBasePth path.Path, dest 
 // replaced completely (not merged). The second return value are a list of files
 // that should be added locally. If one of them exist, can be understood that should
 // be overwritten.
-func (b *Bucket) listMergePath(ctx context.Context, ipfsBasePth path.Path, ipfsRelPath, dest string, merge SelectMergeFunc) ([]string, []object, error) {
+func (b *Bucket) listMergePath(
+	ctx context.Context,
+	ipfsBasePth path.Path,
+	ipfsRelPath, dest string,
+	merge SelectMergeFunc,
+) ([]string, []object, error) {
 	// List remote IPFS UnixFS path level
 	rep, err := b.clients.Buckets.ListIpfsPath(ctx, path.Join(ipfsBasePth, ipfsRelPath))
 	if err != nil {
@@ -127,7 +138,13 @@ func (b *Bucket) listMergePath(ctx context.Context, ipfsBasePth path.Path, ipfsR
 			}
 		}
 		for _, i := range rep.Item.Items {
-			nestFolderReplace, nestAdd, err := b.listMergePath(ctx, ipfsBasePth, filepath.Join(ipfsRelPath, i.Name), dest, merge)
+			nestFolderReplace, nestAdd, err := b.listMergePath(
+				ctx,
+				ipfsBasePth,
+				filepath.Join(ipfsRelPath, i.Name),
+				dest,
+				merge,
+			)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -164,7 +181,14 @@ func (b *Bucket) listMergePath(ctx context.Context, ipfsBasePth path.Path, ipfsR
 	return nil, []object{o}, nil
 }
 
-func (b *Bucket) getIpfsFile(ctx context.Context, ipfsPath path.Path, filePath string, size int64, c cid.Cid, events chan<- PathEvent) error {
+func (b *Bucket) getIpfsFile(
+	ctx context.Context,
+	ipfsPath path.Path,
+	filePath string,
+	size int64,
+	c cid.Cid,
+	events chan<- PathEvent,
+) error {
 	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
 	}

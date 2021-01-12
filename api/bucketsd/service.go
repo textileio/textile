@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/big"
 	gopath "path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1296,7 +1297,7 @@ type fileAdder struct {
 type addedFile struct {
 	path     string
 	resolved path.Resolved
-	size     string
+	size     int64
 	err      error
 }
 
@@ -1350,17 +1351,7 @@ func (q *fileQueue) add(
 				log.Error("unexpected event type")
 				continue
 			}
-			if event.Path == nil { // This is a progress event
-				if err := server.Send(&pb.PushPathResponse{
-					Event: &pb.PushPathResponse_Event{
-						Name:  event.Name,
-						Path:  ppth,
-						Bytes: event.Bytes,
-					},
-				}); err != nil {
-					log.Errorf("error sending event: %v", err)
-				}
-			} else {
+			if event.Path != nil {
 				chSize <- event.Size // Save size for use in the final response
 			}
 		}
@@ -1391,15 +1382,15 @@ func (q *fileQueue) add(
 			return
 		}
 		size := <-chSize
-		doneCh <- addedFile{path: ppth, resolved: res, size: size}
+		added, err := strconv.Atoi(size)
+		if err != nil {
+			doneCh <- addedFile{err: fmt.Errorf("getting file size: %v", err)}
+			return
+		}
+		doneCh <- addedFile{path: ppth, resolved: res, size: int64(added)}
 	}()
 
 	return fa, nil
-}
-
-type pushPathResult struct {
-	dir path.Resolved
-	err error
 }
 
 func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
@@ -1452,7 +1443,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 
 	addedCh := make(chan addedFile)
 	defer close(addedCh)
-	pushCh := make(chan pushPathResult)
+	errCh := make(chan error)
 	go func() {
 		for {
 			select {
@@ -1461,13 +1452,13 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 					return
 				}
 				if res.err != nil {
-					pushCh <- pushPathResult{err: res.err}
+					errCh <- res.err
 					break
 				}
 
 				fn, err := s.IPFSClient.ResolveNode(server.Context(), res.resolved)
 				if err != nil {
-					pushCh <- pushPathResult{err: fmt.Errorf("resolving added node: %v", err)}
+					errCh <- fmt.Errorf("resolving added node: %v", err)
 					break
 				}
 
@@ -1481,7 +1472,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 						buck.GetLinkEncryptionKey(),
 					)
 					if err != nil {
-						pushCh <- pushPathResult{err: fmt.Errorf("inserting added node: %v", err)}
+						errCh <- fmt.Errorf("inserting added node: %v", err)
 						break
 					}
 				} else {
@@ -1493,43 +1484,36 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 						options.Object.Create(true),
 					)
 					if err != nil {
-						pushCh <- pushPathResult{err: fmt.Errorf("adding bucket link: %v", err)}
+						errCh <- fmt.Errorf("adding bucket link: %v", err)
 						break
 					}
 					ctx, err = s.updateOrAddPin(ctx, path.New(buck.Path), dir)
 					if err != nil {
-						pushCh <- pushPathResult{err: fmt.Errorf("updating bucket pin: %v", err)}
+						errCh <- fmt.Errorf("updating bucket pin: %v", err)
 						break
 					}
 				}
-
 				buck.Path = dir.String()
 				buck.UpdatedAt = time.Now().UnixNano()
-				if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-					pushCh <- pushPathResult{err: fmt.Errorf("saving bucket: %v", err)}
-					break
-				}
 
 				root, err := getPbRoot(dbID, buck)
 				if err != nil {
-					pushCh <- pushPathResult{err: fmt.Errorf("preparing result: %v", err)}
+					errCh <- fmt.Errorf("preparing result: %v", err)
 					break
 				}
 				if err := server.Send(&pb.PushPathResponse{
-					Event: &pb.PushPathResponse_Event{
-						Path:   res.path,
-						Cid:    res.resolved.Cid().String(),
-						Size:   res.size,
-						Root:   root,
-						Pinned: s.getPinnedBytes(ctx),
-					},
+					Path:   res.path,
+					Cid:    res.resolved.Cid().String(),
+					Size:   res.size,
+					Pinned: s.getPinnedBytes(ctx),
+					Root:   root,
 				}); err != nil {
-					pushCh <- pushPathResult{err: fmt.Errorf("sending event: %v", err)}
+					errCh <- fmt.Errorf("sending event: %v", err)
 					break
 				}
 
 				log.Debugf("pushed %s to bucket: %s", res.path, buck.Key)
-				pushCh <- pushPathResult{dir: dir}
+				errCh <- nil
 			}
 		}
 	}()
@@ -1538,7 +1522,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	go func() {
 		defer func() {
 			wg.Wait()
-			close(pushCh)
+			close(errCh)
 		}()
 		queue := newFileQueue()
 		for {
@@ -1548,69 +1532,71 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 			}
 			switch payload := req.Payload.(type) {
 			case *pb.PushPathRequest_Chunk_:
-				fa, err := queue.add(server, s.IPFSClient.Unixfs(), payload.Chunk.Path, func(pth string) ([]byte, error) {
-					buck.SetMetadataAtPath(pth, tdb.Metadata{
-						UpdatedAt: buck.UpdatedAt,
-					})
-					buck.UnsetMetadataWithPrefix(pth + "/")
-					if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
-						return nil, fmt.Errorf("verifying bucket update: %v", err)
-					}
-					key, err := buck.GetFileEncryptionKeyForPath(pth)
-					if err != nil {
-						return nil, fmt.Errorf("getting bucket key: %v", err)
-					}
-					wg.Add(1)
-					return key, nil
-				}, addedCh)
+				fa, err := queue.add(
+					server,
+					s.IPFSClient.Unixfs(),
+					payload.Chunk.Path,
+					func(pth string) ([]byte, error) {
+						buck.SetMetadataAtPath(pth, tdb.Metadata{
+							UpdatedAt: buck.UpdatedAt,
+						})
+						buck.UnsetMetadataWithPrefix(pth + "/")
+						if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+							return nil, fmt.Errorf("verifying bucket update: %v", err)
+						}
+						key, err := buck.GetFileEncryptionKeyForPath(pth)
+						if err != nil {
+							return nil, fmt.Errorf("getting bucket key: %v", err)
+						}
+						wg.Add(1)
+						return key, nil
+					}, addedCh)
 				if err != nil {
-					pushCh <- pushPathResult{err: fmt.Errorf("enqueueing file: %v", err)}
+					errCh <- fmt.Errorf("enqueueing file: %v", err)
 					return
 				}
 
 				if len(payload.Chunk.Data) > 0 {
 					n, err := fa.writer.Write(payload.Chunk.Data)
 					if err != nil {
-						pushCh <- pushPathResult{err: fmt.Errorf("writing chunk: %v", err)}
+						errCh <- fmt.Errorf("writing chunk: %v", err)
 						return
 					}
 					buckSize += int64(n)
 					if s.MaxBucketSize > 0 && buckSize > s.MaxBucketSize {
-						pushCh <- pushPathResult{err: ErrMaxBucketSizeExceeded}
+						errCh <- ErrMaxBucketSizeExceeded
 						return
 					} else if storageAvailable > 0 && buckSize > storageAvailable {
-						pushCh <- pushPathResult{err: ErrStorageQuotaExhausted}
+						errCh <- ErrStorageQuotaExhausted
 						return
 					}
 				} else {
 					if err := fa.writer.Close(); err != nil {
-						pushCh <- pushPathResult{err: fmt.Errorf("closing writer: %v", err)}
+						errCh <- fmt.Errorf("closing writer: %v", err)
 						return
 					}
-					log.Debugf("new bucket size: %d", buckSize)
 				}
 			default:
-				pushCh <- pushPathResult{err: fmt.Errorf("invalid request")}
+				errCh <- fmt.Errorf("invalid request")
 				return
 			}
 		}
 	}()
 
-	var root path.Resolved
 	for {
 		select {
-		case res, ok := <-pushCh:
+		case err, ok := <-errCh:
 			if !ok {
-				if root != nil {
-					go s.IPNSManager.Publish(root, buck.Key)
+				if err := s.Buckets.Save(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+					return fmt.Errorf("saving bucket: %v", err)
 				}
+				go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
 				return nil
 			}
 			wg.Done()
-			if res.err != nil {
+			if err != nil {
 				return err
 			}
-			root = res.dir
 		}
 	}
 }
@@ -2422,7 +2408,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		if err != nil {
 			return fmt.Errorf("creating new powergate integration: %v", err)
 		}
-		_, err = s.Collections.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
+		_, err = s.Collections.Accounts.UpdatePowInfo(
+			ctx,
+			account.Owner().Key,
+			&mdb.PowInfo{ID: res.User.Id, Token: res.User.Token},
+		)
 		if err != nil {
 			return fmt.Errorf("updating user/account with new powergate information: %v", err)
 		}
@@ -2781,13 +2771,24 @@ func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 
 func (s *Service) validateArchiveConfig(c *mdb.ArchiveConfig) error {
 	if c.RepFactor > s.MaxBucketArchiveRepFactor {
-		return fmt.Errorf("rep factor %d is greater than max allowed of %d", c.RepFactor, s.MaxBucketArchiveRepFactor)
+		return fmt.Errorf(
+			"rep factor %d is greater than max allowed of %d",
+			c.RepFactor,
+			s.MaxBucketArchiveRepFactor,
+		)
 	}
 	if c.DealMinDuration < powUtil.MinDealDuration {
-		return fmt.Errorf("min deal duration %d is less than the allowed minimum of %d", c.DealMinDuration, powUtil.MinDealDuration)
+		return fmt.Errorf(
+			"min deal duration %d is less than the allowed minimum of %d",
+			c.DealMinDuration,
+			powUtil.MinDealDuration,
+		)
 	}
 	if c.DealStartOffset <= 0 {
-		return fmt.Errorf("deal start offset of %d is less than required minimum of 1, and really should be higher than 1", c.DealStartOffset)
+		return fmt.Errorf(
+			"deal start offset of %d is less than required minimum of 1, and really should be higher than 1",
+			c.DealStartOffset,
+		)
 	}
 	return nil
 }

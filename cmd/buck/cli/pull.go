@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 var pullCmd = &cobra.Command{
@@ -35,13 +34,10 @@ Use the '--force' flag to pull all remote objects, even if they already exist lo
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 		var events chan local.PathEvent
-		var progress *uiprogress.Progress
 		if !quiet {
 			events = make(chan local.PathEvent)
 			defer close(events)
-			progress = uiprogress.New()
-			progress.Start()
-			go handleProgressBars(progress, events)
+			go handleEvents(events)
 		}
 		roots, err := buck.PullRemote(
 			ctx,
@@ -49,9 +45,6 @@ Use the '--force' flag to pull all remote objects, even if they already exist lo
 			local.WithForce(force),
 			local.WithHard(hard),
 			local.WithPathEvents(events))
-		if progress != nil {
-			progress.Stop()
-		}
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {
