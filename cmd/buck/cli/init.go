@@ -191,6 +191,12 @@ Use the '--hard' flag to discard all local changes.
 		}
 		cmd.ErrCheck(err)
 
+		if unfreeze {
+			cmd.Message("The bucket will be automatically created if the Filecoin retrieval succeeds.")
+			cmd.Message("Track progress using `hub retrievals [ls | logs]`.")
+			return
+		}
+
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
 		printLinks(links, Default)

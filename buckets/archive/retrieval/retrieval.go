@@ -512,9 +512,6 @@ func (fr *FilRetrieval) GetAllByAccount(accKey string) ([]Retrieval, error) {
 	q := query.Query{
 		Prefix: dsAccountKey(accKey).String(),
 	}
-	if fr == nil {
-		panic(1)
-	}
 	res, err := fr.ds.Query(q)
 	if err != nil {
 		return nil, fmt.Errorf("initiating query: %s", err)

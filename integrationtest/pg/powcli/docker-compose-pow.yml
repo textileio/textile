@@ -79,12 +79,14 @@ services:
   lotus:
     image: textile/lotus-devnet:v1.3.0
     environment:
-      - TEXLOTUSDEVNET_SPEED=300
+      - TEXLOTUSDEVNET_SPEED=100
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
       - TEXLOTUSDEVNET_BIGSECTORS=true
       - TEXLOTUSDEVNET_ONLINEMODE=true
     ports:
       - 1234:7777
+    logging:
+      driver: none
   billing:
     build:
       context: ../../../

@@ -52,8 +52,6 @@ func Init(baseCmd *cobra.Command) {
 		decryptCmd,
 		archiveCmd,
 		rolesCmd,
-		archivesCmd,
-		retrievalsCmd,
 	)
 	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archiveLsCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)

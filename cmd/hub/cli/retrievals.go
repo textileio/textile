@@ -32,7 +32,7 @@ var retrievalsLsCmd = &cobra.Command{
 	Long:  `List all created Filecoin retrievals.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		rs, err := bucks.Clients().Buckets.ArchiveRetrievalLs(c.Context())
+		rs, err := clients.Buckets.ArchiveRetrievalLs(Auth(c.Context()))
 		cmd.ErrCheck(err)
 
 		if len(rs.Retrievals) > 0 {
@@ -42,7 +42,7 @@ var retrievalsLsCmd = &cobra.Command{
 					r.Id,
 					r.Cid,
 					retrievalsStatusPrettyName[r.Status],
-					time.Unix(0, r.CreatedAt).Format("02-Jan-06 15:04 -0700"),
+					time.Unix(r.CreatedAt, 0).Format("02-Jan-06 15:04 -0700"),
 					r.FailureCause,
 				}
 			}
@@ -63,7 +63,7 @@ var retrievalsLogsCmd = &cobra.Command{
 		msgs := make(chan string)
 		var err error
 		go func() {
-			err = bucks.Clients().Buckets.ArchiveRetrievalLogs(c.Context(), id, msgs)
+			err = clients.Buckets.ArchiveRetrievalLogs(Auth(c.Context()), id, msgs)
 			close(msgs)
 		}()
 

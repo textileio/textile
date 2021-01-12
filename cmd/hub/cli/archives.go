@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -23,7 +22,7 @@ var archivesLsCmd = &cobra.Command{
 	Long:  `List all known archive data in the Filecoin network. This includes made bucket archives, or imported deals.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		as, err := bucks.Clients().Buckets.ArchivesLs(c.Context())
+		as, err := clients.Buckets.ArchivesLs(Auth(c.Context()))
 		cmd.ErrCheck(err)
 
 		if len(as.Archives) > 0 {
@@ -51,15 +50,15 @@ var archivesImportCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 	Run: func(c *cobra.Command, args []string) {
 		dataCid, err := cid.Decode(args[0])
-		cmd.ErrCheck(fmt.Errorf("parsing cid: %s", err))
+		cmd.ErrCheck(err)
 
 		dealIDs := make([]uint64, len(args)-1)
-		for i := 1; i < len(args)-1; i++ {
-			dealIDs[i], err = strconv.ParseUint(args[i], 10, 64)
-			cmd.ErrCheck(fmt.Errorf("parsing deal-id %s: %s", args[i], err))
+		for i := 0; i < len(args)-1; i++ {
+			dealIDs[i], err = strconv.ParseUint(args[i+1], 10, 64)
+			cmd.ErrCheck(err)
 		}
 
-		err = bucks.Clients().Buckets.ArchivesImport(c.Context(), dataCid, dealIDs)
+		err = clients.Buckets.ArchivesImport(Auth(c.Context()), dataCid, dealIDs)
 		cmd.ErrCheck(err)
 
 		cmd.Success("Deals imported successfully")

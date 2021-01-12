@@ -110,6 +110,8 @@ func (b *Buckets) NewConfigFromCmd(c *cobra.Command, pth string) (conf Config, e
 // By default, this will be an unencrypted, unnamed, empty bucket.
 // The remote bucket will also be created if it doesn't already exist.
 // See NewOption for more info.
+// If the Unfreeze flag is set, the bucket gets created async thus `*Bucket` return
+// value will nil (i.e: the method return will be (nil, nil))
 func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption) (buck *Bucket, err error) {
 	args := &newOptions{}
 	for _, opt := range opts {
@@ -158,6 +160,14 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 			client.WithUnfreeze(args.unfreeze))
 		if err != nil {
 			return nil, err
+		}
+
+		// If we're unfreezing, we simply return since the
+		// bucket will get created async if the Filecoin retrieval
+		// is successful. The user will `[hub] buck init -e` in the future
+		// to pull the new bucket.
+		if args.unfreeze {
+			return nil, nil
 		}
 		buck.conf.Viper.Set("key", rep.Root.Key)
 
