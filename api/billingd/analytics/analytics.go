@@ -72,7 +72,7 @@ func (c *Client) TrackEvent(userID string, accountType mdb.AccountType, active b
 			props.Set(key, value)
 		}
 
-		err := c.api.Enqueue(segment.Track{
+		return c.api.Enqueue(segment.Track{
 			UserId:     userID,
 			Event:      event.String(),
 			Properties: props,
@@ -82,16 +82,6 @@ func (c *Client) TrackEvent(userID string, accountType mdb.AccountType, active b
 				},
 			},
 		})
-		if err != nil {
-			return err
-		}
-
-		trait := event.GetCorrespondingTrait()
-		if trait != nil {
-			c.Identify(userID, accountType, false, "", map[string]interface{}{
-				trait.name: trait.value,
-			})
-		}
 	}
 	return nil
 }

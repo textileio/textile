@@ -67,26 +67,3 @@ func (e Event) String() string {
 		return fmt.Sprintf("%d", int(e))
 	}
 }
-
-// GetCorrespondingTrait returns nil or a bool trait that should be set on the profile
-func (e Event) GetCorrespondingTrait() *Trait {
-	switch e {
-	case AccountDestroyed:
-		return &Trait{
-			name:  "destroyed",
-			value: true,
-		}
-	case GracePeriodStart:
-		return &Trait{
-			name:  "in_grace_period",
-			value: true,
-		}
-	case GracePeriodEnd:
-		return &Trait{
-			name:  "in_grace_period",
-			value: false,
-		}
-	default:
-		return nil
-	}
-}
