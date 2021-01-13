@@ -47,7 +47,7 @@ services:
       - billing
 
   powergate:
-    image: textile/powergate:v1.3.0-local2
+    image: textile/powergate:v2.0.0-jsign-1
     depends_on:
       - ipfs
       - ipfsbuckets
