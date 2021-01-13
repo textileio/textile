@@ -254,9 +254,7 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 		return t.jobPollIntervalSlow, fmt.Sprintf("getting current job %s for retrieval: %s", jid, err), nil
 	}
 
-	// Step 2: If we reached some final status, notify `retrieval.FilRetrieval` as it can
-	// continues the retrieval workflow. If isn't the case, just keep tracking the Job
-	// in the next iteration.
+	// Step 2: Notify `JobEvent` listeners about job changing status.
 	var (
 		rescheduleDuration time.Duration
 		message            string
