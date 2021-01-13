@@ -4,12 +4,6 @@ import (
 	"fmt"
 )
 
-// Trait is a bool trait set on user by specific events
-type Trait struct {
-	name  string
-	value bool
-}
-
 // Event is a type of usage event
 type Event int
 
