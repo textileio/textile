@@ -30,37 +30,31 @@ var (
 	ErrAborted = errors.New("operation aborted by caller")
 )
 
-// PathEvent describes a path event that occurred.
+// Event describes a path event that occurred.
 // These events can be used to display live info during path uploads/downloads.
-type PathEvent struct {
+type Event struct {
+	// Type of event.
+	Type EventType
 	// Path relative to the bucket's cwd.
 	Path string
-	// Path cid if known.
+	// Cid of associated Path.
 	Cid cid.Cid
-	// Type of event.
-	Type PathEventType
-	// Path total size.
+	// Size of the total operation or completed file.
 	Size int64
-	// Progress of the event if known (useful for upload/download progress).
-	Progress int64
+	// Complete is the amount of Size that is complete (useful for upload/download progress).
+	Complete int64
 }
 
-// PathEventType is the type of path event.
-type PathEventType int
+// EventType is the type of path event.
+type EventType int
 
 const (
-	// PathStart indicates a path has begun uploading/downloading.
-	PathStart PathEventType = iota
-	// PathComplete indicates a path has completed uploading/downloading.
-	PathComplete
-	// FileStart indicates a file under path has begun uploading/downloading.
-	FileStart
-	// FileProgress indicates a file has made some progress uploading/downloading.
-	FileProgress
-	// File complete indicates a file has completed uploading/downloading.
-	FileComplete
-	// FileRemoved indicates a file has been removed.
-	FileRemoved
+	// EventProgress indicates a file has made some progress uploading/downloading.
+	EventProgress EventType = iota
+	// EventFileComplete indicates a file has completed uploading/downloading.
+	EventFileComplete
+	// EventFileRemoved indicates a file has been removed.
+	EventFileRemoved
 )
 
 // Bucket is a local-first object storage and synchronization model built

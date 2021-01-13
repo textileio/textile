@@ -30,7 +30,7 @@ func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
 	}
 }
 
-func handleEvents(events chan local.PathEvent) {
+func handleEvents(events chan local.Event) {
 	bar := pb.New(0)
 	bar.Set(pb.Bytes, true)
 
@@ -43,14 +43,14 @@ func handleEvents(events chan local.PathEvent) {
 
 	for e := range events {
 		switch e.Type {
-		case local.FileProgress:
+		case local.EventProgress:
 			bar.SetTotal(e.Size)
-			bar.SetCurrent(e.Progress)
+			bar.SetCurrent(e.Complete)
 			if !bar.IsStarted() {
 				bar.Start()
 			}
 			bar.Write()
-		case local.FileComplete:
+		case local.EventFileComplete:
 			clear()
 			_, _ = fmt.Fprintf(os.Stdout,
 				"+ %s %s %s\n",
@@ -61,7 +61,7 @@ func handleEvents(events chan local.PathEvent) {
 			if bar.IsStarted() {
 				bar.Write()
 			}
-		case local.FileRemoved:
+		case local.EventFileRemoved:
 			clear()
 			_, _ = fmt.Fprintf(os.Stdout, "- %s\n", e.Path)
 			if bar.IsStarted() {

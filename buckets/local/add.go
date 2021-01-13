@@ -34,7 +34,7 @@ func (b *Bucket) mergeIpfsPath(
 	ipfsBasePth path.Path,
 	dest string,
 	merge SelectMergeFunc,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) error {
 	ok, err := b.containsPath(dest)
 	if err != nil {
@@ -57,12 +57,6 @@ func (b *Bucket) mergeIpfsPath(
 
 	// Add files that are missing, or were decided to be overwritten.
 	if len(toAdd) > 0 {
-		if events != nil {
-			events <- PathEvent{
-				Path: ipfsBasePth.String(),
-				Type: PathStart,
-			}
-		}
 		eg, gctx := errgroup.WithContext(ctx)
 		for _, o := range toAdd {
 			o := o
@@ -79,12 +73,6 @@ func (b *Bucket) mergeIpfsPath(
 		}
 		if err := eg.Wait(); err != nil {
 			return err
-		}
-		if events != nil {
-			events <- PathEvent{
-				Path: ipfsBasePth.String(),
-				Type: PathComplete,
-			}
 		}
 	}
 	return nil
@@ -187,7 +175,7 @@ func (b *Bucket) getIpfsFile(
 	filePath string,
 	size int64,
 	c cid.Cid,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) error {
 	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
@@ -198,25 +186,16 @@ func (b *Bucket) getIpfsFile(
 	}
 	defer file.Close()
 
-	if events != nil {
-		events <- PathEvent{
-			Path: filePath,
-			Cid:  c,
-			Type: FileStart,
-			Size: size,
-		}
-	}
-
 	progress := make(chan int64)
 	go func() {
 		for up := range progress {
 			if events != nil {
-				events <- PathEvent{
+				events <- Event{
 					Path:     filePath,
 					Cid:      c,
-					Type:     FileProgress,
+					Type:     EventProgress,
 					Size:     size,
-					Progress: up,
+					Complete: up,
 				}
 			}
 		}
@@ -225,12 +204,12 @@ func (b *Bucket) getIpfsFile(
 		return err
 	}
 	if events != nil {
-		events <- PathEvent{
+		events <- Event{
 			Path:     filePath,
 			Cid:      c,
-			Type:     FileComplete,
+			Type:     EventFileComplete,
 			Size:     size,
-			Progress: size,
+			Complete: size,
 		}
 	}
 	return nil

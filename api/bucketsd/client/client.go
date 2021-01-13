@@ -284,9 +284,6 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 	go func() {
 		defer func() {
 			_ = stream.CloseSend()
-			if args.progress != nil {
-				close(args.progress)
-			}
 			close(chunkCh)
 		}()
 		for {
@@ -331,9 +328,6 @@ func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
-	}
-	if args.progress != nil {
-		defer close(args.progress)
 	}
 
 	pth = filepath.ToSlash(pth)

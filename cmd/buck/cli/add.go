@@ -26,7 +26,7 @@ var addCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-		events := make(chan local.PathEvent)
+		events := make(chan local.Event)
 		defer close(events)
 		go handleEvents(events)
 		err = buck.AddRemoteCid(

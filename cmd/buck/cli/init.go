@@ -160,9 +160,9 @@ Use the '--hard' flag to discard all local changes.
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 
-		var events chan local.PathEvent
+		var events chan local.Event
 		if !quiet {
-			events = make(chan local.PathEvent)
+			events = make(chan local.Event)
 			defer close(events)
 			go handleEvents(events)
 		}
@@ -173,7 +173,7 @@ Use the '--hard' flag to discard all local changes.
 			local.WithPrivate(private),
 			local.WithCid(xcid),
 			local.WithStrategy(strategy),
-			local.WithInitPathEvents(events))
+			local.WithInitEvents(events))
 		cmd.ErrCheck(err)
 
 		links, err := buck.RemoteLinks(ctx, "")

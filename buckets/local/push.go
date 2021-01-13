@@ -77,12 +77,6 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 	}
 	xr := path.IpfsPath(r.Remote)
 	var rm, add []Change
-	if args.events != nil {
-		args.events <- PathEvent{
-			Path: bp,
-			Type: PathStart,
-		}
-	}
 	key := b.Key()
 	for _, c := range diff {
 		switch c.Type {
@@ -103,17 +97,6 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err != nil {
 				return roots, err
 			}
-			if b.repo != nil {
-				if err := b.repo.RemovePath(ctx, c.Path); err != nil {
-					return roots, err
-				}
-			}
-		}
-	}
-	if args.events != nil {
-		args.events <- PathEvent{
-			Path: bp,
-			Type: PathComplete,
 		}
 	}
 
@@ -144,9 +127,10 @@ func (b *Bucket) addFiles(
 	xroot path.Resolved,
 	changes []Change,
 	force bool,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) (path.Resolved, error) {
 	progress := make(chan int64)
+	defer close(progress)
 	files := make(map[string]pendingFile)
 
 	opts := []client.Option{client.WithProgress(progress)}
@@ -192,10 +176,10 @@ func (b *Bucket) addFiles(
 				u = up
 			}
 			if events != nil {
-				events <- PathEvent{
-					Type:     FileProgress,
+				events <- Event{
+					Type:     EventProgress,
 					Size:     size,
-					Progress: u,
+					Complete: u,
 				}
 			}
 		}
@@ -207,6 +191,7 @@ func (b *Bucket) addFiles(
 			return nil, queue.Err()
 		}
 		file := files[queue.Current.Path]
+		root = queue.Current.Root
 
 		if b.repo != nil {
 			if err := b.repo.SetRemotePath(file.path, queue.Current.Cid); err != nil {
@@ -215,17 +200,14 @@ func (b *Bucket) addFiles(
 		}
 
 		if events != nil {
-			events <- PathEvent{
+			events <- Event{
 				Path: file.rel,
 				Cid:  queue.Current.Cid,
-				Type: FileComplete,
+				Type: EventFileComplete,
 				Size: queue.Current.Size,
 			}
 		}
-
-		root = queue.Current.Root
 	}
-
 	return root, nil
 }
 
@@ -235,7 +217,7 @@ func (b *Bucket) rmFile(
 	xroot path.Resolved,
 	c Change,
 	force bool,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) (path.Resolved, error) {
 	var opts []client.Option
 	if !force {
@@ -247,10 +229,17 @@ func (b *Bucket) rmFile(
 			return nil, err
 		}
 	}
+
+	if b.repo != nil {
+		if err := b.repo.RemovePath(ctx, c.Path); err != nil {
+			return nil, err
+		}
+	}
+
 	if events != nil {
-		events <- PathEvent{
+		events <- Event{
 			Path: c.Rel,
-			Type: FileRemoved,
+			Type: EventFileRemoved,
 		}
 	}
 	return root, nil

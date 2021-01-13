@@ -33,9 +33,9 @@ Use the '--force' flag to pull all remote objects, even if they already exist lo
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-		var events chan local.PathEvent
+		var events chan local.Event
 		if !quiet {
-			events = make(chan local.PathEvent)
+			events = make(chan local.Event)
 			defer close(events)
 			go handleEvents(events)
 		}
@@ -44,7 +44,7 @@ Use the '--force' flag to pull all remote objects, even if they already exist lo
 			local.WithConfirm(getConfirm("Discard %d local changes", yes)),
 			local.WithForce(force),
 			local.WithHard(hard),
-			local.WithPathEvents(events))
+			local.WithEvents(events))
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {

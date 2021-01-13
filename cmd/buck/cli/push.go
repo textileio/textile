@@ -52,9 +52,9 @@ Use the '--force' flag to allow a non-fast-forward update.
 				maxSize, size/MiB))
 		}
 
-		var events chan local.PathEvent
+		var events chan local.Event
 		if !quiet {
-			events = make(chan local.PathEvent)
+			events = make(chan local.Event)
 			defer close(events)
 			go handleEvents(events)
 		}
@@ -62,7 +62,7 @@ Use the '--force' flag to allow a non-fast-forward update.
 			ctx,
 			local.WithConfirm(getConfirm("Push %d changes", yes)),
 			local.WithForce(force),
-			local.WithPathEvents(events),
+			local.WithEvents(events),
 		)
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
