@@ -991,16 +991,16 @@ func keyTypeToPb(t mdb.APIKeyType) (pb.KeyType, error) {
 func toPbRetrievalStatus(s retrieval.Status) pb.ArchiveRetrievalStatus {
 	switch s {
 	case retrieval.StatusQueued:
-		return pb.ArchiveRetrievalStatus_QUEUED
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_QUEUED
 	case retrieval.StatusExecuting:
-		return pb.ArchiveRetrievalStatus_EXECUTING
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_EXECUTING
 	case retrieval.StatusMoveToBucket:
-		return pb.ArchiveRetrievalStatus_MOVETOBUCKET
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET
 	case retrieval.StatusSuccess:
-		return pb.ArchiveRetrievalStatus_SUCCESS
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_SUCCESS
 	case retrieval.StatusFailed:
-		return pb.ArchiveRetrievalStatus_FAILED
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_FAILED
 	default:
-		return pb.ArchiveRetrievalStatus_UNSPECIFIED
+		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED
 	}
 }

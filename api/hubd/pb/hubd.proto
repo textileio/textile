@@ -211,11 +211,11 @@ message ArchiveRetrievalLsItem {
 	string id = 1;
 	string cid = 2;
 	ArchiveRetrievalStatus status = 3;
-	string FailureCause = 4;
+	string failure_cause = 4;
 	int64 created_at = 5;
 
 	oneof retrieval_type {
-		ArchiveRetrievalLsItemNewBucket newBucket = 6;
+		ArchiveRetrievalLsItemNewBucket new_bucket = 6;
 	}
 }
 
@@ -225,13 +225,13 @@ message ArchiveRetrievalLsItemNewBucket {
 }
 
 enum ArchiveRetrievalStatus {
-    UNSPECIFIED = 0;
-    QUEUED = 1;
-    EXECUTING = 2;
-    MOVETOBUCKET = 3;
-    FAILED = 4;
-    CANCELED = 5;
-    SUCCESS = 6;
+    ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED = 0;
+    ARCHIVE_RETRIEVAL_STATUS_QUEUED = 1;
+    ARCHIVE_RETRIEVAL_STATUS_EXECUTING = 2;
+    ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET = 3;
+    ARCHIVE_RETRIEVAL_STATUS_FAILED = 4;
+    ARCHIVE_RETRIEVAL_STATUS_CANCELED = 5;
+    ARCHIVE_RETRIEVAL_STATUS_SUCCESS = 6;
 }
 
 message ArchiveRetrievalLogsRequest {

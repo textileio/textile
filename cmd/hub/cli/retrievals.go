@@ -10,13 +10,13 @@ import (
 )
 
 var retrievalsStatusPrettyName = map[pb.ArchiveRetrievalStatus]string{
-	pb.ArchiveRetrievalStatus_UNSPECIFIED:  "Unspecified",
-	pb.ArchiveRetrievalStatus_QUEUED:       "Queued",
-	pb.ArchiveRetrievalStatus_EXECUTING:    "Executing",
-	pb.ArchiveRetrievalStatus_MOVETOBUCKET: "Moving to bucket",
-	pb.ArchiveRetrievalStatus_FAILED:       "Failed",
-	pb.ArchiveRetrievalStatus_CANCELED:     "Canceled",
-	pb.ArchiveRetrievalStatus_SUCCESS:      "Success",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED:  "Unspecified",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_QUEUED:       "Queued",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_EXECUTING:    "Executing",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET: "Moving to bucket",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_FAILED:       "Failed",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_CANCELED:     "Canceled",
+	pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_SUCCESS:      "Success",
 }
 
 var retrievalsCmd = &cobra.Command{

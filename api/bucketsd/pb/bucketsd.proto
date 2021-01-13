@@ -217,7 +217,7 @@ enum ArchiveStatus {
     ARCHIVE_STATUS_FAILED = 3;
     ARCHIVE_STATUS_CANCELED = 4;
     ARCHIVE_STATUS_SUCCESS = 5;
-  }
+}
 
 message DealInfo {
     string proposal_cid = 1;
