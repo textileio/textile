@@ -223,15 +223,15 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	// At this point we're sure we have imported DealIDs and the data isn't
 	// in hot-storage. We proceed to pushing the current StorageConfig with
 	// hot-storage enabled. This will signal attempting a retrieval.
+
+	// Get the base storage-config to modify.
 	ci, err := fr.pgc.Data.CidInfo(ctx, c.String())
 	if err != nil {
 		return "", fmt.Errorf("getting latest storage-config: %s", err)
 	}
-	// If no storage-config is available, then create one using the users default
-	// but disabled.
 
 	var sc *userPb.StorageConfig
-	if len(ci.CidInfos) == 1 {
+	if len(ci.CidInfos) == 1 { // Found one?, use it.
 		sc = ci.CidInfos[0].LatestPushedStorageConfig
 	} else if len(ci.CidInfos) == 0 {
 		// If no storage-config exist for this Cid, then the user
@@ -253,7 +253,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	// behaviour. Under normal circumstances, this timeout would be
 	// in the order of minutes to give a good chance of finding the
 	// data in the IPFS network.
-	if CITest { // Flag only used
+	if CITest { // Flag only used in CI test.
 		sc.Hot.Ipfs.AddTimeout = 3
 	}
 	sc.Hot.Enabled = true
