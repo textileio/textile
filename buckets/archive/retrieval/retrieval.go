@@ -139,6 +139,8 @@ func (fr *FilRetrieval) RunDaemon() {
 	}
 }
 
+// CreateForNewBucket creates a queued Retrieval to bootstrap a new bucket
+// with the provided information, only if the retrieval succeeds.
 func (fr *FilRetrieval) CreateForNewBucket(
 	ctx context.Context,
 	accKey string,
