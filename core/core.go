@@ -329,7 +329,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
-	jobFinalizedEvents := make(chan archive.JobFinalizedEvent)
+	jobFinalizedEvents := make(chan archive.JobEvent)
 	t.archiveTracker, err = tracker.New(
 		t.collections,
 		t.bucks,

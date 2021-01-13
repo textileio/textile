@@ -7,10 +7,21 @@ const (
 	TrackedJobTypeRetrieval
 )
 
-type JobFinalizedEvent struct {
-	JobID        string
-	Type         TrackedJobType
-	AccKey       string
-	Success      bool
+type TrackedJobStatus int
+
+const (
+	TrackedJobStatusQueued TrackedJobStatus = iota
+	TrackedJobStatusExecuting
+	TrackedJobStatusSuccess
+	TrackedJobStatusFailed
+)
+
+type JobEvent struct {
+	JobID  string
+	Type   TrackedJobType
+	Status TrackedJobStatus
+	AccKey string
+
+	// Only set if Status=Failed
 	FailureCause string
 }

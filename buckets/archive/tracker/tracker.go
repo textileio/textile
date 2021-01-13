@@ -47,7 +47,7 @@ type Tracker struct {
 	colls           *mdb.Collections
 	buckets         *tdb.Buckets
 	pgClient        *powc.Client
-	jfe             chan<- archive.JobFinalizedEvent
+	jfe             chan<- archive.JobEvent
 
 	jobPollIntervalSlow time.Duration
 	jobPollIntervalFast time.Duration
@@ -61,7 +61,7 @@ func New(
 	internalSession string,
 	jobPollIntervalSlow time.Duration,
 	jobPollIntervalFast time.Duration,
-	jfe chan<- archive.JobFinalizedEvent,
+	jfe chan<- archive.JobEvent,
 ) (*Tracker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &Tracker{
@@ -260,34 +260,35 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 	var (
 		rescheduleDuration time.Duration
 		message            string
-		success            bool
+		status             archive.TrackedJobStatus
 	)
 	switch res.StorageJob.Status {
 	case userPb.JobStatus_JOB_STATUS_SUCCESS:
 		rescheduleDuration = 0
 		message = "success"
-		success = true
+		status = archive.TrackedJobStatusSuccess
 	case userPb.JobStatus_JOB_STATUS_CANCELED:
 		rescheduleDuration = 0
 		message = "canceled"
-		success = false
+		status = archive.TrackedJobStatusFailed
 	case userPb.JobStatus_JOB_STATUS_FAILED:
 		rescheduleDuration = 0
 		message = "job failed"
-		success = false
-	default:
+		status = archive.TrackedJobStatusFailed
+	case userPb.JobStatus_JOB_STATUS_EXECUTING:
 		rescheduleDuration = t.jobPollIntervalFast
 		message = "non-final status"
+		status = archive.TrackedJobStatusExecuting
+	default:
+		return 0, "", fmt.Errorf("unkown storage-job status: %d", res.StorageJob.Status)
 	}
 
-	if rescheduleDuration == 0 {
-		t.jfe <- archive.JobFinalizedEvent{
-			JobID:        jid,
-			Type:         archive.TrackedJobTypeRetrieval,
-			AccKey:       accKey,
-			Success:      success,
-			FailureCause: message,
-		}
+	t.jfe <- archive.JobEvent{
+		JobID:        jid,
+		Type:         archive.TrackedJobTypeRetrieval,
+		Status:       status,
+		AccKey:       accKey,
+		FailureCause: message,
 	}
 
 	return rescheduleDuration, message, nil

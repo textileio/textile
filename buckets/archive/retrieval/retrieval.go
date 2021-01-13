@@ -91,7 +91,7 @@ type FilRetrieval struct {
 	bc              BucketCreator
 	trr             TrackerRetrievalRegistrator
 	pgc             *powc.Client
-	jfe             <-chan archive.JobFinalizedEvent
+	jfe             <-chan archive.JobEvent
 	internalSession string
 
 	// daemon vars
@@ -107,7 +107,7 @@ func NewFilRetrieval(
 	ds datastore.TxnDatastore,
 	pgc *powc.Client,
 	trr TrackerRetrievalRegistrator,
-	jfe <-chan archive.JobFinalizedEvent,
+	jfe <-chan archive.JobEvent,
 	is string,
 ) (*FilRetrieval, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -299,7 +299,7 @@ func (fr *FilRetrieval) daemon() {
 		case <-fr.daemonWork:
 			fr.processQueuedMoveToBucket()
 		case ju := <-fr.jfe:
-			fr.updateRetrievalStatus(ju.AccKey, ju.JobID, ju.Success, ju.FailureCause)
+			fr.updateRetrievalStatus(ju)
 		}
 	}
 }
@@ -309,26 +309,32 @@ func (fr *FilRetrieval) daemon() {
 // and it continues with the process of copying the data to the bucket.
 // If `successful` is false, its status is changed to RetrievalStatusFailed and the
 // FailureCause is set to `failureCause`.
-func (fr *FilRetrieval) updateRetrievalStatus(accKey string, jobID string, success bool, failureCause string) {
-	r, err := fr.GetByAccountAndID(accKey, jobID)
+func (fr *FilRetrieval) updateRetrievalStatus(ju archive.JobEvent) {
+	r, err := fr.GetByAccountAndID(ju.AccKey, ju.JobID)
 	if err != nil {
 		// go-datastore is unavailable, which is a very rare-case.
 		// keep a log fo what should have happened in case we wan't to recover this
 		// case manually.
-		log.Errorf("getting retrieval from store (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
+		log.Errorf("getting retrieval from store (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Status, ju.FailureCause, err)
 		return
 	}
 
-	if !success {
+	switch ju.Status {
+	case archive.TrackedJobStatusFailed:
 		r.Status = StatusFailed
-		r.FailureCause = failureCause
-	} else {
+		r.FailureCause = ju.FailureCause
+	case archive.TrackedJobStatusExecuting:
+		r.Status = StatusExecuting
+	case archive.TrackedJobStatusSuccess:
 		r.Status = StatusMoveToBucket
+	default:
+		log.Errorf("unkown job event status: %d", ju.Status)
+		return
 	}
 
 	txn, err := fr.ds.NewTransaction(false)
 	if err != nil {
-		log.Errorf("creating txn (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
+		log.Errorf("creating txn (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Status, ju.FailureCause, err)
 		return
 	}
 	defer txn.Discard()
@@ -337,17 +343,16 @@ func (fr *FilRetrieval) updateRetrievalStatus(accKey string, jobID string, succe
 	// in the special MoveToBucket stage, to jump into next phase
 	// handeled by the daemon().
 	if err := fr.save(txn, r); err != nil {
-		log.Errorf("saving to datastore (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
+		log.Errorf("saving to datastore (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Type, ju.FailureCause, err)
 		return
 	}
 
-	// If the retrieval wasn't successful, the status was changed to
-	// StatusRetrievalFailed, nothing more to do here.
-	if !success {
+	// If the retrieval switched to executing, or failed we're done.
+	if ju.Status != archive.TrackedJobStatusSuccess {
 		return
 	}
 
-	// Now that we know the Cid data is available, move to next phase to move the data
+	// We know the Cid data is available (Success), move to next phase to move the data
 	// to the bucket. We do it in phases as to avoid failing all the retrieval if the process
 	// crashes, or shutdowns. When is spinned up again, we can recover the process to move the data
 	// to the bucket without having retrievals stuck or forcing the user to create a new retrieval
@@ -355,14 +360,14 @@ func (fr *FilRetrieval) updateRetrievalStatus(accKey string, jobID string, succe
 	//
 	// The daemon() will take these retrievals, and continue with the process. After it finishes,
 	// it will be removed from the pending list (reached final status).
-	key := dsMoveToBucketQueueKey(accKey, jobID)
+	key := dsMoveToBucketQueueKey(ju.AccKey, ju.JobID)
 	if err := txn.Put(key, []byte{}); err != nil {
-		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
+		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Status, ju.FailureCause, err)
 		return
 	}
 
 	if err := txn.Commit(); err != nil {
-		log.Errorf("commiting txn (accKey:%s, jobID:%s, success:%s, failureCause: %s): %s", accKey, jobID, success, failureCause, err)
+		log.Errorf("commiting txn (accKey:%s, jobID:%s, type:%s, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Type, ju.FailureCause, err)
 		return
 	}
 
