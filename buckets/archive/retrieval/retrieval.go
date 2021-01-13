@@ -95,6 +95,7 @@ type FilRetrieval struct {
 	internalSession string
 
 	// daemon vars
+	started    bool
 	daemonWork chan struct{}
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -105,7 +106,6 @@ type FilRetrieval struct {
 func NewFilRetrieval(
 	ds datastore.TxnDatastore,
 	pgc *powc.Client,
-	bc BucketCreator,
 	trr TrackerRetrievalRegistrator,
 	jfe <-chan archive.JobFinalizedEvent,
 	is string,
@@ -113,7 +113,6 @@ func NewFilRetrieval(
 	ctx, cancel := context.WithCancel(context.Background())
 	fr := &FilRetrieval{
 		ds:  ds,
-		bc:  bc,
 		pgc: pgc,
 		trr: trr,
 		jfe: jfe,
@@ -125,9 +124,19 @@ func NewFilRetrieval(
 		closedChan: make(chan struct{}),
 		daemonWork: make(chan struct{}, 1),
 	}
-	go fr.daemon()
 
 	return fr, nil
+}
+
+func (fr *FilRetrieval) SetBucketCreator(bc BucketCreator) {
+	fr.bc = bc
+}
+
+func (fr *FilRetrieval) RunDaemon() {
+	if !fr.started {
+		go fr.daemon()
+		fr.started = true
+	}
 }
 
 func (fr *FilRetrieval) CreateForNewBucket(

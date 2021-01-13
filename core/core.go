@@ -329,6 +329,28 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
+	jobFinalizedEvents := make(chan archive.JobFinalizedEvent)
+	t.archiveTracker, err = tracker.New(
+		t.collections,
+		t.bucks,
+		t.pc,
+		t.internalHubSession,
+		conf.ArchiveJobPollIntervalSlow,
+		conf.ArchiveJobPollIntervalFast,
+		jobFinalizedEvents,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
+		Prefix: datastore.NewKey("buckets/filretrieval"),
+	})
+	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
+	if err != nil {
+		return nil, err
+	}
+
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
@@ -358,27 +380,13 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
+			FilRetrieval:        t.filRetrieval,
+			Analytics:           ac,
 		}
 		us = &usersd.Service{
 			Collections:   t.collections,
 			Mail:          t.mail,
 			BillingClient: t.bc,
-		}
-	}
-
-	jobFinalizedEvents := make(chan archive.JobFinalizedEvent, 100)
-	if conf.Hub {
-		t.archiveTracker, err = tracker.New(
-			t.collections,
-			t.bucks,
-			t.pc,
-			t.internalHubSession,
-			conf.ArchiveJobPollIntervalSlow,
-			conf.ArchiveJobPollIntervalFast,
-			jobFinalizedEvents,
-		)
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -396,18 +404,13 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		Semaphores:                t.buckLocks,
 		MaxBucketSize:             conf.MaxBucketSize,
 		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
+		FilRetrieval:              t.filRetrieval,
 	}
 
-	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
-		Prefix: datastore.NewKey("buckets/filretrieval"),
-	})
-	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, bs, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
-	if err != nil {
-		return nil, err
-	}
 	// We can avoid the chicken-egg-problem of below line in the future.
 	// For more info, see "TODO(**)" in buckd/service.go
-	bs.FilRetrieval = t.filRetrieval
+	t.filRetrieval.SetBucketCreator(bs)
+	t.filRetrieval.RunDaemon()
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)

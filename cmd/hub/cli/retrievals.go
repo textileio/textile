@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/textileio/textile/v2/api/bucketsd/pb"
+	"github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/cmd"
 )
 
@@ -32,7 +32,7 @@ var retrievalsLsCmd = &cobra.Command{
 	Long:  `List all created Filecoin retrievals.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		rs, err := clients.Buckets.ArchiveRetrievalLs(Auth(c.Context()))
+		rs, err := clients.Hub.ArchiveRetrievalLs(Auth(c.Context()))
 		cmd.ErrCheck(err)
 
 		if len(rs.Retrievals) > 0 {
@@ -63,7 +63,7 @@ var retrievalsLogsCmd = &cobra.Command{
 		msgs := make(chan string)
 		var err error
 		go func() {
-			err = clients.Buckets.ArchiveRetrievalLogs(Auth(c.Context()), id, msgs)
+			err = clients.Hub.ArchiveRetrievalLogs(Auth(c.Context()), id, msgs)
 			close(msgs)
 		}()
 

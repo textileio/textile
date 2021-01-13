@@ -278,73 +278,6 @@ message ArchiveWatchResponse {
     string msg = 1;
 }
 
-message ArchivesLsRequest {
-}
-
-message ArchivesLsResponse {
-    repeated ArchiveLsItem archives = 1;
-}
-
-message ArchiveLsItem {
-    string cid = 1;
-    repeated ArchiveLsItemMetadata info = 2;
-}
-
-message ArchiveLsItemMetadata {
-    uint64 deal_id = 1;
-}
-
-message ArchivesImportRequest {
-    string cid = 1;
-    repeated uint64 deal_ids = 2;
-}
-
-message ArchivesImportResponse {
-}
-
-message ArchiveRetrievalLsRequest {
-}
-
-message ArchiveRetrievalLsResponse {
-    repeated ArchiveRetrievalLsItem retrievals = 1;
-}
-
-message ArchiveRetrievalLsItem {
-	string id = 1;
-	string cid = 2;
-	ArchiveRetrievalStatus status = 3;
-	string FailureCause = 4;
-	int64 created_at = 5;
-
-	oneof retrieval_type {
-		ArchiveRetrievalLsItemNewBucket newBucket = 6;
-	}
-}
-
-message ArchiveRetrievalLsItemNewBucket {
-	string name = 1;
-	bool private = 2;
-}
-
-enum ArchiveRetrievalStatus {
-    UNSPECIFIED = 0;
-    QUEUED = 1;
-    EXECUTING = 2;
-    MOVETOBUCKET = 3;
-    FAILED = 4;
-    CANCELED = 5;
-    SUCCESS = 6;
-}
-
-message ArchiveRetrievalLogsRequest {
-    string id = 1;
-}
-
-message ArchiveRetrievalLogsResponse {
-    string msg = 1;
-}
-
-
 service APIService {
     rpc List(ListRequest) returns (ListResponse) {}
     rpc Create(CreateRequest) returns (CreateResponse) {}
@@ -367,12 +300,4 @@ service APIService {
     rpc Archive(ArchiveRequest) returns (ArchiveResponse) {}
     rpc Archives(ArchivesRequest) returns (ArchivesResponse) {}
     rpc ArchiveWatch(ArchiveWatchRequest) returns (stream ArchiveWatchResponse) {}
-
-    // Archives Import
-    rpc ArchivesLs(ArchivesLsRequest) returns (ArchivesLsResponse) {}
-    rpc ArchivesImport(ArchivesImportRequest) returns (ArchivesImportResponse) {}
-
-    // Archive Retrieval
-    rpc ArchiveRetrievalLs(ArchiveRetrievalLsRequest) returns (ArchiveRetrievalLsResponse){}
-    rpc ArchiveRetrievalLogs(ArchiveRetrievalLogsRequest) returns (stream ArchiveRetrievalLogsResponse) {}
 }

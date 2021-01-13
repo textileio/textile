@@ -25,6 +25,7 @@ import (
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
+	hubpb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/buckets/archive/retrieval"
 	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/core"
@@ -40,7 +41,7 @@ func TestMain(m *testing.M) {
 
 func TestCreateBucket(t *testing.T) {
 	powc, _ := StartPowergate(t, true)
-	ctx, _, client, _, shutdown := setup(t)
+	ctx, _, _, client, _, shutdown := setup(t)
 	defer shutdown()
 
 	// User is now created, so it should exist after spinup.
@@ -60,7 +61,7 @@ func TestCreateBucket(t *testing.T) {
 func TestArchiveTracker(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		ctx, conf, client, repo, shutdown := setup(t)
+		ctx, conf, _, client, repo, shutdown := setup(t)
 
 		// Create bucket with a file.
 		b, err := client.Create(ctx)
@@ -106,24 +107,24 @@ func TestArchiveTracker(t *testing.T) {
 func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		ctx, _, client, _, shutdown := setup(t)
+		ctx, _, hubClient, buckClient, _, shutdown := setup(t)
 		defer shutdown()
 
 		// Create bucket with a file.
-		b, err := client.Create(ctx)
+		b, err := buckClient.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
-		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
+		rootCid1 := addDataFileToBucket(ctx, t, buckClient, b.Root.Key, "Data1.txt")
 
 		// Archive it (push to PG)
-		err = client.Archive(ctx, b.Root.Key)
+		err = buckClient.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
 
 		// Wait for the archive to finish.
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
+		require.Eventually(t, archiveFinalState(ctx, t, buckClient, b.Root.Key), 2*time.Minute, 2*time.Second)
 
 		// Verify that the current archive status is Done.
-		res, err := client.Archives(ctx, b.Root.Key)
+		res, err := buckClient.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
 
@@ -134,7 +135,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.NotEmpty(t, deal1.Miner)
 
 		// List archives.
-		as, err := client.ArchivesLs(ctx)
+		as, err := hubClient.ArchivesLs(ctx)
 		require.NoError(t, err)
 		require.Len(t, as.Archives, 1)
 		require.Equal(t, rootCid1, as.Archives[0].Cid)
@@ -142,13 +143,13 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.Equal(t, as.Archives[0].Info[0].DealId, deal1.DealId)
 
 		// Add another file to the bucket.
-		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
+		rootCid2 := addDataFileToBucket(ctx, t, buckClient, b.Root.Key, "Data2.txt")
 
 		// Archive again.
-		err = client.Archive(ctx, b.Root.Key)
+		err = buckClient.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		res, err = client.Archives(ctx, b.Root.Key)
+		require.Eventually(t, archiveFinalState(ctx, t, buckClient, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err = buckClient.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
 
@@ -159,9 +160,9 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.NotEmpty(t, deal2.Miner)
 
 		// List archives.
-		as, err = client.ArchivesLs(ctx)
+		as, err = hubClient.ArchivesLs(ctx)
 		require.NoError(t, err)
-		require.Len(t, as.Archives, 2)
+		require.Len(t, as.Archives, 1)
 		require.Equal(t, rootCid2, as.Archives[0].Cid)
 		require.Len(t, as.Archives[0].Info, 1)
 		require.Equal(t, as.Archives[0].Info[0].DealId, deal2.DealId)
@@ -171,24 +172,24 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 func TestArchivesLs(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		ctx, _, client, _, shutdown := setup(t)
+		ctx, _, hubClient, buckClient, _, shutdown := setup(t)
 		defer shutdown()
 
 		// Create Bucket 1, and archive it.
-		b, err := client.Create(ctx)
+		b, err := buckClient.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second)
-		rootCid1 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data1.txt")
-		err = client.Archive(ctx, b.Root.Key)
+		rootCid1 := addDataFileToBucket(ctx, t, buckClient, b.Root.Key, "Data1.txt")
+		err = buckClient.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		res, err := client.Archives(ctx, b.Root.Key)
+		require.Eventually(t, archiveFinalState(ctx, t, buckClient, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := buckClient.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
 		deal1 := res.Current.DealInfo[0]
 
 		// List archives, length should be 1.
-		as, err := client.ArchivesLs(ctx)
+		as, err := hubClient.ArchivesLs(ctx)
 		require.NoError(t, err)
 		require.Len(t, as.Archives, 1)
 		require.Equal(t, rootCid1, as.Archives[0].Cid)
@@ -196,20 +197,20 @@ func TestArchivesLs(t *testing.T) {
 		require.Equal(t, deal1.DealId, as.Archives[0].Info[0].DealId)
 
 		// Create Bucket 2, and archive it.
-		b, err = client.Create(ctx)
+		b, err = buckClient.Create(ctx)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second)
-		rootCid2 := addDataFileToBucket(ctx, t, client, b.Root.Key, "Data2.txt")
-		err = client.Archive(ctx, b.Root.Key)
+		rootCid2 := addDataFileToBucket(ctx, t, buckClient, b.Root.Key, "Data2.txt")
+		err = buckClient.Archive(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		res, err = client.Archives(ctx, b.Root.Key)
+		require.Eventually(t, archiveFinalState(ctx, t, buckClient, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err = buckClient.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
 		deal2 := res.Current.DealInfo[0]
 
 		// List archives, length should be 2.
-		as, err = client.ArchivesLs(ctx)
+		as, err = hubClient.ArchivesLs(ctx)
 		require.NoError(t, err)
 		require.Len(t, as.Archives, 2)
 		sort.Slice(as.Archives, func(i, j int) bool {
@@ -238,40 +239,40 @@ func TestArchivesLs(t *testing.T) {
 func TestArchivesImport(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
+		hubClient, threadsclient, buckClient, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 
 		// Create an archive for account-1.
-		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
-		b, err := client.Create(ctxAccount1)
+		ctxAccount1 := createAccount(t, hubClient, threadsclient, conf)
+		b, err := buckClient.Create(ctxAccount1)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
-		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, b.Root.Key, "Data1.txt")
+		rootCid1 := addDataFileToBucket(ctxAccount1, t, buckClient, b.Root.Key, "Data1.txt")
 		cid1, err := cid.Decode(rootCid1)
 		require.NoError(t, err)
-		err = client.Archive(ctxAccount1, b.Root.Key)
+		err = buckClient.Archive(ctxAccount1, b.Root.Key)
 		require.NoError(t, err)
-		require.Eventually(t, archiveFinalState(ctxAccount1, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
-		res, err := client.Archives(ctxAccount1, b.Root.Key)
+		require.Eventually(t, archiveFinalState(ctxAccount1, t, buckClient, b.Root.Key), 2*time.Minute, 2*time.Second)
+		res, err := buckClient.Archives(ctxAccount1, b.Root.Key)
 		require.NoError(t, err)
 		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
 		deal := res.Current.DealInfo[0]
 
 		// Create account-2, and import the DealID
 		// created by account-1.
-		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
+		ctxAccount2 := createAccount(t, hubClient, threadsclient, conf)
 
 		// Check no archives exist for account-2
-		as, err := client.ArchivesLs(ctxAccount2)
+		as, err := hubClient.ArchivesLs(ctxAccount2)
 		require.NoError(t, err)
 		require.Len(t, as.Archives, 0)
 
 		// Import deal made by account-1.
-		err = client.ArchivesImport(ctxAccount2, cid1, []uint64{deal.DealId})
+		err = hubClient.ArchivesImport(ctxAccount2, cid1, []uint64{deal.DealId})
 		require.NoError(t, err)
 
 		// Assert archives listing includes imported archive.
-		as, err = client.ArchivesLs(ctxAccount2)
+		as, err = hubClient.ArchivesLs(ctxAccount2)
 		require.NoError(t, err)
 		require.Len(t, as.Archives, 1)
 
@@ -283,10 +284,10 @@ func TestArchivesImport(t *testing.T) {
 func TestArchiveUnfreeze(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, ipfsPow := StartPowergate(t, false)
-		hubclient, threadsclient, client, conf, _, shutdown := createInfra(t)
+		hubClient, threadsclient, client, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 		// Create an archive for account-1.
-		ctxAccount1 := createAccount(t, hubclient, threadsclient, conf)
+		ctxAccount1 := createAccount(t, hubClient, threadsclient, conf)
 		buck, err := client.Create(ctxAccount1)
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
@@ -309,14 +310,14 @@ func TestArchiveUnfreeze(t *testing.T) {
 
 		// Create account-2, and import the DealID
 		// created by account-1.
-		ctxAccount2 := createAccount(t, hubclient, threadsclient, conf)
+		ctxAccount2 := createAccount(t, hubClient, threadsclient, conf)
 
 		// Obvious assertion about no existing retrievals.
-		rs, err := client.ArchiveRetrievalLs(ctxAccount2)
+		rs, err := hubClient.ArchiveRetrievalLs(ctxAccount2)
 		require.NoError(t, err)
 		require.Len(t, rs.Retrievals, 0)
 		// Import deal made by account-1.
-		err = client.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
+		err = hubClient.ArchivesImport(ctxAccount2, ccid, []uint64{deal.DealId})
 		require.NoError(t, err)
 
 		// Delete `ccid` from go-ipfs of Powergate, and go-ipfs of Hub.
@@ -360,14 +361,14 @@ func TestArchiveUnfreeze(t *testing.T) {
 		buck, err = client.Create(ctxAccount2, c.WithName("super-bucket"), c.WithCid(ccid), c.WithUnfreeze(true))
 		require.NoError(t, err)
 		// Wait for the retrieval to finish.
-		var r *pb.ArchiveRetrievalLsItem
+		var r *hubpb.ArchiveRetrievalLsItem
 		require.Eventually(t, func() bool {
-			rs, err = client.ArchiveRetrievalLs(ctxAccount2)
+			rs, err = hubClient.ArchiveRetrievalLs(ctxAccount2)
 			require.NoError(t, err)
 			require.Len(t, rs.Retrievals, 1)
 			r = rs.Retrievals[0]
-			require.NotEqual(t, pb.ArchiveRetrievalStatus_FAILED, r.Status)
-			return r.Status == pb.ArchiveRetrievalStatus_SUCCESS
+			require.NotEqual(t, hubpb.ArchiveRetrievalStatus_FAILED, r.Status)
+			return r.Status == hubpb.ArchiveRetrievalStatus_SUCCESS
 		}, 2*time.Minute, 2*time.Second)
 		// Check if what we got from Filecoin is the same file that
 		// account-1 saved in the archived bucket.
@@ -390,7 +391,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 		defer cancel()
 		ch := make(chan string, 100)
 		go func() {
-			err = client.ArchiveRetrievalLogs(ctxAccount2, r.Id, ch)
+			err = hubClient.ArchiveRetrievalLogs(ctxAccount2, r.Id, ch)
 			close(ch)
 		}()
 		count := 0
@@ -409,7 +410,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		ctx, _, client, _, shutdown := setup(t)
+		ctx, _, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
 		b, err := client.Create(ctx)
@@ -443,7 +444,7 @@ func TestArchiveWatch(t *testing.T) {
 func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, _ = StartPowergate(t, true)
-		ctx, _, client, _, shutdown := setup(t)
+		ctx, _, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
 		b, err := client.Create(ctx)
@@ -505,11 +506,11 @@ func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client
 	return strings.SplitN(root.String(), "/", 4)[2]
 }
 
-func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, string, func()) {
-	hubclient, threadsclient, client, conf, repo, shutdown := createInfra(t)
-	ctx := createAccount(t, hubclient, threadsclient, conf)
+func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *hc.Client, *c.Client, string, func()) {
+	hubClient, threadsclient, buckClient, conf, repo, shutdown := createInfra(t)
+	ctx := createAccount(t, hubClient, threadsclient, conf)
 
-	return ctx, conf, client, repo, shutdown
+	return ctx, conf, hubClient, buckClient, repo, shutdown
 }
 
 func createInfra(t util.TestingTWithCleanup) (*hc.Client, *tc.Client, *c.Client, core.Config, string, func()) {
