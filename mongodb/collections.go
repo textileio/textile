@@ -63,11 +63,12 @@ func NewCollections(ctx context.Context, uri, database string, hub bool) (*Colle
 		if err != nil {
 			return nil, err
 		}
-		c.ArchiveTracking, err = NewArchiveTracking(ctx, db)
-		if err != nil {
-			return nil, err
-		}
 	}
+	c.ArchiveTracking, err = NewArchiveTracking(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
 	c.IPNSKeys, err = NewIPNSKeys(ctx, db)
 	if err != nil {
 		return nil, err
