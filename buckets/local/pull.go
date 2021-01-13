@@ -139,25 +139,8 @@ func (b *Bucket) handleChanges(
 	}
 
 	if len(missing) > 0 {
-		var total int64
-		for _, o := range missing {
-			total += o.size
-		}
-		progress := make(chan int64)
+		progress := handleAllPullProgress(missing, events)
 		defer close(progress)
-		go func() {
-			var complete int64
-			for up := range progress {
-				complete += up
-				if events != nil {
-					events <- Event{
-						Type:     EventProgress,
-						Size:     total,
-						Complete: complete,
-					}
-				}
-			}
-		}()
 
 		eg, gctx := errgroup.WithContext(context.Background())
 		lim := make(chan struct{}, MaxPullConcurrency)
@@ -190,8 +173,8 @@ func (b *Bucket) handleChanges(
 					return count, err
 				}
 				events <- Event{
-					Path: rel,
 					Type: EventFileRemoved,
+					Path: rel,
 				}
 			}
 
@@ -330,21 +313,9 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 		return err
 	}
 
-	p := make(chan int64)
-	defer close(p)
-	go func() {
-		var last int64
-		defer func() {
-			progress <- o.size - last
-		}()
-		for up := range p {
-			diff := up - last
-			progress <- diff
-			last = up
-		}
-	}()
-
-	if err := b.clients.Buckets.PullPath(ctx, key, o.path, file, client.WithProgress(p)); err != nil {
+	prog := handlePullProgress(progress, o.size)
+	defer close(prog)
+	if err := b.clients.Buckets.PullPath(ctx, key, o.path, file, client.WithProgress(prog)); err != nil {
 		return err
 	}
 
@@ -356,12 +327,56 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 
 	if events != nil {
 		events <- Event{
-			Path:     rel,
-			Cid:      o.cid,
-			Type:     EventFileComplete,
-			Size:     o.size,
-			Complete: o.size,
+			Type: EventFileComplete,
+			Path: rel,
+			Cid:  o.cid,
+			Size: o.size,
 		}
 	}
 	return nil
+}
+
+func handlePullProgress(global chan<- int64, fsize int64) chan<- int64 {
+	progress := make(chan int64)
+	go func() {
+		var current int64
+		defer func() {
+			global <- fsize - current
+		}()
+		for {
+			select {
+			case p, ok := <-progress:
+				if !ok {
+					return
+				}
+				diff := p - current
+				global <- diff
+				current = p
+
+			}
+		}
+	}()
+	return progress
+}
+
+func handleAllPullProgress(os []object, events chan<- Event) chan<- int64 {
+	var total int64
+	for _, o := range os {
+		total += o.size
+	}
+	progress := make(chan int64)
+	go func() {
+		var complete int64
+		for p := range progress {
+			complete += p
+			if events != nil {
+				events <- Event{
+					Type:     EventProgress,
+					Size:     total,
+					Complete: complete,
+				}
+			}
+		}
+	}()
+	return progress
 }

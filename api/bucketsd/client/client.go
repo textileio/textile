@@ -2,7 +2,9 @@ package client
 
 import (
 	"context"
+	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -137,16 +139,30 @@ type pushPath struct {
 }
 
 // Push adds one or more files to the queue.
-func (c *PushPathQueue) Push(pth string, reader io.ReadCloser, size int64) {
+// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/dog.jpg".
+// name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/dog.jpg".
+func (c *PushPathQueue) Push(pth, name string) error {
 	if c.closed {
-		return
+		return errors.New("push queue is closed")
 	}
+
+	f, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return err
+	}
+
 	c.wg.Add(1)
-	atomic.AddInt64(&c.size, size)
+	atomic.AddInt64(&c.size, info.Size())
 	c.inCh <- pushPath{
 		path: filepath.ToSlash(pth),
-		r:    reader,
+		r:    f,
 	}
+	return nil
 }
 
 // Size returns the queue size in bytes.
@@ -364,9 +380,6 @@ func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writ
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
-	}
-	if args.progress != nil {
-		defer close(args.progress)
 	}
 
 	stream, err := c.c.PullIpfsPath(ctx, &pb.PullIpfsPathRequest{

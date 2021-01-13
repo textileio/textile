@@ -34,7 +34,8 @@ var addCmd = &cobra.Command{
 			target,
 			args[1],
 			local.WithSelectMerge(getSelectMergeStrategy(yes)),
-			local.WithAddEvents(events))
+			local.WithAddEvents(events),
+		)
 		cmd.ErrCheck(err)
 		cmd.Success("Merged %s with %s", target, args[1])
 	},

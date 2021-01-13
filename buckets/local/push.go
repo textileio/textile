@@ -3,7 +3,6 @@ package local
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,7 +117,6 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 type pendingFile struct {
 	path string
 	rel  string
-	r    io.ReadCloser
 }
 
 func (b *Bucket) addFiles(
@@ -143,37 +141,26 @@ func (b *Bucket) addFiles(
 	}
 
 	for _, c := range changes {
-		f, err := os.Open(c.Name)
-		if err != nil {
-			return nil, err
-		}
-		info, err := f.Stat()
-		if err != nil {
-			f.Close()
-			return nil, err
-		}
-		size := info.Size()
-
 		file := pendingFile{
 			path: c.Path,
 			rel:  c.Rel,
-			r:    f,
 		}
 		pth := filepath.ToSlash(c.Path)
 		files[pth] = file
-
-		queue.Push(file.path, f, size)
+		if err := queue.Push(file.path, c.Name); err != nil {
+			return nil, err
+		}
 	}
 	queue.Close()
 
 	size := queue.Size()
 	go func() {
-		for up := range progress {
+		for p := range progress {
 			var u int64
-			if up > size {
+			if p > size {
 				u = size
 			} else {
-				u = up
+				u = p
 			}
 			if events != nil {
 				events <- Event{
@@ -201,9 +188,9 @@ func (b *Bucket) addFiles(
 
 		if events != nil {
 			events <- Event{
+				Type: EventFileComplete,
 				Path: file.rel,
 				Cid:  queue.Current.Cid,
-				Type: EventFileComplete,
 				Size: queue.Current.Size,
 			}
 		}
@@ -238,8 +225,8 @@ func (b *Bucket) rmFile(
 
 	if events != nil {
 		events <- Event{
-			Path: c.Rel,
 			Type: EventFileRemoved,
+			Path: c.Rel,
 		}
 	}
 	return root, nil

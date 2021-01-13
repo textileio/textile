@@ -57,6 +57,9 @@ func (b *Bucket) mergeIpfsPath(
 
 	// Add files that are missing, or were decided to be overwritten.
 	if len(toAdd) > 0 {
+		progress := handleAllPullProgress(toAdd, events)
+		defer close(progress)
+
 		eg, gctx := errgroup.WithContext(ctx)
 		for _, o := range toAdd {
 			o := o
@@ -68,7 +71,15 @@ func (b *Bucket) mergeIpfsPath(
 					return err
 				}
 				trimmedDest := strings.TrimPrefix(o.path, dest)
-				return b.getIpfsFile(gctx, path.Join(ipfsBasePth, trimmedDest), o.path, o.size, o.cid, events)
+				return b.getIpfsFile(
+					gctx,
+					path.Join(ipfsBasePth, trimmedDest),
+					o.path,
+					o.size,
+					o.cid,
+					events,
+					progress,
+				)
 			})
 		}
 		if err := eg.Wait(); err != nil {
@@ -176,6 +187,7 @@ func (b *Bucket) getIpfsFile(
 	size int64,
 	c cid.Cid,
 	events chan<- Event,
+	progress chan<- int64,
 ) error {
 	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
@@ -186,31 +198,21 @@ func (b *Bucket) getIpfsFile(
 	}
 	defer file.Close()
 
-	progress := make(chan int64)
-	go func() {
-		for up := range progress {
-			if events != nil {
-				events <- Event{
-					Path:     filePath,
-					Cid:      c,
-					Type:     EventProgress,
-					Size:     size,
-					Complete: up,
-				}
-			}
-		}
-	}()
-	if err := b.clients.Buckets.PullIpfsPath(ctx, ipfsPath, file, client.WithProgress(progress)); err != nil {
+	prog := handlePullProgress(progress, size)
+	defer close(prog)
+	if err := b.clients.Buckets.PullIpfsPath(ctx, ipfsPath, file, client.WithProgress(prog)); err != nil {
 		return err
 	}
+
 	if events != nil {
 		events <- Event{
+			Type:     EventFileComplete,
 			Path:     filePath,
 			Cid:      c,
-			Type:     EventFileComplete,
 			Size:     size,
 			Complete: size,
 		}
 	}
+
 	return nil
 }
