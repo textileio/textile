@@ -299,6 +299,10 @@ func (fr *FilRetrieval) daemon() {
 		case <-fr.daemonWork:
 			fr.processQueuedMoveToBucket()
 		case ju := <-fr.jfe:
+			if ju.Type != archive.TrackedJobTypeRetrieval {
+				// We're not interested in other jobs type events.
+				continue
+			}
 			fr.updateRetrievalStatus(ju)
 		}
 	}
