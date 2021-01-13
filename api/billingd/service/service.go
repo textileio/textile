@@ -505,7 +505,7 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	go s.analytics.Identify(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
+	s.analytics.Identify(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
 		"parent_key":  doc.ParentKey,
 		"customer_id": doc.CustomerID,
 		"username":    params.Username,
@@ -994,13 +994,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, map[string]string{})
+			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, nil)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			go s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, map[string]string{})
+			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, nil)
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -1075,7 +1075,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
 	}
-	go s.analytics.Identify(cus.Key, cus.AccountType, false, "", summary)
+	s.analytics.Identify(cus.Key, cus.AccountType, false, "", summary)
 	return nil
 }
 

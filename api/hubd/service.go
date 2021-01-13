@@ -185,7 +185,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, map[string]string{})
+		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, nil)
 	}
 
 	return &pb.SigninResponse{
@@ -310,7 +310,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	if keyType == mdb.AccountKey {
 		event = analytics.KeyAccountCreated
 	} else {
-		event = analytics.KeyUserGroupCreated
+		event = analytics.KeyUserCreated
 	}
 	if s.BillingClient != nil {
 		// Same "member" based payload for Dev or Org account types so that same downstream logic/templating can be used.
@@ -730,7 +730,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 		return nil, err
 	}
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, map[string]string{})
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, nil)
 	}
 
 	return &pb.DestroyAccountResponse{}, nil

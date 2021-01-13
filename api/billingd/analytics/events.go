@@ -17,7 +17,7 @@ const (
 	SignIn Event = iota
 	AccountDestroyed
 	KeyAccountCreated
-	KeyUserGroupCreated
+	KeyUserCreated
 	OrgCreated
 	OrgLeave
 	OrgDestroyed
@@ -38,9 +38,9 @@ func (e Event) String() string {
 	case AccountDestroyed:
 		return "account_destroyed"
 	case KeyAccountCreated:
-		return "account_key_created"
-	case KeyUserGroupCreated:
-		return "user_group_key_created"
+		return "key_account_created"
+	case KeyUserCreated:
+		return "key_user_created"
 	case OrgCreated:
 		return "org_created"
 	case OrgLeave:
