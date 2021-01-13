@@ -367,8 +367,8 @@ func TestArchiveUnfreeze(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, rs.Retrievals, 1)
 			r = rs.Retrievals[0]
-			require.NotEqual(t, hubpb.ArchiveRetrievalStatus_FAILED, r.Status)
-			return r.Status == hubpb.ArchiveRetrievalStatus_SUCCESS
+			require.NotEqual(t, hubpb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_FAILED, r.Status)
+			return r.Status == hubpb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_SUCCESS
 		}, 2*time.Minute, 2*time.Second)
 		// Check if what we got from Filecoin is the same file that
 		// account-1 saved in the archived bucket.
