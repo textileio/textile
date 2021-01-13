@@ -77,19 +77,19 @@ func (m *Metadata) SetFileEncryptionKey(key []byte) {
 	}
 }
 
-// Archives contains all archives for a single bucket.
+// Archives contains info about bucket Filecoin archives.
 type Archives struct {
 	Current Archive   `json:"current"`
 	History []Archive `json:"history"`
 }
 
-// Archive is a single archive containing a list of deals.
+// Archive is a single Filecoin archive containing a list of deals.
 type Archive struct {
 	Cid   string `json:"cid"`
 	Deals []Deal `json:"deals"`
 }
 
-// Deal contains details about a Filecoin deal.
+// Deal contains info about an archive's Filecoin deal.
 type Deal struct {
 	ProposalCid string `json:"proposal_cid"`
 	Miner       string `json:"miner"`

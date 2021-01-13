@@ -144,23 +144,24 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse
 }
 
 func getPbRoot(dbID thread.ID, buck *tdb.Bucket) (*pb.Root, error) {
-	var pmd *pb.Metadata
-	md, ok := buck.Metadata[""]
-	if ok {
-		var err error
-		pmd, err = metadataToPb(md)
+	pmd := make(map[string]*pb.Metadata)
+	for p, md := range buck.Metadata {
+		m, err := metadataToPb(md)
 		if err != nil {
 			return nil, err
 		}
+		pmd[p] = m
 	}
 	return &pb.Root{
+		Thread:    dbID.String(),
 		Key:       buck.Key,
 		Owner:     buck.Owner,
 		Name:      buck.Name,
 		Version:   int32(buck.Version),
+		LinkKey:   buck.LinkKey,
 		Path:      buck.Path,
 		Metadata:  pmd,
-		Thread:    dbID.String(),
+		Archives:  archivesToPb(buck.Archives),
 		CreatedAt: buck.CreatedAt,
 		UpdatedAt: buck.UpdatedAt,
 	}, nil
@@ -185,9 +186,38 @@ func metadataToPb(md tdb.Metadata) (*pb.Metadata, error) {
 		roles[k] = pr
 	}
 	return &pb.Metadata{
+		Key:       md.Key,
 		Roles:     roles,
 		UpdatedAt: md.UpdatedAt,
 	}, nil
+}
+
+func archivesToPb(archives tdb.Archives) *pb.Archives {
+	pba := &pb.Archives{
+		Current: &pb.Archive{
+			Cid:      archives.Current.Cid,
+			DealInfo: dealsToPb(archives.Current.Deals),
+		},
+		History: make([]*pb.Archive, len(archives.History)),
+	}
+	for i, a := range archives.History {
+		pba.History[i] = &pb.Archive{
+			Cid:      a.Cid,
+			DealInfo: dealsToPb(a.Deals),
+		}
+	}
+	return pba
+}
+
+func dealsToPb(deals []tdb.Deal) []*pb.DealInfo {
+	pbd := make([]*pb.DealInfo, len(deals))
+	for i, d := range deals {
+		pbd[i] = &pb.DealInfo{
+			ProposalCid: d.ProposalCid,
+			Miner:       d.Miner,
+		}
+	}
+	return pbd
 }
 
 func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.CreateResponse, error) {
@@ -2616,13 +2646,15 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
-	res := &pb.ArchivesResponse{}
+	res := &pb.ArchivesResponse{
+		Archives: &pb.Archives{},
+	}
 	if ba.Archives.Current.JobID != "" {
 		arc, err := toPbArchive(ba.Archives.Current)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
 		}
-		res.Current = arc
+		res.Archives.Current = arc
 	}
 	history := make([]*pb.Archive, len(ba.Archives.History))
 	for i, item := range ba.Archives.History {
@@ -2632,7 +2664,7 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 		}
 		history[i] = pbItem
 	}
-	res.History = history
+	res.Archives.History = history
 	return res, nil
 }
 

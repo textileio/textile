@@ -132,15 +132,17 @@ func (b *Bucket) LocalSize() (int64, error) {
 
 // Info wraps info about a bucket.
 type Info struct {
-	Key       string    `json:"key"`
-	Owner     string    `json:"owner"`
-	Name      string    `json:"name"`
-	Version   int       `json:"version"`
-	Path      Path      `json:"path"`
-	Metadata  Metadata  `json:"metadata"`
-	Thread    thread.ID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Thread    thread.ID           `json:"thread"`
+	Key       string              `json:"key"`
+	Owner     string              `json:"owner,omitempty"`
+	Name      string              `json:"name,omitempty"`
+	Version   int                 `json:"version"`
+	LinkKey   string              `json:"link_key,omitempty"`
+	Path      Path                `json:"path"`
+	Metadata  map[string]Metadata `json:"metadata,omitempty"`
+	Archives  *Archives           `json:"archives,omitempty"`
+	CreatedAt time.Time           `json:"created_at"`
+	UpdatedAt time.Time           `json:"updated_at"`
 }
 
 // Path wraps path.Resolved so it can be JSON-marshalable.
@@ -154,8 +156,27 @@ func (p Path) MarshalJSON() ([]byte, error) {
 
 // Metadata wraps metadata about a bucket item.
 type Metadata struct {
-	Roles     map[string]buckets.Role `json:"roles"`
+	Key       string                  `json:"key,omitempty"`
+	Roles     map[string]buckets.Role `json:"roles,omitempty"`
 	UpdatedAt time.Time               `json:"updated_at"`
+}
+
+// Archives contains info about bucket Filecoin archives.
+type Archives struct {
+	Current Archive   `json:"current"`
+	History []Archive `json:"history,omitempty"`
+}
+
+// Archive is a single Filecoin archive containing a list of deals.
+type Archive struct {
+	Cid   string `json:"cid"`
+	Deals []Deal `json:"deals"`
+}
+
+// Deal contains info about an archive's Filecoin deal.
+type Deal struct {
+	ProposalCid string `json:"proposal_cid"`
+	Miner       string `json:"miner"`
 }
 
 // Info returns info about a bucket from the remote.
@@ -184,28 +205,76 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	md := Metadata{}
-	if r.Metadata != nil {
-		roles, err := buckets.RolesFromPb(r.Metadata.Roles)
-		if err != nil {
-			return info, err
-		}
-		md = Metadata{
-			Roles:     roles,
-			UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
-		}
+	md, err := pbMetadataToInfo(r.Metadata)
+	if err != nil {
+		return
 	}
 	return Info{
+		Thread:    id,
 		Key:       r.Key,
 		Owner:     r.Owner,
 		Name:      name,
 		Version:   int(r.Version),
+		LinkKey:   r.LinkKey,
 		Path:      Path{pth},
 		Metadata:  md,
-		Thread:    id,
+		Archives:  pbArchivesToInfo(r.Archives),
 		CreatedAt: time.Unix(0, r.CreatedAt),
 		UpdatedAt: time.Unix(0, r.UpdatedAt),
 	}, nil
+}
+
+func pbMetadataToInfo(pbm map[string]*pb.Metadata) (map[string]Metadata, error) {
+	if pbm == nil {
+		return nil, nil
+	}
+	md := make(map[string]Metadata)
+	for p, m := range pbm {
+		roles, err := buckets.RolesFromPb(m.Roles)
+		if err != nil {
+			return nil, err
+		}
+		md[p] = Metadata{
+			Key:       m.Key,
+			Roles:     roles,
+			UpdatedAt: time.Unix(0, m.UpdatedAt),
+		}
+	}
+	return md, nil
+}
+
+func pbArchivesToInfo(pba *pb.Archives) *Archives {
+	if pba == nil || pba.Current.Cid == "" {
+		return nil
+	}
+	archives := &Archives{
+		Current: Archive{
+			Cid:   pba.Current.Cid,
+			Deals: pbDealsToInfo(pba.Current.DealInfo),
+		},
+	}
+	if len(pba.History) == 0 {
+		return archives
+	}
+	archives.History = make([]Archive, len(pba.History))
+	for i, a := range pba.History {
+		archives.History[i] = Archive{
+			Cid:   a.Cid,
+			Deals: pbDealsToInfo(a.DealInfo),
+		}
+	}
+	return archives
+}
+
+func pbDealsToInfo(pbd []*pb.DealInfo) []Deal {
+	deals := make([]Deal, len(pbd))
+	for i, d := range pbd {
+		deals[i] = Deal{
+			ProposalCid: d.ProposalCid,
+			Miner:       d.Miner,
+		}
+	}
+	return deals
 }
 
 // Roots wraps local and remote root cids.
