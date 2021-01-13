@@ -823,6 +823,7 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 	return s.Collections.Accounts.Delete(ctx, a.Key)
 }
 
+// ArchiveRetrievalLs lists existing retrievals for the account.
 func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	owner := account.Owner().Key
@@ -860,6 +861,7 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 	return res, nil
 }
 
+// ArchivesLs lists all known archives for an account.
 func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*pb.ArchivesLsResponse, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	if account.Owner().PowInfo == nil {
@@ -893,6 +895,7 @@ func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*p
 	return res, nil
 }
 
+// ArchivesImport imports Filecoin deals information for a Cid to the account.
 func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequest) (*pb.ArchivesImportResponse, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	if account.Owner().PowInfo == nil {
@@ -943,6 +946,7 @@ func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequ
 	return &pb.ArchivesImportResponse{}, nil
 }
 
+// ArchiveRetrievalLogs prints the logs of a retrieval.
 func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, server pb.APIService_ArchiveRetrievalLogsServer) error {
 	account, _ := mdb.AccountFromContext(server.Context())
 	owner := account.Owner()
