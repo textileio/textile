@@ -267,14 +267,41 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 
 	// # Step 4.
 	// Powergate is doing it's retrieval work. Register this JobID to track the
-	// status in Tracker. When Tracker updates the Job status, it will call
-	// fr.UpdateRetrievalStatus, so the retrieval process can continue with
-	// further phases.
+	// status in Tracker. When Tracker updates the Job status, it will signal in
+	// fr.jfe channel, so the retrieval process can continue with further phases.
 	if err := fr.trr.TrackRetrieval(ctx, accKey, createdJobID, powToken); err != nil {
 		return "", fmt.Errorf("tracking retrieval job: %s", err)
 	}
 
 	return createdJobID, nil
+}
+
+// Close closes gracefully all background work that
+// is being executed.
+func (fr *FilRetrieval) Close() error {
+	if fr.closed {
+		return nil
+	}
+	fr.cancel()
+	<-fr.closedChan
+
+	return nil
+}
+
+func (fr *FilRetrieval) daemon() {
+	defer func() { close(fr.closedChan) }()
+
+	fr.daemonWork <- struct{}{} // Force first run.
+	for {
+		select {
+		case <-fr.ctx.Done():
+			return
+		case <-fr.daemonWork:
+			fr.processQueuedMoveToBucket()
+		case ju := <-fr.jfe:
+			fr.updateRetrievalStatus(ju.AccKey, ju.JobID, ju.Success, ju.FailureCause)
+		}
+	}
 }
 
 // updateRetrievalStatus updates the status and continues with the process.
@@ -343,35 +370,6 @@ func (fr *FilRetrieval) updateRetrievalStatus(accKey string, jobID string, succe
 	select {
 	case fr.daemonWork <- struct{}{}:
 	default:
-	}
-
-}
-
-// Close closes gracefully all background work that
-// is being executed.
-func (fr *FilRetrieval) Close() error {
-	if fr.closed {
-		return nil
-	}
-	fr.cancel()
-	<-fr.closedChan
-
-	return nil
-}
-
-func (fr *FilRetrieval) daemon() {
-	defer func() { close(fr.closedChan) }()
-
-	fr.daemonWork <- struct{}{} // Force first run.
-	for {
-		select {
-		case <-fr.ctx.Done():
-			return
-		case <-fr.daemonWork:
-			fr.processQueuedMoveToBucket()
-		case ju := <-fr.jfe:
-			fr.updateRetrievalStatus(ju.AccKey, ju.JobID, ju.Success, ju.FailureCause)
-		}
 	}
 }
 
