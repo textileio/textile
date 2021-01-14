@@ -474,14 +474,14 @@ func (s *Service) createBootstrappedPath(
 	fileKey []byte,
 ) (context.Context, path.Resolved, error) {
 	pth := path.IpfsPath(bootCid)
-	bootStatn, err := s.IPFSClient.Object().Stat(ctx, pth)
+	bootSize, err := s.dagSize(ctx, pth)
 	if err != nil {
 		return ctx, nil, fmt.Errorf("resolving boot cid node: %v", err)
 	}
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
-	if ok && int64(bootStatn.CumulativeSize) > owner.StorageAvailable {
+	if ok && bootSize > owner.StorageAvailable {
 		return ctx, nil, ErrStorageQuotaExhausted
 	}
 
@@ -575,7 +575,6 @@ func (s *Service) newDirFromExistingPath(
 	}
 	nmap, err := s.encryptDag(
 		ctx,
-		s.IPFSClient.Dag(),
 		top,
 		destPath,
 		linkKey,
@@ -636,7 +635,6 @@ func (nn *namedNodes) Store(c cid.Cid, n *namedNode) {
 // and a list of the root's direct links.
 func (s *Service) encryptDag(
 	ctx context.Context,
-	ds ipld.DAGService,
 	root ipld.Node,
 	destPath string,
 	linkKey []byte,
@@ -647,11 +645,12 @@ func (s *Service) encryptDag(
 ) (map[cid.Cid]*namedNode, error) {
 	// Step 1: Create a preordered list of joint and leaf nodes
 	var stack, joints []*namedNode
+	var cur *namedNode
 	jmap := make(map[cid.Cid]*namedNode)
 	lmap := make(map[cid.Cid]*namedNode)
-	stack = append(stack, &namedNode{node: root, path: destPath})
-	var cur *namedNode
+	ds := s.IPFSClient.Dag()
 
+	stack = append(stack, &namedNode{node: root, path: destPath})
 	for len(stack) > 0 {
 		n := len(stack) - 1
 		cur = stack[n]
@@ -1049,11 +1048,11 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Contex
 	if err := s.IPFSClient.Pin().Rm(ctx, path); err != nil {
 		return ctx, err
 	}
-	stat, err := s.IPFSClient.Object().Stat(ctx, path)
+	size, err := s.dagSize(ctx, path)
 	if err != nil {
 		return ctx, fmt.Errorf("getting size of removed node: %v", err)
 	}
-	return s.addPinnedBytes(ctx, int64(-stat.CumulativeSize)), nil
+	return s.addPinnedBytes(ctx, -size), nil
 }
 
 // addAndPinNodes adds and pins nodes, accounting for sum bytes pinned for context.
@@ -1464,15 +1463,13 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
 
-	stat, err := s.IPFSClient.Object().Stat(server.Context(), path.New(buck.Path))
+	buckSize, err := s.getBucketSize(server.Context(), buck)
 	if err != nil {
-		return fmt.Errorf("getting bucket stat: %v", err)
+		return fmt.Errorf("getting bucket size: %v", err)
 	}
-	buckSize := int64(stat.CumulativeSize)
 	log.Debugf("initial bucket size: %d", buckSize)
 
 	addedCh := make(chan addedFile)
-	defer close(addedCh)
 	errCh := make(chan error)
 	go func() {
 		for {
@@ -1485,14 +1482,14 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 					errCh <- res.err
 					break
 				}
+				ctx := server.Context()
 
-				fn, err := s.IPFSClient.ResolveNode(server.Context(), res.resolved)
+				fn, err := s.IPFSClient.ResolveNode(ctx, res.resolved)
 				if err != nil {
 					errCh <- fmt.Errorf("resolving added node: %v", err)
 					break
 				}
 
-				ctx := server.Context()
 				var dir path.Resolved
 				if buck.IsPrivate() {
 					ctx, dir, err = s.insertNodeAtPath(
@@ -1550,14 +1547,21 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 
 	var wg sync.WaitGroup
 	go func() {
+		var wait bool
 		defer func() {
-			wg.Wait()
-			close(errCh)
+			if wait {
+				wg.Wait()
+				close(errCh)
+			}
 		}()
 		queue := newFileQueue()
 		for {
 			req, err := server.Recv()
-			if err != nil {
+			if err == io.EOF {
+				wait = true // Request ended normally
+				return
+			} else if err != nil {
+				errCh <- fmt.Errorf("on receive: %v", err)
 				return
 			}
 			switch payload := req.Payload.(type) {
@@ -1613,21 +1617,109 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 		}
 	}()
 
+	var changed bool
+	saveWithErr := func(err error) error {
+		if !changed {
+			return nil
+		}
+		if err := s.Buckets.Save(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+			return fmt.Errorf("saving bucket: %v", err)
+		}
+		go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
+		return err
+	}
+
 	for {
 		select {
 		case err, ok := <-errCh:
 			if !ok {
-				if err := s.Buckets.Save(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
-					return fmt.Errorf("saving bucket: %v", err)
-				}
-				go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
-				return nil
+				return saveWithErr(nil)
 			}
 			wg.Done()
 			if err != nil {
-				return err
+				return saveWithErr(err)
+			}
+			changed = true
+		}
+	}
+}
+
+func (s *Service) getBucketSize(ctx context.Context, buck *tdb.Bucket) (int64, error) {
+	if !buck.IsPrivate() {
+		return s.dagSize(ctx, path.New(buck.Path))
+	} else {
+		// Walk the entire encrypted node using a stack
+		var size int64
+		var stack []*namedNode
+		var cur *namedNode
+		jmap := make(map[cid.Cid]*namedNode)
+		lmap := make(map[cid.Cid]*namedNode)
+		linkKey := buck.GetLinkEncryptionKey()
+		ds := s.IPFSClient.Dag()
+
+		root, err := s.IPFSClient.ResolveNode(ctx, path.New(buck.Path))
+		if err != nil {
+			return 0, err
+		}
+
+		stack = append(stack, &namedNode{node: root})
+		for len(stack) > 0 {
+			n := len(stack) - 1
+			cur = stack[n]
+			stack = stack[:n]
+
+			if _, ok := jmap[cur.node.Cid()]; ok {
+				continue
+			}
+			if _, ok := lmap[cur.node.Cid()]; ok {
+				continue
+			}
+
+		types:
+			switch cur.node.(type) {
+			case *dag.RawNode:
+				lmap[cur.node.Cid()] = cur
+			case *dag.ProtoNode:
+				// Add links to the stack
+				cur.cid = cur.node.Cid()
+				var err error
+				cur.node, _, err = decryptNode(cur.node, linkKey)
+				if err != nil {
+					return 0, err
+				}
+				for _, l := range cur.node.Links() {
+					if l.Name == "" {
+						// We have discovered a raw file node wrapper
+						// Use the original cur node because file node wrappers aren't encrypted
+						lmap[cur.cid] = cur
+						s, err := cur.node.Stat()
+						if err != nil {
+							return 0, err
+						}
+						// Include the size of all child nodes
+						size += int64(s.CumulativeSize)
+						break types
+					}
+					ln, err := l.GetNode(ctx, ds)
+					if err != nil {
+						return 0, err
+					}
+					stack = append(stack, &namedNode{
+						node: ln,
+					})
+				}
+				jmap[cur.cid] = cur
+				s, err := cur.node.Stat()
+				if err != nil {
+					return 0, err
+				}
+				// Just get the block size
+				size += int64(s.BlockSize)
+			default:
+				return 0, errInvalidNodeType
 			}
 		}
+		return size, nil
 	}
 }
 
@@ -1858,7 +1950,7 @@ func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
 	}
 	stat, err := s.IPFSClient.Object().Stat(ctx, root)
 	if err != nil {
-		return 0, fmt.Errorf("get stats of pin destination: %v", err)
+		return 0, fmt.Errorf("getting dag size: %v", err)
 	}
 	return int64(stat.CumulativeSize), nil
 }
@@ -2214,7 +2306,6 @@ func (s *Service) PushPathAccessRoles(
 		return nil, err
 	}
 
-	var currentFileKeys map[string][]byte
 	md, mdPath, ok := buck.GetMetadataForPath(reqPath, false)
 	if !ok {
 		return nil, fmt.Errorf("could not resolve path: %s", reqPath)
@@ -2227,6 +2318,7 @@ func (s *Service) PushPathAccessRoles(
 	} else {
 		target = md
 	}
+	var currentFileKeys map[string][]byte
 	if buck.IsPrivate() {
 		currentFileKeys, err = buck.GetFileEncryptionKeysForPrefix(reqPath)
 		if err != nil {
@@ -2276,7 +2368,6 @@ func (s *Service) PushPathAccessRoles(
 			}
 			nmap, err := s.encryptDag(
 				ctx,
-				s.IPFSClient.Dag(),
 				pathNode,
 				reqPath,
 				linkKey,
