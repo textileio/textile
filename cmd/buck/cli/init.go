@@ -185,7 +185,7 @@ Use the '--hard' flag to discard all local changes.
 
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
-		printLinks(links)
+		printLinks(links, Default)
 
 		var msg string
 		if !existing {
