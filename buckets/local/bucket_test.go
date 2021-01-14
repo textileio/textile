@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,7 +205,7 @@ func TestBucket_PullRemote(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, diff, 1)
 	if len(diff) > 0 {
-		assert.Equal(t, diff[0].Type, dagutils.Remove)
+		assert.Equal(t, diff[0].Type, du.Remove)
 	}
 
 	// Pulling hard should reset the local to the exact state of the remote
@@ -357,7 +357,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 	diff, err := buck.DiffLocal()
 	require.NoError(t, err)
 	assert.Len(t, diff, 2)
-	assert.Equal(t, diff[0].Type, dagutils.Add)
+	assert.Equal(t, diff[0].Type, du.Add)
 
 	// Test diff from a nested folder
 	buck2, err := buckets.GetLocalBucket(context.Background(), Config{Path: filepath.Join(conf.Path, "folder")})
@@ -365,7 +365,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 	diff, err = buck2.DiffLocal()
 	require.NoError(t, err)
 	assert.Len(t, diff, 2)
-	assert.Equal(t, diff[0].Type, dagutils.Add)
+	assert.Equal(t, diff[0].Type, du.Add)
 
 	_, err = buck.PushLocal(context.Background())
 	require.NoError(t, err)
@@ -378,7 +378,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 	diff, err = buck.DiffLocal()
 	require.NoError(t, err)
 	assert.Len(t, diff, 1)
-	assert.Equal(t, diff[0].Type, dagutils.Mod)
+	assert.Equal(t, diff[0].Type, du.Mod)
 
 	_, err = buck.PushLocal(context.Background())
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestBucket_DiffLocal(t *testing.T) {
 	diff, err = buck.DiffLocal()
 	require.NoError(t, err)
 	assert.Len(t, diff, 1)
-	assert.Equal(t, diff[0].Type, dagutils.Remove)
+	assert.Equal(t, diff[0].Type, du.Remove)
 
 	_, err = buck.PushLocal(context.Background())
 	require.NoError(t, err)

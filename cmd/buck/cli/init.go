@@ -24,8 +24,12 @@ var initCmd = &cobra.Command{
 A .textile config directory and a seed file will be created in the current working directory.
 Existing configs will not be overwritten.
 
-Use the '--existing' flag to initialize from an existing remote bucket.
+Use the '--existing' flag to interactively select an existing remote bucket.
 Use the '--cid' flag to initialize from an existing UnixFS DAG.
+
+By default, if the remote bucket exists, remote objects are pulled and merged with local changes.
+Use the '--soft' flag to accept all local changes, including deletions.
+Use the '--hard' flag to discard all local changes.
 `,
 	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
@@ -42,6 +46,22 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			chooseExisting = false // Nothing left to choose
 		}
 
+		var strategy local.InitStrategy
+		soft, err := c.Flags().GetBool("soft")
+		cmd.ErrCheck(err)
+		hard, err := c.Flags().GetBool("hard")
+		cmd.ErrCheck(err)
+		if soft && hard {
+			cmd.Fatal(errors.New("--soft and --hard cannot by used together"))
+		}
+		if soft {
+			strategy = local.Soft
+		} else if hard {
+			strategy = local.Hard
+		} else {
+			strategy = local.Hybrid
+		}
+
 		var xcid cid.Cid
 		xcids, err := c.Flags().GetString("cid")
 		cmd.ErrCheck(err)
@@ -50,7 +70,7 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			cmd.ErrCheck(err)
 		}
 		if (existing || chooseExisting) && xcid.Defined() {
-			cmd.Fatal(errors.New("--cid can not be used with an existing bucket"))
+			cmd.Fatal(errors.New("--cid cannot be used with an existing bucket"))
 		}
 
 		var name string
@@ -94,7 +114,8 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 				Label: "Which existing bucket do you want to init from?",
 				Items: list,
 				Templates: &promptui.SelectTemplates{
-					Active:   fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Key | faint | bold }}`, promptui.IconSelect),
+					Active: fmt.Sprintf(`{{ "%s" | cyan }} {{ .Name | bold }} {{ .Key | faint | bold }}`,
+						promptui.IconSelect),
 					Inactive: `{{ .Name | faint }} {{ .Key | faint | bold }}`,
 					Selected: aurora.Sprintf(aurora.BrightBlack("> Selected bucket {{ .Name | white | bold }}")),
 				},
@@ -155,7 +176,8 @@ Use the '--cid' flag to initialize from an existing UnixFS DAG.
 			local.WithName(name),
 			local.WithPrivate(private),
 			local.WithCid(xcid),
-			local.WithExistingPathEvents(events))
+			local.WithStrategy(strategy),
+			local.WithInitPathEvents(events))
 		if progress != nil {
 			progress.Stop()
 		}

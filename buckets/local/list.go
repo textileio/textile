@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/ipfs/go-cid"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -24,6 +25,7 @@ type BucketItem struct {
 
 // ListRemotePath returns a list of all bucket items under path.
 func (b *Bucket) ListRemotePath(ctx context.Context, pth string) (items []BucketItem, err error) {
+	pth = filepath.ToSlash(pth)
 	if pth == "." || pth == "/" || pth == "./" {
 		pth = ""
 	}

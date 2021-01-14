@@ -9,8 +9,9 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-merkledag/dagutils"
+	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
+	"github.com/textileio/textile/v2/buckets"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -43,15 +44,10 @@ func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Root
 		}
 	}
 
-	// Tmp move local modifications and additions if not pulling hard
+	// Stash local modifications and additions if not pulling hard
 	if !args.hard {
-		for _, c := range diff {
-			switch c.Type {
-			case dagutils.Mod, dagutils.Add:
-				if err := os.Rename(c.Name, c.Name+".buckpatch"); err != nil {
-					return roots, err
-				}
-			}
+		if err := stashChanges(diff); err != nil {
+			return roots, err
 		}
 	}
 
@@ -59,11 +55,11 @@ func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Root
 	if err != nil {
 		return
 	}
-	count, err := b.getPath(ctx, "", bp, diff, args.force, args.events)
+	changes, err := b.getPath(ctx, "", bp, diff, args.force, args.events)
 	if err != nil {
 		return
 	}
-	if count == 0 {
+	if changes == 0 {
 		return roots, ErrUpToDate
 	}
 
@@ -82,31 +78,25 @@ func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Root
 
 	// Re-apply local changes if not pulling hard
 	if !args.hard {
-		for _, c := range diff {
-			switch c.Type {
-			case dagutils.Mod, dagutils.Add:
-				if err := os.Rename(c.Name+".buckpatch", c.Name); err != nil {
-					return roots, err
-				}
-			case dagutils.Remove:
-				// If the file was also deleted on the remote,
-				// the local deletion will already have been handled by getPath.
-				// So, we just ignore the error here.
-				_ = os.RemoveAll(c.Name)
-			}
+		if err := applyChanges(diff); err != nil {
+			return roots, err
 		}
 	}
 	return b.Roots(ctx)
 }
 
-func (b *Bucket) getPath(ctx context.Context, pth, dest string, diff []Change, force bool, events chan<- PathEvent) (count int, err error) {
-	key := b.Key()
-	all, missing, err := b.listPath(ctx, key, pth, dest, force)
+func (b *Bucket) getPath(
+	ctx context.Context,
+	pth, dest string,
+	diff []Change,
+	force bool,
+	events chan<- PathEvent,
+) (changes int, err error) {
+	all, missing, err := b.listPath(ctx, pth, dest, force)
 	if err != nil {
 		return
 	}
-	count = len(missing)
-	rm := make(map[string]string)
+	remove := make(map[string]string)
 	list, err := b.walkPath(dest)
 	if err != nil {
 		return
@@ -118,8 +108,8 @@ loop:
 				continue loop
 			}
 		}
-		p := strings.TrimPrefix(n, dest+"/")
-		rm[p] = n
+		p := strings.TrimPrefix(n, dest+string(os.PathSeparator))
+		remove[p] = n
 	}
 looop:
 	for _, l := range diff {
@@ -128,11 +118,23 @@ looop:
 				continue looop
 			}
 		}
-		if _, ok := rm[l.Path]; !ok {
-			rm[l.Path] = l.Name
+		if _, ok := remove[l.Path]; !ok {
+			remove[l.Path] = l.Name
 		}
 	}
-	count += len(rm)
+
+	return b.handleChanges(ctx, pth, missing, remove, events)
+}
+
+func (b *Bucket) handleChanges(
+	ctx context.Context,
+	pth string,
+	missing []object,
+	remove map[string]string,
+	events chan<- PathEvent,
+) (count int, err error) {
+	count = len(missing)
+	count += len(remove)
 	if count == 0 {
 		return
 	}
@@ -154,7 +156,7 @@ looop:
 				if gctx.Err() != nil {
 					return nil
 				}
-				if err := b.getFile(ctx, key, o, events); err != nil {
+				if err := b.getFile(ctx, b.Key(), o, events); err != nil {
 					return err
 				}
 				if b.repo != nil {
@@ -170,19 +172,24 @@ looop:
 			return count, err
 		}
 	}
-	if len(rm) > 0 {
-		for _, r := range rm {
+	if len(remove) > 0 {
+		for p, n := range remove {
 			// The file may have been modified locally, in which case it will have been moved to a patch.
 			// So, we just ignore the error here.
-			_ = os.RemoveAll(r)
+			_ = os.RemoveAll(n)
 			if events != nil {
-				rel, err := filepath.Rel(b.cwd, r)
+				rel, err := filepath.Rel(b.cwd, n)
 				if err != nil {
 					return count, err
 				}
 				events <- PathEvent{
 					Path: rel,
 					Type: FileRemoved,
+				}
+			}
+			if b.repo != nil {
+				if err := b.repo.RemovePath(ctx, p); err != nil {
+					return count, err
 				}
 			}
 		}
@@ -196,6 +203,59 @@ looop:
 	return count, nil
 }
 
+func (b *Bucket) diffPath(
+	ctx context.Context,
+	pth, dest string,
+	ignoreDeletions bool,
+) (diff []Change, missing []object, remove map[string]string, err error) {
+	all, missing, err := b.listPath(ctx, pth, dest, false)
+	if err != nil {
+		return
+	}
+	remove = make(map[string]string)
+	list, err := b.walkPath(dest)
+	if err != nil {
+		return
+	}
+loop:
+	for _, n := range list {
+		for _, r := range all {
+			if r.name == n {
+				continue loop
+			}
+		}
+		p := strings.TrimPrefix(n, dest+string(os.PathSeparator))
+		r, err := filepath.Rel(b.cwd, n)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		diff = append(diff, Change{Type: du.Add, Name: n, Path: p, Rel: r})
+		remove[p] = n
+	}
+	for _, o := range missing {
+		if o.path == buckets.SeedName {
+			continue
+		}
+		var ct du.ChangeType
+		if _, err = os.Stat(o.name); err == nil {
+			ct = du.Mod
+		} else if os.IsNotExist(err) {
+			if ignoreDeletions {
+				continue
+			}
+			ct = du.Remove
+		} else {
+			return
+		}
+		r, err := filepath.Rel(b.cwd, o.name)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		diff = append(diff, Change{Type: ct, Name: o.name, Path: o.path, Rel: r})
+	}
+	return diff, missing, remove, nil
+}
+
 type object struct {
 	path string
 	name string
@@ -203,14 +263,18 @@ type object struct {
 	size int64
 }
 
-func (b *Bucket) listPath(ctx context.Context, key, pth, dest string, force bool) (all, missing []object, err error) {
-	rep, err := b.clients.Buckets.ListPath(ctx, key, pth)
+func (b *Bucket) listPath(
+	ctx context.Context,
+	pth, dest string,
+	force bool,
+) (all, missing []object, err error) {
+	rep, err := b.clients.Buckets.ListPath(ctx, b.Key(), pth)
 	if err != nil {
 		return
 	}
 	if rep.Item.IsDir {
 		for _, i := range rep.Item.Items {
-			a, m, err := b.listPath(ctx, key, filepath.Join(pth, filepath.Base(i.Path)), dest, force)
+			a, m, err := b.listPath(ctx, filepath.Join(pth, filepath.Base(i.Path)), dest, force)
 			if err != nil {
 				return nil, nil, err
 			}

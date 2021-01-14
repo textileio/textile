@@ -125,7 +125,7 @@ func (b *Bucket) LocalSize() (int64, error) {
 			return fmt.Errorf("getting fileinfo of %s: %s", n, err)
 		}
 		if !info.IsDir() {
-			f := strings.TrimPrefix(n, bp+"/")
+			f := strings.TrimPrefix(n, bp+string(os.PathSeparator))
 			if Ignore(n) || (strings.HasPrefix(f, b.conf.Dir) && f != buckets.SeedName) {
 				return nil
 			}
