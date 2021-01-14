@@ -64,7 +64,6 @@ func Init(baseCmd *cobra.Command) {
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	pushCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
-	pushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
 
 	pullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
 	pullCmd.Flags().Bool("hard", false, "Discards local changes if true")
@@ -259,7 +258,7 @@ var lsCmd = &cobra.Command{
 				}
 				data = append(data, []string{
 					item.Name,
-					strconv.Itoa(int(item.Size)),
+					formatBytes(item.Size, false),
 					strconv.FormatBool(item.IsDir),
 					links,
 					item.Cid.String(),
@@ -336,7 +335,9 @@ var destroyCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
+		cmd.Warn("%s",
+			aurora.Red(
+				"This action cannot be undone. The bucket and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label:     "Are you absolutely sure",
 			IsConfirm: true,

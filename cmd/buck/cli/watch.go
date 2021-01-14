@@ -46,7 +46,7 @@ func handleWatchEvents(events chan local.Event) {
 	for e := range events {
 		switch e.Type {
 		case local.EventFileComplete:
-			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, true))
+			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, false))
 		case local.EventFileRemoved:
 			cmd.Message("%s", aurora.Red("- "+e.Path))
 		}

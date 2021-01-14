@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets"
@@ -12,11 +12,6 @@ import (
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
-
-var (
-	buckMaxSizeMiB = 4 * int64(1024)
-	MiB            = int64(1024 * 1024)
-)
 
 var pushCmd = &cobra.Command{
 	Use:   "push",
@@ -33,24 +28,12 @@ Use the '--force' flag to allow a non-fast-forward update.
 		cmd.ErrCheck(err)
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
-		maxSize, err := c.Flags().GetInt64("maxsize")
-		if err != nil {
-			cmd.Fatal(err)
-		}
 		conf, err := bucks.NewConfigFromCmd(c, ".")
 		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PushTimeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-
-		// Check total bucket size limit.
-		size, err := buck.LocalSize()
-		cmd.ErrCheck(err)
-		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMiB): %dMiB",
-				maxSize, size/MiB))
-		}
 
 		var events chan local.Event
 		if !quiet {
@@ -68,7 +51,7 @@ Use the '--force' flag to allow a non-fast-forward update.
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {
 			cmd.End("Everything up-to-date")
-		} else if errors.Is(err, buckets.ErrNonFastForward) {
+		} else if strings.Contains(err.Error(), buckets.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("buck pull"))
 		} else if err != nil {
 			cmd.Fatal(err)

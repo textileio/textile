@@ -56,7 +56,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		CustomerioConfirmTmpl:     os.Getenv("CUSTOMERIO_CONFIRM_TMPL"),
 		CustomerioInviteTmpl:      os.Getenv("CUSTOMERIO_INVITE_TMPL"),
 		EmailSessionSecret:        SessionSecret,
-		BucketArchiveMaxRepFactor: 4,
+		MaxBucketArchiveRepFactor: 4,
 	}
 }
 

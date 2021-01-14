@@ -256,7 +256,10 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 	go func() {
 		for {
 			rep, err := stream.Recv()
-			if err != nil {
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				q.outCh <- PushPathResult{err: err}
 				return
 			}
 
@@ -287,7 +290,9 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				Payload: &pb.PushPathRequest_Chunk_{
 					Chunk: c,
 				},
-			}); err != nil {
+			}); err == io.EOF {
+				return // error is waiting to be received with stream.Recv above
+			} else if err != nil {
 				q.outCh <- PushPathResult{err: err}
 			}
 			atomic.AddInt64(&q.complete, int64(len(c.Data)))
