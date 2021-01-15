@@ -218,10 +218,13 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		accKey := owner.Key.String()
 		powToken := owner.PowInfo.Token
 
-		if err := s.FilRetrieval.CreateForNewBucket(ctx, accKey, dbID, dbToken, req.Name, req.Private, bootCid, powToken); err != nil {
+		rid, err := s.FilRetrieval.CreateForNewBucket(ctx, accKey, dbID, dbToken, req.Name, req.Private, bootCid, powToken)
+		if err != nil {
 			return nil, fmt.Errorf("creating retrieval: %s", err)
 		}
-		return &pb.CreateResponse{}, nil
+		return &pb.CreateResponse{
+			RetrievalId: rid,
+		}, nil
 	}
 
 	// If not created with --unfreeze, just do the normal case.

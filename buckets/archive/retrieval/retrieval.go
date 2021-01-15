@@ -150,17 +150,17 @@ func (fr *FilRetrieval) CreateForNewBucket(
 	buckPrivate bool,
 	dataCid cid.Cid,
 	powToken string,
-) error {
+) (string, error) {
 	if powToken == "" {
-		return fmt.Errorf("powergate token can't be empty")
+		return "", fmt.Errorf("powergate token can't be empty")
 	}
 	if accKey == "" {
-		return fmt.Errorf("account key can't be empty")
+		return "", fmt.Errorf("account key can't be empty")
 	}
 
 	jobID, err := fr.createRetrieval(ctx, dataCid, accKey, powToken)
 	if err != nil {
-		return fmt.Errorf("creating retrieval in Powergate: %s", err)
+		return "", fmt.Errorf("creating retrieval in Powergate: %s", err)
 	}
 	r := Retrieval{
 		Type:       TypeNewBucket,
@@ -179,10 +179,10 @@ func (fr *FilRetrieval) CreateForNewBucket(
 	}
 
 	if err := fr.save(nil, r); err != nil {
-		return fmt.Errorf("saving retrieval request: %s", err)
+		return "", fmt.Errorf("saving retrieval request: %s", err)
 	}
 
-	return nil
+	return jobID, nil
 }
 
 func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, powToken string) (string, error) {

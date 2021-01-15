@@ -38,6 +38,7 @@ message CreateResponse {
     bytes seed = 3;
     string seed_cid = 4;
     int64 pinned = 5;
+    string retrieval_id = 6;
 }
 
 message RootRequest {

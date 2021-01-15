@@ -167,7 +167,8 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 		// is successful. The user will `[hub] buck init -e` in the future
 		// to pull the new bucket.
 		if args.unfreeze {
-			return nil, nil
+			buck.retrID = rep.RetrievalId
+			return buck, nil
 		}
 		buck.conf.Viper.Set("key", rep.Root.Key)
 

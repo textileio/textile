@@ -103,7 +103,6 @@ func (at *ArchiveTracking) CreateRetrieval(ctx context.Context, accKey, jobID, p
 	}
 
 	return nil
-
 }
 
 func (at *ArchiveTracking) GetReadyToCheck(ctx context.Context, n int64) ([]*TrackedJob, error) {
