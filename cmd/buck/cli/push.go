@@ -51,7 +51,7 @@ Use the '--force' flag to allow a non-fast-forward update.
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {
 			cmd.End("Everything up-to-date")
-		} else if strings.Contains(err.Error(), buckets.ErrNonFastForward.Error()) {
+		} else if err != nil && strings.Contains(err.Error(), buckets.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("buck pull"))
 		} else if err != nil {
 			cmd.Fatal(err)

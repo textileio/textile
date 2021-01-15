@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/desertbit/timer"
 
 	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -135,10 +138,16 @@ func (b *Bucket) addFiles(
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	queue, err := b.clients.Buckets.PushPath(ctx, key, opts...)
+	q, err := b.clients.Buckets.PushPath(ctx, key, opts...)
 	if err != nil {
 		return nil, err
 	}
+	go func() {
+		t := timer.NewTimer(time.Second * 3)
+		<-t.C
+		q.Close()
+	}()
+	defer q.Close()
 
 	for _, c := range changes {
 		file := pendingFile{
@@ -147,13 +156,12 @@ func (b *Bucket) addFiles(
 		}
 		pth := filepath.ToSlash(c.Path)
 		files[pth] = file
-		if err := queue.Push(file.path, c.Name); err != nil {
+		if err := q.Push(file.path, c.Name); err != nil {
 			return nil, err
 		}
 	}
-	queue.Close()
 
-	size := queue.Size()
+	size := q.Size()
 	go func() {
 		for p := range progress {
 			var u int64
@@ -173,15 +181,15 @@ func (b *Bucket) addFiles(
 	}()
 
 	var root path.Resolved
-	for queue.Next() {
-		if queue.Err() != nil {
-			return nil, queue.Err()
+	for q.Next() {
+		if q.Err() != nil {
+			return nil, q.Err()
 		}
-		file := files[queue.Current.Path]
-		root = queue.Current.Root
+		file := files[q.Current.Path]
+		root = q.Current.Root
 
 		if b.repo != nil {
-			if err := b.repo.SetRemotePath(file.path, queue.Current.Cid); err != nil {
+			if err := b.repo.SetRemotePath(file.path, q.Current.Cid); err != nil {
 				return nil, err
 			}
 		}
@@ -190,8 +198,8 @@ func (b *Bucket) addFiles(
 			events <- Event{
 				Type: EventFileComplete,
 				Path: file.rel,
-				Cid:  queue.Current.Cid,
-				Size: queue.Current.Size,
+				Cid:  q.Current.Cid,
+				Size: q.Current.Size,
 			}
 		}
 	}

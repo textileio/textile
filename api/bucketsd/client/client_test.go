@@ -5,8 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,7 +28,9 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
 	hubpb "github.com/textileio/textile/v2/api/hubd/pb"
+	bucks "github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/core"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
@@ -178,65 +184,65 @@ func TestClient_List(t *testing.T) {
 	})
 }
 
-//func TestClient_ListPath(t *testing.T) {
-//	ctx, client := setup(t)
-//
-//	t.Run("public", func(t *testing.T) {
-//		listPath(t, ctx, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		listPath(t, ctx, client, true)
-//	})
-//}
-//
-//func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	t.Run("empty", func(t *testing.T) {
-//		rep, err := client.ListPath(ctx, buck.Root.Key, "")
-//		require.NoError(t, err)
-//		assert.NotEmpty(t, rep.Root)
-//		assert.True(t, rep.Item.IsDir)
-//		assert.Len(t, rep.Item.Items, 1)
-//	})
-//
-//	file, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "dir1/file1.jpg", file)
-//	require.NoError(t, err)
-//	_, root, err := client.PushPath(ctx, buck.Root.Key, "dir2/file1.jpg", file)
-//	require.NoError(t, err)
-//
-//	t.Run("root dir", func(t *testing.T) {
-//		rep, err := client.ListPath(ctx, buck.Root.Key, "")
-//		require.NoError(t, err)
-//		assert.True(t, rep.Item.IsDir)
-//		assert.Len(t, rep.Item.Items, 3)
-//		dir1i := sort.Search(len(rep.Item.Items), func(i int) bool {
-//			return rep.Item.Items[i].Name == "dir1"
-//		})
-//		assert.True(t, dir1i < len(rep.Item.Items))
-//		assert.True(t, rep.Item.Items[dir1i].IsDir)
-//	})
-//
-//	t.Run("nested dir", func(t *testing.T) {
-//		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1")
-//		require.NoError(t, err)
-//		assert.True(t, rep.Item.IsDir)
-//		assert.Len(t, rep.Item.Items, 1)
-//	})
-//
-//	t.Run("file", func(t *testing.T) {
-//		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1/file1.jpg")
-//		require.NoError(t, err)
-//		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
-//		assert.False(t, rep.Item.IsDir)
-//		assert.Equal(t, root.String(), rep.Root.Path)
-//	})
-//}
+func TestClient_ListPath(t *testing.T) {
+	ctx, client := setup(t)
+
+	t.Run("public", func(t *testing.T) {
+		listPath(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		listPath(t, ctx, client, true)
+	})
+}
+
+func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	t.Run("empty", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "")
+		require.NoError(t, err)
+		assert.NotEmpty(t, rep.Root)
+		assert.True(t, rep.Item.IsDir)
+		assert.Len(t, rep.Item.Items, 1)
+	})
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "dir1/file1.jpg", file)
+	require.NoError(t, err)
+	_, root, err := client.PushPath(ctx, buck.Root.Key, "dir2/file1.jpg", file)
+	require.NoError(t, err)
+
+	t.Run("root dir", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "")
+		require.NoError(t, err)
+		assert.True(t, rep.Item.IsDir)
+		assert.Len(t, rep.Item.Items, 3)
+		dir1i := sort.Search(len(rep.Item.Items), func(i int) bool {
+			return rep.Item.Items[i].Name == "dir1"
+		})
+		assert.True(t, dir1i < len(rep.Item.Items))
+		assert.True(t, rep.Item.Items[dir1i].IsDir)
+	})
+
+	t.Run("nested dir", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1")
+		require.NoError(t, err)
+		assert.True(t, rep.Item.IsDir)
+		assert.Len(t, rep.Item.Items, 1)
+	})
+
+	t.Run("file", func(t *testing.T) {
+		rep, err := client.ListPath(ctx, buck.Root.Key, "dir1/file1.jpg")
+		require.NoError(t, err)
+		assert.True(t, strings.HasSuffix(rep.Item.Path, "file1.jpg"))
+		assert.False(t, rep.Item.IsDir)
+		assert.Equal(t, root.String(), rep.Root.Path)
+	})
+}
 
 func TestClient_ListIpfsPath(t *testing.T) {
 	ctx, client := setup(t)
@@ -283,26 +289,21 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
-	file1, err := os.Open("testdata/file1.jpg")
-	require.NoError(t, err)
-	defer file1.Close()
-
-	file2, err := os.Open("testdata/file2.jpg")
-	require.NoError(t, err)
-	defer file2.Close()
-
-	progress1 := make(chan c.Progress)
+	progress1 := make(chan int64)
+	defer close(progress1)
 	go func() {
 		for p := range progress1 {
-			fmt.Println(fmt.Sprintf("progress for %s: %d", p.Path, p.Bytes))
+			fmt.Println(fmt.Sprintf("progress: %d", p))
 		}
 	}()
 
 	queue, err := client.PushPath(ctx, buck.Root.Key, c.WithProgress(progress1))
 	require.NoError(t, err)
 
-	queue.Push("file1.jpg", file1)
-	queue.Push("path/to/file2.jpg", file2)
+	err = queue.Push("file1.jpg", "testdata/file1.jpg")
+	require.NoError(t, err)
+	err = queue.Push("path/to/file2.jpg", "testdata/file2.jpg")
+	require.NoError(t, err)
 	queue.Close()
 
 	for queue.Next() {
@@ -311,148 +312,148 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 		assert.NotEmpty(t, queue.Current.Root)
 	}
 
-	//file2, err := os.Open("testdata/file2.jpg")
-	//require.NoError(t, err)
-	//defer file2.Close()
-	//progress2 := make(chan int64)
-	//go func() {
-	//	for p := range progress2 {
-	//		fmt.Println(fmt.Sprintf("progress: %d", p))
-	//	}
-	//}()
-	//_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
-	//require.NoError(t, err)
-	//
-	//rep1, err := client.ListPath(ctx, buck.Root.Key, "")
-	//require.NoError(t, err)
-	//assert.Len(t, rep1.Item.Items, 3)
-	//
-	//// Try overwriting the path
-	//_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", strings.NewReader("seeya!"))
-	//require.NoError(t, err)
-	//
-	//rep2, err := client.ListPath(ctx, buck.Root.Key, "")
-	//require.NoError(t, err)
-	//assert.Len(t, rep2.Item.Items, 3)
-	//
-	//// Overwrite the path again, this time replacing a file link with a dir link
-	//file3, err := os.Open("testdata/file2.jpg")
-	//require.NoError(t, err)
-	//defer file3.Close()
-	//_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to", file3)
-	//require.NoError(t, err)
-	//
-	//rep3, err := client.ListPath(ctx, buck.Root.Key, "")
-	//require.NoError(t, err)
-	//assert.Len(t, rep3.Item.Items, 3)
-	//
-	//// Concurrent writes should result in one being rejected due to the fast-forward-only rule
-	//root, err := util.NewResolvedPath(rep3.Root.Path)
-	//require.NoError(t, err)
-	//var err1, err2 error
-	//var wg sync.WaitGroup
-	//wg.Add(2)
-	//go func() {
-	//	_, _, err1 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
-	//	wg.Done()
-	//}()
-	//go func() {
-	//	_, _, err2 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
-	//	wg.Done()
-	//}()
-	//wg.Wait()
-	//// We should have one and only one error
-	//assert.False(t, (err1 != nil && err2 != nil) && (err1 == nil && err2 == nil))
-	//if err1 != nil {
-	//	assert.True(t, strings.Contains(err1.Error(), "update is non-fast-forward"))
-	//} else if err2 != nil {
-	//	assert.True(t, strings.Contains(err2.Error(), "update is non-fast-forward"))
-	//}
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	progress2 := make(chan int64)
+	go func() {
+		for p := range progress2 {
+			fmt.Println(fmt.Sprintf("progress: %d", p))
+		}
+	}()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
+	require.NoError(t, err)
+
+	rep1, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep1.Item.Items, 3)
+
+	// Try overwriting the path
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", strings.NewReader("seeya!"))
+	require.NoError(t, err)
+
+	rep2, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep2.Item.Items, 3)
+
+	// Overwrite the path again, this time replacing a file link with a dir link
+	file3, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file3.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to", file3)
+	require.NoError(t, err)
+
+	rep3, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep3.Item.Items, 3)
+
+	// Concurrent writes should result in one being rejected due to the fast-forward-only rule
+	root, err := util.NewResolvedPath(rep3.Root.Path)
+	require.NoError(t, err)
+	var err1, err2 error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		_, _, err1 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
+		wg.Done()
+	}()
+	go func() {
+		_, _, err2 = client.PushPath(ctx, buck.Root.Key, "conflict", strings.NewReader("ready, set, go!"), c.WithFastForwardOnly(root))
+		wg.Done()
+	}()
+	wg.Wait()
+	// We should have one and only one error
+	assert.False(t, (err1 != nil && err2 != nil) && (err1 == nil && err2 == nil))
+	if err1 != nil {
+		assert.True(t, strings.Contains(err1.Error(), "update is non-fast-forward"))
+	} else if err2 != nil {
+		assert.True(t, strings.Contains(err2.Error(), "update is non-fast-forward"))
+	}
 }
 
-//func TestClient_PushPathExceedsMaxSize(t *testing.T) {
-//	stat, err := os.Stat("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	conf := apitest.DefaultTextileConfig(t)
-//	conf.MaxBucketSize = stat.Size() + 1024
-//	ctx, _, _, client := setupWithConf(t, conf)
-//
-//	t.Run("public", func(t *testing.T) {
-//		pushPathExceedsMaxSize(t, ctx, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		pushPathExceedsMaxSize(t, ctx, client, true)
-//	})
-//}
-//
-//func pushPathExceedsMaxSize(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	file1, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file1.Close()
-//	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-//	require.NoError(t, err)
-//	assert.NotEmpty(t, pth1)
-//	assert.NotEmpty(t, root1)
-//
-//	file2, err := os.Open("testdata/file2.jpg")
-//	require.NoError(t, err)
-//	defer file2.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "file2.jpg", file2)
-//	require.Error(t, err)
-//	require.Contains(t, err.Error(), bucketsd.ErrMaxBucketSizeExceeded.Error())
-//}
-//
-//func TestClient_PullPath(t *testing.T) {
-//	ctx, client := setup(t)
-//
-//	t.Run("public", func(t *testing.T) {
-//		pullPath(t, ctx, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		pullPath(t, ctx, client, true)
-//	})
-//}
-//
-//func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	file, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-//	require.NoError(t, err)
-//
-//	tmp, err := ioutil.TempFile("", "")
-//	require.NoError(t, err)
-//	defer tmp.Close()
-//
-//	progress := make(chan int64)
-//	go func() {
-//		for p := range progress {
-//			fmt.Println(fmt.Sprintf("progress: %d", p))
-//		}
-//	}()
-//	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
-//	require.NoError(t, err)
-//	info, err := tmp.Stat()
-//	require.NoError(t, err)
-//	fmt.Println(fmt.Sprintf("wrote file with size %d", info.Size()))
-//
-//	note := "baps!"
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "one/two/note.txt", strings.NewReader(note))
-//	require.NoError(t, err)
-//
-//	var buf bytes.Buffer
-//	err = client.PullPath(ctx, buck.Root.Key, "one/two/note.txt", &buf)
-//	require.NoError(t, err)
-//	assert.Equal(t, note, buf.String())
-//}
+func TestClient_PushPathExceedsMaxSize(t *testing.T) {
+	stat, err := os.Stat("testdata/file1.jpg")
+	require.NoError(t, err)
+	conf := apitest.DefaultTextileConfig(t)
+	conf.MaxBucketSize = stat.Size() + 1024
+	ctx, _, _, client := setupWithConf(t, conf)
+
+	t.Run("public", func(t *testing.T) {
+		pushPathExceedsMaxSize(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		pushPathExceedsMaxSize(t, ctx, client, true)
+	})
+}
+
+func pushPathExceedsMaxSize(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file1.Close()
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.NoError(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file2.jpg", file2)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), bucketsd.ErrMaxBucketSizeExceeded.Error())
+}
+
+func TestClient_PullPath(t *testing.T) {
+	ctx, client := setup(t)
+
+	t.Run("public", func(t *testing.T) {
+		pullPath(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		pullPath(t, ctx, client, true)
+	})
+}
+
+func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	file, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
+	require.NoError(t, err)
+
+	tmp, err := ioutil.TempFile("", "")
+	require.NoError(t, err)
+	defer tmp.Close()
+
+	progress := make(chan int64)
+	go func() {
+		for p := range progress {
+			fmt.Println(fmt.Sprintf("progress: %d", p))
+		}
+	}()
+	err = client.PullPath(ctx, buck.Root.Key, "file1.jpg", tmp, c.WithProgress(progress))
+	require.NoError(t, err)
+	info, err := tmp.Stat()
+	require.NoError(t, err)
+	fmt.Println(fmt.Sprintf("wrote file with size %d", info.Size()))
+
+	note := "baps!"
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "one/two/note.txt", strings.NewReader(note))
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	err = client.PullPath(ctx, buck.Root.Key, "one/two/note.txt", &buf)
+	require.NoError(t, err)
+	assert.Equal(t, note, buf.String())
+}
 
 func TestClient_PullIpfsPath(t *testing.T) {
 	ctx, client := setup(t)
@@ -620,232 +621,232 @@ func setPath(t *testing.T, private bool) {
 	}
 }
 
-//func TestClient_Remove(t *testing.T) {
-//	ctx, client := setup(t)
-//
-//	t.Run("public", func(t *testing.T) {
-//		remove(t, ctx, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		remove(t, ctx, client, true)
-//	})
-//}
-//
-//func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	file1, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file1.Close()
-//	file2, err := os.Open("testdata/file2.jpg")
-//	require.NoError(t, err)
-//	defer file2.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-//	require.NoError(t, err)
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file2)
-//	require.NoError(t, err)
-//
-//	err = client.Remove(ctx, buck.Root.Key)
-//	require.NoError(t, err)
-//	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-//	require.Error(t, err)
-//}
+func TestClient_Remove(t *testing.T) {
+	ctx, client := setup(t)
 
-//func TestClient_RemovePath(t *testing.T) {
-//	ctx, client := setup(t)
-//
-//	t.Run("public", func(t *testing.T) {
-//		removePath(t, ctx, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		removePath(t, ctx, client, true)
-//	})
-//}
-//
-//func removePath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	file1, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file1.Close()
-//	file2, err := os.Open("testdata/file2.jpg")
-//	require.NoError(t, err)
-//	defer file2.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
-//	require.NoError(t, err)
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
-//	require.NoError(t, err)
-//
-//	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
-//	require.NoError(t, err)
-//	assert.NotEmpty(t, pth)
-//	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-//	require.Error(t, err)
-//	rep, err := client.ListPath(ctx, buck.Root.Key, "")
-//	require.NoError(t, err)
-//	assert.Len(t, rep.Item.Items, 3)
-//
-//	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
-//	require.NoError(t, err)
-//	_, err = client.ListPath(ctx, buck.Root.Key, "again")
-//	require.Error(t, err)
-//	rep, err = client.ListPath(ctx, buck.Root.Key, "")
-//	require.NoError(t, err)
-//	assert.Len(t, rep.Item.Items, 2)
-//}
+	t.Run("public", func(t *testing.T) {
+		remove(t, ctx, client, false)
+	})
 
-//func TestClient_PushPathAccessRoles(t *testing.T) {
-//	ctx, userctx, threadsclient, client := setupForUsers(t)
-//
-//	t.Run("public", func(t *testing.T) {
-//		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, false)
-//	})
-//
-//	t.Run("private", func(t *testing.T) {
-//		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, true)
-//	})
-//}
-//
-//func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Context, threadsclient *tc.Client, client *c.Client, private bool) {
-//	buck, err := client.Create(ctx, c.WithPrivate(private))
-//	require.NoError(t, err)
-//
-//	t.Run("non-existent path", func(t *testing.T) {
-//		_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
-//		require.NoError(t, err)
-//		reader := thread.NewLibp2pPubKey(pk)
-//
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "nothing/here", map[string]bucks.Role{
-//			reader.String(): bucks.Reader,
-//		})
-//		require.Error(t, err)
-//	})
-//
-//	t.Run("existent path", func(t *testing.T) {
-//		user1, user1ctx := newUser(t, userctx, threadsclient)
-//
-//		file1, err := os.Open("testdata/file1.jpg")
-//		require.NoError(t, err)
-//		defer file1.Close()
-//		_, _, err = client.PushPath(ctx, buck.Root.Key, "file", file1)
-//		require.NoError(t, err)
-//
-//		// Check initial access (none)
-//		check := accessCheck{
-//			Key:  buck.Root.Key,
-//			Path: "file",
-//		}
-//		check.Read = !private // public buckets readable by all
-//		checkAccess(t, user1ctx, client, check)
-//
-//		// Grant reader
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
-//			user1.GetPublic().String(): bucks.Reader,
-//		})
-//		require.NoError(t, err)
-//		check.Read = true
-//		checkAccess(t, user1ctx, client, check)
-//
-//		// Grant writer
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
-//			user1.GetPublic().String(): bucks.Writer,
-//		})
-//		require.NoError(t, err)
-//		check.Write = true
-//		checkAccess(t, user1ctx, client, check)
-//
-//		// Grant admin
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
-//			user1.GetPublic().String(): bucks.Admin,
-//		})
-//		require.NoError(t, err)
-//		check.Admin = true
-//		checkAccess(t, user1ctx, client, check)
-//
-//		// Ungrant
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
-//			user1.GetPublic().String(): bucks.None,
-//		})
-//		require.NoError(t, err)
-//		check.Read = !private
-//		check.Write = false
-//		check.Admin = false
-//		checkAccess(t, user1ctx, client, check)
-//	})
-//
-//	t.Run("overlapping paths", func(t *testing.T) {
-//		user1, user1ctx := newUser(t, userctx, threadsclient)
-//		user2, user2ctx := newUser(t, userctx, threadsclient)
-//
-//		file1, err := os.Open("testdata/file1.jpg")
-//		require.NoError(t, err)
-//		defer file1.Close()
-//		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/b/f1", file1)
-//		require.NoError(t, err)
-//
-//		file2, err := os.Open("testdata/file2.jpg")
-//		require.NoError(t, err)
-//		defer file2.Close()
-//		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/f2", file2)
-//		require.NoError(t, err)
-//
-//		// Grant nested tree
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a/b", map[string]bucks.Role{
-//			user1.GetPublic().String(): bucks.Writer,
-//		})
-//		require.NoError(t, err)
-//		checkAccess(t, user1ctx, client, accessCheck{
-//			Key:   buck.Root.Key,
-//			Path:  "a/b/f1",
-//			Read:  true,
-//			Write: true,
-//		})
-//
-//		// Grant parent of nested tree
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a", map[string]bucks.Role{
-//			user2.GetPublic().String(): bucks.Writer,
-//		})
-//		require.NoError(t, err)
-//		checkAccess(t, user2ctx, client, accessCheck{
-//			Key:   buck.Root.Key,
-//			Path:  "a/b/f1",
-//			Read:  true,
-//			Write: true,
-//		})
-//
-//		// Re-check nested access for user1
-//		checkAccess(t, user1ctx, client, accessCheck{
-//			Key:   buck.Root.Key,
-//			Path:  "a/b/f1",
-//			Read:  true,
-//			Write: true,
-//		})
-//
-//		// Grant root
-//		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "", map[string]bucks.Role{
-//			user2.GetPublic().String(): bucks.Reader,
-//		})
-//		require.NoError(t, err)
-//		checkAccess(t, user2ctx, client, accessCheck{
-//			Key:   buck.Root.Key,
-//			Path:  "a/f2",
-//			Read:  true,
-//			Write: true,
-//		})
-//
-//		// Re-check nested access for user1
-//		checkAccess(t, user1ctx, client, accessCheck{
-//			Key:   buck.Root.Key,
-//			Path:  "a/b/f1",
-//			Read:  true,
-//			Write: true,
-//		})
-//	})
-//}
+	t.Run("private", func(t *testing.T) {
+		remove(t, ctx, client, true)
+	})
+}
+
+func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.NoError(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file2)
+	require.NoError(t, err)
+
+	err = client.Remove(ctx, buck.Root.Key)
+	require.NoError(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.Error(t, err)
+}
+
+func TestClient_RemovePath(t *testing.T) {
+	ctx, client := setup(t)
+
+	t.Run("public", func(t *testing.T) {
+		removePath(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		removePath(t, ctx, client, true)
+	})
+}
+
+func removePath(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	file1, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file1.Close()
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1)
+	require.NoError(t, err)
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "again/file2.jpg", file1)
+	require.NoError(t, err)
+
+	pth, err := client.RemovePath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.NoError(t, err)
+	assert.NotEmpty(t, pth)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
+	require.Error(t, err)
+	rep, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep.Item.Items, 3)
+
+	_, err = client.RemovePath(ctx, buck.Root.Key, "again")
+	require.NoError(t, err)
+	_, err = client.ListPath(ctx, buck.Root.Key, "again")
+	require.Error(t, err)
+	rep, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep.Item.Items, 2)
+}
+
+func TestClient_PushPathAccessRoles(t *testing.T) {
+	ctx, userctx, threadsclient, client := setupForUsers(t)
+
+	t.Run("public", func(t *testing.T) {
+		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		pushPathAccessRoles(t, ctx, userctx, threadsclient, client, true)
+	})
+}
+
+func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Context, threadsclient *tc.Client, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	t.Run("non-existent path", func(t *testing.T) {
+		_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+		require.NoError(t, err)
+		reader := thread.NewLibp2pPubKey(pk)
+
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "nothing/here", map[string]bucks.Role{
+			reader.String(): bucks.Reader,
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("existent path", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+
+		file1, err := os.Open("testdata/file1.jpg")
+		require.NoError(t, err)
+		defer file1.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "file", file1)
+		require.NoError(t, err)
+
+		// Check initial access (none)
+		check := accessCheck{
+			Key:  buck.Root.Key,
+			Path: "file",
+		}
+		check.Read = !private // public buckets readable by all
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant reader
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Reader,
+		})
+		require.NoError(t, err)
+		check.Read = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant writer
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		check.Write = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant admin
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Admin,
+		})
+		require.NoError(t, err)
+		check.Admin = true
+		checkAccess(t, user1ctx, client, check)
+
+		// Ungrant
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.None,
+		})
+		require.NoError(t, err)
+		check.Read = !private
+		check.Write = false
+		check.Admin = false
+		checkAccess(t, user1ctx, client, check)
+	})
+
+	t.Run("overlapping paths", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+		user2, user2ctx := newUser(t, userctx, threadsclient)
+
+		file1, err := os.Open("testdata/file1.jpg")
+		require.NoError(t, err)
+		defer file1.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/b/f1", file1)
+		require.NoError(t, err)
+
+		file2, err := os.Open("testdata/file2.jpg")
+		require.NoError(t, err)
+		defer file2.Close()
+		_, _, err = client.PushPath(ctx, buck.Root.Key, "a/f2", file2)
+		require.NoError(t, err)
+
+		// Grant nested tree
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a/b", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+
+		// Grant parent of nested tree
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a", map[string]bucks.Role{
+			user2.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user2ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+
+		// Re-check nested access for user1
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+
+		// Grant root
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "", map[string]bucks.Role{
+			user2.GetPublic().String(): bucks.Reader,
+		})
+		require.NoError(t, err)
+		checkAccess(t, user2ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/f2",
+			Read:  true,
+			Write: true,
+		})
+
+		// Re-check nested access for user1
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+	})
+}
 
 type accessCheck struct {
 	Key  string
@@ -856,70 +857,70 @@ type accessCheck struct {
 	Admin bool
 }
 
-//func checkAccess(t *testing.T, ctx context.Context, client *c.Client, check accessCheck) {
-//	// Check read access
-//	res, err := client.ListPath(ctx, check.Key, check.Path)
-//	if check.Read {
-//		require.NoError(t, err)
-//		assert.NotEmpty(t, res.Item)
-//	} else {
-//		require.Error(t, err)
-//	}
-//
-//	// Check write access
-//	tmp2, err := ioutil.TempFile("", "")
-//	require.NoError(t, err)
-//	defer tmp2.Close()
-//	_, err = io.CopyN(tmp2, rand.Reader, 1024)
-//	require.NoError(t, err)
-//	_, _, err = client.PushPath(ctx, check.Key, check.Path, tmp2)
-//	if check.Write {
-//		require.NoError(t, err)
-//	} else {
-//		require.Error(t, err)
-//	}
-//
-//	// Check admin access (role editing)
-//	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
-//	require.NoError(t, err)
-//	err = client.PushPathAccessRoles(ctx, check.Key, check.Path, map[string]bucks.Role{
-//		thread.NewLibp2pPubKey(pk).String(): bucks.Reader,
-//	})
-//	if check.Admin {
-//		require.NoError(t, err)
-//	} else {
-//		require.Error(t, err)
-//	}
-//}
-//
-//func TestClient_PullPathAccessRoles(t *testing.T) {
-//	ctx, client := setup(t)
-//
-//	buck, err := client.Create(ctx)
-//	require.NoError(t, err)
-//	file, err := os.Open("testdata/file1.jpg")
-//	require.NoError(t, err)
-//	defer file.Close()
-//	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-//	require.NoError(t, err)
-//
-//	roles, err := client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
-//	require.NoError(t, err)
-//	assert.Len(t, roles, 0)
-//
-//	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
-//	require.NoError(t, err)
-//	reader := thread.NewLibp2pPubKey(pk)
-//	roles = map[string]bucks.Role{
-//		reader.String(): bucks.Reader,
-//	}
-//	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", roles)
-//	require.NoError(t, err)
-//
-//	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
-//	require.NoError(t, err)
-//	assert.Len(t, roles, 1)
-//}
+func checkAccess(t *testing.T, ctx context.Context, client *c.Client, check accessCheck) {
+	// Check read access
+	res, err := client.ListPath(ctx, check.Key, check.Path)
+	if check.Read {
+		require.NoError(t, err)
+		assert.NotEmpty(t, res.Item)
+	} else {
+		require.Error(t, err)
+	}
+
+	// Check write access
+	tmp2, err := ioutil.TempFile("", "")
+	require.NoError(t, err)
+	defer tmp2.Close()
+	_, err = io.CopyN(tmp2, rand.Reader, 1024)
+	require.NoError(t, err)
+	_, _, err = client.PushPath(ctx, check.Key, check.Path, tmp2)
+	if check.Write {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err)
+	}
+
+	// Check admin access (role editing)
+	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	err = client.PushPathAccessRoles(ctx, check.Key, check.Path, map[string]bucks.Role{
+		thread.NewLibp2pPubKey(pk).String(): bucks.Reader,
+	})
+	if check.Admin {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err)
+	}
+}
+
+func TestClient_PullPathAccessRoles(t *testing.T) {
+	ctx, client := setup(t)
+
+	buck, err := client.Create(ctx)
+	require.NoError(t, err)
+	file, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
+	require.NoError(t, err)
+
+	roles, err := client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
+	require.NoError(t, err)
+	assert.Len(t, roles, 0)
+
+	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+	reader := thread.NewLibp2pPubKey(pk)
+	roles = map[string]bucks.Role{
+		reader.String(): bucks.Reader,
+	}
+	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file1.jpg", roles)
+	require.NoError(t, err)
+
+	roles, err = client.PullPathAccessRoles(ctx, buck.Root.Key, "file1.jpg")
+	require.NoError(t, err)
+	assert.Len(t, roles, 1)
+}
 
 func TestClose(t *testing.T) {
 	conf := apitest.MakeTextile(t)
@@ -935,13 +936,13 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
-	//bconf := apitest.DefaultBillingConfig(t)
-	//apitest.MakeBillingWithConfig(t, bconf)
+	bconf := apitest.DefaultBillingConfig(t)
+	apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	//billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
-	//require.NoError(t, err)
-	//conf.AddrBillingAPI = billingApi
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	conf.AddrBillingAPI = billingApi
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }

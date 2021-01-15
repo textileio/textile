@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
+	"strings"
 	"sync/atomic"
 
 	"github.com/gogo/status"
@@ -22,6 +22,11 @@ import (
 const (
 	// chunkSize for add file requests.
 	chunkSize = 1024 * 32
+)
+
+var (
+	// ErrPushPathQueueClosed indicates the push path is or was closed.
+	ErrPushPathQueueClosed = errors.New("push path queue is closed")
 )
 
 // Client provides the client api.
@@ -123,11 +128,12 @@ type PushPathQueue struct {
 	// Current contains the current push result.
 	Current PushPathResult
 
-	inCh   chan pushPath
-	outCh  chan PushPathResult
-	done   bool
-	closed bool
-	wg     sync.WaitGroup
+	q     []pushPath
+	inCh  chan pushPath
+	outCh chan PushPathResult
+
+	closeFunc func() error
+	closed    bool
 
 	size     int64
 	complete int64
@@ -143,7 +149,7 @@ type pushPath struct {
 // name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/dog.jpg".
 func (c *PushPathQueue) Push(pth, name string) error {
 	if c.closed {
-		return errors.New("push queue is closed")
+		return ErrPushPathQueueClosed
 	}
 
 	f, err := os.Open(name)
@@ -156,12 +162,11 @@ func (c *PushPathQueue) Push(pth, name string) error {
 		return err
 	}
 
-	c.wg.Add(1)
 	atomic.AddInt64(&c.size, info.Size())
-	c.inCh <- pushPath{
+	c.q = append(c.q, pushPath{
 		path: filepath.ToSlash(pth),
 		r:    f,
-	}
+	})
 	return nil
 }
 
@@ -177,14 +182,36 @@ func (c *PushPathQueue) Complete() int64 {
 
 // Next blocks while the queue is open, returning true when a result is ready.
 // Use Current to access the result.
-func (c *PushPathQueue) Next() bool {
-	select {
-	case r, ok := <-c.outCh:
+func (c *PushPathQueue) Next() (ok bool) {
+	cleanup := func() {
+		for _, p := range c.q {
+			p.r.Close()
+		}
+		c.q = nil
+	}
+	defer func() {
 		if !ok {
+			cleanup()
+		}
+	}()
+	if c.closed || len(c.q) == 0 {
+		return false
+	}
+	var p pushPath
+	p, c.q = c.q[0], c.q[1:]
+	go func() {
+		c.inCh <- p
+	}()
+
+	select {
+	case r, k := <-c.outCh:
+		if !k {
 			return false
 		}
 		c.Current = r
-		c.wg.Done()
+		if c.Err() != nil {
+			cleanup()
+		}
 		return true
 	}
 }
@@ -195,23 +222,15 @@ func (c *PushPathQueue) Err() error {
 	return c.Current.err
 }
 
-// Close the queue. Subsequent calls to Push will result in an error.
-// Next will continue to block until Close is called.
-func (c *PushPathQueue) Close() {
+// Close the queue.
+// Failure to close may lead to unpredictable bucket state.
+func (c *PushPathQueue) Close() error {
 	if c.closed {
-		return
+		return nil
 	}
 	c.closed = true
-	c.wg.Done() // finish queue opener
-}
-
-func (c *PushPathQueue) shutdown() {
-	if c.done {
-		return
-	}
-	c.done = true
 	close(c.inCh)
-	close(c.outCh)
+	return c.closeFunc()
 }
 
 // PushPath pushes a file to a bucket path.
@@ -245,13 +264,10 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 	q := &PushPathQueue{
 		inCh:  make(chan pushPath),
 		outCh: make(chan PushPathResult),
+		closeFunc: func() error {
+			return stream.CloseSend()
+		},
 	}
-
-	q.wg.Add(1) // queue opener
-	go func() {
-		q.wg.Wait()
-		q.shutdown()
-	}()
 
 	go func() {
 		for {
@@ -259,6 +275,9 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 			if err == io.EOF {
 				return
 			} else if err != nil {
+				if strings.Contains(err.Error(), "STREAM_CLOSED") {
+					err = ErrPushPathQueueClosed
+				}
 				q.outCh <- PushPathResult{err: err}
 				return
 			}
@@ -273,6 +292,7 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				q.outCh <- PushPathResult{err: err}
 				return
 			}
+			//go func() {
 			q.outCh <- PushPathResult{
 				Path:   rep.Path,
 				Cid:    id,
@@ -280,33 +300,32 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				Pinned: rep.Pinned,
 				Root:   root,
 			}
+			//}()
 		}
 	}()
 
-	chunkCh := make(chan *pb.PushPathRequest_Chunk)
-	go func() {
-		for c := range chunkCh {
-			if err := stream.Send(&pb.PushPathRequest{
-				Payload: &pb.PushPathRequest_Chunk_{
-					Chunk: c,
-				},
-			}); err == io.EOF {
-				return // error is waiting to be received with stream.Recv above
-			} else if err != nil {
-				q.outCh <- PushPathResult{err: err}
-			}
-			atomic.AddInt64(&q.complete, int64(len(c.Data)))
-			if args.progress != nil {
-				args.progress <- q.complete
-			}
+	sendChunk := func(c *pb.PushPathRequest_Chunk) bool {
+		if q.closed {
+			return false
 		}
-	}()
+		if err := stream.Send(&pb.PushPathRequest{
+			Payload: &pb.PushPathRequest_Chunk_{
+				Chunk: c,
+			},
+		}); err == io.EOF {
+			return false // error is waiting to be received with stream.Recv above
+		} else if err != nil {
+			q.outCh <- PushPathResult{err: err}
+			return false
+		}
+		atomic.AddInt64(&q.complete, int64(len(c.Data)))
+		if args.progress != nil {
+			args.progress <- q.complete
+		}
+		return true
+	}
 
 	go func() {
-		defer func() {
-			_ = stream.CloseSend()
-			close(chunkCh)
-		}()
 		for {
 			select {
 			case p, ok := <-q.inCh:
@@ -314,29 +333,27 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 					return
 				}
 
-				go func(p pushPath) {
-					buf := make([]byte, chunkSize)
-					for {
-						n, err := p.r.Read(buf)
-						if n > 0 {
-							data := make([]byte, n)
-							copy(data, buf[:n])
-							chunkCh <- &pb.PushPathRequest_Chunk{
-								Path: p.path,
-								Data: data,
-							}
-						} else if err == io.EOF {
-							chunkCh <- &pb.PushPathRequest_Chunk{
-								Path: p.path,
-							}
-							p.r.Close()
-							return
-						} else if err != nil {
-							q.outCh <- PushPathResult{err: err}
-							return
-						}
+				buf := make([]byte, chunkSize)
+				for {
+					n, err := p.r.Read(buf)
+					c := &pb.PushPathRequest_Chunk{
+						Path: p.path,
 					}
-				}(p)
+					if n > 0 {
+						c.Data = make([]byte, n)
+						copy(c.Data, buf[:n])
+						if ok := sendChunk(c); !ok {
+							break
+						}
+					} else if err == io.EOF {
+						sendChunk(c)
+						p.r.Close()
+						break
+					} else if err != nil {
+						q.outCh <- PushPathResult{err: err}
+						break
+					}
+				}
 			}
 		}
 	}()
