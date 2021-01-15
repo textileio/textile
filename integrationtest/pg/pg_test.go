@@ -281,6 +281,7 @@ func TestArchivesImport(t *testing.T) {
 		require.Equal(t, as.Archives[0].Info[0].DealId, deal.DealId)
 	})
 }
+
 func TestArchiveUnfreeze(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
 		_, ipfsPow := StartPowergate(t, false)

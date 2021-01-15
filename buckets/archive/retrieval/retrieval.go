@@ -19,11 +19,14 @@ import (
 	"github.com/textileio/textile/v2/buckets/archive"
 )
 
-var (
-	log = logging.Logger("fil-retrieval")
-
+const (
+	ipfsAddTimeoutDefault       = 500 // seconds
 	buckCreationTimeout         = time.Minute * 30
 	maxConcurrentBucketCreation = 10
+)
+
+var (
+	log = logging.Logger("fil-retrieval")
 
 	CITest = false
 )
@@ -233,6 +236,11 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	var sc *userPb.StorageConfig
 	if len(ci.CidInfos) == 1 { // Found one?, use it.
 		sc = ci.CidInfos[0].LatestPushedStorageConfig
+
+		// Cover some bad configuration.
+		if sc.Hot.Ipfs.AddTimeout == 0 {
+			sc.Hot.Ipfs.AddTimeout = ipfsAddTimeoutDefault
+		}
 	} else if len(ci.CidInfos) == 0 {
 		// If no storage-config exist for this Cid, then the user
 		// had Remove or Replace the storage-config.
