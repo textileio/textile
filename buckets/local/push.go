@@ -6,9 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/desertbit/timer"
 
 	du "github.com/ipfs/go-merkledag/dagutils"
 	"github.com/ipfs/interface-go-ipfs-core/path"
@@ -142,11 +139,6 @@ func (b *Bucket) addFiles(
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		t := timer.NewTimer(time.Second * 3)
-		<-t.C
-		q.Close()
-	}()
 	defer q.Close()
 
 	for _, c := range changes {

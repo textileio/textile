@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/gogo/status"
@@ -128,15 +129,19 @@ type PushPathQueue struct {
 	// Current contains the current push result.
 	Current PushPathResult
 
-	q     []pushPath
-	inCh  chan pushPath
-	outCh chan PushPathResult
-
+	q         []pushPath
+	len       int
+	inCh      chan pushPath
+	outCh     chan PushPathResult
+	started   bool
 	closeFunc func() error
 	closed    bool
 
 	size     int64
 	complete int64
+
+	lk sync.Mutex
+	wg sync.WaitGroup
 }
 
 type pushPath struct {
@@ -145,11 +150,17 @@ type pushPath struct {
 }
 
 // Push adds one or more files to the queue.
-// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/dog.jpg".
-// name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/dog.jpg".
+// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
+// name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/mybone.jpg".
 func (c *PushPathQueue) Push(pth, name string) error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+
 	if c.closed {
 		return ErrPushPathQueueClosed
+	}
+	if c.started {
+		return errors.New("cannot call Push after Next")
 	}
 
 	f, err := os.Open(name)
@@ -170,6 +181,31 @@ func (c *PushPathQueue) Push(pth, name string) error {
 	return nil
 }
 
+func (c *PushPathQueue) start() {
+	go func() {
+		for {
+			c.lk.Lock()
+			if c.closed {
+				for _, p := range c.q {
+					p.r.Close()
+				}
+				c.q = nil
+				c.lk.Unlock()
+				return
+			}
+			c.lk.Unlock()
+			if len(c.q) == 0 {
+				return
+			}
+			var p pushPath
+			p, c.q = c.q[0], c.q[1:]
+			c.wg.Add(1)
+			c.inCh <- p
+			c.wg.Done()
+		}
+	}()
+}
+
 // Size returns the queue size in bytes.
 func (c *PushPathQueue) Size() int64 {
 	return atomic.LoadInt64(&c.size)
@@ -183,35 +219,29 @@ func (c *PushPathQueue) Complete() int64 {
 // Next blocks while the queue is open, returning true when a result is ready.
 // Use Current to access the result.
 func (c *PushPathQueue) Next() (ok bool) {
-	cleanup := func() {
-		for _, p := range c.q {
-			p.r.Close()
-		}
-		c.q = nil
-	}
-	defer func() {
-		if !ok {
-			cleanup()
-		}
-	}()
-	if c.closed || len(c.q) == 0 {
+	c.lk.Lock()
+	if c.closed {
+		c.lk.Unlock()
 		return false
 	}
-	var p pushPath
-	p, c.q = c.q[0], c.q[1:]
-	go func() {
-		c.inCh <- p
-	}()
+	c.lk.Unlock()
 
+	if !c.started {
+		c.started = true
+		c.len = len(c.q)
+		c.start()
+	}
+
+	if c.len == 0 {
+		return false
+	}
 	select {
 	case r, k := <-c.outCh:
 		if !k {
 			return false
 		}
+		c.len--
 		c.Current = r
-		if c.Err() != nil {
-			cleanup()
-		}
 		return true
 	}
 }
@@ -225,10 +255,14 @@ func (c *PushPathQueue) Err() error {
 // Close the queue.
 // Failure to close may lead to unpredictable bucket state.
 func (c *PushPathQueue) Close() error {
+	c.lk.Lock()
 	if c.closed {
+		c.lk.Unlock()
 		return nil
 	}
 	c.closed = true
+	c.lk.Unlock()
+	c.wg.Wait()
 	close(c.inCh)
 	return c.closeFunc()
 }
@@ -292,7 +326,6 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				q.outCh <- PushPathResult{err: err}
 				return
 			}
-			//go func() {
 			q.outCh <- PushPathResult{
 				Path:   rep.Path,
 				Cid:    id,
@@ -300,14 +333,16 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				Pinned: rep.Pinned,
 				Root:   root,
 			}
-			//}()
 		}
 	}()
 
 	sendChunk := func(c *pb.PushPathRequest_Chunk) bool {
+		q.lk.Lock()
+		defer q.lk.Unlock()
 		if q.closed {
 			return false
 		}
+
 		if err := stream.Send(&pb.PushPathRequest{
 			Payload: &pb.PushPathRequest_Chunk_{
 				Chunk: c,
@@ -343,6 +378,7 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 						c.Data = make([]byte, n)
 						copy(c.Data, buf[:n])
 						if ok := sendChunk(c); !ok {
+							p.r.Close()
 							break
 						}
 					} else if err == io.EOF {
