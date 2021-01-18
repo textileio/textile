@@ -435,8 +435,7 @@ func (t *Tracker) saveDealsInBucket(
 	deals := make([]tdb.Deal, len(proposals))
 	for i, p := range proposals {
 		deals[i] = tdb.Deal{
-			DealID: p.DealId,
-			Miner:  p.Miner,
+			Miner: p.Miner,
 		}
 	}
 	buck.Archives.Current = tdb.Archive{
