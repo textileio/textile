@@ -148,7 +148,7 @@ func (b *Bucket) addFiles(
 		}
 		pth := filepath.ToSlash(c.Path)
 		files[pth] = file
-		if err := q.Push(file.path, c.Name); err != nil {
+		if err := q.AddFile(file.path, c.Name); err != nil {
 			return nil, err
 		}
 	}
