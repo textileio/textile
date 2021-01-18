@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -17,6 +18,7 @@ import (
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets/archive"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -228,20 +230,18 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	// hot-storage enabled. This will signal attempting a retrieval.
 
 	// Get the base storage-config to modify.
+	var notFound bool
 	ci, err := fr.pgc.Data.CidInfo(ctx, c.String())
 	if err != nil {
-		return "", fmt.Errorf("getting latest storage-config: %s", err)
+		sc, ok := status.FromError(err)
+		if !ok || sc.Code() != codes.NotFound {
+			return "", fmt.Errorf("getting latest storage-config: %s", err)
+		}
+		notFound = true
 	}
 
 	var sc *userPb.StorageConfig
-	if len(ci.CidInfos) == 1 { // Found one?, use it.
-		sc = ci.CidInfos[0].LatestPushedStorageConfig
-
-		// Cover some bad configuration.
-		if sc.Hot.Ipfs.AddTimeout == 0 {
-			sc.Hot.Ipfs.AddTimeout = ipfsAddTimeoutDefault
-		}
-	} else if len(ci.CidInfos) == 0 {
+	if notFound {
 		// If no storage-config exist for this Cid, then the user
 		// had Remove or Replace the storage-config.
 		// We ne need a storage-config to do the retrieval, so we
@@ -254,8 +254,13 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 		}
 		sc := dfsc.DefaultStorageConfig
 		sc.Cold.Enabled = false
-	} else { // Paranoid check, must not hapen.
-		return "", fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
+	} else {
+		sc = ci.CidInfo.LatestPushedStorageConfig
+
+		// Cover some bad configuration.
+		if sc.Hot.Ipfs.AddTimeout == 0 {
+			sc.Hot.Ipfs.AddTimeout = ipfsAddTimeoutDefault
+		}
 	}
 	// Flag only used for tests, to speed-up Filecoin unfreezing
 	// behaviour. Under normal circumstances, this timeout would be
@@ -479,10 +484,7 @@ func (fr *FilRetrieval) processMoveToBucket(r Retrieval) error {
 		if err != nil {
 			return fmt.Errorf("getting latest storage-config: %s", err)
 		}
-		if len(ci.CidInfos) != 1 {
-			return fmt.Errorf("unexpected cid info length: %d", len(ci.CidInfos))
-		}
-		sc := ci.CidInfos[0].LatestPushedStorageConfig
+		sc := ci.CidInfo.LatestPushedStorageConfig
 		sc.Hot.Enabled = false
 		sc.Hot.AllowUnfreeze = false
 		opts := []pow.ApplyOption{pow.WithStorageConfig(sc), pow.WithOverride(true)}

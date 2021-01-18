@@ -2476,11 +2476,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
-			if len(res.CidInfos) == 0 {
-				return nil, fmt.Errorf("no cid info returned")
-			}
 
-			if cmp.Equal(&storageConfig, res.CidInfos[0].LatestPushedStorageConfig) {
+			if cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
 				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {

@@ -869,18 +869,22 @@ func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*p
 	}
 
 	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-	r, err := s.PowergateClient.Data.CidInfo(ctx)
+	r, err := s.PowergateClient.Data.CidSummary(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting archived cids: %s", err)
 	}
 
 	res := &pb.ArchivesLsResponse{
-		Archives: make([]*pb.ArchiveLsItem, len(r.CidInfos)),
+		Archives: make([]*pb.ArchiveLsItem, len(r.CidSummary)),
 	}
-	for i, ci := range r.CidInfos {
-		props := ci.CurrentStorageInfo.Cold.Filecoin.Proposals
+	for i, cs := range r.CidSummary {
+		ci, err := s.PowergateClient.Data.CidInfo(ctx, cs.Cid)
+		if err != nil {
+			return nil, fmt.Errorf("getting cid info: %s", err)
+		}
+		props := ci.CidInfo.CurrentStorageInfo.Cold.Filecoin.Proposals
 		ali := &pb.ArchiveLsItem{
-			Cid:  ci.Cid,
+			Cid:  cs.Cid,
 			Info: make([]*pb.ArchiveLsItemMetadata, len(props)),
 		}
 		res.Archives[i] = ali
@@ -929,7 +933,7 @@ func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequ
 	} else {
 		// If deal import is to augment an existing Cid, just use the latest storage config.
 		// A Job won't run anyway, so it would only import the deals.
-		scfg = ci.CidInfos[0].LatestPushedStorageConfig
+		scfg = ci.CidInfo.LatestPushedStorageConfig
 	}
 
 	if _, err = s.PowergateClient.StorageConfig.Apply(

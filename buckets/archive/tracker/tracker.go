@@ -429,11 +429,8 @@ func (t *Tracker) saveDealsInBucket(
 	if err != nil {
 		return fmt.Errorf("getting cid info: %s", err)
 	}
-	if len(res.CidInfos) == 0 {
-		return fmt.Errorf("no cid info found")
-	}
 
-	proposals := res.CidInfos[0].CurrentStorageInfo.Cold.Filecoin.Proposals
+	proposals := res.CidInfo.CurrentStorageInfo.Cold.Filecoin.Proposals
 
 	deals := make([]tdb.Deal, len(proposals))
 	for i, p := range proposals {

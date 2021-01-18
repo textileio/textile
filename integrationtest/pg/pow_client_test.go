@@ -37,12 +37,6 @@ func TestPowClient(t *testing.T) {
 		require.NotNil(t, res1)
 	})
 
-	t.Run("CidInfo", func(t *testing.T) {
-		res, err := client.CidInfo(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
-	})
-
 	t.Run("StorageDealRecords", func(t *testing.T) {
 		res, err := client.StorageDealRecords(ctx, &userPb.DealRecordsConfig{IncludeFinal: true})
 		require.NoError(t, err)

@@ -49,8 +49,8 @@ func (c *Client) VerifyMessage(ctx context.Context, address string, message, sig
 	return c.powC.VerifyMessage(ctx, r)
 }
 
-func (c *Client) CidInfo(ctx context.Context, cids ...string) (*userPb.CidInfoResponse, error) {
-	req := &userPb.CidInfoRequest{Cids: cids}
+func (c *Client) CidInfo(ctx context.Context, cid string) (*userPb.CidInfoResponse, error) {
+	req := &userPb.CidInfoRequest{Cid: cid}
 	return c.powC.CidInfo(ctx, req)
 }
 

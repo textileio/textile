@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"encoding/hex"
-	"strings"
 
 	"github.com/spf13/cobra"
 	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
@@ -114,18 +113,15 @@ var filVerifyCmd = &cobra.Command{
 }
 
 var filInfoCmd = &cobra.Command{
-	Use:   "info [optional cid1,cid2,...]",
+	Use:   "info cid",
 	Short: "Get information about the current storate state of a cid",
 	Long:  `Get information about the current storate state of a cid`,
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
-		var cids []string
-		if len(args) > 0 {
-			cids = strings.Split(args[0], ",")
-		}
-		res, err := clients.Filecoin.CidInfo(ctx, cids...)
+		cid := args[0]
+		res, err := clients.Filecoin.CidInfo(ctx, cid)
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
