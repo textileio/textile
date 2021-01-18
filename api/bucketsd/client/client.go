@@ -133,7 +133,9 @@ type PushPathQueue struct {
 	len       int
 	inCh      chan pushPath
 	outCh     chan PushPathResult
+	waitCh    chan struct{}
 	started   bool
+	stopped   bool
 	closeFunc func() error
 	closed    bool
 
@@ -146,13 +148,20 @@ type PushPathQueue struct {
 
 type pushPath struct {
 	path string
-	r    io.ReadCloser
+	r    io.Reader
+	c    io.Closer
 }
 
-// Push adds one or more files to the queue.
+func (p pushPath) close() {
+	if p.c != nil {
+		_ = p.c.Close()
+	}
+}
+
+// AddFile adds a file to the queue.
 // pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
 // name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/mybone.jpg".
-func (c *PushPathQueue) Push(pth, name string) error {
+func (c *PushPathQueue) AddFile(pth, name string) error {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -160,7 +169,7 @@ func (c *PushPathQueue) Push(pth, name string) error {
 		return ErrPushPathQueueClosed
 	}
 	if c.started {
-		return errors.New("cannot call Push after Next")
+		return errors.New("cannot call AddFile after Next")
 	}
 
 	f, err := os.Open(name)
@@ -177,33 +186,32 @@ func (c *PushPathQueue) Push(pth, name string) error {
 	c.q = append(c.q, pushPath{
 		path: filepath.ToSlash(pth),
 		r:    f,
+		c:    f,
 	})
 	return nil
 }
 
-func (c *PushPathQueue) start() {
-	go func() {
-		for {
-			c.lk.Lock()
-			if c.closed {
-				for _, p := range c.q {
-					p.r.Close()
-				}
-				c.q = nil
-				c.lk.Unlock()
-				return
-			}
-			c.lk.Unlock()
-			if len(c.q) == 0 {
-				return
-			}
-			var p pushPath
-			p, c.q = c.q[0], c.q[1:]
-			c.wg.Add(1)
-			c.inCh <- p
-			c.wg.Done()
-		}
-	}()
+// AddReader adds a reader to the queue.
+// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
+// r is the reader to read from.
+// size is the size of the reader. Use of the WithProgress option is not recommended if the reader size is unknown.
+func (c *PushPathQueue) AddReader(pth string, r io.Reader, size int64) error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+
+	if c.closed {
+		return ErrPushPathQueueClosed
+	}
+	if c.started {
+		return errors.New("cannot call AddReader after Next")
+	}
+
+	atomic.AddInt64(&c.size, size)
+	c.q = append(c.q, pushPath{
+		path: filepath.ToSlash(pth),
+		r:    r,
+	})
+	return nil
 }
 
 // Size returns the queue size in bytes.
@@ -246,6 +254,37 @@ func (c *PushPathQueue) Next() (ok bool) {
 	}
 }
 
+func (c *PushPathQueue) start() {
+	go func() {
+		for {
+			c.lk.Lock()
+			if c.closed {
+				for _, p := range c.q {
+					p.close()
+				}
+				c.q = nil
+				c.lk.Unlock()
+				return
+			}
+			c.lk.Unlock()
+			if len(c.q) == 0 {
+				return
+			}
+			var p pushPath
+			p, c.q = c.q[0], c.q[1:]
+			c.wg.Add(1)
+			c.inCh <- p
+			c.wg.Done()
+		}
+	}()
+}
+
+func (c *PushPathQueue) stop() {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+	c.stopped = true
+}
+
 // Err returns the current queue error.
 // Call this method before checking the value of Current.
 func (c *PushPathQueue) Err() error {
@@ -264,7 +303,17 @@ func (c *PushPathQueue) Close() error {
 	c.lk.Unlock()
 	c.wg.Wait()
 	close(c.inCh)
-	return c.closeFunc()
+
+	c.lk.Lock()
+	wait := !c.stopped
+	c.lk.Unlock()
+	if err := c.closeFunc(); err != nil {
+		return err
+	}
+	if wait {
+		<-c.waitCh
+	}
+	return nil
 }
 
 // PushPath pushes a file to a bucket path.
@@ -296,17 +345,23 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 	}
 
 	q := &PushPathQueue{
-		inCh:  make(chan pushPath),
-		outCh: make(chan PushPathResult),
+		inCh:   make(chan pushPath),
+		outCh:  make(chan PushPathResult),
+		waitCh: make(chan struct{}),
 		closeFunc: func() error {
 			return stream.CloseSend()
 		},
 	}
 
 	go func() {
+		defer q.stop()
 		for {
 			rep, err := stream.Recv()
 			if err == io.EOF {
+				select {
+				case q.waitCh <- struct{}{}:
+				default:
+				}
 				return
 			} else if err != nil {
 				if strings.Contains(err.Error(), "STREAM_CLOSED") {
@@ -378,12 +433,12 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 						c.Data = make([]byte, n)
 						copy(c.Data, buf[:n])
 						if ok := sendChunk(c); !ok {
-							p.r.Close()
+							p.close()
 							break
 						}
 					} else if err == io.EOF {
 						sendChunk(c)
-						p.r.Close()
+						p.close()
 						break
 					} else if err != nil {
 						q.outCh <- PushPathResult{err: err}

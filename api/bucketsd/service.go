@@ -1480,6 +1480,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 					return
 				}
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
+					buck.UpdatedAt = time.Now().UnixNano()
 					buck.SetMetadataAtPath(pth, tdb.Metadata{
 						UpdatedAt: buck.UpdatedAt,
 					})
@@ -1505,7 +1506,6 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 						return
 					}
 				} else {
-					// todo: always close?
 					if err := fa.writer.Close(); err != nil {
 						errCh <- fmt.Errorf("closing writer: %v", err)
 						return
