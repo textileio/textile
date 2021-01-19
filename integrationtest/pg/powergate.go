@@ -12,7 +12,7 @@ import (
 
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/stretchr/testify/require"
-	pc "github.com/textileio/powergate/api/client"
+	pc "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 
 	"github.com/spf13/cobra"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
+	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/cmd"
 	"google.golang.org/protobuf/encoding/protojson"
 )

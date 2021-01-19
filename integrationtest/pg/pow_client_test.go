@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
+	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
 	fc "github.com/textileio/textile/v2/api/filecoin/client"
