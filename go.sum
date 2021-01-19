@@ -1742,6 +1742,7 @@ github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80 h1:UJbiLtEm
 github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80/go.mod h1:kvIXqo4T4fS6fDyNeqRAIE5CXDguBXUi8kZVb4FGg0U=
 github.com/textileio/powergate v1.2.6 h1:Nws9FTbY5Oa2Z44xIKsGQ/TZMNbPdUmc9jzVxX7aFdg=
 github.com/textileio/powergate v1.2.6/go.mod h1:sIRd/4wpXZaMvV5u5mw5JwV0f6wQXdKxERtPYZZX7WA=
+github.com/textileio/powergate/v2 v2.0.0-rc1/go.mod h1:JQsD6IxssDRatoFVQCp/hRQ9VD0alJAcJyq2if0EbC4=
 github.com/textileio/powergate/v2 v2.0.0-rc2 h1:VXei+S+ahaZZeeqB4TUT6kCRizhR05IOf20m6BmPrPM=
 github.com/textileio/powergate/v2 v2.0.0-rc2/go.mod h1:JQsD6IxssDRatoFVQCp/hRQ9VD0alJAcJyq2if0EbC4=
 github.com/textileio/textile v1.0.14 h1:ohEoUHATajh6FdVElYtOlgZI3Y0DFPTAJfMrGzpCquc=
