@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -313,8 +314,8 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 		return err
 	}
 
-	prog := handlePullProgress(progress, o.size)
-	defer close(prog)
+	prog, finish := handlePullProgress(progress, o.size)
+	defer finish()
 	if err := b.clients.Buckets.PullPath(ctx, key, o.path, file, client.WithProgress(prog)); err != nil {
 		return err
 	}
@@ -336,27 +337,26 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 	return nil
 }
 
-func handlePullProgress(global chan<- int64, fsize int64) chan<- int64 {
+func handlePullProgress(global chan<- int64, fsize int64) (chan<- int64, func()) {
 	progress := make(chan int64)
+	var current int64
+	var lk sync.Mutex
 	go func() {
-		var current int64
-		defer func() {
-			global <- fsize - current
-		}()
-		for {
-			select {
-			case p, ok := <-progress:
-				if !ok {
-					return
-				}
-				diff := p - current
-				global <- diff
-				current = p
-
-			}
+		for p := range progress {
+			lk.Lock()
+			diff := p - current
+			global <- diff
+			current = p
+			lk.Unlock()
 		}
 	}()
-	return progress
+	done := func() {
+		close(progress)
+		lk.Lock()
+		global <- fsize - current
+		lk.Unlock()
+	}
+	return progress, done
 }
 
 func handleAllPullProgress(os []object, events chan<- Event) chan<- int64 {

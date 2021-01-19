@@ -198,8 +198,8 @@ func (b *Bucket) getIpfsFile(
 	}
 	defer file.Close()
 
-	prog := handlePullProgress(progress, size)
-	defer close(prog)
+	prog, finish := handlePullProgress(progress, size)
+	defer finish()
 	if err := b.clients.Buckets.PullIpfsPath(ctx, ipfsPath, file, client.WithProgress(prog)); err != nil {
 		return err
 	}
