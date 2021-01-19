@@ -244,7 +244,7 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 	defer log.Debugf("finished querying retrieval status of job %s", jid)
 
 	// Step 1: Get the Job status.
-	res, err := t.pgClient.StorageJobs.StorageJob(ctx, jid)
+	res, err := t.pgClient.StorageJobs.Get(ctx, jid)
 	if err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
 		// return the error as fatal so the archive will be untracked
@@ -309,7 +309,7 @@ func (t *Tracker) trackArchiveProgress(
 	defer log.Debugf("finished querying archive status of job %s", jid)
 
 	// Step 1: Get the Job status.
-	res, err := t.pgClient.StorageJobs.StorageJob(ctx, jid)
+	res, err := t.pgClient.StorageJobs.Get(ctx, jid)
 	if err != nil {
 		// if error specifies that the auth token isn't found, powergate must have been reset.
 		// return the error as fatal so the archive will be untracked

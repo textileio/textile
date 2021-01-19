@@ -194,7 +194,7 @@ func (fr *FilRetrieval) createRetrieval(ctx context.Context, c cid.Cid, accKey, 
 	// # Step 1.
 	// Check that we have imported DealIDs for that Cid. Fail fast mechanism.
 	ctx = context.WithValue(ctx, pow.AuthKey, powToken)
-	r, err := fr.pgc.StorageInfo.ListStorageInfo(ctx, c.String())
+	r, err := fr.pgc.StorageInfo.List(ctx, c.String())
 	if err != nil {
 		return "", fmt.Errorf("getting archived cids: %s", err)
 	}
