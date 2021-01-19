@@ -80,8 +80,10 @@ func Init(rootCmd *cobra.Command) {
 		threadsCmd,
 		filCmd,
 		billingCmd,
-		archivesCmd,
-		retrievalsCmd,
+		// (jsign): commenting this CLIs until this feature
+		// is usable in mainnet.
+		// archivesCmd,
+		// retrievalsCmd,
 	)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)

@@ -62,12 +62,13 @@ func Init(baseCmd *cobra.Command) {
 	initCmd.Flags().StringP("name", "n", "", "Bucket name")
 	initCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
 	initCmd.Flags().String("cid", "", "Bootstrap the bucket with a UnixFS Cid from the IPFS network")
-	initCmd.Flags().Bool("unfreeze", false, "Unfreeze --cid from a known or imported deals in Filecoin.")
 	initCmd.Flags().BoolP("existing", "e", false, "Interactively select an existing remote bucket if true")
 	initCmd.Flags().Bool("soft", false, "Accepts all local changes, including deletions, if true")
 	initCmd.Flags().Bool("hard", false, "Discards all local changes if true")
 	initCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	initCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
+	// (jsign): disabled until this feature is usable in mainnet.
+	// initCmd.Flags().Bool("unfreeze", false, "Unfreeze --cid from a known or imported deals in Filecoin.")
 
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
