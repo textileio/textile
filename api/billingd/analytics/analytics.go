@@ -65,7 +65,7 @@ func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, 
 }
 
 // TrackEvent logs a new event
-func (c *Client) TrackEvent(userID string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
+func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
 	if c.api != nil && accountType != mdb.User {
 		props := segment.NewProperties()
 		for key, value := range properties {
@@ -73,7 +73,7 @@ func (c *Client) TrackEvent(userID string, accountType mdb.AccountType, active b
 		}
 
 		return c.api.Enqueue(segment.Track{
-			UserId:     userID,
+			UserId:     key,
 			Event:      event.String(),
 			Properties: props,
 			Context: &segment.Context{
