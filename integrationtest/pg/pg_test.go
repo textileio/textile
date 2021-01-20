@@ -84,11 +84,11 @@ func TestArchiveTracker(t *testing.T) {
 		// Verify that the current archive status is Done.
 		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Archives.Current.ArchiveStatus)
 
-		require.Equal(t, rootCid1, res.Current.Cid)
-		require.Len(t, res.Current.DealInfo, 1)
-		deal := res.Current.DealInfo[0]
+		require.Equal(t, rootCid1, res.Archives.Current.Cid)
+		require.Len(t, res.Archives.Current.DealInfo, 1)
+		deal := res.Archives.Current.DealInfo[0]
 		require.NotEmpty(t, deal.ProposalCid)
 		require.NotEmpty(t, deal.Miner)
 	})
@@ -116,11 +116,11 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		// Verify that the current archive status is Done.
 		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus, res.Current.FailureMsg)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Archives.Current.ArchiveStatus, res.Archives.Current.FailureMsg)
 
-		require.Equal(t, rootCid1, res.Current.Cid)
-		require.Len(t, res.Current.DealInfo, 1)
-		deal := res.Current.DealInfo[0]
+		require.Equal(t, rootCid1, res.Archives.Current.Cid)
+		require.Len(t, res.Archives.Current.DealInfo, 1)
+		deal := res.Archives.Current.DealInfo[0]
 		require.NotEmpty(t, deal.ProposalCid)
 		require.NotEmpty(t, deal.Miner)
 
@@ -133,11 +133,11 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), 2*time.Minute, 2*time.Second)
 		res, err = client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Current.ArchiveStatus)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS, res.Archives.Current.ArchiveStatus)
 
-		require.Equal(t, rootCid2, res.Current.Cid)
-		require.Len(t, res.Current.DealInfo, 1)
-		deal = res.Current.DealInfo[0]
+		require.Equal(t, rootCid2, res.Archives.Current.Cid)
+		require.Len(t, res.Archives.Current.DealInfo, 1)
+		deal = res.Archives.Current.DealInfo[0]
 		require.NotEmpty(t, deal.ProposalCid)
 		require.NotEmpty(t, deal.Miner)
 	})
@@ -196,8 +196,8 @@ func TestFailingArchive(t *testing.T) {
 		require.Eventually(t, archiveFinalState(ctx, t, client, b.Root.Key), time.Minute, 2*time.Second)
 		res, err := client.Archives(ctx, b.Root.Key)
 		require.NoError(t, err)
-		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_FAILED, res.Current.ArchiveStatus)
-		require.NotEmpty(t, res.Current.FailureMsg)
+		require.Equal(t, pb.ArchiveStatus_ARCHIVE_STATUS_FAILED, res.Archives.Current.ArchiveStatus)
+		require.NotEmpty(t, res.Archives.Current.FailureMsg)
 	})
 }
 
@@ -206,11 +206,11 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 		res, err := client.Archives(ctx, bucketKey)
 		require.NoError(t, err)
 
-		if res.Current == nil {
+		if res.Archives.Current == nil {
 			return false
 		}
 
-		switch res.Current.ArchiveStatus {
+		switch res.Archives.Current.ArchiveStatus {
 		case pb.ArchiveStatus_ARCHIVE_STATUS_FAILED,
 			pb.ArchiveStatus_ARCHIVE_STATUS_SUCCESS,
 			pb.ArchiveStatus_ARCHIVE_STATUS_CANCELED:
@@ -219,7 +219,7 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 		case pb.ArchiveStatus_ARCHIVE_STATUS_EXECUTING:
 		case pb.ArchiveStatus_ARCHIVE_STATUS_UNSPECIFIED:
 		default:
-			t.Errorf("unknown archive status %v", pb.ArchiveStatus_name[int32(res.Current.ArchiveStatus)])
+			t.Errorf("unknown archive status %v", pb.ArchiveStatus_name[int32(res.Archives.Current.ArchiveStatus)])
 			t.FailNow()
 		}
 
@@ -230,16 +230,17 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 // addDataFileToBucket add a file from the testdata folder, and returns the
 // new stringified root Cid of the bucket.
 func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client *c.Client, bucketKey string, fileName string) string {
-	f, err := os.Open("testdata/" + fileName)
+	q, err := client.PushPath(ctx, bucketKey)
 	require.NoError(t, err)
-	t.Cleanup(func() { f.Close() })
-
-	pth, root, err := client.PushPath(ctx, bucketKey, fileName, f)
+	err = q.AddFile(fileName, "testdata/"+fileName)
 	require.NoError(t, err)
-	assert.NotEmpty(t, pth)
-	assert.NotEmpty(t, root)
-
-	return strings.SplitN(root.String(), "/", 4)[2]
+	for q.Next() {
+		require.NoError(t, q.Err())
+		assert.NotEmpty(t, q.Current.Path)
+		assert.NotEmpty(t, q.Current.Root)
+	}
+	q.Close()
+	return strings.SplitN(q.Current.Root.String(), "/", 4)[2]
 }
 
 func setup(t util.TestingTWithCleanup) (context.Context, core.Config, *c.Client, string, func()) {
