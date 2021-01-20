@@ -22,7 +22,7 @@ var archivesLsCmd = &cobra.Command{
 	Long:  `List all known archive data in the Filecoin network. This includes made bucket archives, or imported deals.`,
 	Args:  cobra.NoArgs,
 	Run: func(c *cobra.Command, args []string) {
-		as, err := clients.Hub.ArchivesLs(Auth(c.Context()))
+		as, err := clients.Users.ArchivesLs(Auth(c.Context()))
 		cmd.ErrCheck(err)
 
 		if len(as.Archives) > 0 {
@@ -58,7 +58,7 @@ var archivesImportCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 		}
 
-		err = clients.Hub.ArchivesImport(Auth(c.Context()), dataCid, dealIDs)
+		err = clients.Users.ArchivesImport(Auth(c.Context()), dataCid, dealIDs)
 		cmd.ErrCheck(err)
 
 		cmd.Success("Deals imported successfully")

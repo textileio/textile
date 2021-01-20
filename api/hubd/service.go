@@ -16,14 +16,12 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/v2/api/client"
-	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/analytics"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/buckets"
-	"github.com/textileio/textile/v2/buckets/archive/retrieval"
 	bi "github.com/textileio/textile/v2/buildinfo"
 	"github.com/textileio/textile/v2/email"
 	"github.com/textileio/textile/v2/ipns"
@@ -58,7 +56,6 @@ type Service struct {
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
-	FilRetrieval        *retrieval.FilRetrieval
 
 	Analytics *analytics.Client
 }
@@ -823,160 +820,6 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 	return s.Collections.Accounts.Delete(ctx, a.Key)
 }
 
-// ArchiveRetrievalLs lists existing retrievals for the account.
-func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
-	account, _ := mdb.AccountFromContext(ctx)
-	owner := account.Owner().Key
-
-	rs, err := s.FilRetrieval.GetAllByAccount(owner.String())
-	if err != nil {
-		return nil, fmt.Errorf("listing retrievals: %s", err)
-	}
-
-	res := &pb.ArchiveRetrievalLsResponse{
-		Retrievals: make([]*pb.ArchiveRetrievalLsItem, len(rs)),
-	}
-	for i, r := range rs {
-		res.Retrievals[i] = &pb.ArchiveRetrievalLsItem{
-			Id:           r.JobID,
-			Cid:          r.Cid.String(),
-			Status:       toPbRetrievalStatus(r.Status),
-			FailureCause: r.FailureCause,
-			CreatedAt:    r.CreatedAt,
-		}
-		switch r.Type {
-		case retrieval.TypeNewBucket:
-			rt := &pb.ArchiveRetrievalLsItem_NewBucket{
-				NewBucket: &pb.ArchiveRetrievalLsItemNewBucket{
-					Name:    r.Name,
-					Private: r.Private,
-				},
-			}
-			res.Retrievals[i].RetrievalType = rt
-		default:
-			return nil, fmt.Errorf("unkown retrieval type")
-		}
-	}
-
-	return res, nil
-}
-
-// ArchivesLs lists all known archives for an account.
-func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*pb.ArchivesLsResponse, error) {
-	account, _ := mdb.AccountFromContext(ctx)
-	if account.Owner().PowInfo == nil {
-		return nil, fmt.Errorf("no powergate info associated with account")
-	}
-
-	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-	r, err := s.PowergateClient.Data.CidSummary(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting archived cids: %s", err)
-	}
-
-	res := &pb.ArchivesLsResponse{
-		Archives: make([]*pb.ArchiveLsItem, len(r.CidSummary)),
-	}
-	for i, cs := range r.CidSummary {
-		ci, err := s.PowergateClient.Data.CidInfo(ctx, cs.Cid)
-		if err != nil {
-			return nil, fmt.Errorf("getting cid info: %s", err)
-		}
-		props := ci.CidInfo.CurrentStorageInfo.Cold.Filecoin.Proposals
-		ali := &pb.ArchiveLsItem{
-			Cid:  cs.Cid,
-			Info: make([]*pb.ArchiveLsItemMetadata, len(props)),
-		}
-		res.Archives[i] = ali
-
-		for j, p := range props {
-			ali.Info[j] = &pb.ArchiveLsItemMetadata{
-				DealId: uint64(p.DealId),
-			}
-		}
-	}
-
-	return res, nil
-}
-
-// ArchivesImport imports Filecoin deals information for a Cid to the account.
-func (s *Service) ArchivesImport(ctx context.Context, req *pb.ArchivesImportRequest) (*pb.ArchivesImportResponse, error) {
-	account, _ := mdb.AccountFromContext(ctx)
-	if account.Owner().PowInfo == nil {
-		return nil, fmt.Errorf("no powergate info associated with account")
-	}
-
-	var scfg *userPb.StorageConfig
-
-	ctx = context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-	ci, err := s.PowergateClient.Data.CidInfo(ctx, req.Cid)
-	var notFound bool
-	if err != nil {
-		sc, ok := status.FromError(err)
-		if !ok || sc.Code() != codes.NotFound {
-			return nil, fmt.Errorf("getting current storage information: %s", err)
-		}
-		notFound = true
-	}
-
-	// If deal import is for a new Cid, just use the default Storage Config
-	// with both storages disabled and without running any jobs: only deal importing.
-	if notFound {
-		defConfRes, err := s.PowergateClient.StorageConfig.Default(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("getting default storage-config: %s", err)
-		}
-		scfg = defConfRes.DefaultStorageConfig
-		scfg.Cold.Enabled = false
-		scfg.Hot.Enabled = false
-
-	} else {
-		// If deal import is to augment an existing Cid, just use the latest storage config.
-		// A Job won't run anyway, so it would only import the deals.
-		scfg = ci.CidInfo.LatestPushedStorageConfig
-	}
-
-	if _, err = s.PowergateClient.StorageConfig.Apply(
-		ctx,
-		req.Cid,
-		pow.WithStorageConfig(scfg),
-		pow.WithOverride(true),
-		pow.WithImportDealIDs(req.DealIds),
-		pow.WithNoExec(true),
-	); err != nil {
-		return nil, fmt.Errorf("importing deals: %s", err)
-	}
-
-	return &pb.ArchivesImportResponse{}, nil
-}
-
-// ArchiveRetrievalLogs prints the logs of a retrieval.
-func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, server pb.APIService_ArchiveRetrievalLogsServer) error {
-	account, _ := mdb.AccountFromContext(server.Context())
-	owner := account.Owner()
-	accKey := owner.Key.String()
-	powToken := owner.PowInfo.Token
-
-	var err error
-	ctx, cancel := context.WithCancel(server.Context())
-	defer cancel()
-	ch := make(chan string)
-	go func() {
-		err = s.FilRetrieval.Logs(ctx, accKey, req.Id, powToken, ch)
-		close(ch)
-	}()
-	for s := range ch {
-		if err := server.Send(&pb.ArchiveRetrievalLogsResponse{Msg: s}); err != nil {
-			return err
-		}
-	}
-	if err != nil {
-		return fmt.Errorf("watching retrieval logs: %s", err)
-	}
-
-	return nil
-}
-
 func getAccount(ctx context.Context) (*mdb.AccountCtx, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	if account.Owner().Type == mdb.User {
@@ -993,22 +836,5 @@ func keyTypeToPb(t mdb.APIKeyType) (pb.KeyType, error) {
 		return pb.KeyType_KEY_TYPE_USER, nil
 	default:
 		return 0, fmt.Errorf("unknown key type: %v", t)
-	}
-}
-
-func toPbRetrievalStatus(s retrieval.Status) pb.ArchiveRetrievalStatus {
-	switch s {
-	case retrieval.StatusQueued:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_QUEUED
-	case retrieval.StatusExecuting:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_EXECUTING
-	case retrieval.StatusMoveToBucket:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET
-	case retrieval.StatusSuccess:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_SUCCESS
-	case retrieval.StatusFailed:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_FAILED
-	default:
-		return pb.ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED
 	}
 }

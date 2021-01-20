@@ -382,13 +382,14 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
-			FilRetrieval:        t.filRetrieval,
 			Analytics:           ac,
 		}
 		us = &usersd.Service{
-			Collections:   t.collections,
-			Mail:          t.mail,
-			BillingClient: t.bc,
+			Collections:     t.collections,
+			Mail:            t.mail,
+			BillingClient:   t.bc,
+			FilRetrieval:    t.filRetrieval,
+			PowergateClient: t.pc,
 		}
 	}
 

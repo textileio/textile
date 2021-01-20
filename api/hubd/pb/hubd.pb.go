@@ -79,67 +79,6 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{0}
 }
 
-type ArchiveRetrievalStatus int32
-
-const (
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED  ArchiveRetrievalStatus = 0
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_QUEUED       ArchiveRetrievalStatus = 1
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_EXECUTING    ArchiveRetrievalStatus = 2
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET ArchiveRetrievalStatus = 3
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_FAILED       ArchiveRetrievalStatus = 4
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_CANCELED     ArchiveRetrievalStatus = 5
-	ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_SUCCESS      ArchiveRetrievalStatus = 6
-)
-
-// Enum value maps for ArchiveRetrievalStatus.
-var (
-	ArchiveRetrievalStatus_name = map[int32]string{
-		0: "ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED",
-		1: "ARCHIVE_RETRIEVAL_STATUS_QUEUED",
-		2: "ARCHIVE_RETRIEVAL_STATUS_EXECUTING",
-		3: "ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET",
-		4: "ARCHIVE_RETRIEVAL_STATUS_FAILED",
-		5: "ARCHIVE_RETRIEVAL_STATUS_CANCELED",
-		6: "ARCHIVE_RETRIEVAL_STATUS_SUCCESS",
-	}
-	ArchiveRetrievalStatus_value = map[string]int32{
-		"ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED":  0,
-		"ARCHIVE_RETRIEVAL_STATUS_QUEUED":       1,
-		"ARCHIVE_RETRIEVAL_STATUS_EXECUTING":    2,
-		"ARCHIVE_RETRIEVAL_STATUS_MOVETOBUCKET": 3,
-		"ARCHIVE_RETRIEVAL_STATUS_FAILED":       4,
-		"ARCHIVE_RETRIEVAL_STATUS_CANCELED":     5,
-		"ARCHIVE_RETRIEVAL_STATUS_SUCCESS":      6,
-	}
-)
-
-func (x ArchiveRetrievalStatus) Enum() *ArchiveRetrievalStatus {
-	p := new(ArchiveRetrievalStatus)
-	*p = x
-	return p
-}
-
-func (x ArchiveRetrievalStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ArchiveRetrievalStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_hubd_pb_hubd_proto_enumTypes[1].Descriptor()
-}
-
-func (ArchiveRetrievalStatus) Type() protoreflect.EnumType {
-	return &file_api_hubd_pb_hubd_proto_enumTypes[1]
-}
-
-func (x ArchiveRetrievalStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ArchiveRetrievalStatus.Descriptor instead.
-func (ArchiveRetrievalStatus) EnumDescriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{1}
-}
-
 type BuildInfoRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2229,626 +2168,6 @@ func (*DestroyAccountResponse) Descriptor() ([]byte, []int) {
 	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{43}
 }
 
-type ArchivesLsRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ArchivesLsRequest) Reset() {
-	*x = ArchivesLsRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[44]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchivesLsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchivesLsRequest) ProtoMessage() {}
-
-func (x *ArchivesLsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[44]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchivesLsRequest.ProtoReflect.Descriptor instead.
-func (*ArchivesLsRequest) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{44}
-}
-
-type ArchivesLsResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Archives []*ArchiveLsItem `protobuf:"bytes,1,rep,name=archives,proto3" json:"archives,omitempty"`
-}
-
-func (x *ArchivesLsResponse) Reset() {
-	*x = ArchivesLsResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[45]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchivesLsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchivesLsResponse) ProtoMessage() {}
-
-func (x *ArchivesLsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[45]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchivesLsResponse.ProtoReflect.Descriptor instead.
-func (*ArchivesLsResponse) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{45}
-}
-
-func (x *ArchivesLsResponse) GetArchives() []*ArchiveLsItem {
-	if x != nil {
-		return x.Archives
-	}
-	return nil
-}
-
-type ArchiveLsItem struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Cid  string                   `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
-	Info []*ArchiveLsItemMetadata `protobuf:"bytes,2,rep,name=info,proto3" json:"info,omitempty"`
-}
-
-func (x *ArchiveLsItem) Reset() {
-	*x = ArchiveLsItem{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[46]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveLsItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveLsItem) ProtoMessage() {}
-
-func (x *ArchiveLsItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[46]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveLsItem.ProtoReflect.Descriptor instead.
-func (*ArchiveLsItem) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{46}
-}
-
-func (x *ArchiveLsItem) GetCid() string {
-	if x != nil {
-		return x.Cid
-	}
-	return ""
-}
-
-func (x *ArchiveLsItem) GetInfo() []*ArchiveLsItemMetadata {
-	if x != nil {
-		return x.Info
-	}
-	return nil
-}
-
-type ArchiveLsItemMetadata struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	DealId uint64 `protobuf:"varint,1,opt,name=deal_id,json=dealId,proto3" json:"deal_id,omitempty"`
-}
-
-func (x *ArchiveLsItemMetadata) Reset() {
-	*x = ArchiveLsItemMetadata{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[47]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveLsItemMetadata) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveLsItemMetadata) ProtoMessage() {}
-
-func (x *ArchiveLsItemMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[47]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveLsItemMetadata.ProtoReflect.Descriptor instead.
-func (*ArchiveLsItemMetadata) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{47}
-}
-
-func (x *ArchiveLsItemMetadata) GetDealId() uint64 {
-	if x != nil {
-		return x.DealId
-	}
-	return 0
-}
-
-type ArchivesImportRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Cid     string   `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
-	DealIds []uint64 `protobuf:"varint,2,rep,packed,name=deal_ids,json=dealIds,proto3" json:"deal_ids,omitempty"`
-}
-
-func (x *ArchivesImportRequest) Reset() {
-	*x = ArchivesImportRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[48]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchivesImportRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchivesImportRequest) ProtoMessage() {}
-
-func (x *ArchivesImportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[48]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchivesImportRequest.ProtoReflect.Descriptor instead.
-func (*ArchivesImportRequest) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{48}
-}
-
-func (x *ArchivesImportRequest) GetCid() string {
-	if x != nil {
-		return x.Cid
-	}
-	return ""
-}
-
-func (x *ArchivesImportRequest) GetDealIds() []uint64 {
-	if x != nil {
-		return x.DealIds
-	}
-	return nil
-}
-
-type ArchivesImportResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ArchivesImportResponse) Reset() {
-	*x = ArchivesImportResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[49]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchivesImportResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchivesImportResponse) ProtoMessage() {}
-
-func (x *ArchivesImportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[49]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchivesImportResponse.ProtoReflect.Descriptor instead.
-func (*ArchivesImportResponse) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{49}
-}
-
-type ArchiveRetrievalLsRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ArchiveRetrievalLsRequest) Reset() {
-	*x = ArchiveRetrievalLsRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[50]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLsRequest) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[50]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLsRequest.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLsRequest) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{50}
-}
-
-type ArchiveRetrievalLsResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Retrievals []*ArchiveRetrievalLsItem `protobuf:"bytes,1,rep,name=retrievals,proto3" json:"retrievals,omitempty"`
-}
-
-func (x *ArchiveRetrievalLsResponse) Reset() {
-	*x = ArchiveRetrievalLsResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[51]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLsResponse) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[51]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLsResponse.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLsResponse) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{51}
-}
-
-func (x *ArchiveRetrievalLsResponse) GetRetrievals() []*ArchiveRetrievalLsItem {
-	if x != nil {
-		return x.Retrievals
-	}
-	return nil
-}
-
-type ArchiveRetrievalLsItem struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Cid          string                 `protobuf:"bytes,2,opt,name=cid,proto3" json:"cid,omitempty"`
-	Status       ArchiveRetrievalStatus `protobuf:"varint,3,opt,name=status,proto3,enum=api.hubd.pb.ArchiveRetrievalStatus" json:"status,omitempty"`
-	FailureCause string                 `protobuf:"bytes,4,opt,name=failure_cause,json=failureCause,proto3" json:"failure_cause,omitempty"`
-	CreatedAt    int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// Types that are assignable to RetrievalType:
-	//	*ArchiveRetrievalLsItem_NewBucket
-	RetrievalType isArchiveRetrievalLsItem_RetrievalType `protobuf_oneof:"retrieval_type"`
-}
-
-func (x *ArchiveRetrievalLsItem) Reset() {
-	*x = ArchiveRetrievalLsItem{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[52]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLsItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLsItem) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLsItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[52]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLsItem.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLsItem) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{52}
-}
-
-func (x *ArchiveRetrievalLsItem) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *ArchiveRetrievalLsItem) GetCid() string {
-	if x != nil {
-		return x.Cid
-	}
-	return ""
-}
-
-func (x *ArchiveRetrievalLsItem) GetStatus() ArchiveRetrievalStatus {
-	if x != nil {
-		return x.Status
-	}
-	return ArchiveRetrievalStatus_ARCHIVE_RETRIEVAL_STATUS_UNSPECIFIED
-}
-
-func (x *ArchiveRetrievalLsItem) GetFailureCause() string {
-	if x != nil {
-		return x.FailureCause
-	}
-	return ""
-}
-
-func (x *ArchiveRetrievalLsItem) GetCreatedAt() int64 {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return 0
-}
-
-func (m *ArchiveRetrievalLsItem) GetRetrievalType() isArchiveRetrievalLsItem_RetrievalType {
-	if m != nil {
-		return m.RetrievalType
-	}
-	return nil
-}
-
-func (x *ArchiveRetrievalLsItem) GetNewBucket() *ArchiveRetrievalLsItemNewBucket {
-	if x, ok := x.GetRetrievalType().(*ArchiveRetrievalLsItem_NewBucket); ok {
-		return x.NewBucket
-	}
-	return nil
-}
-
-type isArchiveRetrievalLsItem_RetrievalType interface {
-	isArchiveRetrievalLsItem_RetrievalType()
-}
-
-type ArchiveRetrievalLsItem_NewBucket struct {
-	NewBucket *ArchiveRetrievalLsItemNewBucket `protobuf:"bytes,6,opt,name=new_bucket,json=newBucket,proto3,oneof"`
-}
-
-func (*ArchiveRetrievalLsItem_NewBucket) isArchiveRetrievalLsItem_RetrievalType() {}
-
-type ArchiveRetrievalLsItemNewBucket struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Private bool   `protobuf:"varint,2,opt,name=private,proto3" json:"private,omitempty"`
-}
-
-func (x *ArchiveRetrievalLsItemNewBucket) Reset() {
-	*x = ArchiveRetrievalLsItemNewBucket{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[53]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLsItemNewBucket) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLsItemNewBucket) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLsItemNewBucket) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[53]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLsItemNewBucket.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLsItemNewBucket) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{53}
-}
-
-func (x *ArchiveRetrievalLsItemNewBucket) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *ArchiveRetrievalLsItemNewBucket) GetPrivate() bool {
-	if x != nil {
-		return x.Private
-	}
-	return false
-}
-
-type ArchiveRetrievalLogsRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (x *ArchiveRetrievalLogsRequest) Reset() {
-	*x = ArchiveRetrievalLogsRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[54]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLogsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLogsRequest) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[54]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLogsRequest.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLogsRequest) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{54}
-}
-
-func (x *ArchiveRetrievalLogsRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type ArchiveRetrievalLogsResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
-}
-
-func (x *ArchiveRetrievalLogsResponse) Reset() {
-	*x = ArchiveRetrievalLogsResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[55]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ArchiveRetrievalLogsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ArchiveRetrievalLogsResponse) ProtoMessage() {}
-
-func (x *ArchiveRetrievalLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[55]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ArchiveRetrievalLogsResponse.ProtoReflect.Descriptor instead.
-func (*ArchiveRetrievalLogsResponse) Descriptor() ([]byte, []int) {
-	return file_api_hubd_pb_hubd_proto_rawDescGZIP(), []int{55}
-}
-
-func (x *ArchiveRetrievalLogsResponse) GetMsg() string {
-	if x != nil {
-		return x.Msg
-	}
-	return ""
-}
-
 type OrgInfo_Member struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2862,7 +2181,7 @@ type OrgInfo_Member struct {
 func (x *OrgInfo_Member) Reset() {
 	*x = OrgInfo_Member{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_hubd_pb_hubd_proto_msgTypes[56]
+		mi := &file_api_hubd_pb_hubd_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2875,7 +2194,7 @@ func (x *OrgInfo_Member) String() string {
 func (*OrgInfo_Member) ProtoMessage() {}
 
 func (x *OrgInfo_Member) ProtoReflect() protoreflect.Message {
-	mi := &file_api_hubd_pb_hubd_proto_msgTypes[56]
+	mi := &file_api_hubd_pb_hubd_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3072,89 +2391,12 @@ var file_api_hubd_pb_hubd_proto_rawDesc = []byte{
 	0x74, 0x22, 0x17, 0x0a, 0x15, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x41, 0x63, 0x63, 0x6f,
 	0x75, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x18, 0x0a, 0x16, 0x44, 0x65,
 	0x73, 0x74, 0x72, 0x6f, 0x79, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x13, 0x0a, 0x11, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73,
-	0x4c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4c, 0x0a, 0x12, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x73, 0x4c, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x36, 0x0a, 0x08, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x1a, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x08, 0x61,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x22, 0x59, 0x0a, 0x0d, 0x41, 0x72, 0x63, 0x68, 0x69,
-	0x76, 0x65, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x10, 0x0a, 0x03, 0x63, 0x69, 0x64, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x69, 0x64, 0x12, 0x36, 0x0a, 0x04, 0x69, 0x6e,
-	0x66, 0x6f, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68,
-	0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x4c, 0x73,
-	0x49, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x04, 0x69, 0x6e,
-	0x66, 0x6f, 0x22, 0x30, 0x0a, 0x15, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x4c, 0x73, 0x49,
-	0x74, 0x65, 0x6d, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x17, 0x0a, 0x07, 0x64,
-	0x65, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x64, 0x65,
-	0x61, 0x6c, 0x49, 0x64, 0x22, 0x44, 0x0a, 0x15, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73,
-	0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a,
-	0x03, 0x63, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x69, 0x64, 0x12,
-	0x19, 0x0a, 0x08, 0x64, 0x65, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28,
-	0x04, 0x52, 0x07, 0x64, 0x65, 0x61, 0x6c, 0x49, 0x64, 0x73, 0x22, 0x18, 0x0a, 0x16, 0x41, 0x72,
-	0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1b, 0x0a, 0x19, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52,
-	0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x22, 0x61, 0x0a, 0x1a, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72,
-	0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x43, 0x0a, 0x0a, 0x72, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x73, 0x18, 0x01, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x23, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70,
-	0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76,
-	0x61, 0x6c, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x0a, 0x72, 0x65, 0x74, 0x72, 0x69, 0x65,
-	0x76, 0x61, 0x6c, 0x73, 0x22, 0x9c, 0x02, 0x0a, 0x16, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65,
-	0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x12,
-	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12,
-	0x10, 0x0a, 0x03, 0x63, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63, 0x69,
-	0x64, 0x12, 0x3b, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x0e, 0x32, 0x23, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c,
-	0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x23,
-	0x0a, 0x0d, 0x66, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x5f, 0x63, 0x61, 0x75, 0x73, 0x65, 0x18,
-	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x66, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x43, 0x61,
-	0x75, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61,
-	0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64,
-	0x41, 0x74, 0x12, 0x4d, 0x0a, 0x0a, 0x6e, 0x65, 0x77, 0x5f, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74,
-	0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2c, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62,
-	0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72,
-	0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x4e, 0x65, 0x77, 0x42, 0x75,
-	0x63, 0x6b, 0x65, 0x74, 0x48, 0x00, 0x52, 0x09, 0x6e, 0x65, 0x77, 0x42, 0x75, 0x63, 0x6b, 0x65,
-	0x74, 0x42, 0x10, 0x0a, 0x0e, 0x72, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x5f, 0x74,
-	0x79, 0x70, 0x65, 0x22, 0x4f, 0x0a, 0x1f, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65,
-	0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x49, 0x74, 0x65, 0x6d, 0x4e, 0x65, 0x77,
-	0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x72,
-	0x69, 0x76, 0x61, 0x74, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x70, 0x72, 0x69,
-	0x76, 0x61, 0x74, 0x65, 0x22, 0x2d, 0x0a, 0x1b, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52,
-	0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x02, 0x69, 0x64, 0x22, 0x30, 0x0a, 0x1c, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65,
-	0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x03, 0x6d, 0x73, 0x67, 0x2a, 0x4c, 0x0a, 0x07, 0x4b, 0x65, 0x79, 0x54, 0x79, 0x70, 0x65,
-	0x12, 0x18, 0x0a, 0x14, 0x4b, 0x45, 0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53,
-	0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x14, 0x0a, 0x10, 0x4b, 0x45,
-	0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x41, 0x43, 0x43, 0x4f, 0x55, 0x4e, 0x54, 0x10, 0x01,
-	0x12, 0x11, 0x0a, 0x0d, 0x4b, 0x45, 0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x53, 0x45,
-	0x52, 0x10, 0x02, 0x2a, 0xac, 0x02, 0x0a, 0x16, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52,
-	0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x28,
-	0x0a, 0x24, 0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45, 0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45,
-	0x56, 0x41, 0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45,
-	0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x23, 0x0a, 0x1f, 0x41, 0x52, 0x43, 0x48,
-	0x49, 0x56, 0x45, 0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45, 0x56, 0x41, 0x4c, 0x5f, 0x53, 0x54,
-	0x41, 0x54, 0x55, 0x53, 0x5f, 0x51, 0x55, 0x45, 0x55, 0x45, 0x44, 0x10, 0x01, 0x12, 0x26, 0x0a,
-	0x22, 0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45, 0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45, 0x56,
-	0x41, 0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x45, 0x58, 0x45, 0x43, 0x55, 0x54,
-	0x49, 0x4e, 0x47, 0x10, 0x02, 0x12, 0x29, 0x0a, 0x25, 0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45,
-	0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45, 0x56, 0x41, 0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55,
-	0x53, 0x5f, 0x4d, 0x4f, 0x56, 0x45, 0x54, 0x4f, 0x42, 0x55, 0x43, 0x4b, 0x45, 0x54, 0x10, 0x03,
-	0x12, 0x23, 0x0a, 0x1f, 0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45, 0x5f, 0x52, 0x45, 0x54, 0x52,
-	0x49, 0x45, 0x56, 0x41, 0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x46, 0x41, 0x49,
-	0x4c, 0x45, 0x44, 0x10, 0x04, 0x12, 0x25, 0x0a, 0x21, 0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45,
-	0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45, 0x56, 0x41, 0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55,
-	0x53, 0x5f, 0x43, 0x41, 0x4e, 0x43, 0x45, 0x4c, 0x45, 0x44, 0x10, 0x05, 0x12, 0x24, 0x0a, 0x20,
-	0x41, 0x52, 0x43, 0x48, 0x49, 0x56, 0x45, 0x5f, 0x52, 0x45, 0x54, 0x52, 0x49, 0x45, 0x56, 0x41,
-	0x4c, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x53, 0x55, 0x43, 0x43, 0x45, 0x53, 0x53,
-	0x10, 0x06, 0x32, 0xf5, 0x10, 0x0a, 0x0a, 0x41, 0x50, 0x49, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x6f, 0x6e, 0x73, 0x65, 0x2a, 0x4c, 0x0a, 0x07, 0x4b, 0x65, 0x79, 0x54, 0x79, 0x70, 0x65, 0x12,
+	0x18, 0x0a, 0x14, 0x4b, 0x45, 0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50,
+	0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x14, 0x0a, 0x10, 0x4b, 0x45, 0x59,
+	0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x41, 0x43, 0x43, 0x4f, 0x55, 0x4e, 0x54, 0x10, 0x01, 0x12,
+	0x11, 0x0a, 0x0d, 0x4b, 0x45, 0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x53, 0x45, 0x52,
+	0x10, 0x02, 0x32, 0xed, 0x0d, 0x0a, 0x0a, 0x41, 0x50, 0x49, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
 	0x65, 0x12, 0x4c, 0x0a, 0x09, 0x42, 0x75, 0x69, 0x6c, 0x64, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1d,
 	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x42, 0x75, 0x69,
 	0x6c, 0x64, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e,
@@ -3265,35 +2507,10 @@ var file_api_hubd_pb_hubd_proto_rawDesc = []byte{
 	0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x61, 0x70,
 	0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f,
 	0x79, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x4f, 0x0a, 0x0a, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x4c, 0x73,
-	0x12, 0x1e, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x4c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x1f, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41,
-	0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x4c, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x12, 0x5b, 0x0a, 0x0e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x49,
-	0x6d, 0x70, 0x6f, 0x72, 0x74, 0x12, 0x22, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64,
-	0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73, 0x49, 0x6d, 0x70, 0x6f,
-	0x72, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x61, 0x70, 0x69, 0x2e,
-	0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73,
-	0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
-	0x12, 0x67, 0x0a, 0x12, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69,
-	0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x12, 0x26, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62,
-	0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72,
-	0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x27,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x73, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x6f, 0x0a, 0x14, 0x41, 0x72, 0x63,
-	0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x6f, 0x67,
-	0x73, 0x12, 0x28, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e,
-	0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c,
-	0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x61, 0x70,
-	0x69, 0x2e, 0x68, 0x75, 0x62, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76,
-	0x65, 0x52, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76, 0x61, 0x6c, 0x4c, 0x6f, 0x67, 0x73, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x42, 0x2d, 0x5a, 0x2b, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x65, 0x78, 0x74, 0x69, 0x6c, 0x65,
-	0x69, 0x6f, 0x2f, 0x74, 0x65, 0x78, 0x74, 0x69, 0x6c, 0x65, 0x2f, 0x76, 0x32, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x68, 0x75, 0x62, 0x64, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x22, 0x00, 0x42, 0x2d, 0x5a, 0x2b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x74, 0x65, 0x78, 0x74, 0x69, 0x6c, 0x65, 0x69, 0x6f, 0x2f, 0x74, 0x65, 0x78, 0x74, 0x69,
+	0x6c, 0x65, 0x2f, 0x76, 0x32, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x68, 0x75, 0x62, 0x64, 0x2f, 0x70,
+	0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3308,140 +2525,114 @@ func file_api_hubd_pb_hubd_proto_rawDescGZIP() []byte {
 	return file_api_hubd_pb_hubd_proto_rawDescData
 }
 
-var file_api_hubd_pb_hubd_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_hubd_pb_hubd_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
+var file_api_hubd_pb_hubd_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_api_hubd_pb_hubd_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_api_hubd_pb_hubd_proto_goTypes = []interface{}{
-	(KeyType)(0),                            // 0: api.hubd.pb.KeyType
-	(ArchiveRetrievalStatus)(0),             // 1: api.hubd.pb.ArchiveRetrievalStatus
-	(*BuildInfoRequest)(nil),                // 2: api.hubd.pb.BuildInfoRequest
-	(*BuildInfoResponse)(nil),               // 3: api.hubd.pb.BuildInfoResponse
-	(*SignupRequest)(nil),                   // 4: api.hubd.pb.SignupRequest
-	(*SignupResponse)(nil),                  // 5: api.hubd.pb.SignupResponse
-	(*SigninRequest)(nil),                   // 6: api.hubd.pb.SigninRequest
-	(*SigninResponse)(nil),                  // 7: api.hubd.pb.SigninResponse
-	(*SignoutRequest)(nil),                  // 8: api.hubd.pb.SignoutRequest
-	(*SignoutResponse)(nil),                 // 9: api.hubd.pb.SignoutResponse
-	(*GetSessionInfoRequest)(nil),           // 10: api.hubd.pb.GetSessionInfoRequest
-	(*GetSessionInfoResponse)(nil),          // 11: api.hubd.pb.GetSessionInfoResponse
-	(*GetIdentityRequest)(nil),              // 12: api.hubd.pb.GetIdentityRequest
-	(*GetIdentityResponse)(nil),             // 13: api.hubd.pb.GetIdentityResponse
-	(*KeyInfo)(nil),                         // 14: api.hubd.pb.KeyInfo
-	(*CreateKeyRequest)(nil),                // 15: api.hubd.pb.CreateKeyRequest
-	(*CreateKeyResponse)(nil),               // 16: api.hubd.pb.CreateKeyResponse
-	(*InvalidateKeyRequest)(nil),            // 17: api.hubd.pb.InvalidateKeyRequest
-	(*InvalidateKeyResponse)(nil),           // 18: api.hubd.pb.InvalidateKeyResponse
-	(*ListKeysRequest)(nil),                 // 19: api.hubd.pb.ListKeysRequest
-	(*ListKeysResponse)(nil),                // 20: api.hubd.pb.ListKeysResponse
-	(*OrgInfo)(nil),                         // 21: api.hubd.pb.OrgInfo
-	(*CreateOrgRequest)(nil),                // 22: api.hubd.pb.CreateOrgRequest
-	(*CreateOrgResponse)(nil),               // 23: api.hubd.pb.CreateOrgResponse
-	(*GetOrgRequest)(nil),                   // 24: api.hubd.pb.GetOrgRequest
-	(*GetOrgResponse)(nil),                  // 25: api.hubd.pb.GetOrgResponse
-	(*ListOrgsRequest)(nil),                 // 26: api.hubd.pb.ListOrgsRequest
-	(*ListOrgsResponse)(nil),                // 27: api.hubd.pb.ListOrgsResponse
-	(*RemoveOrgRequest)(nil),                // 28: api.hubd.pb.RemoveOrgRequest
-	(*RemoveOrgResponse)(nil),               // 29: api.hubd.pb.RemoveOrgResponse
-	(*InviteToOrgRequest)(nil),              // 30: api.hubd.pb.InviteToOrgRequest
-	(*InviteToOrgResponse)(nil),             // 31: api.hubd.pb.InviteToOrgResponse
-	(*LeaveOrgRequest)(nil),                 // 32: api.hubd.pb.LeaveOrgRequest
-	(*LeaveOrgResponse)(nil),                // 33: api.hubd.pb.LeaveOrgResponse
-	(*SetupBillingRequest)(nil),             // 34: api.hubd.pb.SetupBillingRequest
-	(*SetupBillingResponse)(nil),            // 35: api.hubd.pb.SetupBillingResponse
-	(*GetBillingSessionRequest)(nil),        // 36: api.hubd.pb.GetBillingSessionRequest
-	(*GetBillingSessionResponse)(nil),       // 37: api.hubd.pb.GetBillingSessionResponse
-	(*ListBillingUsersRequest)(nil),         // 38: api.hubd.pb.ListBillingUsersRequest
-	(*ListBillingUsersResponse)(nil),        // 39: api.hubd.pb.ListBillingUsersResponse
-	(*IsUsernameAvailableRequest)(nil),      // 40: api.hubd.pb.IsUsernameAvailableRequest
-	(*IsUsernameAvailableResponse)(nil),     // 41: api.hubd.pb.IsUsernameAvailableResponse
-	(*IsOrgNameAvailableRequest)(nil),       // 42: api.hubd.pb.IsOrgNameAvailableRequest
-	(*IsOrgNameAvailableResponse)(nil),      // 43: api.hubd.pb.IsOrgNameAvailableResponse
-	(*DestroyAccountRequest)(nil),           // 44: api.hubd.pb.DestroyAccountRequest
-	(*DestroyAccountResponse)(nil),          // 45: api.hubd.pb.DestroyAccountResponse
-	(*ArchivesLsRequest)(nil),               // 46: api.hubd.pb.ArchivesLsRequest
-	(*ArchivesLsResponse)(nil),              // 47: api.hubd.pb.ArchivesLsResponse
-	(*ArchiveLsItem)(nil),                   // 48: api.hubd.pb.ArchiveLsItem
-	(*ArchiveLsItemMetadata)(nil),           // 49: api.hubd.pb.ArchiveLsItemMetadata
-	(*ArchivesImportRequest)(nil),           // 50: api.hubd.pb.ArchivesImportRequest
-	(*ArchivesImportResponse)(nil),          // 51: api.hubd.pb.ArchivesImportResponse
-	(*ArchiveRetrievalLsRequest)(nil),       // 52: api.hubd.pb.ArchiveRetrievalLsRequest
-	(*ArchiveRetrievalLsResponse)(nil),      // 53: api.hubd.pb.ArchiveRetrievalLsResponse
-	(*ArchiveRetrievalLsItem)(nil),          // 54: api.hubd.pb.ArchiveRetrievalLsItem
-	(*ArchiveRetrievalLsItemNewBucket)(nil), // 55: api.hubd.pb.ArchiveRetrievalLsItemNewBucket
-	(*ArchiveRetrievalLogsRequest)(nil),     // 56: api.hubd.pb.ArchiveRetrievalLogsRequest
-	(*ArchiveRetrievalLogsResponse)(nil),    // 57: api.hubd.pb.ArchiveRetrievalLogsResponse
-	(*OrgInfo_Member)(nil),                  // 58: api.hubd.pb.OrgInfo.Member
-	(*pb.GetCustomerResponse)(nil),          // 59: api.billingd.pb.GetCustomerResponse
+	(KeyType)(0),                        // 0: api.hubd.pb.KeyType
+	(*BuildInfoRequest)(nil),            // 1: api.hubd.pb.BuildInfoRequest
+	(*BuildInfoResponse)(nil),           // 2: api.hubd.pb.BuildInfoResponse
+	(*SignupRequest)(nil),               // 3: api.hubd.pb.SignupRequest
+	(*SignupResponse)(nil),              // 4: api.hubd.pb.SignupResponse
+	(*SigninRequest)(nil),               // 5: api.hubd.pb.SigninRequest
+	(*SigninResponse)(nil),              // 6: api.hubd.pb.SigninResponse
+	(*SignoutRequest)(nil),              // 7: api.hubd.pb.SignoutRequest
+	(*SignoutResponse)(nil),             // 8: api.hubd.pb.SignoutResponse
+	(*GetSessionInfoRequest)(nil),       // 9: api.hubd.pb.GetSessionInfoRequest
+	(*GetSessionInfoResponse)(nil),      // 10: api.hubd.pb.GetSessionInfoResponse
+	(*GetIdentityRequest)(nil),          // 11: api.hubd.pb.GetIdentityRequest
+	(*GetIdentityResponse)(nil),         // 12: api.hubd.pb.GetIdentityResponse
+	(*KeyInfo)(nil),                     // 13: api.hubd.pb.KeyInfo
+	(*CreateKeyRequest)(nil),            // 14: api.hubd.pb.CreateKeyRequest
+	(*CreateKeyResponse)(nil),           // 15: api.hubd.pb.CreateKeyResponse
+	(*InvalidateKeyRequest)(nil),        // 16: api.hubd.pb.InvalidateKeyRequest
+	(*InvalidateKeyResponse)(nil),       // 17: api.hubd.pb.InvalidateKeyResponse
+	(*ListKeysRequest)(nil),             // 18: api.hubd.pb.ListKeysRequest
+	(*ListKeysResponse)(nil),            // 19: api.hubd.pb.ListKeysResponse
+	(*OrgInfo)(nil),                     // 20: api.hubd.pb.OrgInfo
+	(*CreateOrgRequest)(nil),            // 21: api.hubd.pb.CreateOrgRequest
+	(*CreateOrgResponse)(nil),           // 22: api.hubd.pb.CreateOrgResponse
+	(*GetOrgRequest)(nil),               // 23: api.hubd.pb.GetOrgRequest
+	(*GetOrgResponse)(nil),              // 24: api.hubd.pb.GetOrgResponse
+	(*ListOrgsRequest)(nil),             // 25: api.hubd.pb.ListOrgsRequest
+	(*ListOrgsResponse)(nil),            // 26: api.hubd.pb.ListOrgsResponse
+	(*RemoveOrgRequest)(nil),            // 27: api.hubd.pb.RemoveOrgRequest
+	(*RemoveOrgResponse)(nil),           // 28: api.hubd.pb.RemoveOrgResponse
+	(*InviteToOrgRequest)(nil),          // 29: api.hubd.pb.InviteToOrgRequest
+	(*InviteToOrgResponse)(nil),         // 30: api.hubd.pb.InviteToOrgResponse
+	(*LeaveOrgRequest)(nil),             // 31: api.hubd.pb.LeaveOrgRequest
+	(*LeaveOrgResponse)(nil),            // 32: api.hubd.pb.LeaveOrgResponse
+	(*SetupBillingRequest)(nil),         // 33: api.hubd.pb.SetupBillingRequest
+	(*SetupBillingResponse)(nil),        // 34: api.hubd.pb.SetupBillingResponse
+	(*GetBillingSessionRequest)(nil),    // 35: api.hubd.pb.GetBillingSessionRequest
+	(*GetBillingSessionResponse)(nil),   // 36: api.hubd.pb.GetBillingSessionResponse
+	(*ListBillingUsersRequest)(nil),     // 37: api.hubd.pb.ListBillingUsersRequest
+	(*ListBillingUsersResponse)(nil),    // 38: api.hubd.pb.ListBillingUsersResponse
+	(*IsUsernameAvailableRequest)(nil),  // 39: api.hubd.pb.IsUsernameAvailableRequest
+	(*IsUsernameAvailableResponse)(nil), // 40: api.hubd.pb.IsUsernameAvailableResponse
+	(*IsOrgNameAvailableRequest)(nil),   // 41: api.hubd.pb.IsOrgNameAvailableRequest
+	(*IsOrgNameAvailableResponse)(nil),  // 42: api.hubd.pb.IsOrgNameAvailableResponse
+	(*DestroyAccountRequest)(nil),       // 43: api.hubd.pb.DestroyAccountRequest
+	(*DestroyAccountResponse)(nil),      // 44: api.hubd.pb.DestroyAccountResponse
+	(*OrgInfo_Member)(nil),              // 45: api.hubd.pb.OrgInfo.Member
+	(*pb.GetCustomerResponse)(nil),      // 46: api.billingd.pb.GetCustomerResponse
 }
 var file_api_hubd_pb_hubd_proto_depIdxs = []int32{
 	0,  // 0: api.hubd.pb.KeyInfo.type:type_name -> api.hubd.pb.KeyType
 	0,  // 1: api.hubd.pb.CreateKeyRequest.type:type_name -> api.hubd.pb.KeyType
-	14, // 2: api.hubd.pb.CreateKeyResponse.key_info:type_name -> api.hubd.pb.KeyInfo
-	14, // 3: api.hubd.pb.ListKeysResponse.list:type_name -> api.hubd.pb.KeyInfo
-	58, // 4: api.hubd.pb.OrgInfo.members:type_name -> api.hubd.pb.OrgInfo.Member
-	21, // 5: api.hubd.pb.CreateOrgResponse.org_info:type_name -> api.hubd.pb.OrgInfo
-	21, // 6: api.hubd.pb.GetOrgResponse.org_info:type_name -> api.hubd.pb.OrgInfo
-	21, // 7: api.hubd.pb.ListOrgsResponse.list:type_name -> api.hubd.pb.OrgInfo
-	59, // 8: api.hubd.pb.ListBillingUsersResponse.users:type_name -> api.billingd.pb.GetCustomerResponse
-	48, // 9: api.hubd.pb.ArchivesLsResponse.archives:type_name -> api.hubd.pb.ArchiveLsItem
-	49, // 10: api.hubd.pb.ArchiveLsItem.info:type_name -> api.hubd.pb.ArchiveLsItemMetadata
-	54, // 11: api.hubd.pb.ArchiveRetrievalLsResponse.retrievals:type_name -> api.hubd.pb.ArchiveRetrievalLsItem
-	1,  // 12: api.hubd.pb.ArchiveRetrievalLsItem.status:type_name -> api.hubd.pb.ArchiveRetrievalStatus
-	55, // 13: api.hubd.pb.ArchiveRetrievalLsItem.new_bucket:type_name -> api.hubd.pb.ArchiveRetrievalLsItemNewBucket
-	2,  // 14: api.hubd.pb.APIService.BuildInfo:input_type -> api.hubd.pb.BuildInfoRequest
-	4,  // 15: api.hubd.pb.APIService.Signup:input_type -> api.hubd.pb.SignupRequest
-	6,  // 16: api.hubd.pb.APIService.Signin:input_type -> api.hubd.pb.SigninRequest
-	8,  // 17: api.hubd.pb.APIService.Signout:input_type -> api.hubd.pb.SignoutRequest
-	10, // 18: api.hubd.pb.APIService.GetSessionInfo:input_type -> api.hubd.pb.GetSessionInfoRequest
-	12, // 19: api.hubd.pb.APIService.GetIdentity:input_type -> api.hubd.pb.GetIdentityRequest
-	15, // 20: api.hubd.pb.APIService.CreateKey:input_type -> api.hubd.pb.CreateKeyRequest
-	19, // 21: api.hubd.pb.APIService.ListKeys:input_type -> api.hubd.pb.ListKeysRequest
-	17, // 22: api.hubd.pb.APIService.InvalidateKey:input_type -> api.hubd.pb.InvalidateKeyRequest
-	22, // 23: api.hubd.pb.APIService.CreateOrg:input_type -> api.hubd.pb.CreateOrgRequest
-	24, // 24: api.hubd.pb.APIService.GetOrg:input_type -> api.hubd.pb.GetOrgRequest
-	26, // 25: api.hubd.pb.APIService.ListOrgs:input_type -> api.hubd.pb.ListOrgsRequest
-	28, // 26: api.hubd.pb.APIService.RemoveOrg:input_type -> api.hubd.pb.RemoveOrgRequest
-	30, // 27: api.hubd.pb.APIService.InviteToOrg:input_type -> api.hubd.pb.InviteToOrgRequest
-	32, // 28: api.hubd.pb.APIService.LeaveOrg:input_type -> api.hubd.pb.LeaveOrgRequest
-	34, // 29: api.hubd.pb.APIService.SetupBilling:input_type -> api.hubd.pb.SetupBillingRequest
-	36, // 30: api.hubd.pb.APIService.GetBillingSession:input_type -> api.hubd.pb.GetBillingSessionRequest
-	38, // 31: api.hubd.pb.APIService.ListBillingUsers:input_type -> api.hubd.pb.ListBillingUsersRequest
-	40, // 32: api.hubd.pb.APIService.IsUsernameAvailable:input_type -> api.hubd.pb.IsUsernameAvailableRequest
-	42, // 33: api.hubd.pb.APIService.IsOrgNameAvailable:input_type -> api.hubd.pb.IsOrgNameAvailableRequest
-	44, // 34: api.hubd.pb.APIService.DestroyAccount:input_type -> api.hubd.pb.DestroyAccountRequest
-	46, // 35: api.hubd.pb.APIService.ArchivesLs:input_type -> api.hubd.pb.ArchivesLsRequest
-	50, // 36: api.hubd.pb.APIService.ArchivesImport:input_type -> api.hubd.pb.ArchivesImportRequest
-	52, // 37: api.hubd.pb.APIService.ArchiveRetrievalLs:input_type -> api.hubd.pb.ArchiveRetrievalLsRequest
-	56, // 38: api.hubd.pb.APIService.ArchiveRetrievalLogs:input_type -> api.hubd.pb.ArchiveRetrievalLogsRequest
-	3,  // 39: api.hubd.pb.APIService.BuildInfo:output_type -> api.hubd.pb.BuildInfoResponse
-	5,  // 40: api.hubd.pb.APIService.Signup:output_type -> api.hubd.pb.SignupResponse
-	7,  // 41: api.hubd.pb.APIService.Signin:output_type -> api.hubd.pb.SigninResponse
-	9,  // 42: api.hubd.pb.APIService.Signout:output_type -> api.hubd.pb.SignoutResponse
-	11, // 43: api.hubd.pb.APIService.GetSessionInfo:output_type -> api.hubd.pb.GetSessionInfoResponse
-	13, // 44: api.hubd.pb.APIService.GetIdentity:output_type -> api.hubd.pb.GetIdentityResponse
-	16, // 45: api.hubd.pb.APIService.CreateKey:output_type -> api.hubd.pb.CreateKeyResponse
-	20, // 46: api.hubd.pb.APIService.ListKeys:output_type -> api.hubd.pb.ListKeysResponse
-	18, // 47: api.hubd.pb.APIService.InvalidateKey:output_type -> api.hubd.pb.InvalidateKeyResponse
-	23, // 48: api.hubd.pb.APIService.CreateOrg:output_type -> api.hubd.pb.CreateOrgResponse
-	25, // 49: api.hubd.pb.APIService.GetOrg:output_type -> api.hubd.pb.GetOrgResponse
-	27, // 50: api.hubd.pb.APIService.ListOrgs:output_type -> api.hubd.pb.ListOrgsResponse
-	29, // 51: api.hubd.pb.APIService.RemoveOrg:output_type -> api.hubd.pb.RemoveOrgResponse
-	31, // 52: api.hubd.pb.APIService.InviteToOrg:output_type -> api.hubd.pb.InviteToOrgResponse
-	33, // 53: api.hubd.pb.APIService.LeaveOrg:output_type -> api.hubd.pb.LeaveOrgResponse
-	35, // 54: api.hubd.pb.APIService.SetupBilling:output_type -> api.hubd.pb.SetupBillingResponse
-	37, // 55: api.hubd.pb.APIService.GetBillingSession:output_type -> api.hubd.pb.GetBillingSessionResponse
-	39, // 56: api.hubd.pb.APIService.ListBillingUsers:output_type -> api.hubd.pb.ListBillingUsersResponse
-	41, // 57: api.hubd.pb.APIService.IsUsernameAvailable:output_type -> api.hubd.pb.IsUsernameAvailableResponse
-	43, // 58: api.hubd.pb.APIService.IsOrgNameAvailable:output_type -> api.hubd.pb.IsOrgNameAvailableResponse
-	45, // 59: api.hubd.pb.APIService.DestroyAccount:output_type -> api.hubd.pb.DestroyAccountResponse
-	47, // 60: api.hubd.pb.APIService.ArchivesLs:output_type -> api.hubd.pb.ArchivesLsResponse
-	51, // 61: api.hubd.pb.APIService.ArchivesImport:output_type -> api.hubd.pb.ArchivesImportResponse
-	53, // 62: api.hubd.pb.APIService.ArchiveRetrievalLs:output_type -> api.hubd.pb.ArchiveRetrievalLsResponse
-	57, // 63: api.hubd.pb.APIService.ArchiveRetrievalLogs:output_type -> api.hubd.pb.ArchiveRetrievalLogsResponse
-	39, // [39:64] is the sub-list for method output_type
-	14, // [14:39] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	13, // 2: api.hubd.pb.CreateKeyResponse.key_info:type_name -> api.hubd.pb.KeyInfo
+	13, // 3: api.hubd.pb.ListKeysResponse.list:type_name -> api.hubd.pb.KeyInfo
+	45, // 4: api.hubd.pb.OrgInfo.members:type_name -> api.hubd.pb.OrgInfo.Member
+	20, // 5: api.hubd.pb.CreateOrgResponse.org_info:type_name -> api.hubd.pb.OrgInfo
+	20, // 6: api.hubd.pb.GetOrgResponse.org_info:type_name -> api.hubd.pb.OrgInfo
+	20, // 7: api.hubd.pb.ListOrgsResponse.list:type_name -> api.hubd.pb.OrgInfo
+	46, // 8: api.hubd.pb.ListBillingUsersResponse.users:type_name -> api.billingd.pb.GetCustomerResponse
+	1,  // 9: api.hubd.pb.APIService.BuildInfo:input_type -> api.hubd.pb.BuildInfoRequest
+	3,  // 10: api.hubd.pb.APIService.Signup:input_type -> api.hubd.pb.SignupRequest
+	5,  // 11: api.hubd.pb.APIService.Signin:input_type -> api.hubd.pb.SigninRequest
+	7,  // 12: api.hubd.pb.APIService.Signout:input_type -> api.hubd.pb.SignoutRequest
+	9,  // 13: api.hubd.pb.APIService.GetSessionInfo:input_type -> api.hubd.pb.GetSessionInfoRequest
+	11, // 14: api.hubd.pb.APIService.GetIdentity:input_type -> api.hubd.pb.GetIdentityRequest
+	14, // 15: api.hubd.pb.APIService.CreateKey:input_type -> api.hubd.pb.CreateKeyRequest
+	18, // 16: api.hubd.pb.APIService.ListKeys:input_type -> api.hubd.pb.ListKeysRequest
+	16, // 17: api.hubd.pb.APIService.InvalidateKey:input_type -> api.hubd.pb.InvalidateKeyRequest
+	21, // 18: api.hubd.pb.APIService.CreateOrg:input_type -> api.hubd.pb.CreateOrgRequest
+	23, // 19: api.hubd.pb.APIService.GetOrg:input_type -> api.hubd.pb.GetOrgRequest
+	25, // 20: api.hubd.pb.APIService.ListOrgs:input_type -> api.hubd.pb.ListOrgsRequest
+	27, // 21: api.hubd.pb.APIService.RemoveOrg:input_type -> api.hubd.pb.RemoveOrgRequest
+	29, // 22: api.hubd.pb.APIService.InviteToOrg:input_type -> api.hubd.pb.InviteToOrgRequest
+	31, // 23: api.hubd.pb.APIService.LeaveOrg:input_type -> api.hubd.pb.LeaveOrgRequest
+	33, // 24: api.hubd.pb.APIService.SetupBilling:input_type -> api.hubd.pb.SetupBillingRequest
+	35, // 25: api.hubd.pb.APIService.GetBillingSession:input_type -> api.hubd.pb.GetBillingSessionRequest
+	37, // 26: api.hubd.pb.APIService.ListBillingUsers:input_type -> api.hubd.pb.ListBillingUsersRequest
+	39, // 27: api.hubd.pb.APIService.IsUsernameAvailable:input_type -> api.hubd.pb.IsUsernameAvailableRequest
+	41, // 28: api.hubd.pb.APIService.IsOrgNameAvailable:input_type -> api.hubd.pb.IsOrgNameAvailableRequest
+	43, // 29: api.hubd.pb.APIService.DestroyAccount:input_type -> api.hubd.pb.DestroyAccountRequest
+	2,  // 30: api.hubd.pb.APIService.BuildInfo:output_type -> api.hubd.pb.BuildInfoResponse
+	4,  // 31: api.hubd.pb.APIService.Signup:output_type -> api.hubd.pb.SignupResponse
+	6,  // 32: api.hubd.pb.APIService.Signin:output_type -> api.hubd.pb.SigninResponse
+	8,  // 33: api.hubd.pb.APIService.Signout:output_type -> api.hubd.pb.SignoutResponse
+	10, // 34: api.hubd.pb.APIService.GetSessionInfo:output_type -> api.hubd.pb.GetSessionInfoResponse
+	12, // 35: api.hubd.pb.APIService.GetIdentity:output_type -> api.hubd.pb.GetIdentityResponse
+	15, // 36: api.hubd.pb.APIService.CreateKey:output_type -> api.hubd.pb.CreateKeyResponse
+	19, // 37: api.hubd.pb.APIService.ListKeys:output_type -> api.hubd.pb.ListKeysResponse
+	17, // 38: api.hubd.pb.APIService.InvalidateKey:output_type -> api.hubd.pb.InvalidateKeyResponse
+	22, // 39: api.hubd.pb.APIService.CreateOrg:output_type -> api.hubd.pb.CreateOrgResponse
+	24, // 40: api.hubd.pb.APIService.GetOrg:output_type -> api.hubd.pb.GetOrgResponse
+	26, // 41: api.hubd.pb.APIService.ListOrgs:output_type -> api.hubd.pb.ListOrgsResponse
+	28, // 42: api.hubd.pb.APIService.RemoveOrg:output_type -> api.hubd.pb.RemoveOrgResponse
+	30, // 43: api.hubd.pb.APIService.InviteToOrg:output_type -> api.hubd.pb.InviteToOrgResponse
+	32, // 44: api.hubd.pb.APIService.LeaveOrg:output_type -> api.hubd.pb.LeaveOrgResponse
+	34, // 45: api.hubd.pb.APIService.SetupBilling:output_type -> api.hubd.pb.SetupBillingResponse
+	36, // 46: api.hubd.pb.APIService.GetBillingSession:output_type -> api.hubd.pb.GetBillingSessionResponse
+	38, // 47: api.hubd.pb.APIService.ListBillingUsers:output_type -> api.hubd.pb.ListBillingUsersResponse
+	40, // 48: api.hubd.pb.APIService.IsUsernameAvailable:output_type -> api.hubd.pb.IsUsernameAvailableResponse
+	42, // 49: api.hubd.pb.APIService.IsOrgNameAvailable:output_type -> api.hubd.pb.IsOrgNameAvailableResponse
+	44, // 50: api.hubd.pb.APIService.DestroyAccount:output_type -> api.hubd.pb.DestroyAccountResponse
+	30, // [30:51] is the sub-list for method output_type
+	9,  // [9:30] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_api_hubd_pb_hubd_proto_init() }
@@ -3979,150 +3170,6 @@ func file_api_hubd_pb_hubd_proto_init() {
 			}
 		}
 		file_api_hubd_pb_hubd_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchivesLsRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchivesLsResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveLsItem); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveLsItemMetadata); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchivesImportRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchivesImportResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLsRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLsResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[52].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLsItem); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLsItemNewBucket); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLogsRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ArchiveRetrievalLogsResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_hubd_pb_hubd_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*OrgInfo_Member); i {
 			case 0:
 				return &v.state
@@ -4135,16 +3182,13 @@ func file_api_hubd_pb_hubd_proto_init() {
 			}
 		}
 	}
-	file_api_hubd_pb_hubd_proto_msgTypes[52].OneofWrappers = []interface{}{
-		(*ArchiveRetrievalLsItem_NewBucket)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_hubd_pb_hubd_proto_rawDesc,
-			NumEnums:      2,
-			NumMessages:   57,
+			NumEnums:      1,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -4192,12 +3236,6 @@ type APIServiceClient interface {
 	IsUsernameAvailable(ctx context.Context, in *IsUsernameAvailableRequest, opts ...grpc.CallOption) (*IsUsernameAvailableResponse, error)
 	IsOrgNameAvailable(ctx context.Context, in *IsOrgNameAvailableRequest, opts ...grpc.CallOption) (*IsOrgNameAvailableResponse, error)
 	DestroyAccount(ctx context.Context, in *DestroyAccountRequest, opts ...grpc.CallOption) (*DestroyAccountResponse, error)
-	// Archives Import
-	ArchivesLs(ctx context.Context, in *ArchivesLsRequest, opts ...grpc.CallOption) (*ArchivesLsResponse, error)
-	ArchivesImport(ctx context.Context, in *ArchivesImportRequest, opts ...grpc.CallOption) (*ArchivesImportResponse, error)
-	// Archive Retrieval
-	ArchiveRetrievalLs(ctx context.Context, in *ArchiveRetrievalLsRequest, opts ...grpc.CallOption) (*ArchiveRetrievalLsResponse, error)
-	ArchiveRetrievalLogs(ctx context.Context, in *ArchiveRetrievalLogsRequest, opts ...grpc.CallOption) (APIService_ArchiveRetrievalLogsClient, error)
 }
 
 type aPIServiceClient struct {
@@ -4397,65 +3435,6 @@ func (c *aPIServiceClient) DestroyAccount(ctx context.Context, in *DestroyAccoun
 	return out, nil
 }
 
-func (c *aPIServiceClient) ArchivesLs(ctx context.Context, in *ArchivesLsRequest, opts ...grpc.CallOption) (*ArchivesLsResponse, error) {
-	out := new(ArchivesLsResponse)
-	err := c.cc.Invoke(ctx, "/api.hubd.pb.APIService/ArchivesLs", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) ArchivesImport(ctx context.Context, in *ArchivesImportRequest, opts ...grpc.CallOption) (*ArchivesImportResponse, error) {
-	out := new(ArchivesImportResponse)
-	err := c.cc.Invoke(ctx, "/api.hubd.pb.APIService/ArchivesImport", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) ArchiveRetrievalLs(ctx context.Context, in *ArchiveRetrievalLsRequest, opts ...grpc.CallOption) (*ArchiveRetrievalLsResponse, error) {
-	out := new(ArchiveRetrievalLsResponse)
-	err := c.cc.Invoke(ctx, "/api.hubd.pb.APIService/ArchiveRetrievalLs", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *aPIServiceClient) ArchiveRetrievalLogs(ctx context.Context, in *ArchiveRetrievalLogsRequest, opts ...grpc.CallOption) (APIService_ArchiveRetrievalLogsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_APIService_serviceDesc.Streams[0], "/api.hubd.pb.APIService/ArchiveRetrievalLogs", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &aPIServiceArchiveRetrievalLogsClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type APIService_ArchiveRetrievalLogsClient interface {
-	Recv() (*ArchiveRetrievalLogsResponse, error)
-	grpc.ClientStream
-}
-
-type aPIServiceArchiveRetrievalLogsClient struct {
-	grpc.ClientStream
-}
-
-func (x *aPIServiceArchiveRetrievalLogsClient) Recv() (*ArchiveRetrievalLogsResponse, error) {
-	m := new(ArchiveRetrievalLogsResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // APIServiceServer is the server API for APIService service.
 type APIServiceServer interface {
 	BuildInfo(context.Context, *BuildInfoRequest) (*BuildInfoResponse, error)
@@ -4479,12 +3458,6 @@ type APIServiceServer interface {
 	IsUsernameAvailable(context.Context, *IsUsernameAvailableRequest) (*IsUsernameAvailableResponse, error)
 	IsOrgNameAvailable(context.Context, *IsOrgNameAvailableRequest) (*IsOrgNameAvailableResponse, error)
 	DestroyAccount(context.Context, *DestroyAccountRequest) (*DestroyAccountResponse, error)
-	// Archives Import
-	ArchivesLs(context.Context, *ArchivesLsRequest) (*ArchivesLsResponse, error)
-	ArchivesImport(context.Context, *ArchivesImportRequest) (*ArchivesImportResponse, error)
-	// Archive Retrieval
-	ArchiveRetrievalLs(context.Context, *ArchiveRetrievalLsRequest) (*ArchiveRetrievalLsResponse, error)
-	ArchiveRetrievalLogs(*ArchiveRetrievalLogsRequest, APIService_ArchiveRetrievalLogsServer) error
 }
 
 // UnimplementedAPIServiceServer can be embedded to have forward compatible implementations.
@@ -4553,18 +3526,6 @@ func (*UnimplementedAPIServiceServer) IsOrgNameAvailable(context.Context, *IsOrg
 }
 func (*UnimplementedAPIServiceServer) DestroyAccount(context.Context, *DestroyAccountRequest) (*DestroyAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DestroyAccount not implemented")
-}
-func (*UnimplementedAPIServiceServer) ArchivesLs(context.Context, *ArchivesLsRequest) (*ArchivesLsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchivesLs not implemented")
-}
-func (*UnimplementedAPIServiceServer) ArchivesImport(context.Context, *ArchivesImportRequest) (*ArchivesImportResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchivesImport not implemented")
-}
-func (*UnimplementedAPIServiceServer) ArchiveRetrievalLs(context.Context, *ArchiveRetrievalLsRequest) (*ArchiveRetrievalLsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ArchiveRetrievalLs not implemented")
-}
-func (*UnimplementedAPIServiceServer) ArchiveRetrievalLogs(*ArchiveRetrievalLogsRequest, APIService_ArchiveRetrievalLogsServer) error {
-	return status.Errorf(codes.Unimplemented, "method ArchiveRetrievalLogs not implemented")
 }
 
 func RegisterAPIServiceServer(s *grpc.Server, srv APIServiceServer) {
@@ -4949,81 +3910,6 @@ func _APIService_DestroyAccount_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _APIService_ArchivesLs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ArchivesLsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).ArchivesLs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.hubd.pb.APIService/ArchivesLs",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).ArchivesLs(ctx, req.(*ArchivesLsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_ArchivesImport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ArchivesImportRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).ArchivesImport(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.hubd.pb.APIService/ArchivesImport",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).ArchivesImport(ctx, req.(*ArchivesImportRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_ArchiveRetrievalLs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ArchiveRetrievalLsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(APIServiceServer).ArchiveRetrievalLs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.hubd.pb.APIService/ArchiveRetrievalLs",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServiceServer).ArchiveRetrievalLs(ctx, req.(*ArchiveRetrievalLsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _APIService_ArchiveRetrievalLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ArchiveRetrievalLogsRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(APIServiceServer).ArchiveRetrievalLogs(m, &aPIServiceArchiveRetrievalLogsServer{stream})
-}
-
-type APIService_ArchiveRetrievalLogsServer interface {
-	Send(*ArchiveRetrievalLogsResponse) error
-	grpc.ServerStream
-}
-
-type aPIServiceArchiveRetrievalLogsServer struct {
-	grpc.ServerStream
-}
-
-func (x *aPIServiceArchiveRetrievalLogsServer) Send(m *ArchiveRetrievalLogsResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 var _APIService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "api.hubd.pb.APIService",
 	HandlerType: (*APIServiceServer)(nil),
@@ -5112,25 +3998,7 @@ var _APIService_serviceDesc = grpc.ServiceDesc{
 			MethodName: "DestroyAccount",
 			Handler:    _APIService_DestroyAccount_Handler,
 		},
-		{
-			MethodName: "ArchivesLs",
-			Handler:    _APIService_ArchivesLs_Handler,
-		},
-		{
-			MethodName: "ArchivesImport",
-			Handler:    _APIService_ArchivesImport_Handler,
-		},
-		{
-			MethodName: "ArchiveRetrievalLs",
-			Handler:    _APIService_ArchiveRetrievalLs_Handler,
-		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "ArchiveRetrievalLogs",
-			Handler:       _APIService_ArchiveRetrievalLogs_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/hubd/pb/hubd.proto",
 }
