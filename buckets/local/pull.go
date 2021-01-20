@@ -340,23 +340,27 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 func handlePullProgress(global chan<- int64, fsize int64) (chan<- int64, func()) {
 	progress := make(chan int64)
 	var current int64
+	var done bool
 	var lk sync.Mutex
 	go func() {
 		for p := range progress {
 			lk.Lock()
-			diff := p - current
-			global <- diff
-			current = p
+			if !done {
+				diff := p - current
+				global <- diff
+				current = p
+			}
 			lk.Unlock()
 		}
 	}()
-	done := func() {
-		close(progress)
+	doneFn := func() {
 		lk.Lock()
 		global <- fsize - current
+		done = true
+		close(progress)
 		lk.Unlock()
 	}
-	return progress, done
+	return progress, doneFn
 }
 
 func handleAllPullProgress(os []object, events chan<- Event) chan<- int64 {
