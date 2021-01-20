@@ -46,16 +46,18 @@ func TestClient_CreateCustomer(t *testing.T) {
 
 	key := newKey(t)
 	email := apitest.NewEmail()
-	_, err := c.CreateCustomer(context.Background(), key, email, mdb.Dev)
+	username := apitest.NewUsername()
+	_, err := c.CreateCustomer(context.Background(), key, email, username, mdb.Dev)
 	require.NoError(t, err)
 
-	_, err = c.CreateCustomer(context.Background(), key, email, mdb.Dev)
+	_, err = c.CreateCustomer(context.Background(), key, email, username, mdb.Dev)
 	require.Error(t, err)
 
 	_, err = c.CreateCustomer(
 		context.Background(),
 		newKey(t),
 		apitest.NewEmail(),
+		apitest.NewUsername(),
 		mdb.User,
 		client.WithParent(key, email, mdb.Dev),
 	)
@@ -66,6 +68,7 @@ func TestClient_CreateCustomer(t *testing.T) {
 		context.Background(),
 		newKey(t),
 		apitest.NewEmail(),
+		apitest.NewUsername(),
 		mdb.User,
 		client.WithParent(nonExistentParentKey, apitest.NewEmail(), mdb.Dev),
 	)
@@ -80,7 +83,7 @@ func TestClient_CreateCustomer(t *testing.T) {
 func TestClient_GetCustomer(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	cus, err := c.GetCustomer(context.Background(), key)
@@ -96,7 +99,7 @@ func TestClient_GetCustomer(t *testing.T) {
 func TestClient_GetCustomerSession(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	session, err := c.GetCustomerSession(context.Background(), key)
@@ -108,7 +111,8 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
 	email := apitest.NewEmail()
-	_, err := c.CreateCustomer(context.Background(), key, email, mdb.Org)
+	username := apitest.NewUsername()
+	_, err := c.CreateCustomer(context.Background(), key, email, username, mdb.Org)
 	require.NoError(t, err)
 
 	for i := 0; i < 30; i++ {
@@ -116,6 +120,7 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 			context.Background(),
 			newKey(t),
 			apitest.NewEmail(),
+			apitest.NewUsername(),
 			mdb.User,
 			client.WithParent(key, email, mdb.Org),
 		)
@@ -147,7 +152,7 @@ func TestClient_ListDependentCustomers(t *testing.T) {
 func TestClient_UpdateCustomer(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.UpdateCustomer(context.Background(), id, 100, true, true)
@@ -163,7 +168,7 @@ func TestClient_UpdateCustomer(t *testing.T) {
 func TestClient_UpdateCustomerSubscription(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	start := time.Now().Add(-time.Hour).Unix()
@@ -179,7 +184,7 @@ func TestClient_UpdateCustomerSubscription(t *testing.T) {
 func TestClient_RecreateCustomerSubscription(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.RecreateCustomerSubscription(context.Background(), key)
@@ -201,7 +206,7 @@ func TestClient_RecreateCustomerSubscription(t *testing.T) {
 func TestClient_DeleteCustomer(t *testing.T) {
 	c := setup(t)
 	key := newKey(t)
-	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	_, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	err = c.DeleteCustomer(context.Background(), key)
@@ -229,7 +234,7 @@ func TestClient_GetCustomerUsage(t *testing.T) {
 func getCustomerUsage(t *testing.T, test usageTest) {
 	c := setup(t)
 	key := newKey(t)
-	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), mdb.Dev)
+	id, err := c.CreateCustomer(context.Background(), key, apitest.NewEmail(), apitest.NewUsername(), mdb.Dev)
 	require.NoError(t, err)
 
 	product := getProduct(t, test.key)
@@ -266,7 +271,8 @@ func incCustomerUsage(t *testing.T, test usageTest) {
 	c := setup(t)
 	key := newKey(t)
 	email := apitest.NewEmail()
-	id, err := c.CreateCustomer(context.Background(), key, email, mdb.Dev)
+	username := apitest.NewUsername()
+	id, err := c.CreateCustomer(context.Background(), key, email, username, mdb.Dev)
 	require.NoError(t, err)
 
 	product := getProduct(t, test.key)
@@ -307,6 +313,7 @@ func incCustomerUsage(t *testing.T, test usageTest) {
 		context.Background(),
 		childKey,
 		apitest.NewEmail(),
+		apitest.NewUsername(),
 		mdb.User,
 		client.WithParent(key, email, mdb.Dev),
 	)

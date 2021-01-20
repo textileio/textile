@@ -162,16 +162,6 @@ var (
 				Key:      "email.session_secret",
 				DefValue: "",
 			},
-
-			// Segment
-			"segmentApiKey": {
-				Key:      "segment.api_key",
-				DefValue: "",
-			},
-			"segmentPrefix": {
-				Key:      "segment.prefix",
-				DefValue: "",
-			},
 		},
 		EnvPre: "HUB",
 		Global: true,
@@ -325,16 +315,6 @@ func init() {
 		config.Flags["emailSessionSecret"].DefValue.(string),
 		"Session secret to use when testing email APIs")
 
-	// Segment
-	rootCmd.PersistentFlags().String(
-		"segmentApiKey",
-		config.Flags["segmentApiKey"].DefValue.(string),
-		"Segment API key")
-	rootCmd.PersistentFlags().String(
-		"segmentPrefix",
-		config.Flags["segmentPrefix"].DefValue.(string),
-		"Segment trait source prefix")
-
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -412,10 +392,6 @@ var rootCmd = &cobra.Command{
 		customerioInviteTmpl := config.Viper.GetString("customerio.invite_template")
 		emailSessionSecret := config.Viper.GetString("email.session_secret")
 
-		// Segment
-		segmentApiKey := config.Viper.GetString("segment.api_key")
-		segmentPrefix := config.Viper.GetString("segment.prefix")
-
 		var opts []core.Option
 		if addrThreadsMongoUri != "" {
 			if addrThreadsMongoName == "" {
@@ -463,9 +439,6 @@ var rootCmd = &cobra.Command{
 			CustomerioInviteTmpl:  customerioInviteTmpl,
 			CustomerioAPIKey:      customerioApiKey,
 			EmailSessionSecret:    emailSessionSecret,
-			// Segment
-			SegmentAPIKey: segmentApiKey,
-			SegmentPrefix: segmentPrefix,
 		}, opts...)
 		cmd.ErrCheck(err)
 		textile.Bootstrap()

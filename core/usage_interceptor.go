@@ -10,6 +10,7 @@ import (
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/api/client"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/pb"
@@ -124,6 +125,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 				ctx,
 				account.Owner().Key,
 				email,
+				account.Owner().Username,
 				account.Owner().Type,
 				opts...,
 			); err != nil {
@@ -233,6 +235,24 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 			return err
 		}
 	}
+
+	if t.bc != nil {
+		var tp analytics.Event
+		switch method {
+		case "/api.bucketsd.pb.APIService/Create":
+			tp = analytics.BucketCreated
+		case "/api.bucketsd.pb.APIService/Archive":
+			tp = analytics.BucketArchiveCreated
+		case "/threads.pb.API/NewDB":
+			tp = analytics.ThreadDbCreated
+		}
+		t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, tp, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		})
+	}
+
 	return nil
 }
 

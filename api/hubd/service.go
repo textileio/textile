@@ -16,7 +16,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/api/client"
-	"github.com/textileio/textile/v2/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
@@ -55,7 +55,6 @@ type Service struct {
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
-	Analytics           *analytics.Client
 }
 
 // Info provides the currently running API's build information
@@ -115,12 +114,6 @@ func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.Signup
 	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
 		return nil, err
 	}
-
-	go s.Analytics.Update(dev.Key.String(), dev.Email, true, map[string]interface{}{
-		"username":     dev.Username,
-		"account_type": dev.Type,
-		"name":         dev.Name,
-	})
 
 	// Check for pending invites
 	invites, err := s.Collections.Invites.ListByEmail(ctx, dev.Email)
@@ -191,11 +184,9 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, err
 	}
 
-	go s.Analytics.Update(dev.Key.String(), dev.Email, true, map[string]interface{}{
-		"username":     dev.Username,
-		"account_type": dev.Type,
-		"name":         dev.Name,
-	})
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, nil)
+	}
 
 	return &pb.SigninResponse{
 		Key:     key,
@@ -315,7 +306,21 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), account.User.Email, "create_key", true, map[string]interface{}{})
+	var event analytics.Event
+	if keyType == mdb.AccountKey {
+		event = analytics.KeyAccountCreated
+	} else {
+		event = analytics.KeyUserCreated
+	}
+	if s.BillingClient != nil {
+		// Same "member" based payload for Dev or Org account types so that same downstream logic/templating can be used.
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, event, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+			"secure_key":      fmt.Sprintf("%t", req.Secure),
+		})
+	}
 
 	return &pb.CreateKeyResponse{
 		KeyInfo: &pb.KeyInfo{
@@ -346,6 +351,7 @@ func (s *Service) InvalidateKey(ctx context.Context, req *pb.InvalidateKeyReques
 	if err := s.Collections.APIKeys.Invalidate(ctx, req.Key); err != nil {
 		return nil, err
 	}
+
 	return &pb.InvalidateKeyResponse{}, nil
 }
 
@@ -421,10 +427,20 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), account.User.Email, "create_org", true, map[string]interface{}{
-		"org_name": org.Name,
-		"org_key":  org.Key.String(),
-	})
+	if s.BillingClient != nil {
+		// Identify the Org
+		s.BillingClient.Identify(ctx, org.Key, org.Type, true, account.User.Email, map[string]string{
+			"username":            org.Username,
+			"created_by":          account.User.Key.String(),
+			"created_by_username": account.User.Username,
+			"created_by_email":    account.User.Email,
+		})
+		// Attribute event to Dev
+		s.BillingClient.TrackEvent(ctx, account.User.Key, account.User.Type, true, analytics.OrgCreated, map[string]string{
+			"org_name": org.Name,
+			"org_key":  org.Key.String(),
+		})
+	}
 
 	return &pb.CreateOrgResponse{
 		OrgInfo: orgInfo,
@@ -525,6 +541,15 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	if err = s.destroyAccount(ctx, account.Org); err != nil {
 		return nil, err
 	}
+
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgDestroyed, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		})
+	}
+
 	return &pb.RemoveOrgResponse{}, nil
 }
 
@@ -556,11 +581,14 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		return nil, err
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), account.User.Email, "invite_to_org", true, map[string]interface{}{
-		"org_name":    account.Org.Name,
-		"org_key":     account.Org.Key.String(),
-		"org_invitee": req.Email,
-	})
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgInviteCreated, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+			"invitee":         req.Email,
+		})
+	}
 
 	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
 }
@@ -584,6 +612,15 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if err := s.Collections.Invites.DeleteByFromAndOrg(ctx, account.User.Key, account.Org.Username); err != nil {
 		return nil, err
 	}
+
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgLeave, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		})
+	}
+
 	return &pb.LeaveOrgResponse{}, nil
 }
 
@@ -605,7 +642,13 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 		return nil, err
 	}
 
-	go s.Analytics.NewEvent(account.User.Key.String(), account.User.Email, "setup_billing", true, map[string]interface{}{})
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BillingSetup, map[string]string{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		})
+	}
 
 	return &pb.SetupBillingResponse{}, nil
 }
@@ -686,8 +729,9 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	if err := s.destroyAccount(ctx, account.User); err != nil {
 		return nil, err
 	}
-
-	go s.Analytics.NewEvent(account.User.Key.String(), account.User.Email, "destroy_account", true, map[string]interface{}{})
+	if s.BillingClient != nil {
+		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, nil)
+	}
 
 	return &pb.DestroyAccountResponse{}, nil
 }

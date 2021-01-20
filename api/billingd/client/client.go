@@ -5,6 +5,7 @@ import (
 
 	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
@@ -42,6 +43,7 @@ func (c *Client) CreateCustomer(
 	ctx context.Context,
 	key thread.PubKey,
 	email string,
+	username string,
 	accountType mdb.AccountType,
 	opts ...Option,
 ) (string, error) {
@@ -62,6 +64,7 @@ func (c *Client) CreateCustomer(
 			Key:         key.String(),
 			Email:       email,
 			AccountType: int32(accountType),
+			Username:    username,
 		},
 		Parent: parent,
 	})
@@ -163,6 +166,44 @@ func (c *Client) IncCustomerUsage(
 func (c *Client) ReportCustomerUsage(ctx context.Context, key thread.PubKey) error {
 	_, err := c.c.ReportCustomerUsage(ctx, &pb.ReportCustomerUsageRequest{
 		Key: key.String(),
+	})
+	return err
+}
+
+// Identify creates or updates the user traits
+func (c *Client) Identify(
+	ctx context.Context,
+	key thread.PubKey,
+	accountType mdb.AccountType,
+	active bool,
+	email string,
+	properties map[string]string,
+) error {
+	_, err := c.c.Identify(ctx, &pb.IdentifyRequest{
+		Key:         key.String(),
+		AccountType: int32(accountType),
+		Active:      active,
+		Email:       email,
+		Properties:  properties,
+	})
+	return err
+}
+
+// TrackEvent records a new event
+func (c *Client) TrackEvent(
+	ctx context.Context,
+	key thread.PubKey,
+	accountType mdb.AccountType,
+	active bool,
+	event analytics.Event,
+	properties map[string]string,
+) error {
+	_, err := c.c.TrackEvent(ctx, &pb.TrackEventRequest{
+		Key:         key.String(),
+		AccountType: int32(accountType),
+		Active:      active,
+		Event:       int32(event),
+		Properties:  properties,
 	})
 	return err
 }
