@@ -33,8 +33,6 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
-	pow "github.com/textileio/powergate/api/client"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
 	pow "github.com/textileio/powergate/v2/api/client"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
@@ -382,7 +380,6 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
-			Analytics:           ac,
 		}
 		us = &usersd.Service{
 			Collections:     t.collections,

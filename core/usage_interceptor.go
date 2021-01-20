@@ -9,7 +9,6 @@ import (
 	"time"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
-	powc "github.com/textileio/powergate/api/client"
 	powc "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
@@ -18,7 +17,6 @@ import (
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
-	"google.golang.org/appengine/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

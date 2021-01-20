@@ -16,7 +16,6 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/analytics"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
@@ -56,8 +55,6 @@ type Service struct {
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
-
-	Analytics *analytics.Client
 }
 
 // Info provides the currently running API's build information
