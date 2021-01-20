@@ -9,7 +9,7 @@ import (
 	"time"
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
-	powc "github.com/textileio/powergate/api/client"
+	powc "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"

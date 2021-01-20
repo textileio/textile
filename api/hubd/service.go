@@ -15,7 +15,7 @@ import (
 	net "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
-	pow "github.com/textileio/powergate/api/client"
+	pow "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"

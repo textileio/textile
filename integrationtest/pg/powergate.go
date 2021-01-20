@@ -7,17 +7,21 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"time"
 
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/stretchr/testify/require"
-	pc "github.com/textileio/powergate/api/client"
+	pc "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 )
 
 var powAddr = "127.0.0.1:5002"
+var ipfsAddr = "/ip4/127.0.0.1/tcp/5022"
 
-func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
+func StartPowergate(t util.TestingTWithCleanup, onlineMode bool) (*pc.Client, *httpapi.HttpApi) {
+	os.Setenv("LOTUS_ONLINEMODE", strconv.FormatBool(onlineMode))
 	_, currentFilePath, _, _ := runtime.Caller(0)
 	dirpath := path.Dir(currentFilePath)
 
@@ -59,6 +63,7 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 		"up",
 		"-V",
 	)
+
 	//cmd.Stdout = os.Stdout
 	//cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
@@ -93,5 +98,10 @@ func StartPowergate(t util.TestingTWithCleanup) *pc.Client {
 		t.Errorf("max retries to connect with Powergate")
 		t.FailNow()
 	}
-	return powc
+
+	ia := util.MustParseAddr(ipfsAddr)
+	ipfs, err := httpapi.NewApi(ia)
+	require.NoError(t, err)
+
+	return powc, ipfs
 }

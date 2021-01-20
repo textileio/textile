@@ -29,6 +29,7 @@ message CreateRequest {
     string name = 1;
     string bootstrap_cid = 2;
     bool private = 3;
+    bool unfreeze = 4;
 }
 
 message CreateResponse {
@@ -37,6 +38,7 @@ message CreateResponse {
     bytes seed = 3;
     string seed_cid = 4;
     int64 pinned = 5;
+    string retrieval_id = 6;
 }
 
 message RootRequest {
@@ -216,7 +218,7 @@ enum ArchiveStatus {
     ARCHIVE_STATUS_FAILED = 3;
     ARCHIVE_STATUS_CANCELED = 4;
     ARCHIVE_STATUS_SUCCESS = 5;
-  }
+}
 
 message DealInfo {
     string proposal_cid = 1;

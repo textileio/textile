@@ -10,6 +10,7 @@ type newOptions struct {
 	fromCid  cid.Cid
 	strategy InitStrategy
 	events   chan<- PathEvent
+	unfreeze bool
 }
 
 // NewOption is used when creating a new bucket.
@@ -33,6 +34,13 @@ func WithPrivate(private bool) NewOption {
 func WithCid(c cid.Cid) NewOption {
 	return func(args *newOptions) {
 		args.fromCid = c
+	}
+}
+
+// WithUnfreeze indicates that the bucket should be bootstrapped from Filecoin.
+func WithUnfreeze(enabled bool) NewOption {
+	return func(args *newOptions) {
+		args.unfreeze = enabled
 	}
 }
 

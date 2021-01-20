@@ -58,6 +58,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*pb.CreateRe
 		Name:         args.name,
 		Private:      args.private,
 		BootstrapCid: strCid,
+		Unfreeze:     args.unfreeze,
 	})
 }
 

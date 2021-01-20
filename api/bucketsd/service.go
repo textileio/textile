@@ -29,13 +29,14 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	nutil "github.com/textileio/go-threads/net/util"
-	pow "github.com/textileio/powergate/api/client"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
-	powUtil "github.com/textileio/powergate/util"
+	pow "github.com/textileio/powergate/v2/api/client"
+	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
+	powUtil "github.com/textileio/powergate/v2/util"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
-	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/buckets/archive/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/ipns"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
@@ -102,7 +103,8 @@ type Service struct {
 	IPNSManager               *ipns.Manager
 	PowergateClient           *pow.Client
 	PowergateAdminToken       string
-	ArchiveTracker            *archive.Tracker
+	ArchiveTracker            *tracker.Tracker
+	FilRetrieval              *retrieval.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketSize             int64
 	MaxBucketArchiveRepFactor int
@@ -206,6 +208,26 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 			return nil, fmt.Errorf("invalid bootstrap cid: %s", err)
 		}
 	}
+
+	// If the bucket is created from some imported archive,
+	// create the retrieval request, and let all the process
+	// happend async in the background.
+	if req.Unfreeze {
+		account, _ := mdb.AccountFromContext(ctx)
+		owner := account.Owner()
+		accKey := owner.Key.String()
+		powToken := owner.PowInfo.Token
+
+		rid, err := s.FilRetrieval.CreateForNewBucket(ctx, accKey, dbID, dbToken, req.Name, req.Private, bootCid, powToken)
+		if err != nil {
+			return nil, fmt.Errorf("creating retrieval: %s", err)
+		}
+		return &pb.CreateResponse{
+			RetrievalId: rid,
+		}, nil
+	}
+
+	// If not created with --unfreeze, just do the normal case.
 	ctx, buck, seed, err := s.createBucket(ctx, dbID, dbToken, req.Name, req.Private, bootCid)
 	if err != nil {
 		return nil, err
@@ -239,6 +261,19 @@ func (s *Service) Create(ctx context.Context, req *pb.CreateRequest) (*pb.Create
 		SeedCid: seed.Cid().String(),
 		Pinned:  s.getPinnedBytes(ctx),
 	}, nil
+}
+
+// CreateBucket is a wrapper to enable creating a bucket from an internal method.
+// TODO(**): We should consider refactor createBucket code (and other related stuff) out of
+// `Service`, since this logic is useful for other cases than serving APIs.
+func (s *Service) CreateBucket(ctx context.Context,
+	threadID thread.ID,
+	threadToken thread.Token,
+	buckName string,
+	buckPrivate bool,
+	dataCid cid.Cid) error {
+	_, _, _, err := s.createBucket(ctx, threadID, threadToken, buckName, buckPrivate, dataCid)
+	return err
 }
 
 // createBucket returns a new bucket and seed node.
@@ -2441,11 +2476,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			if err != nil {
 				return nil, fmt.Errorf("looking up old storage config: %s", err)
 			}
-			if len(res.CidInfos) == 0 {
-				return nil, fmt.Errorf("no cid info returned")
-			}
 
-			if cmp.Equal(&storageConfig, res.CidInfos[0].LatestPushedStorageConfig) {
+			if cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
 				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
@@ -2495,7 +2527,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("updating bucket archives data: %s", err)
 	}
 
-	if err := s.ArchiveTracker.Track(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
+	if err := s.ArchiveTracker.TrackArchive(ctx, dbID, dbToken, req.Key, jid, p.Cid(), account.Owner().Key); err != nil {
 		return nil, fmt.Errorf("scheduling archive tracking: %s", err)
 	}
 
