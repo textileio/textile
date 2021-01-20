@@ -208,7 +208,7 @@ func listPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 		assert.Len(t, rep.Item.Items, 1)
 	})
 
-	q, err := client.PushPath(ctx, buck.Root.Key)
+	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q.AddFile("dir1/file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
@@ -293,6 +293,107 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
+	file1, err := os.Open("testdata/file1.jpg")
+	require.NoError(t, err)
+	defer file1.Close()
+	progress1 := make(chan int64)
+	go func() {
+		for p := range progress1 {
+			fmt.Println(fmt.Sprintf("progress: %d", p))
+		}
+	}()
+	pth1, root1, err := client.PushPath(ctx, buck.Root.Key, "file1.jpg", file1, c.WithProgress(progress1))
+	require.NoError(t, err)
+	assert.NotEmpty(t, pth1)
+	assert.NotEmpty(t, root1)
+
+	file2, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file2.Close()
+	progress2 := make(chan int64)
+	go func() {
+		for p := range progress2 {
+			fmt.Println(fmt.Sprintf("progress: %d", p))
+		}
+	}()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", file2, c.WithProgress(progress2))
+	require.NoError(t, err)
+
+	rep1, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep1.Item.Items, 3)
+
+	// Try overwriting the path
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to/file2.jpg", strings.NewReader("seeya!"))
+	require.NoError(t, err)
+
+	rep2, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep2.Item.Items, 3)
+
+	// Overwrite the path again, this time replacing a file link with a dir link
+	file3, err := os.Open("testdata/file2.jpg")
+	require.NoError(t, err)
+	defer file3.Close()
+	_, _, err = client.PushPath(ctx, buck.Root.Key, "path/to", file3)
+	require.NoError(t, err)
+
+	rep3, err := client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.Len(t, rep3.Item.Items, 3)
+
+	// Concurrent writes should result in one being rejected due to the fast-forward-only rule
+	root, err := util.NewResolvedPath(rep3.Root.Path)
+	require.NoError(t, err)
+	var err1, err2 error
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		_, _, err1 = client.PushPath(
+			ctx,
+			buck.Root.Key,
+			"conflict",
+			strings.NewReader("ready, set, go!"),
+			c.WithFastForwardOnly(root),
+		)
+		wg.Done()
+	}()
+	go func() {
+		_, _, err2 = client.PushPath(
+			ctx,
+			buck.Root.Key,
+			"conflict",
+			strings.NewReader("ready, set, go!"),
+			c.WithFastForwardOnly(root),
+		)
+		wg.Done()
+	}()
+	wg.Wait()
+	// We should have one and only one error
+	assert.False(t, (err1 != nil && err2 != nil) && (err1 == nil && err2 == nil))
+	if err1 != nil {
+		assert.True(t, strings.Contains(err1.Error(), "update is non-fast-forward"))
+	} else if err2 != nil {
+		assert.True(t, strings.Contains(err2.Error(), "update is non-fast-forward"))
+	}
+}
+
+func TestClient_PushPaths(t *testing.T) {
+	ctx, client := setup(t)
+
+	t.Run("public", func(t *testing.T) {
+		pushPaths(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		pushPaths(t, ctx, client, true)
+	})
+}
+
+func pushPaths(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
 	progress1 := make(chan int64)
 	defer close(progress1)
 	go func() {
@@ -301,7 +402,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 		}
 	}()
 
-	q, err := client.PushPath(ctx, buck.Root.Key, c.WithProgress(progress1))
+	q, err := client.PushPaths(ctx, buck.Root.Key, c.WithProgress(progress1))
 	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
@@ -319,7 +420,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	assert.Len(t, rep1.Item.Items, 3)
 
 	// Try overwriting the path
-	q2, err := client.PushPath(ctx, buck.Root.Key)
+	q2, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	r := strings.NewReader("seeya!")
 	err = q2.AddReader("path/to/file2.jpg", r, r.Size())
@@ -334,7 +435,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	assert.Len(t, rep2.Item.Items, 3)
 
 	// Overwrite the path again, this time replacing a file link with a dir link
-	q3, err := client.PushPath(ctx, buck.Root.Key)
+	q3, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q3.AddFile("path/to", "testdata/file2.jpg")
 	require.NoError(t, err)
@@ -354,7 +455,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		q, err := client.PushPath(ctx, buck.Root.Key, c.WithFastForwardOnly(root))
+		q, err := client.PushPaths(ctx, buck.Root.Key, c.WithFastForwardOnly(root))
 		require.NoError(t, err)
 		err = q.AddReader("conflict", strings.NewReader("ready, set, go!"), 0)
 		require.NoError(t, err)
@@ -365,7 +466,7 @@ func pushPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 		wg.Done()
 	}()
 	go func() {
-		q, err := client.PushPath(ctx, buck.Root.Key, c.WithFastForwardOnly(root))
+		q, err := client.PushPaths(ctx, buck.Root.Key, c.WithFastForwardOnly(root))
 		require.NoError(t, err)
 		err = q.AddReader("conflict", strings.NewReader("ready, set, go!"), 0)
 		require.NoError(t, err)
@@ -404,7 +505,7 @@ func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	file, err := os.Open("testdata/file1.jpg")
 	require.NoError(t, err)
 	defer file.Close()
-	q, err := client.PushPath(ctx, buck.Root.Key)
+	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
@@ -430,7 +531,7 @@ func pullPath(t *testing.T, ctx context.Context, client *c.Client, private bool)
 	fmt.Println(fmt.Sprintf("wrote file with size %d", info.Size()))
 
 	note := "baps!"
-	q2, err := client.PushPath(ctx, buck.Root.Key)
+	q2, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q2.AddReader("one/two/note.txt", strings.NewReader(note), 0)
 	require.NoError(t, err)
@@ -627,7 +728,7 @@ func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
-	q, err := client.PushPath(ctx, buck.Root.Key)
+	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
@@ -660,7 +761,7 @@ func removePath(t *testing.T, ctx context.Context, client *c.Client, private boo
 	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
-	q, err := client.PushPath(ctx, buck.Root.Key)
+	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
@@ -701,7 +802,14 @@ func TestClient_PushPathAccessRoles(t *testing.T) {
 	})
 }
 
-func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Context, threadsclient *tc.Client, client *c.Client, private bool) {
+func pushPathAccessRoles(
+	t *testing.T,
+	ctx context.Context,
+	userctx context.Context,
+	threadsclient *tc.Client,
+	client *c.Client,
+	private bool,
+) {
 	buck, err := client.Create(ctx, c.WithPrivate(private))
 	require.NoError(t, err)
 
@@ -719,7 +827,7 @@ func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Cont
 	t.Run("existent path", func(t *testing.T) {
 		user1, user1ctx := newUser(t, userctx, threadsclient)
 
-		q, err := client.PushPath(ctx, buck.Root.Key)
+		q, err := client.PushPaths(ctx, buck.Root.Key)
 		require.NoError(t, err)
 		err = q.AddFile("file", "testdata/file1.jpg")
 		require.NoError(t, err)
@@ -775,7 +883,7 @@ func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Cont
 		user1, user1ctx := newUser(t, userctx, threadsclient)
 		user2, user2ctx := newUser(t, userctx, threadsclient)
 
-		q, err := client.PushPath(ctx, buck.Root.Key)
+		q, err := client.PushPaths(ctx, buck.Root.Key)
 		require.NoError(t, err)
 		err = q.AddFile("a/b/f1", "testdata/file1.jpg")
 		require.NoError(t, err)
@@ -784,7 +892,7 @@ func pushPathAccessRoles(t *testing.T, ctx context.Context, userctx context.Cont
 		}
 		q.Close()
 
-		q2, err := client.PushPath(ctx, buck.Root.Key)
+		q2, err := client.PushPaths(ctx, buck.Root.Key)
 		require.NoError(t, err)
 		err = q2.AddFile("a/f2", "testdata/file2.jpg")
 		require.NoError(t, err)
@@ -872,7 +980,7 @@ func checkAccess(t *testing.T, ctx context.Context, client *c.Client, check acce
 	defer tmp.Close()
 	_, err = io.CopyN(tmp, rand.Reader, 1024)
 	require.NoError(t, err)
-	q, err := client.PushPath(ctx, check.Key)
+	q, err := client.PushPaths(ctx, check.Key)
 	require.NoError(t, err)
 	err = q.AddReader(check.Path, tmp, 0)
 	require.NoError(t, err)
@@ -903,7 +1011,7 @@ func TestClient_PullPathAccessRoles(t *testing.T) {
 
 	buck, err := client.Create(ctx)
 	require.NoError(t, err)
-	q, err := client.PushPath(ctx, buck.Root.Key)
+	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)

@@ -93,6 +93,32 @@ message ListIpfsPathResponse {
 message PushPathRequest {
     oneof payload {
         Header header = 1;
+        bytes chunk = 2;
+    }
+
+    message Header {
+        string key = 1;
+        string path = 2;
+        string root = 3;
+    }
+}
+
+message PushPathResponse {
+    Event event = 1;
+
+    message Event {
+        string name = 1;
+        string path = 2;
+        int64 bytes = 3;
+        string size = 4;
+        Root root = 5;
+        int64 pinned = 6;
+    }
+}
+
+message PushPathsRequest {
+    oneof payload {
+        Header header = 1;
         Chunk chunk = 2;
     }
 
@@ -105,11 +131,9 @@ message PushPathRequest {
         string path = 1;
         bytes data = 2;
     }
-
-    message Footer {}
 }
 
-message PushPathResponse {
+message PushPathsResponse {
     string path = 1;
     string cid = 2;
     int64 size = 3;
@@ -292,6 +316,7 @@ service APIService {
     rpc ListPath(ListPathRequest) returns (ListPathResponse) {}
     rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathResponse) {}
     rpc PushPath(stream PushPathRequest) returns (stream PushPathResponse) {}
+    rpc PushPaths(stream PushPathsRequest) returns (stream PushPathsResponse) {}
     rpc PullPath(PullPathRequest) returns (stream PullPathResponse) {}
     rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathResponse) {}
     rpc SetPath(SetPathRequest) returns (SetPathResponse) {}

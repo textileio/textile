@@ -113,8 +113,115 @@ func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid
 	})
 }
 
-// PushPathResult contains the result of a Push.
-type PushPathResult struct {
+type pushPathResult struct {
+	path path.Resolved
+	root path.Resolved
+	err  error
+}
+
+// PushPath pushes a file to a bucket path.
+// This will return the resolved path and the bucket's new root path.
+func (c *Client) PushPath(
+	ctx context.Context,
+	key, pth string,
+	reader io.Reader,
+	opts ...Option,
+) (result path.Resolved, root path.Resolved, err error) {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+	if args.progress != nil {
+		defer close(args.progress)
+	}
+
+	stream, err := c.c.PushPath(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	var xr string
+	if args.root != nil {
+		xr = args.root.String()
+	}
+	if err = stream.Send(&pb.PushPathRequest{
+		Payload: &pb.PushPathRequest_Header_{
+			Header: &pb.PushPathRequest_Header{
+				Key:  key,
+				Path: filepath.ToSlash(pth),
+				Root: xr,
+			},
+		},
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	waitCh := make(chan pushPathResult)
+	go func() {
+		defer close(waitCh)
+		for {
+			rep, err := stream.Recv()
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				waitCh <- pushPathResult{err: err}
+				return
+			}
+			if rep.Event.Path != "" {
+				id, err := cid.Parse(rep.Event.Path)
+				if err != nil {
+					waitCh <- pushPathResult{err: err}
+					return
+				}
+				r, err := util.NewResolvedPath(rep.Event.Root.Path)
+				if err != nil {
+					waitCh <- pushPathResult{err: err}
+					return
+				}
+				waitCh <- pushPathResult{
+					path: path.IpfsPath(id),
+					root: r,
+				}
+			} else if args.progress != nil {
+				args.progress <- rep.Event.Bytes
+			}
+		}
+	}()
+
+	end := func(err error) error {
+		if err := stream.CloseSend(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			if err := stream.Send(&pb.PushPathRequest{
+				Payload: &pb.PushPathRequest_Chunk{
+					Chunk: buf[:n],
+				},
+			}); err == io.EOF {
+				break
+			} else if err != nil {
+				return nil, nil, end(err)
+			}
+		} else if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, nil, end(err)
+		}
+	}
+	if err := end(nil); err != nil {
+		return nil, nil, err
+	}
+	res := <-waitCh
+	return res.path, res.root, res.err
+}
+
+// PushPathsResult contains the result of a Push.
+type PushPathsResult struct {
 	Path   string
 	Cid    cid.Cid
 	Size   int64
@@ -124,15 +231,15 @@ type PushPathResult struct {
 	err error
 }
 
-// PushPathQueue handles PushPath input and output.
-type PushPathQueue struct {
+// PushPathsQueue handles PushPath input and output.
+type PushPathsQueue struct {
 	// Current contains the current push result.
-	Current PushPathResult
+	Current PushPathsResult
 
 	q         []pushPath
 	len       int
 	inCh      chan pushPath
-	outCh     chan PushPathResult
+	outCh     chan PushPathsResult
 	waitCh    chan struct{}
 	started   bool
 	stopped   bool
@@ -161,7 +268,7 @@ func (p pushPath) close() {
 // AddFile adds a file to the queue.
 // pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
 // name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/mybone.jpg".
-func (c *PushPathQueue) AddFile(pth, name string) error {
+func (c *PushPathsQueue) AddFile(pth, name string) error {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -195,7 +302,7 @@ func (c *PushPathQueue) AddFile(pth, name string) error {
 // pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
 // r is the reader to read from.
 // size is the size of the reader. Use of the WithProgress option is not recommended if the reader size is unknown.
-func (c *PushPathQueue) AddReader(pth string, r io.Reader, size int64) error {
+func (c *PushPathsQueue) AddReader(pth string, r io.Reader, size int64) error {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -215,18 +322,18 @@ func (c *PushPathQueue) AddReader(pth string, r io.Reader, size int64) error {
 }
 
 // Size returns the queue size in bytes.
-func (c *PushPathQueue) Size() int64 {
+func (c *PushPathsQueue) Size() int64 {
 	return atomic.LoadInt64(&c.size)
 }
 
 // Complete returns the portion of the queue size that has been pushed.
-func (c *PushPathQueue) Complete() int64 {
+func (c *PushPathsQueue) Complete() int64 {
 	return atomic.LoadInt64(&c.complete)
 }
 
 // Next blocks while the queue is open, returning true when a result is ready.
 // Use Current to access the result.
-func (c *PushPathQueue) Next() (ok bool) {
+func (c *PushPathsQueue) Next() (ok bool) {
 	c.lk.Lock()
 	if c.closed {
 		c.lk.Unlock()
@@ -254,7 +361,7 @@ func (c *PushPathQueue) Next() (ok bool) {
 	}
 }
 
-func (c *PushPathQueue) start() {
+func (c *PushPathsQueue) start() {
 	go func() {
 		for {
 			c.lk.Lock()
@@ -279,7 +386,7 @@ func (c *PushPathQueue) start() {
 	}()
 }
 
-func (c *PushPathQueue) stop() {
+func (c *PushPathsQueue) stop() {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 	c.stopped = true
@@ -287,13 +394,13 @@ func (c *PushPathQueue) stop() {
 
 // Err returns the current queue error.
 // Call this method before checking the value of Current.
-func (c *PushPathQueue) Err() error {
+func (c *PushPathsQueue) Err() error {
 	return c.Current.err
 }
 
 // Close the queue.
 // Failure to close may lead to unpredictable bucket state.
-func (c *PushPathQueue) Close() error {
+func (c *PushPathsQueue) Close() error {
 	c.lk.Lock()
 	if c.closed {
 		c.lk.Unlock()
@@ -316,15 +423,15 @@ func (c *PushPathQueue) Close() error {
 	return nil
 }
 
-// PushPath pushes a file to a bucket path.
-// This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*PushPathQueue, error) {
+// PushPaths returns a queue that can be used to push multiple files and readers to bucket paths.
+// See PushPathQueue.AddFile and PushPathsQueue.AddReader for more.
+func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*PushPathsQueue, error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
 
-	stream, err := c.c.PushPath(ctx)
+	stream, err := c.c.PushPaths(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -333,9 +440,9 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 		xr = args.root.String()
 	}
 
-	if err := stream.Send(&pb.PushPathRequest{
-		Payload: &pb.PushPathRequest_Header_{
-			Header: &pb.PushPathRequest_Header{
+	if err := stream.Send(&pb.PushPathsRequest{
+		Payload: &pb.PushPathsRequest_Header_{
+			Header: &pb.PushPathsRequest_Header{
 				Key:  key,
 				Root: xr,
 			},
@@ -344,9 +451,9 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 		return nil, err
 	}
 
-	q := &PushPathQueue{
+	q := &PushPathsQueue{
 		inCh:   make(chan pushPath),
-		outCh:  make(chan PushPathResult),
+		outCh:  make(chan PushPathsResult),
 		waitCh: make(chan struct{}),
 		closeFunc: func() error {
 			return stream.CloseSend()
@@ -367,21 +474,21 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				if strings.Contains(err.Error(), "STREAM_CLOSED") {
 					err = ErrPushPathQueueClosed
 				}
-				q.outCh <- PushPathResult{err: err}
+				q.outCh <- PushPathsResult{err: err}
 				return
 			}
 
 			id, err := cid.Parse(rep.Cid)
 			if err != nil {
-				q.outCh <- PushPathResult{err: err}
+				q.outCh <- PushPathsResult{err: err}
 				return
 			}
 			root, err := util.NewResolvedPath(rep.Root.Path)
 			if err != nil {
-				q.outCh <- PushPathResult{err: err}
+				q.outCh <- PushPathsResult{err: err}
 				return
 			}
-			q.outCh <- PushPathResult{
+			q.outCh <- PushPathsResult{
 				Path:   rep.Path,
 				Cid:    id,
 				Size:   rep.Size,
@@ -391,21 +498,21 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 		}
 	}()
 
-	sendChunk := func(c *pb.PushPathRequest_Chunk) bool {
+	sendChunk := func(c *pb.PushPathsRequest_Chunk) bool {
 		q.lk.Lock()
 		defer q.lk.Unlock()
 		if q.closed {
 			return false
 		}
 
-		if err := stream.Send(&pb.PushPathRequest{
-			Payload: &pb.PushPathRequest_Chunk_{
+		if err := stream.Send(&pb.PushPathsRequest{
+			Payload: &pb.PushPathsRequest_Chunk_{
 				Chunk: c,
 			},
 		}); err == io.EOF {
 			return false // error is waiting to be received with stream.Recv above
 		} else if err != nil {
-			q.outCh <- PushPathResult{err: err}
+			q.outCh <- PushPathsResult{err: err}
 			return false
 		}
 		atomic.AddInt64(&q.complete, int64(len(c.Data)))
@@ -426,7 +533,7 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 				buf := make([]byte, chunkSize)
 				for {
 					n, err := p.r.Read(buf)
-					c := &pb.PushPathRequest_Chunk{
+					c := &pb.PushPathsRequest_Chunk{
 						Path: p.path,
 					}
 					if n > 0 {
@@ -441,7 +548,7 @@ func (c *Client) PushPath(ctx context.Context, key string, opts ...Option) (*Pus
 						p.close()
 						break
 					} else if err != nil {
-						q.outCh <- PushPathResult{err: err}
+						q.outCh <- PushPathsResult{err: err}
 						break
 					}
 				}

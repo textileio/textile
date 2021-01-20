@@ -1319,6 +1319,195 @@ func (s *Service) pathToPb(
 	}, nil
 }
 
+func (s *Service) PushPath(server pb.APIService_PushPathServer) (err error) {
+	log.Debugf("received push path request")
+
+	dbID, ok := common.ThreadIDFromContext(server.Context())
+	if !ok {
+		return errDBRequired
+	}
+	dbToken, _ := thread.TokenFromContext(server.Context())
+
+	req, err := server.Recv()
+	if err != nil {
+		return err
+	}
+	var buckKey, headerPath, root string
+	switch payload := req.Payload.(type) {
+	case *pb.PushPathRequest_Header_:
+		buckKey = payload.Header.Key
+		headerPath = payload.Header.Path
+		root = payload.Header.Root
+	default:
+		return fmt.Errorf("push bucket path header is required")
+	}
+	filePath, err := parsePath(headerPath)
+	if err != nil {
+		return err
+	}
+
+	lck := s.Semaphores.Get(buckLock(buckKey))
+	lck.Acquire()
+	defer lck.Release()
+
+	buck := &tdb.Bucket{}
+	err = s.Buckets.GetSafe(server.Context(), dbID, buckKey, buck, tdb.WithToken(dbToken))
+	if err != nil {
+		return err
+	}
+	if root != "" && root != buck.Path {
+		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(filePath, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(filePath + "/")
+
+	if err = s.Buckets.Verify(server.Context(), dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return err
+	}
+
+	fileKey, err := buck.GetFileEncryptionKeyForPath(filePath)
+	if err != nil {
+		return err
+	}
+
+	reader, writer := io.Pipe()
+	var writerErr error
+	assignErr := func(err error) {
+		writerErr = err
+		_ = writer.CloseWithError(err)
+	}
+	go func() {
+		for {
+			req, err := server.Recv()
+			if err == io.EOF {
+				_ = writer.Close()
+				return
+			} else if err != nil {
+				assignErr(fmt.Errorf("error on receive: %v", err))
+				return
+			}
+			switch payload := req.Payload.(type) {
+			case *pb.PushPathRequest_Chunk:
+				if _, err := writer.Write(payload.Chunk); err != nil {
+					assignErr(fmt.Errorf("error writing chunk: %v", err))
+					return
+				}
+			default:
+				assignErr(fmt.Errorf("invalid request"))
+				return
+			}
+		}
+	}()
+
+	eventCh := make(chan interface{})
+	defer close(eventCh)
+	chSize := make(chan string)
+	go func() {
+		for e := range eventCh {
+			event, ok := e.(*iface.AddEvent)
+			if !ok {
+				log.Error("unexpected event type")
+				continue
+			}
+			if event.Path == nil { // This is a progress event
+				if err := server.Send(&pb.PushPathResponse{
+					Event: &pb.PushPathResponse_Event{
+						Name:  event.Name,
+						Bytes: event.Bytes,
+					},
+				}); err != nil {
+					log.Errorf("error sending event: %v", err)
+				}
+			} else {
+				chSize <- event.Size // Save size for use in the final response
+			}
+		}
+	}()
+
+	var r io.Reader
+	if fileKey != nil {
+		r, err = dcrypto.NewEncrypter(reader, fileKey)
+		if err != nil {
+			return err
+		}
+	} else {
+		r = reader
+	}
+	newPath, err := s.IPFSClient.Unixfs().Add(
+		server.Context(),
+		ipfsfiles.NewReaderFile(r),
+		options.Unixfs.CidVersion(1),
+		options.Unixfs.Pin(false),
+		options.Unixfs.Progress(true),
+		options.Unixfs.Events(eventCh),
+	)
+	if writerErr != nil {
+		return writerErr
+	}
+	if err != nil {
+		return err
+	}
+	fn, err := s.IPFSClient.ResolveNode(server.Context(), newPath)
+	if err != nil {
+		return err
+	}
+
+	ctx := server.Context()
+	buckPath := path.New(buck.Path)
+	var dirPath path.Resolved
+	if buck.IsPrivate() {
+		ctx, dirPath, err = s.insertNodeAtPath(ctx, fn, path.Join(buckPath, filePath), buck.GetLinkEncryptionKey())
+		if err != nil {
+			return err
+		}
+	} else {
+		dirPath, err = s.IPFSClient.Object().AddLink(
+			ctx,
+			buckPath,
+			filePath,
+			newPath,
+			options.Object.Create(true),
+		)
+		if err != nil {
+			return err
+		}
+		ctx, err = s.updateOrAddPin(ctx, buckPath, dirPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	buck.Path = dirPath.String()
+	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return err
+	}
+
+	size := <-chSize
+	pbroot, err := getPbRoot(dbID, buck)
+	if err != nil {
+		return err
+	}
+	if err = server.Send(&pb.PushPathResponse{
+		Event: &pb.PushPathResponse_Event{
+			Path:   newPath.String(),
+			Size:   size,
+			Root:   pbroot,
+			Pinned: s.getPinnedBytes(ctx),
+		},
+	}); err != nil {
+		return err
+	}
+
+	go s.IPNSManager.Publish(dirPath, buck.Key)
+
+	log.Debugf("pushed %s to bucket: %s", filePath, buck.Key)
+	return nil
+}
+
 type fileAdder struct {
 	reader io.ReadCloser
 	writer io.WriteCloser
@@ -1418,8 +1607,8 @@ func (q *fileQueue) add(
 	return fa, nil
 }
 
-func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
-	log.Debugf("received push path request")
+func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
+	log.Debugf("received push paths request")
 
 	ctx, cancel := context.WithCancel(server.Context())
 	defer cancel()
@@ -1436,7 +1625,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 	}
 	var buckKey, buckRoot string
 	switch payload := req.Payload.(type) {
-	case *pb.PushPathRequest_Header_:
+	case *pb.PushPathsRequest_Header_:
 		buckKey = payload.Header.Key
 		buckRoot = payload.Header.Root
 	default:
@@ -1473,7 +1662,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 				return
 			}
 			switch payload := req.Payload.(type) {
-			case *pb.PushPathRequest_Chunk_:
+			case *pb.PushPathsRequest_Chunk_:
 				pth, err := parsePath(payload.Chunk.Path)
 				if err != nil {
 					errCh <- fmt.Errorf("parsing path: %v", err)
@@ -1577,7 +1766,7 @@ func (s *Service) PushPath(server pb.APIService_PushPathServer) error {
 			if err != nil {
 				return saveWithErr(fmt.Errorf("preparing result: %v", err))
 			}
-			if err := server.Send(&pb.PushPathResponse{
+			if err := server.Send(&pb.PushPathsResponse{
 				Path:   res.path,
 				Cid:    res.resolved.Cid().String(),
 				Size:   res.size,

@@ -678,8 +678,8 @@ func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key strin
 	return id, ctx
 }
 
-func pushPath(t *testing.T, ctx context.Context, buckets *bc.Client, key, pth, name string) (bc.PushPathResult, error) {
-	q, err := buckets.PushPath(ctx, key)
+func pushPath(t *testing.T, ctx context.Context, buckets *bc.Client, key, pth, name string) (bc.PushPathsResult, error) {
+	q, err := buckets.PushPaths(ctx, key)
 	require.NoError(t, err)
 	err = q.AddFile(pth, name)
 	require.NoError(t, err)
