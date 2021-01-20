@@ -40,7 +40,7 @@ func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
 }
 
 // Identify creates or updates the user traits
-func (c *Client) Identify(userID string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) error {
+func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) error {
 	if c.api != nil && accountType != mdb.User {
 		traits := segment.NewTraits()
 		traits.Set("account_type", accountType)
@@ -52,7 +52,7 @@ func (c *Client) Identify(userID string, accountType mdb.AccountType, active boo
 			traits.Set(key, value)
 		}
 		return c.api.Enqueue(segment.Identify{
-			UserId: userID,
+			UserId: key,
 			Traits: traits,
 			Context: &segment.Context{
 				Extra: map[string]interface{}{
