@@ -135,7 +135,7 @@ func (b *Bucket) addFiles(
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	q, err := b.clients.Buckets.PushPath(ctx, key, opts...)
+	q, err := b.clients.Buckets.PushPaths(ctx, key, opts...)
 	if err != nil {
 		return nil, err
 	}

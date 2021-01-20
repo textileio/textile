@@ -230,7 +230,7 @@ func archiveFinalState(ctx context.Context, t util.TestingTWithCleanup, client *
 // addDataFileToBucket add a file from the testdata folder, and returns the
 // new stringified root Cid of the bucket.
 func addDataFileToBucket(ctx context.Context, t util.TestingTWithCleanup, client *c.Client, bucketKey string, fileName string) string {
-	q, err := client.PushPath(ctx, bucketKey)
+	q, err := client.PushPaths(ctx, bucketKey)
 	require.NoError(t, err)
 	err = q.AddFile(fileName, "testdata/"+fileName)
 	require.NoError(t, err)
