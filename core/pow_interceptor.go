@@ -71,7 +71,10 @@ func powInterceptor(
 			if err != nil {
 				return fmt.Errorf("creating new powergate integration: %v", err)
 			}
-			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token})
+			_, err = c.Accounts.UpdatePowInfo(ctx, account.Owner().Key, &mdb.PowInfo{
+				ID:    res.User.Id,
+				Token: res.User.Token,
+			})
 			if err != nil {
 				return fmt.Errorf("updating user/account with new powergate information: %v", err)
 			}

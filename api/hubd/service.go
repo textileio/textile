@@ -167,7 +167,14 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	secret := getSessionSecret(s.EmailSessionSecret)
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
-	if err = s.EmailClient.ConfirmAddress(ectx, dev.Key.String(), dev.Username, dev.Email, s.GatewayURL, secret); err != nil {
+	if err = s.EmailClient.ConfirmAddress(
+		ectx,
+		dev.Key.String(),
+		dev.Username,
+		dev.Email,
+		s.GatewayURL,
+		secret,
+	); err != nil {
 		return nil, err
 	}
 	if !s.awaitVerification(secret) {
@@ -313,13 +320,21 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		event = analytics.KeyUserCreated
 	}
 	if s.BillingClient != nil {
-		// Same "member" based payload for Dev or Org account types so that same downstream logic/templating can be used.
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, event, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-			"secure_key":      fmt.Sprintf("%t", req.Secure),
-		})
+		// Same "member" based payload for Dev or Org account types so that same
+		// downstream logic/templating can be used.
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			event,
+			map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+				"secure_key":      fmt.Sprintf("%t", req.Secure),
+			},
+		)
 	}
 
 	return &pb.CreateKeyResponse{
@@ -436,10 +451,17 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 			"created_by_email":    account.User.Email,
 		})
 		// Attribute event to Dev
-		s.BillingClient.TrackEvent(ctx, account.User.Key, account.User.Type, true, analytics.OrgCreated, map[string]string{
-			"org_name": org.Name,
-			"org_key":  org.Key.String(),
-		})
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.User.Key,
+			account.User.Type,
+			true,
+			analytics.OrgCreated,
+			map[string]string{
+				"org_name": org.Name,
+				"org_key":  org.Key.String(),
+			},
+		)
 	}
 
 	return &pb.CreateOrgResponse{
@@ -543,11 +565,18 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgDestroyed, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-		})
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			analytics.OrgDestroyed,
+			map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			},
+		)
 	}
 
 	return &pb.RemoveOrgResponse{}, nil
@@ -577,17 +606,31 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
 	defer cancel()
 	if err = s.EmailClient.InviteAddress(
-		ectx, account.User.Key.String(), account.Org.Name, account.User.Email, req.Email, s.GatewayURL, invite.Token); err != nil {
+		ectx,
+		account.User.Key.String(),
+		account.Org.Name,
+		account.User.Email,
+		req.Email,
+		s.GatewayURL,
+		invite.Token,
+	); err != nil {
 		return nil, err
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgInviteCreated, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-			"invitee":         req.Email,
-		})
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			analytics.OrgInviteCreated,
+			map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+				"invitee":         req.Email,
+			},
+		)
 	}
 
 	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
@@ -614,11 +657,18 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.OrgLeave, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-		})
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			analytics.OrgLeave,
+			map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			},
+		)
 	}
 
 	return &pb.LeaveOrgResponse{}, nil
@@ -643,17 +693,27 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BillingSetup, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-		})
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			analytics.BillingSetup,
+			map[string]string{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			},
+		)
 	}
 
 	return &pb.SetupBillingResponse{}, nil
 }
 
-func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSessionRequest) (*pb.GetBillingSessionResponse, error) {
+func (s *Service) GetBillingSession(
+	ctx context.Context,
+	_ *pb.GetBillingSessionRequest,
+) (*pb.GetBillingSessionResponse, error) {
 	log.Debugf("received get billing session request")
 
 	if s.BillingClient == nil {
@@ -670,7 +730,10 @@ func (s *Service) GetBillingSession(ctx context.Context, _ *pb.GetBillingSession
 	return &pb.GetBillingSessionResponse{Url: session.Url}, nil
 }
 
-func (s *Service) ListBillingUsers(ctx context.Context, req *pb.ListBillingUsersRequest) (*pb.ListBillingUsersResponse, error) {
+func (s *Service) ListBillingUsers(
+	ctx context.Context,
+	req *pb.ListBillingUsersRequest,
+) (*pb.ListBillingUsersResponse, error) {
 	log.Debugf("received list billing users request")
 
 	if s.BillingClient == nil {
@@ -694,7 +757,10 @@ func (s *Service) ListBillingUsers(ctx context.Context, req *pb.ListBillingUsers
 	}, nil
 }
 
-func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAvailableRequest) (*pb.IsUsernameAvailableResponse, error) {
+func (s *Service) IsUsernameAvailable(
+	ctx context.Context,
+	req *pb.IsUsernameAvailableRequest,
+) (*pb.IsUsernameAvailableResponse, error) {
 	log.Debugf("received is username available request")
 
 	if err := s.Collections.Accounts.IsUsernameAvailable(ctx, req.Username); err != nil {
@@ -703,7 +769,10 @@ func (s *Service) IsUsernameAvailable(ctx context.Context, req *pb.IsUsernameAva
 	return &pb.IsUsernameAvailableResponse{}, nil
 }
 
-func (s *Service) IsOrgNameAvailable(ctx context.Context, req *pb.IsOrgNameAvailableRequest) (*pb.IsOrgNameAvailableResponse, error) {
+func (s *Service) IsOrgNameAvailable(
+	ctx context.Context,
+	req *pb.IsOrgNameAvailableRequest,
+) (*pb.IsOrgNameAvailableResponse, error) {
 	log.Debugf("received is org name available request")
 
 	slug, err := s.Collections.Accounts.IsNameAvailable(ctx, req.Name)
@@ -730,7 +799,14 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 		return nil, err
 	}
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.AccountDestroyed, nil)
+		s.BillingClient.TrackEvent(
+			ctx,
+			account.Owner().Key,
+			account.Owner().Type,
+			true,
+			analytics.AccountDestroyed,
+			nil,
+		)
 	}
 
 	return &pb.DestroyAccountResponse{}, nil
@@ -768,7 +844,14 @@ func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {
 	for _, t := range ts {
 		if t.IsDB {
 			// Clean up bucket pins, keys, and dns records.
-			bres, err := s.Threads.Find(ctx, t.ID, buckets.CollectionName, &db.Query{}, &tdb.Bucket{}, db.WithTxnToken(a.Token))
+			bres, err := s.Threads.Find(
+				ctx,
+				t.ID,
+				buckets.CollectionName,
+				&db.Query{},
+				&tdb.Bucket{},
+				db.WithTxnToken(a.Token),
+			)
 			if err != nil {
 				return err
 			}

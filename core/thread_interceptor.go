@@ -20,7 +20,12 @@ import (
 // Textile tracks threads against dev, org, and user accounts.
 // Users must supply a valid API key from a dev/org.
 func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		method, _ := grpc.Method(ctx)
 		for _, ignored := range authIgnoredMethods {
 			if method == ignored {

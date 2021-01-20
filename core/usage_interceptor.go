@@ -26,7 +26,12 @@ type preFunc func(ctx context.Context, method string) (context.Context, error)
 type postFunc func(ctx context.Context, method string) error
 
 func unaryServerInterceptor(pre preFunc, post postFunc) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		newCtx, err := pre(ctx, info.FullMethod)
 		if err != nil {
 			return nil, err
@@ -43,7 +48,12 @@ func unaryServerInterceptor(pre preFunc, post postFunc) grpc.UnaryServerIntercep
 }
 
 func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterceptor {
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(
+		srv interface{},
+		stream grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
 		newCtx, err := pre(stream.Context(), info.FullMethod)
 		if err != nil {
 			return err
@@ -152,6 +162,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 	switch method {
 	case "/api.bucketsd.pb.APIService/Create",
 		"/api.bucketsd.pb.APIService/PushPath",
+		"/api.bucketsd.pb.APIService/PushPaths",
 		"/api.bucketsd.pb.APIService/SetPath",
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
@@ -221,6 +232,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	switch method {
 	case "/api.bucketsd.pb.APIService/Create",
 		"/api.bucketsd.pb.APIService/PushPath",
+		"/api.bucketsd.pb.APIService/PushPaths",
 		"/api.bucketsd.pb.APIService/SetPath",
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
