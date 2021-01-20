@@ -205,7 +205,7 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	md, err := pbMetadataToInfo(r.Metadata)
+	md, err := pbMetadataToInfo(r.PathMetadata)
 	if err != nil {
 		return
 	}

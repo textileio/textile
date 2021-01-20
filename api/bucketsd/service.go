@@ -145,6 +145,15 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse
 }
 
 func getPbRoot(dbID thread.ID, buck *tdb.Bucket) (*pb.Root, error) {
+	var pmdOld *pb.Metadata
+	md, ok := buck.Metadata[""]
+	if ok {
+		var err error
+		pmdOld, err = metadataToPb(md)
+		if err != nil {
+			return nil, err
+		}
+	}
 	pmd := make(map[string]*pb.Metadata)
 	for p, md := range buck.Metadata {
 		m, err := metadataToPb(md)
@@ -154,17 +163,18 @@ func getPbRoot(dbID thread.ID, buck *tdb.Bucket) (*pb.Root, error) {
 		pmd[p] = m
 	}
 	return &pb.Root{
-		Thread:    dbID.String(),
-		Key:       buck.Key,
-		Owner:     buck.Owner,
-		Name:      buck.Name,
-		Version:   int32(buck.Version),
-		LinkKey:   buck.LinkKey,
-		Path:      buck.Path,
-		Metadata:  pmd,
-		Archives:  archivesToPb(buck.Archives),
-		CreatedAt: buck.CreatedAt,
-		UpdatedAt: buck.UpdatedAt,
+		Thread:       dbID.String(),
+		Key:          buck.Key,
+		Owner:        buck.Owner,
+		Name:         buck.Name,
+		Version:      int32(buck.Version),
+		LinkKey:      buck.LinkKey,
+		Path:         buck.Path,
+		Metadata:     pmdOld, // @todo: For v3, remove this.
+		PathMetadata: pmd,
+		Archives:     archivesToPb(buck.Archives),
+		CreatedAt:    buck.CreatedAt,
+		UpdatedAt:    buck.UpdatedAt,
 	}, nil
 }
 
@@ -2888,15 +2898,13 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket archive data: %v", err)
 	}
-	res := &pb.ArchivesResponse{
-		Archives: &pb.Archives{},
-	}
+	res := &pb.ArchivesResponse{}
 	if ba.Archives.Current.JobID != "" {
 		arc, err := toPbArchive(ba.Archives.Current)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "converting to pb archive: %v", err)
 		}
-		res.Archives.Current = arc
+		res.Current = arc
 	}
 	history := make([]*pb.Archive, len(ba.Archives.History))
 	for i, item := range ba.Archives.History {
@@ -2906,7 +2914,7 @@ func (s *Service) Archives(ctx context.Context, req *pb.ArchivesRequest) (*pb.Ar
 		}
 		history[i] = pbItem
 	}
-	res.Archives.History = history
+	res.History = history
 	return res, nil
 }
 
