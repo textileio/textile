@@ -9,7 +9,7 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
-	powc "github.com/textileio/powergate/api/client"
+	powc "github.com/textileio/powergate/v2/api/client"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

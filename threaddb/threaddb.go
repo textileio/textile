@@ -109,7 +109,7 @@ func (c *Collection) Save(ctx context.Context, dbID thread.ID, instance interfac
 	return err
 }
 
-// Save a collection instance.
+// Verify verifies instance changes.
 func (c *Collection) Verify(ctx context.Context, dbID thread.ID, instance interface{}, opts ...Option) error {
 	args := &Options{}
 	for _, opt := range opts {

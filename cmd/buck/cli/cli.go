@@ -46,7 +46,7 @@ func Init(baseCmd *cobra.Command) {
 		archiveCmd,
 		rolesCmd,
 	)
-	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archivesCmd)
+	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archiveLsCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
 
 	baseCmd.PersistentFlags().String("key", "", "Bucket key")
@@ -60,6 +60,8 @@ func Init(baseCmd *cobra.Command) {
 	initCmd.Flags().Bool("hard", false, "Discards all local changes if true")
 	initCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	initCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
+	// (jsign): disabled until this feature is usable in mainnet.
+	// initCmd.Flags().Bool("unfreeze", false, "Unfreeze --cid from a known or imported deals in Filecoin.")
 
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")

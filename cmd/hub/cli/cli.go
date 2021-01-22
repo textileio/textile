@@ -67,7 +67,24 @@ var (
 func Init(rootCmd *cobra.Command) {
 	config.Viper.SetConfigType("yaml")
 
-	rootCmd.AddCommand(initCmd, loginCmd, logoutCmd, whoamiCmd, destroyCmd, updateCmd, versionCmd, orgsCmd, keysCmd, threadsCmd, filCmd, billingCmd)
+	rootCmd.AddCommand(
+		initCmd,
+		loginCmd,
+		logoutCmd,
+		whoamiCmd,
+		destroyCmd,
+		updateCmd,
+		versionCmd,
+		orgsCmd,
+		keysCmd,
+		threadsCmd,
+		filCmd,
+		billingCmd,
+		// (jsign): commenting this CLIs until this feature
+		// is usable in mainnet.
+		// archivesCmd,
+		// retrievalsCmd,
+	)
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
@@ -90,6 +107,10 @@ func Init(rootCmd *cobra.Command) {
 
 	billingUsersCmd.Flags().Int64("limit", 25, "Page size (max 1000)")
 	billingUsersCmd.Flags().Int64("offset", 0, "Page offset (returned by each request)")
+
+	archivesCmd.AddCommand(archivesLsCmd, archivesImportCmd)
+
+	retrievalsCmd.AddCommand(retrievalsLsCmd, retrievalsLogsCmd)
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)

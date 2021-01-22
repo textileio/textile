@@ -76,6 +76,7 @@ type Bucket struct {
 	auth    AuthFunc
 	repo    *Repo
 	links   *Links
+	retrID  string
 
 	pushBlock chan struct{}
 	sync.Mutex
@@ -128,6 +129,13 @@ func (b *Bucket) LocalSize() (int64, error) {
 		return err
 	})
 	return size, err
+}
+
+// RetrievalID returns the retrieval-id if the bucket creation
+// was bootstrapped from a Filecoin archive. It only has a non-empty
+// value in this use-case.
+func (b *Bucket) RetrievalID() string {
+	return b.retrID
 }
 
 // Info wraps info about a bucket.

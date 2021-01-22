@@ -11,6 +11,8 @@ import (
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/ipfs/go-datastore"
+	ktipfs "github.com/ipfs/go-datastore/keytransform"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/jhump/protoreflect/desc"
@@ -30,8 +32,8 @@ import (
 	netpb "github.com/textileio/go-threads/net/api/pb"
 	nutil "github.com/textileio/go-threads/net/util"
 	tutil "github.com/textileio/go-threads/util"
-	pow "github.com/textileio/powergate/api/client"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
+	pow "github.com/textileio/powergate/v2/api/client"
+	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -41,6 +43,8 @@ import (
 	"github.com/textileio/textile/v2/api/usersd"
 	upb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/buckets/archive"
+	"github.com/textileio/textile/v2/buckets/archive/retrieval"
+	"github.com/textileio/textile/v2/buckets/archive/tracker"
 	"github.com/textileio/textile/v2/dns"
 	"github.com/textileio/textile/v2/email"
 	"github.com/textileio/textile/v2/gateway"
@@ -133,7 +137,8 @@ type Textile struct {
 	bucks *tdb.Buckets
 	mail  *tdb.Mail
 
-	archiveTracker *archive.Tracker
+	archiveTracker *tracker.Tracker
+	filRetrieval   *retrieval.FilRetrieval
 	buckLocks      *nutil.SemaphorePool
 
 	ipnsm *ipns.Manager
@@ -202,11 +207,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":        logging.LevelDebug,
-			"hubapi":      logging.LevelDebug,
-			"bucketsapi":  logging.LevelDebug,
-			"usersapi":    logging.LevelDebug,
-			"pow-archive": logging.LevelDebug,
+			"core":          logging.LevelDebug,
+			"hubapi":        logging.LevelDebug,
+			"bucketsapi":    logging.LevelDebug,
+			"usersapi":      logging.LevelDebug,
+			"job-tracker":   logging.LevelDebug,
+			"fil-retrieval": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -321,6 +327,28 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
+	jobFinalizedEvents := make(chan archive.JobEvent)
+	t.archiveTracker, err = tracker.New(
+		t.collections,
+		t.bucks,
+		t.pc,
+		t.internalHubSession,
+		conf.ArchiveJobPollIntervalSlow,
+		conf.ArchiveJobPollIntervalFast,
+		jobFinalizedEvents,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
+		Prefix: datastore.NewKey("buckets/filretrieval"),
+	})
+	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
+	if err != nil {
+		return nil, err
+	}
+
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
@@ -352,24 +380,14 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			PowergateAdminToken: conf.PowergateAdminToken,
 		}
 		us = &usersd.Service{
-			Collections:   t.collections,
-			Mail:          t.mail,
-			BillingClient: t.bc,
+			Collections:     t.collections,
+			Mail:            t.mail,
+			BillingClient:   t.bc,
+			FilRetrieval:    t.filRetrieval,
+			PowergateClient: t.pc,
 		}
 	}
-	if conf.Hub {
-		t.archiveTracker, err = archive.New(
-			t.collections,
-			t.bucks,
-			t.pc,
-			t.internalHubSession,
-			conf.ArchiveJobPollIntervalSlow,
-			conf.ArchiveJobPollIntervalFast,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	t.buckLocks = nutil.NewSemaphorePool(1)
 	bs := &bucketsd.Service{
 		Collections:               t.collections,
@@ -383,7 +401,13 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		ArchiveTracker:            t.archiveTracker,
 		Semaphores:                t.buckLocks,
 		MaxBucketArchiveRepFactor: conf.MaxBucketArchiveRepFactor,
+		FilRetrieval:              t.filRetrieval,
 	}
+
+	// We can avoid the chicken-egg-problem of below line in the future.
+	// For more info, see "TODO(**)" in buckd/service.go
+	t.filRetrieval.SetBucketCreator(bs)
+	t.filRetrieval.RunDaemon()
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
@@ -543,6 +567,13 @@ func (t *Textile) Close() error {
 		timer.Stop()
 	}
 	log.Info("gRPC was shutdown")
+
+	log.Info("closing fil-retrieval module")
+	if err := t.filRetrieval.Close(); err != nil {
+		log.Errorf("closing fil-retrieval module: %s", err)
+	} else {
+		log.Info("fil-retrieval was shutdown")
+	}
 
 	if err := t.th.Close(); err != nil {
 		return err

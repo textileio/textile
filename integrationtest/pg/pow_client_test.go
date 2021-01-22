@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tutil "github.com/textileio/go-threads/util"
-	userPb "github.com/textileio/powergate/api/gen/powergate/user/v1"
+	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/apitest"
 	"github.com/textileio/textile/v2/api/common"
 	fc "github.com/textileio/textile/v2/api/filecoin/client"
@@ -17,7 +17,7 @@ import (
 )
 
 func TestPowClient(t *testing.T) {
-	_ = StartPowergate(t)
+	_, _ = StartPowergate(t, true)
 	ctx, _, client := setupPowClient(t)
 
 	t.Run("Addresses", func(t *testing.T) {
@@ -35,12 +35,6 @@ func TestPowClient(t *testing.T) {
 		res1, err := client.Balance(ctx, res0.Addresses[0].Address)
 		require.NoError(t, err)
 		require.NotNil(t, res1)
-	})
-
-	t.Run("CidInfo", func(t *testing.T) {
-		res, err := client.CidInfo(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, res)
 	})
 
 	t.Run("StorageDealRecords", func(t *testing.T) {

@@ -5,12 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/gogo/status"
+	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/threaddb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // Client provides the client api.
@@ -285,4 +289,47 @@ func (c *Client) GetUsage(ctx context.Context, opts ...UsageOption) (*pb.GetUsag
 	return c.c.GetUsage(ctx, &pb.GetUsageRequest{
 		Key: args.key,
 	})
+}
+
+// ArchivesLs list all imported archives.
+func (c *Client) ArchivesLs(ctx context.Context) (*pb.ArchivesLsResponse, error) {
+	req := &pb.ArchivesLsRequest{}
+	return c.c.ArchivesLs(ctx, req)
+}
+
+// ArchivesImport imports deals information for a Cid.
+func (c *Client) ArchivesImport(ctx context.Context, dataCid cid.Cid, dealIDs []uint64) error {
+	req := &pb.ArchivesImportRequest{
+		Cid:     dataCid.String(),
+		DealIds: dealIDs,
+	}
+	_, err := c.c.ArchivesImport(ctx, req)
+	return err
+}
+
+// ArchiveRetrievalLs lists existing retrievals.
+func (c *Client) ArchiveRetrievalLs(ctx context.Context) (*pb.ArchiveRetrievalLsResponse, error) {
+	req := &pb.ArchiveRetrievalLsRequest{}
+	return c.c.ArchiveRetrievalLs(ctx, req)
+}
+
+// ArchiveRetrievalLogs returns the existing logs from the retrieval.
+func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id string, ch chan<- string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.c.ArchiveRetrievalLogs(ctx, &pb.ArchiveRetrievalLogsRequest{Id: id})
+	if err != nil {
+		return err
+	}
+	for {
+		reply, err := stream.Recv()
+		if err == io.EOF || status.Code(err) == codes.Canceled {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		ch <- reply.Msg
+	}
+	return nil
 }
