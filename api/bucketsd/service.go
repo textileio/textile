@@ -1679,6 +1679,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 					return
 				}
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
+					wg.Add(1)
 					buck.UpdatedAt = time.Now().UnixNano()
 					buck.SetMetadataAtPath(pth, tdb.Metadata{
 						UpdatedAt: buck.UpdatedAt,
@@ -1691,7 +1692,6 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 					if err != nil {
 						return nil, fmt.Errorf("getting bucket key: %v", err)
 					}
-					wg.Add(1)
 					return key, nil
 				}, addedCh, errCh)
 				if err != nil {

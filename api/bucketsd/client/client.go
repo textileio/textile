@@ -236,15 +236,16 @@ type PushPathsQueue struct {
 	// Current contains the current push result.
 	Current PushPathsResult
 
-	q         []pushPath
-	len       int
-	inCh      chan pushPath
-	outCh     chan PushPathsResult
-	waitCh    chan struct{}
-	started   bool
-	stopped   bool
-	closeFunc func() error
-	closed    bool
+	q           []pushPath
+	len         int
+	inCh        chan pushPath
+	inWaitCh    chan struct{}
+	outCh       chan PushPathsResult
+	started     bool
+	stopped     bool
+	closeFunc   func() error
+	closed      bool
+	closeWaitCh chan struct{}
 
 	size     int64
 	complete int64
@@ -339,30 +340,34 @@ func (c *PushPathsQueue) Next() (ok bool) {
 		c.lk.Unlock()
 		return false
 	}
-	c.lk.Unlock()
 
 	if !c.started {
 		c.started = true
 		c.len = len(c.q)
 		c.start()
 	}
-
 	if c.len == 0 {
+		c.lk.Unlock()
 		return false
 	}
+
+	c.lk.Unlock()
 	select {
 	case r, k := <-c.outCh:
 		if !k {
 			return false
 		}
+		c.lk.Lock()
 		c.len--
 		c.Current = r
+		c.lk.Unlock()
 		return true
 	}
 }
 
 func (c *PushPathsQueue) start() {
 	go func() {
+		defer close(c.inWaitCh)
 		for {
 			c.lk.Lock()
 			if c.closed {
@@ -379,9 +384,7 @@ func (c *PushPathsQueue) start() {
 			}
 			var p pushPath
 			p, c.q = c.q[0], c.q[1:]
-			c.wg.Add(1)
 			c.inCh <- p
-			c.wg.Done()
 		}
 	}()
 }
@@ -395,6 +398,8 @@ func (c *PushPathsQueue) stop() {
 // Err returns the current queue error.
 // Call this method before checking the value of Current.
 func (c *PushPathsQueue) Err() error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
 	return c.Current.err
 }
 
@@ -408,7 +413,8 @@ func (c *PushPathsQueue) Close() error {
 	}
 	c.closed = true
 	c.lk.Unlock()
-	c.wg.Wait()
+
+	<-c.inWaitCh
 	close(c.inCh)
 
 	c.lk.Lock()
@@ -418,7 +424,7 @@ func (c *PushPathsQueue) Close() error {
 		return err
 	}
 	if wait {
-		<-c.waitCh
+		<-c.closeWaitCh
 	}
 	return nil
 }
@@ -452,12 +458,13 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 	}
 
 	q := &PushPathsQueue{
-		inCh:   make(chan pushPath),
-		outCh:  make(chan PushPathsResult),
-		waitCh: make(chan struct{}),
+		inCh:     make(chan pushPath),
+		inWaitCh: make(chan struct{}),
+		outCh:    make(chan PushPathsResult),
 		closeFunc: func() error {
 			return stream.CloseSend()
 		},
+		closeWaitCh: make(chan struct{}),
 	}
 
 	go func() {
@@ -466,7 +473,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 			rep, err := stream.Recv()
 			if err == io.EOF {
 				select {
-				case q.waitCh <- struct{}{}:
+				case q.closeWaitCh <- struct{}{}:
 				default:
 				}
 				return
@@ -523,34 +530,27 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 	}
 
 	go func() {
-		for {
-			select {
-			case p, ok := <-q.inCh:
-				if !ok {
-					return
+		for p := range q.inCh {
+			buf := make([]byte, chunkSize)
+			for {
+				n, err := p.r.Read(buf)
+				c := &pb.PushPathsRequest_Chunk{
+					Path: p.path,
 				}
-
-				buf := make([]byte, chunkSize)
-				for {
-					n, err := p.r.Read(buf)
-					c := &pb.PushPathsRequest_Chunk{
-						Path: p.path,
-					}
-					if n > 0 {
-						c.Data = make([]byte, n)
-						copy(c.Data, buf[:n])
-						if ok := sendChunk(c); !ok {
-							p.close()
-							break
-						}
-					} else if err == io.EOF {
-						sendChunk(c)
+				if n > 0 {
+					c.Data = make([]byte, n)
+					copy(c.Data, buf[:n])
+					if ok := sendChunk(c); !ok {
 						p.close()
 						break
-					} else if err != nil {
-						q.outCh <- PushPathsResult{err: err}
-						break
 					}
+				} else if err == io.EOF {
+					sendChunk(c)
+					p.close()
+					break
+				} else if err != nil {
+					q.outCh <- PushPathsResult{err: err}
+					break
 				}
 			}
 		}
