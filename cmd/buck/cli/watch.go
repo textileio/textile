@@ -22,7 +22,7 @@ var watchCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		bp, err := buck.Path()
 		cmd.ErrCheck(err)
-		events := make(chan local.PathEvent)
+		events := make(chan local.Event)
 		defer close(events)
 		go handleWatchEvents(events)
 		state, err := buck.Watch(ctx, local.WithWatchEvents(events), local.WithOffline(true))
@@ -42,12 +42,12 @@ var watchCmd = &cobra.Command{
 	},
 }
 
-func handleWatchEvents(events chan local.PathEvent) {
+func handleWatchEvents(events chan local.Event) {
 	for e := range events {
 		switch e.Type {
-		case local.FileComplete:
-			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, true))
-		case local.FileRemoved:
+		case local.EventFileComplete:
+			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, false))
+		case local.EventFileRemoved:
 			cmd.Message("%s", aurora.Red("- "+e.Path))
 		}
 	}

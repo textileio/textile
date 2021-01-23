@@ -252,7 +252,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 			if err = stashChanges(diff); err != nil {
 				return nil, err
 			}
-			if _, err = buck.handleChanges(ctx, "", missing, remove, args.events); err != nil {
+			if _, err = buck.handleChanges(ctx, missing, remove, args.events); err != nil {
 				return nil, err
 			}
 			if err := buck.repo.Save(ctx); err != nil {

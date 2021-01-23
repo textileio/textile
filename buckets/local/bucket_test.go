@@ -244,11 +244,11 @@ func TestBucket_PullRemote(t *testing.T) {
 
 	// Pull the remote, the local change should be cleared
 	// with only one remove event
-	events := make(chan PathEvent)
+	events := make(chan Event)
 	defer close(events)
 	ec := &eventCollector{}
 	go ec.collect(events)
-	_, err = buck2.PullRemote(context.Background(), WithHard(true), WithPathEvents(events))
+	_, err = buck2.PullRemote(context.Background(), WithHard(true), WithEvents(events))
 	require.NoError(t, err)
 	ec.check(t, 0, 1)
 }
@@ -416,7 +416,7 @@ func TestBucket_Watch(t *testing.T) {
 	buck1, err := buckets1.NewBucket(context.Background(), conf)
 	require.NoError(t, err)
 
-	events := make(chan PathEvent)
+	events := make(chan Event)
 	defer close(events)
 	ec := &eventCollector{}
 	go ec.collect(events)

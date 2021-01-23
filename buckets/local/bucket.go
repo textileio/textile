@@ -30,37 +30,31 @@ var (
 	ErrAborted = errors.New("operation aborted by caller")
 )
 
-// PathEvent describes a path event that occurred.
+// Event describes a path event that occurred.
 // These events can be used to display live info during path uploads/downloads.
-type PathEvent struct {
+type Event struct {
+	// Type of event.
+	Type EventType
 	// Path relative to the bucket's cwd.
 	Path string
-	// Path cid if known.
+	// Cid of associated Path.
 	Cid cid.Cid
-	// Type of event.
-	Type PathEventType
-	// Path total size.
+	// Size of the total operation or completed file.
 	Size int64
-	// Progress of the event if known (useful for upload/download progress).
-	Progress int64
+	// Complete is the amount of Size that is complete (useful for upload/download progress).
+	Complete int64
 }
 
-// PathEventType is the type of path event.
-type PathEventType int
+// EventType is the type of path event.
+type EventType int
 
 const (
-	// PathStart indicates a path has begun uploading/downloading.
-	PathStart PathEventType = iota
-	// PathComplete indicates a path has completed uploading/downloading.
-	PathComplete
-	// FileStart indicates a file under path has begun uploading/downloading.
-	FileStart
-	// FileProgress indicates a file has made some progress uploading/downloading.
-	FileProgress
-	// File complete indicates a file has completed uploading/downloading.
-	FileComplete
-	// FileRemoved indicates a file has been removed.
-	FileRemoved
+	// EventProgress indicates a file has made some progress uploading/downloading.
+	EventProgress EventType = iota
+	// EventFileComplete indicates a file has completed uploading/downloading.
+	EventFileComplete
+	// EventFileRemoved indicates a file has been removed.
+	EventFileRemoved
 )
 
 // Bucket is a local-first object storage and synchronization model built
@@ -146,15 +140,17 @@ func (b *Bucket) RetrievalID() string {
 
 // Info wraps info about a bucket.
 type Info struct {
-	Key       string    `json:"key"`
-	Owner     string    `json:"owner"`
-	Name      string    `json:"name"`
-	Version   int       `json:"version"`
-	Path      Path      `json:"path"`
-	Metadata  Metadata  `json:"metadata"`
-	Thread    thread.ID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Thread    thread.ID           `json:"thread"`
+	Key       string              `json:"key"`
+	Owner     string              `json:"owner,omitempty"`
+	Name      string              `json:"name,omitempty"`
+	Version   int                 `json:"version"`
+	LinkKey   string              `json:"link_key,omitempty"`
+	Path      Path                `json:"path"`
+	Metadata  map[string]Metadata `json:"metadata,omitempty"`
+	Archives  *Archives           `json:"archives,omitempty"`
+	CreatedAt time.Time           `json:"created_at"`
+	UpdatedAt time.Time           `json:"updated_at"`
 }
 
 // Path wraps path.Resolved so it can be JSON-marshalable.
@@ -168,8 +164,27 @@ func (p Path) MarshalJSON() ([]byte, error) {
 
 // Metadata wraps metadata about a bucket item.
 type Metadata struct {
-	Roles     map[string]buckets.Role `json:"roles"`
+	Key       string                  `json:"key,omitempty"`
+	Roles     map[string]buckets.Role `json:"roles,omitempty"`
 	UpdatedAt time.Time               `json:"updated_at"`
+}
+
+// Archives contains info about bucket Filecoin archives.
+type Archives struct {
+	Current Archive   `json:"current"`
+	History []Archive `json:"history,omitempty"`
+}
+
+// Archive is a single Filecoin archive containing a list of deals.
+type Archive struct {
+	Cid   string `json:"cid"`
+	Deals []Deal `json:"deals"`
+}
+
+// Deal contains info about an archive's Filecoin deal.
+type Deal struct {
+	ProposalCid string `json:"proposal_cid"`
+	Miner       string `json:"miner"`
 }
 
 // Info returns info about a bucket from the remote.
@@ -198,28 +213,76 @@ func pbRootToInfo(r *pb.Root) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	md := Metadata{}
-	if r.Metadata != nil {
-		roles, err := buckets.RolesFromPb(r.Metadata.Roles)
-		if err != nil {
-			return info, err
-		}
-		md = Metadata{
-			Roles:     roles,
-			UpdatedAt: time.Unix(0, r.Metadata.UpdatedAt),
-		}
+	md, err := pbMetadataToInfo(r.PathMetadata)
+	if err != nil {
+		return
 	}
 	return Info{
+		Thread:    id,
 		Key:       r.Key,
 		Owner:     r.Owner,
 		Name:      name,
 		Version:   int(r.Version),
+		LinkKey:   r.LinkKey,
 		Path:      Path{pth},
 		Metadata:  md,
-		Thread:    id,
+		Archives:  pbArchivesToInfo(r.Archives),
 		CreatedAt: time.Unix(0, r.CreatedAt),
 		UpdatedAt: time.Unix(0, r.UpdatedAt),
 	}, nil
+}
+
+func pbMetadataToInfo(pbm map[string]*pb.Metadata) (map[string]Metadata, error) {
+	if pbm == nil {
+		return nil, nil
+	}
+	md := make(map[string]Metadata)
+	for p, m := range pbm {
+		roles, err := buckets.RolesFromPb(m.Roles)
+		if err != nil {
+			return nil, err
+		}
+		md[p] = Metadata{
+			Key:       m.Key,
+			Roles:     roles,
+			UpdatedAt: time.Unix(0, m.UpdatedAt),
+		}
+	}
+	return md, nil
+}
+
+func pbArchivesToInfo(pba *pb.Archives) *Archives {
+	if pba == nil || pba.Current.Cid == "" {
+		return nil
+	}
+	archives := &Archives{
+		Current: Archive{
+			Cid:   pba.Current.Cid,
+			Deals: pbDealsToInfo(pba.Current.DealInfo),
+		},
+	}
+	if len(pba.History) == 0 {
+		return archives
+	}
+	archives.History = make([]Archive, len(pba.History))
+	for i, a := range pba.History {
+		archives.History[i] = Archive{
+			Cid:   a.Cid,
+			Deals: pbDealsToInfo(a.DealInfo),
+		}
+	}
+	return archives
+}
+
+func pbDealsToInfo(pbd []*pb.DealInfo) []Deal {
+	deals := make([]Deal, len(pbd))
+	for i, d := range pbd {
+		deals[i] = Deal{
+			ProposalCid: d.ProposalCid,
+			Miner:       d.Miner,
+		}
+	}
+	return deals
 }
 
 // Roots wraps local and remote root cids.

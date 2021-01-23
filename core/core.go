@@ -27,7 +27,6 @@ import (
 	"github.com/textileio/go-threads/broadcast"
 	tc "github.com/textileio/go-threads/common"
 	kt "github.com/textileio/go-threads/db/keytransform"
-
 	netapi "github.com/textileio/go-threads/net/api"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	netpb "github.com/textileio/go-threads/net/api/pb"
@@ -172,8 +171,7 @@ type Config struct {
 	AddrPowergateAPI string
 
 	// Buckets
-	MaxBucketSize             int64
-	BucketArchiveMaxRepFactor int
+	MaxBucketArchiveRepFactor int
 
 	// Threads
 	MaxNumberThreadsPerOwner int
@@ -402,8 +400,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		PowergateAdminToken:       conf.PowergateAdminToken,
 		ArchiveTracker:            t.archiveTracker,
 		Semaphores:                t.buckLocks,
-		MaxBucketSize:             conf.MaxBucketSize,
-		MaxBucketArchiveRepFactor: conf.BucketArchiveMaxRepFactor,
+		MaxBucketArchiveRepFactor: conf.MaxBucketArchiveRepFactor,
 		FilRetrieval:              t.filRetrieval,
 	}
 

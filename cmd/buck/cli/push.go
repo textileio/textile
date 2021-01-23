@@ -3,21 +3,15 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 const nonFastForwardMsg = "the root of your bucket is behind (try `%s` before pushing again)"
-
-var (
-	buckMaxSizeMiB = 4 * int64(1024)
-	MiB            = int64(1024 * 1024)
-)
 
 var pushCmd = &cobra.Command{
 	Use:   "push",
@@ -34,10 +28,6 @@ Use the '--force' flag to allow a non-fast-forward update.
 		cmd.ErrCheck(err)
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
-		maxSize, err := c.Flags().GetInt64("maxsize")
-		if err != nil {
-			cmd.Fatal(err)
-		}
 		conf, err := bucks.NewConfigFromCmd(c, ".")
 		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.PushTimeout)
@@ -45,37 +35,23 @@ Use the '--force' flag to allow a non-fast-forward update.
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
 
-		// Check total bucket size limit.
-		size, err := buck.LocalSize()
-		cmd.ErrCheck(err)
-		if size > maxSize*MiB {
-			cmd.Fatal(fmt.Errorf("bucket size exceeds default --maxsize limit (%dMiB): %dMiB",
-				maxSize, size/MiB))
-		}
-
-		var events chan local.PathEvent
-		var progress *uiprogress.Progress
+		var events chan local.Event
 		if !quiet {
-			events = make(chan local.PathEvent)
+			events = make(chan local.Event)
 			defer close(events)
-			progress = uiprogress.New()
-			progress.Start()
-			go handleProgressBars(progress, events)
+			go handleEvents(events)
 		}
 		roots, err := buck.PushLocal(
 			ctx,
 			local.WithConfirm(getConfirm("Push %d changes", yes)),
 			local.WithForce(force),
-			local.WithPathEvents(events),
+			local.WithEvents(events),
 		)
-		if progress != nil {
-			progress.Stop()
-		}
 		if errors.Is(err, local.ErrAborted) {
 			cmd.End("")
 		} else if errors.Is(err, local.ErrUpToDate) {
 			cmd.End("Everything up-to-date")
-		} else if errors.Is(err, buckets.ErrNonFastForward) {
+		} else if err != nil && strings.Contains(err.Error(), buckets.ErrNonFastForward.Error()) {
 			cmd.Fatal(errors.New(nonFastForwardMsg), aurora.Cyan("buck pull"))
 		} else if err != nil {
 			cmd.Fatal(err)

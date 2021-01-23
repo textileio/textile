@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 const Name = "buck"
@@ -23,15 +22,9 @@ var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 type Format string
 
 const (
-	Default Format = "default"
-	JSON           = "json"
+	DefaultFormat Format = "default"
+	JSONFormat           = "json"
 )
-
-func init() {
-	uiprogress.Empty = ' '
-	uiprogress.Fill = '-'
-
-}
 
 func Init(baseCmd *cobra.Command) {
 	baseCmd.AddCommand(
@@ -73,7 +66,6 @@ func Init(baseCmd *cobra.Command) {
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	pushCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
-	pushCmd.Flags().Int64("maxsize", buckMaxSizeMiB, "Max bucket size in MiB")
 
 	pullCmd.Flags().BoolP("force", "f", false, "Force pull all remote files if true")
 	pullCmd.Flags().Bool("hard", false, "Discards local changes if true")
@@ -90,7 +82,7 @@ func Init(baseCmd *cobra.Command) {
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
-	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [json]")
+	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [default,json]")
 }
 
 func SetBucks(b *local.Buckets) {
@@ -223,9 +215,10 @@ var linksCmd = &cobra.Command{
 }
 
 func printLinks(reply local.Links, format Format) {
-	if format == "json" {
+	switch format {
+	case JSONFormat:
 		cmd.JSON(reply)
-	} else {
+	default:
 		cmd.Message("Your bucket links:")
 		cmd.Message("%s Thread link", aurora.White(reply.URL).Bold())
 		cmd.Message("%s IPNS link (propagation can be slow)", aurora.White(reply.IPNS).Bold())
@@ -267,7 +260,7 @@ var lsCmd = &cobra.Command{
 				}
 				data = append(data, []string{
 					item.Name,
-					strconv.Itoa(int(item.Size)),
+					formatBytes(item.Size, false),
 					strconv.FormatBool(item.IsDir),
 					links,
 					item.Cid.String(),
@@ -344,7 +337,9 @@ var destroyCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-		cmd.Warn("%s", aurora.Red("This action cannot be undone. The bucket and all associated data will be permanently deleted."))
+		cmd.Warn("%s",
+			aurora.Red(
+				"This action cannot be undone. The bucket and all associated data will be permanently deleted."))
 		prompt := promptui.Prompt{
 			Label:     "Are you absolutely sure",
 			IsConfirm: true,

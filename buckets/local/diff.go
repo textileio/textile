@@ -105,7 +105,10 @@ func (b *Bucket) walkPath(pth string) (names []string, err error) {
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, pth+string(os.PathSeparator))
-			if Ignore(n) || f == buckets.SeedName || strings.HasPrefix(f, b.conf.Dir) || strings.HasSuffix(f, patchExt) {
+			if Ignore(n) ||
+				f == buckets.SeedName ||
+				strings.HasPrefix(f, b.conf.Dir) ||
+				strings.HasSuffix(f, patchExt) {
 				return nil
 			}
 			names = append(names, n)

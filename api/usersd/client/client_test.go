@@ -512,17 +512,14 @@ func TestAccountBuckets(t *testing.T) {
 	require.NoError(t, err)
 
 	// Finally, push a file to the bucket.
-	file, err := os.Open("testdata/file1.jpg")
+	res2, err := pushPath(t, ctx, buckets, buck.Root.Key, "file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
-	defer file.Close()
-	_, file1Root, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-	require.NoError(t, err)
-	assert.NotEmpty(t, file1Root.String())
+	assert.NotEmpty(t, res2.Root.String())
 
 	// We should have a thread named "my-buckets"
-	res2, err := users.GetThread(ctx, "my-buckets")
+	res3, err := users.GetThread(ctx, "my-buckets")
 	require.NoError(t, err)
-	assert.Equal(t, dbID.Bytes(), res2.Id)
+	assert.Equal(t, dbID.Bytes(), res3.Id)
 }
 
 func TestUserBuckets(t *testing.T) {
@@ -557,17 +554,14 @@ func TestUserBuckets(t *testing.T) {
 	require.NoError(t, err)
 
 	// Finally, push a file to the bucket.
-	file, err := os.Open("testdata/file1.jpg")
+	res2, err := pushPath(t, ctx, buckets, buck.Root.Key, "file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
-	defer file.Close()
-	_, file1Root, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file)
-	require.NoError(t, err)
-	assert.NotEmpty(t, file1Root.String())
+	assert.NotEmpty(t, res2.Root.String())
 
 	// We should have a thread named "my-buckets"
-	res2, err := users.GetThread(ctx, "my-buckets")
+	res3, err := users.GetThread(ctx, "my-buckets")
 	require.NoError(t, err)
-	assert.Equal(t, dbID.Bytes(), res2.Id)
+	assert.Equal(t, dbID.Bytes(), res3.Id)
 
 	// The dev should see that the key was used to create one thread
 	keys, err := hub.ListKeys(devCtx)
@@ -584,14 +578,11 @@ func TestUserBuckets(t *testing.T) {
 	pk2 := thread.NewLibp2pPubKey(pk2c).String()
 
 	// Try to overwrite existing
-	file2, err := os.Open("testdata/file2.jpg")
-	require.NoError(t, err)
-	defer file2.Close()
-	_, _, err = buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file2)
+	_, err = pushPath(t, ctx, buckets, buck.Root.Key, "file1.jpg", "testdata/file2.jpg")
 	require.Error(t, err) // no path write access
 
 	// Try to add a new path
-	_, _, err = buckets.PushPath(ctx, buck.Root.Key, "file2.jpg", file2)
+	_, err = pushPath(t, ctx, buckets, buck.Root.Key, "file2.jpg", "testdata/file2.jpg")
 	require.Error(t, err) // no new path write access
 
 	// Try to get the path
@@ -619,9 +610,9 @@ func TestUserBuckets(t *testing.T) {
 
 	// Try to write to the path again
 	ctx = thread.NewTokenContext(ctx, tok2)
-	_, file1Root2, err := buckets.PushPath(ctx, buck.Root.Key, "file1.jpg", file2)
+	res4, err := pushPath(t, ctx, buckets, buck.Root.Key, "file1.jpg", "testdata/file2.jpg")
 	require.NoError(t, err)
-	assert.False(t, file1Root2.Cid().Equals(file1Root.Cid()))
+	assert.False(t, res4.Root.Cid().Equals(res2.Root.Cid()))
 
 	// Check that we now have two logs in the bucket thread
 	time.Sleep(time.Second)
@@ -685,4 +676,15 @@ func setupUserMail(t *testing.T, client *c.Client, threads *tc.Client, key strin
 	_, err = client.SetupMailbox(ctx)
 	require.NoError(t, err)
 	return id, ctx
+}
+
+func pushPath(t *testing.T, ctx context.Context, buckets *bc.Client, key, pth, name string) (bc.PushPathsResult, error) {
+	q, err := buckets.PushPaths(ctx, key)
+	require.NoError(t, err)
+	err = q.AddFile(pth, name)
+	require.NoError(t, err)
+	for q.Next() {
+	}
+	q.Close()
+	return q.Current, q.Err()
 }

@@ -75,31 +75,19 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 		return
 	}
 	xr := path.IpfsPath(r.Remote)
-	var rm []Change
-	if args.events != nil {
-		args.events <- PathEvent{
-			Path: bp,
-			Type: PathStart,
-		}
-	}
+	var rm, add []Change
 	key := b.Key()
 	for _, c := range diff {
 		switch c.Type {
 		case du.Mod, du.Add:
-			var added path.Resolved
-			var err error
-			added, xr, err = b.addFile(ctx, key, xr, c, args.force, args.events)
-			if err != nil {
-				return roots, err
-			}
-			if b.repo != nil {
-				if err := b.repo.SetRemotePath(c.Path, added.Cid()); err != nil {
-					return roots, err
-				}
-			}
+			add = append(add, c)
 		case du.Remove:
 			rm = append(rm, c)
 		}
+	}
+	xr, err = b.addFiles(ctx, key, xr, add, args.force, args.events)
+	if err != nil {
+		return roots, err
 	}
 	if len(rm) > 0 {
 		for _, c := range rm {
@@ -108,17 +96,6 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			if err != nil {
 				return roots, err
 			}
-			if b.repo != nil {
-				if err := b.repo.RemovePath(ctx, c.Path); err != nil {
-					return roots, err
-				}
-			}
-		}
-	}
-	if args.events != nil {
-		args.events <- PathEvent{
-			Path: bp,
-			Type: PathComplete,
 		}
 	}
 
@@ -137,66 +114,98 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 	return b.Roots(ctx)
 }
 
-func (b *Bucket) addFile(ctx context.Context, key string, xroot path.Resolved, c Change, force bool, events chan<- PathEvent) (added path.Resolved, root path.Resolved, err error) {
-	file, err := os.Open(c.Name)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		return
-	}
-	size := info.Size()
+type pendingFile struct {
+	path string
+	rel  string
+}
 
-	if events != nil {
-		events <- PathEvent{
-			Path: c.Rel,
-			Type: FileStart,
-			Size: size,
-		}
-	}
-
+func (b *Bucket) addFiles(
+	ctx context.Context,
+	key string,
+	xroot path.Resolved,
+	changes []Change,
+	force bool,
+	events chan<- Event,
+) (path.Resolved, error) {
 	progress := make(chan int64)
-	go func() {
-		for up := range progress {
-			var u int64
-			if up > size {
-				u = size
-			} else {
-				u = up
-			}
-			if events != nil {
-				events <- PathEvent{
-					Path:     c.Rel,
-					Type:     FileProgress,
-					Size:     size,
-					Progress: u,
-				}
-			}
-		}
-	}()
+	defer close(progress)
+	files := make(map[string]pendingFile)
 
 	opts := []client.Option{client.WithProgress(progress)}
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
 	}
-	added, root, err = b.clients.Buckets.PushPath(ctx, key, c.Path, file, opts...)
+	q, err := b.clients.Buckets.PushPaths(ctx, key, opts...)
 	if err != nil {
-		return
-	} else if events != nil {
-		events <- PathEvent{
-			Path:     c.Rel,
-			Cid:      added.Cid(),
-			Type:     FileComplete,
-			Size:     size,
-			Progress: size,
+		return nil, err
+	}
+	defer q.Close()
+
+	for _, c := range changes {
+		file := pendingFile{
+			path: c.Path,
+			rel:  c.Rel,
+		}
+		pth := filepath.ToSlash(c.Path)
+		files[pth] = file
+		if err := q.AddFile(file.path, c.Name); err != nil {
+			return nil, err
 		}
 	}
-	return added, root, nil
+
+	size := q.Size()
+	go func() {
+		for p := range progress {
+			var u int64
+			if p > size {
+				u = size
+			} else {
+				u = p
+			}
+			if events != nil {
+				events <- Event{
+					Type:     EventProgress,
+					Size:     size,
+					Complete: u,
+				}
+			}
+		}
+	}()
+
+	var root path.Resolved
+	for q.Next() {
+		if q.Err() != nil {
+			return nil, q.Err()
+		}
+		file := files[q.Current.Path]
+		root = q.Current.Root
+
+		if b.repo != nil {
+			if err := b.repo.SetRemotePath(file.path, q.Current.Cid); err != nil {
+				return nil, err
+			}
+		}
+
+		if events != nil {
+			events <- Event{
+				Type: EventFileComplete,
+				Path: file.rel,
+				Cid:  q.Current.Cid,
+				Size: q.Current.Size,
+			}
+		}
+	}
+	return root, nil
 }
 
-func (b *Bucket) rmFile(ctx context.Context, key string, xroot path.Resolved, c Change, force bool, events chan<- PathEvent) (path.Resolved, error) {
+func (b *Bucket) rmFile(
+	ctx context.Context,
+	key string,
+	xroot path.Resolved,
+	c Change,
+	force bool,
+	events chan<- Event,
+) (path.Resolved, error) {
 	var opts []client.Option
 	if !force {
 		opts = append(opts, client.WithFastForwardOnly(xroot))
@@ -207,10 +216,17 @@ func (b *Bucket) rmFile(ctx context.Context, key string, xroot path.Resolved, c 
 			return nil, err
 		}
 	}
+
+	if b.repo != nil {
+		if err := b.repo.RemovePath(ctx, c.Path); err != nil {
+			return nil, err
+		}
+	}
+
 	if events != nil {
-		events <- PathEvent{
+		events <- Event{
+			Type: EventFileRemoved,
 			Path: c.Rel,
-			Type: FileRemoved,
 		}
 	}
 	return root, nil

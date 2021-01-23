@@ -84,11 +84,11 @@ func TestBuckets_NewBucket(t *testing.T) {
 	t.Run("new bootstrapped bucket", func(t *testing.T) {
 		conf := getConf(t, buckets)
 		pth := createIpfsFolder(t)
-		events := make(chan PathEvent)
+		events := make(chan Event)
 		defer close(events)
 		ec := &eventCollector{}
 		go ec.collect(events)
-		buck, err := buckets.NewBucket(context.Background(), conf, WithCid(pth.Cid()), WithInitPathEvents(events))
+		buck, err := buckets.NewBucket(context.Background(), conf, WithCid(pth.Cid()), WithInitEvents(events))
 		require.NoError(t, err)
 		assert.NotEmpty(t, buck)
 		ec.check(t, 2, 0)
@@ -311,27 +311,18 @@ func createIpfsFolder(t *testing.T) (pth path.Resolved) {
 }
 
 type eventCollector struct {
-	pathStarted   bool
-	pathCompleted bool
-	fileStarts    int
 	fileCompletes int
 	fileRemoves   int
 	sync.Mutex
 }
 
-func (c *eventCollector) collect(events chan PathEvent) {
+func (c *eventCollector) collect(events chan Event) {
 	for e := range events {
 		c.Lock()
 		switch e.Type {
-		case PathStart:
-			c.pathStarted = true
-		case PathComplete:
-			c.pathCompleted = true
-		case FileStart:
-			c.fileStarts++
-		case FileComplete:
+		case EventFileComplete:
 			c.fileCompletes++
-		case FileRemoved:
+		case EventFileRemoved:
 			c.fileRemoves++
 		}
 		c.Unlock()
@@ -342,11 +333,6 @@ func (c *eventCollector) check(t *testing.T, numFilesAdded, numFilesRemoved int)
 	time.Sleep(5 * time.Second)
 	c.Lock()
 	defer c.Unlock()
-	if numFilesAdded > 0 {
-		assert.True(t, c.pathStarted)
-		assert.True(t, c.pathCompleted)
-	}
-	assert.Equal(t, numFilesAdded, c.fileStarts)
 	assert.Equal(t, numFilesAdded, c.fileCompletes)
 	assert.Equal(t, numFilesRemoved, c.fileRemoves)
 }
