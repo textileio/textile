@@ -15,6 +15,26 @@ import (
 	"github.com/textileio/textile/v2/cmd"
 )
 
+type InitializedType string
+
+const (
+	Empty        InitializedType = "empty"
+	Bootstrapped InitializedType = "bootstrapped"
+	Existing     InitializedType = "existing"
+)
+
+// InitializeResult wraps remote link info for a bucket and the initialize type.
+type InitializeResult struct {
+	// URL is the thread URL, which maps to a ThreadDB collection instance.
+	URL string `json:"url"`
+	// WWW is the URL at which the bucket will be rendered as a website (requires remote DNS configuration).
+	WWW string `json:"www"`
+	// IPNS is the bucket IPNS address.
+	IPNS string `json:"ipns"`
+	// Initialized is the type of initialization
+	Initialized InitializedType `json:"initialized"`
+}
+
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a new or existing bucket",
@@ -191,22 +211,48 @@ Use the '--hard' flag to discard all local changes.
 			return
 		}
 
+		format, err := c.Flags().GetString("format")
+		cmd.ErrCheck(err)
+
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
-		printLinks(links, DefaultFormat)
 
-		var msg string
-		if !existing {
-			msg = "Initialized %s as a new empty bucket"
-			if xcid.Defined() {
-				msg = "Initialized %s as a new bootstrapped bucket"
+		switch format {
+		case JSONFormat:
+			var initializeType InitializedType
+			if !existing {
+				if xcid.Defined() {
+					initializeType = Bootstrapped
+				} else {
+					initializeType = Empty
+				}
+			} else {
+				initializeType = Existing
 			}
-		} else {
-			msg = "Initialized %s from an existing bucket"
+			cmd.JSON(InitializeResult{
+				URL:         links.URL,
+				WWW:         links.WWW,
+				IPNS:        links.IPNS,
+				Initialized: initializeType,
+			})
+		default:
+			printLinks(links, DefaultFormat)
+
+			var msg string
+			if !existing {
+				msg = "Initialized %s as a new empty bucket"
+				if xcid.Defined() {
+					msg = "Initialized %s as a new bootstrapped bucket"
+				}
+			} else {
+				msg = "Initialized %s from an existing bucket"
+			}
+
+			bp, err := buck.Path()
+			cmd.ErrCheck(err)
+			cmd.Success(msg, aurora.White(bp).Bold())
+
 		}
 
-		bp, err := buck.Path()
-		cmd.ErrCheck(err)
-		cmd.Success(msg, aurora.White(bp).Bold())
 	},
 }
