@@ -126,7 +126,9 @@ func TestListKeyAndEventFilters(t *testing.T) {
 func TestListDescending(t *testing.T) {
 	f := requireFilRewards(t)
 	requireProcessedEvent(t, f, "user1", analytics.BillingSetup)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{Ascending: false})
 	require.NoError(t, err)
@@ -137,7 +139,9 @@ func TestListDescending(t *testing.T) {
 func TestListAscending(t *testing.T) {
 	f := requireFilRewards(t)
 	requireProcessedEvent(t, f, "user1", analytics.BillingSetup)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{Ascending: true})
 	require.NoError(t, err)
@@ -148,12 +152,19 @@ func TestListAscending(t *testing.T) {
 func TestListPaging(t *testing.T) {
 	f := requireFilRewards(t)
 	requireProcessedEvent(t, f, "user1", analytics.BillingSetup)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user1", analytics.BucketArchiveCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user2", analytics.BillingSetup)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user2", analytics.BucketCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user2", analytics.BucketArchiveCreated)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user3", analytics.BillingSetup)
+	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, f, "user3", analytics.BucketCreated)
 	numPages := 0
 	more := true
