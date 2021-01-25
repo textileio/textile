@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 var addCmd = &cobra.Command{
@@ -27,18 +26,16 @@ var addCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
-		events := make(chan local.PathEvent)
+		events := make(chan local.Event)
 		defer close(events)
-		progress := uiprogress.New()
-		progress.Start()
-		go handleProgressBars(progress, events)
+		go handleEvents(events)
 		err = buck.AddRemoteCid(
 			ctx,
 			target,
 			args[1],
 			local.WithSelectMerge(getSelectMergeStrategy(yes)),
-			local.WithAddEvents(events))
-		progress.Stop()
+			local.WithAddEvents(events),
+		)
 		cmd.ErrCheck(err)
 		cmd.Success("Merged %s with %s", target, args[1])
 	},

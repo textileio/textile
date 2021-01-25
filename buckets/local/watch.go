@@ -39,7 +39,7 @@ func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan cmd.Wat
 }
 
 // watchWhileConnected will watch until context is canceled or an error occurs.
-func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEvent) (<-chan cmd.WatchState, error) {
+func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- Event) (<-chan cmd.WatchState, error) {
 	id, err := b.Thread()
 	if err != nil {
 		return nil, err
@@ -124,20 +124,20 @@ func (b *Bucket) watchWhileConnected(ctx context.Context, pevents chan<- PathEve
 	return state, nil
 }
 
-func (b *Bucket) watchPush(ctx context.Context, events chan<- PathEvent) error {
+func (b *Bucket) watchPush(ctx context.Context, events chan<- Event) error {
 	b.pushBlock <- struct{}{}
 	defer func() {
 		<-b.pushBlock
 	}()
-	if _, err := b.PushLocal(ctx, WithPathEvents(events)); errors.Is(err, ErrUpToDate) {
+	if _, err := b.PushLocal(ctx, WithEvents(events)); errors.Is(err, ErrUpToDate) {
 		return nil
 	} else if errors.Is(err, buckets.ErrNonFastForward) {
 		// Pull remote changes
-		if _, err = b.PullRemote(ctx, WithPathEvents(events)); err != nil {
+		if _, err = b.PullRemote(ctx, WithEvents(events)); err != nil {
 			return err
 		}
 		// Now try pushing again
-		if _, err = b.PushLocal(ctx, WithPathEvents(events)); err != nil {
+		if _, err = b.PushLocal(ctx, WithEvents(events)); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -146,10 +146,10 @@ func (b *Bucket) watchPush(ctx context.Context, events chan<- PathEvent) error {
 	return nil
 }
 
-func (b *Bucket) watchPull(ctx context.Context, events chan<- PathEvent) error {
+func (b *Bucket) watchPull(ctx context.Context, events chan<- Event) error {
 	select {
 	case b.pushBlock <- struct{}{}:
-		if _, err := b.PullRemote(ctx, WithPathEvents(events)); !errors.Is(err, ErrUpToDate) {
+		if _, err := b.PullRemote(ctx, WithEvents(events)); !errors.Is(err, ErrUpToDate) {
 			<-b.pushBlock
 			return err
 		}

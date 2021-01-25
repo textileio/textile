@@ -4,14 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 )
-
-// ArchiveStatusTimeout is the timeout used when requesting a single status message.
-var ArchiveStatusTimeout = time.Second * 5
 
 // ArchiveConfig is the desired state of a Cid in the Filecoin network.
 type ArchiveConfig struct {

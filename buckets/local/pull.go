@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -90,7 +91,7 @@ func (b *Bucket) getPath(
 	pth, dest string,
 	diff []Change,
 	force bool,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) (changes int, err error) {
 	all, missing, err := b.listPath(ctx, pth, dest, force)
 	if err != nil {
@@ -123,15 +124,14 @@ looop:
 		}
 	}
 
-	return b.handleChanges(ctx, pth, missing, remove, events)
+	return b.handleChanges(ctx, missing, remove, events)
 }
 
 func (b *Bucket) handleChanges(
 	ctx context.Context,
-	pth string,
 	missing []object,
 	remove map[string]string,
-	events chan<- PathEvent,
+	events chan<- Event,
 ) (count int, err error) {
 	count = len(missing)
 	count += len(remove)
@@ -140,12 +140,9 @@ func (b *Bucket) handleChanges(
 	}
 
 	if len(missing) > 0 {
-		if events != nil {
-			events <- PathEvent{
-				Path: pth,
-				Type: PathStart,
-			}
-		}
+		progress := handleAllPullProgress(missing, events)
+		defer close(progress)
+
 		eg, gctx := errgroup.WithContext(context.Background())
 		lim := make(chan struct{}, MaxPullConcurrency)
 		for _, o := range missing {
@@ -156,13 +153,7 @@ func (b *Bucket) handleChanges(
 				if gctx.Err() != nil {
 					return nil
 				}
-				if err := b.getFile(ctx, b.Key(), o, events); err != nil {
-					return err
-				}
-				if b.repo != nil {
-					return b.repo.SetRemotePath(o.path, o.cid)
-				}
-				return nil
+				return b.getFile(ctx, b.Key(), o, events, progress)
 			})
 		}
 		for i := 0; i < cap(lim); i++ {
@@ -182,22 +173,17 @@ func (b *Bucket) handleChanges(
 				if err != nil {
 					return count, err
 				}
-				events <- PathEvent{
+				events <- Event{
+					Type: EventFileRemoved,
 					Path: rel,
-					Type: FileRemoved,
 				}
 			}
+
 			if b.repo != nil {
 				if err := b.repo.RemovePath(ctx, p); err != nil {
 					return count, err
 				}
 			}
-		}
-	}
-	if events != nil {
-		events <- PathEvent{
-			Path: pth,
-			Type: PathComplete,
 		}
 	}
 	return count, nil
@@ -313,7 +299,7 @@ func (b *Bucket) listPath(
 	return all, missing, nil
 }
 
-func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<- PathEvent) error {
+func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<- Event, progress chan<- int64) error {
 	if err := os.MkdirAll(filepath.Dir(o.name), os.ModePerm); err != nil {
 		return err
 	}
@@ -328,40 +314,73 @@ func (b *Bucket) getFile(ctx context.Context, key string, o object, events chan<
 		return err
 	}
 
-	if events != nil {
-		events <- PathEvent{
-			Path: rel,
-			Cid:  o.cid,
-			Type: FileStart,
-			Size: o.size,
+	prog, finish := handlePullProgress(progress, o.size)
+	defer finish()
+	if err := b.clients.Buckets.PullPath(ctx, key, o.path, file, client.WithProgress(prog)); err != nil {
+		return err
+	}
+
+	if b.repo != nil {
+		if err := b.repo.SetRemotePath(o.path, o.cid); err != nil {
+			return err
 		}
 	}
 
+	if events != nil {
+		events <- Event{
+			Type: EventFileComplete,
+			Path: rel,
+			Cid:  o.cid,
+			Size: o.size,
+		}
+	}
+	return nil
+}
+
+func handlePullProgress(global chan<- int64, fsize int64) (chan<- int64, func()) {
+	progress := make(chan int64)
+	var current int64
+	var done bool
+	var lk sync.Mutex
+	go func() {
+		for p := range progress {
+			lk.Lock()
+			if !done {
+				diff := p - current
+				global <- diff
+				current = p
+			}
+			lk.Unlock()
+		}
+	}()
+	doneFn := func() {
+		lk.Lock()
+		global <- fsize - current
+		done = true
+		close(progress)
+		lk.Unlock()
+	}
+	return progress, doneFn
+}
+
+func handleAllPullProgress(os []object, events chan<- Event) chan<- int64 {
+	var total int64
+	for _, o := range os {
+		total += o.size
+	}
 	progress := make(chan int64)
 	go func() {
-		for up := range progress {
+		var complete int64
+		for p := range progress {
+			complete += p
 			if events != nil {
-				events <- PathEvent{
-					Path:     rel,
-					Cid:      o.cid,
-					Type:     FileProgress,
-					Size:     o.size,
-					Progress: up,
+				events <- Event{
+					Type:     EventProgress,
+					Size:     total,
+					Complete: complete,
 				}
 			}
 		}
 	}()
-	if err := b.clients.Buckets.PullPath(ctx, key, o.path, file, client.WithProgress(progress)); err != nil {
-		return err
-	}
-	if events != nil {
-		events <- PathEvent{
-			Path:     rel,
-			Cid:      o.cid,
-			Type:     FileComplete,
-			Size:     o.size,
-			Progress: o.size,
-		}
-	}
-	return nil
+	return progress
 }

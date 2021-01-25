@@ -13,7 +13,6 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets/local"
 	"github.com/textileio/textile/v2/cmd"
-	"github.com/textileio/uiprogress"
 )
 
 var initCmd = &cobra.Command{
@@ -74,8 +73,10 @@ Use the '--hard' flag to discard all local changes.
 			cmd.Fatal(errors.New("--cid cannot be used with an existing bucket"))
 		}
 
-		unfreeze, err := c.Flags().GetBool("unfreeze")
-		cmd.ErrCheck(err)
+		// (jsign): re-enable when this feature is usable in mainnet.
+		//unfreeze, err := c.Flags().GetBool("unfreeze")
+		//cmd.ErrCheck(err)
+		var unfreeze bool
 		if unfreeze && xcid == cid.Undef {
 			cmd.Fatal(errors.New("--unfreeze requires specifying --cid"))
 		}
@@ -168,14 +169,11 @@ Use the '--hard' flag to discard all local changes.
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 
-		var events chan local.PathEvent
-		var progress *uiprogress.Progress
+		var events chan local.Event
 		if !quiet {
-			events = make(chan local.PathEvent)
+			events = make(chan local.Event)
 			defer close(events)
-			progress = uiprogress.New()
-			progress.Start()
-			go handleProgressBars(progress, events)
+			go handleEvents(events)
 		}
 		buck, err := bucks.NewBucket(
 			ctx,
@@ -185,10 +183,7 @@ Use the '--hard' flag to discard all local changes.
 			local.WithCid(xcid),
 			local.WithUnfreeze(unfreeze),
 			local.WithStrategy(strategy),
-			local.WithInitPathEvents(events))
-		if progress != nil {
-			progress.Stop()
-		}
+			local.WithInitEvents(events))
 		cmd.ErrCheck(err)
 
 		if unfreeze {
@@ -200,7 +195,7 @@ Use the '--hard' flag to discard all local changes.
 
 		links, err := buck.RemoteLinks(ctx, "")
 		cmd.ErrCheck(err)
-		printLinks(links, Default)
+		printLinks(links, DefaultFormat)
 
 		var msg string
 		if !existing {

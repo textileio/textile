@@ -5,6 +5,12 @@ option go_package = "github.com/textileio/textile/v2/api/bucketsd/pb";
 message Metadata {
     map<string, PathAccessRole> roles = 1;
     int64 updated_at = 2;
+    string key = 3;
+
+    // @todo: For v3, change this to:
+    // string key = 1;
+    // map<string, PathAccessRole> roles = 2;
+    // int64 updated_at = 3;
 }
 
 message Root {
@@ -17,6 +23,22 @@ message Root {
     string owner = 7;
     int32 version = 8;
     Metadata metadata = 9;
+    string link_key = 10;
+    map<string, Metadata> path_metadata = 11;
+    Archives archives = 12;
+
+    // @todo: For v3, change this to:
+    // string thread = 1;
+    // string key = 2;
+    // string owner = 3;
+    // string name = 4;
+    // int32 version = 5;
+    // string link_key = 6;
+    // string path = 7;
+    // map<string, Metadata> metadata = 8;
+    // Archives archives = 9;
+    // int64 created_at = 10;
+    // int64 updated_at = 11;
 }
 
 message ListRequest {}
@@ -78,7 +100,7 @@ message PathItem {
     bool is_dir = 5;
     repeated PathItem items = 6;
     int32 items_count = 7;
-    Metadata metadata = 9;
+    Metadata metadata = 9; // @todo: For v3, change this to 8.
 }
 
 message ListIpfsPathRequest {
@@ -115,6 +137,31 @@ message PushPathResponse {
     }
 }
 
+message PushPathsRequest {
+    oneof payload {
+        Header header = 1;
+        Chunk chunk = 2;
+    }
+
+    message Header {
+        string key = 1;
+        string root = 2;
+    }
+
+    message Chunk {
+        string path = 1;
+        bytes data = 2;
+    }
+}
+
+message PushPathsResponse {
+    string path = 1;
+    string cid = 2;
+    int64 size = 3;
+    int64 pinned = 4;
+    Root root = 5;
+}
+
 message PullPathRequest {
     string key = 1;
     string path = 2;
@@ -123,7 +170,6 @@ message PullPathRequest {
 message PullPathResponse {
     bytes chunk = 1;
 }
-
 
 message PullIpfsPathRequest {
     string path = 1;
@@ -200,6 +246,11 @@ message ArchiveConfig {
     int64 deal_start_offset = 9;
 }
 
+message Archives {
+    Archive current = 1;
+    repeated Archive history = 2;
+}
+
 message Archive {
     string cid = 1;
     string job_id = 2;
@@ -233,7 +284,7 @@ message DealInfo {
     uint64 deal_id = 10;
     int64 activation_epoch = 11;
     string message = 12;
-  }
+}
 
 message ArchiveRenew {
     bool enabled = 1;
@@ -266,6 +317,7 @@ message ArchivesRequest {
     string key = 1;
 }
 
+// todo: For v3, change this to { Archives archives = 1; }
 message ArchivesResponse {
     Archive current = 1;
     repeated Archive history = 2;
@@ -287,6 +339,7 @@ service APIService {
     rpc ListPath(ListPathRequest) returns (ListPathResponse) {}
     rpc ListIpfsPath(ListIpfsPathRequest) returns (ListIpfsPathResponse) {}
     rpc PushPath(stream PushPathRequest) returns (stream PushPathResponse) {}
+    rpc PushPaths(stream PushPathsRequest) returns (stream PushPathsResponse) {}
     rpc PullPath(PullPathRequest) returns (stream PullPathResponse) {}
     rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathResponse) {}
     rpc SetPath(SetPathRequest) returns (SetPathResponse) {}

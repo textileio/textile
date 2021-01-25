@@ -14,7 +14,11 @@ import (
 // roles is a map of string marshaled public keys to path roles. A non-nil error is returned
 // if the map keys are not unmarshalable to public keys.
 // To delete a role for a public key, set its value to buckets.None.
-func (b *Bucket) PushPathAccessRoles(ctx context.Context, pth string, roles map[string]buckets.Role) (merged map[string]buckets.Role, err error) {
+func (b *Bucket) PushPathAccessRoles(
+	ctx context.Context,
+	pth string,
+	roles map[string]buckets.Role,
+) (merged map[string]buckets.Role, err error) {
 	ctx, err = b.context(ctx)
 	if err != nil {
 		return

@@ -9,7 +9,7 @@ type newOptions struct {
 	private  bool
 	fromCid  cid.Cid
 	strategy InitStrategy
-	events   chan<- PathEvent
+	events   chan<- Event
 	unfreeze bool
 }
 
@@ -63,9 +63,9 @@ func WithStrategy(strategy InitStrategy) NewOption {
 	}
 }
 
-// WithInitPathEvents allows the caller to receive path events when pulling
+// WithInitEvents allows the caller to receive events when pulling
 // files from an existing bucket on initialization.
-func WithInitPathEvents(ch chan<- PathEvent) NewOption {
+func WithInitEvents(ch chan<- Event) NewOption {
 	return func(args *newOptions) {
 		args.events = ch
 	}
@@ -75,7 +75,7 @@ type pathOptions struct {
 	confirm ConfirmDiffFunc
 	force   bool
 	hard    bool
-	events  chan<- PathEvent
+	events  chan<- Event
 }
 
 // PathOption is used when pushing or pulling bucket paths.
@@ -105,8 +105,8 @@ func WithHard(b bool) PathOption {
 	}
 }
 
-// WithPathEvents allows the caller to receive path events when pushing or pulling files.
-func WithPathEvents(ch chan<- PathEvent) PathOption {
+// WithEvents allows the caller to receive events when pushing or pulling files.
+func WithEvents(ch chan<- Event) PathOption {
 	return func(args *pathOptions) {
 		args.events = ch
 	}
@@ -114,7 +114,7 @@ func WithPathEvents(ch chan<- PathEvent) PathOption {
 
 type addOptions struct {
 	merge  SelectMergeFunc
-	events chan<- PathEvent
+	events chan<- Event
 }
 
 // SelectMergeFunc is a caller-provided function which is used to select a merge strategy.
@@ -142,8 +142,8 @@ func WithSelectMerge(f SelectMergeFunc) AddOption {
 	}
 }
 
-// WithAddEvents allows the caller to receive path events when staging files from a remote Unixfs dag.
-func WithAddEvents(ch chan<- PathEvent) AddOption {
+// WithAddEvents allows the caller to receive events when staging files from a remote Unixfs dag.
+func WithAddEvents(ch chan<- Event) AddOption {
 	return func(args *addOptions) {
 		args.events = ch
 	}
@@ -151,7 +151,7 @@ func WithAddEvents(ch chan<- PathEvent) AddOption {
 
 type watchOptions struct {
 	offline bool
-	events  chan<- PathEvent
+	events  chan<- Event
 }
 
 // WatchOption is used when watching a bucket for changes.
@@ -164,8 +164,8 @@ func WithOffline(offline bool) WatchOption {
 	}
 }
 
-// WithWatchEvents allows the caller to receive path events when watching a bucket for changes.
-func WithWatchEvents(ch chan<- PathEvent) WatchOption {
+// WithWatchEvents allows the caller to receive events when watching a bucket for changes.
+func WithWatchEvents(ch chan<- Event) WatchOption {
 	return func(args *watchOptions) {
 		args.events = ch
 	}

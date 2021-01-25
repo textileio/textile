@@ -2,8 +2,13 @@ package client
 
 import (
 	"context"
+	"errors"
 	"io"
+	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
@@ -18,6 +23,11 @@ import (
 const (
 	// chunkSize for add file requests.
 	chunkSize = 1024 * 32
+)
+
+var (
+	// ErrPushPathQueueClosed indicates the push path is or was closed.
+	ErrPushPathQueueClosed = errors.New("push path queue is closed")
 )
 
 // Client provides the client api.
@@ -112,7 +122,12 @@ type pushPathResult struct {
 
 // PushPath pushes a file to a bucket path.
 // This will return the resolved path and the bucket's new root path.
-func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader, opts ...Option) (result path.Resolved, root path.Resolved, err error) {
+func (c *Client) PushPath(
+	ctx context.Context,
+	key, pth string,
+	reader io.Reader,
+	opts ...Option,
+) (result path.Resolved, root path.Resolved, err error) {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
@@ -206,19 +221,356 @@ func (c *Client) PushPath(ctx context.Context, key, pth string, reader io.Reader
 	return res.path, res.root, res.err
 }
 
+// PushPathsResult contains the result of a Push.
+type PushPathsResult struct {
+	Path   string
+	Cid    cid.Cid
+	Size   int64
+	Pinned int64
+	Root   path.Resolved
+
+	err error
+}
+
+// PushPathsQueue handles PushPath input and output.
+type PushPathsQueue struct {
+	// Current contains the current push result.
+	Current PushPathsResult
+
+	q           []pushPath
+	len         int
+	inCh        chan pushPath
+	inWaitCh    chan struct{}
+	outCh       chan PushPathsResult
+	started     bool
+	stopped     bool
+	closeFunc   func() error
+	closed      bool
+	closeWaitCh chan struct{}
+
+	size     int64
+	complete int64
+
+	lk sync.Mutex
+	wg sync.WaitGroup
+}
+
+type pushPath struct {
+	path string
+	r    io.Reader
+	c    io.Closer
+}
+
+func (p pushPath) close() {
+	if p.c != nil {
+		_ = p.c.Close()
+	}
+}
+
+// AddFile adds a file to the queue.
+// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
+// name is the location of the file on the local filesystem, e.g., "/Users/clyde/Downloads/mybone.jpg".
+func (c *PushPathsQueue) AddFile(pth, name string) error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+
+	if c.closed {
+		return ErrPushPathQueueClosed
+	}
+	if c.started {
+		return errors.New("cannot call AddFile after Next")
+	}
+
+	f, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return err
+	}
+
+	atomic.AddInt64(&c.size, info.Size())
+	c.q = append(c.q, pushPath{
+		path: filepath.ToSlash(pth),
+		r:    f,
+		c:    f,
+	})
+	return nil
+}
+
+// AddReader adds a reader to the queue.
+// pth is the location relative to the bucket root at which to insert the file, e.g., "/path/to/mybone.jpg".
+// r is the reader to read from.
+// size is the size of the reader. Use of the WithProgress option is not recommended if the reader size is unknown.
+func (c *PushPathsQueue) AddReader(pth string, r io.Reader, size int64) error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+
+	if c.closed {
+		return ErrPushPathQueueClosed
+	}
+	if c.started {
+		return errors.New("cannot call AddReader after Next")
+	}
+
+	atomic.AddInt64(&c.size, size)
+	c.q = append(c.q, pushPath{
+		path: filepath.ToSlash(pth),
+		r:    r,
+	})
+	return nil
+}
+
+// Size returns the queue size in bytes.
+func (c *PushPathsQueue) Size() int64 {
+	return atomic.LoadInt64(&c.size)
+}
+
+// Complete returns the portion of the queue size that has been pushed.
+func (c *PushPathsQueue) Complete() int64 {
+	return atomic.LoadInt64(&c.complete)
+}
+
+// Next blocks while the queue is open, returning true when a result is ready.
+// Use Current to access the result.
+func (c *PushPathsQueue) Next() (ok bool) {
+	c.lk.Lock()
+	if c.closed {
+		c.lk.Unlock()
+		return false
+	}
+
+	if !c.started {
+		c.started = true
+		c.len = len(c.q)
+		c.start()
+	}
+	if c.len == 0 {
+		c.lk.Unlock()
+		return false
+	}
+
+	c.lk.Unlock()
+	select {
+	case r, k := <-c.outCh:
+		if !k {
+			return false
+		}
+		c.lk.Lock()
+		c.len--
+		c.Current = r
+		c.lk.Unlock()
+		return true
+	}
+}
+
+func (c *PushPathsQueue) start() {
+	go func() {
+		defer close(c.inWaitCh)
+		for {
+			c.lk.Lock()
+			if c.closed {
+				for _, p := range c.q {
+					p.close()
+				}
+				c.q = nil
+				c.lk.Unlock()
+				return
+			}
+			c.lk.Unlock()
+			if len(c.q) == 0 {
+				return
+			}
+			var p pushPath
+			p, c.q = c.q[0], c.q[1:]
+			c.inCh <- p
+		}
+	}()
+}
+
+func (c *PushPathsQueue) stop() {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+	c.stopped = true
+}
+
+// Err returns the current queue error.
+// Call this method before checking the value of Current.
+func (c *PushPathsQueue) Err() error {
+	c.lk.Lock()
+	defer c.lk.Unlock()
+	return c.Current.err
+}
+
+// Close the queue.
+// Failure to close may lead to unpredictable bucket state.
+func (c *PushPathsQueue) Close() error {
+	c.lk.Lock()
+	if c.closed {
+		c.lk.Unlock()
+		return nil
+	}
+	c.closed = true
+	c.lk.Unlock()
+
+	<-c.inWaitCh
+	close(c.inCh)
+
+	c.lk.Lock()
+	wait := !c.stopped
+	c.lk.Unlock()
+	if err := c.closeFunc(); err != nil {
+		return err
+	}
+	if wait {
+		<-c.closeWaitCh
+	}
+	return nil
+}
+
+// PushPaths returns a queue that can be used to push multiple files and readers to bucket paths.
+// See PushPathQueue.AddFile and PushPathsQueue.AddReader for more.
+func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*PushPathsQueue, error) {
+	args := &options{}
+	for _, opt := range opts {
+		opt(args)
+	}
+
+	stream, err := c.c.PushPaths(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var xr string
+	if args.root != nil {
+		xr = args.root.String()
+	}
+
+	if err := stream.Send(&pb.PushPathsRequest{
+		Payload: &pb.PushPathsRequest_Header_{
+			Header: &pb.PushPathsRequest_Header{
+				Key:  key,
+				Root: xr,
+			},
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	q := &PushPathsQueue{
+		inCh:     make(chan pushPath),
+		inWaitCh: make(chan struct{}),
+		outCh:    make(chan PushPathsResult),
+		closeFunc: func() error {
+			return stream.CloseSend()
+		},
+		closeWaitCh: make(chan struct{}),
+	}
+
+	go func() {
+		defer q.stop()
+		for {
+			rep, err := stream.Recv()
+			if err == io.EOF {
+				select {
+				case q.closeWaitCh <- struct{}{}:
+				default:
+				}
+				return
+			} else if err != nil {
+				if strings.Contains(err.Error(), "STREAM_CLOSED") {
+					err = ErrPushPathQueueClosed
+				}
+				q.outCh <- PushPathsResult{err: err}
+				return
+			}
+
+			id, err := cid.Parse(rep.Cid)
+			if err != nil {
+				q.outCh <- PushPathsResult{err: err}
+				return
+			}
+			root, err := util.NewResolvedPath(rep.Root.Path)
+			if err != nil {
+				q.outCh <- PushPathsResult{err: err}
+				return
+			}
+			q.outCh <- PushPathsResult{
+				Path:   rep.Path,
+				Cid:    id,
+				Size:   rep.Size,
+				Pinned: rep.Pinned,
+				Root:   root,
+			}
+		}
+	}()
+
+	sendChunk := func(c *pb.PushPathsRequest_Chunk) bool {
+		q.lk.Lock()
+		defer q.lk.Unlock()
+		if q.closed {
+			return false
+		}
+
+		if err := stream.Send(&pb.PushPathsRequest{
+			Payload: &pb.PushPathsRequest_Chunk_{
+				Chunk: c,
+			},
+		}); err == io.EOF {
+			return false // error is waiting to be received with stream.Recv above
+		} else if err != nil {
+			q.outCh <- PushPathsResult{err: err}
+			return false
+		}
+		atomic.AddInt64(&q.complete, int64(len(c.Data)))
+		if args.progress != nil {
+			args.progress <- q.complete
+		}
+		return true
+	}
+
+	go func() {
+		for p := range q.inCh {
+			buf := make([]byte, chunkSize)
+			for {
+				n, err := p.r.Read(buf)
+				c := &pb.PushPathsRequest_Chunk{
+					Path: p.path,
+				}
+				if n > 0 {
+					c.Data = make([]byte, n)
+					copy(c.Data, buf[:n])
+					if ok := sendChunk(c); !ok {
+						p.close()
+						break
+					}
+				} else if err == io.EOF {
+					sendChunk(c)
+					p.close()
+					break
+				} else if err != nil {
+					q.outCh <- PushPathsResult{err: err}
+					break
+				}
+			}
+		}
+	}()
+
+	return q, nil
+}
+
 // PullPath pulls the bucket path, writing it to writer if it's a file.
 func (c *Client) PullPath(ctx context.Context, key, pth string, writer io.Writer, opts ...Option) error {
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
 	}
-	if args.progress != nil {
-		defer close(args.progress)
-	}
 
+	pth = filepath.ToSlash(pth)
 	stream, err := c.c.PullPath(ctx, &pb.PullPathRequest{
 		Key:  key,
-		Path: filepath.ToSlash(pth),
+		Path: pth,
 	})
 	if err != nil {
 		return err
@@ -249,9 +601,6 @@ func (c *Client) PullIpfsPath(ctx context.Context, pth path.Path, writer io.Writ
 	args := &options{}
 	for _, opt := range opts {
 		opt(args)
-	}
-	if args.progress != nil {
-		defer close(args.progress)
 	}
 
 	stream, err := c.c.PullIpfsPath(ctx, &pb.PullIpfsPathRequest{
