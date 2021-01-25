@@ -39,6 +39,9 @@ Use the '--hard' flag to discard all local changes.
 		quiet, err := c.Flags().GetBool("quiet")
 		cmd.ErrCheck(err)
 
+		nonInteractive, err := c.Flags().GetBool("non-interactive")
+		cmd.ErrCheck(err)
+
 		existing := conf.Thread.Defined() && conf.Key != ""
 		chooseExisting, err := c.Flags().GetBool("existing")
 		cmd.ErrCheck(err)
@@ -86,24 +89,32 @@ Use the '--hard' flag to discard all local changes.
 				name, err = c.Flags().GetString("name")
 				cmd.ErrCheck(err)
 			} else {
-				namep := promptui.Prompt{
-					Label: "Enter a name for your new bucket (optional)",
-				}
-				name, err = namep.Run()
-				if err != nil {
-					cmd.End("")
+				if nonInteractive {
+					name = ""
+				} else {
+					namep := promptui.Prompt{
+						Label: "Enter a name for your new bucket (optional)",
+					}
+					name, err = namep.Run()
+					if err != nil {
+						cmd.End("")
+					}
 				}
 			}
 			if c.Flags().Changed("private") {
 				private, err = c.Flags().GetBool("private")
 				cmd.ErrCheck(err)
 			} else {
-				privp := promptui.Prompt{
-					Label:     "Encrypt bucket contents",
-					IsConfirm: true,
-				}
-				if _, err = privp.Run(); err == nil {
-					private = true
+				if nonInteractive {
+					private = false
+				} else {
+					privp := promptui.Prompt{
+						Label:     "Encrypt bucket contents",
+						IsConfirm: true,
+					}
+					if _, err = privp.Run(); err == nil {
+						private = true
+					}
 				}
 			}
 		}
@@ -138,29 +149,38 @@ Use the '--hard' flag to discard all local changes.
 		}
 
 		if !conf.Thread.Defined() {
-			ctx, cancel := context.WithTimeout(bucks.Context(context.Background()), cmd.Timeout)
-			defer cancel()
-			selected := bucks.Clients().SelectThread(
-				ctx,
-				"Buckets are written to a threadDB. Select or create a new one",
-				aurora.Sprintf(aurora.BrightBlack("> Selected threadDB {{ .Label | white | bold }}")),
-				true)
-			if selected.Label == "Create new" {
-				if selected.Name == "" {
-					prompt := promptui.Prompt{
-						Label: "Enter a name for your new threadDB (optional)",
-					}
-					selected.Name, err = prompt.Run()
-					if err != nil {
-						cmd.End("")
-					}
-				}
-				ctx = common.NewThreadNameContext(ctx, selected.Name)
+			if nonInteractive {
+				ctx, cancel := context.WithTimeout(bucks.Context(context.Background()), cmd.Timeout)
+				defer cancel()
+				ctx = common.NewThreadNameContext(ctx, "")
 				conf.Thread = thread.NewIDV1(thread.Raw, 32)
-				err = bucks.Clients().Threads.NewDB(ctx, conf.Thread, db.WithNewManagedName(selected.Name))
+				err = bucks.Clients().Threads.NewDB(ctx, conf.Thread, db.WithNewManagedName(""))
 				cmd.ErrCheck(err)
 			} else {
-				conf.Thread = selected.ID
+				ctx, cancel := context.WithTimeout(bucks.Context(context.Background()), cmd.Timeout)
+				defer cancel()
+				selected := bucks.Clients().SelectThread(
+					ctx,
+					"Buckets are written to a threadDB. Select or create a new one",
+					aurora.Sprintf(aurora.BrightBlack("> Selected threadDB {{ .Label | white | bold }}")),
+					true)
+				if selected.Label == "Create new" {
+					if selected.Name == "" {
+						prompt := promptui.Prompt{
+							Label: "Enter a name for your new threadDB (optional)",
+						}
+						selected.Name, err = prompt.Run()
+						if err != nil {
+							cmd.End("")
+						}
+					}
+					ctx = common.NewThreadNameContext(ctx, selected.Name)
+					conf.Thread = thread.NewIDV1(thread.Raw, 32)
+					err = bucks.Clients().Threads.NewDB(ctx, conf.Thread, db.WithNewManagedName(selected.Name))
+					cmd.ErrCheck(err)
+				} else {
+					conf.Thread = selected.ID
+				}
 			}
 		}
 
