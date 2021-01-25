@@ -13,14 +13,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var ErrRecordNotFound = fmt.Errorf("no RewardRecord found")
+var (
+	ErrRecordNotFound       = fmt.Errorf("no RewardRecord found")
+	ErrRewardAlreadyClaimed = fmt.Errorf("reward already claimed")
+)
 
 const baseAttoFILReward = 1000 // What should this be? Should we read it from mongo?
 
-type Event int
+type Reward int
 
 const (
-	Unspecified Event = iota
+	Unspecified Reward = iota
 	FirstKeyAccountCreated
 	FirstKeyUserCreated // does this fit "register first user?"
 	FirstOrgCreated
@@ -32,7 +35,7 @@ const (
 )
 
 // maybe we want to read the meta values from mongo so we can update live.
-var eventRewards = map[Event]reward{
+var eventRewards = map[Reward]reward{
 	FirstKeyAccountCreated:    {factor: 3},
 	FirstKeyUserCreated:       {factor: 1},
 	FirstOrgCreated:           {factor: 3},
@@ -50,15 +53,16 @@ type reward struct {
 type RewardRecord struct {
 	Key               string          `bson:"key"`
 	AccountType       mdb.AccountType `bson:"account_type"`
-	Event             Event           `bson:"event"`
+	Reward            Reward          `bson:"reward"`
 	Factor            int             `bson:"factor"`
 	BaseAttoFILReward int             `bson:"base_atto_fil_reward"`
 	CreatedAt         time.Time       `bson:"created_at"`
+	ClaimedAt         *time.Time      `bson:"claimed_at"`
 }
 
 type FilRewards struct {
 	col          *mongo.Collection
-	rewardsCache map[string]map[Event]struct{}
+	rewardsCache map[string]map[Reward]struct{}
 	// ToDo: Need some service to send out notifications when rewards are met.
 }
 
@@ -77,17 +81,20 @@ func New(ctx context.Context, config Config) (*FilRewards, error) {
 	col := db.Collection(config.CollectionName)
 	_, err = col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys:    bson.D{primitive.E{Key: "key", Value: 1}, primitive.E{Key: "event", Value: 1}},
+			Keys:    bson.D{primitive.E{Key: "key", Value: 1}, primitive.E{Key: "reward", Value: 1}},
 			Options: options.Index().SetUnique(true).SetSparse(true),
 		},
 		{
 			Keys: bson.D{primitive.E{Key: "key", Value: 1}},
 		},
 		{
-			Keys: bson.D{primitive.E{Key: "event", Value: 1}},
+			Keys: bson.D{primitive.E{Key: "reward", Value: 1}},
 		},
 		{
 			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "claimed_at", Value: 1}},
 		},
 	})
 	if err != nil {
@@ -100,14 +107,14 @@ func New(ctx context.Context, config Config) (*FilRewards, error) {
 		return nil, fmt.Errorf("querying RewardRecords to populate cache: %s", err)
 	}
 	defer cursor.Close(ctx)
-	cache := make(map[string]map[Event]struct{})
+	cache := make(map[string]map[Reward]struct{})
 	for cursor.Next(ctx) {
 		var rec RewardRecord
 		if err := cursor.Decode(&rec); err != nil {
 			return nil, fmt.Errorf("decoding RewardRecord while building cache: %v", err)
 		}
 		ensureKeyEventCache(cache, rec.Key)
-		cache[rec.Key][rec.Event] = struct{}{}
+		cache[rec.Key][rec.Reward] = struct{}{}
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, fmt.Errorf("iterating cursor while building cache: %v", err)
@@ -152,7 +159,7 @@ func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType m
 	rec := RewardRecord{
 		Key:               key,
 		AccountType:       accountType,
-		Event:             rewardEvent,
+		Reward:            rewardEvent,
 		Factor:            eventRewards[rewardEvent].factor,
 		BaseAttoFILReward: baseAttoFILReward,
 		CreatedAt:         time.Now(),
@@ -169,12 +176,42 @@ func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType m
 	return &rec, nil
 }
 
+func (f *FilRewards) ClaimReward(ctx context.Context, key string, reward Reward) error {
+	rec, err := f.GetRewardRecord(ctx, key, reward)
+	if err != nil {
+		return err
+	}
+	if rec.ClaimedAt != nil {
+		return ErrRewardAlreadyClaimed
+	}
+	filter := bson.M{"key": key, "reward": reward}
+	now := time.Now()
+	update := bson.M{"$set": bson.M{"claimed_at": &now}}
+	res, err := f.col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("updating RewardRecord: %v", err)
+	}
+	if res.ModifiedCount == 0 {
+		return fmt.Errorf("modified 0 documents trying to update RewardRecord")
+	}
+	return nil
+}
+
+type ClaimedFilter int
+
+const (
+	All ClaimedFilter = iota
+	Claimed
+	Unclaimed
+)
+
 type ListRewardRecordsOptions struct {
-	KeyFilter   string
-	EventFilter Event
-	Ascending   bool
-	StartAt     *time.Time
-	Limit       int64
+	KeyFilter     string
+	EventFilter   Reward
+	ClaimedFilter ClaimedFilter
+	Ascending     bool
+	StartAt       *time.Time
+	Limit         int64
 }
 
 func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecordsOptions) ([]RewardRecord, bool, *time.Time, error) {
@@ -192,7 +229,13 @@ func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecor
 		filter["key"] = opts.KeyFilter
 	}
 	if opts.EventFilter != Unspecified {
-		filter["event"] = opts.EventFilter
+		filter["reward"] = opts.EventFilter
+	}
+	if opts.ClaimedFilter == Claimed {
+		filter["claimed_at"] = bson.M{"$ne": nil}
+	}
+	if opts.ClaimedFilter == Unclaimed {
+		filter["claimed_at"] = bson.M{"$eq": nil}
 	}
 	comp := "$lt"
 	if opts.StartAt != nil {
@@ -229,8 +272,8 @@ func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecor
 	return recs, more, startAt, nil
 }
 
-func (f *FilRewards) GetRewardRecord(ctx context.Context, key string, event Event) (*RewardRecord, error) {
-	filter := bson.M{"key": key, "event": event}
+func (f *FilRewards) GetRewardRecord(ctx context.Context, key string, reward Reward) (*RewardRecord, error) {
+	filter := bson.M{"key": key, "reward": reward}
 	res := f.col.FindOne(ctx, filter)
 	if res.Err() == mongo.ErrNoDocuments {
 		return nil, ErrRecordNotFound
@@ -245,8 +288,8 @@ func (f *FilRewards) GetRewardRecord(ctx context.Context, key string, event Even
 	return &rec, nil
 }
 
-func ensureKeyEventCache(keyCache map[string]map[Event]struct{}, key string) {
+func ensureKeyEventCache(keyCache map[string]map[Reward]struct{}, key string) {
 	if _, exists := keyCache[key]; !exists {
-		keyCache[key] = map[Event]struct{}{}
+		keyCache[key] = map[Reward]struct{}{}
 	}
 }
