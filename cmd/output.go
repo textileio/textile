@@ -42,7 +42,7 @@ func Success(format string, args ...interface{}) {
 func JSON(data interface{}) {
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	ErrCheck(err)
-	fmt.Println(aurora.BrightBlack(string(bytes)))
+	fmt.Println(string(bytes))
 }
 
 func End(format string, args ...interface{}) {
