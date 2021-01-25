@@ -21,6 +21,13 @@ var aurora = aurora2.NewAurora(runtime.GOOS != "windows")
 
 type Format string
 
+type ExistingBucket struct {
+	Name   string `json:"name"`
+	Thread string `json:"thread"`
+	Key    string `json:"key"`
+	Root   string `json:"root"`
+}
+
 const (
 	DefaultFormat Format = "default"
 	JSONFormat           = "json"
@@ -83,6 +90,8 @@ func Init(baseCmd *cobra.Command) {
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
 	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [default,json]")
+
+	existingCmd.Flags().String("format", "default", "Display existing buckets in the provided format. Options: [default,json]")
 }
 
 func SetBucks(b *local.Buckets) {
@@ -119,21 +128,41 @@ var existingCmd = &cobra.Command{
 		defer cancel()
 		list, err := bucks.RemoteBuckets(ctx, conf.Thread)
 		cmd.ErrCheck(err)
-		var data [][]string
-		if len(list) > 0 {
-			for _, item := range list {
-				data = append(data, []string{
-					item.Name,
-					item.Thread.String(),
-					item.Key,
-					item.Path.Cid().String(),
-				})
+
+		format, err := c.Flags().GetString("format")
+		cmd.ErrCheck(err)
+
+		switch format {
+		case JSONFormat:
+			var data []ExistingBucket
+			if len(list) > 0 {
+				for _, item := range list {
+					data = append(data, ExistingBucket{
+						Name:   item.Name,
+						Thread: item.Thread.String(),
+						Key:    item.Key,
+						Root:   item.Path.Cid().String(),
+					})
+				}
 			}
+			cmd.JSON(data)
+		default:
+			var data [][]string
+			if len(list) > 0 {
+				for _, item := range list {
+					data = append(data, []string{
+						item.Name,
+						item.Thread.String(),
+						item.Key,
+						item.Path.Cid().String(),
+					})
+				}
+			}
+			if len(data) > 0 {
+				cmd.RenderTable([]string{"name", "thread", "key", "root"}, data)
+			}
+			cmd.Message("Found %d buckets", aurora.White(len(data)).Bold())
 		}
-		if len(data) > 0 {
-			cmd.RenderTable([]string{"name", "thread", "key", "root"}, data)
-		}
-		cmd.Message("Found %d buckets", aurora.White(len(data)).Bold())
 	},
 }
 
