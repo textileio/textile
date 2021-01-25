@@ -58,6 +58,7 @@ func Init(baseCmd *cobra.Command) {
 
 	baseCmd.PersistentFlags().String("key", "", "Bucket key")
 	baseCmd.PersistentFlags().String("thread", "", "Thread ID")
+	baseCmd.PersistentFlags().String("format", "default", "Display command output in the provided format. Options: [default,json]")
 
 	initCmd.Flags().StringP("name", "n", "", "Bucket name")
 	initCmd.Flags().BoolP("private", "p", false, "Obfuscates files and folders with encryption")
@@ -89,9 +90,6 @@ func Init(baseCmd *cobra.Command) {
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
-	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [default,json]")
-
-	existingCmd.Flags().String("format", "default", "Display existing buckets in the provided format. Options: [default,json]")
 }
 
 func SetBucks(b *local.Buckets) {
