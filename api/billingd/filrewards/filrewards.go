@@ -13,6 +13,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var ErrRecordNotFound = fmt.Errorf("no RewardRecord found")
+
+const baseAttoFILReward = 1000 // What should this be? Should we read it from mongo?
+
 type Event int
 
 const (
@@ -26,8 +30,6 @@ const (
 	FirstMailboxCreated
 	FirstThreadDbCreated
 )
-
-const baseAttoFILReward = 1000 // What should this be? Should we read it from mongo?
 
 // maybe we want to read the meta values from mongo so we can update live.
 var eventRewards = map[Event]reward{
@@ -171,43 +173,76 @@ type ListRewardRecordsOptions struct {
 	KeyFilter   string
 	EventFilter Event
 	Ascending   bool
-	Limit       int
+	StartAt     *time.Time
+	Limit       int64
 }
 
-func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecordsOptions) ([]RewardRecord, bool, string, error) {
+func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecordsOptions) ([]RewardRecord, bool, *time.Time, error) {
 	findOpts := options.Find()
-	// ToDo: apply opts to findOpts
+	if opts.Limit > 0 {
+		findOpts.Limit = &opts.Limit
+	}
+	sort := -1
+	if opts.Ascending {
+		sort = 1
+	}
+	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
 	filter := bson.M{}
+	if opts.KeyFilter != "" {
+		filter["key"] = opts.KeyFilter
+	}
+	if opts.EventFilter != Unspecified {
+		filter["event"] = opts.EventFilter
+	}
+	comp := "$lt"
+	if opts.StartAt != nil {
+		if opts.Ascending {
+			comp = "$gt"
+		}
+		filter["created_at"] = bson.M{comp: *opts.StartAt}
+	}
 	cursor, err := f.col.Find(ctx, filter, findOpts)
 	if err != nil {
-		return nil, false, "", fmt.Errorf("querying RewardRecords: %v", err)
+		return nil, false, nil, fmt.Errorf("querying RewardRecords: %v", err)
 	}
 	defer cursor.Close(ctx)
 	var recs []RewardRecord
-	for cursor.Next(ctx) {
-		var rec RewardRecord
-		if err := cursor.Decode(&rec); err != nil {
-			return nil, false, "", fmt.Errorf("decoding RewardRecord: %v", err)
+	err = cursor.All(ctx, &recs)
+	if err != nil {
+		return nil, false, nil, fmt.Errorf("decoding RewardRecord query results: %v", err)
+	}
+
+	more := false
+	var startAt *time.Time
+	if len(recs) > 0 {
+		lastCreatedAt := &recs[len(recs)-1].CreatedAt
+		filter["created_at"] = bson.M{comp: *lastCreatedAt}
+		res := f.col.FindOne(ctx, filter)
+		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
+			return nil, false, nil, fmt.Errorf("checking for more data: %v", err)
 		}
-		recs = append(recs, rec)
+		if res.Err() != mongo.ErrNoDocuments {
+			more = true
+			startAt = lastCreatedAt
+		}
 	}
-	if err := cursor.Err(); err != nil {
-		return nil, false, "", fmt.Errorf("iterating RewardRecords cursor: %v", err)
-	}
-	return recs, false, "", nil
+	return recs, more, startAt, nil
 }
 
 func (f *FilRewards) GetRewardRecord(ctx context.Context, key string, event Event) (*RewardRecord, error) {
 	filter := bson.M{"key": key, "event": event}
 	res := f.col.FindOne(ctx, filter)
+	if res.Err() == mongo.ErrNoDocuments {
+		return nil, ErrRecordNotFound
+	}
 	if res.Err() != nil {
 		return nil, fmt.Errorf("getting RewardRecord: %v", res.Err())
 	}
-	var rec *RewardRecord
-	if err := res.Decode(rec); err != nil {
+	var rec RewardRecord
+	if err := res.Decode(&rec); err != nil {
 		return nil, fmt.Errorf("decoding RewardRecord: %v", err)
 	}
-	return rec, nil
+	return &rec, nil
 }
 
 func ensureKeyEventCache(keyCache map[string]map[Event]struct{}, key string) {
