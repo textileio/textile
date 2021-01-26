@@ -1,7 +1,6 @@
 package analytics
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -36,16 +35,16 @@ func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
 	}
 
 	// ToDo: Get all the config values in here and a real context.
-	fr, err := filrewards.New(context.Background(), filrewards.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("creating FilRewards: %v", err)
-	}
+	// fr, err := filrewards.New(context.Background(), filrewards.Config{})
+	// if err != nil {
+	// 	return nil, fmt.Errorf("creating FilRewards: %v", err)
+	// }
 
 	client := &Client{
-		api:        api,
-		prefix:     prefix,
-		debug:      debug,
-		filrewards: fr,
+		api:    api,
+		prefix: prefix,
+		debug:  debug,
+		// filrewards: fr,
 	}
 
 	return client, err
@@ -98,11 +97,11 @@ func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool
 			return fmt.Errorf("enqueing segment event: %v", err)
 		}
 
-		ctx, _ := context.WithTimeout(context.Background(), time.Second)
-		_, err = c.filrewards.ProcessEvent(ctx, key, accountType, event)
-		if err != nil {
-			return fmt.Errorf("processing event in filrewards: %v", err)
-		}
+		// ctx, _ := context.WithTimeout(context.Background(), time.Second)
+		// _, err = c.filrewards.ProcessEvent(ctx, key, accountType, event)
+		// if err != nil {
+		// 	return fmt.Errorf("processing event in filrewards: %v", err)
+		// }
 	}
 	return nil
 }
