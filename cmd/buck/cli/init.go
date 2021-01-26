@@ -93,8 +93,10 @@ Use the '--hard' flag to discard all local changes.
 			cmd.Fatal(errors.New("--cid cannot be used with an existing bucket"))
 		}
 
-		unfreeze, err := c.Flags().GetBool("unfreeze")
-		cmd.ErrCheck(err)
+		// (jsign): re-enable when this feature is usable in mainnet.
+		//unfreeze, err := c.Flags().GetBool("unfreeze")
+		//cmd.ErrCheck(err)
+		var unfreeze bool
 		if unfreeze && xcid == cid.Undef {
 			cmd.Fatal(errors.New("--unfreeze requires specifying --cid"))
 		}

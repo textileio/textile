@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	pb "github.com/cheggaaa/pb/v3"
 	"github.com/manifoldco/promptui"
@@ -31,19 +32,26 @@ func getConfirm(label string, auto bool) local.ConfirmDiffFunc {
 }
 
 func handleEvents(events chan local.Event) {
-	bar := pb.New(0)
-	bar.Set(pb.Bytes, true)
-
-	tmp := `{{string . "prefix"}}{{counters . }} {{bar . "[" "=" ">" "-" "]"}} {{percent . }} {{etime . }}{{string . "suffix"}}`
-	bar.SetTemplate(pb.ProgressBarTemplate(tmp))
+	var bar *pb.ProgressBar
+	if runtime.GOOS != "windows" {
+		bar = pb.New(0)
+		bar.Set(pb.Bytes, true)
+		tmp := `{{string . "prefix"}}{{counters . }} {{bar . "[" "=" ">" "-" "]"}} {{percent . }} {{etime . }}{{string . "suffix"}}`
+		bar.SetTemplate(pb.ProgressBarTemplate(tmp))
+	}
 
 	clear := func() {
-		_, _ = fmt.Fprintf(os.Stderr, "\033[2K\r")
+		if bar != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "\033[2K\r")
+		}
 	}
 
 	for e := range events {
 		switch e.Type {
 		case local.EventProgress:
+			if bar == nil {
+				continue
+			}
 			bar.SetTotal(e.Size)
 			bar.SetCurrent(e.Complete)
 			if !bar.IsStarted() {
@@ -58,13 +66,13 @@ func handleEvents(events chan local.Event) {
 				e.Path,
 				formatBytes(e.Size, false),
 			)
-			if bar.IsStarted() {
+			if bar != nil && bar.IsStarted() {
 				bar.Write()
 			}
 		case local.EventFileRemoved:
 			clear()
 			_, _ = fmt.Fprintf(os.Stdout, "- %s\n", e.Path)
-			if bar.IsStarted() {
+			if bar != nil && bar.IsStarted() {
 				bar.Write()
 			}
 		}
