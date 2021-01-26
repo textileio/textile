@@ -19,6 +19,7 @@ import (
 	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics/events"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	"github.com/textileio/textile/v2/api/billingd/migrations"
@@ -994,13 +995,13 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, nil)
+			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, events.GracePeriodStart, nil)
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, nil)
+			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, events.GracePeriodEnd, nil)
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -1139,7 +1140,7 @@ func (s *Service) TrackEvent(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
-		analytics.Event(req.Event),
+		events.Event(req.Event),
 		req.Properties,
 	)
 	if err != nil {

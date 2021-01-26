@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/textileio/textile/v2/api/billingd/analytics/events"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	segment "gopkg.in/segmentio/analytics-go.v3"
 )
 
 var (
 	ErrRecordNotFound       = fmt.Errorf("no RewardRecord found")
 	ErrRewardAlreadyClaimed = fmt.Errorf("reward already claimed")
+
+	log = logging.Logger("filrewards")
 )
 
 const baseAttoFILReward = 1000 // What should this be? Should we read it from mongo?
@@ -61,15 +65,17 @@ type RewardRecord struct {
 }
 
 type FilRewards struct {
-	col          *mongo.Collection
-	rewardsCache map[string]map[Reward]struct{}
-	// ToDo: Need some service to send out notifications when rewards are met.
+	col           *mongo.Collection
+	rewardsCache  map[string]map[Reward]struct{}
+	segmentClient segment.Client
 }
 
 type Config struct {
 	DBURI          string
 	DBName         string
 	CollectionName string
+	SegmentAPIKey  string
+	SegmentDebug   bool
 }
 
 func New(ctx context.Context, config Config) (*FilRewards, error) {
@@ -119,30 +125,43 @@ func New(ctx context.Context, config Config) (*FilRewards, error) {
 	if err := cursor.Err(); err != nil {
 		return nil, fmt.Errorf("iterating cursor while building cache: %v", err)
 	}
+
+	var segmentClient segment.Client
+	if config.SegmentAPIKey != "" {
+		segmentConfig := segment.Config{
+			Verbose: config.SegmentDebug,
+		}
+		segmentClient, err = segment.NewWithConfig(config.SegmentAPIKey, segmentConfig)
+		if err != nil {
+			return nil, fmt.Errorf("creating segment client: %v", err)
+		}
+	}
+
 	return &FilRewards{
-		col:          col,
-		rewardsCache: cache,
+		col:           col,
+		rewardsCache:  cache,
+		segmentClient: segmentClient,
 	}, nil
 }
 
-func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType mdb.AccountType, event analytics.Event) (*RewardRecord, error) {
+func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType mdb.AccountType, event events.Event) (*RewardRecord, error) {
 	rewardEvent := Unspecified
 	switch event {
-	case analytics.KeyAccountCreated:
+	case events.KeyAccountCreated:
 		rewardEvent = FirstKeyAccountCreated
-	case analytics.KeyUserCreated:
+	case events.KeyUserCreated:
 		rewardEvent = FirstKeyUserCreated
-	case analytics.OrgCreated:
+	case events.OrgCreated:
 		rewardEvent = FirstOrgCreated
-	case analytics.BillingSetup:
+	case events.BillingSetup:
 		rewardEvent = InitialBillingSetup
-	case analytics.BucketCreated:
+	case events.BucketCreated:
 		rewardEvent = FirstBucketCreated
-	case analytics.BucketArchiveCreated:
+	case events.BucketArchiveCreated:
 		rewardEvent = FirstBucketArchiveCreated
-	case analytics.MailboxCreated:
+	case events.MailboxCreated:
 		rewardEvent = FirstMailboxCreated
-	case analytics.ThreadDbCreated:
+	case events.ThreadDbCreated:
 		rewardEvent = FirstThreadDbCreated
 	}
 	if rewardEvent == Unspecified {
@@ -171,7 +190,20 @@ func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType m
 
 	f.rewardsCache[key][rewardEvent] = struct{}{}
 
-	// ToDo: Notify the account owner.
+	if f.segmentClient != nil {
+		err := f.segmentClient.Enqueue(segment.Track{
+			UserId: key,
+			Event:  "fil_reward_recorded",
+			Properties: map[string]interface{}{
+				"reward":               rewardEvent,
+				"factor":               eventRewards[rewardEvent].factor,
+				"base_atto_fil_reward": baseAttoFILReward,
+			},
+		})
+		if err != nil {
+			log.Errorf("enqueuing segment event for fil_reward_recorded: %v", err)
+		}
+	}
 
 	return &rec, nil
 }
@@ -286,6 +318,11 @@ func (f *FilRewards) GetRewardRecord(ctx context.Context, key string, reward Rew
 		return nil, fmt.Errorf("decoding RewardRecord: %v", err)
 	}
 	return &rec, nil
+}
+
+func (f *FilRewards) Close() error {
+	// ToDo: somehow disconnect the mongo client?
+	return f.segmentClient.Close()
 }
 
 func ensureKeyEventCache(keyCache map[string]map[Reward]struct{}, key string) {

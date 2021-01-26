@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics/events"
 	"github.com/textileio/textile/v2/mongodb"
 	"github.com/textileio/textile/v2/util"
 )
@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestProcessEvent(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	rec := requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	rec := requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	require.Equal(t, "user1", rec.Key)
 	require.Equal(t, InitialBillingSetup, rec.Reward)
 }
@@ -36,28 +36,28 @@ func TestProcessEvent(t *testing.T) {
 func TestProcessDuplicateEvent(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireNoProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireNoProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 }
 
 func TestDuplicateFromInitializedCache(t *testing.T) {
 	t.Parallel()
 	f1, err := New(ctx, Config{DBURI: test.GetMongoUri(), DBName: "mydb", CollectionName: "filrewards"})
 	require.NoError(t, err)
-	requireProcessedEvent(t, ctx, f1, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f1, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f1, "user2", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f1, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f1, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f1, "user2", events.BillingSetup)
 	f2, err := New(ctx, Config{DBURI: test.GetMongoUri(), DBName: "mydb", CollectionName: "filrewards"})
 	require.NoError(t, err)
-	requireNoProcessedEvent(t, ctx, f2, "user1", analytics.BillingSetup)
-	requireNoProcessedEvent(t, ctx, f2, "user1", analytics.BucketCreated)
-	requireNoProcessedEvent(t, ctx, f2, "user2", analytics.BillingSetup)
+	requireNoProcessedEvent(t, ctx, f2, "user1", events.BillingSetup)
+	requireNoProcessedEvent(t, ctx, f2, "user1", events.BucketCreated)
+	requireNoProcessedEvent(t, ctx, f2, "user2", events.BillingSetup)
 }
 
 func TestClaimReward(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	rec := requireGetRewardRecord(t, ctx, f, "user1", InitialBillingSetup)
 	require.NotNil(t, rec.ClaimedAt)
@@ -66,7 +66,7 @@ func TestClaimReward(t *testing.T) {
 func TestClaimRewardTwice(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	err := f.ClaimReward(ctx, "user1", InitialBillingSetup)
 	require.Equal(t, ErrRewardAlreadyClaimed, err)
@@ -82,15 +82,15 @@ func TestClaimNonExistantReward(t *testing.T) {
 func TestGet(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
 	requireGetRewardRecord(t, ctx, f, "user1", InitialBillingSetup)
 }
 
 func TestGetWrongEvent(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	rec, err := f.GetRewardRecord(ctx, "user1", FirstBucketCreated)
 	require.Equal(t, ErrRecordNotFound, err)
 	require.Nil(t, rec)
@@ -99,7 +99,7 @@ func TestGetWrongEvent(t *testing.T) {
 func TestGetWrongKey(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	rec, err := f.GetRewardRecord(ctx, "user2", InitialBillingSetup)
 	require.Equal(t, ErrRecordNotFound, err)
 	require.Nil(t, rec)
@@ -108,9 +108,9 @@ func TestGetWrongKey(t *testing.T) {
 func TestList(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{})
 	require.NoError(t, err)
 	require.Len(t, res, 3)
@@ -119,9 +119,9 @@ func TestList(t *testing.T) {
 func TestListKeyFilter(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{KeyFilter: "user1"})
 	require.NoError(t, err)
 	require.Len(t, res, 2)
@@ -130,12 +130,12 @@ func TestListKeyFilter(t *testing.T) {
 func TestListEventFilter(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{EventFilter: InitialBillingSetup})
 	require.NoError(t, err)
 	require.Len(t, res, 2)
@@ -144,12 +144,12 @@ func TestListEventFilter(t *testing.T) {
 func TestListKeyAndEventFilters(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{KeyFilter: "user1", EventFilter: InitialBillingSetup})
 	require.NoError(t, err)
 	require.Len(t, res, 1)
@@ -158,12 +158,12 @@ func TestListKeyAndEventFilters(t *testing.T) {
 func TestListClaimedFilterEmpty(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", FirstBucketCreated)
@@ -178,12 +178,12 @@ func TestListClaimedFilterEmpty(t *testing.T) {
 func TestListClaimedFilterAll(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", FirstBucketCreated)
@@ -198,12 +198,12 @@ func TestListClaimedFilterAll(t *testing.T) {
 func TestListClaimedFilterClaimed(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", FirstBucketCreated)
@@ -218,12 +218,12 @@ func TestListClaimedFilterClaimed(t *testing.T) {
 func TestListClaimedFilterUnclaimed(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 
 	requireClaimedReward(t, ctx, f, "user1", InitialBillingSetup)
 	requireClaimedReward(t, ctx, f, "user1", FirstBucketCreated)
@@ -238,11 +238,11 @@ func TestListClaimedFilterUnclaimed(t *testing.T) {
 func TestListDescending(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{Ascending: false})
 	require.NoError(t, err)
 	require.Len(t, res, 3)
@@ -252,11 +252,11 @@ func TestListDescending(t *testing.T) {
 func TestListAscending(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
 	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{Ascending: true})
 	require.NoError(t, err)
 	require.Len(t, res, 3)
@@ -266,21 +266,21 @@ func TestListAscending(t *testing.T) {
 func TestListPaging(t *testing.T) {
 	t.Parallel()
 	f := requireFilRewards(t, ctx)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user1", events.BillingSetup)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user1", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user1", events.BucketArchiveCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user2", analytics.BucketArchiveCreated)
+	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user3", analytics.BillingSetup)
+	requireProcessedEvent(t, ctx, f, "user3", events.BillingSetup)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, f, "user3", analytics.BucketCreated)
+	requireProcessedEvent(t, ctx, f, "user3", events.BucketCreated)
 	numPages := 0
 	more := true
 	var startAtToken *time.Time
@@ -332,14 +332,14 @@ func requireFilRewards(t *testing.T, ctx context.Context) *FilRewards {
 	return f
 }
 
-func requireProcessedEvent(t *testing.T, ctx context.Context, f *FilRewards, key string, event analytics.Event) *RewardRecord {
+func requireProcessedEvent(t *testing.T, ctx context.Context, f *FilRewards, key string, event events.Event) *RewardRecord {
 	r, err := f.ProcessEvent(ctx, key, mongodb.Dev, event)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	return r
 }
 
-func requireNoProcessedEvent(t *testing.T, ctx context.Context, f *FilRewards, key string, event analytics.Event) {
+func requireNoProcessedEvent(t *testing.T, ctx context.Context, f *FilRewards, key string, event events.Event) {
 	r, err := f.ProcessEvent(ctx, key, mongodb.Dev, event)
 	require.NoError(t, err)
 	require.Nil(t, r)

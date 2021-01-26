@@ -5,7 +5,7 @@ import (
 
 	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics/events"
 	pb "github.com/textileio/textile/v2/api/billingd/pb"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
@@ -195,7 +195,7 @@ func (c *Client) TrackEvent(
 	key thread.PubKey,
 	accountType mdb.AccountType,
 	active bool,
-	event analytics.Event,
+	event events.Event,
 	properties map[string]string,
 ) error {
 	_, err := c.c.TrackEvent(ctx, &pb.TrackEventRequest{

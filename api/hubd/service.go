@@ -16,7 +16,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	"github.com/textileio/textile/v2/api/billingd/analytics/events"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
@@ -192,7 +192,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 	}
 
 	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, nil)
+		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, events.SignIn, nil)
 	}
 
 	return &pb.SigninResponse{
@@ -313,11 +313,11 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
 	}
 
-	var event analytics.Event
+	var event events.Event
 	if keyType == mdb.AccountKey {
-		event = analytics.KeyAccountCreated
+		event = events.KeyAccountCreated
 	} else {
-		event = analytics.KeyUserCreated
+		event = events.KeyUserCreated
 	}
 	if s.BillingClient != nil {
 		// Same "member" based payload for Dev or Org account types so that same
@@ -456,7 +456,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 			account.User.Key,
 			account.User.Type,
 			true,
-			analytics.OrgCreated,
+			events.OrgCreated,
 			map[string]string{
 				"org_name": org.Name,
 				"org_key":  org.Key.String(),
@@ -570,7 +570,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
-			analytics.OrgDestroyed,
+			events.OrgDestroyed,
 			map[string]string{
 				"member":          account.User.Key.String(),
 				"member_username": account.User.Username,
@@ -623,7 +623,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
-			analytics.OrgInviteCreated,
+			events.OrgInviteCreated,
 			map[string]string{
 				"member":          account.User.Key.String(),
 				"member_username": account.User.Username,
@@ -662,7 +662,7 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
-			analytics.OrgLeave,
+			events.OrgLeave,
 			map[string]string{
 				"member":          account.User.Key.String(),
 				"member_username": account.User.Username,
@@ -698,7 +698,7 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
-			analytics.BillingSetup,
+			events.BillingSetup,
 			map[string]string{
 				"member":          account.User.Key.String(),
 				"member_username": account.User.Username,
@@ -804,7 +804,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
-			analytics.AccountDestroyed,
+			events.AccountDestroyed,
 			nil,
 		)
 	}
