@@ -136,7 +136,7 @@ func TestListEventFilter(t *testing.T) {
 	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
 	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
 	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
-	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{EventFilter: InitialBillingSetup})
+	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{RewardFilter: InitialBillingSetup})
 	require.NoError(t, err)
 	require.Len(t, res, 2)
 }
@@ -150,7 +150,7 @@ func TestListKeyAndEventFilters(t *testing.T) {
 	requireProcessedEvent(t, ctx, f, "user2", events.BillingSetup)
 	requireProcessedEvent(t, ctx, f, "user2", events.BucketCreated)
 	requireProcessedEvent(t, ctx, f, "user2", events.BucketArchiveCreated)
-	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{KeyFilter: "user1", EventFilter: InitialBillingSetup})
+	res, _, _, err := f.ListRewardRecords(ctx, ListRewardRecordsOptions{KeyFilter: "user1", RewardFilter: InitialBillingSetup})
 	require.NoError(t, err)
 	require.Len(t, res, 1)
 }

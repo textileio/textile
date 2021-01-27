@@ -39,7 +39,7 @@ const (
 )
 
 // maybe we want to read the meta values from mongo so we can update live.
-var eventRewards = map[Reward]reward{
+var rewardMeta = map[Reward]meta{
 	FirstKeyAccountCreated:    {factor: 3},
 	FirstKeyUserCreated:       {factor: 1},
 	FirstOrgCreated:           {factor: 3},
@@ -50,7 +50,7 @@ var eventRewards = map[Reward]reward{
 	FirstThreadDbCreated:      {factor: 1},
 }
 
-type reward struct {
+type meta struct {
 	factor int
 }
 
@@ -179,7 +179,7 @@ func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType m
 		Key:               key,
 		AccountType:       accountType,
 		Reward:            rewardEvent,
-		Factor:            eventRewards[rewardEvent].factor,
+		Factor:            rewardMeta[rewardEvent].factor,
 		BaseAttoFILReward: baseAttoFILReward,
 		CreatedAt:         time.Now(),
 	}
@@ -196,7 +196,7 @@ func (f *FilRewards) ProcessEvent(ctx context.Context, key string, accountType m
 			Event:  "fil_reward_recorded",
 			Properties: map[string]interface{}{
 				"reward":               rewardEvent,
-				"factor":               eventRewards[rewardEvent].factor,
+				"factor":               rewardMeta[rewardEvent].factor,
 				"base_atto_fil_reward": baseAttoFILReward,
 			},
 		})
@@ -239,7 +239,7 @@ const (
 
 type ListRewardRecordsOptions struct {
 	KeyFilter     string
-	EventFilter   Reward
+	RewardFilter  Reward
 	ClaimedFilter ClaimedFilter
 	Ascending     bool
 	StartAt       *time.Time
@@ -260,8 +260,8 @@ func (f *FilRewards) ListRewardRecords(ctx context.Context, opts ListRewardRecor
 	if opts.KeyFilter != "" {
 		filter["key"] = opts.KeyFilter
 	}
-	if opts.EventFilter != Unspecified {
-		filter["reward"] = opts.EventFilter
+	if opts.RewardFilter != Unspecified {
+		filter["reward"] = opts.RewardFilter
 	}
 	if opts.ClaimedFilter == Claimed {
 		filter["claimed_at"] = bson.M{"$ne": nil}

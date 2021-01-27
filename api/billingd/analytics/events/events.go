@@ -5,7 +5,7 @@ import (
 )
 
 // Event is a type of usage event
-type Event int
+type Event int32
 
 const (
 	SignIn Event = iota

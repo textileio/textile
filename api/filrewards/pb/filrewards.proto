@@ -1,0 +1,82 @@
+syntax = "proto3";
+package api.filrewards.pb;
+option go_package = "github.com/textileio/textile/v2/api/filrewards/pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum Reward {
+  REWARD_UNSPECIFIED = 0;
+  REWARD_FIRST_KEY_ACCOUNT_CREATED = 1;
+	REWARD_FIRST_KEY_USER_CREATED = 2; // does this fit "register first user?"
+	REWARD_FIRST_ORG_CREATED = 3;
+	REWARD_INITIAL_BILLING_SETUP = 4;
+	REWARD_FIRST_BUCKET_CREATED = 5;
+	REWARD_FIRST_BUCKET_ARCHIVE_CREATED = 6;
+	REWARD_FIRST_MAILBOX_CREATED = 7;
+	REWARD_FIRST_THREAD_DB_CREATED = 8;
+}
+
+message RewardRecord {
+  string key = 1;
+  int32 account_type = 2;
+  Reward reward = 3;
+  int32 factor = 4;
+  int32 base_atto_fil_reward = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp claimed_at = 7;
+}
+
+enum ClaimedFilter {
+  CLAIMED_FILTER_UNSPECIFIED = 0;
+  CLAIMED_FILTER_CLAIMED = 1;
+  CLAIMED_FILTER_UNCLAIMED = 2;
+}
+
+message ProcessAnalyticsEventRequest {
+  string key = 1;
+  int32 account_type = 2;
+  int32 analytics_event = 3;
+}
+
+message ProcessAnalyticsEventResponse {
+  RewardRecord reward_record = 1;
+}
+
+message ClaimRequest {
+  string key = 1;
+  Reward reward = 2;
+}
+
+message ClaimResponse {
+}
+
+message ListRequest {
+  string key_filter = 1;
+	Reward reward_filter = 2;
+	ClaimedFilter claimed_filter = 3;
+	bool ascending = 4;
+	google.protobuf.Timestamp start_at = 5;
+	int64 limit = 6;
+}
+
+message ListResponse {
+  repeated RewardRecord reward_records = 1;
+  bool more = 2;
+  google.protobuf.Timestamp more_start_at = 3;
+}
+
+message GetRequest {
+  string key = 1;
+  Reward reward = 2;
+}
+
+message GetResponse {
+  RewardRecord reward_record = 1;
+}
+
+service FilRewardsService {
+  rpc ProcessAnalyticsEvent(ProcessAnalyticsEventRequest) returns (ProcessAnalyticsEventResponse) {}
+  rpc Claim(ClaimRequest) returns (ClaimResponse) {}
+  rpc List(ListRequest) returns (ListResponse) {}
+  rpc Get(GetRequest) returns (GetResponse) {}
+}
