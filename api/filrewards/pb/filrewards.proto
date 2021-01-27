@@ -7,13 +7,13 @@ import "google/protobuf/timestamp.proto";
 enum Reward {
   REWARD_UNSPECIFIED = 0;
   REWARD_FIRST_KEY_ACCOUNT_CREATED = 1;
-	REWARD_FIRST_KEY_USER_CREATED = 2; // does this fit "register first user?"
-	REWARD_FIRST_ORG_CREATED = 3;
-	REWARD_INITIAL_BILLING_SETUP = 4;
-	REWARD_FIRST_BUCKET_CREATED = 5;
-	REWARD_FIRST_BUCKET_ARCHIVE_CREATED = 6;
-	REWARD_FIRST_MAILBOX_CREATED = 7;
-	REWARD_FIRST_THREAD_DB_CREATED = 8;
+  REWARD_FIRST_KEY_USER_CREATED = 2; // does this fit "register first user?"
+  REWARD_FIRST_ORG_CREATED = 3;
+  REWARD_INITIAL_BILLING_SETUP = 4;
+  REWARD_FIRST_BUCKET_CREATED = 5;
+  REWARD_FIRST_BUCKET_ARCHIVE_CREATED = 6;
+  REWARD_FIRST_MAILBOX_CREATED = 7;
+  REWARD_FIRST_THREAD_DB_CREATED = 8;
 }
 
 message RewardRecord {
@@ -52,11 +52,11 @@ message ClaimResponse {
 
 message ListRequest {
   string key_filter = 1;
-	Reward reward_filter = 2;
-	ClaimedFilter claimed_filter = 3;
-	bool ascending = 4;
-	google.protobuf.Timestamp start_at = 5;
-	int64 limit = 6;
+  Reward reward_filter = 2;
+  ClaimedFilter claimed_filter = 3;
+  bool ascending = 4;
+  google.protobuf.Timestamp start_at = 5;
+  int64 limit = 6;
 }
 
 message ListResponse {
