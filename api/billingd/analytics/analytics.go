@@ -5,8 +5,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/billingd/analytics/events"
-	"github.com/textileio/textile/v2/api/billingd/filrewards"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	segment "gopkg.in/segmentio/analytics-go.v3"
 )
@@ -17,10 +15,9 @@ var (
 
 // Client uses segment to trigger life-cycle emails (quota, billing, etc).
 type Client struct {
-	api        segment.Client
-	prefix     string
-	debug      bool
-	filrewards *filrewards.FilRewards
+	api    segment.Client
+	prefix string
+	debug  bool
 }
 
 // NewClient return a segment client.
@@ -34,17 +31,10 @@ func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
 		api, err = segment.NewWithConfig(segmentAPIKey, config)
 	}
 
-	// ToDo: Get all the config values in here and a real context.
-	// fr, err := filrewards.New(context.Background(), filrewards.Config{})
-	// if err != nil {
-	// 	return nil, fmt.Errorf("creating FilRewards: %v", err)
-	// }
-
 	client := &Client{
 		api:    api,
 		prefix: prefix,
 		debug:  debug,
-		// filrewards: fr,
 	}
 
 	return client, err
@@ -76,7 +66,7 @@ func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, 
 }
 
 // TrackEvent logs a new event
-func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool, event events.Event, properties map[string]string) error {
+func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
 	if c.api != nil && accountType != mdb.User {
 		props := segment.NewProperties()
 		for key, value := range properties {
@@ -96,12 +86,6 @@ func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool
 		if err != nil {
 			return fmt.Errorf("enqueing segment event: %v", err)
 		}
-
-		// ctx, _ := context.WithTimeout(context.Background(), time.Second)
-		// _, err = c.filrewards.ProcessEvent(ctx, key, accountType, event)
-		// if err != nil {
-		// 	return fmt.Errorf("processing event in filrewards: %v", err)
-		// }
 	}
 	return nil
 }

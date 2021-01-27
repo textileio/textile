@@ -1,4 +1,4 @@
-package events
+package analytics
 
 import (
 	"fmt"

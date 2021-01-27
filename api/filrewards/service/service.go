@@ -8,7 +8,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/billingd/analytics/events"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	pb "github.com/textileio/textile/v2/api/filrewards/pb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -123,21 +123,21 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnalyticsEventRequest) (*pb.ProcessAnalyticsEventResponse, error) {
 	reward := pb.Reward_REWARD_UNSPECIFIED
 	switch req.AnalyticsEvent {
-	case int32(events.KeyAccountCreated):
+	case int32(analytics.KeyAccountCreated):
 		reward = pb.Reward_REWARD_FIRST_KEY_ACCOUNT_CREATED
-	case int32(events.KeyUserCreated):
+	case int32(analytics.KeyUserCreated):
 		reward = pb.Reward_REWARD_FIRST_KEY_USER_CREATED
-	case int32(events.OrgCreated):
+	case int32(analytics.OrgCreated):
 		reward = pb.Reward_REWARD_FIRST_ORG_CREATED
-	case int32(events.BillingSetup):
+	case int32(analytics.BillingSetup):
 		reward = pb.Reward_REWARD_INITIAL_BILLING_SETUP
-	case int32(events.BucketCreated):
+	case int32(analytics.BucketCreated):
 		reward = pb.Reward_REWARD_FIRST_BUCKET_CREATED
-	case int32(events.BucketArchiveCreated):
+	case int32(analytics.BucketArchiveCreated):
 		reward = pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED
-	case int32(events.MailboxCreated):
+	case int32(analytics.MailboxCreated):
 		reward = pb.Reward_REWARD_FIRST_MAILBOX_CREATED
-	case int32(events.ThreadDbCreated):
+	case int32(analytics.ThreadDbCreated):
 		reward = pb.Reward_REWARD_FIRST_THREAD_DB_CREATED
 	}
 	if reward == pb.Reward_REWARD_UNSPECIFIED {

@@ -10,7 +10,7 @@ import (
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/api/billingd/analytics/events"
+	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/pb"
@@ -249,14 +249,14 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	}
 
 	if t.bc != nil {
-		var tp events.Event
+		var tp analytics.Event
 		switch method {
 		case "/api.bucketsd.pb.APIService/Create":
-			tp = events.BucketCreated
+			tp = analytics.BucketCreated
 		case "/api.bucketsd.pb.APIService/Archive":
-			tp = events.BucketArchiveCreated
+			tp = analytics.BucketArchiveCreated
 		case "/threads.pb.API/NewDB":
-			tp = events.ThreadDbCreated
+			tp = analytics.ThreadDbCreated
 		}
 		t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, tp, map[string]string{
 			"member":          account.User.Key.String(),
