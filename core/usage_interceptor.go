@@ -10,7 +10,8 @@ import (
 
 	grpcm "github.com/grpc-ecosystem/go-grpc-middleware"
 	powc "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
+	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/pb"
@@ -248,21 +249,30 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		}
 	}
 
-	if t.bc != nil {
-		var tp analytics.Event
-		switch method {
-		case "/api.bucketsd.pb.APIService/Create":
-			tp = analytics.BucketCreated
-		case "/api.bucketsd.pb.APIService/Archive":
-			tp = analytics.BucketArchiveCreated
-		case "/threads.pb.API/NewDB":
-			tp = analytics.ThreadDbCreated
+	event := analyticspb.Event_EVENT_UNSPECIFIED
+	switch method {
+	case "/api.bucketsd.pb.APIService/Create":
+		event = analyticspb.Event_EVENT_BUCKET_CREATED
+	case "/api.bucketsd.pb.APIService/Archive":
+		event = analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED
+	case "/threads.pb.API/NewDB":
+		event = analyticspb.Event_EVENT_THREAD_DB_CREATED
+	}
+	if event != analyticspb.Event_EVENT_UNSPECIFIED {
+		if err := t.ac.Track(
+			ctx,
+			account.Owner().Key.String(),
+			int32(account.Owner().Type),
+			event,
+			analytics.WithActive(),
+			analytics.WithProperties(map[string]interface{}{
+				"member":          account.User.Key.String(),
+				"member_username": account.User.Username,
+				"member_email":    account.User.Email,
+			}),
+		); err != nil {
+			log.Errorf("calling analytics track: %v", err)
 		}
-		t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, tp, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-		})
 	}
 
 	return nil

@@ -34,6 +34,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	pow "github.com/textileio/powergate/v2/api/client"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
+	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
@@ -131,6 +132,7 @@ type Textile struct {
 
 	th  *threads.Client
 	thn *netclient.Client
+	ac  *analytics.Client
 	bc  *billing.Client
 	pc  *pow.Client
 
@@ -167,6 +169,7 @@ type Config struct {
 	AddrGatewayHost  ma.Multiaddr
 	AddrGatewayURL   string
 	AddrIPFSAPI      ma.Multiaddr
+	AddrAnalyticsAPI string
 	AddrBillingAPI   string
 	AddrPowergateAPI string
 
@@ -319,6 +322,13 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		return nil, err
 	}
 
+	if conf.AddrAnalyticsAPI != "" {
+		t.ac, err = analytics.New(conf.AddrAnalyticsAPI, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Configure a billing client
 	if conf.AddrBillingAPI != "" {
 		t.bc, err = billing.NewClient(conf.AddrBillingAPI, grpc.WithInsecure())
@@ -375,6 +385,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			EmailSessionSecret:  conf.EmailSessionSecret,
 			IPFSClient:          ic,
 			IPNSManager:         t.ipnsm,
+			AnalyticsClient:     t.ac,
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
@@ -576,6 +587,9 @@ func (t *Textile) Close() error {
 	}
 
 	if err := t.th.Close(); err != nil {
+		return err
+	}
+	if err := t.ac.Close(); err != nil {
 		return err
 	}
 	if t.bc != nil {

@@ -48,6 +48,10 @@ var (
 				Key:      "addr.gateway.host",
 				DefValue: "/ip4/127.0.0.1/tcp/8010",
 			},
+			"addrAnalyticsApi": {
+				Key:      "addr.analytics_api",
+				DefValue: "",
+			},
 			"stripeApiUrl": {
 				Key:      "stripe.api_url",
 				DefValue: "https://api.stripe.com",
@@ -62,14 +66,6 @@ var (
 			},
 			"stripeWebhookSecret": {
 				Key:      "stripe.webhook_secret",
-				DefValue: "",
-			},
-			"segmentApiKey": {
-				Key:      "segment.api_key",
-				DefValue: "",
-			},
-			"segmentPrefix": {
-				Key:      "segment.prefix",
 				DefValue: "",
 			},
 			"freeQuotaGracePeriod": {
@@ -105,7 +101,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
-		"Hub API listen address")
+		"Billing API listen address")
 	rootCmd.PersistentFlags().String(
 		"addrMongoUri",
 		config.Flags["addrMongoUri"].DefValue.(string),
@@ -118,6 +114,10 @@ func init() {
 		"addrGatewayHost",
 		config.Flags["addrGatewayHost"].DefValue.(string),
 		"Local gateway host address")
+	rootCmd.PersistentFlags().String(
+		"addrAnalyticsApi",
+		config.Flags["addrAnalyticsApi"].DefValue.(string),
+		"Analytics API address")
 
 	// Stripe settings
 	rootCmd.PersistentFlags().String(
@@ -141,16 +141,6 @@ func init() {
 		"freeQuotaGracePeriod",
 		config.Flags["freeQuotaGracePeriod"].DefValue.(time.Duration),
 		"Grace period before blocking usage after free quota is exhausted")
-
-	// Segment settings
-	rootCmd.PersistentFlags().String(
-		"segmentApiKey",
-		config.Flags["segmentApiKey"].DefValue.(string),
-		"Segment API key")
-	rootCmd.PersistentFlags().String(
-		"segmentPrefix",
-		config.Flags["segmentPrefix"].DefValue.(string),
-		"Segment trait source prefix")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -186,15 +176,14 @@ var rootCmd = &cobra.Command{
 
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 
+		addrAnalyticsApi := config.Viper.GetString("addr.analytics_api")
+
 		stripeApiUrl := config.Viper.GetString("stripe.api_url")
 		stripeApiKey := config.Viper.GetString("stripe.api_key")
 		stripeSessionReturnUrl := config.Viper.GetString("stripe.session_return_url")
 		stripeWebhookSecret := config.Viper.GetString("stripe.webhook_secret")
 
 		freeQuotaGracePeriod := config.Viper.GetDuration("free_quota_grace_period")
-
-		segmentApiKey := config.Viper.GetString("segment.api_key")
-		segmentPrefix := config.Viper.GetString("segment.prefix")
 
 		logFile := config.Viper.GetString("log.file")
 		if logFile != "" {
@@ -210,11 +199,10 @@ var rootCmd = &cobra.Command{
 			StripeAPIKey:           stripeApiKey,
 			StripeSessionReturnURL: stripeSessionReturnUrl,
 			StripeWebhookSecret:    stripeWebhookSecret,
-			SegmentAPIKey:          segmentApiKey,
-			SegmentPrefix:          segmentPrefix,
 			DBURI:                  addrMongoUri,
 			DBName:                 addrMongoName,
 			GatewayHostAddr:        addrGatewayHost,
+			AnalyticsAddr:          addrAnalyticsApi,
 			FreeQuotaGracePeriod:   freeQuotaGracePeriod,
 			Debug:                  config.Viper.GetBool("log.debug"),
 		})

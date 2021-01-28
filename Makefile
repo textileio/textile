@@ -30,6 +30,14 @@ build-billingd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/billingd
 .PHONY: build-billingd
 
+build-analyticsd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/analyticsd
+.PHONY: build-analyticsd
+
+build-filrewardsd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/filrewardsd
+.PHONY: build-filrewardsd
+
 install: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
 .PHONY: install
@@ -53,6 +61,14 @@ install-buckd: $(GOVVV)
 install-billingd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/billingd
 .PHONY: install-billingd
+
+install-analyticsd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/analyticsd
+.PHONY: install-analyticsd
+
+install-filrewardsd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/filrewardsd
+.PHONY: install-filrewardsd
 
 define gen_release_files
 	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)

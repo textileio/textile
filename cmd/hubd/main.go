@@ -92,6 +92,10 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
+			"addrAnalyticsApi": {
+				Key:      "addr.analytics.api",
+				DefValue: "",
+			},
 
 			// Buckets
 			"bucketsArchiveMaxRepFactor": {
@@ -237,6 +241,10 @@ func init() {
 		"addrPowergateApi",
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
+	rootCmd.PersistentFlags().String(
+		"addrAnalyticsApi",
+		config.Flags["addrAnalyticsApi"].DefValue.(string),
+		"Analytics API address")
 
 	// Buckets
 	rootCmd.PersistentFlags().Int(
@@ -355,6 +363,7 @@ var rootCmd = &cobra.Command{
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 		addrBillingApi := config.Viper.GetString("addr.billing.api")
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
+		addrAnalyticsApi := config.Viper.GetString("addr.analytics.api")
 
 		// Buckets
 		bucketsArchiveMaxRepFactor := config.Viper.GetInt("buckets.archive_max_rep_factor")
@@ -409,6 +418,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:      addrIpfsApi,
 			AddrBillingAPI:   addrBillingApi,
 			AddrPowergateAPI: addrPowergateApi,
+			AddrAnalyticsAPI: addrAnalyticsApi,
 			// Buckets
 			MaxBucketArchiveRepFactor: bucketsArchiveMaxRepFactor,
 			// Threads

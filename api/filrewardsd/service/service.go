@@ -8,8 +8,10 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
-	pb "github.com/textileio/textile/v2/api/filrewards/pb"
+	"github.com/textileio/go-threads/util"
+	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
+	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
+	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,7 +22,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var log = logging.Logger("filrewards-service")
+var log = logging.Logger("filrewards")
 
 var rewardMeta = map[pb.Reward]meta{
 	pb.Reward_REWARD_FIRST_KEY_ACCOUNT_CREATED:    {factor: 3},
@@ -49,12 +51,21 @@ type rewardRecord struct {
 
 type Service struct {
 	col               *mongo.Collection
+	ac                *analytics.Client
 	rewardsCache      map[string]map[pb.Reward]struct{}
 	baseAttoFILReward int32
 	server            *grpc.Server
 }
 
-func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionName string, baseAttoFILReward int32) (*Service, error) {
+func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionName, analyticsAddr string, baseAttoFILReward int32, debug bool) (*Service, error) {
+	if debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"filrewards": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbUri))
 	if err != nil {
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
@@ -96,7 +107,7 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 		if err := cursor.Decode(&rec); err != nil {
 			return nil, fmt.Errorf("decoding RewardRecord while building cache: %v", err)
 		}
-		ensureKeyEventCache(cache, rec.Key)
+		ensureKeyRewardCache(cache, rec.Key)
 		cache[rec.Key][rec.Reward] = struct{}{}
 	}
 	if err := cursor.Err(); err != nil {
@@ -107,6 +118,13 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 		col:               col,
 		rewardsCache:      cache,
 		baseAttoFILReward: baseAttoFILReward,
+	}
+
+	if analyticsAddr != "" {
+		s.ac, err = analytics.New(analyticsAddr)
+		if err != nil {
+			return nil, fmt.Errorf("creating analytics client: %s", err)
+		}
 	}
 
 	s.server = grpc.NewServer()
@@ -123,21 +141,21 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnalyticsEventRequest) (*pb.ProcessAnalyticsEventResponse, error) {
 	reward := pb.Reward_REWARD_UNSPECIFIED
 	switch req.AnalyticsEvent {
-	case int32(analytics.KeyAccountCreated):
+	case analyticspb.Event_EVENT_KEY_ACCOUNT_CREATED:
 		reward = pb.Reward_REWARD_FIRST_KEY_ACCOUNT_CREATED
-	case int32(analytics.KeyUserCreated):
+	case analyticspb.Event_EVENT_KEY_USER_CREATED:
 		reward = pb.Reward_REWARD_FIRST_KEY_USER_CREATED
-	case int32(analytics.OrgCreated):
+	case analyticspb.Event_EVENT_ORG_CREATED:
 		reward = pb.Reward_REWARD_FIRST_ORG_CREATED
-	case int32(analytics.BillingSetup):
+	case analyticspb.Event_EVENT_BILLING_SETUP:
 		reward = pb.Reward_REWARD_INITIAL_BILLING_SETUP
-	case int32(analytics.BucketCreated):
+	case analyticspb.Event_EVENT_BUCKET_CREATED:
 		reward = pb.Reward_REWARD_FIRST_BUCKET_CREATED
-	case int32(analytics.BucketArchiveCreated):
+	case analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED:
 		reward = pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED
-	case int32(analytics.MailboxCreated):
+	case analyticspb.Event_EVENT_MAILBOX_CREATED:
 		reward = pb.Reward_REWARD_FIRST_MAILBOX_CREATED
-	case int32(analytics.ThreadDbCreated):
+	case analyticspb.Event_EVENT_THREAD_DB_CREATED:
 		reward = pb.Reward_REWARD_FIRST_THREAD_DB_CREATED
 	}
 	if reward == pb.Reward_REWARD_UNSPECIFIED {
@@ -145,7 +163,7 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		return &pb.ProcessAnalyticsEventResponse{}, nil
 	}
 
-	ensureKeyEventCache(s.rewardsCache, req.Key)
+	ensureKeyRewardCache(s.rewardsCache, req.Key)
 
 	if _, exists := s.rewardsCache[req.Key][reward]; exists {
 		// This reward is already granted so bail.
@@ -167,22 +185,19 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 
 	s.rewardsCache[req.Key][reward] = struct{}{}
 
-	// ToDo: Use billing or analytics client to track this event. Should specify that the event shouldn't be considered for filrewards.
-
-	// if f.segmentClient != nil {
-	// 	err := f.segmentClient.Enqueue(segment.Track{
-	// 		UserId: key,
-	// 		Event:  "fil_reward_recorded",
-	// 		Properties: map[string]interface{}{
-	// 			"reward":               rewardEvent,
-	// 			"factor":               rewardMeta[rewardEvent].factor,
-	// 			"base_atto_fil_reward": baseAttoFILReward,
-	// 		},
-	// 	})
-	// 	if err != nil {
-	// 		log.Errorf("enqueuing segment event for fil_reward_recorded: %v", err)
-	// 	}
-	// }
+	if err := s.ac.Track(
+		ctx,
+		rec.Key,
+		rec.AccountType,
+		analyticspb.Event_EVENT_FIL_REWARD_RECORDED,
+		analytics.WithProperties(map[string]interface{}{
+			"reward":               rec.Reward,
+			"factor":               rewardMeta[rec.Reward].factor,
+			"base_atto_fil_reward": s.baseAttoFILReward,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
+	}
 
 	return &pb.ProcessAnalyticsEventResponse{RewardRecord: toPbRewardRecord(rec)}, nil
 }
@@ -345,7 +360,7 @@ func toPbRewardRecord(rec *rewardRecord) *pb.RewardRecord {
 	return res
 }
 
-func ensureKeyEventCache(keyCache map[string]map[pb.Reward]struct{}, key string) {
+func ensureKeyRewardCache(keyCache map[string]map[pb.Reward]struct{}, key string) {
 	if _, exists := keyCache[key]; !exists {
 		keyCache[key] = map[pb.Reward]struct{}{}
 	}

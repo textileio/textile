@@ -112,8 +112,6 @@ func DefaultBillingConfig(t util.TestingTWithCleanup) billing.Config {
 		StripeAPIURL:           "https://api.stripe.com",
 		StripeAPIKey:           os.Getenv("STRIPE_API_KEY"),
 		StripeSessionReturnURL: "http://127.0.0.1:8006/dashboard",
-		SegmentAPIKey:          os.Getenv("SEGMENT_API_KEY"),
-		SegmentPrefix:          "test_",
 		DBURI:                  GetMongoUri(),
 		DBName:                 util.MakeToken(8),
 		GatewayHostAddr:        util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),

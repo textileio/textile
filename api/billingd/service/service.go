@@ -18,7 +18,8 @@ import (
 	stripec "github.com/stripe/stripe-go/v72/client"
 	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
+	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	"github.com/textileio/textile/v2/api/billingd/common"
 	"github.com/textileio/textile/v2/api/billingd/gateway"
 	"github.com/textileio/textile/v2/api/billingd/migrations"
@@ -203,8 +204,7 @@ type Config struct {
 	StripeSessionReturnURL string
 	StripeWebhookSecret    string
 
-	SegmentAPIKey string
-	SegmentPrefix string
+	AnalyticsAddr string
 
 	DBURI  string
 	DBName string
@@ -231,9 +231,13 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	// Configure analytics client
-	ac, err := analytics.NewClient(config.SegmentAPIKey, config.SegmentPrefix, config.Debug)
-	if err != nil {
-		return nil, err
+	var ac *analytics.Client
+	if config.AnalyticsAddr != "" {
+		c, err := analytics.New(config.AnalyticsAddr)
+		if err != nil {
+			return nil, err
+		}
+		ac = c
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
@@ -505,11 +509,19 @@ func (s *Service) createCustomer(
 	}
 	log.Debugf("created customer %s with id %s", doc.Key, doc.CustomerID)
 
-	s.analytics.Identify(doc.Key, doc.AccountType, false, doc.Email, map[string]interface{}{
-		"parent_key":  doc.ParentKey,
-		"customer_id": doc.CustomerID,
-		"username":    params.Username,
-	})
+	if err := s.analytics.Identify(
+		ctx,
+		doc.Key,
+		int32(doc.AccountType),
+		analytics.WithEmail(doc.Email),
+		analytics.WithProperties(map[string]interface{}{
+			"parent_key":  doc.ParentKey,
+			"customer_id": doc.CustomerID,
+			"username":    params.Username,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics identify: %v", err)
+	}
 
 	return doc, nil
 }
@@ -663,13 +675,13 @@ func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
 		"account_status":       cus.AccountStatus(),
 		"billable":             cus.Billable,
 		"delinquent":           cus.Delinquent,
-		"grace_period_start":   s.analytics.FormatUnix(cus.GracePeriodStart),
-		"invoice_period_end":   s.analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
-		"invoice_period_start": s.analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
+		"grace_period_start":   analytics.FormatUnix(cus.GracePeriodStart),
+		"invoice_period_end":   analytics.FormatUnix(cus.InvoicePeriod.UnixEnd),
+		"invoice_period_start": analytics.FormatUnix(cus.InvoicePeriod.UnixStart),
 		"subscription_status":  cus.SubscriptionStatus,
 	}
 	if cus.GracePeriodStart > 0 {
-		summary["grace_period_end"] = s.analytics.FormatUnix(cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds()))
+		summary["grace_period_end"] = analytics.FormatUnix(cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds()))
 	}
 	if deps > 0 {
 		summary["dependents"] = deps
@@ -994,13 +1006,17 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodStart, nil)
+			if err := s.analytics.Track(ctx, cus.Key, int32(cus.AccountType), analyticspb.Event_EVENT_GRACE_PERIOD_START); err != nil {
+				log.Errorf("calling analytics track event: %v", err)
+			}
 		}
 		deadline := cus.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, nil)
+			if err := s.analytics.Track(ctx, cus.Key, int32(cus.AccountType), analyticspb.Event_EVENT_GRACE_PERIOD_END); err != nil {
+				log.Errorf("calling analytics track event: %v", err)
+			}
 			return nil, common.ErrExceedsFreeQuota
 		}
 	}
@@ -1075,7 +1091,15 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 			log.Warn("%s has invalid product key: %s", cus.Key, k)
 		}
 	}
-	s.analytics.Identify(cus.Key, cus.AccountType, false, "", summary)
+	if err := s.analytics.Identify(
+		ctx,
+		cus.Key,
+		int32(cus.AccountType),
+		analytics.WithEmail(cus.Email), // this wasn't being inclided before, do we want to?
+		analytics.WithProperties(summary),
+	); err != nil {
+		log.Errorf("calling analytics identify: %v", err)
+	}
 	return nil
 }
 
@@ -1106,44 +1130,4 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 		}
 	}
 	return nil
-}
-
-// Identify creates or updates the user traits
-func (s *Service) Identify(
-	ctx context.Context,
-	req *pb.IdentifyRequest,
-) (*pb.IdentifyResponse, error) {
-	props := map[string]interface{}{}
-	for k, v := range req.Properties {
-		props[k] = v
-	}
-	err := s.analytics.Identify(
-		req.Key,
-		mdb.AccountType(req.AccountType),
-		req.Active,
-		req.Email,
-		props,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.IdentifyResponse{}, nil
-}
-
-// TrackEvent records a new event
-func (s *Service) TrackEvent(
-	ctx context.Context,
-	req *pb.TrackEventRequest,
-) (*pb.TrackEventResponse, error) {
-	err := s.analytics.TrackEvent(
-		req.Key,
-		mdb.AccountType(req.AccountType),
-		req.Active,
-		analytics.Event(req.Event),
-		req.Properties,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.TrackEventResponse{}, nil
 }

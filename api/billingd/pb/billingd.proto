@@ -133,27 +133,6 @@ message ReportCustomerUsageRequest {
 
 message ReportCustomerUsageResponse {}
 
-
-message IdentifyRequest {
-    string key = 1;
-    int32 account_type = 2;
-    bool active = 3;
-    string email = 4;
-    map<string, string> properties = 5;
-}
-
-message IdentifyResponse {}
-
-message TrackEventRequest {
-    string key = 1;
-    int32 account_type = 2;
-    bool active = 3;
-    int32 event = 4;
-    map<string, string> properties = 5;
-}
-
-message TrackEventResponse {}
-
 service APIService {
     rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse) {}
     rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {}
@@ -167,6 +146,4 @@ service APIService {
     rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse) {}
     rpc IncCustomerUsage(IncCustomerUsageRequest) returns (IncCustomerUsageResponse) {}
     rpc ReportCustomerUsage(ReportCustomerUsageRequest) returns (ReportCustomerUsageResponse) {}
-    rpc Identify(IdentifyRequest) returns (IdentifyResponse) {}
-    rpc TrackEvent(TrackEventRequest) returns (TrackEventResponse) {}
 }

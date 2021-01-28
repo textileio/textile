@@ -16,7 +16,8 @@ import (
 	"github.com/textileio/go-threads/db"
 	netclient "github.com/textileio/go-threads/net/api/client"
 	pow "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/api/billingd/analytics"
+	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
+	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
@@ -52,6 +53,7 @@ type Service struct {
 	EmailSessionSecret  string
 	IPFSClient          iface.CoreAPI
 	IPNSManager         *ipns.Manager
+	AnalyticsClient     *analytics.Client
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
@@ -191,8 +193,8 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, err
 	}
 
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(ctx, dev.Key, mdb.Dev, true, analytics.SignIn, nil)
+	if err := s.AnalyticsClient.Track(ctx, dev.Key.String(), int32(mdb.Dev), analyticspb.Event_EVENT_SIGN_IN, analytics.WithActive()); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.SigninResponse{
@@ -296,8 +298,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	}
 	var keyType mdb.APIKeyType
 	switch req.Type {
-	case pb.KeyType_KEY_TYPE_ACCOUNT:
-	case pb.KeyType_KEY_TYPE_UNSPECIFIED:
+	case pb.KeyType_KEY_TYPE_ACCOUNT, pb.KeyType_KEY_TYPE_UNSPECIFIED:
 		keyType = mdb.AccountKey
 	case pb.KeyType_KEY_TYPE_USER:
 		keyType = mdb.UserKey
@@ -313,28 +314,25 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "mapping key type: %v", key.Type)
 	}
 
-	var event analytics.Event
-	if keyType == mdb.AccountKey {
-		event = analytics.KeyAccountCreated
-	} else {
-		event = analytics.KeyUserCreated
+	event := analyticspb.Event_EVENT_KEY_ACCOUNT_CREATED
+	if keyType == mdb.UserKey {
+		event = analyticspb.Event_EVENT_KEY_USER_CREATED
 	}
-	if s.BillingClient != nil {
-		// Same "member" based payload for Dev or Org account types so that same
-		// downstream logic/templating can be used.
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			event,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-				"secure_key":      fmt.Sprintf("%t", req.Secure),
-			},
-		)
+
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		event,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+			"secure_key":      fmt.Sprintf("%t", req.Secure),
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.CreateKeyResponse{
@@ -442,26 +440,35 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "Unable to encode OrgInfo: %v", err)
 	}
 
-	if s.BillingClient != nil {
-		// Identify the Org
-		s.BillingClient.Identify(ctx, org.Key, org.Type, true, account.User.Email, map[string]string{
+	// Identify the Org
+	if err := s.AnalyticsClient.Identify(
+		ctx,
+		org.Key.String(),
+		int32(org.Type),
+		analytics.WithActive(),
+		analytics.WithEmail(account.User.Email),
+		analytics.WithProperties(map[string]interface{}{
 			"username":            org.Username,
 			"created_by":          account.User.Key.String(),
 			"created_by_username": account.User.Username,
 			"created_by_email":    account.User.Email,
-		})
-		// Attribute event to Dev
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.User.Key,
-			account.User.Type,
-			true,
-			analytics.OrgCreated,
-			map[string]string{
-				"org_name": org.Name,
-				"org_key":  org.Key.String(),
-			},
-		)
+		}),
+	); err != nil {
+		log.Errorf("calling analytics identify: %v", err)
+	}
+	// Attribute event to Dev
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.User.Key.String(),
+		int32(account.User.Type),
+		analyticspb.Event_EVENT_ORG_CREATED,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"org_name": org.Name,
+			"org_key":  org.Key.String(),
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.CreateOrgResponse{
@@ -564,19 +571,19 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 		return nil, err
 	}
 
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			analytics.OrgDestroyed,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			},
-		)
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		analyticspb.Event_EVENT_ORG_DESTROYED,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.RemoveOrgResponse{}, nil
@@ -617,20 +624,20 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		return nil, err
 	}
 
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			analytics.OrgInviteCreated,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-				"invitee":         req.Email,
-			},
-		)
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		analyticspb.Event_EVENT_ORG_INVITE_CREATED,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+			"invitee":         req.Email,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.InviteToOrgResponse{Token: invite.Token}, nil
@@ -656,19 +663,19 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 		return nil, err
 	}
 
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			analytics.OrgLeave,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			},
-		)
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		analyticspb.Event_EVENT_ORG_LEAVE,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.LeaveOrgResponse{}, nil
@@ -692,19 +699,19 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 		return nil, err
 	}
 
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			analytics.BillingSetup,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			},
-		)
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		analyticspb.Event_EVENT_BILLING_SETUP,
+		analytics.WithActive(),
+		analytics.WithProperties(map[string]interface{}{
+			"member":          account.User.Key.String(),
+			"member_username": account.User.Username,
+			"member_email":    account.User.Email,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.SetupBillingResponse{}, nil
@@ -798,15 +805,15 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	if err := s.destroyAccount(ctx, account.User); err != nil {
 		return nil, err
 	}
-	if s.BillingClient != nil {
-		s.BillingClient.TrackEvent(
-			ctx,
-			account.Owner().Key,
-			account.Owner().Type,
-			true,
-			analytics.AccountDestroyed,
-			nil,
-		)
+
+	if err := s.AnalyticsClient.Track(
+		ctx,
+		account.Owner().Key.String(),
+		int32(account.Owner().Type),
+		analyticspb.Event_EVENT_ACCOUNT_DESTROYED,
+		analytics.WithActive(),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
 	}
 
 	return &pb.DestroyAccountResponse{}, nil

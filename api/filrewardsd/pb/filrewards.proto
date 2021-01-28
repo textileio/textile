@@ -1,8 +1,9 @@
 syntax = "proto3";
 package api.filrewards.pb;
-option go_package = "github.com/textileio/textile/v2/api/filrewards/pb";
+option go_package = "github.com/textileio/textile/v2/api/filrewardsd/pb";
 
 import "google/protobuf/timestamp.proto";
+import "api/analyticsd/pb/analytics.proto";
 
 enum Reward {
   REWARD_UNSPECIFIED = 0;
@@ -35,7 +36,7 @@ enum ClaimedFilter {
 message ProcessAnalyticsEventRequest {
   string key = 1;
   int32 account_type = 2;
-  int32 analytics_event = 3;
+  api.analytics.pb.Event analytics_event = 3;
 }
 
 message ProcessAnalyticsEventResponse {
