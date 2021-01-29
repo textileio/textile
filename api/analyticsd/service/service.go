@@ -194,6 +194,8 @@ func eventToString(e pb.Event) string {
 		return "mailbox_created"
 	case pb.Event_EVENT_THREAD_DB_CREATED:
 		return "threaddb_created"
+	case pb.Event_EVENT_FIL_REWARD_RECORDED:
+		return "fil_reward_recorded"
 	default:
 		return fmt.Sprintf("%d", int(e))
 	}
