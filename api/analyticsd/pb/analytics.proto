@@ -1,5 +1,5 @@
 syntax = "proto3";
-package api.analytics.pb;
+package api.analyticsd.pb;
 option go_package = "github.com/textileio/textile/v2/api/analyticsd/pb";
 
 import "google/protobuf/struct.proto";
