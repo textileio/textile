@@ -11,6 +11,7 @@ import (
 	"github.com/textileio/go-ds-mongo/test"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
+	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -413,7 +414,7 @@ func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient
 	conf := Config{
 		Listener:            listener,
 		MongoUri:            test.GetMongoUri(),
-		MongoDbName:         "mydb",
+		MongoDbName:         util.MakeToken(12),
 		MongoCollectionName: "filrewards",
 	}
 	s, err := New(ctx, conf)
@@ -424,7 +425,6 @@ func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient
 	}
 
 	conn, err := grpc.Dial("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
-	// conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	require.NoError(t, err)
 	client := pb.NewFilRewardsServiceClient(conn)
 
