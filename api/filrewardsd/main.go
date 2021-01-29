@@ -159,7 +159,16 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		ctx, cancel := context.WithCancel(context.Background())
-		api, err := service.New(ctx, listener, mongoUri, mongoDb, mongoCollection, analyticsAddr, baseFilReward, debug)
+		conf := service.Config{
+			Listener:            listener,
+			MongoUri:            mongoUri,
+			MongoDbName:         mongoDb,
+			MongoCollectionName: mongoCollection,
+			AnalyticsAddr:       analyticsAddr,
+			BaseAttoFILReward:   baseFilReward,
+			Debug:               debug,
+		}
+		api, err := service.New(ctx, conf)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Filrewards!")

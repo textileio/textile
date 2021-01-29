@@ -49,6 +49,8 @@ type rewardRecord struct {
 	ClaimedAt         *time.Time              `bson:"claimed_at"`
 }
 
+var _ pb.FilRewardsServiceServer = (*Service)(nil)
+
 type Service struct {
 	col               *mongo.Collection
 	ac                *analytics.Client
@@ -57,8 +59,18 @@ type Service struct {
 	server            *grpc.Server
 }
 
-func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionName, analyticsAddr string, baseAttoFILReward int32, debug bool) (*Service, error) {
-	if debug {
+type Config struct {
+	Listener            net.Listener
+	MongoUri            string
+	MongoDbName         string
+	MongoCollectionName string
+	AnalyticsAddr       string
+	BaseAttoFILReward   int32
+	Debug               bool
+}
+
+func New(ctx context.Context, config Config) (*Service, error) {
+	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"filrewards": logging.LevelDebug,
 		}); err != nil {
@@ -66,12 +78,12 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 		}
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbUri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.MongoUri))
 	if err != nil {
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
 	}
-	db := client.Database(dbName)
-	col := db.Collection(collectionName)
+	db := client.Database(config.MongoDbName)
+	col := db.Collection(config.MongoCollectionName)
 	_, err = col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{primitive.E{Key: "key", Value: 1}, primitive.E{Key: "reward", Value: 1}},
@@ -117,11 +129,11 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 	s := &Service{
 		col:               col,
 		rewardsCache:      cache,
-		baseAttoFILReward: baseAttoFILReward,
+		baseAttoFILReward: config.BaseAttoFILReward,
 	}
 
-	if analyticsAddr != "" {
-		s.ac, err = analytics.New(analyticsAddr)
+	if config.AnalyticsAddr != "" {
+		s.ac, err = analytics.New(config.AnalyticsAddr)
 		if err != nil {
 			return nil, fmt.Errorf("creating analytics client: %s", err)
 		}
@@ -130,7 +142,7 @@ func New(ctx context.Context, listener net.Listener, dbUri, dbName, collectionNa
 	s.server = grpc.NewServer()
 	go func() {
 		pb.RegisterFilRewardsServiceServer(s.server, s)
-		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		if err := s.server.Serve(config.Listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Errorf("serve error: %v", err)
 		}
 	}()

@@ -31,8 +31,16 @@ type Service struct {
 
 var _ pb.AnalyticsServiceServer = (*Service)(nil)
 
-func New(listener net.Listener, segmentAPIKey, segmentPrefix, filrewardsAddr string, debug bool) (*Service, error) {
-	if debug {
+type Config struct {
+	Listener       net.Listener
+	SegmentAPIKey  string
+	SegmentPrefix  string
+	FilrewardsAddr string
+	Debug          bool
+}
+
+func New(conf Config) (*Service, error) {
+	if conf.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"analytics": logging.LevelDebug,
 		}); err != nil {
@@ -41,21 +49,21 @@ func New(listener net.Listener, segmentAPIKey, segmentPrefix, filrewardsAddr str
 	}
 
 	config := segment.Config{
-		Verbose: debug,
+		Verbose: conf.Debug,
 	}
-	segment, err := segment.NewWithConfig(segmentAPIKey, config)
+	segment, err := segment.NewWithConfig(conf.SegmentAPIKey, config)
 	if err != nil {
 		return nil, fmt.Errorf("creating segment client: %v", err)
 	}
 
 	s := &Service{
 		segment: segment,
-		prefix:  segmentPrefix,
-		debug:   debug,
+		prefix:  conf.SegmentPrefix,
+		debug:   conf.Debug,
 	}
 
-	if filrewardsAddr != "" {
-		s.frc, err = filrewards.New(filrewardsAddr)
+	if conf.FilrewardsAddr != "" {
+		s.frc, err = filrewards.New(conf.FilrewardsAddr)
 		if err != nil {
 			return nil, fmt.Errorf("creating filrewards client: %v", err)
 		}
@@ -64,7 +72,7 @@ func New(listener net.Listener, segmentAPIKey, segmentPrefix, filrewardsAddr str
 	s.server = grpc.NewServer()
 	go func() {
 		pb.RegisterAnalyticsServiceServer(s.server, s)
-		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		if err := s.server.Serve(conf.Listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Errorf("serve error: %v", err)
 		}
 	}()

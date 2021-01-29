@@ -11,7 +11,6 @@ import (
 	"github.com/textileio/go-ds-mongo/test"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
-	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -61,7 +60,13 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 		return listener1.Dial()
 	}
 
-	s1, err := New(ctx, listener1, test.GetMongoUri(), "mydb", "filrewards", "", 1000, false)
+	conf1 := Config{
+		Listener:            listener1,
+		MongoUri:            test.GetMongoUri(),
+		MongoDbName:         "mydb",
+		MongoCollectionName: "filrewards",
+	}
+	s1, err := New(ctx, conf1)
 	require.NoError(t, err)
 
 	conn1, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer1), grpc.WithInsecure())
@@ -83,7 +88,13 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 		return listener2.Dial()
 	}
 
-	s2, err := New(ctx, listener2, test.GetMongoUri(), "mydb", "filrewards", "", 1000, false)
+	conf2 := Config{
+		Listener:            listener2,
+		MongoUri:            test.GetMongoUri(),
+		MongoDbName:         "mydb",
+		MongoCollectionName: "filrewards",
+	}
+	s2, err := New(ctx, conf2)
 	require.NoError(t, err)
 
 	conn2, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer2), grpc.WithInsecure())
@@ -399,7 +410,13 @@ func TestListPaging(t *testing.T) {
 func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient, func()) {
 	listener := bufconn.Listen(bufSize)
 
-	s, err := New(ctx, listener, test.GetMongoUri(), util.MakeToken(12), "filrewards", "", 1000, false)
+	conf := Config{
+		Listener:            listener,
+		MongoUri:            test.GetMongoUri(),
+		MongoDbName:         "mydb",
+		MongoCollectionName: "filrewards",
+	}
+	s, err := New(ctx, conf)
 	require.NoError(t, err)
 
 	bufDialer := func(context.Context, string) (net.Conn, error) {

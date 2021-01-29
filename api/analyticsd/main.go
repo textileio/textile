@@ -139,7 +139,14 @@ var rootCmd = &cobra.Command{
 		listener, err := net.Listen("tcp", target)
 		cmd.ErrCheck(err)
 
-		api, err := service.New(listener, segmentApiKey, segmentPrefix, filrewardsAddr, debug)
+		conf := service.Config{
+			Listener:       listener,
+			SegmentAPIKey:  segmentApiKey,
+			SegmentPrefix:  segmentPrefix,
+			FilrewardsAddr: filrewardsAddr,
+			Debug:          debug,
+		}
+		api, err := service.New(conf)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Analytics!")
