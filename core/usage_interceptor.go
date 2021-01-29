@@ -262,7 +262,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		if err := t.ac.Track(
 			ctx,
 			account.Owner().Key.String(),
-			int32(account.Owner().Type),
+			account.Owner().Type.Pb(),
 			event,
 			analytics.WithActive(),
 			analytics.WithProperties(map[string]interface{}{

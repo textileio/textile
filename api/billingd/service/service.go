@@ -512,7 +512,7 @@ func (s *Service) createCustomer(
 	if err := s.analytics.Identify(
 		ctx,
 		doc.Key,
-		int32(doc.AccountType),
+		doc.AccountType.Pb(),
 		analytics.WithEmail(doc.Email),
 		analytics.WithProperties(map[string]interface{}{
 			"parent_key":  doc.ParentKey,
@@ -1006,7 +1006,7 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			update["grace_period_start"] = cus.GracePeriodStart
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			if err := s.analytics.Track(ctx, cus.Key, int32(cus.AccountType), analyticspb.Event_EVENT_GRACE_PERIOD_START); err != nil {
+			if err := s.analytics.Track(ctx, cus.Key, cus.AccountType.Pb(), analyticspb.Event_EVENT_GRACE_PERIOD_START); err != nil {
 				log.Errorf("calling analytics track event: %v", err)
 			}
 		}
@@ -1014,7 +1014,7 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 		if now >= deadline {
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
-			if err := s.analytics.Track(ctx, cus.Key, int32(cus.AccountType), analyticspb.Event_EVENT_GRACE_PERIOD_END); err != nil {
+			if err := s.analytics.Track(ctx, cus.Key, cus.AccountType.Pb(), analyticspb.Event_EVENT_GRACE_PERIOD_END); err != nil {
 				log.Errorf("calling analytics track event: %v", err)
 			}
 			return nil, common.ErrExceedsFreeQuota
@@ -1094,7 +1094,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 	if err := s.analytics.Identify(
 		ctx,
 		cus.Key,
-		int32(cus.AccountType),
+		cus.AccountType.Pb(),
 		analytics.WithEmail(cus.Email), // this wasn't being inclided before, do we want to?
 		analytics.WithProperties(summary),
 	); err != nil {

@@ -24,10 +24,16 @@ enum Event {
   EVENT_FIL_REWARD_RECORDED = 16;
 }
 
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_DEV = 1;
+  ACCOUNT_TYPE_ORG = 2;
+  ACCOUNT_TYPE_USER = 3;
+}
 
 message IdentifyRequest {
   string key = 1;
-  int32 account_type = 2;
+  AccountType account_type = 2;
   bool active = 3;
   string email = 4;
   google.protobuf.Struct properties = 5;
@@ -37,7 +43,7 @@ message IdentifyResponse {}
 
 message TrackRequest {
   string key = 1;
-  int32 account_type = 2;
+  AccountType account_type = 2;
   bool active = 3;
   Event event = 4;
   google.protobuf.Struct properties = 5;

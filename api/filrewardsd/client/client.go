@@ -30,7 +30,7 @@ func New(target string, opts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) ProcessAnalyticsEvent(ctx context.Context, key string, accountType int32, event analyticspb.Event) (*pb.RewardRecord, error) {
+func (c *Client) ProcessAnalyticsEvent(ctx context.Context, key string, accountType analyticspb.AccountType, event analyticspb.Event) (*pb.RewardRecord, error) {
 	req := &pb.ProcessAnalyticsEventRequest{
 		Key:            key,
 		AccountType:    accountType,

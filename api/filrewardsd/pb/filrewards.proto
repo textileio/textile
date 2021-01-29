@@ -19,7 +19,7 @@ enum Reward {
 
 message RewardRecord {
   string key = 1;
-  int32 account_type = 2;
+  api.analytics.pb.AccountType account_type = 2;
   Reward reward = 3;
   int32 factor = 4;
   int32 base_atto_fil_reward = 5;
@@ -35,7 +35,7 @@ enum ClaimedFilter {
 
 message ProcessAnalyticsEventRequest {
   string key = 1;
-  int32 account_type = 2;
+  api.analytics.pb.AccountType account_type = 2;
   api.analytics.pb.Event analytics_event = 3;
 }
 

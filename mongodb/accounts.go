@@ -11,6 +11,7 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/textile/v2/api/analyticsd/pb"
 	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -49,6 +50,18 @@ const (
 	Org
 	User
 )
+
+func (a AccountType) Pb() pb.AccountType {
+	switch a {
+	case Dev:
+		return pb.AccountType_ACCOUNT_TYPE_DEV
+	case Org:
+		return pb.AccountType_ACCOUNT_TYPE_ORG
+	case User:
+		return pb.AccountType_ACCOUNT_TYPE_USER
+	}
+	return pb.AccountType_ACCOUNT_TYPE_UNSPECIFIED
+}
 
 type Member struct {
 	Key      thread.PubKey

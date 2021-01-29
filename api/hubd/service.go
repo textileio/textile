@@ -193,7 +193,7 @@ func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.Signin
 		return nil, err
 	}
 
-	if err := s.AnalyticsClient.Track(ctx, dev.Key.String(), int32(mdb.Dev), analyticspb.Event_EVENT_SIGN_IN, analytics.WithActive()); err != nil {
+	if err := s.AnalyticsClient.Track(ctx, dev.Key.String(), mdb.Dev.Pb(), analyticspb.Event_EVENT_SIGN_IN, analytics.WithActive()); err != nil {
 		log.Errorf("calling analytics track: %v", err)
 	}
 
@@ -322,7 +322,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		event,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -444,7 +444,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err := s.AnalyticsClient.Identify(
 		ctx,
 		org.Key.String(),
-		int32(org.Type),
+		org.Type.Pb(),
 		analytics.WithActive(),
 		analytics.WithEmail(account.User.Email),
 		analytics.WithProperties(map[string]interface{}{
@@ -460,7 +460,7 @@ func (s *Service) CreateOrg(ctx context.Context, req *pb.CreateOrgRequest) (*pb.
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.User.Key.String(),
-		int32(account.User.Type),
+		account.User.Type.Pb(),
 		analyticspb.Event_EVENT_ORG_CREATED,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -574,7 +574,7 @@ func (s *Service) RemoveOrg(ctx context.Context, _ *pb.RemoveOrgRequest) (*pb.Re
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_ORG_DESTROYED,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -627,7 +627,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_ORG_INVITE_CREATED,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -666,7 +666,7 @@ func (s *Service) LeaveOrg(ctx context.Context, _ *pb.LeaveOrgRequest) (*pb.Leav
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_ORG_LEAVE,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -702,7 +702,7 @@ func (s *Service) SetupBilling(ctx context.Context, _ *pb.SetupBillingRequest) (
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_BILLING_SETUP,
 		analytics.WithActive(),
 		analytics.WithProperties(map[string]interface{}{
@@ -809,7 +809,7 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
-		int32(account.Owner().Type),
+		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_ACCOUNT_DESTROYED,
 		analytics.WithActive(),
 	); err != nil {

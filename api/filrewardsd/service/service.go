@@ -40,13 +40,13 @@ type meta struct {
 }
 
 type rewardRecord struct {
-	Key               string     `bson:"key"`
-	AccountType       int32      `bson:"account_type"`
-	Reward            pb.Reward  `bson:"reward"`
-	Factor            int32      `bson:"factor"`
-	BaseAttoFILReward int32      `bson:"base_atto_fil_reward"`
-	CreatedAt         time.Time  `bson:"created_at"`
-	ClaimedAt         *time.Time `bson:"claimed_at"`
+	Key               string                  `bson:"key"`
+	AccountType       analyticspb.AccountType `bson:"account_type"`
+	Reward            pb.Reward               `bson:"reward"`
+	Factor            int32                   `bson:"factor"`
+	BaseAttoFILReward int32                   `bson:"base_atto_fil_reward"`
+	CreatedAt         time.Time               `bson:"created_at"`
+	ClaimedAt         *time.Time              `bson:"claimed_at"`
 }
 
 type Service struct {

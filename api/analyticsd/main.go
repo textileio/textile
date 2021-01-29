@@ -43,6 +43,10 @@ var (
 				Key:      "segment_prefix",
 				DefValue: "",
 			},
+			"filrewardsAddr": {
+				Key:      "filrewards_addr",
+				DefValue: "",
+			},
 		},
 		EnvPre: "ANALYTICS",
 		Global: true,
@@ -84,6 +88,11 @@ func init() {
 		config.Flags["segmentPrefix"].DefValue.(string),
 		"Segment trait source prefix")
 
+	rootCmd.PersistentFlags().String(
+		"filrewardsAddr",
+		config.Flags["filrewardsAddr"].DefValue.(string),
+		"Filrewards API address")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -115,6 +124,7 @@ var rootCmd = &cobra.Command{
 		listenAddr := cmd.AddrFromStr(config.Viper.GetString("listen_addr"))
 		segmentApiKey := config.Viper.GetString("segment_api_key")
 		segmentPrefix := config.Viper.GetString("segment_prefix")
+		filrewardsAddr := config.Viper.GetString("filrewards_addr")
 		debug := config.Viper.GetBool("debug")
 		logFile := config.Viper.GetString("log_file")
 
@@ -129,7 +139,7 @@ var rootCmd = &cobra.Command{
 		listener, err := net.Listen("tcp", target)
 		cmd.ErrCheck(err)
 
-		api, err := service.New(listener, segmentApiKey, segmentPrefix, debug)
+		api, err := service.New(listener, segmentApiKey, segmentPrefix, filrewardsAddr, debug)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Analytics!")

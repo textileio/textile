@@ -11,7 +11,6 @@ import (
 	"github.com/textileio/go-ds-mongo/test"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
-	"github.com/textileio/textile/v2/mongodb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -440,7 +439,7 @@ func requireOrder(t *testing.T, res []*pb.RewardRecord, ascending bool) {
 func requireProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, event analyticspb.Event) *pb.RewardRecord {
 	req := &pb.ProcessAnalyticsEventRequest{
 		Key:            key,
-		AccountType:    int32(mongodb.Dev),
+		AccountType:    analyticspb.AccountType_ACCOUNT_TYPE_DEV,
 		AnalyticsEvent: event,
 	}
 	res, err := c.ProcessAnalyticsEvent(ctx, req)
@@ -452,7 +451,7 @@ func requireProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsSer
 func requireNoProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, event analyticspb.Event) {
 	req := &pb.ProcessAnalyticsEventRequest{
 		Key:            key,
-		AccountType:    int32(mongodb.Dev),
+		AccountType:    analyticspb.AccountType_ACCOUNT_TYPE_DEV,
 		AnalyticsEvent: event,
 	}
 	res, err := c.ProcessAnalyticsEvent(ctx, req)

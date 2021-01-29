@@ -55,7 +55,7 @@ func New(target string, opts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Identify(ctx context.Context, key string, accountType int32, opts ...Option) error {
+func (c *Client) Identify(ctx context.Context, key string, accountType pb.AccountType, opts ...Option) error {
 	if c == nil {
 		return nil
 	}
@@ -82,7 +82,7 @@ func (c *Client) Identify(ctx context.Context, key string, accountType int32, op
 	return nil
 }
 
-func (c *Client) Track(ctx context.Context, key string, accountType int32, event pb.Event, opts ...Option) error {
+func (c *Client) Track(ctx context.Context, key string, accountType pb.AccountType, event pb.Event, opts ...Option) error {
 	if c == nil {
 		return nil
 	}
