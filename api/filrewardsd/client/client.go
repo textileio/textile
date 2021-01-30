@@ -105,16 +105,21 @@ func WithLimit(limit int64) ListOption {
 	}
 }
 
-func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*pb.RewardRecord, bool, time.Time, error) {
+func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*pb.RewardRecord, bool, *time.Time, error) {
 	req := &pb.ListRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.fsc.List(ctx, req)
 	if err != nil {
-		return nil, false, time.Time{}, fmt.Errorf("calling list rpc: %v", err)
+		return nil, false, nil, fmt.Errorf("calling list rpc: %v", err)
 	}
-	return res.GetRewardRecords(), res.More, res.MoreStartAt.AsTime(), nil
+	var t *time.Time
+	if res.MoreStartAt != nil {
+		ts := res.MoreStartAt.AsTime()
+		t = &ts
+	}
+	return res.GetRewardRecords(), res.More, t, nil
 }
 
 func (c *Client) Close() error {

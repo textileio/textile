@@ -3,6 +3,8 @@ package api.usersd.pb;
 option go_package = "github.com/textileio/textile/v2/api/usersd/pb";
 
 import "api/billingd/pb/billingd.proto";
+import "api/filrewardsd/pb/filrewards.proto";
+import "google/protobuf/timestamp.proto";
 
 message ListThreadsRequest {}
 
@@ -170,6 +172,35 @@ message ArchiveRetrievalLogsResponse {
     string msg = 1;
 }
 
+message ClaimFilRewardRequest {
+    api.filrewardsd.pb.Reward reward = 1;
+}
+  
+message ClaimFilRewardResponse {
+}
+  
+message ListFilRewardsRequest {
+    api.filrewardsd.pb.Reward reward_filter = 1;
+    api.filrewardsd.pb.ClaimedFilter claimed_filter = 2;
+    bool ascending = 3;
+    google.protobuf.Timestamp start_at = 4;
+    int64 limit = 5;
+}
+
+message ListFilRewardsResponse {
+    repeated api.filrewardsd.pb.RewardRecord reward_records = 1;
+    bool more = 2;
+    google.protobuf.Timestamp more_start_at = 3;
+}
+
+message GetFilRewardRequest {
+    api.filrewardsd.pb.Reward reward = 1;
+}
+
+message GetFilRewardResponse {
+    api.filrewardsd.pb.RewardRecord reward_record = 1;
+}
+
 service APIService {
     rpc GetThread(GetThreadRequest) returns (GetThreadResponse) {}
     rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {}
@@ -191,4 +222,9 @@ service APIService {
     // Archive Retrieval
     rpc ArchiveRetrievalLs(ArchiveRetrievalLsRequest) returns (ArchiveRetrievalLsResponse){}
     rpc ArchiveRetrievalLogs(ArchiveRetrievalLogsRequest) returns (stream ArchiveRetrievalLogsResponse) {}
+
+    // Fil Rewards
+    rpc ClaimFilReward(ClaimFilRewardRequest) returns (ClaimFilRewardResponse) {}
+    rpc ListFilRewards(ListFilRewardsRequest) returns (ListFilRewardsResponse) {}
+    rpc GetFilReward(GetFilRewardRequest) returns (GetFilRewardResponse) {}
 }

@@ -16,6 +16,8 @@ import (
 	pow "github.com/textileio/powergate/v2/api/client"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
+	filrewards "github.com/textileio/textile/v2/api/filrewardsd/client"
+	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/buckets/archive/retrieval"
 	"github.com/textileio/textile/v2/mail"
@@ -24,16 +26,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var log = logging.Logger("usersapi")
 
+var _ pb.APIServiceServer = (*Service)(nil)
+
 type Service struct {
-	Collections     *mdb.Collections
-	Mail            *tdb.Mail
-	BillingClient   *billing.Client
-	FilRetrieval    *retrieval.FilRetrieval
-	PowergateClient *pow.Client
+	Collections      *mdb.Collections
+	Mail             *tdb.Mail
+	BillingClient    *billing.Client
+	FilRetrieval     *retrieval.FilRetrieval
+	PowergateClient  *pow.Client
+	FilRewardsClient *filrewards.Client
 }
 
 func (s *Service) GetThread(ctx context.Context, req *pb.GetThreadRequest) (*pb.GetThreadResponse, error) {
@@ -559,6 +565,57 @@ func (s *Service) ArchiveRetrievalLogs(req *pb.ArchiveRetrievalLogsRequest, serv
 	}
 
 	return nil
+}
+
+func (s *Service) ClaimFilReward(ctx context.Context, req *pb.ClaimFilRewardRequest) (*pb.ClaimFilRewardResponse, error) {
+	// ToDo: Figure out all the correct claiming logic and what key should really be used here.
+	account, _ := mdb.AccountFromContext(ctx)
+	if err := s.FilRewardsClient.Claim(ctx, account.Owner().Key.String(), req.Reward); err != nil {
+		// ToDo: Figure out best way to scope/wrap errors from internal services.
+		return nil, status.Errorf(codes.Internal, "calling filrewards service claim: %v", err)
+	}
+	return &pb.ClaimFilRewardResponse{}, nil
+}
+
+func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequest) (*pb.ListFilRewardsResponse, error) {
+	var opts []filrewards.ListOption
+	if req.Ascending {
+		opts = append(opts, filrewards.WithAscending())
+	}
+	if req.ClaimedFilter != filrewardspb.ClaimedFilter_CLAIMED_FILTER_UNSPECIFIED {
+		opts = append(opts, filrewards.WithClaimedFilter(req.ClaimedFilter))
+	}
+	if req.Limit > 0 {
+		opts = append(opts, filrewards.WithLimit(req.Limit))
+	}
+	if req.RewardFilter != filrewardspb.Reward_REWARD_UNSPECIFIED {
+		opts = append(opts, filrewards.WithRewardFilter(req.RewardFilter))
+	}
+	if req.StartAt != nil {
+		opts = append(opts, filrewards.WithStartAt(req.StartAt.AsTime()))
+	}
+	recs, more, startAt, err := s.FilRewardsClient.List(ctx, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards service list: %v", err)
+	}
+	var ts *timestamppb.Timestamp
+	if startAt != nil {
+		ts = timestamppb.New(*startAt)
+	}
+	return &pb.ListFilRewardsResponse{
+		RewardRecords: recs,
+		More:          more,
+		MoreStartAt:   ts,
+	}, nil
+}
+
+func (s *Service) GetFilReward(ctx context.Context, req *pb.GetFilRewardRequest) (*pb.GetFilRewardResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	res, err := s.FilRewardsClient.Get(ctx, account.Owner().Key.String(), req.Reward)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards service get: %v", err)
+	}
+	return &pb.GetFilRewardResponse{RewardRecord: res}, nil
 }
 
 func toPbRetrievalStatus(s retrieval.Status) pb.ArchiveRetrievalStatus {

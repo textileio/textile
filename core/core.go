@@ -39,6 +39,7 @@ import (
 	"github.com/textileio/textile/v2/api/bucketsd"
 	bpb "github.com/textileio/textile/v2/api/bucketsd/pb"
 	"github.com/textileio/textile/v2/api/common"
+	filrewards "github.com/textileio/textile/v2/api/filrewardsd/client"
 	"github.com/textileio/textile/v2/api/hubd"
 	hpb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/api/usersd"
@@ -135,6 +136,7 @@ type Textile struct {
 	ac  *analytics.Client
 	bc  *billing.Client
 	pc  *pow.Client
+	frc *filrewards.Client
 
 	bucks *tdb.Buckets
 	mail  *tdb.Mail
@@ -161,17 +163,18 @@ type Config struct {
 	Debug bool
 
 	// Addresses
-	AddrAPI          ma.Multiaddr
-	AddrAPIProxy     ma.Multiaddr
-	AddrMongoURI     string
-	AddrMongoName    string
-	AddrThreadsHost  ma.Multiaddr
-	AddrGatewayHost  ma.Multiaddr
-	AddrGatewayURL   string
-	AddrIPFSAPI      ma.Multiaddr
-	AddrAnalyticsAPI string
-	AddrBillingAPI   string
-	AddrPowergateAPI string
+	AddrAPI           ma.Multiaddr
+	AddrAPIProxy      ma.Multiaddr
+	AddrMongoURI      string
+	AddrMongoName     string
+	AddrThreadsHost   ma.Multiaddr
+	AddrGatewayHost   ma.Multiaddr
+	AddrGatewayURL    string
+	AddrIPFSAPI       ma.Multiaddr
+	AddrAnalyticsAPI  string
+	AddrBillingAPI    string
+	AddrPowergateAPI  string
+	AddrFilrewardsAPI string
 
 	// Buckets
 	MaxBucketArchiveRepFactor int
@@ -337,6 +340,11 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		}
 	}
 
+	if conf.AddrFilrewardsAPI != "" {
+		// ToDo: Do we really want to allow this to not be set and then have to always check if it is nil or not?
+		t.frc, err = filrewards.New(conf.AddrFilrewardsAPI, grpc.WithInsecure())
+	}
+
 	jobFinalizedEvents := make(chan archive.JobEvent)
 	t.archiveTracker, err = tracker.New(
 		t.collections,
@@ -391,11 +399,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			PowergateAdminToken: conf.PowergateAdminToken,
 		}
 		us = &usersd.Service{
-			Collections:     t.collections,
-			Mail:            t.mail,
-			BillingClient:   t.bc,
-			FilRetrieval:    t.filRetrieval,
-			PowergateClient: t.pc,
+			Collections:      t.collections,
+			Mail:             t.mail,
+			BillingClient:    t.bc,
+			FilRetrieval:     t.filRetrieval,
+			PowergateClient:  t.pc,
+			FilRewardsClient: t.frc,
 		}
 	}
 
@@ -599,6 +608,11 @@ func (t *Textile) Close() error {
 	}
 	if t.pc != nil {
 		if err := t.pc.Close(); err != nil {
+			return err
+		}
+	}
+	if t.frc != nil {
+		if err := t.frc.Close(); err != nil {
 			return err
 		}
 	}
