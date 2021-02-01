@@ -1,0 +1,7 @@
+syntax = "proto3";
+package api.mindexd.pb;
+option go_package = "github.com/textileio/textile/v2/api/mindexd/pb";
+
+
+service APIService {
+}
