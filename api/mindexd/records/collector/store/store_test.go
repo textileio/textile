@@ -28,10 +28,10 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check non-existant last updated at behavior.
-	uat, err = s.GetLastStorageDealRecordUpdatedAt(ctx, "none")
+	uat, err := s.GetLastStorageDealRecordUpdatedAt(ctx, "none")
 	require.NoError(t, err)
 	require.Equal(t, int64(0), uat)
-	uat, err := s.GetLastRetrievalRecordUpdatedAt(ctx, "none")
+	uat, err = s.GetLastRetrievalRecordUpdatedAt(ctx, "none")
 	require.NoError(t, err)
 	require.Equal(t, int64(0), uat)
 
