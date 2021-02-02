@@ -49,12 +49,12 @@ func (c *Collector) Close() error {
 func (c *Collector) runDaemon() {
 	defer close(c.daemonClosed)
 
-	for _, t := range t.cfg.pows {
+	for _, t := range c.cfg.pows {
 		log.Infof("Powergate target: %s", t)
 	}
 
 	collect := make(chan struct{}, 1)
-	if c.cfg.collectOnStart {
+	if c.cfg.daemonRunOnStart {
 		collect <- struct{}{}
 	}
 
@@ -62,7 +62,7 @@ func (c *Collector) runDaemon() {
 		select {
 		case <-c.daemonCtx.Done():
 			return
-		case <-time.After(c.cfg.collectFreq):
+		case <-time.After(c.cfg.daemonFrequency):
 			collect <- struct{}{}
 		}
 	}()

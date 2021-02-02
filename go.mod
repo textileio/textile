@@ -72,7 +72,7 @@ require (
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5
 	github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80
-	github.com/textileio/powergate/v2 v2.0.0
+	github.com/textileio/powergate/v2 v2.0.1-0.20210201140146-d0c52322c0ef
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.4.1
@@ -86,3 +86,5 @@ require (
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/segmentio/analytics-go.v3 v3.1.0
 )
+
+replace github.com/textileio/powergate/v2 => ../powergate

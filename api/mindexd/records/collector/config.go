@@ -7,17 +7,22 @@ import (
 
 var (
 	defaultConfig = config{
-		collectOnStart: false,
-		collectFreq:    60 * time.Minute,
-		fetchLimit:     50,
+		daemonRunOnStart: false,
+		daemonFrequency:  60 * time.Minute,
+
+		fetchTimeout: time.Minute,
+		fetchLimit:   50,
 	}
 )
 
 type config struct {
-	collectOnStart bool
-	collectFreq    time.Duration
-	fetchLimit     int
-	pows           []PowTarget
+	daemonRunOnStart bool
+	daemonFrequency  time.Duration
+	fetchTimeout     time.Duration
+
+	fetchLimit int
+
+	pows []PowTarget
 }
 
 // PowTarget describes a Powergate instance to
@@ -32,17 +37,17 @@ type Option func(*config)
 
 // WithCollectorOnStart indicates if a collection should
 // be fired on start.
-func WithCollectOnStart(enabled bool) Option {
+func WithRunOnStart(enabled bool) Option {
 	return func(c *config) {
-		c.collectOnStart = enabled
+		c.daemonRunOnStart = enabled
 	}
 }
 
-// WithCollectFrequency indicates the frequency (in mins)
+// WithFrequency indicates the frequency (in mins)
 // for the collector daemon.
-func WithCollectFrequency(freqMins int) Option {
+func WithFrequency(freqMins int) Option {
 	return func(c *config) {
-		c.collectFreq = time.Duration(freqMins) * time.Minute
+		c.daemonFrequency = time.Duration(freqMins) * time.Minute
 	}
 }
 
@@ -57,6 +62,14 @@ func WithTargets(targets ...PowTarget) Option {
 // WithFetchLimit indicates the maximum record batch
 // size to be fetched from targets.
 func WithFetchLimit(limit int) Option {
+	return func(c *config) {
+		c.fetchLimit = limit
+	}
+}
+
+// WithFetchTimeout indicates the maximum amount of time that fetching
+// from a target can take.
+func WithFetchTimeout(limit int) Option {
 	return func(c *config) {
 		c.fetchLimit = limit
 	}
