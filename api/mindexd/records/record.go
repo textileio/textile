@@ -1,5 +1,21 @@
 package records
 
+import "time"
+
+type StorageDealRecord struct {
+	ID                   string               `bson:"_id,omitempty"`
+	PowName              string               `bson:"pow_name"`
+	LastUpdatedAt        time.Time            `bson:"last_updated_at"`
+	PowStorageDealRecord PowStorageDealRecord `bson:"pow_storage_deal_record"`
+}
+
+type RetrievalRecord struct {
+	ID                 string             `bson:"_id,omitempty"`
+	PowName            string             `bson:"pow_name"`
+	LastUpdatedAt      time.Time          `bson:"last_updated_at"`
+	PowRetrievalRecord PowRetrievalRecord `bson:"pow_retrieval_record"`
+}
+
 type PowStorageDealRecord struct {
 	RootCid           string                       `bson:"root_cid"`
 	Address           string                       `bson:"address"`

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
@@ -36,24 +35,26 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	require.Equal(t, int64(0), uat)
 
 	// Insert some records.
-	err = s.persistStorageDealRecords(testStorageDealRecords)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", testStorageDealRecords)
 	require.NoError(t, err)
-	err = s.persistRetrievalRecords(testRetrievalRecords)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", testRetrievalRecords)
 	require.NoError(t, err)
 
 	// Check non-existant last updated at behavior.
-	uat, err = s.GetLastStorageDealRecordUpdatedAt(ctx, "none")
+	uat, err = s.GetLastStorageDealRecordUpdatedAt(ctx, "duke-1")
 	require.NoError(t, err)
-	require.Equal(t, testStorageDealRecords[1].PowStorageDealRecord.UpdatedAt, uat)
-	uat, err = s.GetLastRetrievalRecordUpdatedAt(ctx, "none")
+	require.Equal(t, testStorageDealRecords[1].UpdatedAt, uat)
+	uat, err = s.GetLastRetrievalRecordUpdatedAt(ctx, "duke-1")
 	require.NoError(t, err)
-	require.Equal(t, testRetrievalRecords[1].PowRetrievalRecord.UpdatedAt, uat)
+	require.Equal(t, testRetrievalRecords[1].UpdatedAt, uat)
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)
 	db := client.Database("test_mindex")
+	_ = db.Drop(ctx)
+	db = client.Database("test_mindex")
 	t.Cleanup(func() {
 		err := db.Drop(ctx)
 		require.NoError(t, err)
@@ -62,114 +63,90 @@ func setup(t *testing.T, ctx context.Context) *mongo.Database {
 }
 
 var (
-	testStorageDealRecords = []powStorageDealRecord{
+	testStorageDealRecords = []records.PowStorageDealRecord{
 		{
-			ID:      "SID1",
-			PowName: "duke-1",
-			PowStorageDealRecord: records.PowStorageDealRecord{
-				RootCid: "StorageRootCid1",
-				Address: "Addr1",
-				Pending: true,
-				DealInfo: records.PowStorageDealRecordDealInfo{
-					ProposalCid:     "SD1",
-					StateId:         1,
-					StateName:       "StateName1",
-					Miner:           "f0100",
-					PieceCid:        "StoragePieceCid1",
-					Size:            1000,
-					PricePerEpoch:   1001,
-					StartEpoch:      3000,
-					Duration:        23,
-					DealId:          10001,
-					ActivationEpoch: 499,
-					Message:         "msg",
-				},
-				TransferSize:      1000,
-				DataTransferStart: 100,
-				DataTransferEnd:   102,
-				SealingStart:      200,
-				SealingEnd:        204,
-				ErrMsg:            "err msg",
-				CreatedAt:         80,
-				UpdatedAt:         300,
+			RootCid: "StorageRootCid1",
+			Address: "Addr1",
+			Pending: true,
+			DealInfo: records.PowStorageDealRecordDealInfo{
+				ProposalCid:     "SD1",
+				StateId:         1,
+				StateName:       "StateName1",
+				Miner:           "f0100",
+				PieceCid:        "StoragePieceCid1",
+				Size:            1000,
+				PricePerEpoch:   1001,
+				StartEpoch:      3000,
+				Duration:        23,
+				DealId:          10001,
+				ActivationEpoch: 499,
+				Message:         "msg",
 			},
-			FirstFetchedAt: time.Now(),
-			LastUpdatedAt:  time.Now(),
+			TransferSize:      1000,
+			DataTransferStart: 100,
+			DataTransferEnd:   102,
+			SealingStart:      200,
+			SealingEnd:        204,
+			ErrMsg:            "err msg",
+			CreatedAt:         80,
+			UpdatedAt:         300,
 		},
 		{
-			ID:      "SID2",
-			PowName: "duke-1",
-			PowStorageDealRecord: records.PowStorageDealRecord{
-				RootCid: "StorageRootCid2",
-				Address: "Addr2",
-				Pending: true,
-				DealInfo: records.PowStorageDealRecordDealInfo{
-					ProposalCid:     "SD2",
-					StateId:         1,
-					StateName:       "StateName1",
-					Miner:           "f0100",
-					PieceCid:        "StoragePieceCid2",
-					Size:            1000,
-					PricePerEpoch:   1001,
-					StartEpoch:      3000,
-					Duration:        23,
-					DealId:          10001,
-					ActivationEpoch: 499,
-					Message:         "msg",
-				},
-				TransferSize:      1000,
-				DataTransferStart: 100,
-				DataTransferEnd:   102,
-				SealingStart:      200,
-				SealingEnd:        204,
-				ErrMsg:            "err msg",
-				CreatedAt:         81,
-				UpdatedAt:         305,
+			RootCid: "StorageRootCid2",
+			Address: "Addr2",
+			Pending: true,
+			DealInfo: records.PowStorageDealRecordDealInfo{
+				ProposalCid:     "SD2",
+				StateId:         1,
+				StateName:       "StateName1",
+				Miner:           "f0100",
+				PieceCid:        "StoragePieceCid2",
+				Size:            1000,
+				PricePerEpoch:   1001,
+				StartEpoch:      3000,
+				Duration:        23,
+				DealId:          10001,
+				ActivationEpoch: 499,
+				Message:         "msg",
 			},
-			FirstFetchedAt: time.Now(),
-			LastUpdatedAt:  time.Now(),
+			TransferSize:      1000,
+			DataTransferStart: 100,
+			DataTransferEnd:   102,
+			SealingStart:      200,
+			SealingEnd:        204,
+			ErrMsg:            "err msg",
+			CreatedAt:         81,
+			UpdatedAt:         305,
 		},
 	}
 
-	testRetrievalRecords = []powRetrievalRecord{
+	testRetrievalRecords = []records.PowRetrievalRecord{
 		{
-			ID:             "RID1",
-			PowName:        "duke-1",
-			FirstFetchedAt: time.Now(),
-			LastUpdatedAt:  time.Now(),
-			PowRetrievalRecord: records.PowRetrievalRecord{
-				Address:           "Addr1",
-				DataTransferStart: 1003,
-				DataTransferEnd:   1004,
-				ErrMsg:            "err msg 2",
-				CreatedAt:         300,
-				UpdatedAt:         502,
-				DealInfo: records.PowRetrievalRecordDealInfo{
-					RootCid:  "RetrievalRootCid1",
-					Size:     3000,
-					MinPrice: 329,
-					Miner:    "f01002",
-				},
+			Address:           "Addr1",
+			DataTransferStart: 1003,
+			DataTransferEnd:   1004,
+			ErrMsg:            "err msg 2",
+			CreatedAt:         300,
+			UpdatedAt:         502,
+			DealInfo: records.PowRetrievalRecordDealInfo{
+				RootCid:  "RetrievalRootCid1",
+				Size:     3000,
+				MinPrice: 329,
+				Miner:    "f01002",
 			},
 		},
 		{
-			ID:             "RID2",
-			PowName:        "duke-1",
-			FirstFetchedAt: time.Now(),
-			LastUpdatedAt:  time.Now(),
-			PowRetrievalRecord: records.PowRetrievalRecord{
-				Address:           "Addr1",
-				DataTransferStart: 1003,
-				DataTransferEnd:   1004,
-				ErrMsg:            "err msg 2",
-				CreatedAt:         300,
-				UpdatedAt:         505,
-				DealInfo: records.PowRetrievalRecordDealInfo{
-					RootCid:  "RetrievalRootCid1",
-					Size:     3000,
-					MinPrice: 329,
-					Miner:    "f01002",
-				},
+			Address:           "Addr1",
+			DataTransferStart: 1003,
+			DataTransferEnd:   1004,
+			ErrMsg:            "err msg 2",
+			CreatedAt:         303,
+			UpdatedAt:         505,
+			DealInfo: records.PowRetrievalRecordDealInfo{
+				RootCid:  "RetrievalRootCid1",
+				Size:     3000,
+				MinPrice: 329,
+				Miner:    "f01003",
 			},
 		},
 	}

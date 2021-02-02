@@ -15,7 +15,7 @@ func (c *Collector) collectTargets(ctx context.Context) {
 	wg.Add(len(c.cfg.pows))
 
 	for _, source := range c.cfg.pows {
-		go func() {
+		go func(source PowTarget) {
 			defer wg.Done()
 
 			client, err := pow.NewClient(source.APIEndpoint)
@@ -35,7 +35,7 @@ func (c *Collector) collectTargets(ctx context.Context) {
 			}
 
 			log.Debugf("retrieving new records from %s finished", source.Name)
-		}()
+		}(source)
 	}
 
 	wg.Wait()
@@ -62,7 +62,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 		}
 
 		records := toStorageDealRecords(res.Records)
-		if err := c.store.persistStorageDealRecords(ctx, powName, records); err != nil {
+		if err := c.store.PersistStorageDealRecords(ctx, powName, records); err != nil {
 			return fmt.Errorf("persist fetched records: %s", err)
 		}
 
@@ -86,6 +86,7 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 
 	var count int
 	for {
+		// TT: add logs
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
@@ -99,7 +100,7 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 		}
 
 		records := toRetrievalRecords(res.Records)
-		if err := c.store.persistRetrievalRecords(ctx, powName, records); err != nil {
+		if err := c.store.PersistRetrievalRecords(ctx, powName, records); err != nil {
 			return fmt.Errorf("persist fetched records: %s", err)
 		}
 
