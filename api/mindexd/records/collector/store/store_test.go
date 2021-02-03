@@ -64,9 +64,9 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	require.NoError(t, err)
 
 	target := testRetrievalRecords[0]
-	original, err := s.getRetrievalRecord(ctx, retrievalID(target))
+	original, err := s.getRetrievalRecord(ctx, target.ID)
 	require.NoError(t, err)
-	require.Equal(t, retrievalID(target), original.ID)
+	require.Equal(t, target.ID, original.ID)
 	require.Equal(t, "duke-1", original.PowName)
 	require.False(t, original.LastUpdatedAt.IsZero())
 
@@ -78,7 +78,7 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	err = s.PersistRetrievalRecords(ctx, "duke-1", []records.PowRetrievalRecord{rr})
 	require.NoError(t, err)
 
-	modified, err := s.getRetrievalRecord(ctx, retrievalID(target))
+	modified, err := s.getRetrievalRecord(ctx, target.ID)
 	require.NoError(t, err)
 	require.Equal(t, original.ID, modified.ID)
 	require.Equal(t, original.PowName, modified.PowName)
@@ -192,6 +192,7 @@ var (
 
 	testRetrievalRecords = []records.PowRetrievalRecord{
 		{
+			ID:                "RID1",
 			Address:           "Addr1",
 			DataTransferStart: 1003,
 			DataTransferEnd:   1004,
@@ -206,6 +207,7 @@ var (
 			},
 		},
 		{
+			ID:                "RID2",
 			Address:           "Addr1",
 			DataTransferStart: 1003,
 			DataTransferEnd:   1004,

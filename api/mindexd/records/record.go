@@ -47,6 +47,7 @@ type PowStorageDealRecordDealInfo struct {
 }
 
 type PowRetrievalRecord struct {
+	ID                string                     `bson:"id"`
 	Address           string                     `bson:"address"`
 	DealInfo          PowRetrievalRecordDealInfo `bson:"deal_info"`
 	DataTransferStart int64                      `bson:"datatransfer_start"`

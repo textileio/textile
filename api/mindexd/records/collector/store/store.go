@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"crypto/md5"
 	"errors"
 	"fmt"
 	"time"
@@ -134,10 +133,9 @@ func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prr
 			PowName:            powName,
 			PowRetrievalRecord: prr,
 		}
-		id := retrievalID(prr)
 		uwm := mongo.NewUpdateOneModel()
-		uwm = uwm.SetFilter(bson.D{{Key: "_id", Value: id}})
-		uwm = uwm.SetUpdate(bson.M{"$setOnInsert": bson.M{"_id": id}, "$set": rr})
+		uwm = uwm.SetFilter(bson.D{{Key: "_id", Value: prr.ID}})
+		uwm = uwm.SetUpdate(bson.M{"$setOnInsert": bson.M{"_id": prr.ID}, "$set": rr})
 		uwm = uwm.SetUpsert(true)
 		wms[i] = uwm
 	}
@@ -157,7 +155,7 @@ func (s *Store) getStorageDealRecord(ctx context.Context, ID string) (records.St
 	filter := bson.M{"_id": ID}
 	sr := s.sdrc.FindOne(ctx, filter)
 	if sr.Err() == mongo.ErrNoDocuments {
-		return records.StorageDealRecord{}, ErrRecordNotFound
+		return records.StorageDealRecord{}, errRecordNotFound
 	}
 	if sr.Err() != nil {
 		return records.StorageDealRecord{}, fmt.Errorf("get storage record: %s", sr.Err())
@@ -175,7 +173,7 @@ func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (records.Retr
 	filter := bson.M{"_id": ID}
 	sr := s.rrc.FindOne(ctx, filter)
 	if sr.Err() == mongo.ErrNoDocuments {
-		return records.RetrievalRecord{}, ErrRecordNotFound
+		return records.RetrievalRecord{}, errRecordNotFound
 	}
 	if sr.Err() != nil {
 		return records.RetrievalRecord{}, fmt.Errorf("get retrieval record: %s", sr.Err())
@@ -187,14 +185,6 @@ func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (records.Retr
 	}
 
 	return rr, nil
-}
-
-// retrievalID generates the ID for a PowRetrievalRecord. We do the
-// same calculation used in Powergate to generate it.
-func retrievalID(rr records.PowRetrievalRecord) string {
-	str := fmt.Sprintf("%v%v%v%v", rr.CreatedAt, rr.Address, rr.DealInfo.Miner, rr.DealInfo.RootCid)
-	sum := md5.Sum([]byte(str))
-	return fmt.Sprintf("%x", sum[:])
 }
 
 func (s *Store) ensureIndexes() error {

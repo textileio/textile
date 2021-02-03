@@ -156,6 +156,7 @@ func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []records.PowRetrieval
 	ret := make([]records.PowRetrievalRecord, len(rs))
 	for i, r := range rs {
 		pr := records.PowRetrievalRecord{
+			ID:                r.Id,
 			Address:           r.Address,
 			DataTransferStart: r.DataTransferStart,
 			DataTransferEnd:   r.DataTransferEnd,
