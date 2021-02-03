@@ -29,13 +29,14 @@ type config struct {
 // collect deal/retrieval records.
 type PowTarget struct {
 	Name        string
+	Region      string
 	APIEndpoint string
 	AdminToken  string
 }
 
 type Option func(*config)
 
-// WithCollectorOnStart indicates if a collection should
+// WithRunOnStart indicates if a collection should
 // be fired on start.
 func WithRunOnStart(enabled bool) Option {
 	return func(c *config) {
@@ -43,11 +44,10 @@ func WithRunOnStart(enabled bool) Option {
 	}
 }
 
-// WithFrequency indicates the frequency (in mins)
-// for the collector daemon.
-func WithFrequency(freqMins int) Option {
+// WithFrequency indicates the frequency for the collector daemon.
+func WithFrequency(freq time.Duration) Option {
 	return func(c *config) {
-		c.daemonFrequency = time.Duration(freqMins) * time.Minute
+		c.daemonFrequency = freq
 	}
 }
 
@@ -67,11 +67,11 @@ func WithFetchLimit(limit int) Option {
 	}
 }
 
-// WithFetchTimeout indicates the maximum amount of time that fetching
-// from a target can take.
-func WithFetchTimeout(limit int) Option {
+// WithFetchTimeout indicates the maximum amount of time
+// that fetching from a target can take.
+func WithFetchTimeout(timeout time.Duration) Option {
 	return func(c *config) {
-		c.fetchLimit = limit
+		c.fetchTimeout = timeout
 	}
 }
 

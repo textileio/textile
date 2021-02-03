@@ -29,6 +29,10 @@ func New(db *mongo.Database, opts ...Option) (*Collector, error) {
 		o(&config)
 	}
 
+	if len(config.pows) == 0 {
+		log.Warnf("the list of powergate targets is empty")
+	}
+
 	store, err := store.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("creating store: %s", err)

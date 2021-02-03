@@ -12,7 +12,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
 	pb "github.com/textileio/textile/v2/api/mindexd/pb"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/textileio/textile/v2/api/mindexd/records/collector"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -26,7 +26,8 @@ type Service struct {
 	config Config
 	server *grpc.Server
 
-	mdb *mongo.Collection
+	db        *mongo.Database
+	collector *collector.Collector
 }
 
 var _ pb.APIServiceServer = (*Service)(nil)
@@ -37,6 +38,13 @@ type Config struct {
 
 	DBURI  string
 	DBName string
+
+	// TTODO: populate from viper
+	CollectorRunOnStart   bool
+	CollectorFrequency    time.Duration
+	CollectorTargets      []collector.PowTarget
+	CollectorFetchLimit   int
+	CollectorFetchTimeout time.Duration
 }
 
 func NewService(ctx context.Context, config Config) (*Service, error) {
@@ -50,31 +58,29 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.DBURI))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connecting to mongo: %s", err)
 	}
 	db := client.Database(config.DBName)
 	if err = migrations.Migrate(db); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("executing migrations: %s", err)
 	}
 
-	mdb := db.Collection("miner_index")
-	indexes, err := mdb.Indexes().CreateMany(ctx, []mongo.IndexModel{
-		// TTODO
-		{
-			Keys:    bson.D{{"customer_id", 1}},
-			Options: options.Index().SetUnique(true).SetSparse(true),
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating indexes: %w", err)
+	collectorOpts := []collector.Option{
+		collector.WithRunOnStart(config.CollectorRunOnStart),
+		collector.WithFrequency(config.CollectorFrequency),
+		collector.WithTargets(config.CollectorTargets...),
+		collector.WithFetchLimit(config.CollectorFetchLimit),
+		collector.WithFetchTimeout(config.CollectorFetchTimeout),
 	}
-	for _, index := range indexes {
-		log.Infof("created index: %s", index)
+	collector, err := collector.New(db, collectorOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("creating collector: %s", err)
 	}
 
 	s := &Service{
-		config: config,
-		mdb:    mdb,
+		config:    config,
+		db:        db,
+		collector: collector,
 	}
 
 	return s, nil
@@ -100,7 +106,7 @@ func (s *Service) Start() error {
 	return nil
 }
 
-func (s *Service) Stop() error {
+func (s *Service) Stop() {
 	stopped := make(chan struct{})
 	go func() {
 		s.server.GracefulStop()
@@ -115,28 +121,13 @@ func (s *Service) Stop() error {
 	}
 	log.Info("gRPC was shutdown")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	return s.mdb.Database().Client().Disconnect(ctx)
-}
+	if err := s.collector.Close(); err != nil {
+		log.Errorf("closing collector: %s", err)
+	}
 
-/*
-func (s *Service) CreateCustomer(ctx context.Context, req *pb.CreateCustomerRequest) (
-	*pb.CreateCustomerResponse, error) {
-	var parentKey string
-	if req.Parent != nil {
-		if _, err := s.createCustomer(ctx, req.Parent, ""); err != nil &&
-			!errors.Is(err, ErrCustomerExists) {
-			return nil, err
-		}
-		parentKey = req.Parent.Key
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+	if err := s.db.Client().Disconnect(ctx); err != nil {
+		log.Errorf("disconnecting from mongo: %s", err)
 	}
-	cus, err := s.createCustomer(ctx, req.Customer, parentKey)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.CreateCustomerResponse{
-		CustomerId: cus.CustomerID,
-	}, nil
 }
-*/
