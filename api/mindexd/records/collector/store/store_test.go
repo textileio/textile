@@ -19,6 +19,76 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestPersistStorageDealRecord(t *testing.T) {
+	ctx := context.Background()
+	db := setup(t, ctx)
+
+	s, err := New(db)
+	require.NoError(t, err)
+
+	err = s.PersistStorageDealRecords(ctx, "duke-1", testStorageDealRecords)
+	require.NoError(t, err)
+
+	target := testStorageDealRecords[0]
+	original, err := s.getStorageDealRecord(ctx, target.DealInfo.ProposalCid)
+	require.NoError(t, err)
+	require.Equal(t, target.DealInfo.ProposalCid, original.ID)
+	require.Equal(t, "duke-1", original.PowName)
+	require.False(t, original.LastUpdatedAt.IsZero())
+
+	sdr := target
+	sdr.Address = "Addr999"
+	sdr.DealInfo.StateId = 99
+	sdr.UpdatedAt = 99999
+	err = s.PersistStorageDealRecords(ctx, "duke-1", []records.PowStorageDealRecord{sdr})
+	require.NoError(t, err)
+
+	modified, err := s.getStorageDealRecord(ctx, sdr.DealInfo.ProposalCid)
+	require.NoError(t, err)
+	require.Equal(t, original.ID, modified.ID)
+	require.Equal(t, original.PowName, modified.PowName)
+	require.True(t, modified.LastUpdatedAt.After(original.LastUpdatedAt))
+	require.Equal(t, sdr.Address, modified.PowStorageDealRecord.Address)
+	require.Equal(t, sdr.DealInfo.StateId, modified.PowStorageDealRecord.DealInfo.StateId)
+	require.Equal(t, sdr.UpdatedAt, modified.PowStorageDealRecord.UpdatedAt)
+}
+
+func TestPersistRetrievalRecord(t *testing.T) {
+	ctx := context.Background()
+	db := setup(t, ctx)
+
+	s, err := New(db)
+	require.NoError(t, err)
+
+	err = s.PersistRetrievalRecords(ctx, "duke-1", testRetrievalRecords)
+	require.NoError(t, err)
+
+	target := testRetrievalRecords[0]
+	original, err := s.getRetrievalRecord(ctx, retrievalID(target))
+	require.NoError(t, err)
+	require.Equal(t, retrievalID(target), original.ID)
+	require.Equal(t, "duke-1", original.PowName)
+	require.False(t, original.LastUpdatedAt.IsZero())
+
+	rr := target
+	rr.ErrMsg = "Err999"
+	rr.DataTransferEnd = 999
+	rr.DataTransferStart = 888
+	rr.UpdatedAt = 99999
+	err = s.PersistRetrievalRecords(ctx, "duke-1", []records.PowRetrievalRecord{rr})
+	require.NoError(t, err)
+
+	modified, err := s.getRetrievalRecord(ctx, retrievalID(target))
+	require.NoError(t, err)
+	require.Equal(t, original.ID, modified.ID)
+	require.Equal(t, original.PowName, modified.PowName)
+	require.True(t, modified.LastUpdatedAt.After(original.LastUpdatedAt))
+	require.Equal(t, rr.ErrMsg, modified.PowRetrievalRecord.ErrMsg)
+	require.Equal(t, rr.DataTransferEnd, modified.PowRetrievalRecord.DataTransferEnd)
+	require.Equal(t, rr.DataTransferStart, modified.PowRetrievalRecord.DataTransferStart)
+	require.Equal(t, rr.UpdatedAt, modified.PowRetrievalRecord.UpdatedAt)
+}
+
 func TestGetLastUpdatedAt(t *testing.T) {
 	ctx := context.Background()
 	db := setup(t, ctx)

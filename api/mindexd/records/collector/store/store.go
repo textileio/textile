@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 
 var (
 	log = logger.Logger("record-store")
+
+	errRecordNotFound = errors.New("record not found")
 )
 
 type Store struct {
@@ -114,7 +117,7 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, p
 	if err != nil {
 		return fmt.Errorf("doing bulk write: %s", err)
 	}
-	if br.UpsertedCount != int64(len(psrs)) {
+	if br.UpsertedCount+br.ModifiedCount != int64(len(psrs)) {
 		return fmt.Errorf("bulk write upserted %d and should be %d", br.UpsertedCount, len(psrs))
 	}
 
@@ -123,6 +126,7 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, p
 
 func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prrs []records.PowRetrievalRecord) error {
 	now := time.Now()
+
 	wms := make([]mongo.WriteModel, len(prrs))
 	for i, prr := range prrs {
 		rr := records.RetrievalRecord{
@@ -142,11 +146,47 @@ func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prr
 	if err != nil {
 		return fmt.Errorf("doing bulk write: %s", err)
 	}
-	if br.UpsertedCount != int64(len(prrs)) {
+	if br.UpsertedCount+br.ModifiedCount != int64(len(prrs)) {
 		return fmt.Errorf("bulk write upserted %d and should be %d", br.UpsertedCount, len(prrs))
 	}
 
 	return nil
+}
+
+func (s *Store) getStorageDealRecord(ctx context.Context, ID string) (records.StorageDealRecord, error) {
+	filter := bson.M{"_id": ID}
+	sr := s.sdrc.FindOne(ctx, filter)
+	if sr.Err() == mongo.ErrNoDocuments {
+		return records.StorageDealRecord{}, ErrRecordNotFound
+	}
+	if sr.Err() != nil {
+		return records.StorageDealRecord{}, fmt.Errorf("get storage record: %s", sr.Err())
+	}
+
+	var sdr records.StorageDealRecord
+	if err := sr.Decode(&sdr); err != nil {
+		return records.StorageDealRecord{}, fmt.Errorf("decoding storage record: %s", err)
+	}
+
+	return sdr, nil
+}
+
+func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (records.RetrievalRecord, error) {
+	filter := bson.M{"_id": ID}
+	sr := s.rrc.FindOne(ctx, filter)
+	if sr.Err() == mongo.ErrNoDocuments {
+		return records.RetrievalRecord{}, ErrRecordNotFound
+	}
+	if sr.Err() != nil {
+		return records.RetrievalRecord{}, fmt.Errorf("get retrieval record: %s", sr.Err())
+	}
+
+	var rr records.RetrievalRecord
+	if err := sr.Decode(&rr); err != nil {
+		return records.RetrievalRecord{}, fmt.Errorf("decoding retrieval record: %s", err)
+	}
+
+	return rr, nil
 }
 
 // retrievalID generates the ID for a PowRetrievalRecord. We do the
