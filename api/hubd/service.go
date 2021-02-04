@@ -323,7 +323,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		payload := map[string]string{
 			"secure_key": fmt.Sprintf("%t", req.Secure),
 		}
-		if account.User == nil {
+		if account.User != nil {
 			payload["member"] = account.User.Key.String()
 			payload["member_username"] = account.User.Username
 			payload["member_email"] = account.User.Email
@@ -625,7 +625,7 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		payload := map[string]string{
 			"invitee": req.Email,
 		}
-		if account.User == nil {
+		if account.User != nil {
 			payload["member"] = account.User.Key.String()
 			payload["member_username"] = account.User.Username
 			payload["member_email"] = account.User.Email

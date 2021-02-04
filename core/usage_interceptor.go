@@ -251,7 +251,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	if t.bc != nil {
 
 		payload := map[string]string{}
-		if account.User == nil {
+		if account.User != nil {
 			payload["member"] = account.User.Key.String()
 			payload["member_username"] = account.User.Username
 			payload["member_email"] = account.User.Email
