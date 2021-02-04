@@ -8,6 +8,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	nutil "github.com/textileio/go-threads/net/util"
 	"github.com/textileio/go-threads/util"
 	analytics "github.com/textileio/textile/v2/api/analyticsd/client"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
@@ -22,51 +23,72 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	rewardsCollectionName = "filrewards"
+	claimsCollectionName  = "filclaims"
+)
+
 var log = logging.Logger("filrewards")
 
-var rewardMeta = map[pb.Reward]meta{
-	pb.Reward_REWARD_FIRST_KEY_ACCOUNT_CREATED:    {factor: 3},
-	pb.Reward_REWARD_FIRST_KEY_USER_CREATED:       {factor: 1},
-	pb.Reward_REWARD_FIRST_ORG_CREATED:            {factor: 3},
-	pb.Reward_REWARD_INITIAL_BILLING_SETUP:        {factor: 1},
-	pb.Reward_REWARD_FIRST_BUCKET_CREATED:         {factor: 2},
-	pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED: {factor: 2},
-	pb.Reward_REWARD_FIRST_MAILBOX_CREATED:        {factor: 1},
-	pb.Reward_REWARD_FIRST_THREAD_DB_CREATED:      {factor: 1},
+var rewardTypeMeta = map[pb.RewardType]meta{
+	pb.RewardType_REWARD_TYPE_FIRST_KEY_ACCOUNT_CREATED:    {factor: 3},
+	pb.RewardType_REWARD_TYPE_FIRST_KEY_USER_CREATED:       {factor: 1},
+	pb.RewardType_REWARD_TYPE_FIRST_ORG_CREATED:            {factor: 3},
+	pb.RewardType_REWARD_TYPE_INITIAL_BILLING_SETUP:        {factor: 1},
+	pb.RewardType_REWARD_TYPE_FIRST_BUCKET_CREATED:         {factor: 2},
+	pb.RewardType_REWARD_TYPE_FIRST_BUCKET_ARCHIVE_CREATED: {factor: 2},
+	pb.RewardType_REWARD_TYPE_FIRST_MAILBOX_CREATED:        {factor: 1},
+	pb.RewardType_REWARD_TYPE_FIRST_THREAD_DB_CREATED:      {factor: 1},
 }
 
 type meta struct {
 	factor int32
 }
 
-type rewardRecord struct {
-	Key               string                  `bson:"key"`
-	AccountType       analyticspb.AccountType `bson:"account_type"`
-	Reward            pb.Reward               `bson:"reward"`
-	Factor            int32                   `bson:"factor"`
-	BaseAttoFILReward int32                   `bson:"base_atto_fil_reward"`
-	CreatedAt         time.Time               `bson:"created_at"`
-	ClaimedAt         *time.Time              `bson:"claimed_at"`
+type reward struct {
+	OrgKey            string        `bson:"org_key"`
+	DevKey            string        `bson:"dev_key"`
+	Type              pb.RewardType `bson:"type"`
+	Factor            int32         `bson:"factor"`
+	BaseAttoFILReward int32         `bson:"base_atto_fil_reward"`
+	CreatedAt         time.Time     `bson:"created_at"`
 }
+
+type claim struct {
+	OrgKey    string    `bson:"org_key"`
+	ClaimedBy string    `bson:"claimed_by"`
+	Amount    int32     `bson:"amount"`
+	CreatedAt time.Time `bson:"created_at"`
+}
+
+type orgKeyLock string
+
+func (l orgKeyLock) Key() string {
+	return string(l)
+}
+
+var _ nutil.SemaphoreKey = (*orgKeyLock)(nil)
 
 var _ pb.FilRewardsServiceServer = (*Service)(nil)
 
 type Service struct {
-	col               *mongo.Collection
+	rewardsCol        *mongo.Collection
+	claimsCol         *mongo.Collection
 	ac                *analytics.Client
-	rewardsCache      map[string]map[pb.Reward]struct{}
+	rewardsCacheOrg   map[string]map[pb.RewardType]struct{}
+	rewardsCacheDev   map[string]map[pb.RewardType]struct{}
 	baseAttoFILReward int32
 	server            *grpc.Server
+	semaphores        *nutil.SemaphorePool
 }
 
 type Config struct {
-	Listener            net.Listener
-	MongoUri            string
-	MongoDbName         string
-	MongoCollectionName string
-	AnalyticsAddr       string
-	BaseAttoFILReward   int32
-	Debug               bool
+	Listener          net.Listener
+	MongoUri          string
+	MongoDbName       string
+	AnalyticsAddr     string
+	BaseAttoFILReward int32
+	Debug             bool
 }
 
 func New(ctx context.Context, config Config) (*Service, error) {
@@ -83,53 +105,64 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
 	}
 	db := client.Database(config.MongoDbName)
-	col := db.Collection(config.MongoCollectionName)
-	_, err = col.Indexes().CreateMany(ctx, []mongo.IndexModel{
+	rewardsCol := db.Collection(rewardsCollectionName)
+	claimsCol := db.Collection(claimsCollectionName)
+	_, err = rewardsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys:    bson.D{primitive.E{Key: "key", Value: 1}, primitive.E{Key: "reward", Value: 1}},
-			Options: options.Index().SetUnique(true).SetSparse(true),
+			Keys:    bson.D{primitive.E{Key: "org_key", Value: 1}, primitive.E{Key: "type", Value: 1}},
+			Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"org_key": bson.M{"$gt": ""}}),
 		},
 		{
-			Keys: bson.D{primitive.E{Key: "key", Value: 1}},
+			Keys:    bson.D{primitive.E{Key: "dev_key", Value: 1}, primitive.E{Key: "type", Value: 1}},
+			Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"dev_key": bson.M{"$gt": ""}}),
 		},
 		{
-			Keys: bson.D{primitive.E{Key: "reward", Value: 1}},
+			Keys: bson.D{primitive.E{Key: "org_key", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "dev_key", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "type", Value: 1}},
 		},
 		{
 			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
-		},
-		{
-			Keys: bson.D{primitive.E{Key: "claimed_at", Value: 1}},
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating indexes: %v", err)
 	}
 
-	// Populate cache.
+	// Populate caches.
 	opts := options.Find()
-	cursor, err := col.Find(ctx, bson.M{}, opts)
+	cursor, err := rewardsCol.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, fmt.Errorf("querying RewardRecords to populate cache: %s", err)
 	}
 	defer cursor.Close(ctx)
-	cache := make(map[string]map[pb.Reward]struct{})
+	cacheOrg := make(map[string]map[pb.RewardType]struct{})
+	cacheDev := make(map[string]map[pb.RewardType]struct{})
 	for cursor.Next(ctx) {
-		var rec rewardRecord
+		var rec reward
 		if err := cursor.Decode(&rec); err != nil {
 			return nil, fmt.Errorf("decoding RewardRecord while building cache: %v", err)
 		}
-		ensureKeyRewardCache(cache, rec.Key)
-		cache[rec.Key][rec.Reward] = struct{}{}
+		ensureKeyRewardCache(cacheOrg, rec.OrgKey)
+		ensureKeyRewardCache(cacheDev, rec.DevKey)
+		cacheOrg[rec.OrgKey][rec.Type] = struct{}{}
+		cacheOrg[rec.DevKey][rec.Type] = struct{}{}
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, fmt.Errorf("iterating cursor while building cache: %v", err)
 	}
 
 	s := &Service{
-		col:               col,
-		rewardsCache:      cache,
+		rewardsCol:        rewardsCol,
+		claimsCol:         claimsCol,
+		rewardsCacheOrg:   cacheOrg,
+		rewardsCacheDev:   cacheDev,
 		baseAttoFILReward: config.BaseAttoFILReward,
+		semaphores:        nutil.NewSemaphorePool(1),
 	}
 
 	if config.AnalyticsAddr != "" {
@@ -151,94 +184,90 @@ func New(ctx context.Context, config Config) (*Service, error) {
 }
 
 func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnalyticsEventRequest) (*pb.ProcessAnalyticsEventResponse, error) {
-	reward := pb.Reward_REWARD_UNSPECIFIED
+	if req.OrgKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "must provide org key")
+	}
+	if req.AnalyticsEvent == analyticspb.Event_EVENT_UNSPECIFIED {
+		return nil, status.Error(codes.InvalidArgument, "must provide analytics event")
+	}
+
+	lck := s.semaphores.Get(orgKeyLock(req.OrgKey))
+	lck.Acquire()
+	defer lck.Release()
+
+	t := pb.RewardType_REWARD_TYPE_UNSPECIFIED
 	switch req.AnalyticsEvent {
 	case analyticspb.Event_EVENT_KEY_ACCOUNT_CREATED:
-		reward = pb.Reward_REWARD_FIRST_KEY_ACCOUNT_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_KEY_ACCOUNT_CREATED
 	case analyticspb.Event_EVENT_KEY_USER_CREATED:
-		reward = pb.Reward_REWARD_FIRST_KEY_USER_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_KEY_USER_CREATED
 	case analyticspb.Event_EVENT_ORG_CREATED:
-		reward = pb.Reward_REWARD_FIRST_ORG_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_ORG_CREATED
 	case analyticspb.Event_EVENT_BILLING_SETUP:
-		reward = pb.Reward_REWARD_INITIAL_BILLING_SETUP
+		t = pb.RewardType_REWARD_TYPE_INITIAL_BILLING_SETUP
 	case analyticspb.Event_EVENT_BUCKET_CREATED:
-		reward = pb.Reward_REWARD_FIRST_BUCKET_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_BUCKET_CREATED
 	case analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED:
-		reward = pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_BUCKET_ARCHIVE_CREATED
 	case analyticspb.Event_EVENT_MAILBOX_CREATED:
-		reward = pb.Reward_REWARD_FIRST_MAILBOX_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_MAILBOX_CREATED
 	case analyticspb.Event_EVENT_THREAD_DB_CREATED:
-		reward = pb.Reward_REWARD_FIRST_THREAD_DB_CREATED
+		t = pb.RewardType_REWARD_TYPE_FIRST_THREAD_DB_CREATED
 	}
-	if reward == pb.Reward_REWARD_UNSPECIFIED {
+	if t == pb.RewardType_REWARD_TYPE_UNSPECIFIED {
 		// It is normal to get an analytics event we aren't interested in, so just return an empty result and no error.
 		return &pb.ProcessAnalyticsEventResponse{}, nil
 	}
 
-	ensureKeyRewardCache(s.rewardsCache, req.Key)
+	ensureKeyRewardCache(s.rewardsCacheOrg, req.OrgKey)
+	ensureKeyRewardCache(s.rewardsCacheDev, req.DevKey)
 
-	if _, exists := s.rewardsCache[req.Key][reward]; exists {
-		// This reward is already granted so bail.
+	if _, exists := s.rewardsCacheOrg[req.OrgKey][t]; exists {
+		// This reward is already granted to the Org so bail.
 		return &pb.ProcessAnalyticsEventResponse{}, nil
 	}
 
-	rec := &rewardRecord{
-		Key:               req.Key,
-		AccountType:       req.AccountType,
-		Reward:            reward,
-		Factor:            rewardMeta[reward].factor,
+	if _, exists := s.rewardsCacheDev[req.DevKey][t]; exists {
+		// This reward is already granted to the Dev so bail.
+		return &pb.ProcessAnalyticsEventResponse{}, nil
+	}
+
+	r := &reward{
+		OrgKey:            req.OrgKey,
+		DevKey:            req.DevKey,
+		Type:              t,
+		Factor:            rewardTypeMeta[t].factor,
 		BaseAttoFILReward: s.baseAttoFILReward,
 		CreatedAt:         time.Now(),
 	}
 
-	if _, err := s.col.InsertOne(ctx, rec); err != nil {
-		return nil, status.Errorf(codes.Internal, "inserting reward record: %v", err)
+	if _, err := s.rewardsCol.InsertOne(ctx, r); err != nil {
+		return nil, status.Errorf(codes.Internal, "inserting reward: %v", err)
 	}
 
-	s.rewardsCache[req.Key][reward] = struct{}{}
+	s.rewardsCacheOrg[req.OrgKey][t] = struct{}{}
+	s.rewardsCacheDev[req.DevKey][t] = struct{}{}
 
 	if err := s.ac.Track(
 		ctx,
-		rec.Key,
-		rec.AccountType,
-		analyticspb.Event_EVENT_FIL_REWARD_RECORDED,
+		r.OrgKey,
+		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
+		analyticspb.Event_EVENT_FIL_REWARD,
 		analytics.WithProperties(map[string]interface{}{
-			"reward":               rec.Reward,
-			"factor":               rewardMeta[rec.Reward].factor,
+			"type":                 r.Type,
+			"factor":               rewardTypeMeta[r.Type].factor,
 			"base_atto_fil_reward": s.baseAttoFILReward,
+			"amount":               rewardTypeMeta[r.Type].factor * s.baseAttoFILReward,
+			"dev_key":              req.DevKey,
 		}),
 	); err != nil {
 		log.Errorf("calling analytics track: %v", err)
 	}
 
-	return &pb.ProcessAnalyticsEventResponse{RewardRecord: toPbRewardRecord(rec)}, nil
+	return &pb.ProcessAnalyticsEventResponse{Reward: toPbReward(r)}, nil
 }
 
-func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimResponse, error) {
-	rec, err := s.get(ctx, req.Key, req.Reward)
-	if err == mongo.ErrNoDocuments {
-		return nil, status.Error(codes.NotFound, "reward record not found")
-	}
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "getting reward record: %v", err)
-	}
-	if rec.ClaimedAt != nil {
-		return nil, status.Error(codes.AlreadyExists, "reward already claimed")
-	}
-	filter := bson.M{"key": req.Key, "reward": req.Reward}
-	now := time.Now()
-	update := bson.M{"$set": bson.M{"claimed_at": &now}}
-	res, err := s.col.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "updating reward record: %v", err)
-	}
-	if res.ModifiedCount == 0 {
-		return nil, status.Error(codes.Internal, "modified 0 documents trying to update reward record")
-	}
-	return &pb.ClaimResponse{}, nil
-}
-
-func (s *Service) List(ctx context.Context, req *pb.ListRequest) (*pb.ListResponse, error) {
+func (s *Service) ListRewards(ctx context.Context, req *pb.ListRewardsRequest) (*pb.ListRewardsResponse, error) {
 	findOpts := options.Find()
 	if req.Limit > 0 {
 		findOpts.Limit = &req.Limit
@@ -249,17 +278,14 @@ func (s *Service) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespon
 	}
 	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
 	filter := bson.M{}
-	if req.KeyFilter != "" {
-		filter["key"] = req.KeyFilter
+	if req.OrgKeyFilter != "" {
+		filter["org_key"] = req.OrgKeyFilter
 	}
-	if req.RewardFilter != pb.Reward_REWARD_UNSPECIFIED {
-		filter["reward"] = req.RewardFilter
+	if req.DevKeyFilter != "" {
+		filter["dev_key"] = req.DevKeyFilter
 	}
-	if req.ClaimedFilter == pb.ClaimedFilter_CLAIMED_FILTER_CLAIMED {
-		filter["claimed_at"] = bson.M{"$ne": nil}
-	}
-	if req.ClaimedFilter == pb.ClaimedFilter_CLAIMED_FILTER_UNCLAIMED {
-		filter["claimed_at"] = bson.M{"$eq": nil}
+	if req.RewardTypeFilter != pb.RewardType_REWARD_TYPE_UNSPECIFIED {
+		filter["type"] = req.RewardTypeFilter
 	}
 	comp := "$lt"
 	if req.StartAt != nil {
@@ -269,23 +295,23 @@ func (s *Service) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespon
 		t := req.StartAt.AsTime()
 		filter["created_at"] = bson.M{comp: &t}
 	}
-	cursor, err := s.col.Find(ctx, filter, findOpts)
+	cursor, err := s.rewardsCol.Find(ctx, filter, findOpts)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "querying reward records: %v", err)
+		return nil, status.Errorf(codes.Internal, "querying rewards: %v", err)
 	}
 	defer cursor.Close(ctx)
-	var recs []rewardRecord
-	err = cursor.All(ctx, &recs)
+	var rewards []reward
+	err = cursor.All(ctx, &rewards)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "decoding reward record query results: %v", err)
+		return nil, status.Errorf(codes.Internal, "decoding reward query results: %v", err)
 	}
 
 	more := false
 	var startAt *time.Time
-	if len(recs) > 0 {
-		lastCreatedAt := &recs[len(recs)-1].CreatedAt
+	if len(rewards) > 0 {
+		lastCreatedAt := &rewards[len(rewards)-1].CreatedAt
 		filter["created_at"] = bson.M{comp: *lastCreatedAt}
-		res := s.col.FindOne(ctx, filter)
+		res := s.rewardsCol.FindOne(ctx, filter)
 		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
 			return nil, status.Errorf(codes.Internal, "checking for more data: %v", err)
 		}
@@ -294,13 +320,13 @@ func (s *Service) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespon
 			startAt = lastCreatedAt
 		}
 	}
-	var pbRecs []*pb.RewardRecord
-	for _, rec := range recs {
-		pbRecs = append(pbRecs, toPbRewardRecord(&rec))
+	var pbRewards []*pb.Reward
+	for _, rec := range rewards {
+		pbRewards = append(pbRewards, toPbReward(&rec))
 	}
-	res := &pb.ListResponse{
-		RewardRecords: pbRecs,
-		More:          more,
+	res := &pb.ListRewardsResponse{
+		Rewards: pbRewards,
+		More:    more,
 	}
 	if startAt != nil {
 		res.MoreStartAt = timestamppb.New(*startAt)
@@ -308,23 +334,137 @@ func (s *Service) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespon
 	return res, nil
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	rec, err := s.get(ctx, req.Key, req.Reward)
-	if err == mongo.ErrNoDocuments {
-		return nil, status.Error(codes.NotFound, "reward record not found")
-	}
+func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimResponse, error) {
+	lck := s.semaphores.Get(orgKeyLock(req.OrgKey))
+	lck.Acquire()
+	defer lck.Release()
+
+	totalRewarded, err := s.totalRewarded(ctx, req.OrgKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "getting reward record: %v", err)
+		return nil, status.Errorf(codes.Internal, "calculating total rewarded: %v", err)
 	}
-	return &pb.GetResponse{
-		RewardRecord: toPbRewardRecord(rec),
-	}, nil
+	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
+	}
+
+	available := totalRewarded - totalClaimed
+
+	if req.Amount > available {
+		return nil, status.Errorf(codes.InvalidArgument, "claim amount %d is greater than available reward balance %d", req.Amount, available)
+	}
+
+	c := &claim{
+		OrgKey:    req.OrgKey,
+		ClaimedBy: req.ClaimedBy,
+		Amount:    req.Amount,
+		CreatedAt: time.Now(),
+	}
+
+	if _, err := s.claimsCol.InsertOne(ctx, c); err != nil {
+		return nil, status.Errorf(codes.Internal, "inserting claim: %v", err)
+	}
+
+	if err := s.ac.Track(
+		ctx,
+		c.OrgKey,
+		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
+		analyticspb.Event_EVENT_FIL_CLAIM,
+		analytics.WithProperties(map[string]interface{}{
+			"claimed_by": c.ClaimedBy,
+			"amount":     c.Amount,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
+	}
+
+	return &pb.ClaimResponse{}, nil
+}
+
+func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*pb.ListClaimsResponse, error) {
+	findOpts := options.Find()
+	if req.Limit > 0 {
+		findOpts.Limit = &req.Limit
+	}
+	sort := -1
+	if req.Ascending {
+		sort = 1
+	}
+	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
+	filter := bson.M{}
+	if req.OrgKeyFilter != "" {
+		filter["org_key"] = req.OrgKeyFilter
+	}
+	if req.ClaimedByFilter != "" {
+		filter["claimed_by"] = req.ClaimedByFilter
+	}
+	comp := "$lt"
+	if req.StartAt != nil {
+		if req.Ascending {
+			comp = "$gt"
+		}
+		t := req.StartAt.AsTime()
+		filter["created_at"] = bson.M{comp: &t}
+	}
+	cursor, err := s.claimsCol.Find(ctx, filter, findOpts)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "querying claims: %v", err)
+	}
+	defer cursor.Close(ctx)
+	var claims []claim
+	err = cursor.All(ctx, &claims)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "decoding claim query results: %v", err)
+	}
+
+	more := false
+	var startAt *time.Time
+	if len(claims) > 0 {
+		lastCreatedAt := &claims[len(claims)-1].CreatedAt
+		filter["created_at"] = bson.M{comp: *lastCreatedAt}
+		res := s.claimsCol.FindOne(ctx, filter)
+		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
+			return nil, status.Errorf(codes.Internal, "checking for more data: %v", err)
+		}
+		if res.Err() != mongo.ErrNoDocuments {
+			more = true
+			startAt = lastCreatedAt
+		}
+	}
+	var pbClaims []*pb.Claim
+	for _, rec := range claims {
+		pbClaims = append(pbClaims, toPbClaim(&rec))
+	}
+	res := &pb.ListClaimsResponse{
+		Claims: pbClaims,
+		More:   more,
+	}
+	if startAt != nil {
+		res.MoreStartAt = timestamppb.New(*startAt)
+	}
+	return res, nil
+}
+
+func (s *Service) Balance(ctx context.Context, req *pb.BalanceRequest) (*pb.BalanceResponse, error) {
+	lck := s.semaphores.Get(orgKeyLock(req.OrgKey))
+	lck.Acquire()
+	defer lck.Release()
+
+	totalRewarded, err := s.totalRewarded(ctx, req.OrgKey)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calculating total rewarded: %v", err)
+	}
+	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
+	}
+	return &pb.BalanceResponse{Rewarded: totalRewarded, Claimed: totalClaimed, Available: totalRewarded - totalClaimed}, nil
 }
 
 func (s *Service) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := s.col.Database().Client().Disconnect(ctx); err != nil {
+	if err := s.rewardsCol.Database().Client().Disconnect(ctx); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
 	}
 	log.Info("mongo client disconnected")
@@ -344,36 +484,88 @@ func (s *Service) Close() {
 	log.Info("gRPC server stopped")
 }
 
-func (s *Service) get(ctx context.Context, key string, reward pb.Reward) (*rewardRecord, error) {
-	filter := bson.M{"key": key, "reward": reward}
-	res := s.col.FindOne(ctx, filter)
+func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int32, error) {
+	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
+		bson.M{"$match": bson.M{"org_key": orgKey}},
+		bson.M{"$project": bson.M{"amt": bson.M{"$multiply": bson.A{"$factor", "$base_atto_fil_reward"}}}},
+		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amt"}}},
+	})
+	if err != nil {
+		return -1, err
+	}
+	for cursor.Next(ctx) {
+		elements, err := cursor.Current.Elements()
+		if err != nil {
+			return -1, err
+		}
+		for _, e := range elements {
+			if e.Key() == "total" {
+				return e.Value().Int32(), nil
+			}
+		}
+	}
+	return -1, fmt.Errorf("no total rewarded calculation found")
+}
+
+func (s *Service) totalClaimed(ctx context.Context, orgKey string) (int32, error) {
+	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
+		bson.M{"$match": bson.M{"org_key": orgKey}},
+		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amount"}}},
+	})
+	if err != nil {
+		return -1, err
+	}
+	for cursor.Next(ctx) {
+		elements, err := cursor.Current.Elements()
+		if err != nil {
+			return -1, err
+		}
+		for _, e := range elements {
+			if e.Key() == "total" {
+				return e.Value().Int32(), nil
+			}
+		}
+	}
+	return -1, fmt.Errorf("no total claimed calculation found")
+}
+
+func (s *Service) get(ctx context.Context, orgKey string, t pb.RewardType) (*reward, error) {
+	filter := bson.M{"org_key": orgKey, "type": t}
+	res := s.rewardsCol.FindOne(ctx, filter)
 	if res.Err() != nil {
 		return nil, res.Err()
 	}
-	var rec rewardRecord
-	if err := res.Decode(&rec); err != nil {
+	var r reward
+	if err := res.Decode(&r); err != nil {
 		return nil, err
 	}
-	return &rec, nil
+	return &r, nil
 }
 
-func toPbRewardRecord(rec *rewardRecord) *pb.RewardRecord {
-	res := &pb.RewardRecord{
-		Key:               rec.Key,
-		AccountType:       rec.AccountType,
-		Reward:            rec.Reward,
+func toPbReward(rec *reward) *pb.Reward {
+	res := &pb.Reward{
+		OrgKey:            rec.OrgKey,
+		DevKey:            rec.DevKey,
+		Type:              rec.Type,
 		Factor:            rec.Factor,
 		BaseAttoFilReward: rec.BaseAttoFILReward,
 		CreatedAt:         timestamppb.New(rec.CreatedAt),
 	}
-	if rec.ClaimedAt != nil {
-		res.ClaimedAt = timestamppb.New(*rec.ClaimedAt)
+	return res
+}
+
+func toPbClaim(rec *claim) *pb.Claim {
+	res := &pb.Claim{
+		OrgKey:    rec.OrgKey,
+		ClaimedBy: rec.ClaimedBy,
+		Amount:    rec.Amount,
+		CreatedAt: timestamppb.New(rec.CreatedAt),
 	}
 	return res
 }
 
-func ensureKeyRewardCache(keyCache map[string]map[pb.Reward]struct{}, key string) {
+func ensureKeyRewardCache(keyCache map[string]map[pb.RewardType]struct{}, key string) {
 	if _, exists := keyCache[key]; !exists {
-		keyCache[key] = map[pb.Reward]struct{}{}
+		keyCache[key] = map[pb.RewardType]struct{}{}
 	}
 }

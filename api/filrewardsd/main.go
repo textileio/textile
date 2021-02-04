@@ -143,7 +143,6 @@ var rootCmd = &cobra.Command{
 		listenAddr := cmd.AddrFromStr(config.Viper.GetString("listen_addr"))
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
-		mongoCollection := config.Viper.GetString("mongo_collection")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
 		baseFilReward := config.Viper.GetInt32("base_atto_fil_reward")
 
@@ -160,13 +159,12 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := context.WithCancel(context.Background())
 		conf := service.Config{
-			Listener:            listener,
-			MongoUri:            mongoUri,
-			MongoDbName:         mongoDb,
-			MongoCollectionName: mongoCollection,
-			AnalyticsAddr:       analyticsAddr,
-			BaseAttoFILReward:   baseFilReward,
-			Debug:               debug,
+			Listener:          listener,
+			MongoUri:          mongoUri,
+			MongoDbName:       mongoDb,
+			AnalyticsAddr:     analyticsAddr,
+			BaseAttoFILReward: baseFilReward,
+			Debug:             debug,
 		}
 		api, err := service.New(ctx, conf)
 		cmd.ErrCheck(err)

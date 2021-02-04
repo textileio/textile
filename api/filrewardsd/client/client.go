@@ -30,87 +30,75 @@ func New(target string, opts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) ProcessAnalyticsEvent(ctx context.Context, key string, accountType analyticspb.AccountType, event analyticspb.Event) (*pb.RewardRecord, error) {
+func (c *Client) ProcessAnalyticsEvent(ctx context.Context, orgKey, devKey string, event analyticspb.Event) (*pb.Reward, error) {
 	req := &pb.ProcessAnalyticsEventRequest{
-		Key:            key,
-		AccountType:    accountType,
+		OrgKey:         orgKey,
+		DevKey:         devKey,
 		AnalyticsEvent: event,
 	}
 	res, err := c.fsc.ProcessAnalyticsEvent(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("calling process analytics event rpc: %v", err)
 	}
-	return res.RewardRecord, nil
+	return res.Reward, nil
 }
 
-func (c *Client) Claim(ctx context.Context, key string, reward pb.Reward) error {
-	req := &pb.ClaimRequest{
-		Key:    key,
-		Reward: reward,
-	}
-	_, err := c.fsc.Claim(ctx, req)
-	if err != nil {
-		return fmt.Errorf("calling claim rpc: %v", err)
-	}
-	return nil
-}
+// func (c *Client) Claim(ctx context.Context, key string, reward pb.Reward) error {
+// 	req := &pb.ClaimRequest{
+// 		Key:    key,
+// 		Reward: reward,
+// 	}
+// 	_, err := c.fsc.Claim(ctx, req)
+// 	if err != nil {
+// 		return fmt.Errorf("calling claim rpc: %v", err)
+// 	}
+// 	return nil
+// }
 
-func (c *Client) Get(ctx context.Context, key string, reward pb.Reward) (*pb.RewardRecord, error) {
-	req := &pb.GetRequest{
-		Key:    key,
-		Reward: reward,
-	}
-	res, err := c.fsc.Get(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("calling get rpc: %v", err)
-	}
-	return res.RewardRecord, nil
-}
+type ListOption = func(*pb.ListRewardsRequest)
 
-type ListOption = func(*pb.ListRequest)
-
-func WithKeyFilter(key string) ListOption {
-	return func(req *pb.ListRequest) {
-		req.KeyFilter = key
+func WithOrgKeyFilter(orgKey string) ListOption {
+	return func(req *pb.ListRewardsRequest) {
+		req.OrgKeyFilter = orgKey
 	}
 }
 
-func WithRewardFilter(reward pb.Reward) ListOption {
-	return func(req *pb.ListRequest) {
-		req.RewardFilter = reward
+func WithDevKeyFilter(devKey string) ListOption {
+	return func(req *pb.ListRewardsRequest) {
+		req.DevKeyFilter = devKey
 	}
 }
 
-func WithClaimedFilter(claimedFilter pb.ClaimedFilter) ListOption {
-	return func(req *pb.ListRequest) {
-		req.ClaimedFilter = claimedFilter
+func WithRewardTypeFilter(rewardType pb.RewardType) ListOption {
+	return func(req *pb.ListRewardsRequest) {
+		req.RewardTypeFilter = rewardType
 	}
 }
 
 func WithAscending() ListOption {
-	return func(req *pb.ListRequest) {
+	return func(req *pb.ListRewardsRequest) {
 		req.Ascending = true
 	}
 }
 
 func WithStartAt(time time.Time) ListOption {
-	return func(req *pb.ListRequest) {
+	return func(req *pb.ListRewardsRequest) {
 		req.StartAt = timestamppb.New(time)
 	}
 }
 
 func WithLimit(limit int64) ListOption {
-	return func(req *pb.ListRequest) {
+	return func(req *pb.ListRewardsRequest) {
 		req.Limit = limit
 	}
 }
 
-func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*pb.RewardRecord, bool, *time.Time, error) {
-	req := &pb.ListRequest{}
+func (c *Client) ListRewards(ctx context.Context, opts ...ListOption) ([]*pb.Reward, bool, *time.Time, error) {
+	req := &pb.ListRewardsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
-	res, err := c.fsc.List(ctx, req)
+	res, err := c.fsc.ListRewards(ctx, req)
 	if err != nil {
 		return nil, false, nil, fmt.Errorf("calling list rpc: %v", err)
 	}
@@ -119,7 +107,7 @@ func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*pb.RewardReco
 		ts := res.MoreStartAt.AsTime()
 		t = &ts
 	}
-	return res.GetRewardRecords(), res.More, t, nil
+	return res.Rewards, res.More, t, nil
 }
 
 func (c *Client) Close() error {

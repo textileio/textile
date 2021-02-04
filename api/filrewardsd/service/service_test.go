@@ -13,8 +13,6 @@ import (
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -39,17 +37,18 @@ func TestProcessEvent(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	rec := requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	require.Equal(t, "user1", rec.Key)
-	require.Equal(t, pb.Reward_REWARD_INITIAL_BILLING_SETUP, rec.Reward)
+	r := requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	require.Equal(t, "org1", r.OrgKey)
+	require.Equal(t, "user1", r.DevKey)
+	require.Equal(t, pb.RewardType_REWARD_TYPE_INITIAL_BILLING_SETUP, r.Type)
 }
 
 func TestProcessDuplicateEvent(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireNoProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireNoProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
 }
 
 func TestDuplicateFromInitializedCache(t *testing.T) {
@@ -62,10 +61,9 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf1 := Config{
-		Listener:            listener1,
-		MongoUri:            test.GetMongoUri(),
-		MongoDbName:         "mydb",
-		MongoCollectionName: "filrewards",
+		Listener:    listener1,
+		MongoUri:    test.GetMongoUri(),
+		MongoDbName: "mydb",
 	}
 	s1, err := New(ctx, conf1)
 	require.NoError(t, err)
@@ -79,9 +77,9 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 		s1.Close()
 	}()
 
-	requireProcessedEvent(t, ctx, c1, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c1, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c1, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c1, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c1, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c1, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
 
 	listener2 := bufconn.Listen(bufSize)
 
@@ -90,10 +88,9 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf2 := Config{
-		Listener:            listener2,
-		MongoUri:            test.GetMongoUri(),
-		MongoDbName:         "mydb",
-		MongoCollectionName: "filrewards",
+		Listener:    listener2,
+		MongoUri:    test.GetMongoUri(),
+		MongoDbName: "mydb",
 	}
 	s2, err := New(ctx, conf2)
 	require.NoError(t, err)
@@ -108,299 +105,258 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}()
 
 	require.NoError(t, err)
-	requireNoProcessedEvent(t, ctx, c2, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireNoProcessedEvent(t, ctx, c2, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireNoProcessedEvent(t, ctx, c2, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireNoProcessedEvent(t, ctx, c2, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireNoProcessedEvent(t, ctx, c2, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireNoProcessedEvent(t, ctx, c2, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
 }
 
-func TestClaimReward(t *testing.T) {
+// func TestClaimReward(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	rec := requireGetRewardRecord(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	require.NotNil(t, rec.ClaimedAt)
+// }
+
+// func TestClaimRewardTwice(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	req := &pb.ClaimRequest{
+// 		Key:    "user1",
+// 		Reward: pb.Reward_REWARD_INITIAL_BILLING_SETUP,
+// 	}
+// 	_, err := c.Claim(ctx, req)
+// 	st, ok := status.FromError(err)
+// 	require.True(t, ok)
+// 	require.Equal(t, codes.AlreadyExists, st.Code())
+// }
+
+// func TestClaimNonExistantReward(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	req := &pb.ClaimRequest{
+// 		Key:    "user1",
+// 		Reward: pb.Reward_REWARD_INITIAL_BILLING_SETUP,
+// 	}
+// 	_, err := c.Claim(ctx, req)
+// 	st, ok := status.FromError(err)
+// 	require.True(t, ok)
+// 	require.Equal(t, codes.NotFound, st.Code())
+// }
+
+func TestListRewards(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	rec := requireGetRewardRecord(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	require.NotNil(t, rec.ClaimedAt)
-}
-
-func TestClaimRewardTwice(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	req := &pb.ClaimRequest{
-		Key:    "user1",
-		Reward: pb.Reward_REWARD_INITIAL_BILLING_SETUP,
-	}
-	_, err := c.Claim(ctx, req)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.AlreadyExists, st.Code())
-}
-
-func TestClaimNonExistantReward(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	req := &pb.ClaimRequest{
-		Key:    "user1",
-		Reward: pb.Reward_REWARD_INITIAL_BILLING_SETUP,
-	}
-	_, err := c.Claim(ctx, req)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.NotFound, st.Code())
-}
-
-func TestGet(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireGetRewardRecord(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-}
-
-func TestGetWrongEvent(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	req := &pb.GetRequest{
-		Key:    "user1",
-		Reward: pb.Reward_REWARD_FIRST_BUCKET_CREATED,
-	}
-	res, err := c.Get(ctx, req)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.NotFound, st.Code())
-	require.Nil(t, res)
-}
-
-func TestGetWrongKey(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	req := &pb.GetRequest{
-		Key:    "user2",
-		Reward: pb.Reward_REWARD_INITIAL_BILLING_SETUP,
-	}
-	res, err := c.Get(ctx, req)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.NotFound, st.Code())
-	require.Nil(t, res)
-}
-
-func TestList(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 3)
+	require.Len(t, res.Rewards, 3)
 }
 
-func TestListKeyFilter(t *testing.T) {
+func TestListRewardsOrgKeyFilter(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{KeyFilter: "user1"})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{OrgKeyFilter: "org1"})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 2)
+	require.Len(t, res.Rewards, 2)
 }
 
-func TestListEventFilter(t *testing.T) {
+func TestListRewardsEventFilter(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{RewardFilter: pb.Reward_REWARD_INITIAL_BILLING_SETUP})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{RewardTypeFilter: pb.RewardType_REWARD_TYPE_INITIAL_BILLING_SETUP})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 2)
+	require.Len(t, res.Rewards, 2)
 }
 
-func TestListKeyAndEventFilters(t *testing.T) {
+func TestListRewardsOrgKeyAndEventFilters(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{KeyFilter: "user1", RewardFilter: pb.Reward_REWARD_INITIAL_BILLING_SETUP})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{OrgKeyFilter: "org1", RewardTypeFilter: pb.RewardType_REWARD_TYPE_INITIAL_BILLING_SETUP})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 1)
+	require.Len(t, res.Rewards, 1)
 }
 
-func TestListClaimedFilterEmpty(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// func TestListClaimedFilterEmpty(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
-	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
 
-	res, err := c.List(ctx, &pb.ListRequest{})
-	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 6)
-}
+// 	res, err := c.List(ctx, &pb.ListRequest{})
+// 	require.NoError(t, err)
+// 	require.Len(t, res.RewardRecords, 6)
+// }
 
-func TestListClaimedFilterUnspecified(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// func TestListClaimedFilterUnspecified(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
-	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
 
-	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_UNSPECIFIED})
-	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 6)
-}
+// 	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_UNSPECIFIED})
+// 	require.NoError(t, err)
+// 	require.Len(t, res.RewardRecords, 6)
+// }
 
-func TestListClaimedFilterClaimed(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// func TestListClaimedFilterClaimed(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
-	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
 
-	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_CLAIMED})
-	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 4)
-}
+// 	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_CLAIMED})
+// 	require.NoError(t, err)
+// 	require.Len(t, res.RewardRecords, 4)
+// }
 
-func TestListClaimedFilterUnclaimed(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// func TestListClaimedFilterUnclaimed(t *testing.T) {
+// 	t.Parallel()
+// 	c, cleanup := requireSetup(t, ctx)
+// 	defer cleanup()
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+// 	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
-	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
-	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user1", pb.Reward_REWARD_FIRST_BUCKET_ARCHIVE_CREATED)
+// 	requireClaimedReward(t, ctx, c, "user2", pb.Reward_REWARD_INITIAL_BILLING_SETUP)
 
-	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_UNCLAIMED})
-	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 2)
-}
+// 	res, err := c.List(ctx, &pb.ListRequest{ClaimedFilter: pb.ClaimedFilter_CLAIMED_FILTER_UNCLAIMED})
+// 	require.NoError(t, err)
+// 	require.Len(t, res.RewardRecords, 2)
+// }
 
 func TestListDescending(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{Ascending: false})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{Ascending: false})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 3)
-	requireOrder(t, res.RewardRecords, false)
+	require.Len(t, res.Rewards, 3)
+	requireOrder(t, res.Rewards, false)
 }
 
 func TestListAscending(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	res, err := c.List(ctx, &pb.ListRequest{Ascending: true})
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.ListRewards(ctx, &pb.ListRewardsRequest{Ascending: true})
 	require.NoError(t, err)
-	require.Len(t, res.RewardRecords, 3)
-	requireOrder(t, res.RewardRecords, true)
+	require.Len(t, res.Rewards, 3)
+	requireOrder(t, res.Rewards, true)
 }
 
 func TestListPaging(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user3", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user3", analyticspb.Event_EVENT_BILLING_SETUP)
 	time.Sleep(time.Millisecond * 500)
-	requireProcessedEvent(t, ctx, c, "user3", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user3", analyticspb.Event_EVENT_BUCKET_CREATED)
 	numPages := 0
 	more := true
 	var startAtToken *timestamppb.Timestamp
 	for more {
-		req := &pb.ListRequest{Limit: 3}
+		req := &pb.ListRewardsRequest{Limit: 3}
 		if startAtToken != nil {
 			req.StartAt = startAtToken
 		}
-		res, err := c.List(ctx, req)
+		res, err := c.ListRewards(ctx, req)
 		require.NoError(t, err)
 		numPages++
 		if numPages < 3 {
 			require.True(t, res.More)
 			require.NotNil(t, res.MoreStartAt)
-			require.Len(t, res.RewardRecords, 3)
+			require.Len(t, res.Rewards, 3)
 		}
 		if numPages == 3 {
 			require.False(t, res.More)
 			require.Nil(t, res.MoreStartAt)
-			require.Len(t, res.RewardRecords, 2)
+			require.Len(t, res.Rewards, 2)
 		}
 		startAtToken = res.MoreStartAt
 		more = res.More
@@ -408,14 +364,31 @@ func TestListPaging(t *testing.T) {
 	require.Equal(t, 3, numPages)
 }
 
+func TestBalance(t *testing.T) {
+	t.Parallel()
+	c, cleanup := requireSetup(t, ctx)
+	defer cleanup()
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
+	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
+	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
+	res, err := c.Balance(ctx, &pb.BalanceRequest{OrgKey: "org1"})
+	require.NoError(t, err)
+	require.Equal(t, res.Rewarded, int32(10))
+	require.Equal(t, res.Claimed, int32(0))
+	require.Equal(t, res.Available, int32(10))
+}
+
 func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient, func()) {
 	listener := bufconn.Listen(bufSize)
 
 	conf := Config{
-		Listener:            listener,
-		MongoUri:            test.GetMongoUri(),
-		MongoDbName:         util.MakeToken(12),
-		MongoCollectionName: "filrewards",
+		Listener:          listener,
+		MongoUri:          test.GetMongoUri(),
+		MongoDbName:       util.MakeToken(12),
+		BaseAttoFILReward: 2,
 	}
 	s, err := New(ctx, conf)
 	require.NoError(t, err)
@@ -436,7 +409,7 @@ func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient
 	return client, cleanup
 }
 
-func requireOrder(t *testing.T, res []*pb.RewardRecord, ascending bool) {
+func requireOrder(t *testing.T, res []*pb.Reward, ascending bool) {
 	var last *time.Time
 	for _, rec := range res {
 		if last != nil {
@@ -453,46 +426,34 @@ func requireOrder(t *testing.T, res []*pb.RewardRecord, ascending bool) {
 	}
 }
 
-func requireProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, event analyticspb.Event) *pb.RewardRecord {
+func requireProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey, devKey string, event analyticspb.Event) *pb.Reward {
 	req := &pb.ProcessAnalyticsEventRequest{
-		Key:            key,
-		AccountType:    analyticspb.AccountType_ACCOUNT_TYPE_DEV,
+		OrgKey:         orgKey,
+		DevKey:         devKey,
 		AnalyticsEvent: event,
 	}
 	res, err := c.ProcessAnalyticsEvent(ctx, req)
 	require.NoError(t, err)
-	require.NotNil(t, res.RewardRecord)
-	return res.RewardRecord
+	require.NotNil(t, res.Reward)
+	return res.Reward
 }
 
-func requireNoProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, event analyticspb.Event) {
+func requireNoProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey, devKey string, event analyticspb.Event) {
 	req := &pb.ProcessAnalyticsEventRequest{
-		Key:            key,
-		AccountType:    analyticspb.AccountType_ACCOUNT_TYPE_DEV,
+		OrgKey:         orgKey,
+		DevKey:         devKey,
 		AnalyticsEvent: event,
 	}
 	res, err := c.ProcessAnalyticsEvent(ctx, req)
 	require.NoError(t, err)
-	require.Nil(t, res.RewardRecord)
+	require.Nil(t, res.Reward)
 }
 
-func requireClaimedReward(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, reward pb.Reward) {
-	req := &pb.ClaimRequest{
-		Key:    key,
-		Reward: reward,
-	}
-	_, err := c.Claim(ctx, req)
-	require.NoError(t, err)
-}
-
-func requireGetRewardRecord(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, reward pb.Reward) *pb.RewardRecord {
-	req := &pb.GetRequest{
-		Key:    key,
-		Reward: reward,
-	}
-	res, err := c.Get(ctx, req)
-	require.NoError(t, err)
-	require.Equal(t, key, res.RewardRecord.Key)
-	require.Equal(t, reward, res.RewardRecord.Reward)
-	return res.RewardRecord
-}
+// func requireClaimedReward(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, key string, reward pb.Reward) {
+// 	req := &pb.ClaimRequest{
+// 		Key:    key,
+// 		Reward: reward,
+// 	}
+// 	_, err := c.Claim(ctx, req)
+// 	require.NoError(t, err)
+// }
