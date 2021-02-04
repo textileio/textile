@@ -44,10 +44,6 @@ var (
 				Key:      "mongo_db",
 				DefValue: "textile_filrewards",
 			},
-			"mongoCollection": {
-				Key:      "mongo_collection",
-				DefValue: "filrewards",
-			},
 			"analyticsAddr": {
 				Key:      "analytics_addr",
 				DefValue: "",
@@ -94,10 +90,6 @@ func init() {
 		"mongoDb",
 		config.Flags["mongoDb"].DefValue.(string),
 		"MongoDB database name")
-	rootCmd.PersistentFlags().String(
-		"mongoCollection",
-		config.Flags["mongoCollection"].DefValue.(string),
-		"MongoDB collection name")
 
 	rootCmd.PersistentFlags().String(
 		"analyticsAddr",
