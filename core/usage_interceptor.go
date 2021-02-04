@@ -249,20 +249,14 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	}
 
 	if t.bc != nil {
-		var tp analytics.Event
 		switch method {
 		case "/api.bucketsd.pb.APIService/Create":
-			tp = analytics.BucketCreated
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketCreated, nil)
 		case "/api.bucketsd.pb.APIService/Archive":
-			tp = analytics.BucketArchiveCreated
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.BucketArchiveCreated, nil)
 		case "/threads.pb.API/NewDB":
-			tp = analytics.ThreadDbCreated
+			t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, analytics.ThreadDbCreated, nil)
 		}
-		t.bc.TrackEvent(ctx, account.Owner().Key, account.Owner().Type, true, tp, map[string]string{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-		})
 	}
 
 	return nil
