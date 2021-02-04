@@ -320,6 +320,14 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		event = analytics.KeyUserCreated
 	}
 	if s.BillingClient != nil {
+		payload := map[string]string{
+			"secure_key": fmt.Sprintf("%t", req.Secure),
+		}
+		if account.User != nil {
+			payload["member"] = account.User.Key.String()
+			payload["member_username"] = account.User.Username
+			payload["member_email"] = account.User.Email
+		}
 		// Same "member" based payload for Dev or Org account types so that same
 		// downstream logic/templating can be used.
 		s.BillingClient.TrackEvent(
@@ -328,12 +336,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 			account.Owner().Type,
 			true,
 			event,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-				"secure_key":      fmt.Sprintf("%t", req.Secure),
-			},
+			payload,
 		)
 	}
 
@@ -618,18 +621,22 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 	}
 
 	if s.BillingClient != nil {
+
+		payload := map[string]string{
+			"invitee": req.Email,
+		}
+		if account.User != nil {
+			payload["member"] = account.User.Key.String()
+			payload["member_username"] = account.User.Username
+			payload["member_email"] = account.User.Email
+		}
 		s.BillingClient.TrackEvent(
 			ctx,
 			account.Owner().Key,
 			account.Owner().Type,
 			true,
 			analytics.OrgInviteCreated,
-			map[string]string{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-				"invitee":         req.Email,
-			},
+			payload,
 		)
 	}
 
