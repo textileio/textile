@@ -7,7 +7,7 @@ import (
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/mindexd/records"
+	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -53,7 +53,7 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 		}
 	}()
 
-	res := make([]records.StorageDealRecord, 0, 1)
+	res := make([]model.StorageDealRecord, 0, 1)
 	if err := c.All(ctx, &res); err != nil {
 		return 0, fmt.Errorf("fetching find result: %s", err)
 	}
@@ -82,7 +82,7 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 		}
 	}()
 
-	res := make([]records.RetrievalRecord, 0, 1)
+	res := make([]model.RetrievalRecord, 0, 1)
 	if err := c.All(ctx, &res); err != nil {
 		return 0, fmt.Errorf("fetching find result: %s", err)
 	}
@@ -95,12 +95,12 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 	return (res)[0].PowRetrievalRecord.UpdatedAt, nil
 }
 
-func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, psrs []records.PowStorageDealRecord) error {
+func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, psrs []model.PowStorageDealRecord) error {
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(psrs))
 	for i, psr := range psrs {
-		sr := records.StorageDealRecord{
+		sr := model.StorageDealRecord{
 			LastUpdatedAt:        now,
 			PowName:              powName,
 			PowStorageDealRecord: psr,
@@ -123,12 +123,12 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, p
 	return nil
 }
 
-func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prrs []records.PowRetrievalRecord) error {
+func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prrs []model.PowRetrievalRecord) error {
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(prrs))
 	for i, prr := range prrs {
-		rr := records.RetrievalRecord{
+		rr := model.RetrievalRecord{
 			LastUpdatedAt:      now,
 			PowName:            powName,
 			PowRetrievalRecord: prr,
@@ -151,37 +151,37 @@ func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prr
 	return nil
 }
 
-func (s *Store) getStorageDealRecord(ctx context.Context, ID string) (records.StorageDealRecord, error) {
+func (s *Store) getStorageDealRecord(ctx context.Context, ID string) (model.StorageDealRecord, error) {
 	filter := bson.M{"_id": ID}
 	sr := s.sdrc.FindOne(ctx, filter)
 	if sr.Err() == mongo.ErrNoDocuments {
-		return records.StorageDealRecord{}, errRecordNotFound
+		return model.StorageDealRecord{}, errRecordNotFound
 	}
 	if sr.Err() != nil {
-		return records.StorageDealRecord{}, fmt.Errorf("get storage record: %s", sr.Err())
+		return model.StorageDealRecord{}, fmt.Errorf("get storage record: %s", sr.Err())
 	}
 
-	var sdr records.StorageDealRecord
+	var sdr model.StorageDealRecord
 	if err := sr.Decode(&sdr); err != nil {
-		return records.StorageDealRecord{}, fmt.Errorf("decoding storage record: %s", err)
+		return model.StorageDealRecord{}, fmt.Errorf("decoding storage record: %s", err)
 	}
 
 	return sdr, nil
 }
 
-func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (records.RetrievalRecord, error) {
+func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (model.RetrievalRecord, error) {
 	filter := bson.M{"_id": ID}
 	sr := s.rrc.FindOne(ctx, filter)
 	if sr.Err() == mongo.ErrNoDocuments {
-		return records.RetrievalRecord{}, errRecordNotFound
+		return model.RetrievalRecord{}, errRecordNotFound
 	}
 	if sr.Err() != nil {
-		return records.RetrievalRecord{}, fmt.Errorf("get retrieval record: %s", sr.Err())
+		return model.RetrievalRecord{}, fmt.Errorf("get retrieval record: %s", sr.Err())
 	}
 
-	var rr records.RetrievalRecord
+	var rr model.RetrievalRecord
 	if err := sr.Decode(&rr); err != nil {
-		return records.RetrievalRecord{}, fmt.Errorf("decoding retrieval record: %s", err)
+		return model.RetrievalRecord{}, fmt.Errorf("decoding retrieval record: %s", err)
 	}
 
 	return rr, nil

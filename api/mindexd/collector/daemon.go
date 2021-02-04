@@ -7,7 +7,7 @@ import (
 
 	pow "github.com/textileio/powergate/v2/api/client"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
-	"github.com/textileio/textile/v2/api/mindexd/records"
+	"github.com/textileio/textile/v2/api/mindexd/model"
 )
 
 func (c *Collector) collectTargets(ctx context.Context) {
@@ -116,10 +116,10 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 	return nil
 }
 
-func toStorageDealRecords(rs []*userPb.StorageDealRecord) []records.PowStorageDealRecord {
-	ret := make([]records.PowStorageDealRecord, len(rs))
+func toStorageDealRecords(rs []*userPb.StorageDealRecord) []model.PowStorageDealRecord {
+	ret := make([]model.PowStorageDealRecord, len(rs))
 	for i, s := range rs {
-		sr := records.PowStorageDealRecord{
+		sr := model.PowStorageDealRecord{
 			RootCid:           s.RootCid,
 			Address:           s.Address,
 			Pending:           s.Pending,
@@ -131,7 +131,7 @@ func toStorageDealRecords(rs []*userPb.StorageDealRecord) []records.PowStorageDe
 			ErrMsg:            s.ErrMsg,
 			CreatedAt:         s.Time,
 			UpdatedAt:         s.UpdatedAt,
-			DealInfo: records.PowStorageDealRecordDealInfo{
+			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid:     s.DealInfo.ProposalCid,
 				StateId:         s.DealInfo.StateId,
 				StateName:       s.DealInfo.StateName,
@@ -152,10 +152,10 @@ func toStorageDealRecords(rs []*userPb.StorageDealRecord) []records.PowStorageDe
 	return ret
 }
 
-func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []records.PowRetrievalRecord {
-	ret := make([]records.PowRetrievalRecord, len(rs))
+func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []model.PowRetrievalRecord {
+	ret := make([]model.PowRetrievalRecord, len(rs))
 	for i, r := range rs {
-		pr := records.PowRetrievalRecord{
+		pr := model.PowRetrievalRecord{
 			ID:                r.Id,
 			Address:           r.Address,
 			DataTransferStart: r.DataTransferStart,
@@ -163,7 +163,7 @@ func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []records.PowRetrieval
 			ErrMsg:            r.ErrMsg,
 			CreatedAt:         r.Time,
 			UpdatedAt:         r.UpdatedAt,
-			DealInfo: records.PowRetrievalRecordDealInfo{
+			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner:    r.DealInfo.Miner,
 				MinPrice: r.DealInfo.MinPrice,
 				RootCid:  r.DealInfo.RootCid,

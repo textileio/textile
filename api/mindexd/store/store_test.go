@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/textile/v2/api/mindexd/records"
+	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -40,7 +40,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	sdr.Address = "Addr999"
 	sdr.DealInfo.StateId = 99
 	sdr.UpdatedAt = 99999
-	err = s.PersistStorageDealRecords(ctx, "duke-1", []records.PowStorageDealRecord{sdr})
+	err = s.PersistStorageDealRecords(ctx, "duke-1", []model.PowStorageDealRecord{sdr})
 	require.NoError(t, err)
 
 	modified, err := s.getStorageDealRecord(ctx, sdr.DealInfo.ProposalCid)
@@ -75,7 +75,7 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	rr.DataTransferEnd = 999
 	rr.DataTransferStart = 888
 	rr.UpdatedAt = 99999
-	err = s.PersistRetrievalRecords(ctx, "duke-1", []records.PowRetrievalRecord{rr})
+	err = s.PersistRetrievalRecords(ctx, "duke-1", []model.PowRetrievalRecord{rr})
 	require.NoError(t, err)
 
 	modified, err := s.getRetrievalRecord(ctx, target.ID)
@@ -133,12 +133,12 @@ func setup(t *testing.T, ctx context.Context) *mongo.Database {
 }
 
 var (
-	testStorageDealRecords = []records.PowStorageDealRecord{
+	testStorageDealRecords = []model.PowStorageDealRecord{
 		{
 			RootCid: "StorageRootCid1",
 			Address: "Addr1",
 			Pending: true,
-			DealInfo: records.PowStorageDealRecordDealInfo{
+			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid:     "SD1",
 				StateId:         1,
 				StateName:       "StateName1",
@@ -165,7 +165,7 @@ var (
 			RootCid: "StorageRootCid2",
 			Address: "Addr2",
 			Pending: true,
-			DealInfo: records.PowStorageDealRecordDealInfo{
+			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid:     "SD2",
 				StateId:         1,
 				StateName:       "StateName1",
@@ -190,7 +190,7 @@ var (
 		},
 	}
 
-	testRetrievalRecords = []records.PowRetrievalRecord{
+	testRetrievalRecords = []model.PowRetrievalRecord{
 		{
 			ID:                "RID1",
 			Address:           "Addr1",
@@ -199,7 +199,7 @@ var (
 			ErrMsg:            "err msg 2",
 			CreatedAt:         300,
 			UpdatedAt:         502,
-			DealInfo: records.PowRetrievalRecordDealInfo{
+			DealInfo: model.PowRetrievalRecordDealInfo{
 				RootCid:  "RetrievalRootCid1",
 				Size:     3000,
 				MinPrice: 329,
@@ -214,7 +214,7 @@ var (
 			ErrMsg:            "err msg 2",
 			CreatedAt:         303,
 			UpdatedAt:         505,
-			DealInfo: records.PowRetrievalRecordDealInfo{
+			DealInfo: model.PowRetrievalRecordDealInfo{
 				RootCid:  "RetrievalRootCid1",
 				Size:     3000,
 				MinPrice: 329,

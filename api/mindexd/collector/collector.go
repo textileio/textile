@@ -6,7 +6,7 @@ import (
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/mindexd/records/collector/store"
+	"github.com/textileio/textile/v2/api/mindexd/store"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

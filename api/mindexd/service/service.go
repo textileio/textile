@@ -10,9 +10,9 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
+	"github.com/textileio/textile/v2/api/mindexd/collector"
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
 	pb "github.com/textileio/textile/v2/api/mindexd/pb"
-	"github.com/textileio/textile/v2/api/mindexd/records/collector"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -39,7 +39,6 @@ type Config struct {
 	DBURI  string
 	DBName string
 
-	// TTODO: populate from viper
 	CollectorRunOnStart   bool
 	CollectorFrequency    time.Duration
 	CollectorTargets      []collector.PowTarget

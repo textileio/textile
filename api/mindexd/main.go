@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/v2/api/mindexd/records/collector"
+	"github.com/textileio/textile/v2/api/mindexd/collector"
 	"github.com/textileio/textile/v2/api/mindexd/service"
 	"github.com/textileio/textile/v2/cmd"
 

@@ -2,9 +2,13 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
+	pow "github.com/textileio/powergate/v2/api/client"
+	"github.com/textileio/textile/v2/api/mindexd/index/indexer/store"
+	records "github.com/textileio/textile/v2/api/mindexd/records/collector/store"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -14,21 +18,33 @@ var (
 
 type Indexer struct {
 	cfg config
+	pow *pow.Client
+
+	store  *store.Store
+	rstore *records.Store
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
 	daemonClosed    chan (struct{})
 }
 
-func New(db *mongo.Database, opts ...Option) (*Indexer, error) {
+func New(db *mongo.Database, pow *pow.Client, rstore *records.Store, opts ...Option) (*Indexer, error) {
 	config := defaultConfig
 	for _, o := range opts {
 		o(&config)
 	}
 
+	store, err := store.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("creating store: %s", err)
+	}
+
 	daemonCtx, daemonCtxCancel := context.WithCancel(context.Background())
 	i := &Indexer{
-		cfg: config,
+		cfg:    config,
+		pow:    pow,
+		store:  store,
+		rstore: rstore,
 
 		daemonCtx:       daemonCtx,
 		daemonCtxCancel: daemonCtxCancel,
