@@ -55,6 +55,7 @@ type PowRetrievalRecord struct {
 	DealInfo          PowRetrievalRecordDealInfo `bson:"deal_info"`
 	DataTransferStart int64                      `bson:"datatransfer_start"`
 	DataTransferEnd   int64                      `bson:"datatransfer_end"`
+	BytesReceived     uint64                     `bson:"bytes_received"`
 	Failed            bool                       `bson:"failed"`
 	ErrMsg            string                     `bson:"err_msg"`
 	CreatedAt         int64                      `bson:"created_at"`

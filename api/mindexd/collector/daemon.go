@@ -161,6 +161,7 @@ func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []model.PowRetrievalRe
 			Address:           r.Address,
 			DataTransferStart: r.DataTransferStart,
 			DataTransferEnd:   r.DataTransferEnd,
+			BytesReceived:     r.BytesReceived,
 			Failed:            r.ErrMsg != "",
 			ErrMsg:            r.ErrMsg,
 			CreatedAt:         r.Time,

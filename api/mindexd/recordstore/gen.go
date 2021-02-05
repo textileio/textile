@@ -7,6 +7,7 @@ import (
 
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -26,8 +27,23 @@ func (s *Store) UpdateTextileDealsInfo(ctx context.Context) error {
 	}
 
 	for _, mr := range minerRegions {
-		if err := s.regenerateTextileTailMetrics(ctx, mr); err != nil {
-			return fmt.Errorf("updating textile deals window: %s", err)
+		if err := s.regenerateTextileDealsTailMetrics(ctx, mr); err != nil {
+			return fmt.Errorf("updating textile retrieval tail metrics: %s", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) UpdateTextileRetrievalsInfo(ctx context.Context) error {
+	minerRegions, err := s.regenerateTextileRetrievalsTotalsAndLasts(ctx)
+	if err != nil {
+		return fmt.Errorf("regenerating textile retrievals totals and lasts: %s", err)
+	}
+
+	for _, mr := range minerRegions {
+		if err := s.regenerateTextileRetrievalsTailMetrics(ctx, mr); err != nil {
+			return fmt.Errorf("updating textile retrievals tail metrics: %s", err)
 		}
 	}
 
@@ -44,7 +60,7 @@ type regionalGeneralItem struct {
 	Last  int64 `bson:"last"`
 }
 
-func (s *Store) regenerateTextileTailMetrics(ctx context.Context, mr minerRegion) error {
+func (s *Store) regenerateTextileDealsTailMetrics(ctx context.Context, mr minerRegion) error {
 	filter := bson.M{
 		"pow_storage_deal_record.deal_info.miner": mr.miner,
 		"region":                          mr.region,
@@ -137,6 +153,99 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 	}
 	defer c.Close(ctx)
 
+	mr, err := s.updateTextileRegion(ctx, "deals", c)
+	if err != nil {
+		return nil, fmt.Errorf("updating region: %s", err)
+	}
+
+	return mr, nil
+}
+
+func (s *Store) regenerateTextileRetrievalsTotalsAndLasts(ctx context.Context) ([]minerRegion, error) {
+	pipeline := bson.A{
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.D{
+					{Key: "miner", Value: "$pow_retrieval_record.deal_info.miner"},
+					{Key: "region", Value: "$region"},
+					{Key: "failed", Value: "$pow_retrieval_record.failed"},
+				},
+				"total": bson.M{
+					"$sum": 1,
+				},
+				"last": bson.M{
+					"$max": "$pow_retrieval_record.updated_at",
+				},
+			},
+		},
+	}
+	c, err := s.rrc.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, fmt.Errorf("aggregate in mongo: %s", err)
+	}
+	defer c.Close(ctx)
+
+	mr, err := s.updateTextileRegion(ctx, "retrievals", c)
+	if err != nil {
+		return nil, fmt.Errorf("updating region: %s", err)
+	}
+
+	return mr, nil
+}
+
+func (s *Store) regenerateTextileRetrievalsTailMetrics(ctx context.Context, mr minerRegion) error {
+	filter := bson.M{
+		"pow_retrieval_record.deal_info.miner": mr.miner,
+		"region":                               mr.region,
+		"pow_retrieval_record.failed":          false,
+	}
+	sort := bson.D{bson.E{Key: "pow_storage_deal_record.updated_at", Value: -1}}
+	proj := bson.M{
+		"pow_retrieval_record.bytes_received":     1,
+		"pow_retrieval_record.datatransfer_start": 1,
+		"pow_retrieval_record.datatransfer_end":   1,
+		"pow_storage_deal_record.updated_at":      1,
+	}
+	opts := options.Find().SetSort(sort).SetProjection(proj).SetLimit(int64(tailLimit))
+	c, err := s.rrc.Find(ctx, filter, opts)
+	if err != nil {
+		return fmt.Errorf("finding miner-region records: %s", err)
+	}
+	defer c.Close(ctx)
+
+	var records []model.RetrievalRecord
+	if err := c.All(ctx, &records); err != nil {
+		return fmt.Errorf("getting all results: %s", err)
+	}
+
+	tailTransfers := make([]model.TransferMiBPerSec, 0, len(records))
+	for _, record := range records {
+		psd := record.PowRetrievalRecord
+
+		if psd.DataTransferEnd-psd.DataTransferStart > 0 {
+			tailTransfers = append(tailTransfers, model.TransferMiBPerSec{
+				TransferedAt: time.Unix(psd.DataTransferEnd, 0),
+				MiBPerSec:    float64(psd.BytesReceived) / float64((psd.DataTransferEnd - psd.DataTransferStart)) / 1024 / 1024,
+			})
+		}
+	}
+
+	now := time.Now()
+	prefix := "textile.regions." + mr.region
+	filter = bson.M{"_id": mr.miner}
+	setFields := bson.M{
+		prefix + ".retrievals.tail_transfers": tailTransfers,
+		"textile.updated_at":                  now,
+		"updated_at":                          now,
+	}
+	if _, err := s.idxc.UpdateOne(ctx, filter, bson.M{"$set": setFields}); err != nil {
+		return fmt.Errorf("updating miner index tails: %s", err)
+	}
+
+	return nil
+}
+
+func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c *mongo.Cursor) ([]minerRegion, error) {
 	mrm := map[minerRegion]struct{}{}
 	opt := options.Update().SetUpsert(true)
 	for c.Next(ctx) {
@@ -147,7 +256,7 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 		mrm[minerRegion{miner: i.ID.Miner, region: i.ID.Region}] = struct{}{}
 
 		setFields := bson.M{}
-		fieldPrefix := "textile.regions." + i.ID.Region + ".deals"
+		fieldPrefix := "textile.regions." + i.ID.Region + "." + prefixSuffix
 		if i.ID.Failed {
 			setFields[fieldPrefix+".failures"] = i.Total
 			setFields[fieldPrefix+".last_failure"] = time.Unix(i.Last, 0)
@@ -167,7 +276,7 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 		}
 	}
 	if c.Err() != nil {
-		return nil, fmt.Errorf("cursor error: %s", err)
+		return nil, fmt.Errorf("cursor error: %s", c.Err())
 	}
 
 	mr := make([]minerRegion, 0, len(mrm))

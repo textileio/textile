@@ -2,9 +2,6 @@ package model
 
 import "time"
 
-type Miner string
-type Region string
-
 type MinerInfo struct {
 	MinerID   string       `bson:"_id"`
 	Metadata  MetadataInfo `bson:"metadata"`
@@ -62,9 +59,9 @@ type TransferMiBPerSec struct {
 }
 
 type TextileRetrievalsInfo struct {
-	Total                 int                 `bson:"total"`
-	Last                  time.Time           `bson:"last"`
-	Failures              int                 `bson:"failures"`
-	LastFailure           time.Time           `bson:"last_failure"`
-	TailTransferMiBPerSec []TransferMiBPerSec `bson:"tail_transfers"`
+	Total         int                 `bson:"total"`
+	Last          time.Time           `bson:"last"`
+	Failures      int                 `bson:"failures"`
+	LastFailure   time.Time           `bson:"last_failure"`
+	TailTransfers []TransferMiBPerSec `bson:"tail_transfers"`
 }
