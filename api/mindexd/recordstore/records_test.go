@@ -1,4 +1,4 @@
-package store
+package recordstore
 
 import (
 	"context"
@@ -26,7 +26,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	s, err := New(db)
 	require.NoError(t, err)
 
-	err = s.PersistStorageDealRecords(ctx, "duke-1", testStorageDealRecords)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", testStorageDealRecords)
 	require.NoError(t, err)
 
 	target := testStorageDealRecords[0]
@@ -40,7 +40,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	sdr.Address = "Addr999"
 	sdr.DealInfo.StateId = 99
 	sdr.UpdatedAt = 99999
-	err = s.PersistStorageDealRecords(ctx, "duke-1", []model.PowStorageDealRecord{sdr})
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", []model.PowStorageDealRecord{sdr})
 	require.NoError(t, err)
 
 	modified, err := s.getStorageDealRecord(ctx, sdr.DealInfo.ProposalCid)
@@ -60,7 +60,7 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	s, err := New(db)
 	require.NoError(t, err)
 
-	err = s.PersistRetrievalRecords(ctx, "duke-1", testRetrievalRecords)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", testRetrievalRecords)
 	require.NoError(t, err)
 
 	target := testRetrievalRecords[0]
@@ -75,13 +75,14 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	rr.DataTransferEnd = 999
 	rr.DataTransferStart = 888
 	rr.UpdatedAt = 99999
-	err = s.PersistRetrievalRecords(ctx, "duke-1", []model.PowRetrievalRecord{rr})
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", []model.PowRetrievalRecord{rr})
 	require.NoError(t, err)
 
 	modified, err := s.getRetrievalRecord(ctx, target.ID)
 	require.NoError(t, err)
 	require.Equal(t, original.ID, modified.ID)
 	require.Equal(t, original.PowName, modified.PowName)
+	require.Equal(t, original.Region, modified.Region)
 	require.True(t, modified.LastUpdatedAt.After(original.LastUpdatedAt))
 	require.Equal(t, rr.ErrMsg, modified.PowRetrievalRecord.ErrMsg)
 	require.Equal(t, rr.DataTransferEnd, modified.PowRetrievalRecord.DataTransferEnd)
@@ -105,9 +106,9 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	require.Equal(t, int64(0), uat)
 
 	// Insert some records.
-	err = s.PersistStorageDealRecords(ctx, "duke-1", testStorageDealRecords)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", testStorageDealRecords)
 	require.NoError(t, err)
-	err = s.PersistRetrievalRecords(ctx, "duke-1", testRetrievalRecords)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", testRetrievalRecords)
 	require.NoError(t, err)
 
 	// Check non-existant last updated at behavior.

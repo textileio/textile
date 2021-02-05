@@ -25,12 +25,12 @@ func (c *Collector) collectTargets(ctx context.Context) {
 			}
 
 			log.Debugf("collecting new storage deal records from %s", source.Name)
-			if err := c.collectNewStorageDealRecords(ctx, client, source.Name); err != nil {
+			if err := c.collectNewStorageDealRecords(ctx, client, source); err != nil {
 				log.Errorf("collecting new storage deal records from %s: %s", source.Name, err)
 			}
 
 			log.Debugf("collecting new retrieval records from %s", source.Name)
-			if err := c.collectNewRetrievalRecords(ctx, client, source.Name); err != nil {
+			if err := c.collectNewRetrievalRecords(ctx, client, source); err != nil {
 				log.Errorf("collecting new retrieval records from %s: %s", source.Name, err)
 			}
 
@@ -41,8 +41,8 @@ func (c *Collector) collectTargets(ctx context.Context) {
 	wg.Wait()
 }
 
-func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, powName string) error {
-	lastUpdatedAt, err := c.store.GetLastStorageDealRecordUpdatedAt(ctx, powName)
+func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, source PowTarget) error {
+	lastUpdatedAt, err := c.store.GetLastStorageDealRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
 		return fmt.Errorf("get last updated-at: %s", err)
 	}
@@ -62,7 +62,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 		}
 
 		records := toStorageDealRecords(res.Records)
-		if err := c.store.PersistStorageDealRecords(ctx, powName, records); err != nil {
+		if err := c.store.PersistStorageDealRecords(ctx, source.Name, source.Region, records); err != nil {
 			return fmt.Errorf("persist fetched records: %s", err)
 		}
 
@@ -78,8 +78,8 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 	return nil
 }
 
-func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, powName string) error {
-	lastUpdatedAt, err := c.store.GetLastRetrievalRecordUpdatedAt(ctx, powName)
+func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, source PowTarget) error {
+	lastUpdatedAt, err := c.store.GetLastRetrievalRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
 		return fmt.Errorf("get last updated-at: %s", err)
 	}
@@ -100,7 +100,7 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 		}
 
 		records := toRetrievalRecords(res.Records)
-		if err := c.store.PersistRetrievalRecords(ctx, powName, records); err != nil {
+		if err := c.store.PersistRetrievalRecords(ctx, source.Name, source.Region, records); err != nil {
 			return fmt.Errorf("persist fetched records: %s", err)
 		}
 
@@ -128,6 +128,7 @@ func toStorageDealRecords(rs []*userPb.StorageDealRecord) []model.PowStorageDeal
 			DataTransferEnd:   s.DataTransferEnd,
 			SealingStart:      s.SealingStart,
 			SealingEnd:        s.SealingEnd,
+			Failed:            s.ErrMsg != "",
 			ErrMsg:            s.ErrMsg,
 			CreatedAt:         s.Time,
 			UpdatedAt:         s.UpdatedAt,
@@ -160,6 +161,7 @@ func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []model.PowRetrievalRe
 			Address:           r.Address,
 			DataTransferStart: r.DataTransferStart,
 			DataTransferEnd:   r.DataTransferEnd,
+			Failed:            r.ErrMsg != "",
 			ErrMsg:            r.ErrMsg,
 			CreatedAt:         r.Time,
 			UpdatedAt:         r.UpdatedAt,

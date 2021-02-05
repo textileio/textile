@@ -1,4 +1,4 @@
-package store
+package recordstore
 
 import (
 	"context"
@@ -6,36 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	logger "github.com/ipfs/go-log/v2"
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
-	log = logger.Logger("record-store")
-
 	errRecordNotFound = errors.New("record not found")
 )
-
-type Store struct {
-	sdrc *mongo.Collection
-	rrc  *mongo.Collection
-}
-
-func New(db *mongo.Database) (*Store, error) {
-	s := &Store{
-		sdrc: db.Collection("storagedealrecords"),
-		rrc:  db.Collection("retrievalrecords"),
-	}
-	if err := s.ensureIndexes(); err != nil {
-		return nil, fmt.Errorf("ensuring mongodb indexes: %s", err)
-	}
-
-	return s, nil
-}
 
 func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
 	filter := bson.M{"pow_name": powName}
@@ -53,7 +32,7 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 		}
 	}()
 
-	res := make([]model.StorageDealRecord, 0, 1)
+	var res []model.StorageDealRecord
 	if err := c.All(ctx, &res); err != nil {
 		return 0, fmt.Errorf("fetching find result: %s", err)
 	}
@@ -95,7 +74,7 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 	return (res)[0].PowRetrievalRecord.UpdatedAt, nil
 }
 
-func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, psrs []model.PowStorageDealRecord) error {
+func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region string, psrs []model.PowStorageDealRecord) error {
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(psrs))
@@ -103,6 +82,7 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, p
 		sr := model.StorageDealRecord{
 			LastUpdatedAt:        now,
 			PowName:              powName,
+			Region:               region,
 			PowStorageDealRecord: psr,
 		}
 		uwm := mongo.NewUpdateOneModel()
@@ -123,7 +103,7 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName string, p
 	return nil
 }
 
-func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prrs []model.PowRetrievalRecord) error {
+func (s *Store) PersistRetrievalRecords(ctx context.Context, powName, region string, prrs []model.PowRetrievalRecord) error {
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(prrs))
@@ -131,6 +111,7 @@ func (s *Store) PersistRetrievalRecords(ctx context.Context, powName string, prr
 		rr := model.RetrievalRecord{
 			LastUpdatedAt:      now,
 			PowName:            powName,
+			Region:             region,
 			PowRetrievalRecord: prr,
 		}
 		uwm := mongo.NewUpdateOneModel()
@@ -185,28 +166,4 @@ func (s *Store) getRetrievalRecord(ctx context.Context, ID string) (model.Retrie
 	}
 
 	return rr, nil
-}
-
-func (s *Store) ensureIndexes() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	_, err := s.sdrc.Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{
-			Keys: bson.D{primitive.E{Key: "pow_name", Value: 1}, primitive.E{Key: "pow_storage_deal_record.updated_at", Value: -1}},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("creating storage-deal records index: %s", err)
-	}
-
-	_, err = s.rrc.Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{
-			Keys: bson.D{primitive.E{Key: "pow_name", Value: 1}, primitive.E{Key: "pow_retrieval_record.updated_at", Value: -1}},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("creating retrieval records index: %s", err)
-	}
-
-	return nil
 }

@@ -2,6 +2,9 @@ package model
 
 import "time"
 
+type Miner string
+type Region string
+
 type MinerInfo struct {
 	MinerID   string       `bson:"_id"`
 	Metadata  MetadataInfo `bson:"metadata"`
@@ -28,9 +31,13 @@ type FilecoinInfo struct {
 }
 
 type TextileInfo struct {
+	Regions   map[string]TextileRegionInfo `bson:"regions"`
+	UpdatedAt time.Time                    `bson:"updated_at"`
+}
+
+type TextileRegionInfo struct {
 	Deals      TextileDealsInfo      `bson:"deals"`
 	Retrievals TextileRetrievalsInfo `bson:"retrievals"`
-	UpdatedAt  time.Time             `bson:"updated_at"`
 }
 
 type TextileDealsInfo struct {
@@ -40,18 +47,24 @@ type TextileDealsInfo struct {
 	Failures    int       `bson:"failures"`
 	LastFailure time.Time `bson:"last_failure"`
 
-	LastTransferMiBPerSec     float64 `bson:"last_transfer_mib_per_sec"`
-	Max7DaysTransferMiBPerSec float64 `bson:"max_7days_transfer_mib_per_sec"`
+	TailTransfers []TransferMiBPerSec  `bson:"tail_transfers"`
+	TailSealed    []SealedDurationMins `bson:"tail_sealed"`
+}
 
-	LastDealSealedDurationMins float64 `bson:"last_deal_sealed_duration_mins"`
-	MinDealSealedDurationMins  float64 `bson:"last_deal_sealed_duration_mins"`
+type SealedDurationMins struct {
+	SealedAt        time.Time `bson:"sealed_at"`
+	DurationSeconds int64     `bson:"duration_mins"`
+}
+
+type TransferMiBPerSec struct {
+	TransferedAt time.Time `bson:"transfered_at"`
+	MibPerSec    float64   `bson:"mib_per_sec"`
 }
 
 type TextileRetrievalsInfo struct {
-	Total                     int       `bson:"total"`
-	Last                      time.Time `bson:"last"`
-	Failures                  int       `bson:"failures"`
-	LastFailure               time.Time `bson:"last_failure"`
-	LastTransferMiBPerSec     float64   `bson:"last_Transfer_mib_per_sec"`
-	Max7DaysTransferMiBPerSec float64   `bson:"max_7days_transfer_mib_per_sec"`
+	Total                 int                 `bson:"total"`
+	Last                  time.Time           `bson:"last"`
+	Failures              int                 `bson:"failures"`
+	LastFailure           time.Time           `bson:"last_failure"`
+	TailTransferMiBPerSec []TransferMiBPerSec `bson:"tail_transfers"`
 }

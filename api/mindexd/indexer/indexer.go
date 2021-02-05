@@ -7,13 +7,13 @@ import (
 
 	logger "github.com/ipfs/go-log/v2"
 	pow "github.com/textileio/powergate/v2/api/client"
-	"github.com/textileio/textile/v2/api/mindexd/index/indexer/store"
-	records "github.com/textileio/textile/v2/api/mindexd/records/collector/store"
+	"github.com/textileio/textile/v2/api/mindexd/indexer/store"
+	rstore "github.com/textileio/textile/v2/api/mindexd/recordstore"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
-	log = logger.Logger("index-indexer")
+	log = logger.Logger("indexer")
 )
 
 type Indexer struct {
@@ -21,14 +21,14 @@ type Indexer struct {
 	pow *pow.Client
 
 	store  *store.Store
-	rstore *records.Store
+	rstore *rstore.Store
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
 	daemonClosed    chan (struct{})
 }
 
-func New(db *mongo.Database, pow *pow.Client, rstore *records.Store, opts ...Option) (*Indexer, error) {
+func New(db *mongo.Database, pow *pow.Client, rstore *rstore.Store, opts ...Option) (*Indexer, error) {
 	config := defaultConfig
 	for _, o := range opts {
 		o(&config)
@@ -52,6 +52,9 @@ func New(db *mongo.Database, pow *pow.Client, rstore *records.Store, opts ...Opt
 	}
 
 	i.runDaemon()
+
+	// TTODO: do daemon to make history snapshots, add options.
+
 	return i, nil
 }
 

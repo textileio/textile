@@ -6,7 +6,7 @@ import (
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
-	"github.com/textileio/textile/v2/api/mindexd/store"
+	"github.com/textileio/textile/v2/api/mindexd/recordstore"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -16,7 +16,7 @@ var (
 
 type Collector struct {
 	cfg   config
-	store *store.Store
+	store *recordstore.Store
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
@@ -33,7 +33,7 @@ func New(db *mongo.Database, opts ...Option) (*Collector, error) {
 		log.Warnf("the list of powergate targets is empty")
 	}
 
-	store, err := store.New(db)
+	store, err := recordstore.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("creating store: %s", err)
 	}

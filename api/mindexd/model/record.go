@@ -5,6 +5,7 @@ import "time"
 type StorageDealRecord struct {
 	ID                   string               `bson:"_id,omitempty"`
 	PowName              string               `bson:"pow_name"`
+	Region               string               `bson:"region"`
 	LastUpdatedAt        time.Time            `bson:"last_updated_at"`
 	PowStorageDealRecord PowStorageDealRecord `bson:"pow_storage_deal_record"`
 }
@@ -12,6 +13,7 @@ type StorageDealRecord struct {
 type RetrievalRecord struct {
 	ID                 string             `bson:"_id,omitempty"`
 	PowName            string             `bson:"pow_name"`
+	Region             string             `bson:"region"`
 	LastUpdatedAt      time.Time          `bson:"last_updated_at"`
 	PowRetrievalRecord PowRetrievalRecord `bson:"pow_retrieval_record"`
 }
@@ -26,6 +28,7 @@ type PowStorageDealRecord struct {
 	DataTransferEnd   int64                        `bson:"datatransfer_end"`
 	SealingStart      int64                        `bson:"sealing_start"`
 	SealingEnd        int64                        `bson:"sealing_end"`
+	Failed            bool                         `bson:"failed"`
 	ErrMsg            string                       `bson:"err_msg"`
 	CreatedAt         int64                        `bson:"created_at"`
 	UpdatedAt         int64                        `bson:"updated_at"`
@@ -52,6 +55,7 @@ type PowRetrievalRecord struct {
 	DealInfo          PowRetrievalRecordDealInfo `bson:"deal_info"`
 	DataTransferStart int64                      `bson:"datatransfer_start"`
 	DataTransferEnd   int64                      `bson:"datatransfer_end"`
+	Failed            bool                       `bson:"failed"`
 	ErrMsg            string                     `bson:"err_msg"`
 	CreatedAt         int64                      `bson:"created_at"`
 	UpdatedAt         int64                      `bson:"updated_at"`
