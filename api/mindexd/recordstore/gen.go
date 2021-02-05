@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	tailLimit = int64(50)
+	tailLimit = 50
 )
 
 type minerRegion struct {
@@ -46,21 +46,21 @@ type regionalGeneralItem struct {
 
 func (s *Store) regenerateTextileTailMetrics(ctx context.Context, mr minerRegion) error {
 	filter := bson.M{
-		"_id":                             mr.miner,
+		"pow_storage_deal_record.deal_info.miner": mr.miner,
 		"region":                          mr.region,
 		"pow_storage_deal_record.pending": false,
 		"pow_storage_deal_record.failed":  false,
 	}
 	sort := bson.D{bson.E{Key: "pow_storage_deal_record.updated_at", Value: -1}}
 	proj := bson.M{
-		"pow_storage_deal_record.transfer_size":  1,
-		"pow_storage_deal_record.transfer_start": 1,
-		"pow_storage_deal_record.transfer_end":   1,
-		"pow_storage_deal_record.sealing_start":  1,
-		"pow_storage_deal_record.sealing_end":    1,
-		"pow_storage_deal_record.updated_at":     1,
+		"pow_storage_deal_record.transfer_size":      1,
+		"pow_storage_deal_record.datatransfer_start": 1,
+		"pow_storage_deal_record.datatransfer_end":   1,
+		"pow_storage_deal_record.sealing_start":      1,
+		"pow_storage_deal_record.sealing_end":        1,
+		"pow_storage_deal_record.updated_at":         1,
 	}
-	opts := options.Find().SetSort(sort).SetProjection(proj).SetLimit(tailLimit)
+	opts := options.Find().SetSort(sort).SetProjection(proj).SetLimit(int64(tailLimit))
 	c, err := s.sdrc.Find(ctx, filter, opts)
 	if err != nil {
 		return fmt.Errorf("finding miner-region records: %s", err)
@@ -72,17 +72,23 @@ func (s *Store) regenerateTextileTailMetrics(ctx context.Context, mr minerRegion
 		return fmt.Errorf("getting all results: %s", err)
 	}
 
-	tailTransfers := make([]model.TransferMiBPerSec, len(records))
-	tailSealed := make([]model.SealedDurationMins, len(records))
-	for i, record := range records {
+	tailTransfers := make([]model.TransferMiBPerSec, 0, len(records))
+	tailSealed := make([]model.SealedDurationMins, 0, len(records))
+	for _, record := range records {
 		psd := record.PowStorageDealRecord
-		tailTransfers[i] = model.TransferMiBPerSec{
-			TransferedAt: time.Unix(psd.DataTransferEnd, 0),
-			MibPerSec:    float64(psd.TransferSize) / float64((psd.DataTransferEnd - psd.DataTransferStart)) / 1024 / 1024,
+
+		if psd.DataTransferEnd-psd.DataTransferStart > 0 {
+			tailTransfers = append(tailTransfers, model.TransferMiBPerSec{
+				TransferedAt: time.Unix(psd.DataTransferEnd, 0),
+				MiBPerSec:    float64(psd.TransferSize) / float64((psd.DataTransferEnd - psd.DataTransferStart)) / 1024 / 1024,
+			})
 		}
-		tailSealed[i] = model.SealedDurationMins{
-			SealedAt:        time.Unix(psd.SealingEnd, 0),
-			DurationSeconds: psd.SealingEnd - psd.SealingStart,
+
+		if psd.SealingEnd-psd.SealingStart > 0 {
+			tailSealed = append(tailSealed, model.SealedDurationMins{
+				SealedAt:        time.Unix(psd.SealingEnd, 0),
+				DurationSeconds: int(psd.SealingEnd - psd.SealingStart),
+			})
 		}
 	}
 
@@ -143,7 +149,6 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 		setFields := bson.M{}
 		fieldPrefix := "textile.regions." + i.ID.Region + ".deals"
 		if i.ID.Failed {
-			fmt.Printf("WOOP: %v\n", i)
 			setFields[fieldPrefix+".failures"] = i.Total
 			setFields[fieldPrefix+".last_failure"] = time.Unix(i.Last, 0)
 		} else {
@@ -172,3 +177,5 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 
 	return mr, nil
 }
+
+// TTODO: create indexes for the above queries.

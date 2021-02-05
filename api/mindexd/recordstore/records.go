@@ -75,6 +75,7 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 }
 
 func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region string, psrs []model.PowStorageDealRecord) error {
+	// TTODO: validate region and empty pow name.
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(psrs))
@@ -104,6 +105,7 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region s
 }
 
 func (s *Store) PersistRetrievalRecords(ctx context.Context, powName, region string, prrs []model.PowRetrievalRecord) error {
+	// TTODO: validate region and empty powName
 	now := time.Now()
 
 	wms := make([]mongo.WriteModel, len(prrs))

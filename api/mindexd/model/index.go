@@ -53,12 +53,12 @@ type TextileDealsInfo struct {
 
 type SealedDurationMins struct {
 	SealedAt        time.Time `bson:"sealed_at"`
-	DurationSeconds int64     `bson:"duration_mins"`
+	DurationSeconds int       `bson:"duration_mins"`
 }
 
 type TransferMiBPerSec struct {
 	TransferedAt time.Time `bson:"transfered_at"`
-	MibPerSec    float64   `bson:"mib_per_sec"`
+	MiBPerSec    float64   `bson:"mib_per_sec"`
 }
 
 type TextileRetrievalsInfo struct {
