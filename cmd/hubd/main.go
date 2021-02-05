@@ -96,6 +96,10 @@ var (
 				Key:      "addr.analytics.api",
 				DefValue: "",
 			},
+			"addrFilrewardsApi": {
+				Key:      "addr.filrewards.api",
+				DefValue: "",
+			},
 
 			// Buckets
 			"bucketsArchiveMaxRepFactor": {
@@ -245,6 +249,10 @@ func init() {
 		"addrAnalyticsApi",
 		config.Flags["addrAnalyticsApi"].DefValue.(string),
 		"Analytics API address")
+	rootCmd.PersistentFlags().String(
+		"addrFilrewardsApi",
+		config.Flags["addrFilrewardsApi"].DefValue.(string),
+		"Fil Rewards API address")
 
 	// Buckets
 	rootCmd.PersistentFlags().Int(
@@ -364,6 +372,7 @@ var rootCmd = &cobra.Command{
 		addrBillingApi := config.Viper.GetString("addr.billing.api")
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 		addrAnalyticsApi := config.Viper.GetString("addr.analytics.api")
+		addrFilrewardsApi := config.Viper.GetString("addr.filrewards.api")
 
 		// Buckets
 		bucketsArchiveMaxRepFactor := config.Viper.GetInt("buckets.archive_max_rep_factor")
@@ -408,17 +417,18 @@ var rootCmd = &cobra.Command{
 			Hub:   true,
 			Debug: debug,
 			// Addresses
-			AddrAPI:          addrApi,
-			AddrAPIProxy:     addrApiProxy,
-			AddrMongoURI:     addrMongoUri,
-			AddrMongoName:    addrMongoName,
-			AddrThreadsHost:  addrThreadsHost,
-			AddrGatewayHost:  addrGatewayHost,
-			AddrGatewayURL:   addrGatewayUrl,
-			AddrIPFSAPI:      addrIpfsApi,
-			AddrBillingAPI:   addrBillingApi,
-			AddrPowergateAPI: addrPowergateApi,
-			AddrAnalyticsAPI: addrAnalyticsApi,
+			AddrAPI:           addrApi,
+			AddrAPIProxy:      addrApiProxy,
+			AddrMongoURI:      addrMongoUri,
+			AddrMongoName:     addrMongoName,
+			AddrThreadsHost:   addrThreadsHost,
+			AddrGatewayHost:   addrGatewayHost,
+			AddrGatewayURL:    addrGatewayUrl,
+			AddrIPFSAPI:       addrIpfsApi,
+			AddrBillingAPI:    addrBillingApi,
+			AddrPowergateAPI:  addrPowergateApi,
+			AddrAnalyticsAPI:  addrAnalyticsApi,
+			AddrFilrewardsAPI: addrFilrewardsApi,
 			// Buckets
 			MaxBucketArchiveRepFactor: bucketsArchiveMaxRepFactor,
 			// Threads
