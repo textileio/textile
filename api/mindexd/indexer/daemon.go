@@ -73,12 +73,9 @@ func (i *Indexer) updateTextileMinerInfo(ctx context.Context, miner string) erro
 		return fmt.Errorf("generate textile miner deals info: %s", err)
 	}
 
-	// TTODO
-	/*
-		if err := i.rstore.generateTextileRegionalRetrievalsInfo(ctx, miner); err != nil {
-			return fmt.Errorf("generate textile retrievals info: %s", err)
-		}
-	*/
+	if err := i.rstore.UpdateTextileRetrievalsInfo(ctx); err != nil {
+		return fmt.Errorf("generate textile retrievals info: %s", err)
+	}
 
 	return nil
 }

@@ -19,6 +19,8 @@ import (
 
 const daemonName = "mindexd"
 
+// TTODO: calculator
+
 var (
 	log = logging.Logger(daemonName)
 
