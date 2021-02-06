@@ -26,7 +26,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	s, err := New(db)
 	require.NoError(t, err)
 
-	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", testStorageDealRecords)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", testStorageDealRecords)
 	require.NoError(t, err)
 
 	target := testStorageDealRecords[0]
@@ -40,7 +40,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	sdr.Address = "Addr999"
 	sdr.DealInfo.StateId = 99
 	sdr.UpdatedAt = 99999
-	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", []model.PowStorageDealRecord{sdr})
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", []model.PowStorageDealRecord{sdr})
 	require.NoError(t, err)
 
 	modified, err := s.getStorageDealRecord(ctx, sdr.DealInfo.ProposalCid)
@@ -60,7 +60,7 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	s, err := New(db)
 	require.NoError(t, err)
 
-	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", testRetrievalRecords)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "005", testRetrievalRecords)
 	require.NoError(t, err)
 
 	target := testRetrievalRecords[0]
@@ -75,7 +75,7 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	rr.DataTransferEnd = 999
 	rr.DataTransferStart = 888
 	rr.UpdatedAt = 99999
-	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", []model.PowRetrievalRecord{rr})
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "005", []model.PowRetrievalRecord{rr})
 	require.NoError(t, err)
 
 	modified, err := s.getRetrievalRecord(ctx, target.ID)
@@ -106,9 +106,9 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	require.Equal(t, int64(0), uat)
 
 	// Insert some records.
-	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", testStorageDealRecords)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", testStorageDealRecords)
 	require.NoError(t, err)
-	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", testRetrievalRecords)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "005", testRetrievalRecords)
 	require.NoError(t, err)
 
 	// Check non-existant last updated at behavior.

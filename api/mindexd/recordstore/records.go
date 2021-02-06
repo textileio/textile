@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -75,9 +76,14 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 }
 
 func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region string, psrs []model.PowStorageDealRecord) error {
-	// TTODO: validate region and empty pow name.
-	now := time.Now()
+	if powName == "" {
+		return fmt.Errorf("powergate name is empty")
+	}
+	if _, err := language.ParseRegion(region); err != nil {
+		return fmt.Errorf("region %s isn't a valid M49 code: %s", region, err)
+	}
 
+	now := time.Now()
 	wms := make([]mongo.WriteModel, len(psrs))
 	for i, psr := range psrs {
 		sr := model.StorageDealRecord{
@@ -105,9 +111,14 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region s
 }
 
 func (s *Store) PersistRetrievalRecords(ctx context.Context, powName, region string, prrs []model.PowRetrievalRecord) error {
-	// TTODO: validate region and empty powName
-	now := time.Now()
+	if powName == "" {
+		return fmt.Errorf("powergate name is empty")
+	}
+	if _, err := language.ParseRegion(region); err != nil {
+		return fmt.Errorf("region %s isn't a valid M49 code: %s", region, err)
+	}
 
+	now := time.Now()
 	wms := make([]mongo.WriteModel, len(prrs))
 	for i, prr := range prrs {
 		rr := model.RetrievalRecord{

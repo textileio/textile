@@ -16,16 +16,16 @@ func TestMinerIndexGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Insert some deal-records.
-	err = s.PersistStorageDealRecords(ctx, "duke-1", "south_america", testDealsSouthAmerica)
+	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", testDealsSouthAmerica)
 	require.NoError(t, err)
-	err = s.PersistStorageDealRecords(ctx, "duke-2", "north_america", testDealsNorthAmerica)
+	err = s.PersistStorageDealRecords(ctx, "duke-2", "003", testDealsNorthAmerica)
 	require.NoError(t, err)
-	err = s.PersistStorageDealRecords(ctx, "duke-3", "africa", testDealsAfrica)
+	err = s.PersistStorageDealRecords(ctx, "duke-3", "002", testDealsAfrica)
 	require.NoError(t, err)
 	// Insert some retrieval records.
-	err = s.PersistRetrievalRecords(ctx, "duke-1", "south_america", testRetrievalsSouthAmerica)
+	err = s.PersistRetrievalRecords(ctx, "duke-1", "005", testRetrievalsSouthAmerica)
 	require.NoError(t, err)
-	err = s.PersistRetrievalRecords(ctx, "duke-2", "north_america", testRetrievalsNorthAmerica)
+	err = s.PersistRetrievalRecords(ctx, "duke-2", "003", testRetrievalsNorthAmerica)
 	require.NoError(t, err)
 
 	// Regenerate indexes.
@@ -53,7 +53,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.Len(t, f0100.Textile.Regions, 3)
 
 		// <south-america>
-		f0100_south_america := f0100.Textile.Regions["south_america"]
+		f0100_south_america := f0100.Textile.Regions["005"]
 		// !Deals
 		require.Equal(t, 2, f0100_south_america.Deals.Total)                       // Test 2 successes.
 		require.Equal(t, int64(301), f0100_south_america.Deals.Last.Unix())        // Max of successes.
@@ -82,7 +82,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		// </south-america>
 
 		// <north-america>
-		f0100_north_america := f0100.Textile.Regions["north_america"]
+		f0100_north_america := f0100.Textile.Regions["003"]
 		// !Deals
 		require.Equal(t, 1, f0100_north_america.Deals.Total)
 		require.Equal(t, int64(302), f0100_north_america.Deals.Last.Unix())
@@ -104,7 +104,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		// </north-america>
 
 		// <africa>
-		f0100_africa := f0100.Textile.Regions["africa"]
+		f0100_africa := f0100.Textile.Regions["002"]
 		// !Deals
 		require.Equal(t, 1, f0100_africa.Deals.Total)
 		require.Equal(t, int64(303), f0100_africa.Deals.Last.Unix())
@@ -131,7 +131,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.False(t, f0101.Textile.UpdatedAt.IsZero())
 		require.Len(t, f0101.Textile.Regions, 3)
 		// <south-america>
-		f0101_south_america := f0101.Textile.Regions["south_america"]
+		f0101_south_america := f0101.Textile.Regions["005"]
 		// !Deals
 		require.Len(t, f0101_south_america.Deals.TailTransfers, 0)
 		require.Len(t, f0101_south_america.Deals.TailSealed, 0)
@@ -143,7 +143,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		// </south-america>
 
 		// <north-america>
-		f0101_north_america := f0101.Textile.Regions["north_america"]
+		f0101_north_america := f0101.Textile.Regions["003"]
 		// !Deals
 		require.Equal(t, 1, f0101_north_america.Deals.Total)
 		require.Equal(t, int64(310), f0101_north_america.Deals.Last.Unix())
@@ -163,7 +163,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 		// </north-america>
 
 		// <africa>
-		f0101_africa := f0101.Textile.Regions["africa"]
+		f0101_africa := f0101.Textile.Regions["002"]
 		// !Deals
 		require.Equal(t, 1, f0101_africa.Deals.Total)
 		require.Equal(t, int64(311), f0101_africa.Deals.Last.Unix())

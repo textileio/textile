@@ -8,7 +8,6 @@ import (
 
 	logger "github.com/ipfs/go-log/v2"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -36,20 +35,54 @@ func New(db *mongo.Database) (*Store, error) {
 }
 
 func (s *Store) ensureIndexes() error {
+	// StorageDealRecords indexes
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	_, err := s.sdrc.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{primitive.E{Key: "pow_name", Value: 1}, primitive.E{Key: "pow_storage_deal_record.updated_at", Value: -1}},
+			Keys: bson.D{
+				bson.E{Key: "pow_name", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.updated_at", Value: -1},
+			},
+		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "pow_storage_deal_record.deal_info.miner", Value: 1},
+				bson.E{Key: "region", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.pending", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.failed", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.updated_at", Value: -1},
+			},
+		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "pow_storage_deal_record.pending", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.deal_info.miner", Value: 1},
+				bson.E{Key: "region", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.failed", Value: 1},
+				bson.E{Key: "pow_storage_deal_record.updated_at", Value: -1},
+			},
 		},
 	})
 	if err != nil {
 		return fmt.Errorf("creating storage-deal records index: %s", err)
 	}
 
+	// RetrievalRecords indexes
 	_, err = s.rrc.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{primitive.E{Key: "pow_name", Value: 1}, primitive.E{Key: "pow_retrieval_record.updated_at", Value: -1}},
+			Keys: bson.D{
+				bson.E{Key: "pow_name", Value: 1},
+				bson.E{Key: "pow_retrieval_record.updated_at", Value: -1},
+			},
+		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "pow_retrieval_record.deal_info.miner", Value: 1},
+				bson.E{Key: "region", Value: 1},
+				bson.E{Key: "pow_retrieval_record.failed", Value: 1},
+				bson.E{Key: "pow_retrieval_record.updated_at", Value: -1},
+			},
 		},
 	})
 	if err != nil {
