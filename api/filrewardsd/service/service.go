@@ -55,10 +55,15 @@ type reward struct {
 }
 
 type claim struct {
-	OrgKey    string    `bson:"org_key"`
-	ClaimedBy string    `bson:"claimed_by"`
-	Amount    int32     `bson:"amount"`
-	CreatedAt time.Time `bson:"created_at"`
+	ID             primitive.ObjectID `bson:"_id"`
+	OrgKey         string             `bson:"org_key"`
+	ClaimedBy      string             `bson:"claimed_by"`
+	Amount         int32              `bson:"amount"`
+	State          pb.ClaimState      `bson:"state"`
+	TxnCid         string             `bson:"txn_cid"`
+	FailureMessage string             `bson:"failure_message"`
+	CreatedAt      time.Time          `bson:"created_at"`
+	UpdatedAt      time.Time          `bson:"created_at"`
 }
 
 type orgKeyLock string
@@ -343,22 +348,30 @@ func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimRes
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calculating total rewarded: %v", err)
 	}
-	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey)
+	totalPending, err := s.totalClaimed(ctx, req.OrgKey, pb.ClaimState_CLAIM_STATE_PENDING)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
+	}
+	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey, pb.ClaimState_CLAIM_STATE_COMPLETE)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
 	}
 
-	available := totalRewarded - totalClaimed
+	available := totalRewarded - totalPending - totalClaimed
 
 	if req.Amount > available {
 		return nil, status.Errorf(codes.InvalidArgument, "claim amount %d is greater than available reward balance %d", req.Amount, available)
 	}
 
+	t := time.Now()
 	c := &claim{
+		ID:        primitive.NewObjectID(),
 		OrgKey:    req.OrgKey,
 		ClaimedBy: req.ClaimedBy,
 		Amount:    req.Amount,
-		CreatedAt: time.Now(),
+		State:     pb.ClaimState_CLAIM_STATE_PENDING,
+		CreatedAt: t,
+		UpdatedAt: t,
 	}
 
 	if _, err := s.claimsCol.InsertOne(ctx, c); err != nil {
@@ -371,6 +384,7 @@ func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimRes
 		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
 		analyticspb.Event_EVENT_FIL_CLAIM,
 		analytics.WithProperties(map[string]interface{}{
+			"id":         c.ID.Hex(),
 			"claimed_by": c.ClaimedBy,
 			"amount":     c.Amount,
 		}),
@@ -378,7 +392,56 @@ func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimRes
 		log.Errorf("calling analytics track: %v", err)
 	}
 
-	return &pb.ClaimResponse{}, nil
+	return &pb.ClaimResponse{Claim: toPbClaim(c)}, nil
+}
+
+func (s *Service) FinalizeClaim(ctx context.Context, req *pb.FinalizeClaimRequest) (*pb.FinalizeClaimResponse, error) {
+	lck := s.semaphores.Get(orgKeyLock(req.OrgKey))
+	lck.Acquire()
+	defer lck.Release()
+
+	var state pb.ClaimState
+	if req.TxnCid != "" && req.FailureMessage == "" {
+		state = pb.ClaimState_CLAIM_STATE_COMPLETE
+	} else if req.FailureMessage != "" && req.TxnCid == "" {
+		state = pb.ClaimState_CLAIM_STATE_FAILED
+	} else {
+		return nil, status.Error(codes.InvalidArgument, "must provide a txn cid or failure message")
+	}
+
+	objID, err := primitive.ObjectIDFromHex(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "parsing claim id: %v", err)
+	}
+
+	res := s.claimsCol.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": objID},
+		bson.M{"$set": bson.M{"state": state, "txn_cid": req.TxnCid, "failure_message": req.FailureMessage, "updated_at": time.Now()}},
+	)
+	if res.Err() == mongo.ErrNoDocuments {
+		return nil, status.Errorf(codes.NotFound, "updating claim: %v", res.Err())
+	}
+	if res.Err() != nil {
+		return nil, status.Errorf(codes.Internal, "updating claim: %v", res.Err())
+	}
+
+	if err := s.ac.Track(
+		ctx,
+		req.OrgKey,
+		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
+		analyticspb.Event_EVENT_FIL_FINALIZE_CLAIM,
+		analytics.WithProperties(map[string]interface{}{
+			"id":              req.Id,
+			"state":           state,
+			"txn_cid":         req.TxnCid,
+			"failure_message": req.FailureMessage,
+		}),
+	); err != nil {
+		log.Errorf("calling analytics track: %v", err)
+	}
+
+	return &pb.FinalizeClaimResponse{}, nil
 }
 
 func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*pb.ListClaimsResponse, error) {
@@ -397,6 +460,9 @@ func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*p
 	}
 	if req.ClaimedByFilter != "" {
 		filter["claimed_by"] = req.ClaimedByFilter
+	}
+	if req.StateFilter != pb.ClaimState_CLAIM_STATE_UNSPECIFIED {
+		filter["state"] = req.StateFilter
 	}
 	comp := "$lt"
 	if req.StartAt != nil {
@@ -454,17 +520,29 @@ func (s *Service) Balance(ctx context.Context, req *pb.BalanceRequest) (*pb.Bala
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calculating total rewarded: %v", err)
 	}
-	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey)
+	totalPending, err := s.totalClaimed(ctx, req.OrgKey, pb.ClaimState_CLAIM_STATE_PENDING)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
 	}
-	return &pb.BalanceResponse{Rewarded: totalRewarded, Claimed: totalClaimed, Available: totalRewarded - totalClaimed}, nil
+	totalClaimed, err := s.totalClaimed(ctx, req.OrgKey, pb.ClaimState_CLAIM_STATE_COMPLETE)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calculating total claimed: %v", err)
+	}
+	return &pb.BalanceResponse{
+		Rewarded:  totalRewarded,
+		Pending:   totalPending,
+		Claimed:   totalClaimed,
+		Available: totalRewarded - totalPending - totalClaimed,
+	}, nil
 }
 
 func (s *Service) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := s.rewardsCol.Database().Client().Disconnect(ctx); err != nil {
+		log.Errorf("disconnecting mongo client: %s", err)
+	}
+	if err := s.claimsCol.Database().Client().Disconnect(ctx); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
 	}
 	log.Info("mongo client disconnected")
@@ -507,9 +585,9 @@ func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int32, erro
 	return -1, fmt.Errorf("no total rewarded calculation found")
 }
 
-func (s *Service) totalClaimed(ctx context.Context, orgKey string) (int32, error) {
+func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.ClaimState) (int32, error) {
 	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
-		bson.M{"$match": bson.M{"org_key": orgKey}},
+		bson.M{"$match": bson.M{"org_key": orgKey, "state": state}},
 		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amount"}}},
 	})
 	if err != nil {
@@ -556,10 +634,15 @@ func toPbReward(rec *reward) *pb.Reward {
 
 func toPbClaim(rec *claim) *pb.Claim {
 	res := &pb.Claim{
-		OrgKey:    rec.OrgKey,
-		ClaimedBy: rec.ClaimedBy,
-		Amount:    rec.Amount,
-		CreatedAt: timestamppb.New(rec.CreatedAt),
+		Id:             rec.ID.Hex(),
+		OrgKey:         rec.OrgKey,
+		ClaimedBy:      rec.ClaimedBy,
+		Amount:         rec.Amount,
+		State:          rec.State,
+		TxnCid:         rec.TxnCid,
+		FailureMessage: rec.FailureMessage,
+		CreatedAt:      timestamppb.New(rec.CreatedAt),
+		UpdatedAt:      timestamppb.New(rec.UpdatedAt),
 	}
 	return res
 }

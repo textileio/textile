@@ -580,28 +580,28 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
 	}
 
-	opts := []filrewards.ListOption{filrewards.WithOrgKeyFilter(org.Key.String())}
+	opts := []filrewards.ListRewardsOption{filrewards.ListRewardsOrgKeyFilter(org.Key.String())}
 	if req.Ascending {
-		opts = append(opts, filrewards.WithAscending())
+		opts = append(opts, filrewards.ListRewardsAscending())
 	}
 	if req.Limit > 0 {
-		opts = append(opts, filrewards.WithLimit(req.Limit))
+		opts = append(opts, filrewards.ListRewardsLimit(req.Limit))
 	}
 	if req.RewardTypeFilter != filrewardspb.RewardType_REWARD_TYPE_UNSPECIFIED {
-		opts = append(opts, filrewards.WithRewardTypeFilter(req.RewardTypeFilter))
+		opts = append(opts, filrewards.ListRewardsRewardTypeFilter(req.RewardTypeFilter))
 	}
 	if req.StartAt != nil {
-		opts = append(opts, filrewards.WithStartAt(req.StartAt.AsTime()))
+		opts = append(opts, filrewards.ListRewardsStartAt(req.StartAt.AsTime()))
 	}
 	if req.UnlockedByDev {
 		if user == nil {
 			return nil, status.Error(codes.InvalidArgument, "must provide a dev user to use unlocked by dev option")
 		}
-		opts = append(opts, filrewards.WithDevKeyFilter(user.Key.String()))
+		opts = append(opts, filrewards.ListRewardsDevKeyFilter(user.Key.String()))
 	}
 	recs, more, startAt, err := s.FilRewardsClient.ListRewards(ctx, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "calling filrewards service list: %v", err)
+		return nil, status.Errorf(codes.Internal, "calling filrewards list rewards: %v", err)
 	}
 	var ts *timestamppb.Timestamp
 	if startAt != nil {
@@ -615,15 +615,104 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 }
 
 func (s *Service) ClaimFil(ctx context.Context, req *pb.ClaimFilRequest) (*pb.ClaimFilResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClaimFil not implemented")
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+	user := account.User
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	if user == nil {
+		return nil, status.Error(codes.Unauthenticated, "no user provided")
+	}
+
+	if user.Type != mdb.Dev {
+		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
+	}
+
+	claim, err := s.FilRewardsClient.Claim(ctx, org.Key.String(), user.Key.String(), req.Amount)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards claim: %v", err)
+	}
+
+	// ToDo: Integrate sending of FIL and montoring txn status on network.
+	// ToDo: Consider returning claim or claim id so user can check status of claim.
+
+	if err := s.FilRewardsClient.FinalizeClaim(ctx, claim.Id, org.Key.String(), filrewards.FinalizeClaimTxnCid("todo-some-cid")); err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards finalize claim: %v", err)
+	}
+
+	return &pb.ClaimFilResponse{}, nil
 }
 
 func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsRequest) (*pb.ListFilClaimsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListFilClaims not implemented")
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+	user := account.User
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	if user != nil && user.Type != mdb.Dev {
+		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
+	}
+
+	opts := []filrewards.ListClaimsOption{filrewards.ListClaimsOrgKeyFilter(org.Key.String())}
+	if req.Ascending {
+		opts = append(opts, filrewards.ListClaimsAscending())
+	}
+	if req.Limit > 0 {
+		opts = append(opts, filrewards.ListClaimsLimit(req.Limit))
+	}
+	if req.StateFilter != filrewardspb.ClaimState_CLAIM_STATE_UNSPECIFIED {
+		opts = append(opts, filrewards.ListClaimsStateFilter(req.StateFilter))
+	}
+	if req.StartAt != nil {
+		opts = append(opts, filrewards.ListClaimsStartAt(req.StartAt.AsTime()))
+	}
+	if req.ClaimedByDev {
+		if user == nil {
+			return nil, status.Error(codes.InvalidArgument, "must provide a dev user to use claimed by dev option")
+		}
+		opts = append(opts, filrewards.ListClaimsClaimedByFilter(user.Key.String()))
+	}
+
+	recs, more, startAt, err := s.FilRewardsClient.ListClaims(ctx, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards list claims: %v", err)
+	}
+	var ts *timestamppb.Timestamp
+	if startAt != nil {
+		ts = timestamppb.New(*startAt)
+	}
+	return &pb.ListFilClaimsResponse{
+		Claims:      recs,
+		More:        more,
+		MoreStartAt: ts,
+	}, nil
 }
 
 func (s *Service) FilRewardsBalance(ctx context.Context, req *pb.FilRewardsBalanceRequest) (*pb.FilRewardsBalanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FilRewardsBalance not implemented")
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	res, err := s.FilRewardsClient.Balance(ctx, org.Key.String())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards balance: %v", err)
+	}
+
+	return &pb.FilRewardsBalanceResponse{
+		Rewarded:  res.Rewarded,
+		Pending:   res.Pending,
+		Claimed:   res.Claimed,
+		Available: res.Available,
+	}, nil
 }
 
 func toPbRetrievalStatus(s retrieval.Status) pb.ArchiveRetrievalStatus {

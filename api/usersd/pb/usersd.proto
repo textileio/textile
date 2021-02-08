@@ -195,9 +195,10 @@ message ClaimFilResponse {
 
 message ListFilClaimsRequest {
     bool claimed_by_dev = 1;
-    bool ascending = 2;
-    google.protobuf.Timestamp start_at = 3;
-    int64 limit = 4;
+    api.filrewardsd.pb.ClaimState state_filter = 2;
+    bool ascending = 3;
+    google.protobuf.Timestamp start_at = 4;
+    int64 limit = 5;
 }
 
 message ListFilClaimsResponse {
@@ -210,8 +211,10 @@ message FilRewardsBalanceRequest {
 }
 
 message FilRewardsBalanceResponse {
-    int32 claimed = 1;
-    int32 available = 2;
+    int32 rewarded = 1;
+    int32 pending = 2;
+    int32 claimed = 3;
+    int32 available = 4;
 }
 
 service APIService {

@@ -1,5 +1,13 @@
 package client
 
+import (
+	"time"
+
+	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
+	pb "github.com/textileio/textile/v2/api/usersd/pb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
 type listOptions struct {
 	seek      string
 	limit     int
@@ -60,5 +68,69 @@ type UsageOption func(*usageOptions)
 func WithPubKey(key string) UsageOption {
 	return func(args *usageOptions) {
 		args.key = key
+	}
+}
+
+type ListFilRewardsOption = func(*pb.ListFilRewardsRequest)
+
+func ListFilRewardsUnlockedByDev() ListFilRewardsOption {
+	return func(req *pb.ListFilRewardsRequest) {
+		req.UnlockedByDev = true
+	}
+}
+
+func ListFilRewardsRewardTypeFilter(rewardType filrewardspb.RewardType) ListFilRewardsOption {
+	return func(req *pb.ListFilRewardsRequest) {
+		req.RewardTypeFilter = rewardType
+	}
+}
+
+func ListFilRewardsAscending() ListFilRewardsOption {
+	return func(req *pb.ListFilRewardsRequest) {
+		req.Ascending = true
+	}
+}
+
+func ListFilRewardsStartAt(time time.Time) ListFilRewardsOption {
+	return func(req *pb.ListFilRewardsRequest) {
+		req.StartAt = timestamppb.New(time)
+	}
+}
+
+func ListFilRewardsLimit(limit int64) ListFilRewardsOption {
+	return func(req *pb.ListFilRewardsRequest) {
+		req.Limit = limit
+	}
+}
+
+type ListClaimsOption = func(*pb.ListFilClaimsRequest)
+
+func ListFilClaimsClaimedByDev() ListClaimsOption {
+	return func(req *pb.ListFilClaimsRequest) {
+		req.ClaimedByDev = true
+	}
+}
+
+func ListFilClaimsStateFilter(state filrewardspb.ClaimState) ListClaimsOption {
+	return func(req *pb.ListFilClaimsRequest) {
+		req.StateFilter = state
+	}
+}
+
+func ListFilClaimsAscending() ListClaimsOption {
+	return func(req *pb.ListFilClaimsRequest) {
+		req.Ascending = true
+	}
+}
+
+func ListFilClaimsStartAt(time time.Time) ListClaimsOption {
+	return func(req *pb.ListFilClaimsRequest) {
+		req.StartAt = timestamppb.New(time)
+	}
+}
+
+func ListFilClaimsLimit(limit int64) ListClaimsOption {
+	return func(req *pb.ListFilClaimsRequest) {
+		req.Limit = limit
 	}
 }

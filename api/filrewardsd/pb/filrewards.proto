@@ -27,11 +27,23 @@ message Reward {
   google.protobuf.Timestamp created_at = 7;
 }
 
+enum ClaimState {
+  CLAIM_STATE_UNSPECIFIED = 0;
+  CLAIM_STATE_PENDING = 1;
+  CLAIM_STATE_COMPLETE = 2;
+  CLAIM_STATE_FAILED = 3;
+}
+
 message Claim {
-  string org_key = 1;
-  string claimed_by = 2;
-  int32 amount = 3;
-  google.protobuf.Timestamp created_at = 4;
+  string id = 1;
+  string org_key = 2;
+  string claimed_by = 3;
+  int32 amount = 4;
+  ClaimState state = 5;
+  string txn_cid = 6;
+  string failure_message = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 message ProcessAnalyticsEventRequest {
@@ -66,14 +78,26 @@ message ClaimRequest {
 }
 
 message ClaimResponse {
+  Claim claim = 1;
+}
+
+message FinalizeClaimRequest {
+  string id = 1;
+  string org_key = 2;
+  string txn_cid = 3;
+  string failure_message = 4;
+}
+
+message FinalizeClaimResponse {
 }
 
 message ListClaimsRequest {
   string org_key_filter = 1;
   string claimed_by_filter = 2;
-  bool ascending = 3;
-  google.protobuf.Timestamp start_at = 4;
-  int64 limit = 5;
+  ClaimState state_filter = 3;
+  bool ascending = 4;
+  google.protobuf.Timestamp start_at = 5;
+  int64 limit = 6;
 }
 
 message ListClaimsResponse {
@@ -88,14 +112,16 @@ message BalanceRequest {
 
 message BalanceResponse {
   int32 rewarded = 1;
-  int32 claimed = 2;
-  int32 available = 3;
+  int32 pending = 2;
+  int32 claimed = 3;
+  int32 available = 4;
 }
 
 service FilRewardsService {
   rpc ProcessAnalyticsEvent(ProcessAnalyticsEventRequest) returns (ProcessAnalyticsEventResponse) {}
   rpc ListRewards(ListRewardsRequest) returns (ListRewardsResponse) {}
   rpc Claim(ClaimRequest) returns (ClaimResponse) {}
+  rpc FinalizeClaim(FinalizeClaimRequest) returns (FinalizeClaimResponse) {}
   rpc ListClaims(ListClaimsRequest) returns (ListClaimsResponse) {}
   rpc Balance(BalanceRequest) returns (BalanceResponse) {}
 }

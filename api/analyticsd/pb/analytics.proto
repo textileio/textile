@@ -23,6 +23,7 @@ enum Event {
   EVENT_THREAD_DB_CREATED = 15;
   EVENT_FIL_REWARD = 16;
   EVENT_FIL_CLAIM = 17;
+  EVENT_FIL_FINALIZE_CLAIM = 18;
 }
 
 enum AccountType {
