@@ -6,7 +6,7 @@ import (
 
 	logger "github.com/ipfs/go-log/v2"
 	pow "github.com/textileio/powergate/v2/api/client"
-	rstore "github.com/textileio/textile/v2/api/mindexd/recordstore"
+	"github.com/textileio/textile/v2/api/mindexd/store"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -18,14 +18,14 @@ type Indexer struct {
 	cfg config
 	pow *pow.Client
 
-	rstore *rstore.Store
+	store *store.Store
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
 	daemonClosed    chan (struct{})
 }
 
-func New(db *mongo.Database, pow *pow.Client, rstore *rstore.Store, opts ...Option) (*Indexer, error) {
+func New(db *mongo.Database, pow *pow.Client, rstore *store.Store, opts ...Option) (*Indexer, error) {
 	config := defaultConfig
 	for _, o := range opts {
 		o(&config)
@@ -33,9 +33,9 @@ func New(db *mongo.Database, pow *pow.Client, rstore *rstore.Store, opts ...Opti
 
 	daemonCtx, daemonCtxCancel := context.WithCancel(context.Background())
 	i := &Indexer{
-		cfg:    config,
-		pow:    pow,
-		rstore: rstore,
+		cfg:   config,
+		pow:   pow,
+		store: rstore,
 
 		daemonCtx:       daemonCtx,
 		daemonCtxCancel: daemonCtxCancel,

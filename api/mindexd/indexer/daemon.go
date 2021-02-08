@@ -3,78 +3,83 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"time"
+
+	powAdmin "github.com/textileio/powergate/v2/api/client/admin"
+	"github.com/textileio/textile/v2/api/mindexd/model"
+)
+
+var (
+	minersBatchSize = 100
 )
 
 func (i *Indexer) generateIndex(ctx context.Context) error {
+	if err := i.updateTextileMinerInfo(ctx); err != nil {
+		log.Errorf("updating textile info: %s", err)
+	}
+
 	miners, err := i.getActiveMiners(ctx)
 	if err != nil {
 		return fmt.Errorf("getting active miners: %s", err)
 	}
-
-	// Since we're updating a index without tight timing constraints,
-	// we do this serially to avoid overwhealming the database with requests.
-	// If we happen to realize this needs to be faster, we can easily
-	// parallelize this.
-	for _, m := range miners {
-		i.updateMinerInfo(ctx, m)
-	}
-
-	return nil
-}
-
-func (i *Indexer) updateMinerInfo(ctx context.Context, miner string) {
-	if err := i.updateOnChainMinerInfo(ctx, miner); err != nil {
-		log.Errorf("updating on-chain info: %s", err)
-	}
-
-	if err := i.updateTextileMinerInfo(ctx, miner); err != nil {
-		log.Errorf("updating textile info: %s", err)
-	}
-}
-
-func (i *Indexer) updateOnChainMinerInfo(ctx context.Context, miner string) error {
-	panic("TTODO")
-	return nil
-	/*
-		info, err := i.pow.Indices.GetMinerInfo(ctx, miner)
-		if err != nil {
-			return fmt.Errorf("get miner on-chain info from powergate: %s", err)
+	for start := 0; start < len(miners); start += minersBatchSize {
+		end := start + minersBatchSize
+		if end > len(miners) {
+			end = len(miners)
 		}
 
+		if err := i.updateOnChainMinersInfo(ctx, miners[start:end]); err != nil {
+			return fmt.Errorf("updating on-chain info for miners: %s", err)
+		}
+	}
+
+	return nil
+}
+
+func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) error {
+	minfos, err := i.pow.Admin.Indices.GetMinersInfo(ctx, miners)
+	if err != nil {
+		return fmt.Errorf("get miner on-chain info from powergate: %s", err)
+	}
+
+	for _, mi := range minfos.Miners {
 		onchain := model.FilecoinInfo{
-			RelativePower: info.RelativePower,
-			AskPrice:      info.AskPrice,
-			MinPieceSize:  info.MinPieceSize,
-			MaxPieceSize:  info.MaxPieceSize,
+			RelativePower: mi.RelativePower,
+			AskPrice:      mi.AskPrice,
+			MinPieceSize:  mi.MinPieceSize,
+			MaxPieceSize:  mi.MaxPieceSize,
 			UpdatedAt:     time.Now(),
 		}
 
-		if err := i.store.PutFilecoinInfo(ctx, miner, onchain); err != nil {
-			return fmt.Errorf("put miner on-chain info in store: %s", err)
+		if err := i.store.PutFilecoinInfo(ctx, mi.Address, onchain); err != nil {
+			log.Errorf("put miner on-chain info in store: %s", err)
 		}
-	*/
+	}
+
+	return nil
 }
 
 func (i *Indexer) getActiveMiners(ctx context.Context) ([]string, error) {
-	panic("TTODO")
-	return nil, nil
-	/*
-		ms, err := i.pow.Indices.GetMinersWithPower(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("get miners with power from powergate: %s", err)
-		}
-
-		return ms
-	*/
-}
-
-func (i *Indexer) updateTextileMinerInfo(ctx context.Context, miner string) error {
-	if err := i.rstore.UpdateTextileDealsInfo(ctx); err != nil {
-		return fmt.Errorf("generate textile miner deals info: %s", err)
+	ms, err := i.pow.Admin.Indices.GetMiners(ctx, powAdmin.WithPowerGreaterThanZero(true))
+	if err != nil {
+		return nil, fmt.Errorf("get miners with power from powergate: %s", err)
 	}
 
-	if err := i.rstore.UpdateTextileRetrievalsInfo(ctx); err != nil {
-		return fmt.Errorf("generate textile retrievals info: %s", err)
+	miners := make([]string, len(ms.Miners))
+	for i, m := range ms.Miners {
+		miners[i] = m.Address
+	}
+
+	return miners, nil
+}
+
+func (i *Indexer) updateTextileMinerInfo(ctx context.Context) error {
+	if err := i.store.UpdateTextileDealsInfo(ctx); err != nil {
+		return fmt.Errorf("update textile miner deals info: %s", err)
+	}
+
+	if err := i.store.UpdateTextileRetrievalsInfo(ctx); err != nil {
+		return fmt.Errorf("update textile retrievals info: %s", err)
 	}
 
 	return nil

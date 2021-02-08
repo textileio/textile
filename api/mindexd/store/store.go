@@ -1,4 +1,4 @@
-package recordstore
+package store
 
 // TTODO: rename to store again, and delete the other "Store"
 import (
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	log = logger.Logger("record-store")
+	log = logger.Logger("store")
 )
 
 type Store struct {

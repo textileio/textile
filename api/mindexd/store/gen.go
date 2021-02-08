@@ -1,4 +1,4 @@
-package recordstore
+package store
 
 import (
 	"context"
@@ -286,5 +286,3 @@ func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c 
 
 	return mr, nil
 }
-
-// TTODO: create indexes for the above queries.
