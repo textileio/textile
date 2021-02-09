@@ -91,6 +91,8 @@ message CalculateDealPriceRequest {
 message CalculateDealPriceResponse {
 	uint64 total_cost = 1;
 	uint64 verified_total_cost = 2;
+	uint64 padded_size = 3;
+	uint64 duration_epochs = 4;
 }
 
 service APIService {

@@ -178,6 +178,11 @@ func TestMinerIndexGeneration(t *testing.T) {
 		// !Retrievals
 		require.Len(t, f0101_africa.Retrievals.TailTransfers, 0)
 	}
+
+	// Get all testing
+	all, err := s.GetAllMiners(ctx)
+	require.NoError(t, err)
+	require.Len(t, all, 2)
 }
 
 var (

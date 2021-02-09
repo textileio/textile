@@ -26,10 +26,10 @@ func WithRunOnStart(enabled bool) Option {
 	}
 }
 
-// WithFrequency indicates the frequency (in mins)
+// WithFrequency indicates the frequency
 // for the indexer daemon.
-func WithFrequency(freqMins int) Option {
+func WithFrequency(freq time.Duration) Option {
 	return func(c *config) {
-		c.daemonFrequency = time.Duration(freqMins) * time.Minute
+		c.daemonFrequency = freq
 	}
 }

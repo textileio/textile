@@ -52,6 +52,26 @@ var (
 				DefValue: "textile_mindex",
 			},
 
+			// Powergate config
+			"powAddrAPI": {
+				Key:      "pow.addr_api",
+				DefValue: "",
+			},
+			"powAdminToken": {
+				Key:      "pow.admin_token",
+				DefValue: "",
+			},
+
+			// Indexer config
+			"indexerRunOnStartup": {
+				Key:      "indexer.run_on_startup",
+				DefValue: false,
+			},
+			"indexerFrequency": {
+				Key:      "indexer.frequency",
+				DefValue: time.Minute * 120,
+			},
+
 			// Collector config
 			"collectorRunOnStartup": {
 				Key:      "collector.run_on_startup",
@@ -111,6 +131,26 @@ func init() {
 		"addrMongoName",
 		config.Flags["addrMongoName"].DefValue.(string),
 		"MongoDB database name")
+
+	// Powergate settings
+	rootCmd.PersistentFlags().String(
+		"powAddrAPI",
+		config.Flags["powAddrApi"].DefValue.(string),
+		"Powergate API address")
+	rootCmd.PersistentFlags().String(
+		"powAdminToken",
+		config.Flags["powAdminToken"].DefValue.(string),
+		"Powergate API admin token")
+
+	// Indexer settings
+	rootCmd.PersistentFlags().Bool(
+		"indexerRunOnStart",
+		config.Flags["indexerRunOnStart"].DefValue.(bool),
+		"Indexer run on start")
+	rootCmd.PersistentFlags().Duration(
+		"indexerFrequency",
+		config.Flags["indexerFrequency"].DefValue.(time.Duration),
+		"Indexer daemon frequency")
 
 	// Collector settings
 	rootCmd.PersistentFlags().Bool(
@@ -172,6 +212,12 @@ var rootCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 		}
 
+		powAddrAPI := config.Viper.GetString("pow.addr_api")
+		powAdminToken := config.Viper.GetString("pow.admin_token")
+
+		indexerRunOnStart := config.Viper.GetBool("indexer.run_on_start")
+		indexerFrequency := config.Viper.GetDuration("collector.frequency")
+
 		collectorRunOnStart := config.Viper.GetBool("collector.run_on_start")
 		collectorFrequency := config.Viper.GetDuration("collector.frequency")
 		collectorFetchLimit := config.Viper.GetInt("collector.fetch_limit")
@@ -187,11 +233,17 @@ var rootCmd = &cobra.Command{
 			DBName:     addrMongoName,
 			Debug:      config.Viper.GetBool("log.debug"),
 
+			PowAddrAPI:    powAddrAPI,
+			PowAdminToken: powAdminToken,
+
 			CollectorRunOnStart:   collectorRunOnStart,
 			CollectorFrequency:    collectorFrequency,
 			CollectorTargets:      collectorTargets,
 			CollectorFetchLimit:   collectorFetchLimit,
 			CollectorFetchTimeout: collectorFetchTimeout,
+
+			IndexerRunOnStart: indexerRunOnStart,
+			IndexerFrequency:  indexerFrequency,
 		})
 		cmd.ErrCheck(err)
 

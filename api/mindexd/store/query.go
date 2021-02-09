@@ -29,6 +29,21 @@ func (s *Store) GetMinerInfo(ctx context.Context, miner string) (model.MinerInfo
 	return mi, nil
 }
 
+func (s *Store) GetAllMiners(ctx context.Context) ([]model.MinerInfo, error) {
+	r, err := s.idxc.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("get all miners: %s", err)
+	}
+	defer r.Close(ctx)
+
+	var ret []model.MinerInfo
+	if err := r.All(ctx, &ret); err != nil {
+		return nil, fmt.Errorf("decoding all results: %s", err)
+	}
+
+	return ret, nil
+}
+
 func (s *Store) SummaryCount(ctx context.Context) (int, error) {
 	count, err := s.idxc.CountDocuments(ctx, bson.M{})
 	if err != nil {

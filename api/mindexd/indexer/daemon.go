@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	powc "github.com/textileio/powergate/v2/api/client"
 	powAdmin "github.com/textileio/powergate/v2/api/client/admin"
 	"github.com/textileio/textile/v2/api/mindexd/model"
 )
@@ -37,7 +38,8 @@ func (i *Indexer) generateIndex(ctx context.Context) error {
 }
 
 func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) error {
-	minfos, err := i.pow.Admin.Indices.GetMinerInfo(ctx, miners...)
+	ctxAdmin := context.WithValue(ctx, powc.AdminKey, i.powAdminToken)
+	minfos, err := i.pow.Admin.Indices.GetMinerInfo(ctxAdmin, miners...)
 	if err != nil {
 		return fmt.Errorf("get miner on-chain info from powergate: %s", err)
 	}
@@ -62,7 +64,8 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 }
 
 func (i *Indexer) getActiveMiners(ctx context.Context) ([]string, error) {
-	ms, err := i.pow.Admin.Indices.GetMiners(ctx, powAdmin.WithPowerGreaterThanZero(true))
+	ctxAdmin := context.WithValue(ctx, powc.AdminKey, i.powAdminToken)
+	ms, err := i.pow.Admin.Indices.GetMiners(ctxAdmin, powAdmin.WithPowerGreaterThanZero(true))
 	if err != nil {
 		return nil, fmt.Errorf("get miners with power from powergate: %s", err)
 	}

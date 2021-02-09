@@ -2,12 +2,10 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
 	"github.com/textileio/textile/v2/api/mindexd/store"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -23,7 +21,7 @@ type Collector struct {
 	daemonClosed    chan (struct{})
 }
 
-func New(db *mongo.Database, opts ...Option) (*Collector, error) {
+func New(store *store.Store, opts ...Option) (*Collector, error) {
 	config := defaultConfig
 	for _, o := range opts {
 		o(&config)
@@ -31,11 +29,6 @@ func New(db *mongo.Database, opts ...Option) (*Collector, error) {
 
 	if len(config.pows) == 0 {
 		log.Warnf("the list of powergate targets is empty")
-	}
-
-	store, err := store.New(db)
-	if err != nil {
-		return nil, fmt.Errorf("creating store: %s", err)
 	}
 
 	daemonCtx, daemonCtxCancel := context.WithCancel(context.Background())
