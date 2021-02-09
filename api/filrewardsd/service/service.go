@@ -63,7 +63,7 @@ type claim struct {
 	TxnCid         string             `bson:"txn_cid"`
 	FailureMessage string             `bson:"failure_message"`
 	CreatedAt      time.Time          `bson:"created_at"`
-	UpdatedAt      time.Time          `bson:"created_at"`
+	UpdatedAt      time.Time          `bson:"updated_at"`
 }
 
 type orgKeyLock string
@@ -155,7 +155,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		ensureKeyRewardCache(cacheOrg, rec.OrgKey)
 		ensureKeyRewardCache(cacheDev, rec.DevKey)
 		cacheOrg[rec.OrgKey][rec.Type] = struct{}{}
-		cacheOrg[rec.DevKey][rec.Type] = struct{}{}
+		cacheDev[rec.DevKey][rec.Type] = struct{}{}
 	}
 	if err := cursor.Err(); err != nil {
 		return nil, fmt.Errorf("iterating cursor while building cache: %v", err)
@@ -542,9 +542,6 @@ func (s *Service) Close() {
 	if err := s.rewardsCol.Database().Client().Disconnect(ctx); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
 	}
-	if err := s.claimsCol.Database().Client().Disconnect(ctx); err != nil {
-		log.Errorf("disconnecting mongo client: %s", err)
-	}
 	log.Info("mongo client disconnected")
 
 	stopped := make(chan struct{})
@@ -582,11 +579,11 @@ func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int32, erro
 			}
 		}
 	}
-	return -1, fmt.Errorf("no total rewarded calculation found")
+	return 0, nil
 }
 
 func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.ClaimState) (int32, error) {
-	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
+	cursor, err := s.claimsCol.Aggregate(ctx, bson.A{
 		bson.M{"$match": bson.M{"org_key": orgKey, "state": state}},
 		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amount"}}},
 	})
@@ -604,7 +601,7 @@ func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.Clai
 			}
 		}
 	}
-	return -1, fmt.Errorf("no total claimed calculation found")
+	return 0, nil
 }
 
 func (s *Service) get(ctx context.Context, orgKey string, t pb.RewardType) (*reward, error) {

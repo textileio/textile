@@ -20,11 +20,10 @@ enum RewardType {
 message Reward {
   string org_key = 1;
   string dev_key = 2;
-  api.analyticsd.pb.AccountType account_type = 3;
-  RewardType type = 4;
-  int32 factor = 5;
-  int32 base_atto_fil_reward = 6;
-  google.protobuf.Timestamp created_at = 7;
+  RewardType type = 3;
+  int32 factor = 4;
+  int32 base_atto_fil_reward = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 enum ClaimState {
