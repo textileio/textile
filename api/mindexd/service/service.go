@@ -57,7 +57,6 @@ type Config struct {
 
 	CollectorRunOnStart   bool
 	CollectorFrequency    time.Duration
-	CollectorTargets      []collector.PowTarget
 	CollectorFetchLimit   int
 	CollectorFetchTimeout time.Duration
 
@@ -91,7 +90,6 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	collectorOpts := []collector.Option{
 		collector.WithRunOnStart(config.CollectorRunOnStart),
 		collector.WithFrequency(config.CollectorFrequency),
-		collector.WithTargets(config.CollectorTargets...),
 		collector.WithFetchLimit(config.CollectorFetchLimit),
 		collector.WithFetchTimeout(config.CollectorFetchTimeout),
 	}

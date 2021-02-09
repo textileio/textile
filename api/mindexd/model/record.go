@@ -1,6 +1,22 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
+
+// PowTarget describes a Powergate instance to
+// collect deal/retrieval records.
+type PowTarget struct {
+	Name        string `bson:"_id"`
+	Region      string `bson:"region"`
+	APIEndpoint string `bson:"api_endpoint"`
+	AdminToken  string `bson:"admin_token"`
+}
+
+func (pt *PowTarget) String() string {
+	return fmt.Sprintf("%s at %s", pt.Name, pt.APIEndpoint)
+}
 
 type StorageDealRecord struct {
 	ID                   string               `bson:"_id,omitempty"`

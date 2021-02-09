@@ -27,10 +27,6 @@ func New(store *store.Store, opts ...Option) (*Collector, error) {
 		o(&config)
 	}
 
-	if len(config.pows) == 0 {
-		log.Warnf("the list of powergate targets is empty")
-	}
-
 	daemonCtx, daemonCtxCancel := context.WithCancel(context.Background())
 	c := &Collector{
 		cfg:   config,
@@ -55,10 +51,6 @@ func (c *Collector) Close() error {
 
 func (c *Collector) runDaemon() {
 	defer close(c.daemonClosed)
-
-	for _, t := range c.cfg.pows {
-		log.Infof("Powergate target: %s", t)
-	}
 
 	collect := make(chan struct{}, 1)
 	if c.cfg.daemonRunOnStart {

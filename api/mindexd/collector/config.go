@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -19,19 +18,7 @@ type config struct {
 	daemonRunOnStart bool
 	daemonFrequency  time.Duration
 	fetchTimeout     time.Duration
-
-	fetchLimit int
-
-	pows []PowTarget
-}
-
-// PowTarget describes a Powergate instance to
-// collect deal/retrieval records.
-type PowTarget struct {
-	Name        string
-	Region      string
-	APIEndpoint string
-	AdminToken  string
+	fetchLimit       int
 }
 
 type Option func(*config)
@@ -51,14 +38,6 @@ func WithFrequency(freq time.Duration) Option {
 	}
 }
 
-// WithTargets indicates the Powergate targets for records
-// collection.
-func WithTargets(targets ...PowTarget) Option {
-	return func(c *config) {
-		c.pows = targets
-	}
-}
-
 // WithFetchLimit indicates the maximum record batch
 // size to be fetched from targets.
 func WithFetchLimit(limit int) Option {
@@ -73,8 +52,4 @@ func WithFetchTimeout(timeout time.Duration) Option {
 	return func(c *config) {
 		c.fetchTimeout = timeout
 	}
-}
-
-func (pt *PowTarget) String() string {
-	return fmt.Sprintf("%s at %s", pt.Name, pt.APIEndpoint)
 }

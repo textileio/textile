@@ -11,11 +11,18 @@ import (
 )
 
 func (c *Collector) collectTargets(ctx context.Context) {
-	var wg sync.WaitGroup
-	wg.Add(len(c.cfg.pows))
+	targets, err := c.store.GetPowergateTargets(ctx)
+	if err != nil {
+		log.Errorf("getting powergate targets: %s", err)
+		return
+	}
 
-	for _, source := range c.cfg.pows {
-		go func(source PowTarget) {
+	var wg sync.WaitGroup
+	wg.Add(len(targets))
+	log.Infof("collecting from %d targets", len(targets))
+
+	for _, source := range targets {
+		go func(source model.PowTarget) {
 			defer wg.Done()
 
 			client, err := pow.NewClient(source.APIEndpoint)
@@ -41,7 +48,7 @@ func (c *Collector) collectTargets(ctx context.Context) {
 	wg.Wait()
 }
 
-func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, source PowTarget) error {
+func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) error {
 	lastUpdatedAt, err := c.store.GetLastStorageDealRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
 		return fmt.Errorf("get last updated-at: %s", err)
@@ -78,7 +85,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 	return nil
 }
 
-func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, source PowTarget) error {
+func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) error {
 	lastUpdatedAt, err := c.store.GetLastRetrievalRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
 		return fmt.Errorf("get last updated-at: %s", err)

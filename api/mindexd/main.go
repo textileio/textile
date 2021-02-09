@@ -10,11 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/textile/v2/api/mindexd/collector"
 	"github.com/textileio/textile/v2/api/mindexd/service"
 	"github.com/textileio/textile/v2/cmd"
-
-	"golang.org/x/text/language"
 )
 
 const daemonName = "mindexd"
@@ -80,10 +77,6 @@ var (
 			"collectorFrequency": {
 				Key:      "collector.frequency",
 				DefValue: time.Minute * 60,
-			},
-			"collectorTargets": {
-				Key:      "collector.targets",
-				DefValue: "",
 			},
 			"collectorFetchLimit": {
 				Key:      "collector.fetch_limit",
@@ -161,10 +154,6 @@ func init() {
 		"collectorFrequency",
 		config.Flags["collectorFrequency"].DefValue.(time.Duration),
 		"Collector daemon frequency")
-	rootCmd.PersistentFlags().String(
-		"collectorTargets",
-		config.Flags["collectorTargets"].DefValue.(string),
-		"Collector targets (JSON)")
 	rootCmd.PersistentFlags().Int(
 		"collectorFetchLimit",
 		config.Flags["collectorFetchLimit"].DefValue.(int),
@@ -222,7 +211,6 @@ var rootCmd = &cobra.Command{
 		collectorFrequency := config.Viper.GetDuration("collector.frequency")
 		collectorFetchLimit := config.Viper.GetInt("collector.fetch_limit")
 		collectorFetchTimeout := config.Viper.GetDuration("collector.fetch_duration")
-		collectorTargets, err := parseCollectorTargets(config.Viper.GetString("collector.targets"))
 		cmd.ErrCheck(err)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -238,7 +226,6 @@ var rootCmd = &cobra.Command{
 
 			CollectorRunOnStart:   collectorRunOnStart,
 			CollectorFrequency:    collectorFrequency,
-			CollectorTargets:      collectorTargets,
 			CollectorFetchLimit:   collectorFetchLimit,
 			CollectorFetchTimeout: collectorFetchTimeout,
 
@@ -254,24 +241,4 @@ var rootCmd = &cobra.Command{
 
 		cmd.HandleInterrupt(api.Stop)
 	},
-}
-
-type targetsJSON struct {
-	Targets []collector.PowTarget `json:"targets"`
-}
-
-func parseCollectorTargets(targetsEncoded string) ([]collector.PowTarget, error) {
-	var targets targetsJSON
-	if err := json.Unmarshal([]byte(targetsEncoded), &targets); err != nil {
-		return nil, fmt.Errorf("unmarshaling config targets: %s", err)
-	}
-
-	// Validate if regions are valid M49 codes.
-	for _, t := range targets.Targets {
-		if _, err := language.ParseRegion(t.Region); err != nil {
-			return nil, fmt.Errorf("region %s isn't a valid M49 code: %s", t.Region, err)
-		}
-	}
-
-	return targets.Targets, nil
 }

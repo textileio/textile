@@ -18,13 +18,15 @@ type Store struct {
 	sdrc *mongo.Collection
 	rrc  *mongo.Collection
 	idxc *mongo.Collection
+	ptc  *mongo.Collection
 }
 
 func New(db *mongo.Database) (*Store, error) {
 	s := &Store{
 		sdrc: db.Collection("storagedealrecords"),
 		rrc:  db.Collection("retrievalrecords"),
-		idxc: db.Collection("miner_index"),
+		idxc: db.Collection("minerindex"),
+		ptc:  db.Collection("powtargets"),
 	}
 	if err := s.ensureIndexes(); err != nil {
 		return nil, fmt.Errorf("ensuring mongodb indexes: %s", err)

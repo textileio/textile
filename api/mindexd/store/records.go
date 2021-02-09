@@ -17,6 +17,21 @@ var (
 	errRecordNotFound = errors.New("record not found")
 )
 
+func (s *Store) GetPowergateTargets(ctx context.Context) ([]model.PowTarget, error) {
+	c, err := s.ptc.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("cursor for powergate targets: %s", err)
+	}
+	defer c.Close(ctx)
+
+	var res []model.PowTarget
+	if err := c.All(ctx, &res); err != nil {
+		return nil, fmt.Errorf("decoding powergate targets:  %s", err)
+	}
+
+	return res, nil
+}
+
 func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
 	filter := bson.M{"pow_name": powName}
 	opts := options.Find()
