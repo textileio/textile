@@ -50,13 +50,15 @@ func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, 
 			return nil, err
 		}
 	}
-	return &Manager{
+	m := &Manager{
 		keys:     keys,
 		keyAPI:   keyAPI,
 		nameAPI:  nameAPI,
 		ctxs:     make(map[string]context.CancelFunc),
 		keyLocks: make(map[string]chan struct{}),
-	}, nil
+	}
+
+	return m, nil
 }
 
 // CreateKey generates and saves a new IPNS key.
@@ -120,6 +122,7 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 			cancel, ok := m.ctxs[keyID]
 			m.ctxsLock.Unlock()
 			if ok {
+				log.Debugf("success path %s: for key %s", pth, keyID)
 				cancel()
 			} else {
 				try++

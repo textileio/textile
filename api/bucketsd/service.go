@@ -25,6 +25,7 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	cron "github.com/robfig/cron/v3"
 	"github.com/textileio/dcrypto"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -73,6 +74,9 @@ var (
 	// errDBRequired indicates the request requires a thread ID.
 	errDBRequired = errors.New("db required")
 
+	// timeout for listing all buck keys
+	listKeysTimeout = time.Hour
+
 	// baseArchiveStorageConfig is used to build the final StorageConfig after being
 	// combined with information from the ArchiveConfig
 	baseArchiveStorageConfig = &userPb.StorageConfig{
@@ -110,6 +114,7 @@ type Service struct {
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketArchiveSize      int64
 	MaxBucketArchiveRepFactor int
+	republisher               *cron.Cron
 }
 
 var (
@@ -120,6 +125,20 @@ type buckLock string
 
 func (l buckLock) Key() string {
 	return string(l)
+}
+
+// StartRepublishing initializes a key republishing cron
+func (s *Service) StartRepublishing(schedule string, session string) error {
+	s.republisher = cron.New()
+	if _, err := s.republisher.AddFunc(schedule, func() {
+		if err := s.republish(session); err != nil {
+			log.Errorf("republishing ipns keys: %v", err)
+		}
+	}); err != nil {
+		return err
+	}
+	s.republisher.Start()
+	return nil
 }
 
 func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse, error) {
@@ -144,6 +163,30 @@ func (s *Service) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse
 		}
 	}
 	return &pb.ListResponse{Roots: roots}, nil
+}
+
+func (s *Service) republish(session string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), listKeysTimeout)
+	defer cancel()
+	start := time.Now()
+	keys, err := s.Collections.IPNSKeys.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		dctx := common.NewThreadIDContext(common.NewSessionContext(ctx, session), key.ThreadID)
+		pth, err := s.ListPath(dctx, &pb.ListPathRequest{
+			Key:  key.Cid,
+			Path: "/",
+		})
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		s.IPNSManager.Publish(path.New(pth.Item.Cid), key.Cid)
+	}
+	log.Infof("republishing finished %d records => %v", len(keys), time.Since(start))
+	return nil
 }
 
 func getPbRoot(dbID thread.ID, buck *tdb.Bucket) (*pb.Root, error) {

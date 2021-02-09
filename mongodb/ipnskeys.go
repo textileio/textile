@@ -92,6 +92,30 @@ func (k *IPNSKeys) ListByThreadID(ctx context.Context, threadID thread.ID) ([]IP
 	return docs, nil
 }
 
+func (k *IPNSKeys) List(ctx context.Context) ([]IPNSKey, error) {
+	cursor, err := k.col.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var docs []IPNSKey
+	for cursor.Next(ctx) {
+		var raw bson.M
+		if err := cursor.Decode(&raw); err != nil {
+			return nil, err
+		}
+		doc, err := decodeIPNSKey(raw)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, *doc)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
 func (k *IPNSKeys) Delete(ctx context.Context, name string) error {
 	res, err := k.col.DeleteOne(ctx, bson.M{"_id": name})
 	if err != nil {
