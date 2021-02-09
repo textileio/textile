@@ -1,6 +1,5 @@
 package store
 
-// TTODO: rename to store again, and delete the other "Store"
 import (
 	"context"
 	"fmt"
