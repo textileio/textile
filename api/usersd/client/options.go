@@ -103,33 +103,33 @@ func ListFilRewardsLimit(limit int64) ListFilRewardsOption {
 	}
 }
 
-type ListClaimsOption = func(*pb.ListFilClaimsRequest)
+type ListFilClaimsOption = func(*pb.ListFilClaimsRequest)
 
-func ListFilClaimsClaimedByDev() ListClaimsOption {
+func ListFilClaimsClaimedByDev() ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.ClaimedByDev = true
 	}
 }
 
-func ListFilClaimsStateFilter(state filrewardspb.ClaimState) ListClaimsOption {
+func ListFilClaimsStateFilter(state filrewardspb.ClaimState) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.StateFilter = state
 	}
 }
 
-func ListFilClaimsAscending() ListClaimsOption {
+func ListFilClaimsAscending() ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.Ascending = true
 	}
 }
 
-func ListFilClaimsStartAt(time time.Time) ListClaimsOption {
+func ListFilClaimsStartAt(time time.Time) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.StartAt = timestamppb.New(time)
 	}
 }
 
-func ListFilClaimsLimit(limit int64) ListClaimsOption {
+func ListFilClaimsLimit(limit int64) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.Limit = limit
 	}

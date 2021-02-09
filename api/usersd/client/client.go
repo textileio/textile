@@ -363,7 +363,7 @@ func (c *Client) ClaimFil(ctx context.Context, amount int32) error {
 	return nil
 }
 
-func (c *Client) ListFilClaims(ctx context.Context, opts ...ListClaimsOption) ([]*filrewardspb.Claim, bool, *time.Time, error) {
+func (c *Client) ListFilClaims(ctx context.Context, opts ...ListFilClaimsOption) ([]*filrewardspb.Claim, bool, *time.Time, error) {
 	req := &pb.ListFilClaimsRequest{}
 	for _, opt := range opts {
 		opt(req)
