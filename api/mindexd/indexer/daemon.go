@@ -37,18 +37,20 @@ func (i *Indexer) generateIndex(ctx context.Context) error {
 }
 
 func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) error {
-	minfos, err := i.pow.Admin.Indices.GetMinersInfo(ctx, miners)
+	minfos, err := i.pow.Admin.Indices.GetMinerInfo(ctx, miners...)
 	if err != nil {
 		return fmt.Errorf("get miner on-chain info from powergate: %s", err)
 	}
 
-	for _, mi := range minfos.Miners {
+	for _, mi := range minfos.MinersInfo {
 		onchain := model.FilecoinInfo{
-			RelativePower: mi.RelativePower,
-			AskPrice:      mi.AskPrice,
-			MinPieceSize:  mi.MinPieceSize,
-			MaxPieceSize:  mi.MaxPieceSize,
-			UpdatedAt:     time.Now(),
+			RelativePower:    mi.RelativePower,
+			AskPrice:         mi.AskPrice,
+			AskVerifiedPrice: mi.AskVerifiedPrice,
+			MinPieceSize:     mi.MinPieceSize,
+			MaxPieceSize:     mi.MaxPieceSize,
+			SectorSize:       mi.SectorSize,
+			UpdatedAt:        time.Now(),
 		}
 
 		if err := i.store.PutFilecoinInfo(ctx, mi.Address, onchain); err != nil {

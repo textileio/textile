@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,12 +11,13 @@ import (
 )
 
 func (s *Store) PutFilecoinInfo(ctx context.Context, miner string, info model.FilecoinInfo) error {
+	info.UpdatedAt = time.Now()
 	filter := bson.M{"_id": miner}
 	update := bson.M{"$set": bson.M{"filecoin": info}}
 	opts := options.Update().SetUpsert(true)
 	_, err := s.idxc.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
-		return fmt.Errorf("put filecoin info in mongo: %s", err)
+		return fmt.Errorf("put filecoin-info in collection: %s", err)
 	}
 
 	return nil
