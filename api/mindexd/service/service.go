@@ -107,7 +107,8 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	indexer, err := indexer.New(pow, config.PowAdminToken, store, indexerOpts...)
+	sub := collector.Subscribe()
+	indexer, err := indexer.New(pow, sub, config.PowAdminToken, store, indexerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating indexer: %s", err)
 	}

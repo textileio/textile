@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	logger "github.com/ipfs/go-log/v2"
@@ -13,8 +14,10 @@ var (
 )
 
 type Collector struct {
-	cfg   config
-	store *store.Store
+	lock        sync.Mutex
+	cfg         config
+	store       *store.Store
+	subscribers []chan<- struct{}
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
@@ -40,6 +43,16 @@ func New(store *store.Store, opts ...Option) (*Collector, error) {
 	go c.runDaemon()
 
 	return c, nil
+}
+
+func (c *Collector) Subscribe() <-chan struct{} {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	ch := make(chan struct{}, 1)
+	c.subscribers = append(c.subscribers, ch)
+
+	return ch
 }
 
 func (c *Collector) Close() error {
@@ -72,7 +85,23 @@ func (c *Collector) runDaemon() {
 			log.Infof("closing daemon")
 			return
 		case <-collect:
-			c.collectTargets(c.daemonCtx)
+			totalImported := c.collectTargets(c.daemonCtx)
+			if totalImported > 0 {
+				c.notifySubscribers()
+			}
+		}
+	}
+}
+
+func (c *Collector) notifySubscribers() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for _, c := range c.subscribers {
+		select {
+		case c <- struct{}{}:
+		default:
+			log.Warnf("slow subscriber, skipping")
 		}
 	}
 }

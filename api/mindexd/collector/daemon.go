@@ -10,17 +10,17 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/model"
 )
 
-func (c *Collector) collectTargets(ctx context.Context) {
+func (c *Collector) collectTargets(ctx context.Context) int {
 	targets, err := c.store.GetPowergateTargets(ctx)
 	if err != nil {
 		log.Errorf("getting powergate targets: %s", err)
-		return
+		return 0
 	}
 
+	var lock sync.Mutex
+	var countImported int
 	var wg sync.WaitGroup
 	wg.Add(len(targets))
-	log.Infof("collecting from %d targets", len(targets))
-
 	for _, source := range targets {
 		go func(source model.PowTarget) {
 			defer wg.Done()
@@ -31,96 +31,105 @@ func (c *Collector) collectTargets(ctx context.Context) {
 				return
 			}
 
-			log.Debugf("collecting new storage deal records from %s", source.Name)
-			if err := c.collectNewStorageDealRecords(ctx, client, source); err != nil {
+			log.Infof("collecting new storage-deal records from %s", source.Name)
+			countSDR, err := c.collectNewStorageDealRecords(ctx, client, source)
+			if err != nil {
 				log.Errorf("collecting new storage deal records from %s: %s", source.Name, err)
 			}
+			log.Infof("collected %d storeage-deal records", countSDR)
 
-			log.Debugf("collecting new retrieval records from %s", source.Name)
-			if err := c.collectNewRetrievalRecords(ctx, client, source); err != nil {
+			log.Infof("collecting new retrieval records from %s", source.Name)
+			countRR, err := c.collectNewRetrievalRecords(ctx, client, source)
+			if err != nil {
 				log.Errorf("collecting new retrieval records from %s: %s", source.Name, err)
 			}
+			log.Infof("collected %d retrieval records", countRR)
 
-			log.Debugf("retrieving new records from %s finished", source.Name)
+			lock.Lock()
+			countImported += countSDR + countRR
+			lock.Unlock()
 		}(source)
 	}
 
 	wg.Wait()
+
+	return countImported
 }
 
-func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) error {
+func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) (int, error) {
 	lastUpdatedAt, err := c.store.GetLastStorageDealRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
-		return fmt.Errorf("get last updated-at: %s", err)
+		return 0, fmt.Errorf("get last updated-at: %s", err)
 	}
 
-	var count int
+	var totalCount int
 	for {
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
 		res, err := pc.Admin.Records.GetUpdatedStorageDealRecordsSince(ctx, lastUpdatedAt+1, c.cfg.fetchLimit)
 		if err != nil {
-			return fmt.Errorf("get storage deal records: %s", err)
+			return 0, fmt.Errorf("get storage deal records: %s", err)
 		}
 
 		if len(res.Records) == 0 {
 			break
 		}
+		totalCount += len(res.Records)
 
 		records := toStorageDealRecords(res.Records)
 		if err := c.store.PersistStorageDealRecords(ctx, source.Name, source.Region, records); err != nil {
-			return fmt.Errorf("persist fetched records: %s", err)
+			return 0, fmt.Errorf("persist fetched records: %s", err)
 		}
 
 		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt
 
 		// If we fetched less than limit, then there're no
 		// more records to fetch.
-		if count < c.cfg.fetchLimit {
+		if len(res.Records) < c.cfg.fetchLimit {
 			break
 		}
 	}
 
-	return nil
+	return totalCount, nil
 }
 
-func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) error {
+func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Client, source model.PowTarget) (int, error) {
 	lastUpdatedAt, err := c.store.GetLastRetrievalRecordUpdatedAt(ctx, source.Name)
 	if err != nil {
-		return fmt.Errorf("get last updated-at: %s", err)
+		return 0, fmt.Errorf("get last updated-at: %s", err)
 	}
 
-	var count int
+	var totalCount int
 	for {
-		// TT: add logs
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
 		res, err := pc.Admin.Records.GetUpdatedRetrievalRecordsSince(ctx, lastUpdatedAt+1, c.cfg.fetchLimit)
 		if err != nil {
-			return fmt.Errorf("get retrieval records: %s", err)
+			return 0, fmt.Errorf("get retrieval records: %s", err)
 		}
 
 		if len(res.Records) == 0 {
 			break
 		}
+		totalCount += len(res.Records)
 
 		records := toRetrievalRecords(res.Records)
 		if err := c.store.PersistRetrievalRecords(ctx, source.Name, source.Region, records); err != nil {
-			return fmt.Errorf("persist fetched records: %s", err)
+			return 0, fmt.Errorf("persist fetched records: %s", err)
 		}
 
 		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt
 
 		// If we fetched less than limit, then there're no
 		// more records to fetch.
-		if count < c.cfg.fetchLimit {
+		if len(res.Records) < c.cfg.fetchLimit {
 			break
 		}
 	}
 
-	return nil
+	return totalCount, nil
 }
 
 func toStorageDealRecords(rs []*userPb.StorageDealRecord) []model.PowStorageDealRecord {

@@ -21,10 +21,11 @@ type Indexer struct {
 
 	daemonCtx       context.Context
 	daemonCtxCancel context.CancelFunc
-	daemonClosed    chan (struct{})
+	daemonClosed    chan struct{}
+	daemonSub       <-chan struct{}
 }
 
-func New(pow *pow.Client, powAdminToken string, store *store.Store, opts ...Option) (*Indexer, error) {
+func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *store.Store, opts ...Option) (*Indexer, error) {
 	config := defaultConfig
 	for _, o := range opts {
 		o(&config)
@@ -40,6 +41,7 @@ func New(pow *pow.Client, powAdminToken string, store *store.Store, opts ...Opti
 		daemonCtx:       daemonCtx,
 		daemonCtxCancel: daemonCtxCancel,
 		daemonClosed:    make(chan struct{}),
+		daemonSub:       sub,
 	}
 
 	i.runDaemon()
@@ -67,8 +69,13 @@ func (i *Indexer) runDaemon() {
 	go func() {
 		select {
 		case <-i.daemonCtx.Done():
+			log.Infof("daemon shutting down")
 			return
 		case <-time.After(i.cfg.daemonFrequency):
+			log.Infof("daemon ticker fired")
+			collect <- struct{}{}
+		case <-i.daemonSub:
+			log.Infof("received new records notification")
 			collect <- struct{}{}
 		}
 	}()
