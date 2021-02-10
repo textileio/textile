@@ -28,7 +28,7 @@ const (
 	publishTimeout = time.Minute * 2
 	// maxCancelPublishTries is the number of time cancelling a publish is allowed to fail.
 	maxCancelPublishTries = 10
-	// publishTimeout
+	// list all keys timeout
 	listKeysTimeout = time.Hour
 )
 
@@ -54,16 +54,14 @@ func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, 
 			return nil, err
 		}
 	}
-	m := &Manager{
+	return &Manager{
 		keys:        keys,
 		keyAPI:      keyAPI,
 		nameAPI:     nameAPI,
 		ctxs:        make(map[string]context.CancelFunc),
 		keyLocks:    make(map[string]chan struct{}),
 		republisher: cron.New(),
-	}
-
-	return m, nil
+	}, nil
 }
 
 // StartRepublishing initializes a key republishing cron

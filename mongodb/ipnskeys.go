@@ -35,11 +35,11 @@ func NewIPNSKeys(ctx context.Context, db *mongo.Database) (*IPNSKeys, error) {
 	return k, err
 }
 
-func (k *IPNSKeys) Create(ctx context.Context, name, cid, path string, threadID thread.ID) error {
+func (k *IPNSKeys) Create(ctx context.Context, name, cid, pth string, threadID thread.ID) error {
 	_, err := k.col.InsertOne(ctx, bson.M{
 		"_id":        name,
 		"cid":        cid,
-		"path":       path,
+		"path":       pth,
 		"thread_id":  threadID.Bytes(),
 		"created_at": time.Now(),
 	})

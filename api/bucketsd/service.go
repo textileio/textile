@@ -73,9 +73,6 @@ var (
 	// errDBRequired indicates the request requires a thread ID.
 	errDBRequired = errors.New("db required")
 
-	// timeout for listing all buck keys
-	listKeysTimeout = time.Hour
-
 	// baseArchiveStorageConfig is used to build the final StorageConfig after being
 	// combined with information from the ArchiveConfig
 	baseArchiveStorageConfig = &userPb.StorageConfig{
