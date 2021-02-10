@@ -63,7 +63,7 @@ func New(conf Config) (*Service, error) {
 	}
 
 	if conf.FilrewardsAddr != "" {
-		s.frc, err = filrewards.New(conf.FilrewardsAddr)
+		s.frc, err = filrewards.New(conf.FilrewardsAddr, grpc.WithInsecure())
 		if err != nil {
 			return nil, fmt.Errorf("creating filrewards client: %v", err)
 		}
@@ -117,6 +117,8 @@ func (s *Service) Track(ctx context.Context, req *pb.TrackRequest) (*pb.TrackRes
 		props.Set(key, value)
 	}
 
+	log.Infof("enqueing event %v with props %v", eventToString(req.Event), props)
+
 	if err := s.segment.Enqueue(segment.Track{
 		UserId:     req.Key,
 		Event:      eventToString(req.Event),
@@ -127,6 +129,7 @@ func (s *Service) Track(ctx context.Context, req *pb.TrackRequest) (*pb.TrackRes
 			},
 		},
 	}); err != nil {
+		log.Errorf("calling segment enqueue: %v", err)
 		return nil, status.Errorf(codes.Internal, "enqueuing segment track: %v", err)
 	}
 

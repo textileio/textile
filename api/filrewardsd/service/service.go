@@ -171,7 +171,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 	}
 
 	if config.AnalyticsAddr != "" {
-		s.ac, err = analytics.New(config.AnalyticsAddr)
+		s.ac, err = analytics.New(config.AnalyticsAddr, grpc.WithInsecure())
 		if err != nil {
 			return nil, fmt.Errorf("creating analytics client: %s", err)
 		}
@@ -259,7 +259,7 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
 		analyticspb.Event_EVENT_FIL_REWARD,
 		analytics.WithProperties(map[string]interface{}{
-			"type":                 r.Type,
+			"type":                 pb.RewardType_name[int32(r.Type)],
 			"factor":               rewardTypeMeta[r.Type].factor,
 			"base_atto_fil_reward": s.baseAttoFILReward,
 			"amount":               rewardTypeMeta[r.Type].factor * s.baseAttoFILReward,
@@ -433,7 +433,7 @@ func (s *Service) FinalizeClaim(ctx context.Context, req *pb.FinalizeClaimReques
 		analyticspb.Event_EVENT_FIL_FINALIZE_CLAIM,
 		analytics.WithProperties(map[string]interface{}{
 			"id":              req.Id,
-			"state":           state,
+			"state":           pb.ClaimState_name[int32(state)],
 			"txn_cid":         req.TxnCid,
 			"failure_message": req.FailureMessage,
 		}),

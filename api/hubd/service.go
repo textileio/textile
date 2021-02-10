@@ -329,7 +329,7 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 			"member":          account.User.Key.String(),
 			"member_username": account.User.Username,
 			"member_email":    account.User.Email,
-			"secure_key":      fmt.Sprintf("%t", req.Secure),
+			"secure_key":      req.Secure,
 		}),
 	); err != nil {
 		log.Errorf("calling analytics track: %v", err)

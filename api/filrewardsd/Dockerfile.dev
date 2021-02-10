@@ -1,0 +1,36 @@
+FROM golang:1.15.5-buster
+
+RUN apt-get update && apt-get install -y \
+  libssl-dev \
+  ca-certificates
+
+RUN go get github.com/go-delve/delve/cmd/dlv
+
+ENV SRC_DIR /textile
+
+COPY go.mod go.sum $SRC_DIR/
+RUN cd $SRC_DIR \
+  && go mod download
+
+COPY . $SRC_DIR
+
+RUN cd $SRC_DIR \
+  && CGO_ENABLED=0 GOOS=linux go build -gcflags "all=-N -l" -o filrewardsd api/filrewardsd/main.go
+
+FROM debian:buster
+LABEL maintainer="Textile <contact@textile.io>"
+
+ENV SRC_DIR /textile
+COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
+COPY --from=0 /etc/ssl/certs /etc/ssl/certs
+COPY --from=0 $SRC_DIR/filrewardsd /usr/local/bin/filrewardsd
+
+EXPOSE 10006
+EXPOSE 8010
+
+ENV FILREWARDS_PATH /data/filrewards
+RUN adduser --home $FILREWARDS_PATH --disabled-login --gecos "" --ingroup users filrewards
+
+USER filrewards
+
+ENTRYPOINT ["dlv", "--listen=0.0.0.0:40000", "--headless=true", "--accept-multiclient", "--continue", "--api-version=2", "exec", "/usr/local/bin/filrewardsd"]

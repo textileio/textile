@@ -233,7 +233,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	// Configure analytics client
 	var ac *analytics.Client
 	if config.AnalyticsAddr != "" {
-		c, err := analytics.New(config.AnalyticsAddr)
+		c, err := analytics.New(config.AnalyticsAddr, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
