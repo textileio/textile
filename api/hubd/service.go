@@ -319,18 +319,22 @@ func (s *Service) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*pb.
 		event = analyticspb.Event_EVENT_KEY_USER_CREATED
 	}
 
+	payload := map[string]interface{}{
+		"secure_key": req.Secure,
+	}
+	if account.User != nil {
+		payload["member"] = account.User.Key.String()
+		payload["member_username"] = account.User.Username
+		payload["member_email"] = account.User.Email
+	}
+
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
 		account.Owner().Type.Pb(),
 		event,
 		analytics.WithActive(),
-		analytics.WithProperties(map[string]interface{}{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-			"secure_key":      req.Secure,
-		}),
+		analytics.WithProperties(payload),
 	); err != nil {
 		log.Errorf("calling analytics track: %v", err)
 	}
@@ -624,18 +628,22 @@ func (s *Service) InviteToOrg(ctx context.Context, req *pb.InviteToOrgRequest) (
 		return nil, err
 	}
 
+	payload := map[string]interface{}{
+		"invitee": req.Email,
+	}
+	if account.User != nil {
+		payload["member"] = account.User.Key.String()
+		payload["member_username"] = account.User.Username
+		payload["member_email"] = account.User.Email
+	}
+
 	if err := s.AnalyticsClient.Track(
 		ctx,
 		account.Owner().Key.String(),
 		account.Owner().Type.Pb(),
 		analyticspb.Event_EVENT_ORG_INVITE_CREATED,
 		analytics.WithActive(),
-		analytics.WithProperties(map[string]interface{}{
-			"member":          account.User.Key.String(),
-			"member_username": account.User.Username,
-			"member_email":    account.User.Email,
-			"invitee":         req.Email,
-		}),
+		analytics.WithProperties(payload),
 	); err != nil {
 		log.Errorf("calling analytics track: %v", err)
 	}

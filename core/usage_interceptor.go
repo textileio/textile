@@ -258,18 +258,21 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 	case "/threads.pb.API/NewDB":
 		event = analyticspb.Event_EVENT_THREAD_DB_CREATED
 	}
+
 	if event != analyticspb.Event_EVENT_UNSPECIFIED {
+		payload := map[string]interface{}{}
+		if account.User != nil {
+			payload["member"] = account.User.Key.String()
+			payload["member_username"] = account.User.Username
+			payload["member_email"] = account.User.Email
+		}
 		if err := t.ac.Track(
 			ctx,
 			account.Owner().Key.String(),
 			account.Owner().Type.Pb(),
 			event,
 			analytics.WithActive(),
-			analytics.WithProperties(map[string]interface{}{
-				"member":          account.User.Key.String(),
-				"member_username": account.User.Username,
-				"member_email":    account.User.Email,
-			}),
+			analytics.WithProperties(payload),
 		); err != nil {
 			log.Errorf("calling analytics track: %v", err)
 		}
