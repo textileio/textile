@@ -177,6 +177,9 @@ type Config struct {
 	MaxNumberThreadsPerOwner int
 	ThreadsConnManager       connmgr.ConnManager
 
+	// IPNS
+	IPNSRepublishCron string
+
 	// Powergate
 	PowergateAdminToken string
 
@@ -526,7 +529,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	// Start pulling threads
 	t.tn.StartPulling()
 	// Start republishing ipns keys
-	bs.StartRepublishing("*/5 * * * *", t.internalHubSession)
+	t.ipnsm.StartRepublishing(conf.IPNSRepublishCron)
 
 	log.Info("started")
 
@@ -593,7 +596,7 @@ func (t *Textile) Close() error {
 	}
 	log.Info("local clients were shutdown")
 
-	t.ipnsm.Cancel()
+	t.ipnsm.Close()
 	if t.archiveTracker != nil {
 		if err := t.archiveTracker.Close(); err != nil {
 			return err

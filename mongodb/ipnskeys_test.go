@@ -15,7 +15,7 @@ func TestIPNSKeys_Create(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32))
+	err = col.Create(context.Background(), "foo", "cid", "path", thread.NewIDV1(thread.Raw, 32))
 	require.NoError(t, err)
 }
 
@@ -25,12 +25,13 @@ func TestIPNSKeys_Get(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo", "cid", threadID)
+	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), "foo")
 	require.NoError(t, err)
 	assert.Equal(t, "cid", got.Cid)
+	assert.Equal(t, "path", got.Path)
 	assert.Equal(t, threadID, got.ThreadID)
 }
 
@@ -40,12 +41,33 @@ func TestIPNSKeys_GetByCid(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo", "cid", threadID)
+	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
 	require.NoError(t, err)
 
 	got, err := col.GetByCid(context.Background(), "cid")
 	require.NoError(t, err)
 	assert.Equal(t, "foo", got.Name)
+	assert.Equal(t, "path", got.Path)
+	assert.Equal(t, threadID, got.ThreadID)
+}
+
+func TestIPNSKeys_SetPath(t *testing.T) {
+	db := newDB(t)
+	col, err := NewIPNSKeys(context.Background(), db)
+	require.NoError(t, err)
+
+	threadID := thread.NewIDV1(thread.Raw, 32)
+	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
+	require.NoError(t, err)
+
+	err = col.SetPath(context.Background(), "cid", "path2")
+	require.NoError(t, err)
+
+	got, err := col.GetByCid(context.Background(), "cid")
+	require.NoError(t, err)
+
+	assert.Equal(t, "foo", got.Name)
+	assert.Equal(t, "path2", got.Path)
 	assert.Equal(t, threadID, got.ThreadID)
 }
 
@@ -55,9 +77,9 @@ func TestIPNSKeys_ListByThreadID(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo1", "cid1", threadID)
+	err = col.Create(context.Background(), "foo1", "cid1", "path1", threadID)
 	require.NoError(t, err)
-	err = col.Create(context.Background(), "foo2", "cid2", threadID)
+	err = col.Create(context.Background(), "foo2", "cid2", "path2", threadID)
 	require.NoError(t, err)
 
 	list1, err := col.ListByThreadID(context.Background(), threadID)
@@ -74,7 +96,7 @@ func TestIPNSKeys_Delete(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32))
+	err = col.Create(context.Background(), "foo", "cid", "path", thread.NewIDV1(thread.Raw, 32))
 	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), "foo")

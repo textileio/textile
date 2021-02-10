@@ -121,6 +121,12 @@ var (
 				DefValue: time.Minute * 15,
 			},
 
+			//IPNS
+			"ipnsRepublishCron": {
+				Key:      "ipns.cron",
+				DefValue: "0 1 * * *",
+			},
+
 			// Gateway
 			"gatewaySubdomains": {
 				Key:      "gateway.subdomains",
@@ -267,6 +273,12 @@ func init() {
 		config.Flags["archivesJobPollIntervalFast"].DefValue.(time.Duration),
 		"How frequently to check archive job status for arcives with deals in non-sealing states")
 
+	// IPNS
+	rootCmd.PersistentFlags().String(
+		"ipnsRepublishCron",
+		config.Flags["ipnsRepublishCron"].DefValue.(string),
+		"IPNS key republishing cron schedule")
+
 	// Gateway
 	rootCmd.PersistentFlags().Bool(
 		"gatewaySubdomains",
@@ -369,6 +381,9 @@ var rootCmd = &cobra.Command{
 		archivesJobPollIntervalSlow := config.Viper.GetDuration("archives.job_poll_interval_slow")
 		archivesJobPollIntervalFast := config.Viper.GetDuration("archives.job_poll_interval_fast")
 
+		// IPNS
+		ipnsRepublishCron := config.Viper.GetString("ipns.cron")
+
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
 
@@ -418,6 +433,8 @@ var rootCmd = &cobra.Command{
 			// Archives
 			ArchiveJobPollIntervalSlow: archivesJobPollIntervalSlow,
 			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
+			// IPNS
+			IPNSRepublishCron: ipnsRepublishCron,
 			// Gateway
 			UseSubdomains: gatewaySubdomains,
 			// Cloudflare

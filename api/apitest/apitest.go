@@ -52,6 +52,7 @@ func DefaultTextileConfig(t util.TestingTWithCleanup) core.Config {
 		AddrIPFSAPI:               GetIPFSApiAddr(),
 		AddrGatewayHost:           util.MustParseAddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort)),
 		AddrGatewayURL:            fmt.Sprintf("http://127.0.0.1:%d", gatewayPort),
+		IPNSRepublishCron:         "0 1 * * *",
 		CustomerioAPIKey:          os.Getenv("CUSTOMERIO_API_KEY"),
 		CustomerioConfirmTmpl:     os.Getenv("CUSTOMERIO_CONFIRM_TMPL"),
 		CustomerioInviteTmpl:      os.Getenv("CUSTOMERIO_INVITE_TMPL"),
