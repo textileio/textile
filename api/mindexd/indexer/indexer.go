@@ -46,8 +46,6 @@ func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *stor
 
 	i.runDaemon()
 
-	// TTODO: do daemon to make history snapshots, add options.
-
 	return i, nil
 }
 
@@ -77,6 +75,25 @@ func (i *Indexer) runDaemon() {
 		case <-i.daemonSub:
 			log.Infof("received new records notification")
 			collect <- struct{}{}
+		}
+	}()
+
+	go func() {
+		lastSnapshot, err := i.store.GetLastIndexSnapshotTime(i.daemonCtx)
+		if err != nil {
+			log.Errorf("get last index snapshot: %s", err)
+			return
+		}
+		select {
+		case <-i.daemonCtx.Done():
+			log.Infof("daemon snapshot shutting down")
+		case <-time.After(15 * time.Minute):
+			if time.Now().Sub(lastSnapshot) > i.cfg.daemonSnapshotMaxAge {
+				if err := i.store.GenerateMinerIndexSnapshot(i.daemonCtx); err != nil {
+					log.Errorf("generating index snapshot: %s", err)
+				}
+			}
+			lastSnapshot = time.Now()
 		}
 	}()
 

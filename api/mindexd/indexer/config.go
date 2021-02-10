@@ -12,8 +12,9 @@ var (
 )
 
 type config struct {
-	daemonRunOnStart bool
-	daemonFrequency  time.Duration
+	daemonRunOnStart     bool
+	daemonFrequency      time.Duration
+	daemonSnapshotMaxAge time.Duration
 }
 
 type Option func(*config)
@@ -31,5 +32,13 @@ func WithRunOnStart(enabled bool) Option {
 func WithFrequency(freq time.Duration) Option {
 	return func(c *config) {
 		c.daemonFrequency = freq
+	}
+}
+
+// WithSnapshotMaxAge indicates the max-age of a snapshot,
+// indicating that a new one should be generated.
+func WithSnapshotMaxAge(age time.Duration) Option {
+	return func(c *config) {
+		c.daemonSnapshotMaxAge = age
 	}
 }

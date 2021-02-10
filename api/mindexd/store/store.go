@@ -17,8 +17,11 @@ var (
 type Store struct {
 	sdrc *mongo.Collection
 	rrc  *mongo.Collection
-	idxc *mongo.Collection
-	ptc  *mongo.Collection
+
+	idxc  *mongo.Collection
+	hidxc *mongo.Collection
+
+	ptc *mongo.Collection
 }
 
 func New(db *mongo.Database) (*Store, error) {
@@ -26,7 +29,10 @@ func New(db *mongo.Database) (*Store, error) {
 		sdrc: db.Collection("storagedealrecords"),
 		rrc:  db.Collection("retrievalrecords"),
 		idxc: db.Collection("minerindex"),
-		ptc:  db.Collection("powtargets"),
+
+		hidxc: db.Collection("minerindexhistory"),
+
+		ptc: db.Collection("powtargets"),
 	}
 	if err := s.ensureIndexes(); err != nil {
 		return nil, fmt.Errorf("ensuring mongodb indexes: %s", err)
@@ -88,6 +94,18 @@ func (s *Store) ensureIndexes() error {
 	})
 	if err != nil {
 		return fmt.Errorf("creating retrieval records index: %s", err)
+	}
+
+	// Miner history indexes
+	_, err = s.hidxc.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "created_at", Value: -1},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("creating miner index history index: %s", err)
 	}
 
 	return nil

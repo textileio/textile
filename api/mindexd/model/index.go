@@ -2,6 +2,11 @@ package model
 
 import "time"
 
+type MinerInfoSnapshot struct {
+	CreatedAt time.Time `bson:"created_at"`
+	MinerInfo MinerInfo `bson:"miner_info"`
+}
+
 type MinerInfo struct {
 	MinerID   string       `bson:"_id"`
 	Metadata  MetadataInfo `bson:"metadata"`

@@ -68,6 +68,10 @@ var (
 				Key:      "indexer.frequency",
 				DefValue: time.Minute * 120,
 			},
+			"indexerSnapshotMaxAge": {
+				Key:      "indexer.snapshot_max_age",
+				DefValue: time.Hour * 24,
+			},
 
 			// Collector config
 			"collectorRunOnStartup": {
@@ -205,7 +209,8 @@ var rootCmd = &cobra.Command{
 		powAdminToken := config.Viper.GetString("pow.admin_token")
 
 		indexerRunOnStart := config.Viper.GetBool("indexer.run_on_start")
-		indexerFrequency := config.Viper.GetDuration("collector.frequency")
+		indexerFrequency := config.Viper.GetDuration("indexer.frequency")
+		indexerSnapshotMaxAge := config.Viper.GetDuration("indexer.snapshot_max_age")
 
 		collectorRunOnStart := config.Viper.GetBool("collector.run_on_start")
 		collectorFrequency := config.Viper.GetDuration("collector.frequency")
@@ -229,8 +234,9 @@ var rootCmd = &cobra.Command{
 			CollectorFetchLimit:   collectorFetchLimit,
 			CollectorFetchTimeout: collectorFetchTimeout,
 
-			IndexerRunOnStart: indexerRunOnStart,
-			IndexerFrequency:  indexerFrequency,
+			IndexerRunOnStart:     indexerRunOnStart,
+			IndexerFrequency:      indexerFrequency,
+			IndexerSnapshotMaxAge: indexerSnapshotMaxAge,
 		})
 		cmd.ErrCheck(err)
 

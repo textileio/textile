@@ -60,8 +60,9 @@ type Config struct {
 	CollectorFetchLimit   int
 	CollectorFetchTimeout time.Duration
 
-	IndexerRunOnStart bool
-	IndexerFrequency  time.Duration
+	IndexerRunOnStart     bool
+	IndexerFrequency      time.Duration
+	IndexerSnapshotMaxAge time.Duration
 }
 
 func NewService(ctx context.Context, config Config) (*Service, error) {
@@ -101,6 +102,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 	indexerOpts := []indexer.Option{
 		indexer.WithRunOnStart(config.IndexerRunOnStart),
 		indexer.WithFrequency(config.IndexerFrequency),
+		indexer.WithSnapshotMaxAge(config.IndexerSnapshotMaxAge),
 	}
 
 	pow, err := powClient.NewClient(config.PowAddrAPI)
