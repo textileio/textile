@@ -663,7 +663,7 @@ func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient
 		Listener:          listener,
 		MongoUri:          test.GetMongoUri(),
 		MongoDbName:       util.MakeToken(12),
-		BaseAttoFILReward: 2,
+		BaseNanoFILReward: 2,
 	}
 	s, err := New(ctx, conf)
 	require.NoError(t, err)

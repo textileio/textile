@@ -22,7 +22,7 @@ message Reward {
   string dev_key = 2;
   RewardType type = 3;
   int64 factor = 4;
-  int64 base_atto_fil_reward = 5;
+  int64 base_nano_fil_reward = 5;
   google.protobuf.Timestamp created_at = 6;
 }
 

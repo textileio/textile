@@ -50,7 +50,7 @@ type reward struct {
 	DevKey            string        `bson:"dev_key"`
 	Type              pb.RewardType `bson:"type"`
 	Factor            int64         `bson:"factor"`
-	BaseAttoFILReward int64         `bson:"base_atto_fil_reward"`
+	BaseNanoFILReward int64         `bson:"base_nano_fil_reward"`
 	CreatedAt         time.Time     `bson:"created_at"`
 }
 
@@ -82,7 +82,7 @@ type Service struct {
 	ac                *analytics.Client
 	rewardsCacheOrg   map[string]map[pb.RewardType]struct{}
 	rewardsCacheDev   map[string]map[pb.RewardType]struct{}
-	baseAttoFILReward int64
+	baseNanoFILReward int64
 	server            *grpc.Server
 	semaphores        *nutil.SemaphorePool
 }
@@ -92,7 +92,7 @@ type Config struct {
 	MongoUri          string
 	MongoDbName       string
 	AnalyticsAddr     string
-	BaseAttoFILReward int64
+	BaseNanoFILReward int64
 	Debug             bool
 }
 
@@ -166,7 +166,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		claimsCol:         claimsCol,
 		rewardsCacheOrg:   cacheOrg,
 		rewardsCacheDev:   cacheDev,
-		baseAttoFILReward: config.BaseAttoFILReward,
+		baseNanoFILReward: config.BaseNanoFILReward,
 		semaphores:        nutil.NewSemaphorePool(1),
 	}
 
@@ -242,7 +242,7 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		DevKey:            req.DevKey,
 		Type:              t,
 		Factor:            rewardTypeMeta[t].factor,
-		BaseAttoFILReward: s.baseAttoFILReward,
+		BaseNanoFILReward: s.baseNanoFILReward,
 		CreatedAt:         time.Now(),
 	}
 
@@ -265,8 +265,8 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		analytics.WithProperties(map[string]interface{}{
 			"type":                 pb.RewardType_name[int32(r.Type)],
 			"factor":               rewardTypeMeta[r.Type].factor,
-			"base_atto_fil_reward": s.baseAttoFILReward,
-			"amount":               rewardTypeMeta[r.Type].factor * s.baseAttoFILReward,
+			"base_nano_fil_reward": s.baseNanoFILReward,
+			"amount":               rewardTypeMeta[r.Type].factor * s.baseNanoFILReward,
 			"dev_key":              req.DevKey,
 		}),
 	); err != nil {
@@ -566,7 +566,7 @@ func (s *Service) Close() {
 func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int64, error) {
 	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
 		bson.M{"$match": bson.M{"org_key": orgKey}},
-		bson.M{"$project": bson.M{"amt": bson.M{"$multiply": bson.A{"$factor", "$base_atto_fil_reward"}}}},
+		bson.M{"$project": bson.M{"amt": bson.M{"$multiply": bson.A{"$factor", "$base_nano_fil_reward"}}}},
 		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amt"}}},
 	})
 	if err != nil {
@@ -627,7 +627,7 @@ func toPbReward(rec *reward) *pb.Reward {
 		DevKey:            rec.DevKey,
 		Type:              rec.Type,
 		Factor:            rec.Factor,
-		BaseAttoFilReward: rec.BaseAttoFILReward,
+		BaseNanoFilReward: rec.BaseNanoFILReward,
 		CreatedAt:         timestamppb.New(rec.CreatedAt),
 	}
 	return res

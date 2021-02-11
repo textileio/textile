@@ -48,8 +48,8 @@ var (
 				Key:      "analytics_addr",
 				DefValue: "",
 			},
-			"baseAttoFilReward": {
-				Key:      "base_atto_fil_reward",
+			"baseNanoFilReward": {
+				Key:      "base_nano_fil_reward",
 				DefValue: int64(0),
 			},
 		},
@@ -97,9 +97,9 @@ func init() {
 		"Analytics API address")
 
 	rootCmd.PersistentFlags().Int64(
-		"baseAttoFilReward",
-		config.Flags["baseAttoFilReward"].DefValue.(int64),
-		"Base AttoFIL reward amount",
+		"baseNanoFilReward",
+		config.Flags["baseNanoFilReward"].DefValue.(int64),
+		"Base NanoFIL reward amount",
 	)
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
@@ -136,7 +136,7 @@ var rootCmd = &cobra.Command{
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
-		baseFilReward := config.Viper.GetInt64("base_atto_fil_reward")
+		baseFilReward := config.Viper.GetInt64("base_nano_fil_reward")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)
@@ -155,7 +155,7 @@ var rootCmd = &cobra.Command{
 			MongoUri:          mongoUri,
 			MongoDbName:       mongoDb,
 			AnalyticsAddr:     analyticsAddr,
-			BaseAttoFILReward: baseFilReward,
+			BaseNanoFILReward: baseFilReward,
 			Debug:             debug,
 		}
 		api, err := service.New(ctx, conf)
