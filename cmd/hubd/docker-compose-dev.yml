@@ -27,8 +27,6 @@ services:
       - HUB_THREADS_MAX_NUMBER_PER_OWNER
       - HUB_CUSTOMERIO_API_KEY
       - HUB_EMAIL_SESSION_SECRET=hubsession
-      - HUB_SEGMENT_API_KEY
-      - HUB_SEGMENT_PREFIX
     ports:
       - "127.0.0.1:3006:3006"
       - "127.0.0.1:3007:3007"
@@ -97,7 +95,7 @@ services:
       - FILREWARDS_MONGO_URI=mongodb://mongo:27017
       - FILREWARDS_MONGO_DB=textile_filrewards
       - FILREWARDS_ANALYTICS_ADDR=analytics:6006
-      - FILREWARDS_BASE_ATTO_FIL_REWARD
+      - FILREWARDS_BASE_NANO_FIL_REWARD
     ports:
       - "127.0.0.1:7006:7006"
     security_opt:
