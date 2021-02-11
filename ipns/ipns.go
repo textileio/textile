@@ -17,6 +17,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"github.com/textileio/textile/v2/util"
+	"golang.org/x/sync/errgroup"
 )
 
 var log = logging.Logger("ipns")
@@ -30,6 +31,8 @@ const (
 	maxCancelPublishTries = 10
 	// list all keys timeout
 	listKeysTimeout = time.Hour
+	// maximum ipns records to republish per batch
+	maxRepublishingConcurrency = 24
 )
 
 // Manager handles bucket name publishing to IPNS.
@@ -88,7 +91,7 @@ func (m *Manager) CreateKey(ctx context.Context, dbID thread.ID, path path.Path)
 	if err != nil {
 		return
 	}
-	if err = m.keys.Create(ctx, key.Name(), keyID, path.String(), dbID); err != nil {
+	if err = m.keys.Create(ctx, key.Name(), keyID, dbID, path.String()); err != nil {
 		return
 	}
 	return keyID, nil
@@ -116,8 +119,17 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 	m.publish(pth, keyID)
 }
 
-// Cancel all pending publishes.
-func (m *Manager) Cancel() {
+// Close manager.
+func (m *Manager) Close() {
+	ctx := m.republisher.Stop()
+	<-ctx.Done()
+	log.Info("republisher was shutdown")
+	m.cancel()
+	log.Info("all pending ipns publishes were cancelled")
+}
+
+// cancel all pending publishes.
+func (m *Manager) cancel() {
 	m.Lock()
 	defer m.Unlock()
 	m.ctxsLock.Lock()
@@ -127,14 +139,6 @@ func (m *Manager) Cancel() {
 	}
 }
 
-// Close manager.
-func (m *Manager) Close() {
-	ctx := m.republisher.Stop()
-	<-ctx.Done()
-	log.Info("republisher was shutdown")
-	m.Cancel()
-	log.Info("all pending ipns publishes were cancelled")
-}
 func (m *Manager) publish(pth path.Path, keyID string) {
 	ptl := m.getSemaphore(keyID)
 	try := 0
@@ -213,12 +217,30 @@ func (m *Manager) republish() error {
 		return err
 	}
 	withPath := 0
+	eg, gctx := errgroup.WithContext(context.Background())
+	lim := make(chan struct{}, maxRepublishingConcurrency)
 	for _, key := range keys {
+		key := key
 		if key.Path != "" {
-			m.publish(path.New(key.Path), key.Cid)
 			withPath++
+			lim <- struct{}{}
+			eg.Go(func() error {
+				defer func() { <-lim }()
+				if gctx.Err() != nil {
+					return nil
+				}
+				m.publish(path.New(key.Path), key.Cid)
+				return nil
+			})
 		}
 	}
+	for i := 0; i < cap(lim); i++ {
+		lim <- struct{}{}
+	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
 	log.Infof("republishing finish %d total => %d with path in %v", len(keys), withPath, time.Since(start))
 	return nil
 }

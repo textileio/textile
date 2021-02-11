@@ -178,7 +178,7 @@ type Config struct {
 	ThreadsConnManager       connmgr.ConnManager
 
 	// IPNS
-	IPNSRepublishCron string
+	IPNSRepublishSchedule string
 
 	// Powergate
 	PowergateAdminToken string
@@ -529,7 +529,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	// Start pulling threads
 	t.tn.StartPulling()
 	// Start republishing ipns keys
-	t.ipnsm.StartRepublishing(conf.IPNSRepublishCron)
+	t.ipnsm.StartRepublishing(conf.IPNSRepublishSchedule)
 
 	log.Info("started")
 

@@ -169,7 +169,7 @@ func TestMigrations_m004(t *testing.T) {
 	var key bson.M
 	err = res.Decode(&key)
 	require.NoError(t, err)
-	assert.Nil(t, key["path"])
+	assert.NotNil(t, key["path"])
 
 	// Run down
 	err = migrate.NewMigrate(db, m004).Down(migrate.AllAvailable)
@@ -180,7 +180,7 @@ func TestMigrations_m004(t *testing.T) {
 	var key2 bson.M
 	err = res.Decode(&key2)
 	require.NoError(t, err)
-	assert.NotNil(t, key2["path"])
+	assert.Nil(t, key2["path"])
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {

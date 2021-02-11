@@ -15,7 +15,7 @@ func TestIPNSKeys_Create(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "foo", "cid", "path", thread.NewIDV1(thread.Raw, 32))
+	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32), "path")
 	require.NoError(t, err)
 }
 
@@ -25,7 +25,7 @@ func TestIPNSKeys_Get(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
+	err = col.Create(context.Background(), "foo", "cid", threadID, "path")
 	require.NoError(t, err)
 
 	got, err := col.Get(context.Background(), "foo")
@@ -41,7 +41,7 @@ func TestIPNSKeys_GetByCid(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
+	err = col.Create(context.Background(), "foo", "cid", threadID, "path")
 	require.NoError(t, err)
 
 	got, err := col.GetByCid(context.Background(), "cid")
@@ -57,7 +57,7 @@ func TestIPNSKeys_SetPath(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo", "cid", "path", threadID)
+	err = col.Create(context.Background(), "foo", "cid", threadID, "path")
 	require.NoError(t, err)
 
 	err = col.SetPath(context.Background(), "cid", "path2")
@@ -77,9 +77,9 @@ func TestIPNSKeys_ListByThreadID(t *testing.T) {
 	require.NoError(t, err)
 
 	threadID := thread.NewIDV1(thread.Raw, 32)
-	err = col.Create(context.Background(), "foo1", "cid1", "path1", threadID)
+	err = col.Create(context.Background(), "foo1", "cid1", threadID, "path1")
 	require.NoError(t, err)
-	err = col.Create(context.Background(), "foo2", "cid2", "path2", threadID)
+	err = col.Create(context.Background(), "foo2", "cid2", threadID, "path2")
 	require.NoError(t, err)
 
 	list1, err := col.ListByThreadID(context.Background(), threadID)
@@ -96,7 +96,7 @@ func TestIPNSKeys_Delete(t *testing.T) {
 	col, err := NewIPNSKeys(context.Background(), db)
 	require.NoError(t, err)
 
-	err = col.Create(context.Background(), "foo", "cid", "path", thread.NewIDV1(thread.Raw, 32))
+	err = col.Create(context.Background(), "foo", "cid", thread.NewIDV1(thread.Raw, 32), "path")
 	require.NoError(t, err)
 
 	err = col.Delete(context.Background(), "foo")

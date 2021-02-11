@@ -82,8 +82,8 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
-			"ipnsRepublishCron": {
-				Key:      "ipns.cron",
+			"ipnsRepublishSchedule": {
+				Key:      "ipns.republish.schedule",
 				DefValue: "0 1 * * *",
 			},
 
@@ -184,8 +184,8 @@ func init() {
 		"Powergate API address")
 
 	rootCmd.PersistentFlags().String(
-		"ipnsRepublishCron",
-		config.Flags["ipnsRepublishCron"].DefValue.(string),
+		"ipnsRepublishSchedule",
+		config.Flags["ipnsRepublishSchedule"].DefValue.(string),
 		"IPNS key republishing cron schedule")
 
 	// Gateway
@@ -250,7 +250,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrThreadsMongoUri := config.Viper.GetString("addr.threads.mongo_uri")
 		addrThreadsMongoName := config.Viper.GetString("addr.threads.mongo_name")
-		ipnsRepublishCron := config.Viper.GetString("ipns.cron")
+		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish.schedule")
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
@@ -275,17 +275,17 @@ var rootCmd = &cobra.Command{
 		textile, err := core.NewTextile(ctx, core.Config{
 			Debug: debug,
 
-			AddrAPI:           addrApi,
-			AddrAPIProxy:      addrApiProxy,
-			AddrMongoURI:      addrMongoUri,
-			AddrMongoName:     addrMongoName,
-			AddrThreadsHost:   addrThreadsHost,
-			AddrGatewayHost:   addrGatewayHost,
-			AddrGatewayURL:    addrGatewayUrl,
-			AddrIPFSAPI:       addrIpfsApi,
-			AddrPowergateAPI:  addrPowergateApi,
-			IPNSRepublishCron: ipnsRepublishCron,
-			UseSubdomains:     config.Viper.GetBool("gateway.subdomains"),
+			AddrAPI:               addrApi,
+			AddrAPIProxy:          addrApiProxy,
+			AddrMongoURI:          addrMongoUri,
+			AddrMongoName:         addrMongoName,
+			AddrThreadsHost:       addrThreadsHost,
+			AddrGatewayHost:       addrGatewayHost,
+			AddrGatewayURL:        addrGatewayUrl,
+			AddrIPFSAPI:           addrIpfsApi,
+			AddrPowergateAPI:      addrPowergateApi,
+			IPNSRepublishSchedule: ipnsRepublishSchedule,
+			UseSubdomains:         config.Viper.GetBool("gateway.subdomains"),
 
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
