@@ -109,7 +109,7 @@ func (s *Service) Identify(ctx context.Context, req *pb.IdentifyRequest) (*pb.Id
 }
 
 func (s *Service) Track(ctx context.Context, req *pb.TrackRequest) (*pb.TrackResponse, error) {
-	if req.AccountType == 2 {
+	if req.AccountType == pb.AccountType_ACCOUNT_TYPE_USER {
 		return &pb.TrackResponse{}, nil // Or should we return an error?
 	}
 	props := segment.NewProperties()
