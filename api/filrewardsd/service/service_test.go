@@ -757,7 +757,7 @@ func requireFinalizeClaim(t *testing.T, ctx context.Context, c pb.FilRewardsServ
 	require.NoError(t, err)
 }
 
-func requireBalance(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey string, rewarded, pending, claimed, available int32) *pb.BalanceResponse {
+func requireBalance(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey string, rewarded, pending, claimed, available int64) *pb.BalanceResponse {
 	res, err := c.Balance(ctx, &pb.BalanceRequest{OrgKey: orgKey})
 	require.NoError(t, err)
 	require.Equal(t, rewarded, res.Rewarded)
