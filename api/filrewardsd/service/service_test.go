@@ -365,7 +365,7 @@ func TestClaimAllAvailable(t *testing.T) {
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
 	bal, err := c.Balance(ctx, &pb.BalanceRequest{OrgKey: "org1"})
 	require.NoError(t, err)
-	require.Greater(t, bal.Available, int32(0))
+	require.Greater(t, bal.Available, int64(0))
 	requireClaim(t, ctx, c, "org1", "me", bal.Available)
 }
 
@@ -500,7 +500,7 @@ func TestListClaimsStateFilterPending(t *testing.T) {
 	require.Len(t, res.Claims, 1)
 	require.Equal(t, "org1", res.Claims[0].OrgKey)
 	require.Equal(t, "user3", res.Claims[0].ClaimedBy)
-	require.Equal(t, int32(1), res.Claims[0].Amount)
+	require.Equal(t, int64(1), res.Claims[0].Amount)
 }
 
 func TestListClaimsStateFilterComplete(t *testing.T) {
@@ -519,7 +519,7 @@ func TestListClaimsStateFilterComplete(t *testing.T) {
 	require.Len(t, res.Claims, 1)
 	require.Equal(t, "org1", res.Claims[0].OrgKey)
 	require.Equal(t, "user1", res.Claims[0].ClaimedBy)
-	require.Equal(t, int32(1), res.Claims[0].Amount)
+	require.Equal(t, int64(1), res.Claims[0].Amount)
 }
 
 func TestListClaimsStateFilterFailed(t *testing.T) {
@@ -538,7 +538,7 @@ func TestListClaimsStateFilterFailed(t *testing.T) {
 	require.Len(t, res.Claims, 1)
 	require.Equal(t, "org1", res.Claims[0].OrgKey)
 	require.Equal(t, "user2", res.Claims[0].ClaimedBy)
-	require.Equal(t, int32(1), res.Claims[0].Amount)
+	require.Equal(t, int64(1), res.Claims[0].Amount)
 }
 
 func TestListClaimsDescending(t *testing.T) {
