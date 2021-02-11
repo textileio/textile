@@ -32,7 +32,7 @@ const (
 	// list all keys timeout
 	listKeysTimeout = time.Hour
 	// maximum ipns records to republish per batch
-	maxRepublishingConcurrency = 24
+	maxRepublishingConcurrency = 50
 )
 
 // Manager handles bucket name publishing to IPNS.
