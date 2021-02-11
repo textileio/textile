@@ -108,7 +108,7 @@ func (c *Client) ListRewards(ctx context.Context, opts ...ListRewardsOption) ([]
 	return res.Rewards, res.More, t, nil
 }
 
-func (c *Client) Claim(ctx context.Context, orgKey, claimedBy string, amount int32) (*pb.Claim, error) {
+func (c *Client) Claim(ctx context.Context, orgKey, claimedBy string, amount int64) (*pb.Claim, error) {
 	req := &pb.ClaimRequest{
 		OrgKey:    orgKey,
 		ClaimedBy: claimedBy,

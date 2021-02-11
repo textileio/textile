@@ -50,7 +50,7 @@ var (
 			},
 			"baseAttoFilReward": {
 				Key:      "base_atto_fil_reward",
-				DefValue: int32(0),
+				DefValue: int64(0),
 			},
 		},
 		EnvPre: "FILREWARDS",
@@ -96,9 +96,9 @@ func init() {
 		config.Flags["analyticsAddr"].DefValue.(string),
 		"Analytics API address")
 
-	rootCmd.PersistentFlags().Int32(
+	rootCmd.PersistentFlags().Int64(
 		"baseAttoFilReward",
-		config.Flags["baseAttoFilReward"].DefValue.(int32),
+		config.Flags["baseAttoFilReward"].DefValue.(int64),
 		"Base AttoFIL reward amount",
 	)
 
@@ -136,7 +136,7 @@ var rootCmd = &cobra.Command{
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
-		baseFilReward := config.Viper.GetInt32("base_atto_fil_reward")
+		baseFilReward := config.Viper.GetInt64("base_atto_fil_reward")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)

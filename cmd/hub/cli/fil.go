@@ -231,7 +231,7 @@ var filRewardsCmd = &cobra.Command{
 			data := make([][]string, len(rewards))
 			for i, reward := range rewards {
 				attofil := reward.BaseAttoFilReward * reward.Factor
-				fil := fmt.Sprintf("%f", float64(attofil)/math.Pow10(18)) // ToDo: What is the right conversion?
+				fil := fmt.Sprintf("%.8f", float64(attofil)/math.Pow10(18)) // ToDo: What is the right conversion?
 				createdAt := reward.CreatedAt.AsTime().Format(time.RFC3339)
 				t := filrewardspb.RewardType_name[int32(reward.Type)]
 				data[i] = []string{t, fil, reward.OrgKey, reward.DevKey, createdAt}
@@ -242,7 +242,7 @@ var filRewardsCmd = &cobra.Command{
 }
 
 var filClaimCmd = &cobra.Command{
-	Use:   "claim",
+	Use:   "claim [amount in FIL]",
 	Short: "Claim unlocked FIL rewards to the specified org",
 	Long:  `Claim unlocked FIL rewards to the specified org.`,
 	Args:  cobra.ExactArgs(1),
@@ -252,7 +252,7 @@ var filClaimCmd = &cobra.Command{
 
 		fil, err := strconv.ParseFloat(args[0], 64)
 		cmd.ErrCheck(err)
-		attofil := int32(fil * math.Pow10(18))
+		attofil := int64(fil * math.Pow10(18))
 
 		err = clients.Users.ClaimFil(ctx, attofil)
 		cmd.ErrCheck(err)
@@ -290,7 +290,7 @@ var filClaimsCmd = &cobra.Command{
 		if len(claims) > 0 {
 			data := make([][]string, len(claims))
 			for i, claim := range claims {
-				amount := fmt.Sprintf("%f", float64(claim.Amount)/math.Pow10(18)) // ToDo: What is the right conversion?
+				amount := fmt.Sprintf("%.8f", float64(claim.Amount)/math.Pow10(18)) // ToDo: What is the right conversion?
 				createdAt := claim.CreatedAt.AsTime().Format(time.RFC3339)
 				state := filrewardspb.ClaimState_name[int32(claim.State)]
 				data[i] = []string{amount, claim.OrgKey, claim.ClaimedBy, state, claim.TxnCid, claim.FailureMessage, createdAt}
@@ -312,13 +312,13 @@ var filRewardsBalanceCmd = &cobra.Command{
 		res, err := clients.Users.FilRewardsBalance(ctx)
 		cmd.ErrCheck(err)
 
-		rewarded := fmt.Sprintf("%f", float64(res.Rewarded)/math.Pow10(18))
-		pending := fmt.Sprintf("%f", float64(res.Pending)/math.Pow10(18))
-		claimed := fmt.Sprintf("%f", float64(res.Claimed)/math.Pow10(18))
-		available := fmt.Sprintf("%f", float64(res.Available)/math.Pow10(18))
+		rewarded := fmt.Sprintf("%.8f", float64(res.Rewarded)/math.Pow10(18))
+		pending := fmt.Sprintf("%.8f", float64(res.Pending)/math.Pow10(18))
+		claimed := fmt.Sprintf("%.8f", float64(res.Claimed)/math.Pow10(18))
+		available := fmt.Sprintf("%.8f", float64(res.Available)/math.Pow10(18))
 
 		cmd.RenderTable(
-			[]string{"category"},
+			[]string{"category", "amount"},
 			[][]string{
 				{"rewarded", rewarded},
 				{"pending", pending},

@@ -741,7 +741,7 @@ func requireNoProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsS
 	require.Nil(t, res.Reward)
 }
 
-func requireClaim(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey, claimedBy string, amount int32) *pb.Claim {
+func requireClaim(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey, claimedBy string, amount int64) *pb.Claim {
 	res, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: orgKey, ClaimedBy: claimedBy, Amount: amount})
 	require.NoError(t, err)
 	require.Equal(t, orgKey, res.Claim.OrgKey)

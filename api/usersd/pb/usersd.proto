@@ -187,7 +187,7 @@ message ListFilRewardsResponse {
 }
 
 message ClaimFilRequest {
-    int32 amount = 1;
+    int64 amount = 1;
 }
 
 message ClaimFilResponse {
@@ -211,10 +211,10 @@ message FilRewardsBalanceRequest {
 }
 
 message FilRewardsBalanceResponse {
-    int32 rewarded = 1;
-    int32 pending = 2;
-    int32 claimed = 3;
-    int32 available = 4;
+    int64 rewarded = 1;
+    int64 pending = 2;
+    int64 claimed = 3;
+    int64 available = 4;
 }
 
 service APIService {

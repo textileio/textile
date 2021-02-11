@@ -352,7 +352,7 @@ func (c *Client) ListFilRewards(ctx context.Context, opts ...ListFilRewardsOptio
 	return res.Rewards, res.More, t, nil
 }
 
-func (c *Client) ClaimFil(ctx context.Context, amount int32) error {
+func (c *Client) ClaimFil(ctx context.Context, amount int64) error {
 	req := &pb.ClaimFilRequest{
 		Amount: amount,
 	}

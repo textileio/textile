@@ -42,15 +42,15 @@ var rewardTypeMeta = map[pb.RewardType]meta{
 }
 
 type meta struct {
-	factor int32
+	factor int64
 }
 
 type reward struct {
 	OrgKey            string        `bson:"org_key"`
 	DevKey            string        `bson:"dev_key"`
 	Type              pb.RewardType `bson:"type"`
-	Factor            int32         `bson:"factor"`
-	BaseAttoFILReward int32         `bson:"base_atto_fil_reward"`
+	Factor            int64         `bson:"factor"`
+	BaseAttoFILReward int64         `bson:"base_atto_fil_reward"`
 	CreatedAt         time.Time     `bson:"created_at"`
 }
 
@@ -58,7 +58,7 @@ type claim struct {
 	ID             primitive.ObjectID `bson:"_id"`
 	OrgKey         string             `bson:"org_key"`
 	ClaimedBy      string             `bson:"claimed_by"`
-	Amount         int32              `bson:"amount"`
+	Amount         int64              `bson:"amount"`
 	State          pb.ClaimState      `bson:"state"`
 	TxnCid         string             `bson:"txn_cid"`
 	FailureMessage string             `bson:"failure_message"`
@@ -82,7 +82,7 @@ type Service struct {
 	ac                *analytics.Client
 	rewardsCacheOrg   map[string]map[pb.RewardType]struct{}
 	rewardsCacheDev   map[string]map[pb.RewardType]struct{}
-	baseAttoFILReward int32
+	baseAttoFILReward int64
 	server            *grpc.Server
 	semaphores        *nutil.SemaphorePool
 }
@@ -92,7 +92,7 @@ type Config struct {
 	MongoUri          string
 	MongoDbName       string
 	AnalyticsAddr     string
-	BaseAttoFILReward int32
+	BaseAttoFILReward int64
 	Debug             bool
 }
 
@@ -250,8 +250,12 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		return nil, status.Errorf(codes.Internal, "inserting reward: %v", err)
 	}
 
+	log.Info("about to update caches")
+
 	s.rewardsCacheOrg[req.OrgKey][t] = struct{}{}
 	s.rewardsCacheDev[req.DevKey][t] = struct{}{}
+
+	log.Info("caches updated")
 
 	if err := s.ac.Track(
 		ctx,
@@ -559,30 +563,30 @@ func (s *Service) Close() {
 	log.Info("gRPC server stopped")
 }
 
-func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int32, error) {
+func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int64, error) {
 	cursor, err := s.rewardsCol.Aggregate(ctx, bson.A{
 		bson.M{"$match": bson.M{"org_key": orgKey}},
 		bson.M{"$project": bson.M{"amt": bson.M{"$multiply": bson.A{"$factor", "$base_atto_fil_reward"}}}},
 		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amt"}}},
 	})
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 	for cursor.Next(ctx) {
 		elements, err := cursor.Current.Elements()
 		if err != nil {
-			return -1, err
+			return 0, err
 		}
 		for _, e := range elements {
 			if e.Key() == "total" {
-				return e.Value().Int32(), nil
+				return e.Value().Int64(), nil
 			}
 		}
 	}
 	return 0, nil
 }
 
-func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.ClaimState) (int32, error) {
+func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.ClaimState) (int64, error) {
 	cursor, err := s.claimsCol.Aggregate(ctx, bson.A{
 		bson.M{"$match": bson.M{"org_key": orgKey, "state": state}},
 		bson.M{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amount"}}},
@@ -597,7 +601,7 @@ func (s *Service) totalClaimed(ctx context.Context, orgKey string, state pb.Clai
 		}
 		for _, e := range elements {
 			if e.Key() == "total" {
-				return e.Value().Int32(), nil
+				return e.Value().Int64(), nil
 			}
 		}
 	}

@@ -21,8 +21,8 @@ message Reward {
   string org_key = 1;
   string dev_key = 2;
   RewardType type = 3;
-  int32 factor = 4;
-  int32 base_atto_fil_reward = 5;
+  int64 factor = 4;
+  int64 base_atto_fil_reward = 5;
   google.protobuf.Timestamp created_at = 6;
 }
 
@@ -37,7 +37,7 @@ message Claim {
   string id = 1;
   string org_key = 2;
   string claimed_by = 3;
-  int32 amount = 4;
+  int64 amount = 4;
   ClaimState state = 5;
   string txn_cid = 6;
   string failure_message = 7;
@@ -73,7 +73,7 @@ message ListRewardsResponse {
 message ClaimRequest {
   string org_key = 1;
   string claimed_by = 2;
-  int32 amount = 3;
+  int64 amount = 3;
 }
 
 message ClaimResponse {
@@ -110,10 +110,10 @@ message BalanceRequest {
 }
 
 message BalanceResponse {
-  int32 rewarded = 1;
-  int32 pending = 2;
-  int32 claimed = 3;
-  int32 available = 4;
+  int64 rewarded = 1;
+  int64 pending = 2;
+  int64 claimed = 3;
+  int64 available = 4;
 }
 
 service FilRewardsService {
