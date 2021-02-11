@@ -1095,7 +1095,7 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 		ctx,
 		cus.Key,
 		cus.AccountType.Pb(),
-		analytics.WithEmail(cus.Email), // this wasn't being inclided before, do we want to?
+		analytics.WithEmail(cus.Email), // this wasn't being included before, do we want to?
 		analytics.WithProperties(summary),
 	); err != nil {
 		log.Errorf("calling analytics identify: %v", err)

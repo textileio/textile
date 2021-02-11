@@ -251,12 +251,8 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 		return nil, status.Errorf(codes.Internal, "inserting reward: %v", err)
 	}
 
-	log.Info("about to update caches")
-
 	s.rewardsCacheOrg[req.OrgKey][t] = struct{}{}
 	s.rewardsCacheDev[req.DevKey][t] = struct{}{}
-
-	log.Info("caches updated")
 
 	if err := s.ac.Track(
 		ctx,
