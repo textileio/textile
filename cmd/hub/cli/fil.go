@@ -234,9 +234,9 @@ var filRewardsCmd = &cobra.Command{
 				fil := fmt.Sprintf("%.8f", float64(nanofil)/math.Pow10(9))
 				createdAt := reward.CreatedAt.AsTime().Format(time.RFC3339)
 				t := filrewardspb.RewardType_name[int32(reward.Type)]
-				data[i] = []string{t, fil, reward.OrgKey, reward.DevKey, createdAt}
+				data[i] = []string{t, fil, createdAt}
 			}
-			cmd.RenderTable([]string{"type", "amount (fil)", "org", "dev", "created at"}, data)
+			cmd.RenderTable([]string{"type", "amount (fil)", "created at"}, data)
 		}
 	},
 }
@@ -293,9 +293,9 @@ var filClaimsCmd = &cobra.Command{
 				amount := fmt.Sprintf("%.8f", float64(claim.Amount)/math.Pow10(9))
 				createdAt := claim.CreatedAt.AsTime().Format(time.RFC3339)
 				state := filrewardspb.ClaimState_name[int32(claim.State)]
-				data[i] = []string{amount, claim.ClaimedBy, state, claim.TxnCid, claim.FailureMessage, createdAt}
+				data[i] = []string{amount, state, claim.TxnCid, claim.FailureMessage, createdAt}
 			}
-			cmd.RenderTable([]string{"amount (fil)", "claimed by", "state", "txn cid", "failure message", "created at"}, data)
+			cmd.RenderTable([]string{"amount (fil)", "state", "txn cid", "failure message", "created at"}, data)
 		}
 	},
 }
@@ -320,10 +320,10 @@ var filRewardsBalanceCmd = &cobra.Command{
 		cmd.RenderTable(
 			[]string{"category", "amount (FIL)"},
 			[][]string{
-				{"rewarded", rewarded},
-				{"pending", pending},
-				{"claimed", claimed},
-				{"available", available},
+				{"Rewarded", rewarded},
+				{"Pending", pending},
+				{"Claimed", claimed},
+				{"Available", available},
 			},
 		)
 	},
