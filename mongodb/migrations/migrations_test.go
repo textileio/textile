@@ -156,7 +156,7 @@ func TestMigrations_m004(t *testing.T) {
 
 	// Preload collections
 	_, err := db.Collection("ipnskeys").InsertMany(ctx, []interface{}{
-		bson.M{"name": "name", "cid": "cid", "created_at": time.Now()},
+		bson.M{"_id": "name", "cid": "cid", "created_at": time.Now()},
 	})
 	require.NoError(t, err)
 
