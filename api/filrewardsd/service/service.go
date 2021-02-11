@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"time"
 
@@ -266,7 +267,8 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 			"type":                 pb.RewardType_name[int32(r.Type)],
 			"factor":               rewardTypeMeta[r.Type].factor,
 			"base_nano_fil_reward": s.baseNanoFILReward,
-			"amount":               rewardTypeMeta[r.Type].factor * s.baseNanoFILReward,
+			"amount_nano_fil":      rewardTypeMeta[r.Type].factor * s.baseNanoFILReward,
+			"amount_fil":           float64(rewardTypeMeta[r.Type].factor*s.baseNanoFILReward) / math.Pow10(9),
 			"dev_key":              req.DevKey,
 		}),
 	); err != nil {
@@ -388,9 +390,10 @@ func (s *Service) Claim(ctx context.Context, req *pb.ClaimRequest) (*pb.ClaimRes
 		analyticspb.AccountType_ACCOUNT_TYPE_ORG,
 		analyticspb.Event_EVENT_FIL_CLAIM,
 		analytics.WithProperties(map[string]interface{}{
-			"id":         c.ID.Hex(),
-			"claimed_by": c.ClaimedBy,
-			"amount":     c.Amount,
+			"id":              c.ID.Hex(),
+			"claimed_by":      c.ClaimedBy,
+			"amount_nano_fil": c.Amount,
+			"amount_fil":      float64(c.Amount) / math.Pow10(9),
 		}),
 	); err != nil {
 		log.Errorf("calling analytics track: %v", err)
