@@ -17,6 +17,7 @@ type config struct {
 	daemonSnapshotMaxAge time.Duration
 }
 
+// Option allows to configure an indexer.
 type Option func(*config)
 
 // WithRunOnStart indicates if the index must be generated

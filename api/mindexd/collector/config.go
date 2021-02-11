@@ -21,6 +21,7 @@ type config struct {
 	fetchLimit       int
 }
 
+// Option parametrizes a collector configuration.
 type Option func(*config)
 
 // WithRunOnStart indicates if a collection should

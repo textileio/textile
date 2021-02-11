@@ -17,6 +17,8 @@ var (
 	errRecordNotFound = errors.New("record not found")
 )
 
+// GetPowergateTargets returns the external Powergates that will be
+// polled to import storage-deal and retrieval records.
 func (s *Store) GetPowergateTargets(ctx context.Context) ([]model.PowTarget, error) {
 	c, err := s.ptc.Find(ctx, bson.M{})
 	if err != nil {
@@ -32,6 +34,9 @@ func (s *Store) GetPowergateTargets(ctx context.Context) ([]model.PowTarget, err
 	return res, nil
 }
 
+// GetLastStorageDealRecordUpdatedAt returns the latests updated-at timestamp of
+// a particular external Powergate. This might serve to ask the external powergate,
+// for newer records since this timestamp.
 func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
 	filter := bson.M{"pow_name": powName}
 	opts := options.Find()
@@ -61,6 +66,9 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 	return (res)[0].PowStorageDealRecord.UpdatedAt, nil
 }
 
+// GetLastRetrievalRecordUpdatedAt returns the latests updated-at timestamp of
+// a particular external Powergate. This might serve to ask the external powergate,
+// for newer records since this timestamp.
 func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
 	filter := bson.M{"pow_name": powName}
 	opts := options.Find()
@@ -90,6 +98,8 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 	return (res)[0].PowRetrievalRecord.UpdatedAt, nil
 }
 
+// PersistStorageDealRecords merge a set of storage-deal records for an external powergate.
+// The action has upsert semantics, so if the record already exists, it's updated.
 func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region string, psrs []model.PowStorageDealRecord) error {
 	if powName == "" {
 		return fmt.Errorf("powergate name is empty")
@@ -125,6 +135,8 @@ func (s *Store) PersistStorageDealRecords(ctx context.Context, powName, region s
 	return nil
 }
 
+// PersistRetrievalRecords merge a set of retrieval records for an external powergate.
+// The action has upsert semantics, so if the record already exists, it's updated.
 func (s *Store) PersistRetrievalRecords(ctx context.Context, powName, region string, prrs []model.PowRetrievalRecord) error {
 	if powName == "" {
 		return fmt.Errorf("powergate name is empty")

@@ -13,6 +13,7 @@ var (
 	log = logger.Logger("indexer")
 )
 
+// Indexer creates a miner's index with Filecoin and Textile data.
 type Indexer struct {
 	cfg           config
 	store         *store.Store
@@ -25,6 +26,7 @@ type Indexer struct {
 	daemonSub       <-chan struct{}
 }
 
+// New returns a new Indexer.
 func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *store.Store, opts ...Option) (*Indexer, error) {
 	config := defaultConfig
 	for _, o := range opts {
@@ -49,6 +51,7 @@ func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *stor
 	return i, nil
 }
 
+// Close closes an Indexer.
 func (i *Indexer) Close() error {
 	i.daemonCtxCancel()
 	<-i.daemonClosed

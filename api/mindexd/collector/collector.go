@@ -13,6 +13,8 @@ var (
 	log = logger.Logger("records-collector")
 )
 
+// Collector is responsible for fetching storage/retrieval records from
+// external Powergate instances, and merging them in a unified database.
 type Collector struct {
 	lock        sync.Mutex
 	cfg         config
@@ -24,6 +26,7 @@ type Collector struct {
 	daemonClosed    chan (struct{})
 }
 
+// New returns a new Collector.
 func New(store *store.Store, opts ...Option) (*Collector, error) {
 	config := defaultConfig
 	for _, o := range opts {
@@ -45,6 +48,10 @@ func New(store *store.Store, opts ...Option) (*Collector, error) {
 	return c, nil
 }
 
+// Subscribe returns a notification channel that will get
+// pushed signales whenever a new batch of records was imported.
+// This is useful for interested parties knowing about new
+// record's data might be available.
 func (c *Collector) Subscribe() <-chan struct{} {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -55,13 +62,20 @@ func (c *Collector) Subscribe() <-chan struct{} {
 	return ch
 }
 
+// Close closes the Collector.
 func (c *Collector) Close() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	c.daemonCtxCancel()
 	<-c.daemonClosed
 
 	return nil
 }
 
+// runDaemon creates the background daemon that
+// will poll known Powergate targets to fetch
+// new records information.
 func (c *Collector) runDaemon() {
 	defer close(c.daemonClosed)
 

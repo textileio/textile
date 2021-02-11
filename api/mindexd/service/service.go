@@ -196,6 +196,8 @@ func (s *Service) GetIndexDashboard(ctx context.Context, req *pb.GetIndexDashboa
 	return ret, nil
 }
 
+// GetMinerInfo returns miner's index information for a miner. If no information is
+// available, it returns a codes.NotFound status code.
 func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest) (*pb.GetMinerInfoResponse, error) {
 	mi, err := s.store.GetMinerInfo(ctx, req.MinerAddress)
 	if err == store.ErrMinerNotExists {
@@ -207,6 +209,7 @@ func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest)
 	}, nil
 }
 
+// CalculateDealPrice calculates deal price for a miner.
 func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealPriceRequest) (*pb.CalculateDealPriceResponse, error) {
 	mi, err := s.store.GetMinerInfo(ctx, req.MinerAddress)
 	if err == store.ErrMinerNotExists {
