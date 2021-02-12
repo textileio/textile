@@ -146,6 +146,10 @@ func init() {
 		"indexerFrequency",
 		config.Flags["indexerFrequency"].DefValue.(time.Duration),
 		"Indexer daemon frequency")
+	rootCmd.PersistentFlags().Duration(
+		"indexerSnapshotMaxAge",
+		config.Flags["indexerSnapshotMaxAge"].DefValue.(time.Duration),
+		"Indexer snapshot max-age to trigger a new one.")
 
 	// Collector settings
 	rootCmd.PersistentFlags().Bool(
