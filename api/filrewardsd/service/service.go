@@ -113,7 +113,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 	db := client.Database(config.MongoDbName)
 	rewardsCol := db.Collection(rewardsCollectionName)
 	claimsCol := db.Collection(claimsCollectionName)
-	_, err = rewardsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
+	if _, err := rewardsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{primitive.E{Key: "org_key", Value: 1}, primitive.E{Key: "type", Value: 1}},
 			Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"org_key": bson.M{"$gt": ""}}),
@@ -134,9 +134,25 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		{
 			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
 		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating indexes: %v", err)
+	}); err != nil {
+		return nil, fmt.Errorf("creating rewards collection indexes: %v", err)
+	}
+
+	if _, err := claimsCol.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{primitive.E{Key: "org_key", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "claimed_by", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "state", Value: 1}},
+		},
+		{
+			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("creating claims collection indexes: %v", err)
 	}
 
 	// Populate caches.
