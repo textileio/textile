@@ -15,15 +15,20 @@ var (
 )
 
 func (i *Indexer) generateIndex(ctx context.Context) error {
+	log.Debugf("starting updating textile miners info")
 	if err := i.updateTextileMinerInfo(ctx); err != nil {
 		log.Errorf("updating textile info: %s", err)
 	}
 
+	log.Debugf("getting miners with power")
 	miners, err := i.getActiveMiners(ctx)
 	if err != nil {
 		return fmt.Errorf("getting active miners: %s", err)
 	}
+
+	log.Debugf("importing on-chain miners data started")
 	for start := 0; start < len(miners); start += minersBatchSize {
+		log.Debugf("importing on-chain batch number %d", start)
 		end := start + minersBatchSize
 		if end > len(miners) {
 			end = len(miners)
@@ -33,6 +38,7 @@ func (i *Indexer) generateIndex(ctx context.Context) error {
 			return fmt.Errorf("updating on-chain info for miners: %s", err)
 		}
 	}
+	log.Debugf("importing on-chain miners data finished")
 
 	return nil
 }
@@ -43,15 +49,14 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 	if err != nil {
 		return fmt.Errorf("get miner on-chain info from powergate: %s", err)
 	}
-
 	for _, mi := range minfos.MinersInfo {
 		onchain := model.FilecoinInfo{
 			RelativePower:    mi.RelativePower,
-			AskPrice:         mi.AskPrice,
-			AskVerifiedPrice: mi.AskVerifiedPrice,
-			MinPieceSize:     mi.MinPieceSize,
-			MaxPieceSize:     mi.MaxPieceSize,
-			SectorSize:       mi.SectorSize,
+			AskPrice:         int64(mi.AskPrice),
+			AskVerifiedPrice: int64(mi.AskVerifiedPrice),
+			MinPieceSize:     int64(mi.MinPieceSize),
+			MaxPieceSize:     int64(mi.MaxPieceSize),
+			SectorSize:       int64(mi.SectorSize),
 			UpdatedAt:        time.Now(),
 		}
 

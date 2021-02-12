@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	pow "github.com/textileio/powergate/v2/api/client"
+	powc "github.com/textileio/powergate/v2/api/client"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/mindexd/model"
 )
@@ -25,6 +26,7 @@ func (c *Collector) collectTargets(ctx context.Context) int {
 		go func(source model.PowTarget) {
 			defer wg.Done()
 
+			ctx := context.WithValue(ctx, powc.AdminKey, source.AdminToken)
 			client, err := pow.NewClient(source.APIEndpoint)
 			if err != nil {
 				log.Errorf("creating powergate client for %s: %s", source.Name, err)
@@ -76,6 +78,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 			break
 		}
 		totalCount += len(res.Records)
+		log.Debugf("%s collected a total of %d new/updated records, last %v", source.Name, len(res.Records), res.Records[len(res.Records)-1].UpdatedAt)
 
 		records := toStorageDealRecords(res.Records)
 		if err := c.store.PersistStorageDealRecords(ctx, source.Name, source.Region, records); err != nil {

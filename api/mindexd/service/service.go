@@ -68,7 +68,10 @@ type Config struct {
 func NewService(ctx context.Context, config Config) (*Service, error) {
 	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
-			"mindex": logging.LevelDebug,
+			"mindexd":   logging.LevelDebug,
+			"collector": logging.LevelDebug,
+			"indexer":   logging.LevelDebug,
+			"store":     logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -216,8 +219,8 @@ func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealP
 		return nil, status.Error(codes.NotFound, "Miner not found")
 	}
 
-	durationEpochs := uint64(req.DurationDays * 24 * 60 * 60 / epochDurationSeconds)
-	paddedSize := uint64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
+	durationEpochs := req.DurationDays * 24 * 60 * 60 / epochDurationSeconds
+	paddedSize := int64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
 
 	ret := &pb.CalculateDealPriceResponse{
 		TotalCost:         paddedSize * durationEpochs * mi.Filecoin.AskPrice,

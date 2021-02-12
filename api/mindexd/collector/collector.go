@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	log = logger.Logger("records-collector")
+	log = logger.Logger("collector")
 )
 
 // Collector is responsible for fetching storage/retrieval records from

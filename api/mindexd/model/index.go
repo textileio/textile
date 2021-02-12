@@ -26,11 +26,11 @@ type MetadataInfo struct {
 
 type FilecoinInfo struct {
 	RelativePower    float64   `bson:"relative_power"`
-	AskPrice         uint64    `bson:"ask_price"`
-	AskVerifiedPrice uint64    `bson:"ask_verifed_price"`
-	MinPieceSize     uint64    `bson:"min_piece_size"`
-	MaxPieceSize     uint64    `bson:"max_piece_size"`
-	SectorSize       uint64    `bson:"sector_size"`
+	AskPrice         int64     `bson:"ask_price"`
+	AskVerifiedPrice int64     `bson:"ask_verifed_price"`
+	MinPieceSize     int64     `bson:"min_piece_size"`
+	MaxPieceSize     int64     `bson:"max_piece_size"`
+	SectorSize       int64     `bson:"sector_size"`
 	UpdatedAt        time.Time `bson:"updated_at"`
 }
 

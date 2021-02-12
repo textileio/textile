@@ -259,10 +259,10 @@ func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c 
 		fieldPrefix := "textile.regions." + i.ID.Region + "." + prefixSuffix
 		if i.ID.Failed {
 			setFields[fieldPrefix+".failures"] = i.Total
-			setFields[fieldPrefix+".last_failure"] = time.Unix(i.Last, 0)
+			setFields[fieldPrefix+".last_failure"] = time.Unix(0, i.Last)
 		} else {
 			setFields[fieldPrefix+".total"] = i.Total
-			setFields[fieldPrefix+".last"] = time.Unix(i.Last, 0)
+			setFields[fieldPrefix+".last"] = time.Unix(0, i.Last)
 		}
 
 		filter := bson.M{"_id": i.ID.Miner}
