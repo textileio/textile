@@ -217,7 +217,7 @@ var rootCmd = &cobra.Command{
 		collectorRunOnStart := config.Viper.GetBool("collector.run_on_start")
 		collectorFrequency := config.Viper.GetDuration("collector.frequency")
 		collectorFetchLimit := config.Viper.GetInt("collector.fetch_limit")
-		collectorFetchTimeout := config.Viper.GetDuration("collector.fetch_duration")
+		collectorFetchTimeout := config.Viper.GetDuration("collector.fetch_timeout")
 		cmd.ErrCheck(err)
 
 		ctx, cancel := context.WithCancel(context.Background())
