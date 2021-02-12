@@ -58,8 +58,8 @@ var (
 			},
 
 			// Indexer config
-			"indexerRunOnStartup": {
-				Key:      "indexer.run_on_startup",
+			"indexerRunOnStart": {
+				Key:      "indexer.run_on_start",
 				DefValue: false,
 			},
 			"indexerFrequency": {
@@ -72,8 +72,8 @@ var (
 			},
 
 			// Collector config
-			"collectorRunOnStartup": {
-				Key:      "collector.run_on_startup",
+			"collectorRunOnStart": {
+				Key:      "collector.run_on_start",
 				DefValue: false,
 			},
 			"collectorFrequency": {
@@ -130,7 +130,7 @@ func init() {
 	// Powergate settings
 	rootCmd.PersistentFlags().String(
 		"powAddrAPI",
-		config.Flags["powAddrApi"].DefValue.(string),
+		config.Flags["powAddrAPI"].DefValue.(string),
 		"Powergate API address")
 	rootCmd.PersistentFlags().String(
 		"powAdminToken",
