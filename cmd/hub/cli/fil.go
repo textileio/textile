@@ -114,8 +114,8 @@ var filVerifyCmd = &cobra.Command{
 
 var filInfoCmd = &cobra.Command{
 	Use:   "info cid",
-	Short: "Get information about the current storate state of a cid",
-	Long:  `Get information about the current storate state of a cid`,
+	Short: "Get information about the current storage state of a cid",
+	Long:  `Get information about the current storage state of a cid`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
