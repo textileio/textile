@@ -183,6 +183,9 @@ type Config struct {
 	MaxNumberThreadsPerOwner int
 	ThreadsConnManager       connmgr.ConnManager
 
+	// IPNS
+	IPNSRepublishSchedule string
+
 	// Powergate
 	PowergateAdminToken string
 
@@ -517,6 +520,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			webrpc.ServeHTTP(w, r)
 		}
 	})
+
 	go func() {
 		if err := t.proxy.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("proxy error: %v", err)
@@ -544,6 +548,8 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 
 	// Start pulling threads
 	t.tn.StartPulling()
+	// Start republishing ipns keys
+	t.ipnsm.StartRepublishing(conf.IPNSRepublishSchedule)
 
 	log.Info("started")
 
@@ -618,7 +624,7 @@ func (t *Textile) Close() error {
 	}
 	log.Info("local clients were shutdown")
 
-	t.ipnsm.Cancel()
+	t.ipnsm.Close()
 	if t.archiveTracker != nil {
 		if err := t.archiveTracker.Close(); err != nil {
 			return err

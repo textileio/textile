@@ -149,6 +149,40 @@ func TestMigrations_m003(t *testing.T) {
 	assert.NotNil(t, account2["buckets_total_size"])
 }
 
+// Test remove buckets_total_size from accounts
+func TestMigrations_m004(t *testing.T) {
+	ctx := context.Background()
+	db := setup(t, ctx)
+
+	// Preload collections
+	_, err := db.Collection("ipnskeys").InsertMany(ctx, []interface{}{
+		bson.M{"_id": "name", "cid": "cid", "created_at": time.Now()},
+	})
+	require.NoError(t, err)
+
+	// Run up
+	err = migrate.NewMigrate(db, m004).Up(migrate.AllAvailable)
+	require.NoError(t, err)
+
+	res := db.Collection("ipnskeys").FindOne(ctx, bson.M{})
+	require.NoError(t, res.Err())
+	var key bson.M
+	err = res.Decode(&key)
+	require.NoError(t, err)
+	assert.NotNil(t, key["path"])
+
+	// Run down
+	err = migrate.NewMigrate(db, m004).Down(migrate.AllAvailable)
+	require.NoError(t, err)
+
+	res = db.Collection("ipnskeys").FindOne(ctx, bson.M{})
+	require.NoError(t, res.Err())
+	var key2 bson.M
+	err = res.Decode(&key2)
+	require.NoError(t, err)
+	assert.Nil(t, key2["path"])
+}
+
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
 	require.NoError(t, err)

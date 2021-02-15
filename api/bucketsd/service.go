@@ -380,7 +380,7 @@ func (s *Service) createBucket(
 	}
 
 	// Create a new IPNS key
-	buckKey, err := s.IPNSManager.CreateKey(ctx, dbID)
+	buckKey, err := s.IPNSManager.CreateKey(ctx, dbID, buckPath)
 	if err != nil {
 		return
 	}
