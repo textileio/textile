@@ -83,7 +83,7 @@ var (
 				DefValue: "",
 			},
 			"ipnsRepublishSchedule": {
-				Key:      "ipns.republish.schedule",
+				Key:      "ipns.republish_schedule",
 				DefValue: "0 1 * * *",
 			},
 
@@ -250,7 +250,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsHost := cmd.AddrFromStr(config.Viper.GetString("addr.threads.host"))
 		addrThreadsMongoUri := config.Viper.GetString("addr.threads.mongo_uri")
 		addrThreadsMongoName := config.Viper.GetString("addr.threads.mongo_name")
-		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish.schedule")
+		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))

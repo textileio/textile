@@ -213,7 +213,6 @@ func (m *Manager) republish() error {
 	start := time.Now()
 	keys, err := m.keys.List(ctx)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 	withPath := 0

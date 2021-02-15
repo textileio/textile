@@ -123,7 +123,7 @@ var (
 
 			//IPNS
 			"ipnsRepublishSchedule": {
-				Key:      "ipns.republish.schedule",
+				Key:      "ipns.republish_schedule",
 				DefValue: "0 1 * * *",
 			},
 
@@ -382,7 +382,7 @@ var rootCmd = &cobra.Command{
 		archivesJobPollIntervalFast := config.Viper.GetDuration("archives.job_poll_interval_fast")
 
 		// IPNS
-		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish.schedule")
+		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
 
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
