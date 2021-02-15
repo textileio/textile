@@ -961,6 +961,42 @@ func (s *Service) createLinks(
 	}, nil
 }
 
+// MovePath moves source path to destination path and cleans up afterward
+func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *pb.MovePathResponse, err error) {
+	log.Debugf("received set path request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, errDBRequired
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	_, pth, err := s.getBucketPath(ctx, dbID, req.Key, req.Path, dbToken)
+	if err != nil {
+		return nil, err
+	}
+
+	rp, err := s.IPFSClient.ResolvePath(ctx, pth)
+	if err != nil {
+		return nil, err
+	}
+
+	sp, err := s.SetPath(ctx, &pb.SetPathRequest{
+		Key:  req.Key,
+		Path: req.Path,
+		Cid:  rp.Cid().String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("parsing cid path: %v", err)
+	}
+	root, err := s.Root(ctx, &pb.RootRequest{
+		Key: req.Key,
+	})
+	return &pb.MovePathResponse{
+		Root:   root.Root,
+		Pinned: sp.Pinned,
+	}, nil
+}
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
 
