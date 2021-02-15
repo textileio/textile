@@ -335,21 +335,16 @@ func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id string, ch chan<- 
 	return nil
 }
 
-func (c *Client) ListFilRewards(ctx context.Context, opts ...ListFilRewardsOption) ([]*filrewardspb.Reward, bool, *time.Time, error) {
+func (c *Client) ListFilRewards(ctx context.Context, opts ...ListFilRewardsOption) ([]*filrewardspb.Reward, bool, int64, error) {
 	req := &pb.ListFilRewardsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.c.ListFilRewards(ctx, req)
 	if err != nil {
-		return nil, false, nil, fmt.Errorf("calling list fil rewards rpc: %v", err)
+		return nil, false, 0, fmt.Errorf("calling list fil rewards rpc: %v", err)
 	}
-	var t *time.Time
-	if res.MoreStartAt != nil {
-		ts := res.MoreStartAt.AsTime()
-		t = &ts
-	}
-	return res.Rewards, res.More, t, nil
+	return res.Rewards, res.More, res.MoreToken, nil
 }
 
 func (c *Client) ClaimFil(ctx context.Context, amount int64) error {
@@ -363,21 +358,16 @@ func (c *Client) ClaimFil(ctx context.Context, amount int64) error {
 	return nil
 }
 
-func (c *Client) ListFilClaims(ctx context.Context, opts ...ListFilClaimsOption) ([]*filrewardspb.Claim, bool, *time.Time, error) {
+func (c *Client) ListFilClaims(ctx context.Context, opts ...ListFilClaimsOption) ([]*filrewardspb.Claim, bool, int64, error) {
 	req := &pb.ListFilClaimsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.c.ListFilClaims(ctx, req)
 	if err != nil {
-		return nil, false, nil, fmt.Errorf("calling list fil claims rpc: %v", err)
+		return nil, false, 0, fmt.Errorf("calling list fil claims rpc: %v", err)
 	}
-	var t *time.Time
-	if res.MoreStartAt != nil {
-		ts := res.MoreStartAt.AsTime()
-		t = &ts
-	}
-	return res.Claims, res.More, t, nil
+	return res.Claims, res.More, res.MoreToken, nil
 }
 
 func (c *Client) FilRewardsBalance(ctx context.Context) (*pb.FilRewardsBalanceResponse, error) {

@@ -311,11 +311,11 @@ func (s *Service) ListRewards(ctx context.Context, req *pb.ListRewardsRequest) (
 		filter["type"] = req.RewardTypeFilter
 	}
 	comp := "$lt"
-	if req.StartAt != nil {
+	if req.MoreToken != 0 {
 		if req.Ascending {
 			comp = "$gt"
 		}
-		t := req.StartAt.AsTime()
+		t := time.Unix(0, req.MoreToken)
 		filter["created_at"] = bson.M{comp: &t}
 	}
 	cursor, err := s.rewardsCol.Find(ctx, filter, findOpts)
@@ -352,7 +352,7 @@ func (s *Service) ListRewards(ctx context.Context, req *pb.ListRewardsRequest) (
 		More:    more,
 	}
 	if startAt != nil {
-		res.MoreStartAt = timestamppb.New(*startAt)
+		res.MoreToken = startAt.UnixNano()
 	}
 	return res, nil
 }
@@ -484,11 +484,11 @@ func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*p
 		filter["state"] = req.StateFilter
 	}
 	comp := "$lt"
-	if req.StartAt != nil {
+	if req.MoreToken != 0 {
 		if req.Ascending {
 			comp = "$gt"
 		}
-		t := req.StartAt.AsTime()
+		t := time.Unix(0, req.MoreToken)
 		filter["created_at"] = bson.M{comp: &t}
 	}
 	cursor, err := s.claimsCol.Find(ctx, filter, findOpts)
@@ -525,7 +525,7 @@ func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*p
 		More:   more,
 	}
 	if startAt != nil {
-		res.MoreStartAt = timestamppb.New(*startAt)
+		res.MoreToken = startAt.UnixNano()
 	}
 	return res, nil
 }

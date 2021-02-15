@@ -26,7 +26,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var log = logging.Logger("usersapi")
@@ -590,8 +589,8 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 	if req.RewardTypeFilter != filrewardspb.RewardType_REWARD_TYPE_UNSPECIFIED {
 		opts = append(opts, filrewards.ListRewardsRewardTypeFilter(req.RewardTypeFilter))
 	}
-	if req.StartAt != nil {
-		opts = append(opts, filrewards.ListRewardsStartAt(req.StartAt.AsTime()))
+	if req.MoreToken != 0 {
+		opts = append(opts, filrewards.ListRewardsMoreToken(req.MoreToken))
 	}
 	if req.UnlockedByDev {
 		if user == nil {
@@ -599,18 +598,14 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 		}
 		opts = append(opts, filrewards.ListRewardsDevKeyFilter(user.Key.String()))
 	}
-	recs, more, startAt, err := s.FilRewardsClient.ListRewards(ctx, opts...)
+	recs, more, moreToken, err := s.FilRewardsClient.ListRewards(ctx, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calling filrewards list rewards: %v", err)
 	}
-	var ts *timestamppb.Timestamp
-	if startAt != nil {
-		ts = timestamppb.New(*startAt)
-	}
 	return &pb.ListFilRewardsResponse{
-		Rewards:     recs,
-		More:        more,
-		MoreStartAt: ts,
+		Rewards:   recs,
+		More:      more,
+		MoreToken: moreToken,
 	}, nil
 }
 
@@ -669,8 +664,8 @@ func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsReques
 	if req.StateFilter != filrewardspb.ClaimState_CLAIM_STATE_UNSPECIFIED {
 		opts = append(opts, filrewards.ListClaimsStateFilter(req.StateFilter))
 	}
-	if req.StartAt != nil {
-		opts = append(opts, filrewards.ListClaimsStartAt(req.StartAt.AsTime()))
+	if req.MoreToken != 0 {
+		opts = append(opts, filrewards.ListClaimsMoreToken(req.MoreToken))
 	}
 	if req.ClaimedByDev {
 		if user == nil {
@@ -679,18 +674,14 @@ func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsReques
 		opts = append(opts, filrewards.ListClaimsClaimedByFilter(user.Key.String()))
 	}
 
-	recs, more, startAt, err := s.FilRewardsClient.ListClaims(ctx, opts...)
+	recs, more, moreToken, err := s.FilRewardsClient.ListClaims(ctx, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calling filrewards list claims: %v", err)
 	}
-	var ts *timestamppb.Timestamp
-	if startAt != nil {
-		ts = timestamppb.New(*startAt)
-	}
 	return &pb.ListFilClaimsResponse{
-		Claims:      recs,
-		More:        more,
-		MoreStartAt: ts,
+		Claims:    recs,
+		More:      more,
+		MoreToken: moreToken,
 	}, nil
 }
 

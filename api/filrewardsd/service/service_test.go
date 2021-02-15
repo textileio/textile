@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const bufSize = 1024 * 1024
@@ -301,42 +300,35 @@ func TestListRewardsPaging(t *testing.T) {
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_CREATED)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BILLING_SETUP)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BUCKET_CREATED)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org3", "user3", analyticspb.Event_EVENT_BILLING_SETUP)
-	time.Sleep(time.Millisecond * 500)
 	requireProcessedEvent(t, ctx, c, "org3", "user3", analyticspb.Event_EVENT_BUCKET_CREATED)
 	numPages := 0
 	more := true
-	var startAtToken *timestamppb.Timestamp
+	var moreToken int64 = 0
 	for more {
 		req := &pb.ListRewardsRequest{Limit: 3}
-		if startAtToken != nil {
-			req.StartAt = startAtToken
+		if moreToken != 0 {
+			req.MoreToken = moreToken
 		}
 		res, err := c.ListRewards(ctx, req)
 		require.NoError(t, err)
 		numPages++
 		if numPages < 3 {
 			require.True(t, res.More)
-			require.NotNil(t, res.MoreStartAt)
+			require.Greater(t, res.MoreToken, int64(0))
 			require.Len(t, res.Rewards, 3)
 		}
 		if numPages == 3 {
 			require.False(t, res.More)
-			require.Nil(t, res.MoreStartAt)
+			require.Equal(t, int64(0), res.MoreToken)
 			require.Len(t, res.Rewards, 2)
 		}
-		startAtToken = res.MoreStartAt
+		moreToken = res.MoreToken
 		more = res.More
 	}
 	require.Equal(t, 3, numPages)
@@ -581,42 +573,35 @@ func TestListClaimsPaging(t *testing.T) {
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
 
 	requireClaim(t, ctx, c, "org1", "user1", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org1", "user1", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org1", "user1", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org1", "user1", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
-	time.Sleep(time.Millisecond * 500)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
 	numPages := 0
 	more := true
-	var startAtToken *timestamppb.Timestamp
+	var moreToken int64 = 0
 	for more {
 		req := &pb.ListClaimsRequest{Limit: 3}
-		if startAtToken != nil {
-			req.StartAt = startAtToken
+		if moreToken != 0 {
+			req.MoreToken = moreToken
 		}
 		res, err := c.ListClaims(ctx, req)
 		require.NoError(t, err)
 		numPages++
 		if numPages < 3 {
 			require.True(t, res.More)
-			require.NotNil(t, res.MoreStartAt)
+			require.Greater(t, res.MoreToken, int64(0))
 			require.Len(t, res.Claims, 3)
 		}
 		if numPages == 3 {
 			require.False(t, res.More)
-			require.Nil(t, res.MoreStartAt)
+			require.Equal(t, int64(0), res.MoreToken)
 			require.Len(t, res.Claims, 2)
 		}
-		startAtToken = res.MoreStartAt
+		moreToken = res.MoreToken
 		more = res.More
 	}
 	require.Equal(t, 3, numPages)

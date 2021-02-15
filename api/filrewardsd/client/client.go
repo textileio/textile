@@ -3,12 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	"github.com/textileio/textile/v2/api/filrewardsd/pb"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Client struct {
@@ -79,9 +77,9 @@ func ListRewardsAscending() ListRewardsOption {
 	}
 }
 
-func ListRewardsStartAt(time time.Time) ListRewardsOption {
+func ListRewardsMoreToken(moreToken int64) ListRewardsOption {
 	return func(req *pb.ListRewardsRequest) {
-		req.StartAt = timestamppb.New(time)
+		req.MoreToken = moreToken
 	}
 }
 
@@ -91,21 +89,16 @@ func ListRewardsLimit(limit int64) ListRewardsOption {
 	}
 }
 
-func (c *Client) ListRewards(ctx context.Context, opts ...ListRewardsOption) ([]*pb.Reward, bool, *time.Time, error) {
+func (c *Client) ListRewards(ctx context.Context, opts ...ListRewardsOption) ([]*pb.Reward, bool, int64, error) {
 	req := &pb.ListRewardsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.fsc.ListRewards(ctx, req)
 	if err != nil {
-		return nil, false, nil, fmt.Errorf("calling list rewards rpc: %v", err)
+		return nil, false, 0, fmt.Errorf("calling list rewards rpc: %v", err)
 	}
-	var t *time.Time
-	if res.MoreStartAt != nil {
-		ts := res.MoreStartAt.AsTime()
-		t = &ts
-	}
-	return res.Rewards, res.More, t, nil
+	return res.Rewards, res.More, res.MoreToken, nil
 }
 
 func (c *Client) Claim(ctx context.Context, orgKey, claimedBy string, amount int64) (*pb.Claim, error) {
@@ -173,9 +166,9 @@ func ListClaimsAscending() ListClaimsOption {
 	}
 }
 
-func ListClaimsStartAt(time time.Time) ListClaimsOption {
+func ListClaimsMoreToken(moreToken int64) ListClaimsOption {
 	return func(req *pb.ListClaimsRequest) {
-		req.StartAt = timestamppb.New(time)
+		req.MoreToken = moreToken
 	}
 }
 
@@ -185,21 +178,16 @@ func ListClaimsLimit(limit int64) ListClaimsOption {
 	}
 }
 
-func (c *Client) ListClaims(ctx context.Context, opts ...ListClaimsOption) ([]*pb.Claim, bool, *time.Time, error) {
+func (c *Client) ListClaims(ctx context.Context, opts ...ListClaimsOption) ([]*pb.Claim, bool, int64, error) {
 	req := &pb.ListClaimsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.fsc.ListClaims(ctx, req)
 	if err != nil {
-		return nil, false, nil, fmt.Errorf("calling list claims rpc: %v", err)
+		return nil, false, 0, fmt.Errorf("calling list claims rpc: %v", err)
 	}
-	var t *time.Time
-	if res.MoreStartAt != nil {
-		ts := res.MoreStartAt.AsTime()
-		t = &ts
-	}
-	return res.Claims, res.More, t, nil
+	return res.Claims, res.More, res.MoreToken, nil
 }
 
 func (c *Client) Balance(ctx context.Context, orgKey string) (*pb.BalanceResponse, error) {

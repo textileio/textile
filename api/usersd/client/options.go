@@ -1,11 +1,8 @@
 package client
 
 import (
-	"time"
-
 	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type listOptions struct {
@@ -91,9 +88,9 @@ func ListFilRewardsAscending() ListFilRewardsOption {
 	}
 }
 
-func ListFilRewardsStartAt(time time.Time) ListFilRewardsOption {
+func ListFilRewardsMoreToken(moreToken int64) ListFilRewardsOption {
 	return func(req *pb.ListFilRewardsRequest) {
-		req.StartAt = timestamppb.New(time)
+		req.MoreToken = moreToken
 	}
 }
 
@@ -123,9 +120,9 @@ func ListFilClaimsAscending() ListFilClaimsOption {
 	}
 }
 
-func ListFilClaimsStartAt(time time.Time) ListFilClaimsOption {
+func ListFilClaimsMoreToken(moreToken int64) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
-		req.StartAt = timestamppb.New(time)
+		req.MoreToken = moreToken
 	}
 }
 

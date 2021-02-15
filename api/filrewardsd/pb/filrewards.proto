@@ -60,14 +60,14 @@ message ListRewardsRequest {
   string dev_key_filter = 2;
   RewardType reward_type_filter = 3;
   bool ascending = 4;
-  google.protobuf.Timestamp start_at = 5;
+  int64 more_token = 5;
   int64 limit = 6;
 }
 
 message ListRewardsResponse {
   repeated Reward rewards = 1;
   bool more = 2;
-  google.protobuf.Timestamp more_start_at = 3;
+  int64 more_token = 3;
 }
 
 message ClaimRequest {
@@ -95,14 +95,14 @@ message ListClaimsRequest {
   string claimed_by_filter = 2;
   ClaimState state_filter = 3;
   bool ascending = 4;
-  google.protobuf.Timestamp start_at = 5;
+  int64 more_token = 5;
   int64 limit = 6;
 }
 
 message ListClaimsResponse {
   repeated Claim claims = 1;
   bool more = 2;
-  google.protobuf.Timestamp more_start_at = 3;
+  int64 more_token = 3;
 }
 
 message BalanceRequest {

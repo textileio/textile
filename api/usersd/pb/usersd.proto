@@ -4,7 +4,6 @@ option go_package = "github.com/textileio/textile/v2/api/usersd/pb";
 
 import "api/billingd/pb/billingd.proto";
 import "api/filrewardsd/pb/filrewards.proto";
-import "google/protobuf/timestamp.proto";
 
 message ListThreadsRequest {}
 
@@ -176,14 +175,14 @@ message ListFilRewardsRequest {
     bool unlocked_by_dev = 1;
     api.filrewardsd.pb.RewardType reward_type_filter = 2;
     bool ascending = 3;
-    google.protobuf.Timestamp start_at = 4;
+    int64 more_token = 4;
     int64 limit = 5;
 }
 
 message ListFilRewardsResponse {
     repeated api.filrewardsd.pb.Reward rewards = 1;
     bool more = 2;
-    google.protobuf.Timestamp more_start_at = 3;
+    int64 more_token = 3;
 }
 
 message ClaimFilRequest {
@@ -197,14 +196,14 @@ message ListFilClaimsRequest {
     bool claimed_by_dev = 1;
     api.filrewardsd.pb.ClaimState state_filter = 2;
     bool ascending = 3;
-    google.protobuf.Timestamp start_at = 4;
+    int64 more_token = 4;
     int64 limit = 5;
 }
 
 message ListFilClaimsResponse {
     repeated api.filrewardsd.pb.Claim claims = 1;
     bool more = 2;
-    google.protobuf.Timestamp more_start_at = 3;
+    int64 more_token = 3;
 }
 
 message FilRewardsBalanceRequest {
