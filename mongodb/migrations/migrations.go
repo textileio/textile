@@ -154,12 +154,39 @@ var m003 = migrate.Migration{
 	},
 }
 
+var m004 = migrate.Migration{
+	Version:     4,
+	Description: "set empty path field on all ipnskeys",
+	Up: func(db *mongo.Database) error {
+		log.Info("migrating 004 up")
+		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
+		defer cancel()
+		_, err := db.Collection("ipnskeys").UpdateMany(ctx, bson.M{}, bson.M{
+			"$set": bson.M{"path": ""},
+		})
+		return err
+	},
+	Down: func(db *mongo.Database) error {
+		log.Info("migrating 004 down")
+		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
+		defer cancel()
+		_, err := db.Collection("ipnskeys").UpdateMany(ctx, bson.M{
+			"path": bson.M{"$exists": 1},
+		}, bson.M{
+			"$unset": bson.M{"path": 1},
+		})
+		return err
+
+	},
+}
+
 func Migrate(db *mongo.Database) error {
 	m := migrate.NewMigrate(
 		db,
 		m001,
 		m002,
 		m003,
+		m004,
 	)
 	return m.Up(migrate.AllAvailable)
 }
