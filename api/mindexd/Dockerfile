@@ -1,4 +1,4 @@
-FROM golang:1.15.5-buster
+FROM golang:1.16.0-buster
 MAINTAINER Textile <contact@textile.io>
 
 # This is (in large part) copied (with love) from
@@ -60,9 +60,7 @@ COPY --from=0 /usr/lib/*-linux-gnu*/libssl.so* /usr/lib/
 COPY --from=0 /usr/lib/*-linux-gnu*/libcrypto.so* /usr/lib/
 
 # addrApi; can be exposed to the public
-EXPOSE 10006
-# addrGatewayHost; can be exposed to the public.
-EXPOSE 8010
+EXPOSE 5000
 
 # Create the repo directory.
 ENV MINDEXD_PATH /data/mindexd

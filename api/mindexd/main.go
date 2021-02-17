@@ -36,7 +36,7 @@ var (
 			// Addr config
 			"addrApi": {
 				Key:      "addr.api",
-				DefValue: "/ip4/127.0.0.1/tcp/20006",
+				DefValue: "/ip4/127.0.0.1/tcp/5000",
 			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
@@ -117,7 +117,7 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
-		"Hub API listen address")
+		"Miner Index API listen address")
 	rootCmd.PersistentFlags().String(
 		"addrMongoUri",
 		config.Flags["addrMongoUri"].DefValue.(string),
