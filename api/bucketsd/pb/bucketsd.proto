@@ -195,10 +195,7 @@ message MovePathRequest {
     string destination = 3;
 }
 
-message MovePathResponse {
-    Root root = 1;
-    int64 pinned = 2;
-}
+message MovePathResponse {}
 
 message RemoveRequest {
     string key = 1;

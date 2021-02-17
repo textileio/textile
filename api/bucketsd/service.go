@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	gopath "path"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -971,32 +973,146 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	_, pth, err := s.getBucketPath(ctx, dbID, req.Key, req.Path, dbToken)
+	if isEqualPath(req.Path, req.Destination) {
+		return &pb.MovePathResponse{}, nil
+	}
+
+	cleanPth, err := parsePath(req.Path)
+	if err != nil {
+		return nil, err
+	}
+	cleanDst, err := parsePath(req.Destination)
 	if err != nil {
 		return nil, err
 	}
 
-	rp, err := s.IPFSClient.ResolvePath(ctx, pth)
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
+	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, cleanPth, dbToken)
+	if err != nil {
+		return nil, err
+	}
+	n, err := s.getNodeAtPath(ctx, pth, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	sp, err := s.SetPath(ctx, &pb.SetPathRequest{
+	_, err = s.setPath(ctx, &pb.SetPathRequest{
 		Key:  req.Key,
-		Path: req.Path,
-		Cid:  rp.Cid().String(),
-	})
+		Path: cleanDst,
+		Cid:  n.Cid().String(),
+	}, dbID, dbToken, cleanDst)
 	if err != nil {
-		return nil, fmt.Errorf("parsing cid path: %v", err)
+		return nil, fmt.Errorf("error setting path: %v", err)
 	}
-	root, err := s.Root(ctx, &pb.RootRequest{
-		Key: req.Key,
-	})
-	return &pb.MovePathResponse{
-		Root:   root.Root,
-		Pinned: sp.Pinned,
-	}, nil
+	if buck.IsPrivate() {
+		meta, _, ok := buck.GetMetadataForPath(cleanPth, false)
+		if !ok {
+			return nil, fmt.Errorf("error getting metadata")
+		}
+		buck.SetMetadataAtPath(cleanDst, meta)
+		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+			return nil, fmt.Errorf("verifying bucket update: %v", err)
+		}
+	}
+
+	// if moving root into subdir, rm .textileseed from subdir
+	if cleanPth == "" {
+		filepath := gopath.Join(cleanDst, buckets.SeedName)
+		_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
+			Key:  req.Key,
+			Path: filepath,
+		}, filepath)
+
+		if err != nil {
+			return nil, fmt.Errorf("error cleaning path: %v", err)
+		}
+	}
+
+	// a nice absolute path to skip Rel errors
+	ipfsPath := gopath.Join("/ipfs", n.Cid().String(), cleanPth)
+	ipfsDest := gopath.Join("/ipfs", n.Cid().String(), cleanDst)
+
+	// If "a/b" => "a/" no cleanup is needed
+	parent, err := isSubPath(ipfsDest, ipfsPath)
+	if err != nil {
+		return nil, fmt.Errorf("path cleanup failed: %v", err)
+	}
+	if parent == true {
+		return &pb.MovePathResponse{}, nil
+	}
+
+	// If "a/" => "a/b" cleanup each leaf in "a" that isn't "b" (skipping .textileseed)
+	subdir, err := isSubPath(ipfsPath, ipfsDest)
+	if err != nil {
+		return nil, fmt.Errorf("path cleanup failed: %v", err)
+	}
+	if subdir == true {
+		item, err := s.ListPath(ctx, &pb.ListPathRequest{
+			Key:  req.Key,
+			Path: cleanPth,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("path cleanup failed: %v", err)
+		}
+		for _, chld := range item.Item.Items {
+			if strings.Compare(chld.Name, buckets.SeedName) == 0 || isEqualPath(chld.Path, ipfsDest) {
+				continue
+			}
+
+			sp := stripNodePath(chld.Path)
+			if cleanDst == sp {
+				continue
+			}
+			spClean := cleanPath(sp)
+
+			_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
+				Key:  req.Key,
+				Path: spClean,
+			}, spClean)
+			if err != nil {
+				return nil, fmt.Errorf("path cleanup failed: %v", err)
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("path cleanup failed: %v", err)
+		}
+		return &pb.MovePathResponse{}, nil
+	}
+
+	// if a/ => b/ remove a
+	_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
+		Key:  req.Key,
+		Path: cleanPth,
+	}, cleanPth)
+	if err != nil {
+		return nil, fmt.Errorf("path cleanup failed: %v", err)
+	}
+
+	return &pb.MovePathResponse{}, nil
 }
+
+// isEqualPath returns true if dest equals src
+func isEqualPath(src, dest string) bool {
+	return filepath.Clean(src) == filepath.Clean(dest)
+}
+
+// isSubPath returns true if chld is a subpath of pth
+func isSubPath(src, dest string) (bool, error) {
+	p, err := filepath.Rel(src, dest)
+	if err != nil {
+		return false, err
+	}
+	return !strings.Contains(p, ".."), nil
+}
+
+func stripNodePath(pth string) string {
+	reg := regexp.MustCompile("/ipfs/([^/]+)/")
+	return cleanPath(reg.ReplaceAllString(pth, ""))
+}
+
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
 
@@ -1007,14 +1123,24 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	dbToken, _ := thread.TokenFromContext(ctx)
 
 	destPath := cleanPath(req.Path)
-	bootCid, err := cid.Decode(req.Cid)
-	if err != nil {
-		return nil, fmt.Errorf("invalid remote cid: %v", err)
-	}
 
 	lck := s.Semaphores.Get(buckLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
+
+	s.setPath(ctx, req, dbID, dbToken, destPath)
+
+	return &pb.SetPathResponse{
+		Pinned: s.getPinnedBytes(ctx),
+	}, nil
+}
+
+func (s *Service) setPath(ctx context.Context, req *pb.SetPathRequest, dbID thread.ID, dbToken thread.Token, destPath string) (*tdb.Bucket, error) {
+
+	bootCid, err := cid.Decode(req.Cid)
+	if err != nil {
+		return nil, fmt.Errorf("invalid remote cid: %v", err)
+	}
 
 	buck := &tdb.Bucket{}
 	if err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken)); err != nil {
@@ -1049,9 +1175,7 @@ func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.
 	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-	return &pb.SetPathResponse{
-		Pinned: s.getPinnedBytes(ctx),
-	}, nil
+	return buck, nil
 }
 
 // setPathFromExistingCid sets the path with a cid from the network, encrypting with file key if present.
@@ -2372,11 +2496,31 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	lck.Acquire()
 	defer lck.Release()
 
-	buck := &tdb.Bucket{}
-	err = s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	buck, err := s.removePath(ctx, dbID, dbToken, req, filePath)
 	if err != nil {
 		return nil, err
 	}
+
+	go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
+
+	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
+	root, err := getPbRoot(dbID, buck)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RemovePathResponse{
+		Root:   root,
+		Pinned: s.getPinnedBytes(ctx),
+	}, nil
+}
+
+func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread.Token, req *pb.RemovePathRequest, filePath string) (*tdb.Bucket, error) {
+	buck := &tdb.Bucket{}
+	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Root != "" && req.Root != buck.Path {
 		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
@@ -2414,18 +2558,7 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
-
-	go s.IPNSManager.Publish(dirPath, buck.Key)
-
-	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
-	root, err := getPbRoot(dbID, buck)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.RemovePathResponse{
-		Root:   root,
-		Pinned: s.getPinnedBytes(ctx),
-	}, nil
+	return buck, nil
 }
 
 // removeNodeAtPath removes node at the location of path.

@@ -121,7 +121,7 @@ buck-clean:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml down -v --remove-orphans
 
 test:
-	go test -race -timeout 45m ./...
+	go test -race -timeout 45m ./api/...
 .PHONY: test
 
 clean-protos:
