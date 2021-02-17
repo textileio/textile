@@ -191,8 +191,8 @@ message SetPathResponse {
 
 message MovePathRequest {
     string key = 1;
-    string path = 2;
-    string destination = 3;
+    string fromPath = 2;
+    string toPath = 3;
 }
 
 message MovePathResponse {}

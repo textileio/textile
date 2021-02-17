@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	gopath "path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -973,24 +972,24 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	if isEqualPath(req.Path, req.Destination) {
-		return &pb.MovePathResponse{}, nil
+	cleanPth, err := parsePath(req.FromPath)
+	if err != nil {
+		return nil, err
+	}
+	cleanDst, err := parsePath(req.ToPath)
+	if err != nil {
+		return nil, err
 	}
 
-	cleanPth, err := parsePath(req.Path)
-	if err != nil {
-		return nil, err
-	}
-	cleanDst, err := parsePath(req.Destination)
-	if err != nil {
-		return nil, err
+	if cleanPth == cleanDst {
+		return &pb.MovePathResponse{}, nil
 	}
 
 	lck := s.Semaphores.Get(buckLock(req.Key))
 	lck.Acquire()
 	defer lck.Release()
 
-	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, cleanPth, dbToken)
+	_, pth, err := s.getBucketPath(ctx, dbID, req.Key, cleanPth, dbToken)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,16 +1006,16 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	if err != nil {
 		return nil, fmt.Errorf("error setting path: %v", err)
 	}
-	if buck.IsPrivate() {
-		meta, _, ok := buck.GetMetadataForPath(cleanPth, false)
-		if !ok {
-			return nil, fmt.Errorf("error getting metadata")
-		}
-		buck.SetMetadataAtPath(cleanDst, meta)
-		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("verifying bucket update: %v", err)
-		}
-	}
+	// if buck.IsPrivate() {
+	// 	meta, _, ok := buck.GetMetadataForPath(cleanPth, false)
+	// 	if !ok {
+	// 		return nil, fmt.Errorf("error getting metadata")
+	// 	}
+	// 	buck.SetMetadataAtPath(cleanDst, meta)
+	// 	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+	// 		return nil, fmt.Errorf("verifying bucket update: %v", err)
+	// 	}
+	// }
 
 	// if moving root into subdir, rm .textileseed from subdir
 	if cleanPth == "" {
@@ -1031,25 +1030,14 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		}
 	}
 
-	// a nice absolute path to skip Rel errors
-	ipfsPath := gopath.Join("/ipfs", n.Cid().String(), cleanPth)
-	ipfsDest := gopath.Join("/ipfs", n.Cid().String(), cleanDst)
-
 	// If "a/b" => "a/" no cleanup is needed
-	parent, err := isSubPath(ipfsDest, ipfsPath)
-	if err != nil {
-		return nil, fmt.Errorf("path cleanup failed: %v", err)
-	}
-	if parent == true {
+	if strings.HasPrefix(cleanPth, cleanDst) {
 		return &pb.MovePathResponse{}, nil
 	}
 
 	// If "a/" => "a/b" cleanup each leaf in "a" that isn't "b" (skipping .textileseed)
-	subdir, err := isSubPath(ipfsPath, ipfsDest)
-	if err != nil {
-		return nil, fmt.Errorf("path cleanup failed: %v", err)
-	}
-	if subdir == true {
+	if strings.HasPrefix(cleanDst, cleanPth) {
+		// todo: optimize by removing the listpath roundtrip
 		item, err := s.ListPath(ctx, &pb.ListPathRequest{
 			Key:  req.Key,
 			Path: cleanPth,
@@ -1057,15 +1045,13 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		if err != nil {
 			return nil, fmt.Errorf("path cleanup failed: %v", err)
 		}
+		reg := regexp.MustCompile("/ipfs/([^/]+)/")
 		for _, chld := range item.Item.Items {
-			if strings.Compare(chld.Name, buckets.SeedName) == 0 || isEqualPath(chld.Path, ipfsDest) {
+			sp := cleanPath(reg.ReplaceAllString(chld.Path, ""))
+			if strings.Compare(chld.Name, buckets.SeedName) == 0 || sp == cleanDst {
 				continue
 			}
 
-			sp := stripNodePath(chld.Path)
-			if cleanDst == sp {
-				continue
-			}
 			spClean := cleanPath(sp)
 
 			_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
@@ -1092,25 +1078,6 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	}
 
 	return &pb.MovePathResponse{}, nil
-}
-
-// isEqualPath returns true if dest equals src
-func isEqualPath(src, dest string) bool {
-	return filepath.Clean(src) == filepath.Clean(dest)
-}
-
-// isSubPath returns true if chld is a subpath of pth
-func isSubPath(src, dest string) (bool, error) {
-	p, err := filepath.Rel(src, dest)
-	if err != nil {
-		return false, err
-	}
-	return !strings.Contains(p, ".."), nil
-}
-
-func stripNodePath(pth string) string {
-	reg := regexp.MustCompile("/ipfs/([^/]+)/")
-	return cleanPath(reg.ReplaceAllString(pth, ""))
 }
 
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {

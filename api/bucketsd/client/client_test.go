@@ -716,13 +716,12 @@ func TestClient_Move(t *testing.T) {
 	ctx, client := setup(t)
 
 	t.Run("public", func(t *testing.T) {
-
 		move(t, ctx, client, false)
 	})
 
-	// t.Run("private", func(t *testing.T) {
-	// 	move(t, ctx, client, true)
-	// })
+	t.Run("private", func(t *testing.T) {
+		move(t, ctx, client, true)
+	})
 }
 
 func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
