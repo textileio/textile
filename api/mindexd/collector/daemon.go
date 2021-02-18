@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	pow "github.com/textileio/powergate/v2/api/client"
 	powc "github.com/textileio/powergate/v2/api/client"
@@ -69,7 +70,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
-		res, err := pc.Admin.Records.GetUpdatedStorageDealRecordsSince(ctx, lastUpdatedAt+1, c.cfg.fetchLimit)
+		res, err := pc.Admin.Records.GetUpdatedStorageDealRecordsSince(ctx, lastUpdatedAt.Add(time.Nanosecond), c.cfg.fetchLimit)
 		if err != nil {
 			return 0, fmt.Errorf("get storage deal records: %s", err)
 		}
@@ -85,7 +86,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 			return 0, fmt.Errorf("persist fetched records: %s", err)
 		}
 
-		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt
+		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt.AsTime()
 
 		// If we fetched less than limit, then there're no
 		// more records to fetch.
@@ -108,7 +109,7 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
-		res, err := pc.Admin.Records.GetUpdatedRetrievalRecordsSince(ctx, lastUpdatedAt+1, c.cfg.fetchLimit)
+		res, err := pc.Admin.Records.GetUpdatedRetrievalRecordsSince(ctx, lastUpdatedAt.Add(time.Nanosecond), c.cfg.fetchLimit)
 		if err != nil {
 			return 0, fmt.Errorf("get retrieval records: %s", err)
 		}
@@ -123,7 +124,7 @@ func (c *Collector) collectNewRetrievalRecords(ctx context.Context, pc *pow.Clie
 			return 0, fmt.Errorf("persist fetched records: %s", err)
 		}
 
-		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt
+		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt.AsTime()
 
 		// If we fetched less than limit, then there're no
 		// more records to fetch.
@@ -143,14 +144,14 @@ func toStorageDealRecords(rs []*userPb.StorageDealRecord) []model.PowStorageDeal
 			Address:           s.Address,
 			Pending:           s.Pending,
 			TransferSize:      s.TransferSize,
-			DataTransferStart: s.DataTransferStart,
-			DataTransferEnd:   s.DataTransferEnd,
-			SealingStart:      s.SealingStart,
-			SealingEnd:        s.SealingEnd,
+			DataTransferStart: s.DataTransferStart.AsTime(),
+			DataTransferEnd:   s.DataTransferEnd.AsTime(),
+			SealingStart:      s.SealingStart.AsTime(),
+			SealingEnd:        s.SealingEnd.AsTime(),
 			Failed:            s.ErrMsg != "",
 			ErrMsg:            s.ErrMsg,
 			CreatedAt:         s.Time,
-			UpdatedAt:         s.UpdatedAt,
+			UpdatedAt:         s.UpdatedAt.AsTime(),
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid:     s.DealInfo.ProposalCid,
 				StateId:         s.DealInfo.StateId,
@@ -178,13 +179,13 @@ func toRetrievalRecords(rs []*userPb.RetrievalDealRecord) []model.PowRetrievalRe
 		pr := model.PowRetrievalRecord{
 			ID:                r.Id,
 			Address:           r.Address,
-			DataTransferStart: r.DataTransferStart,
-			DataTransferEnd:   r.DataTransferEnd,
+			DataTransferStart: r.DataTransferStart.AsTime(),
+			DataTransferEnd:   r.DataTransferEnd.AsTime(),
 			BytesReceived:     r.BytesReceived,
 			Failed:            r.ErrMsg != "",
 			ErrMsg:            r.ErrMsg,
 			CreatedAt:         r.Time,
-			UpdatedAt:         r.UpdatedAt,
+			UpdatedAt:         r.UpdatedAt.AsTime(),
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner:    r.DealInfo.Miner,
 				MinPrice: r.DealInfo.MinPrice,

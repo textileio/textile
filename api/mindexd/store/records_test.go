@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
@@ -39,7 +40,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	sdr := target
 	sdr.Address = "Addr999"
 	sdr.DealInfo.StateId = 99
-	sdr.UpdatedAt = 99999
+	sdr.UpdatedAt = time.Unix(99999, 0)
 	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", []model.PowStorageDealRecord{sdr})
 	require.NoError(t, err)
 
@@ -50,7 +51,7 @@ func TestPersistStorageDealRecord(t *testing.T) {
 	require.True(t, modified.LastUpdatedAt.After(original.LastUpdatedAt))
 	require.Equal(t, sdr.Address, modified.PowStorageDealRecord.Address)
 	require.Equal(t, sdr.DealInfo.StateId, modified.PowStorageDealRecord.DealInfo.StateId)
-	require.Equal(t, sdr.UpdatedAt, modified.PowStorageDealRecord.UpdatedAt)
+	require.Equal(t, sdr.UpdatedAt.UTC(), modified.PowStorageDealRecord.UpdatedAt.UTC())
 }
 
 func TestPersistRetrievalRecord(t *testing.T) {
@@ -72,9 +73,9 @@ func TestPersistRetrievalRecord(t *testing.T) {
 
 	rr := target
 	rr.ErrMsg = "Err999"
-	rr.DataTransferEnd = 999
-	rr.DataTransferStart = 888
-	rr.UpdatedAt = 99999
+	rr.DataTransferEnd = time.Unix(999, 0)
+	rr.DataTransferStart = time.Unix(888, 0)
+	rr.UpdatedAt = time.Unix(99999, 0)
 	err = s.PersistRetrievalRecords(ctx, "duke-1", "005", []model.PowRetrievalRecord{rr})
 	require.NoError(t, err)
 
@@ -85,9 +86,9 @@ func TestPersistRetrievalRecord(t *testing.T) {
 	require.Equal(t, original.Region, modified.Region)
 	require.True(t, modified.LastUpdatedAt.After(original.LastUpdatedAt))
 	require.Equal(t, rr.ErrMsg, modified.PowRetrievalRecord.ErrMsg)
-	require.Equal(t, rr.DataTransferEnd, modified.PowRetrievalRecord.DataTransferEnd)
-	require.Equal(t, rr.DataTransferStart, modified.PowRetrievalRecord.DataTransferStart)
-	require.Equal(t, rr.UpdatedAt, modified.PowRetrievalRecord.UpdatedAt)
+	require.Equal(t, rr.DataTransferEnd.UTC(), modified.PowRetrievalRecord.DataTransferEnd.UTC())
+	require.Equal(t, rr.DataTransferStart.UTC(), modified.PowRetrievalRecord.DataTransferStart.UTC())
+	require.Equal(t, rr.UpdatedAt.UTC(), modified.PowRetrievalRecord.UpdatedAt.UTC())
 }
 
 func TestGetLastUpdatedAt(t *testing.T) {
@@ -100,10 +101,10 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	// Check non-existant last updated at behavior.
 	uat, err := s.GetLastStorageDealRecordUpdatedAt(ctx, "none")
 	require.NoError(t, err)
-	require.Equal(t, int64(0), uat)
+	require.Equal(t, time.Time{}.UTC(), uat.UTC())
 	uat, err = s.GetLastRetrievalRecordUpdatedAt(ctx, "none")
 	require.NoError(t, err)
-	require.Equal(t, int64(0), uat)
+	require.Equal(t, time.Time{}.UTC(), uat.UTC())
 
 	// Insert some records.
 	err = s.PersistStorageDealRecords(ctx, "duke-1", "005", testStorageDealRecords)
@@ -114,10 +115,10 @@ func TestGetLastUpdatedAt(t *testing.T) {
 	// Check non-existant last updated at behavior.
 	uat, err = s.GetLastStorageDealRecordUpdatedAt(ctx, "duke-1")
 	require.NoError(t, err)
-	require.Equal(t, testStorageDealRecords[1].UpdatedAt, uat)
+	require.Equal(t, testStorageDealRecords[1].UpdatedAt.UTC(), uat.UTC())
 	uat, err = s.GetLastRetrievalRecordUpdatedAt(ctx, "duke-1")
 	require.NoError(t, err)
-	require.Equal(t, testRetrievalRecords[1].UpdatedAt, uat)
+	require.Equal(t, testRetrievalRecords[1].UpdatedAt.UTC(), uat.UTC())
 }
 
 func setup(t *testing.T, ctx context.Context) *mongo.Database {
@@ -154,13 +155,13 @@ var (
 				Message:         "msg",
 			},
 			TransferSize:      1000,
-			DataTransferStart: 100,
-			DataTransferEnd:   102,
-			SealingStart:      200,
-			SealingEnd:        204,
+			DataTransferStart: time.Unix(100, 0),
+			DataTransferEnd:   time.Unix(102, 0),
+			SealingStart:      time.Unix(200, 0),
+			SealingEnd:        time.Unix(204, 0),
 			ErrMsg:            "err msg",
 			CreatedAt:         80,
-			UpdatedAt:         300,
+			UpdatedAt:         time.Unix(300, 0),
 		},
 		{
 			RootCid: "StorageRootCid2",
@@ -181,13 +182,13 @@ var (
 				Message:         "msg",
 			},
 			TransferSize:      1000,
-			DataTransferStart: 100,
-			DataTransferEnd:   102,
-			SealingStart:      200,
-			SealingEnd:        204,
+			DataTransferStart: time.Unix(100, 0),
+			DataTransferEnd:   time.Unix(102, 0),
+			SealingStart:      time.Unix(200, 0),
+			SealingEnd:        time.Unix(204, 0),
 			ErrMsg:            "err msg",
 			CreatedAt:         81,
-			UpdatedAt:         305,
+			UpdatedAt:         time.Unix(305, 0),
 		},
 	}
 
@@ -195,11 +196,11 @@ var (
 		{
 			ID:                "RID1",
 			Address:           "Addr1",
-			DataTransferStart: 1003,
-			DataTransferEnd:   1004,
+			DataTransferStart: time.Unix(1003, 0),
+			DataTransferEnd:   time.Unix(1004, 0),
 			ErrMsg:            "err msg 2",
 			CreatedAt:         300,
-			UpdatedAt:         502,
+			UpdatedAt:         time.Unix(502, 0),
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				RootCid:  "RetrievalRootCid1",
 				Size:     3000,
@@ -210,11 +211,11 @@ var (
 		{
 			ID:                "RID2",
 			Address:           "Addr1",
-			DataTransferStart: 1003,
-			DataTransferEnd:   1004,
+			DataTransferStart: time.Unix(1003, 0),
+			DataTransferEnd:   time.Unix(1004, 0),
 			ErrMsg:            "err msg 2",
 			CreatedAt:         303,
-			UpdatedAt:         505,
+			UpdatedAt:         time.Unix(505, 0),
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				RootCid:  "RetrievalRootCid1",
 				Size:     3000,

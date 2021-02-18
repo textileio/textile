@@ -37,7 +37,7 @@ func (s *Store) GetPowergateTargets(ctx context.Context) ([]model.PowTarget, err
 // GetLastStorageDealRecordUpdatedAt returns the latests updated-at timestamp of
 // a particular external Powergate. This might serve to ask the external powergate,
 // for newer records since this timestamp.
-func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
+func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName string) (time.Time, error) {
 	filter := bson.M{"pow_name": powName}
 	opts := options.Find()
 	opts = opts.SetSort(bson.D{{Key: "pow_storage_deal_record.updated_at", Value: -1}})
@@ -45,7 +45,7 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 	opts = opts.SetProjection(bson.M{"pow_storage_deal_record.updated_at": 1})
 	c, err := s.sdrc.Find(ctx, filter, opts)
 	if err != nil {
-		return 0, fmt.Errorf("executing find: %s", err)
+		return time.Time{}, fmt.Errorf("executing find: %s", err)
 	}
 	defer func() {
 		if err := c.Close(ctx); err != nil {
@@ -55,12 +55,12 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 
 	var res []model.StorageDealRecord
 	if err := c.All(ctx, &res); err != nil {
-		return 0, fmt.Errorf("fetching find result: %s", err)
+		return time.Time{}, fmt.Errorf("fetching find result: %s", err)
 	}
 	if len(res) == 0 {
 		// If we don't have any records, just return a very old lastUpdatedAt
 		// to let it start from the beginning.
-		return 0, nil
+		return time.Time{}, nil
 	}
 
 	return (res)[0].PowStorageDealRecord.UpdatedAt, nil
@@ -69,7 +69,7 @@ func (s *Store) GetLastStorageDealRecordUpdatedAt(ctx context.Context, powName s
 // GetLastRetrievalRecordUpdatedAt returns the latests updated-at timestamp of
 // a particular external Powergate. This might serve to ask the external powergate,
 // for newer records since this timestamp.
-func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName string) (int64, error) {
+func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName string) (time.Time, error) {
 	filter := bson.M{"pow_name": powName}
 	opts := options.Find()
 	opts = opts.SetSort(bson.D{{Key: "pow_retrieval_record.updated_at", Value: -1}})
@@ -77,7 +77,7 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 	opts = opts.SetProjection(bson.M{"pow_retrieval_record.updated_at": 1})
 	c, err := s.rrc.Find(ctx, filter, opts)
 	if err != nil {
-		return 0, fmt.Errorf("executing find: %s", err)
+		return time.Time{}, fmt.Errorf("executing find: %s", err)
 	}
 	defer func() {
 		if err := c.Close(ctx); err != nil {
@@ -87,12 +87,12 @@ func (s *Store) GetLastRetrievalRecordUpdatedAt(ctx context.Context, powName str
 
 	res := make([]model.RetrievalRecord, 0, 1)
 	if err := c.All(ctx, &res); err != nil {
-		return 0, fmt.Errorf("fetching find result: %s", err)
+		return time.Time{}, fmt.Errorf("fetching find result: %s", err)
 	}
 	if len(res) == 0 {
 		// If we don't have any records, just return a very old lastUpdatedAt
 		// to let it start from the beginning.
-		return 0, nil
+		return time.Time{}, nil
 	}
 
 	return (res)[0].PowRetrievalRecord.UpdatedAt, nil

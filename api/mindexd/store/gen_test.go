@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/textile/v2/api/mindexd/model"
@@ -190,29 +191,29 @@ var (
 	testDealsSouthAmerica = []model.PowStorageDealRecord{
 		{
 			Pending:           false,
-			DataTransferStart: 10000,
-			DataTransferEnd:   10010,
+			DataTransferStart: time.Unix(10000, 0),
+			DataTransferEnd:   time.Unix(10010, 0),
 			TransferSize:      1024 * 1024 * 100, // 100MiB in 10 sec =  10MiB/s
-			SealingStart:      20000,
-			SealingEnd:        23600, // Sealing duration = 60min (1hr)
+			SealingStart:      time.Unix(20000, 0),
+			SealingEnd:        time.Unix(23600, 0), // Sealing duration = 60min (1hr)
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "0_1",
 				Miner:       "f0100",
 			},
-			UpdatedAt: 300,
+			UpdatedAt: time.Unix(300, 0),
 		},
 		{
 			Pending:           false,
-			DataTransferStart: 10000,
-			DataTransferEnd:   10002,
+			DataTransferStart: time.Unix(10000, 0),
+			DataTransferEnd:   time.Unix(10002, 0),
 			TransferSize:      1024 * 1024 * 50, // 50MiB in 2 sec =  25MiB/s
-			SealingStart:      20000,
-			SealingEnd:        56000, // Sealing duration = 600 min (10hr)
+			SealingStart:      time.Unix(20000, 0),
+			SealingEnd:        time.Unix(56000, 0), // Sealing duration = 600 min (10hr)
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "0_2",
 				Miner:       "f0100",
 			},
-			UpdatedAt: 301,
+			UpdatedAt: time.Unix(301, 0),
 		},
 		{
 			Pending: false,
@@ -221,7 +222,7 @@ var (
 				ProposalCid: "0_5",
 				Miner:       "f0100",
 			},
-			UpdatedAt: 304,
+			UpdatedAt: time.Unix(304, 0),
 		},
 		{
 			Pending: true,
@@ -229,65 +230,65 @@ var (
 				ProposalCid: "1_1",
 				Miner:       "f0101",
 			},
-			UpdatedAt: 310,
+			UpdatedAt: time.Unix(310, 0),
 		},
 	}
 	testDealsNorthAmerica = []model.PowStorageDealRecord{
 		{
 			Pending:           false,
-			DataTransferStart: 10000,
-			DataTransferEnd:   10010,
+			DataTransferStart: time.Unix(10000, 0),
+			DataTransferEnd:   time.Unix(10010, 0),
 			TransferSize:      1024 * 1024 * 10, // 10MiB in 10 sec =  1MiB/s
-			SealingStart:      20000,
-			SealingEnd:        38000, // Sealing duration = 300 min (5hr)
+			SealingStart:      time.Unix(20000, 0),
+			SealingEnd:        time.Unix(38000, 0), // Sealing duration = 300 min (5hr)
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "0_3",
 				Miner:       "f0100",
 			},
-			UpdatedAt: 302,
+			UpdatedAt: time.Unix(302, 0),
 		},
 		{
 			Pending:           false,
-			DataTransferStart: 10000,
-			DataTransferEnd:   10010,
+			DataTransferStart: time.Unix(10000, 0),
+			DataTransferEnd:   time.Unix(10010, 0),
 			TransferSize:      1024 * 1024 * 2, // 2MiB in 10 sec =  0.2MiB/s
-			SealingStart:      20000,
-			SealingEnd:        38000, // Sealing duration = 300 min (5hr)
+			SealingStart:      time.Unix(20000, 0),
+			SealingEnd:        time.Unix(38000, 0), // Sealing duration = 300 min (5hr)
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "1_2",
 				Miner:       "f0101",
 			},
-			UpdatedAt: 310,
+			UpdatedAt: time.Unix(310, 0),
 		},
 	}
 	testDealsAfrica = []model.PowStorageDealRecord{
 		{
 			Pending:           false,
-			DataTransferStart: 0,
-			DataTransferEnd:   0, // Simulate not having transfer times.
+			DataTransferStart: time.Time{},
+			DataTransferEnd:   time.Time{}, // Simulate not having transfer times.
 			TransferSize:      1024 * 1024 * 1,
-			SealingStart:      20000,
-			SealingEnd:        29000, // Sealing duration = 150 min (2.5hr)
+			SealingStart:      time.Unix(20000, 0),
+			SealingEnd:        time.Unix(29000, 0), // Sealing duration = 150 min (2.5hr)
 
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "0_4",
 				Miner:       "f0100",
 			},
-			UpdatedAt: 303,
+			UpdatedAt: time.Unix(303, 0),
 		},
 		{
 			Pending:           false,
-			DataTransferStart: 10000,
-			DataTransferEnd:   10010,
+			DataTransferStart: time.Unix(10000, 0),
+			DataTransferEnd:   time.Unix(10010, 0),
 			TransferSize:      1024 * 1024 * 2, // 2MiB in 10 sec =  0.2MiB/s
-			SealingStart:      0,
-			SealingEnd:        0, // Simulate not having sealing times.
+			SealingStart:      time.Time{},
+			SealingEnd:        time.Time{}, // Simulate not having sealing times.
 
 			DealInfo: model.PowStorageDealRecordDealInfo{
 				ProposalCid: "1_3",
 				Miner:       "f0101",
 			},
-			UpdatedAt: 311,
+			UpdatedAt: time.Unix(311, 0),
 		},
 		{
 			Pending: false,
@@ -296,7 +297,7 @@ var (
 				ProposalCid: "1_4",
 				Miner:       "f0101",
 			},
-			UpdatedAt: 312,
+			UpdatedAt: time.Unix(312, 0),
 		},
 		{
 			Pending: false,
@@ -305,7 +306,7 @@ var (
 				ProposalCid: "1_5",
 				Miner:       "f0101",
 			},
-			UpdatedAt: 313,
+			UpdatedAt: time.Unix(313, 0),
 		},
 	}
 
@@ -316,30 +317,30 @@ var (
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0100",
 			},
-			DataTransferStart: 1000,
-			DataTransferEnd:   1010,
+			DataTransferStart: time.Unix(1000, 0),
+			DataTransferEnd:   time.Unix(1010, 0),
 			BytesReceived:     1024 * 1024 * 100, // Rate = 10MiB/s
-			UpdatedAt:         1002,
+			UpdatedAt:         time.Unix(1002, 0),
 		},
 		{
 			ID: "0_2",
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0100",
 			},
-			DataTransferStart: 1000,
-			DataTransferEnd:   1020,
+			DataTransferStart: time.Unix(1000, 0),
+			DataTransferEnd:   time.Unix(1020, 0),
 			BytesReceived:     1024 * 1024 * 1000, // Rate = 50MiB/s
-			UpdatedAt:         1001,
+			UpdatedAt:         time.Unix(1001, 0),
 		},
 		{
 			ID: "1_1",
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0101",
 			},
-			DataTransferStart: 1000,
-			DataTransferEnd:   1010,
+			DataTransferStart: time.Unix(1000, 0),
+			DataTransferEnd:   time.Unix(1010, 0),
 			BytesReceived:     1024 * 1024 * 1, // Rate = 0.1MiB/s
-			UpdatedAt:         1050,
+			UpdatedAt:         time.Unix(1050, 0),
 		},
 	}
 	testRetrievalsNorthAmerica = []model.PowRetrievalRecord{
@@ -348,18 +349,18 @@ var (
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0100",
 			},
-			DataTransferStart: 1000,
-			DataTransferEnd:   1016,
+			DataTransferStart: time.Unix(1000, 0),
+			DataTransferEnd:   time.Unix(1016, 0),
 			BytesReceived:     1024 * 1024 * 100, // Rate = 6.25MiB/s
-			UpdatedAt:         1003,
+			UpdatedAt:         time.Unix(1003, 0),
 		},
 		{
 			ID: "0_4",
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0100",
 			},
-			DataTransferStart: 0,
-			DataTransferEnd:   0, // Simulate not having data.
+			DataTransferStart: time.Time{},
+			DataTransferEnd:   time.Time{}, // Simulate not having data.
 			BytesReceived:     1024 * 1024 * 100,
 		},
 		{

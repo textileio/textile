@@ -40,14 +40,14 @@ type PowStorageDealRecord struct {
 	Pending           bool                         `bson:"pending"`
 	DealInfo          PowStorageDealRecordDealInfo `bson:"deal_info"`
 	TransferSize      int64                        `bson:"transfer_size"`
-	DataTransferStart int64                        `bson:"datatransfer_start"`
-	DataTransferEnd   int64                        `bson:"datatransfer_end"`
-	SealingStart      int64                        `bson:"sealing_start"`
-	SealingEnd        int64                        `bson:"sealing_end"`
+	DataTransferStart time.Time                    `bson:"datatransfer_start"`
+	DataTransferEnd   time.Time                    `bson:"datatransfer_end"`
+	SealingStart      time.Time                    `bson:"sealing_start"`
+	SealingEnd        time.Time                    `bson:"sealing_end"`
 	Failed            bool                         `bson:"failed"`
 	ErrMsg            string                       `bson:"err_msg"`
 	CreatedAt         int64                        `bson:"created_at"`
-	UpdatedAt         int64                        `bson:"updated_at"`
+	UpdatedAt         time.Time                    `bson:"updated_at"`
 }
 
 type PowStorageDealRecordDealInfo struct {
@@ -69,13 +69,13 @@ type PowRetrievalRecord struct {
 	ID                string                     `bson:"id"`
 	Address           string                     `bson:"address"`
 	DealInfo          PowRetrievalRecordDealInfo `bson:"deal_info"`
-	DataTransferStart int64                      `bson:"datatransfer_start"`
-	DataTransferEnd   int64                      `bson:"datatransfer_end"`
+	DataTransferStart time.Time                  `bson:"datatransfer_start"`
+	DataTransferEnd   time.Time                  `bson:"datatransfer_end"`
 	BytesReceived     uint64                     `bson:"bytes_received"`
 	Failed            bool                       `bson:"failed"`
 	ErrMsg            string                     `bson:"err_msg"`
 	CreatedAt         int64                      `bson:"created_at"`
-	UpdatedAt         int64                      `bson:"updated_at"`
+	UpdatedAt         time.Time                  `bson:"updated_at"`
 }
 
 type PowRetrievalRecordDealInfo struct {

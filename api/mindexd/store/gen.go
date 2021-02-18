@@ -56,8 +56,8 @@ type regionalGeneralItem struct {
 		Miner  string `bson:"miner"`
 		Failed bool   `bson:"failed"`
 	} `bson:"_id"`
-	Total int   `bson:"total"`
-	Last  int64 `bson:"last"`
+	Total int       `bson:"total"`
+	Last  time.Time `bson:"last"`
 }
 
 func (s *Store) regenerateTextileDealsTailMetrics(ctx context.Context, mr minerRegion) error {
@@ -93,17 +93,17 @@ func (s *Store) regenerateTextileDealsTailMetrics(ctx context.Context, mr minerR
 	for _, record := range records {
 		psd := record.PowStorageDealRecord
 
-		if psd.DataTransferEnd-psd.DataTransferStart > 0 {
+		if psd.DataTransferEnd.Sub(psd.DataTransferStart) > 0 {
 			tailTransfers = append(tailTransfers, model.TransferMiBPerSec{
-				TransferedAt: time.Unix(psd.DataTransferEnd, 0),
-				MiBPerSec:    float64(psd.TransferSize) / float64((psd.DataTransferEnd - psd.DataTransferStart)) / 1024 / 1024,
+				TransferedAt: psd.DataTransferEnd,
+				MiBPerSec:    float64(psd.TransferSize) / psd.DataTransferEnd.Sub(psd.DataTransferStart).Seconds() / 1024 / 1024,
 			})
 		}
 
-		if psd.SealingEnd-psd.SealingStart > 0 {
+		if psd.SealingEnd.Sub(psd.SealingStart) > 0 {
 			tailSealed = append(tailSealed, model.SealedDurationMins{
-				SealedAt:        time.Unix(psd.SealingEnd, 0),
-				DurationSeconds: int(psd.SealingEnd - psd.SealingStart),
+				SealedAt:        psd.SealingEnd,
+				DurationSeconds: int(psd.SealingEnd.Sub(psd.SealingStart).Seconds()),
 			})
 		}
 	}
@@ -222,10 +222,10 @@ func (s *Store) regenerateTextileRetrievalsTailMetrics(ctx context.Context, mr m
 	for _, record := range records {
 		psd := record.PowRetrievalRecord
 
-		if psd.DataTransferEnd-psd.DataTransferStart > 0 {
+		if psd.DataTransferEnd.Sub(psd.DataTransferStart) > 0 {
 			tailTransfers = append(tailTransfers, model.TransferMiBPerSec{
-				TransferedAt: time.Unix(psd.DataTransferEnd, 0),
-				MiBPerSec:    float64(psd.BytesReceived) / float64((psd.DataTransferEnd - psd.DataTransferStart)) / 1024 / 1024,
+				TransferedAt: psd.DataTransferEnd,
+				MiBPerSec:    float64(psd.BytesReceived) / psd.DataTransferEnd.Sub(psd.DataTransferStart).Seconds() / 1024 / 1024,
 			})
 		}
 	}
@@ -259,10 +259,10 @@ func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c 
 		fieldPrefix := "textile.regions." + i.ID.Region + "." + prefixSuffix
 		if i.ID.Failed {
 			setFields[fieldPrefix+".failures"] = i.Total
-			setFields[fieldPrefix+".last_failure"] = time.Unix(0, i.Last)
+			setFields[fieldPrefix+".last_failure"] = i.Last
 		} else {
 			setFields[fieldPrefix+".total"] = i.Total
-			setFields[fieldPrefix+".last"] = time.Unix(0, i.Last)
+			setFields[fieldPrefix+".last"] = i.Last
 		}
 
 		filter := bson.M{"_id": i.ID.Miner}
