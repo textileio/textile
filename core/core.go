@@ -178,7 +178,8 @@ type Config struct {
 	ThreadsConnManager       connmgr.ConnManager
 
 	// IPNS
-	IPNSRepublishSchedule string
+	IPNSRepublishSchedule    string
+	IPNSRepublishConcurrency int
 
 	// Powergate
 	PowergateAdminToken string
@@ -245,7 +246,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	if err != nil {
 		return nil, err
 	}
-	t.ipnsm, err = ipns.NewManager(t.collections.IPNSKeys, ic.Key(), ic.Name(), conf.Debug)
+	t.ipnsm, err = ipns.NewManager(t.collections.IPNSKeys, ic.Key(), ic.Name(), conf.IPNSRepublishConcurrency, conf.Debug)
 	if err != nil {
 		return nil, err
 	}

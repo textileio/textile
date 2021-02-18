@@ -63,6 +63,9 @@ func TestIPNSKeys_SetPath(t *testing.T) {
 	err = col.SetPath(context.Background(), "path2", "foo")
 	require.NoError(t, err)
 
+	err = col.SetPath(context.Background(), "path2", "notfoo")
+	require.Error(t, err)
+
 	got, err := col.GetByCid(context.Background(), "cid")
 	require.NoError(t, err)
 
