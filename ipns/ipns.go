@@ -112,11 +112,16 @@ func (m *Manager) RemoveKey(ctx context.Context, keyID string) error {
 // Publish publishes a path to IPNS with key ID.
 // Publishing can take up to a minute. Pending publishes are cancelled by consecutive
 // calls with the same key ID, which results in only the most recent publish succeeding.
-func (m *Manager) Publish(pth path.Path, keyID string) {
+func (m *Manager) Publish(pth path.Path, keyID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), publishTimeout)
 	defer cancel()
-	m.keys.SetPath(ctx, pth.String(), keyID)
+	key, err := m.keys.GetByCid(ctx, keyID)
+	if err != nil {
+		log.Error("key not found: %s", keyID)
+	}
+	m.keys.SetPath(ctx, pth.String(), key.Name)
 	m.publish(pth, keyID)
+	return nil
 }
 
 // Close manager.
