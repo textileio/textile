@@ -127,7 +127,7 @@ var (
 				DefValue: "0 1 * * *",
 			},
 			"maxRepublishingConcurrency": {
-				Key:      "ipns.max_republishing_concurrency",
+				Key:      "ipns.republish_concurrency",
 				DefValue: 100,
 			},
 
@@ -391,7 +391,7 @@ var rootCmd = &cobra.Command{
 
 		// IPNS
 		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
-		maxRepublishingConcurrency := config.Viper.GetInt("ipns.max_republishing_concurrency")
+		maxRepublishingConcurrency := config.Viper.GetInt("ipns.republish_concurrency")
 
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
@@ -443,8 +443,8 @@ var rootCmd = &cobra.Command{
 			ArchiveJobPollIntervalSlow: archivesJobPollIntervalSlow,
 			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
 			// IPNS
-			IPNSRepublishSchedule:      ipnsRepublishSchedule,
-			MaxRepublishingConcurrency: maxRepublishingConcurrency,
+			IPNSRepublishSchedule:    ipnsRepublishSchedule,
+			IPNSRepublishConcurrency: maxRepublishingConcurrency,
 			// Gateway
 			UseSubdomains: gatewaySubdomains,
 			// Cloudflare
