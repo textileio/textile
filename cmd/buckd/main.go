@@ -87,7 +87,7 @@ var (
 				DefValue: "0 1 * * *",
 			},
 			"maxRepublishingConcurrency": {
-				Key:      "ipns.max_republishing_schedule",
+				Key:      "ipns.max_republishing_concurrency",
 				DefValue: 100,
 			},
 
@@ -259,7 +259,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsMongoUri := config.Viper.GetString("addr.threads.mongo_uri")
 		addrThreadsMongoName := config.Viper.GetString("addr.threads.mongo_name")
 		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
-		maxRepublishingConcurrency := config.Viper.GetInt("ipns.max_republishing_schedule")
+		maxRepublishingConcurrency := config.Viper.GetInt("ipns.max_republishing_concurrency")
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))

@@ -127,7 +127,7 @@ var (
 				DefValue: "0 1 * * *",
 			},
 			"maxRepublishingConcurrency": {
-				Key:      "ipns.max_republishing_schedule",
+				Key:      "ipns.max_republishing_concurrency",
 				DefValue: 100,
 			},
 
@@ -391,7 +391,7 @@ var rootCmd = &cobra.Command{
 
 		// IPNS
 		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
-		maxRepublishingConcurrency := config.Viper.GetInt("ipns.max_republishing_schedule")
+		maxRepublishingConcurrency := config.Viper.GetInt("ipns.max_republishing_concurrency")
 
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
