@@ -31,8 +31,6 @@ const (
 	maxCancelPublishTries = 10
 	// list all keys timeout
 	listKeysTimeout = time.Hour
-	// maximum ipns records to republish per batch
-	maxRepublishingConcurrency = 50
 )
 
 // Manager handles bucket name publishing to IPNS.
@@ -46,10 +44,12 @@ type Manager struct {
 	ctxsLock    sync.Mutex
 	ctxs        map[string]context.CancelFunc
 	republisher *cron.Cron
+	// maximum ipns records to republish per batch
+	maxRepublishingConcurrency int
 }
 
 // NewManager returns a new IPNS manager.
-func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, debug bool) (*Manager, error) {
+func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, maxRepublishingConcurrency int, debug bool) (*Manager, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"ipns": logging.LevelDebug,
@@ -58,12 +58,13 @@ func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, 
 		}
 	}
 	return &Manager{
-		keys:        keys,
-		keyAPI:      keyAPI,
-		nameAPI:     nameAPI,
-		ctxs:        make(map[string]context.CancelFunc),
-		keyLocks:    make(map[string]chan struct{}),
-		republisher: cron.New(),
+		keys:                       keys,
+		keyAPI:                     keyAPI,
+		nameAPI:                    nameAPI,
+		ctxs:                       make(map[string]context.CancelFunc),
+		keyLocks:                   make(map[string]chan struct{}),
+		republisher:                cron.New(),
+		maxRepublishingConcurrency: maxRepublishingConcurrency,
 	}, nil
 }
 
@@ -226,7 +227,7 @@ func (m *Manager) republish() error {
 	}
 	withPath := 0
 	eg, gctx := errgroup.WithContext(context.Background())
-	lim := make(chan struct{}, maxRepublishingConcurrency)
+	lim := make(chan struct{}, m.maxRepublishingConcurrency)
 	for _, key := range keys {
 		key := key
 		if key.Path != "" {
