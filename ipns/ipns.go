@@ -120,7 +120,11 @@ func (m *Manager) Publish(pth path.Path, keyID string) {
 		log.Error("key not found: %s", keyID)
 		return
 	}
-	m.keys.SetPath(ctx, pth.String(), key.Name)
+	err = m.keys.SetPath(ctx, pth.String(), key.Name)
+	if err != nil {
+		log.Error("set path failed: %s", keyID)
+		return
+	}
 	m.publish(pth, keyID)
 }
 
