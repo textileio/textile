@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -86,6 +87,9 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 			return 0, fmt.Errorf("persist fetched records: %s", err)
 		}
 
+		sort.Slice(res.Records, func(i, j int) bool {
+			return res.Records[i].UpdatedAt.AsTime().Before(res.Records[j].UpdatedAt.AsTime())
+		})
 		lastUpdatedAt = res.Records[len(res.Records)-1].UpdatedAt.AsTime()
 
 		// If we fetched less than limit, then there're no

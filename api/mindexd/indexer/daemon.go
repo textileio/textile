@@ -52,8 +52,8 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 	for _, mi := range minfos.MinersInfo {
 		onchain := model.FilecoinInfo{
 			RelativePower:    mi.RelativePower,
-			AskPrice:         int64(mi.AskPrice),
-			AskVerifiedPrice: int64(mi.AskVerifiedPrice),
+			AskPrice:         mi.AskPrice,
+			AskVerifiedPrice: mi.AskVerifiedPrice,
 			MinPieceSize:     int64(mi.MinPieceSize),
 			MaxPieceSize:     int64(mi.MaxPieceSize),
 			SectorSize:       int64(mi.SectorSize),

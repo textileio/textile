@@ -13,8 +13,8 @@ message MinerIndexInfo  {
 
 message FilecoinInfo {
 	double relative_power = 1;
-	int64 ask_price = 2;
-	int64 ask_verified_price = 3;
+	string ask_price = 2;
+	string ask_verified_price = 3;
 	int64 min_piece_size = 4;
 	int64 max_piece_size = 5;
 	int64 sector_size = 6;
@@ -89,8 +89,8 @@ message CalculateDealPriceRequest {
 }
 
 message CalculateDealPriceResponse {
-	int64 total_cost = 1;
-	int64 verified_total_cost = 2;
+	string total_cost = 1;
+	string verified_total_cost = 2;
 	int64 padded_size = 3;
 	int64 duration_epochs = 4;
 }

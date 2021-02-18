@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"net"
 	"time"
 
@@ -222,9 +223,18 @@ func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealP
 	durationEpochs := req.DurationDays * 24 * 60 * 60 / epochDurationSeconds
 	paddedSize := int64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
 
+	var askPrice, askVerifiedPrice big.Int
+	if _, ok := askPrice.SetString(mi.Filecoin.AskPrice, 10); !ok {
+		return nil, fmt.Errorf("parsing ask price: %s", err)
+	}
+	if _, ok := askVerifiedPrice.SetString(mi.Filecoin.AskVerifiedPrice, 10); !ok {
+		return nil, fmt.Errorf("parsing ask verified price: %s", err)
+	}
+
+	gibEpochs := big.NewInt(0).Mul(&askPrice, big.NewInt(durationEpochs))
 	ret := &pb.CalculateDealPriceResponse{
-		TotalCost:         paddedSize * durationEpochs * mi.Filecoin.AskPrice,
-		VerifiedTotalCost: paddedSize * durationEpochs * mi.Filecoin.AskVerifiedPrice,
+		TotalCost:         big.NewInt(0).Mul(gibEpochs, &askPrice).String(),
+		VerifiedTotalCost: big.NewInt(0).Mul(gibEpochs, &askVerifiedPrice).String(),
 		DurationEpochs:    durationEpochs,
 		PaddedSize:        paddedSize,
 	}

@@ -17,16 +17,16 @@ func TestPutFilecoinInfo(t *testing.T) {
 
 	f0100 := model.FilecoinInfo{
 		RelativePower:    0.00002,
-		AskPrice:         1000,
-		AskVerifiedPrice: 501,
+		AskPrice:         "1000",
+		AskVerifiedPrice: "501",
 		MaxPieceSize:     32000,
 		MinPieceSize:     12000,
 		SectorSize:       11111,
 	}
 	f0101 := model.FilecoinInfo{
 		RelativePower:    100.00002,
-		AskPrice:         1001000,
-		AskVerifiedPrice: 100501,
+		AskPrice:         "1001000",
+		AskVerifiedPrice: "100501",
 		MaxPieceSize:     10032000,
 		MinPieceSize:     10012000,
 		SectorSize:       10011111,
