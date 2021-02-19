@@ -1,4 +1,4 @@
-FROM golang:1.16.0-buster
+FROM golang:1.15.5-buster
 MAINTAINER Textile <contact@textile.io>
 
 # This is (in large part) copied (with love) from
@@ -66,7 +66,7 @@ EXPOSE 5000
 ENV MINDEXD_PATH /data/mindexd
 RUN mkdir -p $MINDEXD_PATH \
   && adduser -D -h $MINDEXD_PATH -u 1000 -G users mindexd \
-  && chown mindexd:users $BILLING_PATH
+  && chown mindexd:users $MINDEXD_PATH
 
 # Switch to a non-privileged user.
 USER mindexd
