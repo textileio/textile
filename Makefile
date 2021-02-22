@@ -30,6 +30,10 @@ build-billingd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/billingd
 .PHONY: build-billingd
 
+build-mindexd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/mindexd
+.PHONY: build-mindexd
+
 install: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
 .PHONY: install
@@ -53,6 +57,12 @@ install-buckd: $(GOVVV)
 install-billingd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/billingd
 .PHONY: install-billingd
+
+install-mindexd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/mindexd
+.PHONY: install-mindexd
+
+
 
 define gen_release_files
 	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)
