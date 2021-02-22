@@ -166,9 +166,9 @@ func (m *Manager) publish(pth path.Path, keyID string) {
 			m.ctxsLock.Unlock()
 			if err := m.publishUnsafe(pctx, pth, keyID); err != nil {
 				if !errors.Is(err, context.Canceled) {
-					// Logging as a warning because this often fails with "context deadline exceeded",
-					// even if the entry can be found on the network (not fully saturated).
-					log.Warnf("error publishing path %s: %v", pth, err)
+					// The publish saturation did not meet the default level before the context expired.
+					// In most cases, the entry can still be discovered on the network.
+					log.Debugf("error publishing path %s: %v", pth, err)
 				} else {
 					log.Debugf("publishing path %s was cancelled: %v", pth, err)
 				}
@@ -188,7 +188,7 @@ func (m *Manager) publish(pth path.Path, keyID string) {
 			} else {
 				try++
 				if try > maxCancelPublishTries {
-					log.Warnf("failed to publish path %s: max tries exceeded", pth)
+					log.Debugf("failed to publish path %s: max tries exceeded", pth)
 					return
 				} else {
 					log.Debugf("failed to cancel publish (%v tries remaining)", maxCancelPublishTries-try)
