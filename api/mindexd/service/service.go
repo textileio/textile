@@ -17,6 +17,7 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/collector"
 	"github.com/textileio/textile/v2/api/mindexd/indexer"
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
+	"github.com/textileio/textile/v2/api/mindexd/pb"
 	pb "github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/api/mindexd/store"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -215,28 +216,35 @@ func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest)
 
 // CalculateDealPrice calculates deal price for a miner.
 func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealPriceRequest) (*pb.CalculateDealPriceResponse, error) {
-	mi, err := s.store.GetMinerInfo(ctx, req.MinerAddress)
-	if err == store.ErrMinerNotExists {
-		return nil, status.Error(codes.NotFound, "Miner not found")
-	}
 
 	durationEpochs := req.DurationDays * 24 * 60 * 60 / epochDurationSeconds
 	paddedSize := int64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
 
-	var askPrice, askVerifiedPrice big.Int
-	if _, ok := askPrice.SetString(mi.Filecoin.AskPrice, 10); !ok {
-		return nil, fmt.Errorf("parsing ask price: %s", err)
-	}
-	if _, ok := askVerifiedPrice.SetString(mi.Filecoin.AskVerifiedPrice, 10); !ok {
-		return nil, fmt.Errorf("parsing ask verified price: %s", err)
+	ret := &pb.CalculateDealPriceResponse{
+		DurationEpochs: durationEpochs,
+		PaddedSize:     paddedSize,
+		Results:        make([]*pb.CalculateDealPriceMiner, len(req.MinerAddresses)),
 	}
 
-	gibEpochs := big.NewInt(0).Mul(&askPrice, big.NewInt(durationEpochs))
-	ret := &pb.CalculateDealPriceResponse{
-		TotalCost:         big.NewInt(0).Mul(gibEpochs, &askPrice).String(),
-		VerifiedTotalCost: big.NewInt(0).Mul(gibEpochs, &askVerifiedPrice).String(),
-		DurationEpochs:    durationEpochs,
-		PaddedSize:        paddedSize,
+	for i, minerAddr := range req.MinerAddresses {
+		mi, err := s.store.GetMinerInfo(ctx, minerAddr)
+		if err == store.ErrMinerNotExists {
+			return nil, status.Errorf(codes.NotFound, "Miner %s not found", minerAddr)
+		}
+		var askPrice, askVerifiedPrice big.Int
+		if _, ok := askPrice.SetString(mi.Filecoin.AskPrice, 10); !ok {
+			return nil, fmt.Errorf("parsing ask price: %s", err)
+		}
+		if _, ok := askVerifiedPrice.SetString(mi.Filecoin.AskVerifiedPrice, 10); !ok {
+			return nil, fmt.Errorf("parsing ask verified price: %s", err)
+		}
+
+		gibEpochs := big.NewInt(0).Mul(&askPrice, big.NewInt(durationEpochs))
+		ret.Results[i] = &pb.CalculateDealPriceMiner{
+			Miner:             minerAddr,
+			TotalCost:         big.NewInt(0).Mul(gibEpochs, &askPrice).String(),
+			VerifiedTotalCost: big.NewInt(0).Mul(gibEpochs, &askVerifiedPrice).String(),
+		}
 	}
 
 	return ret, nil

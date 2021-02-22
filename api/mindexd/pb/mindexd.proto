@@ -105,20 +105,24 @@ message GetMinerInfoResponse {
 
 // rpc CalculateDealPrice
 message CalculateDealPriceRequest {
-	string miner_address = 1;
+	repeated string miner_addresses = 1;
 	int64 data_size_bytes = 2;
 	int64 duration_days = 3;
 }
 
 message CalculateDealPriceResponse {
-	string total_cost = 1;
-	string verified_total_cost = 2;
-	int64 padded_size = 3;
-	int64 duration_epochs = 4;
+	repeated CalculateDealPriceMiner results = 1;
+        int64 padded_size = 2;
+	int64 duration_epochs = 3;
+}
+message CalculateDealPriceMiner {
+	string miner = 1;
+	string total_cost = 2;
+	string verified_total_cost = 3;
 }
 
 service APIService {
-	rpc QueryIndexDashboard(QueryIndexDashboardRequest) returns (GetIndexDashboardResponse) {}
+	rpc QueryIndex(QueryIndexRequest) returns (QueryIndexResponse) {}
 	rpc GetMinerInfo(GetMinerInfoRequest) returns (GetMinerInfoResponse) {}
 	rpc CalculateDealPrice(CalculateDealPriceRequest) returns (CalculateDealPriceResponse) {}
 }
