@@ -82,11 +82,13 @@ var (
 				Key:      "addr.powergate.api",
 				DefValue: "",
 			},
+
+			// IPNS
 			"ipnsRepublishSchedule": {
 				Key:      "ipns.republish_schedule",
 				DefValue: "0 1 * * *",
 			},
-			"maxRepublishingConcurrency": {
+			"ipnsRepublishConcurrency": {
 				Key:      "ipns.republish_concurrency",
 				DefValue: 100,
 			},
@@ -187,14 +189,15 @@ func init() {
 		config.Flags["addrPowergateApi"].DefValue.(string),
 		"Powergate API address")
 
+	// IPNS
 	rootCmd.PersistentFlags().String(
 		"ipnsRepublishSchedule",
 		config.Flags["ipnsRepublishSchedule"].DefValue.(string),
-		"IPNS key republishing cron schedule")
+		"IPNS republishing cron schedule")
 	rootCmd.PersistentFlags().Int(
-		"maxRepublishingConcurrency",
-		config.Flags["maxRepublishingConcurrency"].DefValue.(int),
-		"IPNS keys republishing batch size")
+		"ipnsRepublishConcurrency",
+		config.Flags["ipnsRepublishConcurrency"].DefValue.(int),
+		"IPNS republishing batch size")
 
 	// Gateway
 	rootCmd.PersistentFlags().Bool(
@@ -259,7 +262,7 @@ var rootCmd = &cobra.Command{
 		addrThreadsMongoUri := config.Viper.GetString("addr.threads.mongo_uri")
 		addrThreadsMongoName := config.Viper.GetString("addr.threads.mongo_name")
 		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
-		maxRepublishingConcurrency := config.Viper.GetInt("ipns.republish_concurrency")
+		ipnsRepublishConcurrency := config.Viper.GetInt("ipns.republish_concurrency")
 		addrGatewayHost := cmd.AddrFromStr(config.Viper.GetString("addr.gateway.host"))
 		addrGatewayUrl := config.Viper.GetString("addr.gateway.url")
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
@@ -294,7 +297,7 @@ var rootCmd = &cobra.Command{
 			AddrIPFSAPI:              addrIpfsApi,
 			AddrPowergateAPI:         addrPowergateApi,
 			IPNSRepublishSchedule:    ipnsRepublishSchedule,
-			IPNSRepublishConcurrency: maxRepublishingConcurrency,
+			IPNSRepublishConcurrency: ipnsRepublishConcurrency,
 			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
 
 			DNSDomain: dnsDomain,

@@ -40,16 +40,21 @@ type Manager struct {
 	nameAPI iface.NameAPI
 
 	sync.Mutex
-	keyLocks    map[string]chan struct{}
-	ctxsLock    sync.Mutex
-	ctxs        map[string]context.CancelFunc
-	republisher *cron.Cron
-	// maximum ipns records to republish per batch
-	maxRepublishingConcurrency int
+	keyLocks             map[string]chan struct{}
+	ctxsLock             sync.Mutex
+	ctxs                 map[string]context.CancelFunc
+	republisher          *cron.Cron
+	republishConcurrency int
 }
 
 // NewManager returns a new IPNS manager.
-func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, maxRepublishingConcurrency int, debug bool) (*Manager, error) {
+func NewManager(
+	keys *mdb.IPNSKeys,
+	keyAPI iface.KeyAPI,
+	nameAPI iface.NameAPI,
+	republishConcurrency int,
+	debug bool,
+) (*Manager, error) {
 	if debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"ipns": logging.LevelDebug,
@@ -58,13 +63,13 @@ func NewManager(keys *mdb.IPNSKeys, keyAPI iface.KeyAPI, nameAPI iface.NameAPI, 
 		}
 	}
 	return &Manager{
-		keys:                       keys,
-		keyAPI:                     keyAPI,
-		nameAPI:                    nameAPI,
-		ctxs:                       make(map[string]context.CancelFunc),
-		keyLocks:                   make(map[string]chan struct{}),
-		republisher:                cron.New(),
-		maxRepublishingConcurrency: maxRepublishingConcurrency,
+		keys:                 keys,
+		keyAPI:               keyAPI,
+		nameAPI:              nameAPI,
+		ctxs:                 make(map[string]context.CancelFunc),
+		keyLocks:             make(map[string]chan struct{}),
+		republisher:          cron.New(),
+		republishConcurrency: republishConcurrency,
 	}, nil
 }
 
@@ -161,9 +166,9 @@ func (m *Manager) publish(pth path.Path, keyID string) {
 			m.ctxsLock.Unlock()
 			if err := m.publishUnsafe(pctx, pth, keyID); err != nil {
 				if !errors.Is(err, context.Canceled) {
-					// Logging as a warning because this often fails with "context deadline exceeded",
-					// even if the entry can be found on the network (not fully saturated).
-					log.Warnf("error publishing path %s: %v", pth, err)
+					// The publish saturation did not meet the default level before the context expired.
+					// In most cases, the entry can still be discovered on the network.
+					log.Debugf("error publishing path %s: %v", pth, err)
 				} else {
 					log.Debugf("publishing path %s was cancelled: %v", pth, err)
 				}
@@ -183,7 +188,7 @@ func (m *Manager) publish(pth path.Path, keyID string) {
 			} else {
 				try++
 				if try > maxCancelPublishTries {
-					log.Warnf("failed to publish path %s: max tries exceeded", pth)
+					log.Debugf("failed to publish path %s: max tries exceeded", pth)
 					return
 				} else {
 					log.Debugf("failed to cancel publish (%v tries remaining)", maxCancelPublishTries-try)
@@ -227,7 +232,7 @@ func (m *Manager) republish() error {
 	}
 	withPath := 0
 	eg, gctx := errgroup.WithContext(context.Background())
-	lim := make(chan struct{}, m.maxRepublishingConcurrency)
+	lim := make(chan struct{}, m.republishConcurrency)
 	for _, key := range keys {
 		key := key
 		if key.Path != "" {
@@ -250,6 +255,6 @@ func (m *Manager) republish() error {
 		return err
 	}
 
-	log.Infof("republishing finish %d total => %d with path in %v", len(keys), withPath, time.Since(start))
+	log.Infof("republished %d/%d keys in %v", len(keys), withPath, time.Since(start))
 	return nil
 }
