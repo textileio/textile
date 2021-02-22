@@ -35,8 +35,24 @@ type FilecoinInfo struct {
 }
 
 type TextileInfo struct {
-	Regions   map[string]TextileRegionInfo `bson:"regions"`
-	UpdatedAt time.Time                    `bson:"updated_at"`
+	Regions           map[string]TextileRegionInfo `bson:"regions"`
+	DealsSummary      TextileDealsSummary          `bson:"deals_summary"`
+	RetrievalsSummary TextileRetrievalSummary      `bson:"retrievals_summary"`
+	UpdatedAt         time.Time                    `bson:"updated_at"`
+}
+
+type TextileDealsSummary struct {
+	Total       int       `bson:"total"`
+	Last        time.Time `bson:"last"`
+	Failures    int       `bson:"failures"`
+	LastFailure time.Time `bson:"last_failure"`
+}
+
+type TextileRetrievalSummary struct {
+	Total       int       `bson:"total"`
+	Last        time.Time `bson:"last"`
+	Failures    int       `bson:"failures"`
+	LastFailure time.Time `bson:"last_failure"`
 }
 
 type TextileRegionInfo struct {

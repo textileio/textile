@@ -64,11 +64,33 @@ message GetMinersResponse {
 	string miner_address = 1;
 }
 
-// rpc GetIndexDashboard
-message GetIndexDashboardRequest {
+// rpc QueryIndexDashboard
+message QueryIndexRequest {
+	QueryIndexRequestFilters filters = 1;
+	QueryIndexRequestSort sort = 2;
+	int32 limit = 3;
+	string more_token = 4;
 }
 
-message GetIndexDashboardResponse {
+message QueryIndexRequestFilters {
+	string miner_country = 1;
+        string textile_region = 2;
+}
+
+message QueryIndexRequestSort {
+	bool ascending = 1;
+	QueryIndexRequestSortField field = 2;
+}
+
+enum QueryIndexRequestSortField {
+        QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_TOTAL_SUCCESSFUL = 0;
+        QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_LAST_SUCCESSFUL = 1;
+        QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE = 2;
+        QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE = 3;
+        QUERY_INDEX_REQUEST_SORT_FIELD_ACTIVE_SECTORS = 4;
+}
+
+message QueryIndexResponse {
 	repeated MinerIndexInfo miners = 1;
 }
 
@@ -96,7 +118,7 @@ message CalculateDealPriceResponse {
 }
 
 service APIService {
-	rpc GetIndexDashboard(GetIndexDashboardRequest) returns (GetIndexDashboardResponse) {}
+	rpc QueryIndexDashboard(QueryIndexDashboardRequest) returns (GetIndexDashboardResponse) {}
 	rpc GetMinerInfo(GetMinerInfoRequest) returns (GetMinerInfoResponse) {}
 	rpc CalculateDealPrice(CalculateDealPriceRequest) returns (CalculateDealPriceResponse) {}
 }

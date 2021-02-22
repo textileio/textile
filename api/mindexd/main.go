@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -222,6 +221,7 @@ var rootCmd = &cobra.Command{
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
 		api, err := service.NewService(ctx, service.Config{
 			ListenAddr: addrApi,
 			DBURI:      addrMongoUri,
@@ -245,7 +245,7 @@ var rootCmd = &cobra.Command{
 		err = api.Start()
 		cmd.ErrCheck(err)
 
-		fmt.Println("Welcome to Hub Miner Index!")
+		log.Info("Welcome to Hub Miner Index!")
 
 		cmd.HandleInterrupt(api.Stop)
 	},

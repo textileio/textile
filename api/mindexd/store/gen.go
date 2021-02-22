@@ -153,7 +153,7 @@ func (s *Store) regenerateTextileDealsTotalsAndLasts(ctx context.Context) ([]min
 	}
 	defer c.Close(ctx)
 
-	mr, err := s.updateTextileRegion(ctx, "deals", c)
+	mr, err := s.updateTextileRegionAndSummary(ctx, "deals", c)
 	if err != nil {
 		return nil, fmt.Errorf("updating region: %s", err)
 	}
@@ -185,7 +185,7 @@ func (s *Store) regenerateTextileRetrievalsTotalsAndLasts(ctx context.Context) (
 	}
 	defer c.Close(ctx)
 
-	mr, err := s.updateTextileRegion(ctx, "retrievals", c)
+	mr, err := s.updateTextileRegionAndSummary(ctx, "retrievals", c)
 	if err != nil {
 		return nil, fmt.Errorf("updating region: %s", err)
 	}
@@ -245,7 +245,17 @@ func (s *Store) regenerateTextileRetrievalsTailMetrics(ctx context.Context, mr m
 	return nil
 }
 
-func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c *mongo.Cursor) ([]minerRegion, error) {
+type minerSummary struct {
+	total int
+	last  time.Time
+
+	failures    int
+	lastFailure time.Time
+}
+
+func (s *Store) updateTextileRegionAndSummary(ctx context.Context, prefixSuffix string, c *mongo.Cursor) ([]minerRegion, error) {
+	msSummary := map[string]minerSummary{}
+
 	mrm := map[minerRegion]struct{}{}
 	opt := options.Update().SetUpsert(true)
 	for c.Next(ctx) {
@@ -257,13 +267,24 @@ func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c 
 
 		setFields := bson.M{}
 		fieldPrefix := "textile.regions." + i.ID.Region + "." + prefixSuffix
+
+		ct := msSummary[i.ID.Miner]
 		if i.ID.Failed {
 			setFields[fieldPrefix+".failures"] = i.Total
 			setFields[fieldPrefix+".last_failure"] = i.Last
+			ct.failures += i.Total
+			if i.Last.After(ct.lastFailure) {
+				ct.lastFailure = i.Last
+			}
 		} else {
 			setFields[fieldPrefix+".total"] = i.Total
 			setFields[fieldPrefix+".last"] = i.Last
+			ct.total += i.Total
+			if i.Last.After(ct.last) {
+				ct.last = i.Last
+			}
 		}
+		msSummary[i.ID.Miner] = ct
 
 		filter := bson.M{"_id": i.ID.Miner}
 		update := bson.M{
@@ -274,9 +295,31 @@ func (s *Store) updateTextileRegion(ctx context.Context, prefixSuffix string, c 
 		if err != nil {
 			return nil, fmt.Errorf("upserting total/last: %s", err)
 		}
+
 	}
 	if c.Err() != nil {
 		return nil, fmt.Errorf("cursor error: %s", c.Err())
+	}
+
+	// Update region aggregations.
+	for minerID, summary := range msSummary {
+		fieldPrefix := "textile." + prefixSuffix + "_summary"
+		setFields := bson.M{
+			fieldPrefix + ".total":        summary.total,
+			fieldPrefix + ".last":         summary.last,
+			fieldPrefix + ".failures":     summary.failures,
+			fieldPrefix + ".last_failure": summary.lastFailure,
+		}
+
+		filter := bson.M{"_id": minerID}
+		update := bson.M{
+			"$set":         setFields,
+			"$setOnInsert": bson.M{"_id": minerID},
+		}
+		_, err := s.idxc.UpdateOne(ctx, filter, update, opt)
+		if err != nil {
+			return nil, fmt.Errorf("upserting total/last: %s", err)
+		}
 	}
 
 	mr := make([]minerRegion, 0, len(mrm))

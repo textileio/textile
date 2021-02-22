@@ -106,7 +106,9 @@ func (i *Indexer) runDaemon() {
 			log.Infof("closing daemon")
 			return
 		case <-collect:
-			i.generateIndex(i.daemonCtx)
+			if err := i.generateIndex(i.daemonCtx); err != nil {
+				log.Errorf("generating index: %s", err)
+			}
 		}
 	}
 }
