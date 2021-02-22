@@ -121,12 +121,12 @@ var (
 				DefValue: time.Minute * 15,
 			},
 
-			//IPNS
+			// IPNS
 			"ipnsRepublishSchedule": {
 				Key:      "ipns.republish_schedule",
 				DefValue: "0 1 * * *",
 			},
-			"maxRepublishingConcurrency": {
+			"ipnsRepublishConcurrency": {
 				Key:      "ipns.republish_concurrency",
 				DefValue: 100,
 			},
@@ -281,11 +281,11 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"ipnsRepublishSchedule",
 		config.Flags["ipnsRepublishSchedule"].DefValue.(string),
-		"IPNS key republishing cron schedule")
+		"IPNS republishing cron schedule")
 	rootCmd.PersistentFlags().Int(
-		"maxRepublishingConcurrency",
-		config.Flags["maxRepublishingConcurrency"].DefValue.(int),
-		"IPNS keys republishing batch size")
+		"ipnsRepublishConcurrency",
+		config.Flags["ipnsRepublishConcurrency"].DefValue.(int),
+		"IPNS republishing batch size")
 
 	// Gateway
 	rootCmd.PersistentFlags().Bool(
@@ -391,7 +391,7 @@ var rootCmd = &cobra.Command{
 
 		// IPNS
 		ipnsRepublishSchedule := config.Viper.GetString("ipns.republish_schedule")
-		maxRepublishingConcurrency := config.Viper.GetInt("ipns.republish_concurrency")
+		ipnsRepublishConcurrency := config.Viper.GetInt("ipns.republish_concurrency")
 
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
@@ -444,7 +444,7 @@ var rootCmd = &cobra.Command{
 			ArchiveJobPollIntervalFast: archivesJobPollIntervalFast,
 			// IPNS
 			IPNSRepublishSchedule:    ipnsRepublishSchedule,
-			IPNSRepublishConcurrency: maxRepublishingConcurrency,
+			IPNSRepublishConcurrency: ipnsRepublishConcurrency,
 			// Gateway
 			UseSubdomains: gatewaySubdomains,
 			// Cloudflare
