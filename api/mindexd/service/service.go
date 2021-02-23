@@ -189,7 +189,7 @@ func (s *Service) QueryIndex(ctx context.Context, req *pb.QueryIndexRequest) (*p
 		req.Limit = queryMaxLimit
 	}
 
-	res, err := s.store.QueryIndex(ctx, filters, sort, req.Limit, req.MoreToken)
+	res, err := s.store.QueryIndex(ctx, filters, sort, int(req.Limit), req.MoreToken)
 	if err != nil {
 		return nil, fmt.Errorf("querying miners from index: %s", err)
 	}

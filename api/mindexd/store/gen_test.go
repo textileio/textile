@@ -216,7 +216,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 	}
 
 	// Get all testing
-	all, err := s.GetAllMiners(ctx)
+	all, err = s.GetAllMiners(ctx)
 	require.NoError(t, err)
 	require.Len(t, all, 2)
 }

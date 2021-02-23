@@ -31,6 +31,8 @@ type FilecoinInfo struct {
 	MinPieceSize     int64     `bson:"min_piece_size"`
 	MaxPieceSize     int64     `bson:"max_piece_size"`
 	SectorSize       int64     `bson:"sector_size"`
+	ActiveSectors    int64     `bson:"active_sectors"`
+	FaultySectors    int64     `bson:"faulty_sectors"`
 	UpdatedAt        time.Time `bson:"updated_at"`
 }
 

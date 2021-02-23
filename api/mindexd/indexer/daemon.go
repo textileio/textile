@@ -57,6 +57,8 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 			MinPieceSize:     int64(mi.MinPieceSize),
 			MaxPieceSize:     int64(mi.MaxPieceSize),
 			SectorSize:       int64(mi.SectorSize),
+			ActiveSectors:    int64(mi.SectorsActive),
+			FaultySectors:    int64(mi.SectorsFaulty),
 			UpdatedAt:        time.Now(),
 		}
 

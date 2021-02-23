@@ -5,6 +5,7 @@ import (
 
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
+	"github.com/textileio/textile/v2/api/mindexd/store"
 )
 
 func toPbMinerIndexInfo(mi model.MinerInfo) *pb.MinerIndexInfo {
@@ -101,15 +102,15 @@ func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexS
 func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (store.QueryIndexSortField, error) {
 	switch field {
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_TOTAL_SUCCESSFUL:
-		return store.SortFieldTextileTotalSuccessful
+		return store.SortFieldTextileTotalSuccessful, nil
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_LAST_SUCCESSFUL:
-		return store.SortFieldLastSuccessful
+		return store.SortFieldLastSuccessful, nil
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE:
-		return store.SortFieldAskPrice
+		return store.SortFieldAskPrice, nil
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE:
-		return store.SortFieldVerifiedAskPrice
+		return store.SortFieldVerifiedAskPrice, nil
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ACTIVE_SECTORS:
-		return store.SortFieldActiveSectors
+		return store.SortFieldActiveSectors, nil
 	default:
 		return 0, fmt.Errorf("unkown sorting field %s", pb.QueryIndexRequestSortField_name[int32(field)])
 	}
