@@ -1152,52 +1152,31 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	// IPNS node
 	buckNode, err := s.getNodeAtPath(ctx, pth, buck.GetLinkEncryptionKey())
 	if err != nil {
-		return nil, fmt.Errorf("error getting node: %v", err)
+		return nil, fmt.Errorf("getting node: %v", err)
 	}
 
 	// Private buckets need to manage keys+encrypted nodes
 	if buck.IsPrivate() {
-		// walk the src node by node
-		if cleanDst == "" {
-			items, err := s.ListPath(ctx, &pb.ListPathRequest{
-				Key:  req.Key,
-				Path: cleanPth,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("error setting path: %v", err)
-			}
-
-			for _, item := range items.Item.Items {
-				itmPath := gopath.Join(cleanPth, item.Name)
-				dirPath, err := s.copyNode(ctx, buck, buckNode, itmPath, item.Name)
-				if err != nil {
-					return nil, fmt.Errorf("error setting path: %v", err)
-				}
-				buck.Path = dirPath.String()
-			}
-
-		} else {
-			dirPath, err := s.copyNode(ctx, buck, buckNode, cleanPth, cleanDst)
-			if err != nil {
-				return nil, fmt.Errorf("error copying node: %v", err)
-			}
-			buck.Path = dirPath.String()
+		dirPath, err := s.copyNode(ctx, buck, buckNode, cleanPth, cleanDst)
+		if err != nil {
+			return nil, fmt.Errorf("copying node: %v", err)
 		}
+		// buck.Path = dirPath.String()
+		// buck.UpdatedAt = time.Now().UnixNano()
 
-		buck.UpdatedAt = time.Now().UnixNano()
-
-		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("verifying bucket update: %v", err)
-		}
-		if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("error saving update: %v", err)
-		}
+		// if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		// 	return nil, fmt.Errorf("verifying bucket update: %v", err)
+		// }
+		// if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		// 	return nil, fmt.Errorf("saving update: %v", err)
+		// }
 	} else {
 		buckPath := path.New(buck.Path)
 		ctx, dirPath, err := s.setPathFromExistingPath(ctx, buck, buckPath, cleanPth, cleanDst, buckNode.Cid(), nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error copying path: %v", err)
 		}
+	}
 
 		buck.Path = dirPath.String()
 		buck.UpdatedAt = time.Now().UnixNano()
