@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -730,6 +731,98 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 
 	q, err := client.PushPaths(ctx, buck.Root.Key)
 	require.NoError(t, err)
+	err = q.AddFile("root.jpg", "testdata/file1.jpg")
+	require.NoError(t, err)
+	err = q.AddFile("a/b/c/file1.jpg", "testdata/file1.jpg")
+	require.NoError(t, err)
+	err = q.AddFile("a/b/c/file2.jpg", "testdata/file2.jpg")
+	require.NoError(t, err)
+	for q.Next() {
+		require.NoError(t, q.Err())
+	}
+	q.Close()
+
+	// move a dir into a new path  => a/c
+	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "a/c")
+	require.NoError(t, err)
+	// check source files no longer exists
+	li, err := client.ListPath(ctx, buck.Root.Key, "a/b/c")
+	require.Error(t, err)
+
+	// check source parent remains untouched
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 0)
+
+	// move a dir into an existing path => a/b/c
+	_, err = client.MovePath(ctx, buck.Root.Key, "a/c", "a/b")
+	require.NoError(t, err)
+	// check source dir no longer exists
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/c")
+	require.Error(t, err)
+
+	// check source parent contains all the right children
+	li, err = client.ListPath(ctx, buck.Root.Key, "a")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 1)
+
+	// check source parent contains all the right children
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b/c")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 2)
+
+	// move and rename file => a/b/c/file2.jpg + a/b/file3.jpg
+	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c/file1.jpg", "a/b/file3.jpg")
+	require.NoError(t, err)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b/file3.jpg")
+	require.NoError(t, err)
+	assert.False(t, li.Item.IsDir)
+	assert.Equal(t, li.Item.Name, "file3.jpg")
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "root.jpg")
+	require.NoError(t, err)
+
+	// move to root => /c
+	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
+	require.NoError(t, err)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 4)
+
+	// move root should fail
+	_, err = client.MovePath(ctx, buck.Root.Key, "", "a")
+	require.Error(t, err, "move failed: source is root directory")
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "a")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 1)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 4)
+}
+
+func cc(t interface{}) {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Print(string(b))
+}
+func movex(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	q, err := client.PushPaths(ctx, buck.Root.Key)
+	require.NoError(t, err)
 	err = q.AddFile("file1.jpg", "testdata/file1.jpg")
 	require.NoError(t, err)
 	err = q.AddFile("file2.jpg", "testdata/file2.jpg")
@@ -820,7 +913,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.Len(t, li.Item.Items, 2)
 
 	// test: /a/b/c => /
-	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "/")
+	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
 	require.NoError(t, err)
 
 	// check source files no longer exists
@@ -833,6 +926,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 
 	// check source files no longer exists
 	li, err = client.ListPath(ctx, buck.Root.Key, "a/")
+	cc(li)
 	require.Error(t, err)
 
 	// check dest contains all the right nodes
@@ -840,6 +934,19 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	require.NoError(t, err)
 	assert.True(t, li.Item.IsDir)
 	assert.Len(t, li.Item.Items, 3)
+
+	// test: /file2.jpg => /file2a.jpg
+	_, err = client.MovePath(ctx, buck.Root.Key, "file2.jpg", "file2a.jpg")
+	require.NoError(t, err)
+
+	// check the new file was created correctly
+	li, err = client.ListPath(ctx, buck.Root.Key, "file2a.jpg")
+	require.NoError(t, err)
+	assert.False(t, li.Item.IsDir)
+
+	// check the old file
+	li, err = client.ListPath(ctx, buck.Root.Key, "file2.jpg")
+	require.Error(t, err)
 }
 
 func TestClient_Remove(t *testing.T) {
