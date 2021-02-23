@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multiformats/go-multibase"
 	"strings"
 
 	"github.com/textileio/go-threads/core/thread"
@@ -90,52 +91,87 @@ func (r Role) String() string {
 	}
 }
 
+// RoleToPb maps native type roles to protobuf type roles.
+func RoleToPb(role Role) (pb.PathAccessRole, error) {
+	var pr pb.PathAccessRole
+	switch role {
+	case None:
+		pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
+	case Reader:
+		pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
+	case Writer:
+		pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
+	case Admin:
+		pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
+	default:
+		return pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED, fmt.Errorf("unknown path access role %d", role)
+	}
+
+	return pr, nil
+}
+
 // RolesToPb maps native type roles to protobuf type roles.
 func RolesToPb(in map[string]Role) (map[string]pb.PathAccessRole, error) {
 	roles := make(map[string]pb.PathAccessRole)
 	for k, r := range in {
 		var pr pb.PathAccessRole
-		switch r {
-		case None:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED
-		case Reader:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_READER
-		case Writer:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER
-		case Admin:
-			pr = pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN
-		default:
-			return nil, fmt.Errorf("unknown path access role %d", r)
+		pr, err := RoleToPb(r)
+		if err != nil {
+			return nil, err
 		}
 		roles[k] = pr
 	}
 	return roles, nil
 }
 
+// RoleFromPb maps protobuf type role to native type role.
+func RoleFromPb(pr pb.PathAccessRole) (Role, error) {
+	var r Role
+	switch pr {
+	case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
+		r = None
+	case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
+		r = Reader
+	case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
+		r = Writer
+	case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
+		r = Admin
+	default:
+		return None, fmt.Errorf("unknown path access role %d", pr)
+	}
+	return r, nil
+}
+
 // RolesFromPb maps protobuf type roles to native type roles.
 func RolesFromPb(in map[string]pb.PathAccessRole) (map[string]Role, error) {
 	roles := make(map[string]Role)
 	for k, pr := range in {
-		if k != "*" {
-			pk := &thread.Libp2pPubKey{}
-			if err := pk.UnmarshalString(k); err != nil {
-				return nil, fmt.Errorf("unmarshaling role public key: %s", err)
-			}
+		if err := validateAccessRoleKey(k); err != nil {
+			return nil, err
 		}
 		var r Role
-		switch pr {
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_UNSPECIFIED:
-			r = None
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_READER:
-			r = Reader
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_WRITER:
-			r = Writer
-		case pb.PathAccessRole_PATH_ACCESS_ROLE_ADMIN:
-			r = Admin
-		default:
-			return nil, fmt.Errorf("unknown path access role %d", pr)
+		r, err := RoleFromPb(pr)
+		if err != nil {
+			return nil, err
 		}
 		roles[k] = r
 	}
 	return roles, nil
+}
+
+// validate key
+func validateAccessRoleKey(k string) error {
+	if k == "*" {
+		return nil
+	}
+
+	// check if a valid pub key
+	pk := &thread.Libp2pPubKey{}
+	if err := pk.UnmarshalString(k); err != nil {
+		// check if a valid token hash
+		if _, bytes, err2 := multibase.Decode(k); err2 != nil || len(bytes) != 32 {
+			return fmt.Errorf("unmarshaling role public key: %s", err)
+		}
+	}
+	return nil
 }

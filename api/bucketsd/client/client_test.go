@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
+	"github.com/multiformats/go-multibase"
 	"io"
 	"io/ioutil"
 	"os"
@@ -953,6 +955,55 @@ func pushPathAccessRoles(
 			Write: true,
 		})
 	})
+}
+
+func TestClient_AcceptPathAccessRoles(t *testing.T) {
+	ctx, userctx, threadsclient, client := setupForUsers(t)
+	buck, err := client.Create(ctx)
+	require.NoError(t, err)
+
+	q, err := client.PushPaths(ctx, buck.Root.Key)
+	require.NoError(t, err)
+	err = q.AddFile("file", "testdata/file1.jpg")
+	require.NoError(t, err)
+	for q.Next() {
+		require.NoError(t, q.Err())
+	}
+	require.NoError(t, q.Close())
+
+	// Grant Token Access
+	token, tokenHash := generateShareToken(t)
+	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "file", map[string]bucks.Role{
+		tokenHash: bucks.Writer,
+	})
+	require.NoError(t, err)
+
+	// New User Accepts File
+	user2, user2ctx := newUser(t, userctx, threadsclient)
+	role, err := client.AcceptPathAccessRoles(ctx, buck.Root.Key, "file", token, user2.GetPublic().String())
+	require.NoError(t, err)
+	require.Equal(t, bucks.Writer, role)
+
+	// verify new user can access file
+	check := accessCheck{
+		Key:  buck.Root.Key,
+		Path: "file",
+		Read: true,
+		Write: true,
+	}
+	checkAccess(t, user2ctx, client, check)
+}
+
+func generateShareToken(t *testing.T) (string, string) {
+	// use e25519key as random token
+	_, pk, err := crypto.GenerateEd25519Key(rand.Reader)
+
+	token := thread.NewLibp2pPubKey(pk).String()
+	tokenHashBytes := sha256.Sum256([]byte(token))
+	tokenHash, err := multibase.Encode(multibase.Base32, tokenHashBytes[:])
+	require.NoError(t, err)
+
+	return token, tokenHash
 }
 
 type accessCheck struct {

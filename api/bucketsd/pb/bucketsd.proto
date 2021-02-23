@@ -234,6 +234,17 @@ message PullPathAccessRolesResponse {
     map<string, PathAccessRole> roles = 1;
 }
 
+message AcceptPathAccessRolesRequest {
+    string key = 1;
+    string path = 2;
+    string token = 3;
+    string acceptor = 4;
+}
+
+message AcceptPathAccessRolesResponse {
+    PathAccessRole accepted_role = 1;
+}
+
 message ArchiveConfig {
     int32 rep_factor = 1;
     int64 deal_min_duration = 2;
@@ -347,6 +358,7 @@ service APIService {
     rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
     rpc PushPathAccessRoles(PushPathAccessRolesRequest) returns (PushPathAccessRolesResponse) {}
     rpc PullPathAccessRoles(PullPathAccessRolesRequest) returns (PullPathAccessRolesResponse) {}
+    rpc AcceptPathAccessRoles(AcceptPathAccessRolesRequest) returns (AcceptPathAccessRolesResponse) {}
 
     // Archive
     rpc DefaultArchiveConfig(DefaultArchiveConfigRequest) returns (DefaultArchiveConfigResponse) {}
