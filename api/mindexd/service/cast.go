@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 )
@@ -75,4 +77,40 @@ func toPbSealedDurationMins(ss []model.SealedDurationMins) []*pb.SealedDurationM
 	}
 
 	return ret
+}
+
+func fromPbQueryIndexRequestFilters(f *pb.QueryIndexRequestFilters) store.QueryIndexFilters {
+	return store.QueryIndexFilters{
+		MinerCountry:  f.MinerCountry,
+		TextileRegion: f.TextileRegion,
+	}
+}
+
+func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexSort, error) {
+	field, err := fromPbQueryIndexRequestSortField(s.Field)
+	if err != nil {
+		return store.QueryIndexSort{}, fmt.Errorf("parsing sort field: %s", err)
+	}
+
+	return store.QueryIndexSort{
+		Ascending: s.Ascending,
+		Field:     field,
+	}, nil
+}
+
+func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (store.QueryIndexSortField, error) {
+	switch field {
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_TOTAL_SUCCESSFUL:
+		return store.SortFieldTextileTotalSuccessful
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_LAST_SUCCESSFUL:
+		return store.SortFieldLastSuccessful
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE:
+		return store.SortFieldAskPrice
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE:
+		return store.SortFieldVerifiedAskPrice
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ACTIVE_SECTORS:
+		return store.SortFieldActiveSectors
+	default:
+		return 0, fmt.Errorf("unkown sorting field %s", pb.QueryIndexRequestSortField_name[int32(field)])
+	}
 }

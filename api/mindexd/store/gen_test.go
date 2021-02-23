@@ -36,9 +36,9 @@ func TestMinerIndexGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check we have 3 miners.
-	count, err := s.SummaryCount(ctx)
+	all, err := s.GetAllMiners(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 2, count)
+	require.Len(t, all, 2)
 
 	// Check non-existant miner
 	_, err = s.GetMinerInfo(ctx, "i-dont-exist")
@@ -216,7 +216,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 	}
 
 	// Get all testing
-	all, err := s.GetMiners(ctx)
+	all, err := s.GetAllMiners(ctx)
 	require.NoError(t, err)
 	require.Len(t, all, 2)
 }

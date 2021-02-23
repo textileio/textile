@@ -18,7 +18,6 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/indexer"
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
-	pb "github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/api/mindexd/store"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -29,6 +28,7 @@ import (
 const (
 	// Each epoch in the Filecoin network is ~30s.
 	epochDurationSeconds = 30
+	queryMaxLimit        = 50
 )
 
 var (
@@ -181,24 +181,20 @@ func (s *Service) Stop() {
 	}
 }
 
-// GetIndexDahsboard returns miners for the miner-index dashboard.
-// Note: this is a temporary implementation. The miner-index dashboard isn't defined
-// so the API needed is unkown. This is a naive implementation only to do testing in
-// the meantime. No paging, no filtering, etc.
-func (s *Service) GetIndexDashboard(ctx context.Context, req *pb.GetIndexDashboardRequest) (*pb.GetIndexDashboardResponse, error) {
-	all, err := s.store.GetAllMiners(ctx)
+func (s *Service) QueryIndex(ctx context.Context, req *pb.QueryIndexRequest) (*pb.QueryIndexResponse, error) {
+	filters := fromPbQueryIndexRequestFilters(req.Filters)
+	sort := fromPbQueryIndexRequestSort(req.Sort)
+
+	if req.Limit > queryMaxLimit {
+		req.Limit = queryMaxLimit
+	}
+
+	res, err := s.store.QueryIndex(ctx, filters, sort, req.Limit, req.MoreToken)
 	if err != nil {
-		return nil, fmt.Errorf("get all miners from index: %s", err)
+		return nil, fmt.Errorf("querying miners from index: %s", err)
 	}
 
-	ret := &pb.GetIndexDashboardResponse{
-		Miners: make([]*pb.MinerIndexInfo, 0, len(all)),
-	}
-	for _, m := range all {
-		ret.Miners = append(ret.Miners, toPbMinerIndexInfo(m))
-	}
-
-	return ret, nil
+	return toPbQueryIndexResponseSummary(res), nil
 }
 
 // GetMinerInfo returns miner's index information for a miner. If no information is

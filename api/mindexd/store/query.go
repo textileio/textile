@@ -29,7 +29,7 @@ func (s *Store) GetMinerInfo(ctx context.Context, miner string) (model.MinerInfo
 	return mi, nil
 }
 
-func (s *Store) GetMiners(ctx context.Context) ([]model.MinerInfo, error) {
+func (s *Store) GetAllMiners(ctx context.Context) ([]model.MinerInfo, error) {
 	r, err := s.idxc.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, fmt.Errorf("get all miners: %s", err)
@@ -44,10 +44,5 @@ func (s *Store) GetMiners(ctx context.Context) ([]model.MinerInfo, error) {
 	return ms, nil
 }
 
-func (s *Store) SummaryCount(ctx context.Context) (int, error) {
-	count, err := s.idxc.CountDocuments(ctx, bson.M{})
-	if err != nil {
-		return 0, fmt.Errorf("counting documents: %s", err)
-	}
-	return int(count), nil
+func (s *Store) QueryIndex(ctx context.Context, filters IndexFilters, sort IndexSort, limit int, moreToken string) {
 }
