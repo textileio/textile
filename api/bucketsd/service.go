@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -563,18 +562,19 @@ func (s *Service) createBootstrappedPath(
 	return ctx, path.IpfsPath(n.Cid()), nil
 }
 
-// createBootstrapedPath creates an IPFS path which is a copy of bootCid UnixFS DAG,
-// added to seed.
-func (s *Service) createBootstrappedCopy(
+// copyPathWithDest creates an IPFS path which is a copy of the srcPath,
+// with tdb.SeedName seed file added to the root of the DAG. The returned path will
+// be pinned.
+func (s *Service) copyPathWithDest(
 	ctx context.Context,
 	buckPath path.Path,
-	srcPath string,
-	destPath string,
+	fromPath string,
+	toPath string,
 	seed ipld.Node,
 	linkKey,
 	fileKey []byte,
 ) (context.Context, path.Resolved, error) {
-	pth := path.Join(buckPath, srcPath)
+	pth := path.Join(buckPath, fromPath)
 	bootSize, err := s.dagSize(ctx, pth)
 	if err != nil {
 		return ctx, nil, fmt.Errorf("resolving boot cid node: %v", err)
@@ -587,7 +587,7 @@ func (s *Service) createBootstrappedCopy(
 	}
 
 	// Here we have to walk and possibly encrypt the boot path dag
-	n, nodes, err := s.newDirFromExistingPath(ctx, pth, destPath, linkKey, fileKey, seed, "")
+	n, nodes, err := s.newDirFromExistingPath(ctx, pth, toPath, linkKey, fileKey, seed, "")
 	if err != nil {
 		return ctx, nil, err
 	}
@@ -1092,23 +1092,24 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	}
 	dbToken, _ := thread.TokenFromContext(ctx)
 
-	cleanPth, err := parsePath(req.FromPath)
+	fromPth, err := parsePath(req.FromPath)
 	if err != nil {
 		return nil, err
 	}
 
-	cleanDst, err := parsePath(req.ToPath)
+	toPth, err := parsePath(req.ToPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: enable move of root directory
 	// Can't move root directory
-	if cleanPth == "" {
-		return nil, fmt.Errorf("move failed: source is root directory")
+	if fromPth == "" {
+		return nil, fmt.Errorf("source is root directory")
 	}
 
 	// Paths are the same, return
-	if cleanPth == cleanDst {
+	if fromPth == toPth {
 		return &pb.MovePathResponse{}, nil
 	}
 
@@ -1117,12 +1118,12 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	lck.Acquire()
 	defer lck.Release()
 
-	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, cleanPth, dbToken)
+	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, fromPth, dbToken)
 	if err != nil {
-		return nil, fmt.Errorf("error getting path: %v", err)
+		return nil, fmt.Errorf("getting path: %v", err)
 	}
 
-	fromNodePath, err := inflateFilePath(buck, cleanPth)
+	fromNodePath, err := inflateFilePath(buck, fromPth)
 	if err != nil {
 		return nil, err
 	}
@@ -1131,7 +1132,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		return nil, err
 	}
 
-	toNodePath, err := inflateFilePath(buck, cleanDst)
+	toNodePath, err := inflateFilePath(buck, toPth)
 	if err != nil {
 		return nil, err
 	}
@@ -1145,7 +1146,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 			// from => to becomes cleanDst:
 			// "c" => "b" becomes "b/c"
 			// "a.jpg" => "b" becomes "b/a.jpg"
-			cleanDst = gopath.Join(cleanDst, fromItem.Name)
+			toPth = gopath.Join(toPth, fromItem.Name)
 		}
 	}
 
@@ -1155,97 +1156,56 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		return nil, fmt.Errorf("getting node: %v", err)
 	}
 
+	var dirPath path.Resolved
 	// Private buckets need to manage keys+encrypted nodes
 	if buck.IsPrivate() {
-		dirPath, err := s.copyNode(ctx, buck, buckNode, cleanPth, cleanDst)
+		dirPath, err = s.copyNode(ctx, buck, buckNode, fromPth, toPth)
 		if err != nil {
 			return nil, fmt.Errorf("copying node: %v", err)
 		}
-		// buck.Path = dirPath.String()
-		// buck.UpdatedAt = time.Now().UnixNano()
-
-		// if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		// 	return nil, fmt.Errorf("verifying bucket update: %v", err)
-		// }
-		// if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		// 	return nil, fmt.Errorf("saving update: %v", err)
-		// }
 	} else {
 		buckPath := path.New(buck.Path)
-		ctx, dirPath, err := s.setPathFromExistingPath(ctx, buck, buckPath, cleanPth, cleanDst, buckNode.Cid(), nil, nil)
+		_, dirPath, err = s.setPathFromExistingPath(ctx, buck, buckPath, fromPth, toPth, buckNode.Cid(), nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error copying path: %v", err)
 		}
 	}
 
-		buck.Path = dirPath.String()
-		buck.UpdatedAt = time.Now().UnixNano()
-		buck.SetMetadataAtPath(cleanDst, tdb.Metadata{
-			UpdatedAt: buck.UpdatedAt,
-		})
-		buck.UnsetMetadataWithPrefix(cleanPth)
+	buck.Path = dirPath.String()
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(toPth, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(fromPth)
 
-		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("verifying bucket update: %v", err)
-		}
-		if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, fmt.Errorf("error saving update: %v", err)
-		}
-
-		// _, err = s.setPath(ctx, &pb.SetPathRequest{
-		// 	Key:  buck.Key,
-		// 	Path: cleanDst,
-		// 	Cid:  n.Cid().String(),
-		// }, dbID, dbToken, cleanDst)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error setting path: %v", err)
-		// }
+	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("verifying bucket update: %v", err)
 	}
-
-	// if moving root into subdir, rm .textileseed from subdir
-	if cleanPth == "" {
-		filepath := gopath.Join(cleanDst, buckets.SeedName)
-		_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
-			Key:  req.Key,
-			Path: filepath,
-		}, filepath)
-		if err != nil {
-			return nil, fmt.Errorf("error cleaning path: %v", err)
-		}
+	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("error saving update: %v", err)
 	}
 
 	// If "a/b" => "a/", cleanup only needed for priv
-	if strings.HasPrefix(cleanPth, cleanDst) {
+	if strings.HasPrefix(fromPth, toPth) {
 		if buck.IsPrivate() {
 			_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
 				Key:  req.Key,
-				Path: cleanPth,
-			}, cleanPth)
+				Path: fromPth,
+			}, fromPth)
 			if err != nil {
-				return nil, fmt.Errorf("error cleaning path: %v", err)
+				return nil, fmt.Errorf("cleaning path: %v", err)
 			}
 		}
-
-		item, _ := s.ListPath(ctx, &pb.ListPathRequest{
-			Key:  req.Key,
-			Path: cleanDst,
-		})
-		fmt.Print("\n")
-		fmt.Print("\n")
-		fmt.Print("item")
-		fmt.Print("\n")
-		cc(item)
-		fmt.Print("\n")
 
 		return &pb.MovePathResponse{}, nil
 	}
 
 	// If "a/" => "a/b" cleanup each leaf in "a" that isn't "b" (skipping .textileseed)
-	if strings.HasPrefix(cleanDst, cleanPth) {
+	if strings.HasPrefix(toPth, fromPth) {
 		// todo: optimize by removing the listpath roundtrip
 		item, err := s.ListPath(ctx, &pb.ListPathRequest{
 			Key:  req.Key,
-			Path: cleanPth,
+			Path: fromPth,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("list failed: %v", err)
@@ -1253,7 +1213,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		reg := regexp.MustCompile("/ipfs/([^/]+)/")
 		for _, chld := range item.Item.Items {
 			sp := cleanPath(reg.ReplaceAllString(chld.Path, ""))
-			if strings.Compare(chld.Name, buckets.SeedName) == 0 || sp == cleanDst {
+			if strings.Compare(chld.Name, buckets.SeedName) == 0 || sp == toPth {
 				continue
 			}
 
@@ -1272,22 +1232,14 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	// if a/ => b/ remove a
 	_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
 		Key:  req.Key,
-		Path: cleanPth,
+		Path: fromPth,
 		// Root: root.Root.Key,
-	}, cleanPth)
+	}, fromPth)
 	if err != nil {
 		return nil, fmt.Errorf("remove path failed: %v", err)
 	}
 
 	return &pb.MovePathResponse{}, nil
-}
-
-func cc(t interface{}) {
-	b, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-	fmt.Print(string(b))
 }
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
@@ -1442,7 +1394,7 @@ func (s *Service) setPathFromExistingPath(
 		if err != nil {
 			return ctx, nil, fmt.Errorf("generating new seed: %v", err)
 		}
-		ctx, dirPath, err = s.createBootstrappedCopy(ctx, buckPath, srcPath, destPath, sn, linkKey, fileKey)
+		ctx, dirPath, err = s.copyPathWithDest(ctx, buckPath, srcPath, destPath, sn, linkKey, fileKey)
 		if err != nil {
 			return ctx, nil, fmt.Errorf("generating bucket new root: %v", err)
 		}
@@ -2779,12 +2731,6 @@ func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread
 		return nil, err
 	}
 
-	fmt.Print("\n")
-	fmt.Print("BUCKET RM")
-	fmt.Print("\n")
-	fmt.Print(buck)
-	fmt.Print("\n")
-
 	if req.Root != "" && req.Root != buck.Path {
 		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
@@ -2797,16 +2743,6 @@ func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread
 	}
 
 	buckPath := path.New(buck.Path)
-	fmt.Print("\n")
-	fmt.Print("RM NODE")
-	fmt.Print("\n")
-	fmt.Print(filePath)
-	fmt.Print("\n")
-	fmt.Print(buck.Path)
-	fmt.Print("\n")
-	fmt.Print(path.Join(buckPath, filePath).String())
-	fmt.Print("\n")
-	fmt.Print("\n")
 	var dirPath path.Resolved
 	if buck.IsPrivate() {
 		ctx, dirPath, err = s.removeNodeAtPath(
