@@ -146,7 +146,7 @@ func RoleFromPb(pr pb.PathAccessRole) (Role, error) {
 func RolesFromPb(in map[string]pb.PathAccessRole) (map[string]Role, error) {
 	roles := make(map[string]Role)
 	for k, pr := range in {
-		if err := validateAccessRoleKey(k); err != nil {
+		if err := ValidateAccessRoleKey(k); err != nil {
 			return nil, err
 		}
 		var r Role
@@ -160,7 +160,7 @@ func RolesFromPb(in map[string]pb.PathAccessRole) (map[string]Role, error) {
 }
 
 // validate key
-func validateAccessRoleKey(k string) error {
+func ValidateAccessRoleKey(k string) error {
 	if k == "*" {
 		return nil
 	}

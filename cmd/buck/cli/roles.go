@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/minio/sha256-simd"
+	"github.com/multiformats/go-multibase"
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -21,11 +23,15 @@ var rolesCmd = &cobra.Command{
 }
 
 var rolesGrantCmd = &cobra.Command{
-	Use:   "grant [identity] [path]",
+	Use:   "grant [identity|token] [path]",
 	Short: "Grant remote object access roles",
 	Long: `Grants remote object access roles to an identity.
 
-Identity must be a multibase encoded public key. A "*" value will set the default access role for an object.
+Identity can be either:
+- a multibase encoded public key
+- a "*" value to set the access roles for all objects
+- if it is none of the above format it would be treated as a token that can be used to accept and transfer 
+the role access later.
 
 Access roles:
 "none": Revokes all access.
@@ -68,7 +74,16 @@ Access roles:
 		if len(args) > 1 {
 			pth = args[1]
 		}
-		res, err := buck.PushPathAccessRoles(ctx, pth, map[string]buckets.Role{args[0]: role})
+
+		identityOrToken := args[0]
+		if err := buckets.ValidateAccessRoleKey(identityOrToken); err != nil {
+			// we will use to identity as raw token, so we compute the hash
+			bytes := sha256.Sum256([]byte(identityOrToken))
+			identityOrToken, err = multibase.Encode(multibase.Base32, bytes[:])
+			cmd.ErrCheck(err)
+		}
+
+		res, err := buck.PushPathAccessRoles(ctx, pth, map[string]buckets.Role{identityOrToken: role})
 		cmd.ErrCheck(err)
 		var data [][]string
 		if len(res) > 0 {
@@ -80,6 +95,30 @@ Access roles:
 			cmd.RenderTable([]string{"identity", "role"}, data)
 		}
 		cmd.Success("Updated access roles for path %s", aurora.White(pth).Bold())
+	},
+}
+
+var rolesAcceptCmd = &cobra.Command{
+	Use:   "accept [identity] [path] [token]",
+	Short: "Accept remote object access roles using token",
+	Long: `Grants remote object access roles to an identity using token.
+
+Identity must be a multibase encoded public key.
+`,
+	Args: cobra.ExactArgs(3),
+	Run: func(c *cobra.Command, args []string) {
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.PullTimeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, conf)
+		cmd.ErrCheck(err)
+		identity := args[0]
+		pth := args[1]
+		token := args[2]
+		res, err := buck.AcceptPathAccessRoles(ctx, pth, token, identity)
+		cmd.ErrCheck(err)
+		cmd.Success("Access successfully granted to identity. Role granted is %s", aurora.White(res.String()).Bold())
 	},
 }
 
@@ -116,3 +155,4 @@ var rolesLsCmd = &cobra.Command{
 		cmd.Message("Found %d access roles", aurora.White(len(data)).Bold())
 	},
 }
+

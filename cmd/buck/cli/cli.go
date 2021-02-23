@@ -47,7 +47,7 @@ func Init(baseCmd *cobra.Command) {
 		rolesCmd,
 	)
 	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archiveLsCmd)
-	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
+	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd, rolesAcceptCmd)
 
 	baseCmd.PersistentFlags().String("key", "", "Bucket key")
 	baseCmd.PersistentFlags().String("thread", "", "Thread ID")
