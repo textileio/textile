@@ -351,7 +351,7 @@ func (s *Service) createBucket(
 	}
 
 	// Make a random seed, which ensures a bucket's uniqueness
-	seed, err = makeSeedNode(fileKey)
+	seed, err = makeSeed(fileKey)
 	if err != nil {
 		return
 	}
@@ -407,8 +407,8 @@ func (s *Service) createBucket(
 	return ctx, buck, seed, nil
 }
 
-// makeSeedNode returns random seed bytes.
-func makeSeedBytes(key []byte) ([]byte, error) {
+// makeSeed returns a raw ipld node containing a random seed.
+func makeSeed(key []byte) (ipld.Node, error) {
 	seed := make([]byte, 32)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
@@ -420,15 +420,6 @@ func makeSeedBytes(key []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	}
-	return seed, nil
-}
-
-// makeSeedNode returns a raw ipld node containing a random seed.
-func makeSeedNode(key []byte) (ipld.Node, error) {
-	seed, err := makeSeedBytes(key)
-	if err != nil {
-		return nil, err
 	}
 	return dag.NewRawNode(seed), nil
 }
@@ -1062,17 +1053,7 @@ func (s *Service) copyNode(ctx context.Context, buck *tdb.Bucket, rootNode ipld.
 
 	// If updating root, add seedfile back to node.
 	if toPath == "" {
-		// buckPath := path.New(buck.Path)
-		// buckPathResolved, err := s.IPFSClient.ResolvePath(ctx, buckPath)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("resolving path: %v", err)
-		// }
-		// ctx, err = s.unpinNodeAndBranch(ctx, buckPathResolved, buck.GetLinkEncryptionKey())
-		// if err != nil {
-		// 	return nil, fmt.Errorf("unpinning pinned root: %v", err)
-		// }
-
-		sn, err := makeSeedNode(fileKey)
+		sn, err := makeSeed(fileKey)
 		ctx, dirPath, err = s.insertNodeAtPath(ctx, sn, path.Join(dirPath, buckets.SeedName), buck.GetLinkEncryptionKey())
 		if err != nil {
 			return nil, fmt.Errorf("updating pinned root: %v", err)
@@ -1318,7 +1299,7 @@ func (s *Service) setPathFromExistingCid(
 ) (context.Context, path.Resolved, error) {
 	var dirPath path.Resolved
 	if destPath == "" {
-		sn, err := makeSeedNode(fileKey)
+		sn, err := makeSeed(fileKey)
 		if err != nil {
 			return ctx, nil, fmt.Errorf("generating new seed: %v", err)
 		}
@@ -1390,7 +1371,7 @@ func (s *Service) setPathFromExistingPath(
 ) (context.Context, path.Resolved, error) {
 	var dirPath path.Resolved
 	if destPath == "" {
-		sn, err := makeSeedNode(fileKey)
+		sn, err := makeSeed(fileKey)
 		if err != nil {
 			return ctx, nil, fmt.Errorf("generating new seed: %v", err)
 		}
@@ -2503,6 +2484,7 @@ func (s *Service) dagSize(ctx context.Context, root path.Path) (int64, error) {
 	return int64(stat.CumulativeSize), nil
 }
 
+// getPathAndKey takes a bucket path and returns a filepath and key (if private)
 func (s *Service) getPathAndKey(ctx context.Context, dbID thread.ID, dbToken thread.Token, req *pb.PullPathRequest, buck *tdb.Bucket, pth path.Path) (path.Resolved, []byte, error) {
 	fileKey, err := buck.GetFileEncryptionKeyForPath(req.Path)
 	if err != nil {
