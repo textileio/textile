@@ -690,6 +690,24 @@ func (c *Client) PullPathAccessRoles(ctx context.Context, key, pth string) (map[
 	return buckets.RolesFromPb(res.Roles)
 }
 
+// AcceptPathAccessRoles updates path access roles for path by granting access to the acceptor if a valid token is provided.
+// token is the raw token string that when sha256 hashed and base32 multibase encoded would match an existing PathAccessRole.
+// acceptor is address base32 address of the user.
+func (c *Client) AcceptPathAccessRoles(ctx context.Context, key, pth, token, acceptor string) (buckets.Role, error) {
+	req := pb.AcceptPathAccessRolesRequest{
+		Key:      key,
+		Path:     pth,
+		Token:    token,
+		Acceptor: acceptor,
+	}
+	res, err := c.c.AcceptPathAccessRoles(ctx, &req)
+	if err != nil {
+		return buckets.None, err
+	}
+
+	return buckets.RoleFromPb(res.AcceptedRole)
+}
+
 // DefaultArchiveConfig gets the default archive config for the specified Bucket.
 func (c *Client) DefaultArchiveConfig(ctx context.Context, key string) (*pb.ArchiveConfig, error) {
 	res, err := c.c.DefaultArchiveConfig(ctx, &pb.DefaultArchiveConfigRequest{Key: key})

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/multiformats/go-multibase"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -2536,63 +2538,78 @@ func (s *Service) PushPathAccessRoles(
 		changed = true
 	}
 	if changed {
-		buck.UpdatedAt = time.Now().UnixNano()
-		target.UpdatedAt = buck.UpdatedAt
-		buck.Metadata[reqPath] = target
-		if buck.IsPrivate() {
-			if err := buck.RotateFileEncryptionKeysForPrefix(reqPath); err != nil {
-				return nil, err
-			}
-		}
-
-		if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-			return nil, err
-		}
-
-		if buck.IsPrivate() {
-			newFileKeys, err := buck.GetFileEncryptionKeysForPrefix(reqPath)
-			if err != nil {
-				return nil, err
-			}
-			nmap, err := s.encryptDag(
-				ctx,
-				pathNode,
-				reqPath,
-				linkKey,
-				currentFileKeys,
-				newFileKeys,
-				nil,
-				nil,
-			)
-			if err != nil {
-				return nil, err
-			}
-			nodes := make([]ipld.Node, len(nmap))
-			i := 0
-			for _, tn := range nmap {
-				nodes[i] = tn.node
-				i++
-			}
-			pn := nmap[pathNode.Cid()].node
-			var dirPath path.Resolved
-			ctx, dirPath, err = s.insertNodeAtPath(ctx, pn, path.Join(path.New(buck.Path), reqPath), linkKey)
-			if err != nil {
-				return nil, fmt.Errorf("updating pinned root: %v", err)
-			}
-			ctx, err = s.addAndPinNodes(ctx, nodes)
-			if err != nil {
-				return nil, err
-			}
-			buck.Path = dirPath.String()
-		}
-
-		if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		err := s.verifyAndSaveBucket(ctx, buck, target, reqPath, dbID, dbToken, pathNode, linkKey, currentFileKeys)
+		if err != nil {
 			return nil, err
 		}
 	}
 	return &pb.PushPathAccessRolesResponse{
 		Pinned: s.getPinnedBytes(ctx),
 	}, nil
+}
+
+func (s *Service) verifyAndSaveBucket(
+	ctx context.Context,
+	buck *tdb.Bucket,
+	target tdb.Metadata,
+	reqPath string,
+	dbID thread.ID,
+	dbToken thread.Token,
+	pathNode ipld.Node,
+	linkKey []byte,
+	currentFileKeys map[string][]byte,
+) error {
+	buck.UpdatedAt = time.Now().UnixNano()
+	target.UpdatedAt = buck.UpdatedAt
+	buck.Metadata[reqPath] = target
+	if buck.IsPrivate() {
+		if err := buck.RotateFileEncryptionKeysForPrefix(reqPath); err != nil {
+			return err
+		}
+	}
+
+	if err := s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return err
+	}
+
+	if buck.IsPrivate() {
+		newFileKeys, err := buck.GetFileEncryptionKeysForPrefix(reqPath)
+		if err != nil {
+			return err
+		}
+		nmap, err := s.encryptDag(
+			ctx,
+			pathNode,
+			reqPath,
+			linkKey,
+			currentFileKeys,
+			newFileKeys,
+			nil,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		nodes := make([]ipld.Node, len(nmap))
+		i := 0
+		for _, tn := range nmap {
+			nodes[i] = tn.node
+			i++
+		}
+		pn := nmap[pathNode.Cid()].node
+		var dirPath path.Resolved
+		ctx, dirPath, err = s.insertNodeAtPath(ctx, pn, path.Join(path.New(buck.Path), reqPath), linkKey)
+		if err != nil {
+			return fmt.Errorf("updating pinned root: %v", err)
+		}
+		ctx, err = s.addAndPinNodes(ctx, nodes)
+		if err != nil {
+			return err
+		}
+		buck.Path = dirPath.String()
+	}
+
+	return s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken))
 }
 
 func (s *Service) PullPathAccessRoles(
@@ -2629,6 +2646,94 @@ func (s *Service) PullPathAccessRoles(
 	return &pb.PullPathAccessRolesResponse{
 		Roles: roles,
 	}, nil
+}
+
+func (s *Service) AcceptPathAccessRoles(
+	ctx context.Context,
+	req *pb.AcceptPathAccessRolesRequest,
+) (*pb.AcceptPathAccessRolesResponse, error) {
+	log.Debugf("received accept path access roles request")
+
+	dbID, ok := common.ThreadIDFromContext(ctx)
+	if !ok {
+		return nil, errDBRequired
+	}
+	dbToken, _ := thread.TokenFromContext(ctx)
+
+	reqPath, err := parsePath(req.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	lck := s.Semaphores.Get(buckLock(req.Key))
+	lck.Acquire()
+	defer lck.Release()
+
+	buck, pth, err := s.getBucketPath(ctx, dbID, req.Key, reqPath, dbToken)
+	if err != nil {
+		return nil, err
+	}
+
+	linkKey := buck.GetLinkEncryptionKey()
+	pathNode, err := s.getNodeAtPath(ctx, pth, linkKey)
+	if err != nil {
+		return nil, err
+	}
+	md, mdPath, ok := buck.GetMetadataForPath(reqPath, false)
+	if !ok {
+		return nil, fmt.Errorf("could not resolve path: %s", reqPath)
+	}
+	if mdPath != reqPath {
+		return nil, fmt.Errorf("cannot accept role for wrong path: %s", reqPath)
+	}
+
+	var currentFileKeys map[string][]byte
+	if buck.IsPrivate() {
+		currentFileKeys, err = buck.GetFileEncryptionKeysForPrefix(reqPath)
+		if err != nil {
+			return nil, err
+		}
+		newFileKey, err := dcrypto.NewKey()
+		if err != nil {
+			return nil, err
+		}
+		md.SetFileEncryptionKey(newFileKey)
+	}
+
+	md, acceptedRole, err := s.swapAcceptTokenRoles(md, req.Token, req.Acceptor)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.verifyAndSaveBucket(ctx, buck, md, reqPath, dbID, dbToken, pathNode, linkKey, currentFileKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	role, err := buckets.RoleToPb(acceptedRole)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.AcceptPathAccessRolesResponse{
+		AcceptedRole: role,
+	}, nil
+}
+
+func (s *Service) swapAcceptTokenRoles(md tdb.Metadata, token string, acceptor string) (tdb.Metadata, buckets.Role, error) {
+	tokenHashBytes := sha256.Sum256([]byte(token))
+	tokenHash, err := multibase.Encode(multibase.Base32, tokenHashBytes[:])
+	if err != nil {
+		return md, buckets.None, err
+	}
+
+	if _, exists := md.Roles[tokenHash]; !exists {
+		return md, buckets.None, fmt.Errorf("existing role matching token not found")
+	}
+	md.Roles[acceptor] = md.Roles[tokenHash]
+	delete(md.Roles, tokenHash)
+
+	return md, md.Roles[acceptor], nil
 }
 
 func (s *Service) DefaultArchiveConfig(

@@ -39,6 +39,22 @@ func (b *Bucket) PullPathAccessRoles(ctx context.Context, pth string) (roles map
 	return b.clients.Buckets.PullPathAccessRoles(ctx, b.Key(), pth)
 }
 
+// AcceptPathAccessRoles updates path access roles by swapping an existing path access role matching token with the
+// acceptor's address.
+func (b *Bucket) AcceptPathAccessRoles(
+	ctx context.Context,
+	pth string,
+	token string,
+	acceptor string,
+) (role buckets.Role, err error) {
+	ctx, err = b.context(ctx)
+	if err != nil {
+		return
+	}
+	role, err = b.clients.Buckets.AcceptPathAccessRoles(ctx, b.Key(), pth, token, acceptor)
+	return
+}
+
 // PathInvite wraps information needed to collaborate on a bucket path.
 type PathInvite struct {
 	Thread string `json:"thread"`
