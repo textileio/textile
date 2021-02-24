@@ -1066,7 +1066,7 @@ func (s *Service) copyNode(ctx context.Context, buck *tdb.Bucket, rootNode ipld.
 
 // MovePath moves source path to destination path and cleans up afterward
 func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *pb.MovePathResponse, err error) {
-	log.Debugf("received set path request")
+	log.Debugf("received move path request")
 
 	dbID, ok := common.ThreadIDFromContext(ctx)
 	if !ok {
@@ -1153,7 +1153,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		buckPath := path.New(buck.Path)
 		_, dirPath, err = s.setPathFromExistingPath(ctx, buck, buckPath, fromPth, toPth, buckNode.Cid(), nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error copying path: %v", err)
+			return nil, fmt.Errorf("copying path: %v", err)
 		}
 	}
 	buck.Path = dirPath.String()
@@ -1179,7 +1179,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		ppth := path.Join(path.New(buck.Path), fromPth)
 		item, err := s.listPath(ctx, dbID, dbToken, buck, ppth)
 		if err != nil {
-			return nil, fmt.Errorf("list failed: %v", err)
+			return nil, fmt.Errorf("listing path: %v", err)
 		}
 		reg := regexp.MustCompile("/ipfs/([^/]+)/")
 		for _, chld := range item.Item.Items {
@@ -1218,11 +1218,12 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 
 func (s *Service) saveAndPublish(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket) error {
 	if err := s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return fmt.Errorf("error saving update: %v", err)
+		return fmt.Errorf("saving update: %v", err)
 	}
 	go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
 	return nil
 }
+
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
 
