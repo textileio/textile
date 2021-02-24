@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var filIndexCmd = &cobra.Command{
@@ -39,15 +41,22 @@ var filGetMinerInfo = &cobra.Command{
 
 		cmd.Message("%s\n", aurora.Bold("Miner "+res.Info.MinerAddr))
 
-		cmd.Message("%s", aurora.Bold(aurora.Green("-- Filecoin information --")))
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Filecoin --")))
 		cmd.Message("Relative Power: %s%%", humanize.FtoaWithDigits(res.Info.Filecoin.RelativePower, 5))
-		cmd.Message("Sector size: %s\n", humanize.Bytes(uint64(res.Info.Filecoin.SectorSize)))
+		cmd.Message("Sector size   : %s", humanize.IBytes(uint64(res.Info.Filecoin.SectorSize)))
+		cmd.Message("Active sectors: %d", res.Info.Filecoin.ActiveSectors)
+		cmd.Message("Faulty sectors: %d\n", res.Info.Filecoin.ActiveSectors)
 
-		cmd.Message("Verified-client Price  : %s FIL/GiB/epoch", attoFilToFil(res.Info.Filecoin.AskPrice))
-		cmd.Message("Unverified-client Price: %s FIL/GiB/epoch\n", attoFilToFil(res.Info.Filecoin.AskPrice))
+		cmd.Message("Unverified Price: %s FIL/GiB/epoch", attoFilToFil(res.Info.Filecoin.AskPrice))
+		cmd.Message("Verified Price  : %s FIL/GiB/epoch\n", attoFilToFil(res.Info.Filecoin.AskPrice))
+		cmd.Message("Minimum Piece Size: %s", humanize.IBytes(uint64(res.Info.Filecoin.MinPieceSize)))
+		cmd.Message("Maximum Piece Size: %s\n", humanize.IBytes(uint64(res.Info.Filecoin.MaxPieceSize)))
 
-		cmd.Message("Minimum Piece Size: %s", humanize.Bytes(uint64(res.Info.Filecoin.MinPieceSize)))
-		cmd.Message("Maximum Piece Size: %s\n", humanize.Bytes(uint64(res.Info.Filecoin.MaxPieceSize)))
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Textile --")))
+		cmd.Message("Total successful deals: %d", res.Info.Textile.DealsSummary.Total)
+		cmd.Message("Last successful deal  : %s", prettyFormatTime(res.Info.Textile.DealsSummary.Last))
+		cmd.Message("Total failed deals: %d", res.Info.Textile.DealsSummary.Failures)
+		cmd.Message("Last failed deal  : %s", prettyFormatTime(res.Info.Textile.DealsSummary.LastFailure))
 	},
 }
 
@@ -91,4 +100,12 @@ func attoFilToFil(attoFil string) string {
 		return "0 FIL" // Note(jsign): do we need to be conservative here about free-cost?
 	}
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".") + " FIL"
+}
+
+func prettyFormatTime(t *timestamppb.Timestamp) string {
+	if t == nil {
+		return "<none>"
+	}
+
+	return t.AsTime().Format("2006-01-02 15:04:05 -07:00")
 }

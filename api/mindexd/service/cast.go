@@ -20,6 +20,8 @@ func toPbMinerIndexInfo(mi model.MinerInfo) *pb.MinerIndexInfo {
 			MinPieceSize:     mi.Filecoin.MinPieceSize,
 			RelativePower:    mi.Filecoin.RelativePower,
 			SectorSize:       mi.Filecoin.SectorSize,
+			ActiveSectors:    mi.Filecoin.ActiveSectors,
+			FaultySectors:    mi.Filecoin.FaultySectors,
 			UpdatedAt:        formatPbTime(mi.Filecoin.UpdatedAt),
 		},
 		Textile:   toPbTextileInfo(mi.Textile),
@@ -31,12 +33,16 @@ func toPbTextileInfo(t model.TextileInfo) *pb.TextileInfo {
 	ti := &pb.TextileInfo{
 		Regions: make(map[string]*pb.TextileRegionInfo, len(t.Regions)),
 		DealsSummary: &pb.DealsSummary{
-			Total: int64(t.DealsSummary.Total),
-			Last:  formatPbTime(t.DealsSummary.Last),
+			Total:       int64(t.DealsSummary.Total),
+			Last:        formatPbTime(t.DealsSummary.Last),
+			Failures:    int64(t.DealsSummary.Failures),
+			LastFailure: formatPbTime(t.DealsSummary.LastFailure),
 		},
 		RetrievalsSummary: &pb.RetrievalsSummary{
-			Total: int64(t.RetrievalsSummary.Total),
-			Last:  formatPbTime(t.RetrievalsSummary.Last),
+			Total:       int64(t.RetrievalsSummary.Total),
+			Last:        formatPbTime(t.RetrievalsSummary.Last),
+			Failures:    int64(t.RetrievalsSummary.Failures),
+			LastFailure: formatPbTime(t.RetrievalsSummary.LastFailure),
 		},
 		UpdatedAt: formatPbTime(t.UpdatedAt),
 	}

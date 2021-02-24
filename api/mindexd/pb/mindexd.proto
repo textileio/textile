@@ -22,7 +22,9 @@ message FilecoinInfo {
 	int64 min_piece_size = 4;
 	int64 max_piece_size = 5;
 	int64 sector_size = 6;
-	google.protobuf.Timestamp updated_at = 7;
+	int64 active_sectors = 7;
+	int64 faulty_sectors = 8;
+	google.protobuf.Timestamp updated_at = 9;
 }
 
 message TextileInfo {
@@ -40,11 +42,15 @@ message TextileRegionInfo {
 message DealsSummary {
 	int64 total = 1;
         google.protobuf.Timestamp last = 2;
+        int64 failures = 3;
+        google.protobuf.Timestamp last_failure = 4;
 }
 
 message RetrievalsSummary {
 	int64 total = 1;
         google.protobuf.Timestamp last = 2;
+        int64 failures = 3;
+        google.protobuf.Timestamp last_failure = 4;
 }
 
 message TextileDealsInfo {
