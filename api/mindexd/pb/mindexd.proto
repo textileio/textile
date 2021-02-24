@@ -2,6 +2,10 @@ syntax = "proto3";
 package api.mindexd.pb;
 option go_package = "github.com/textileio/textile/v2/api/mindexd/pb";
 
+import "google/protobuf/timestamp.proto";
+import "api/mindexd/pb/google/api/annotations.proto";
+import "api/mindexd/pb/protoc-gen-openapiv2/options/annotations.proto";
+
 
 // Domain
 message MinerIndexInfo  {
@@ -69,7 +73,7 @@ message QueryIndexRequest {
 	QueryIndexRequestFilters filters = 1;
 	QueryIndexRequestSort sort = 2;
 	int32 limit = 3;
-	string more_token = 4;
+	int64 offset = 4;
 }
 
 message QueryIndexRequestFilters {
@@ -83,15 +87,26 @@ message QueryIndexRequestSort {
 }
 
 enum QueryIndexRequestSortField {
-        QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_TOTAL_SUCCESSFUL = 0;
-        QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_LAST_SUCCESSFUL = 1;
-        QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE = 2;
-        QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE = 3;
-        QUERY_INDEX_REQUEST_SORT_FIELD_ACTIVE_SECTORS = 4;
+        TEXTILE_DEAL_TOTAL_SUCCESSFUL = 0;
+        TEXTILE_DEAL_LAST_SUCCESSFUL = 1;
+        TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL = 2;
+        TEXTILE_RETRIEVAL_LAST_SUCCESSFUL = 3;
+        ASK_PRICE = 4;
+        VERIFIED_ASK_PRICE = 5;
+        ACTIVE_SECTORS = 6;
 }
 
 message QueryIndexResponse {
-	repeated MinerIndexInfo miners = 1;
+	repeated QueryIndexResponseMiner miners = 1;
+}
+
+message QueryIndexResponseMiner {
+	string Address = 1;
+	string Location = 2;
+	string AskPrice = 3;
+	string AskVerifiedPrice = 4;
+	int64 MinPieceSize = 5;
+        google.protobuf.Timestamp TextileDealLastSuccessful = 6;
 }
 
 // rpc GetMinerInfo
@@ -122,7 +137,39 @@ message CalculateDealPriceMiner {
 }
 
 service APIService {
-	rpc QueryIndex(QueryIndexRequest) returns (QueryIndexResponse) {}
-	rpc GetMinerInfo(GetMinerInfoRequest) returns (GetMinerInfoResponse) {}
-	rpc CalculateDealPrice(CalculateDealPriceRequest) returns (CalculateDealPriceResponse) {}
+	rpc QueryIndex(QueryIndexRequest) returns (QueryIndexResponse) {
+            option (google.api.http) = {
+	      get: "/v1/index/query"
+	    };
+	}
+	rpc GetMinerInfo(GetMinerInfoRequest) returns (GetMinerInfoResponse) {
+            option (google.api.http) = {
+	      get: "/v1/index/miner/{miner_address}"
+	    };
+	}
+	rpc CalculateDealPrice(CalculateDealPriceRequest) returns (CalculateDealPriceResponse) {
+	    option (google.api.http) = {
+	      get: "/v1/calculator/calculate"
+	    };
+	}
 }
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+	info: {
+		title: "Textile Miner's Index";
+		version: "1.0";
+		contact: {
+			name: "Textile";
+			url: "https://github.com/grpc-ecosystem/grpc-gateway";
+			email: "contact@textile.io";
+		};
+		license: {
+			name: "MIT";
+			url: "https://raw.githubusercontent.com/textileio/textile/master/LICENSE";
+		};
+	};
+	schemes: HTTPS;
+        schemes: HTTP;
+	consumes: "application/json";
+	produces: "application/json";
+};

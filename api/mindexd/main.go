@@ -37,6 +37,10 @@ var (
 				Key:      "addr.api",
 				DefValue: "/ip4/127.0.0.1/tcp/5000",
 			},
+			"addrApiRest": {
+				Key:      "addr.api_rest",
+				DefValue: ":8081",
+			},
 			"addrMongoUri": {
 				Key:      "addr.mongo_uri",
 				DefValue: "mongodb://127.0.0.1:27017",
@@ -116,7 +120,12 @@ func init() {
 	rootCmd.PersistentFlags().String(
 		"addrApi",
 		config.Flags["addrApi"].DefValue.(string),
-		"Miner Index API listen address")
+		"Miner Index gRPC API listen address")
+	rootCmd.PersistentFlags().String(
+		"addrApiRest",
+		config.Flags["addrApiRest"].DefValue.(string),
+		"Miner Index REST API listen address")
+
 	rootCmd.PersistentFlags().String(
 		"addrMongoUri",
 		config.Flags["addrMongoUri"].DefValue.(string),
@@ -196,7 +205,8 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		log.Debugf("loaded config: %s", string(settings))
 
-		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
+		grpcListenAddr := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
+		restListenAddr := config.Viper.GetString("addr.api_rest")
 		addrMongoUri := config.Viper.GetString("addr.mongo_uri")
 		addrMongoName := config.Viper.GetString("addr.mongo_name")
 
@@ -223,10 +233,11 @@ var rootCmd = &cobra.Command{
 		defer cancel()
 
 		api, err := service.NewService(ctx, service.Config{
-			ListenAddr: addrApi,
-			DBURI:      addrMongoUri,
-			DBName:     addrMongoName,
-			Debug:      config.Viper.GetBool("log.debug"),
+			ListenAddrGRPC: grpcListenAddr,
+			ListenAddrREST: restListenAddr,
+			DBURI:          addrMongoUri,
+			DBName:         addrMongoName,
+			Debug:          config.Viper.GetBool("log.debug"),
 
 			PowAddrAPI:    powAddrAPI,
 			PowAdminToken: powAdminToken,

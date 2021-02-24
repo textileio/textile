@@ -55,7 +55,7 @@ func testPaging(s *Store) func(t *testing.T) {
 		require.Len(t, res2, 1)
 
 		// Check that offested query is one-shifted from non offested.
-		require.Equal(t, res[1].MinerID, res2[0].MinerID)
+		require.Equal(t, res[1].Address, res2[0].Address)
 
 		// Try smaller limit than all results.
 		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{}, 1, 0)
@@ -86,8 +86,8 @@ func testSort(s *Store) func(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 2)
 
-		require.Equal(t, res[0].MinerID, res2[1].MinerID)
-		require.Equal(t, res[1].MinerID, res2[0].MinerID)
+		require.Equal(t, res[0].Address, res2[1].Address)
+		require.Equal(t, res[1].Address, res2[0].Address)
 	}
 }
 
@@ -96,13 +96,14 @@ func testDealLastSuccess(s *Store) func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 
-		res, err := s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: false, Field: SortFieldDealLastSuccessful}, 2, 0)
+		res, err := s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: false, Field: SortFieldTextileDealLastSuccessful}, 2, 0)
 		require.NoError(t, err)
-		require.True(t, res[0].Textile.DealsSummary.Last.After(res[1].Textile.DealsSummary.Last))
+		require.True(t, res[0].TextileDealLastSuccessful.After(res[0].TextileDealLastSuccessful))
 
-		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: true, Field: SortFieldDealLastSuccessful}, 2, 0)
+		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: true, Field: SortFieldTextileDealLastSuccessful}, 2, 0)
 		require.NoError(t, err)
-		require.True(t, res[0].Textile.DealsSummary.Last.Before(res[1].Textile.DealsSummary.Last))
+		require.True(t, res[0].TextileDealLastSuccessful.Before(res[1].TextileDealLastSuccessful))
+
 	}
 }
 
@@ -111,12 +112,12 @@ func testDealTotalSuccess(s *Store) func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 
-		res, err := s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: false, Field: SortFieldDealTotalSuccessful}, 2, 0)
+		res, err := s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: false, Field: SortFieldTextileDealTotalSuccessful}, 2, 0)
 		require.NoError(t, err)
-		require.Greater(t, res[0].Textile.DealsSummary.Total, res[1].Textile.DealsSummary.Total)
+		require.Greater(t, res[0].TextileTotalSuccessful, res[1].TextileTotalSuccessful)
 
-		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: true, Field: SortFieldDealTotalSuccessful}, 2, 0)
+		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: true, Field: SortFieldTextileDealTotalSuccessful}, 2, 0)
 		require.NoError(t, err)
-		require.Less(t, res[0].Textile.DealsSummary.Total, res[1].Textile.DealsSummary.Total)
+		require.Less(t, res[0].TextileTotalSuccessful, res[1].TextileTotalSuccessful)
 	}
 }

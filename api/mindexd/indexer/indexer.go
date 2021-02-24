@@ -46,7 +46,7 @@ func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *stor
 		daemonSub:       sub,
 	}
 
-	i.runDaemon()
+	go i.runDaemon()
 
 	return i, nil
 }

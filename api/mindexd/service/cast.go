@@ -6,6 +6,7 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/api/mindexd/store"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func toPbMinerIndexInfo(mi model.MinerInfo) *pb.MinerIndexInfo {
@@ -81,10 +82,12 @@ func toPbSealedDurationMins(ss []model.SealedDurationMins) []*pb.SealedDurationM
 }
 
 func fromPbQueryIndexRequestFilters(f *pb.QueryIndexRequestFilters) store.QueryIndexFilters {
-	return store.QueryIndexFilters{
-		MinerCountry:  f.MinerCountry,
-		TextileRegion: f.TextileRegion,
+	r := store.QueryIndexFilters{}
+	if f != nil {
+		r.MinerCountry = f.MinerCountry
+		r.TextileRegion = f.TextileRegion
 	}
+	return r
 }
 
 func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexSort, error) {
@@ -101,10 +104,15 @@ func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexS
 
 func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (store.QueryIndexSortField, error) {
 	switch field {
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_TOTAL_SUCCESSFUL:
-		return store.SortFieldTextileTotalSuccessful, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_LAST_SUCCESSFUL:
-		return store.SortFieldLastSuccessful, nil
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_DEAL_TOTAL_SUCCESSFUL:
+		return store.SortFieldTextileDealTotalSuccessful, nil
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_DEAL_LAST_SUCCESSFUL:
+		return store.SortFieldTextileDealLastSuccessful, nil
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL:
+		return store.SortFieldTextileRetrievalTotalSuccessful, nil
+	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_RETRIEVAL_LAST_SUCCESSFUL:
+		return store.SortFieldTextileRetrievalLastSuccessful, nil
+
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE:
 		return store.SortFieldAskPrice, nil
 	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE:
@@ -114,4 +122,22 @@ func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (stor
 	default:
 		return 0, fmt.Errorf("unkown sorting field %s", pb.QueryIndexRequestSortField_name[int32(field)])
 	}
+}
+
+func toPbQueryIndexResponse(ss []store.MinerSummary) *pb.QueryIndexResponse {
+	res := &pb.QueryIndexResponse{
+		Miners: make([]*pb.QueryIndexResponseMiner, len(ss)),
+	}
+	for i, m := range ss {
+		res.Miners[i] = &pb.QueryIndexResponseMiner{
+			Address:                   m.Address,
+			Location:                  m.Location,
+			AskPrice:                  m.AskPrice,
+			AskVerifiedPrice:          m.AskVerifiedPrice,
+			MinPieceSize:              m.MinPieceSize,
+			TextileDealLastSuccessful: timestamppb.New(m.TextileDealLastSuccessful),
+		}
+	}
+
+	return res
 }

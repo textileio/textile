@@ -1,0 +1,489 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Textile Miner's Index",
+    "version": "1.0",
+    "contact": {
+      "name": "Textile",
+      "url": "https://github.com/grpc-ecosystem/grpc-gateway",
+      "email": "contact@textile.io"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://raw.githubusercontent.com/textileio/textile/master/LICENSE"
+    }
+  },
+  "tags": [
+    {
+      "name": "APIService"
+    }
+  ],
+  "schemes": [
+    "https",
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/calculator/calculate": {
+      "get": {
+        "operationId": "APIService_CalculateDealPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbCalculateDealPriceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "dataSizeBytes",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "durationDays",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    },
+    "/v1/index/miner/{minerAddress}": {
+      "get": {
+        "operationId": "APIService_GetMinerInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbGetMinerInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddress",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    },
+    "/v1/index/query": {
+      "get": {
+        "operationId": "APIService_QueryIndex",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbQueryIndexResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "filters.minerCountry",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filters.textileRegion",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sort.ascending",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "sort.field",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "TEXTILE_DEAL_TOTAL_SUCCESSFUL",
+              "TEXTILE_DEAL_LAST_SUCCESSFUL",
+              "TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL",
+              "TEXTILE_RETRIEVAL_LAST_SUCCESSFUL",
+              "ASK_PRICE",
+              "VERIFIED_ASK_PRICE",
+              "ACTIVE_SECTORS"
+            ],
+            "default": "TEXTILE_DEAL_TOTAL_SUCCESSFUL"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "pbCalculateDealPriceMiner": {
+      "type": "object",
+      "properties": {
+        "miner": {
+          "type": "string"
+        },
+        "totalCost": {
+          "type": "string"
+        },
+        "verifiedTotalCost": {
+          "type": "string"
+        }
+      }
+    },
+    "pbCalculateDealPriceResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbCalculateDealPriceMiner"
+          }
+        },
+        "paddedSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationEpochs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbFilecoinInfo": {
+      "type": "object",
+      "properties": {
+        "relativePower": {
+          "type": "number",
+          "format": "double"
+        },
+        "askPrice": {
+          "type": "string"
+        },
+        "askVerifiedPrice": {
+          "type": "string"
+        },
+        "minPieceSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxPieceSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sectorSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbGetMinerInfoResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/pbMinerIndexInfo"
+        }
+      }
+    },
+    "pbMinerIndexInfo": {
+      "type": "object",
+      "properties": {
+        "minerAddr": {
+          "type": "string"
+        },
+        "filecoin": {
+          "$ref": "#/definitions/pbFilecoinInfo"
+        },
+        "textile": {
+          "$ref": "#/definitions/pbTextileInfo"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "title": "Domain"
+    },
+    "pbQueryIndexRequestFilters": {
+      "type": "object",
+      "properties": {
+        "minerCountry": {
+          "type": "string"
+        },
+        "textileRegion": {
+          "type": "string"
+        }
+      }
+    },
+    "pbQueryIndexRequestSort": {
+      "type": "object",
+      "properties": {
+        "ascending": {
+          "type": "boolean"
+        },
+        "field": {
+          "$ref": "#/definitions/pbQueryIndexRequestSortField"
+        }
+      }
+    },
+    "pbQueryIndexRequestSortField": {
+      "type": "string",
+      "enum": [
+        "TEXTILE_DEAL_TOTAL_SUCCESSFUL",
+        "TEXTILE_DEAL_LAST_SUCCESSFUL",
+        "TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL",
+        "TEXTILE_RETRIEVAL_LAST_SUCCESSFUL",
+        "ASK_PRICE",
+        "VERIFIED_ASK_PRICE",
+        "ACTIVE_SECTORS"
+      ],
+      "default": "TEXTILE_DEAL_TOTAL_SUCCESSFUL"
+    },
+    "pbQueryIndexResponse": {
+      "type": "object",
+      "properties": {
+        "miners": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbQueryIndexResponseMiner"
+          }
+        }
+      }
+    },
+    "pbQueryIndexResponseMiner": {
+      "type": "object",
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "Location": {
+          "type": "string"
+        },
+        "AskPrice": {
+          "type": "string"
+        },
+        "AskVerifiedPrice": {
+          "type": "string"
+        },
+        "MinPieceSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "TextileDealLastSuccessful": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pbSealedDurationMins": {
+      "type": "object",
+      "properties": {
+        "sealedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationSeconds": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbTextileDealsInfo": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "int64"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tailTransfers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbTransferMiBPerSec"
+          }
+        },
+        "tailSealed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbSealedDurationMins"
+          }
+        }
+      }
+    },
+    "pbTextileInfo": {
+      "type": "object",
+      "properties": {
+        "regions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/pbTextileRegionInfo"
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbTextileRegionInfo": {
+      "type": "object",
+      "properties": {
+        "deals": {
+          "$ref": "#/definitions/pbTextileDealsInfo"
+        },
+        "retrievals": {
+          "$ref": "#/definitions/pbTextileRetrievalsInfo"
+        }
+      }
+    },
+    "pbTextileRetrievalsInfo": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "int64"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tailTransfers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbTransferMiBPerSec"
+          }
+        }
+      }
+    },
+    "pbTransferMiBPerSec": {
+      "type": "object",
+      "properties": {
+        "transferedAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "mibPerSec": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

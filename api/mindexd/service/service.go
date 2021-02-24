@@ -7,9 +7,11 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/gogo/status"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
@@ -19,6 +21,7 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/api/mindexd/store"
+	"github.com/textileio/textile/v2/cmd"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -36,8 +39,9 @@ var (
 )
 
 type Service struct {
-	config Config
-	server *grpc.Server
+	config         Config
+	server         *grpc.Server
+	grpcRESTServer *http.Server
 
 	db        *mongo.Database
 	collector *collector.Collector
@@ -48,8 +52,9 @@ type Service struct {
 var _ pb.APIServiceServer = (*Service)(nil)
 
 type Config struct {
-	ListenAddr ma.Multiaddr
-	Debug      bool
+	ListenAddrGRPC ma.Multiaddr
+	ListenAddrREST string
+	Debug          bool
 
 	DBURI  string
 	DBName string
@@ -110,10 +115,11 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		indexer.WithSnapshotMaxAge(config.IndexerSnapshotMaxAge),
 	}
 
-	pow, err := powClient.NewClient(config.PowAddrAPI)
+	pow, err := (*powClient.Client)(nil), nil
 	if err != nil {
 		return nil, err
 	}
+
 	sub := collector.Subscribe()
 	indexer, err := indexer.New(pow, sub, config.PowAdminToken, store, indexerOpts...)
 	if err != nil {
@@ -127,13 +133,12 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		indexer:   indexer,
 		store:     store,
 	}
-
 	return s, nil
 }
 
 func (s *Service) Start() error {
 	s.server = grpc.NewServer()
-	target, err := util.TCPAddrFromMultiAddr(s.config.ListenAddr)
+	target, err := util.TCPAddrFromMultiAddr(s.config.ListenAddrGRPC)
 	if err != nil {
 		return err
 	}
@@ -148,10 +153,32 @@ func (s *Service) Start() error {
 		}
 	}()
 
+	// Register gRPC server endpoint
+	// Note: Make sure the gRPC server is running properly and accessible
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	err = pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), mux, "localhost:5000", opts)
+	cmd.ErrCheck(err)
+
+	s.grpcRESTServer = &http.Server{
+		Addr:    s.config.ListenAddrREST,
+		Handler: mux,
+	}
+	go func() {
+		if err := s.grpcRESTServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Errorf("gRPC REST API closed unexpectedly: %s", err)
+		}
+	}()
+
 	return nil
 }
 
 func (s *Service) Stop() {
+	ctx, cls := context.WithTimeout(context.Background(), time.Second*10)
+	defer cls()
+	if err := s.grpcRESTServer.Shutdown(ctx); err != nil {
+		log.Errorf("closing REST endpoint: %s", err)
+	}
 	stopped := make(chan struct{})
 	go func() {
 		s.server.GracefulStop()
@@ -183,18 +210,22 @@ func (s *Service) Stop() {
 
 func (s *Service) QueryIndex(ctx context.Context, req *pb.QueryIndexRequest) (*pb.QueryIndexResponse, error) {
 	filters := fromPbQueryIndexRequestFilters(req.Filters)
-	sort := fromPbQueryIndexRequestSort(req.Sort)
+
+	sort, err := fromPbQueryIndexRequestSort(req.Sort)
+	if err != nil {
+		return nil, fmt.Errorf("parsing sorting fields: %s", err)
+	}
 
 	if req.Limit > queryMaxLimit {
 		req.Limit = queryMaxLimit
 	}
 
-	res, err := s.store.QueryIndex(ctx, filters, sort, int(req.Limit), req.MoreToken)
+	res, err := s.store.QueryIndex(ctx, filters, sort, int(req.Limit), req.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("querying miners from index: %s", err)
 	}
 
-	return toPbQueryIndexResponseSummary(res), nil
+	return toPbQueryIndexResponse(res), nil
 }
 
 // GetMinerInfo returns miner's index information for a miner. If no information is
