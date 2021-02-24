@@ -9,6 +9,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var filIndexCmd = &cobra.Command{
@@ -17,6 +18,37 @@ var filIndexCmd = &cobra.Command{
 	Short:   "Interact with the Miner Index.",
 	Long:    `Interact with the Miner Index.`,
 	Args:    cobra.ExactArgs(0),
+}
+
+var filGetMinerInfo = &cobra.Command{
+	Use:   "miner [minerAddr]",
+	Short: "Get miner information",
+	Long:  `Get miner information`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(c *cobra.Command, args []string) {
+		minerAddr := args[0]
+
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		res, err := clients.MinerIndex.GetMinerInfo(ctx, minerAddr)
+		cmd.ErrCheck(err)
+
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
+
+		cmd.Message("%s\n", aurora.Bold("Miner "+res.Info.MinerAddr))
+
+		cmd.Message("%s", aurora.Bold(aurora.Green("-- Filecoin information --")))
+		cmd.Message("Relative Power: %s%%", humanize.FtoaWithDigits(res.Info.Filecoin.RelativePower, 5))
+		cmd.Message("Sector size: %s\n", humanize.Bytes(uint64(res.Info.Filecoin.SectorSize)))
+
+		cmd.Message("Verified-client Price  : %s FIL/GiB/epoch", attoFilToFil(res.Info.Filecoin.AskPrice))
+		cmd.Message("Unverified-client Price: %s FIL/GiB/epoch\n", attoFilToFil(res.Info.Filecoin.AskPrice))
+
+		cmd.Message("Minimum Piece Size: %s", humanize.Bytes(uint64(res.Info.Filecoin.MinPieceSize)))
+		cmd.Message("Maximum Piece Size: %s\n", humanize.Bytes(uint64(res.Info.Filecoin.MaxPieceSize)))
+	},
 }
 
 var filCalculateDealPrice = &cobra.Command{
@@ -35,7 +67,7 @@ var filCalculateDealPrice = &cobra.Command{
 			minersAddr[i-2] = args[i]
 		}
 
-		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 		res, err := clients.MinerIndex.CalculateDealPrice(ctx, minersAddr, int64(dataSizeBytes), durationDays)
 		cmd.ErrCheck(err)

@@ -149,15 +149,15 @@
             "required": false,
             "type": "string",
             "enum": [
-              "TEXTILE_DEAL_TOTAL_SUCCESSFUL",
-              "TEXTILE_DEAL_LAST_SUCCESSFUL",
-              "TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL",
-              "TEXTILE_RETRIEVAL_LAST_SUCCESSFUL",
+              "TEXTILE_DEALS_TOTAL_SUCCESSFUL",
+              "TEXTILE_DEALS_LAST_SUCCESSFUL",
+              "TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL",
+              "TEXTILE_RETRIEVALS_LAST_SUCCESSFUL",
               "ASK_PRICE",
               "VERIFIED_ASK_PRICE",
               "ACTIVE_SECTORS"
             ],
-            "default": "TEXTILE_DEAL_TOTAL_SUCCESSFUL"
+            "default": "TEXTILE_DEALS_TOTAL_SUCCESSFUL"
           },
           {
             "name": "limit",
@@ -214,6 +214,19 @@
         }
       }
     },
+    "pbDealsSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "pbFilecoinInfo": {
       "type": "object",
       "properties": {
@@ -241,7 +254,7 @@
         },
         "updatedAt": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         }
       }
     },
@@ -267,7 +280,7 @@
         },
         "updatedAt": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         }
       },
       "title": "Domain"
@@ -297,15 +310,15 @@
     "pbQueryIndexRequestSortField": {
       "type": "string",
       "enum": [
-        "TEXTILE_DEAL_TOTAL_SUCCESSFUL",
-        "TEXTILE_DEAL_LAST_SUCCESSFUL",
-        "TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL",
-        "TEXTILE_RETRIEVAL_LAST_SUCCESSFUL",
+        "TEXTILE_DEALS_TOTAL_SUCCESSFUL",
+        "TEXTILE_DEALS_LAST_SUCCESSFUL",
+        "TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL",
+        "TEXTILE_RETRIEVALS_LAST_SUCCESSFUL",
         "ASK_PRICE",
         "VERIFIED_ASK_PRICE",
         "ACTIVE_SECTORS"
       ],
-      "default": "TEXTILE_DEAL_TOTAL_SUCCESSFUL"
+      "default": "TEXTILE_DEALS_TOTAL_SUCCESSFUL"
     },
     "pbQueryIndexResponse": {
       "type": "object",
@@ -343,12 +356,25 @@
         }
       }
     },
+    "pbRetrievalsSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "pbSealedDurationMins": {
       "type": "object",
       "properties": {
         "sealedAt": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "durationSeconds": {
           "type": "string",
@@ -365,7 +391,7 @@
         },
         "last": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "failures": {
           "type": "string",
@@ -373,7 +399,7 @@
         },
         "lastFailure": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "tailTransfers": {
           "type": "array",
@@ -398,9 +424,15 @@
             "$ref": "#/definitions/pbTextileRegionInfo"
           }
         },
+        "dealsSummary": {
+          "$ref": "#/definitions/pbDealsSummary"
+        },
+        "retrievalsSummary": {
+          "$ref": "#/definitions/pbRetrievalsSummary"
+        },
         "updatedAt": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         }
       }
     },
@@ -424,7 +456,7 @@
         },
         "last": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "failures": {
           "type": "string",
@@ -432,7 +464,7 @@
         },
         "lastFailure": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "tailTransfers": {
           "type": "array",
@@ -447,7 +479,7 @@
       "properties": {
         "transferedAt": {
           "type": "string",
-          "format": "int64"
+          "format": "date-time"
         },
         "mibPerSec": {
           "type": "number",

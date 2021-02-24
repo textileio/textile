@@ -12,7 +12,7 @@ message MinerIndexInfo  {
 	string miner_addr = 1;
 	FilecoinInfo filecoin = 3;
 	TextileInfo textile = 4;
-	int64 updated_at = 5;
+	google.protobuf.Timestamp updated_at = 5;
 }
 
 message FilecoinInfo {
@@ -22,12 +22,14 @@ message FilecoinInfo {
 	int64 min_piece_size = 4;
 	int64 max_piece_size = 5;
 	int64 sector_size = 6;
-	int64 updated_at = 7;
+	google.protobuf.Timestamp updated_at = 7;
 }
 
 message TextileInfo {
 	map<string, TextileRegionInfo> regions = 1;
-	int64 updated_at = 2;
+	DealsSummary deals_summary = 2;
+	RetrievalsSummary retrievals_summary = 3;
+	google.protobuf.Timestamp updated_at = 4;
 }
 
 message TextileRegionInfo {
@@ -35,12 +37,22 @@ message TextileRegionInfo {
 	TextileRetrievalsInfo retrievals = 2;
 }
 
+message DealsSummary {
+	int64 total = 1;
+        google.protobuf.Timestamp last = 2;
+}
+
+message RetrievalsSummary {
+	int64 total = 1;
+        google.protobuf.Timestamp last = 2;
+}
+
 message TextileDealsInfo {
 	int64 total = 1;
-	int64 last = 2;
+	google.protobuf.Timestamp last = 2;
 
 	int64 failures = 3;
-	int64 last_failure = 4;
+	google.protobuf.Timestamp last_failure = 4;
 
 	repeated TransferMiBPerSec tail_transfers = 5;
 	repeated SealedDurationMins tail_sealed = 6;
@@ -48,19 +60,19 @@ message TextileDealsInfo {
 
 message TextileRetrievalsInfo {
 	int64 total = 1;
-	int64 last = 2;
+	google.protobuf.Timestamp last = 2;
 	int64 failures = 3;
-	int64 last_failure = 4;
+	google.protobuf.Timestamp last_failure = 4;
 	repeated TransferMiBPerSec tail_transfers = 5;
 }
 
 message TransferMiBPerSec {
-	int64 transfered_at = 1;
+	google.protobuf.Timestamp transfered_at = 1;
 	double mib_per_sec = 2;
 }
 
 message SealedDurationMins {
-	int64 sealed_at = 1;
+	google.protobuf.Timestamp sealed_at = 1;
 	int64 duration_seconds = 2;
 }
 
