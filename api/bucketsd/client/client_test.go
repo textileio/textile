@@ -782,9 +782,6 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.False(t, li.Item.IsDir)
 	assert.Equal(t, li.Item.Name, "file3.jpg")
 
-	li, err = client.ListPath(ctx, buck.Root.Key, "root.jpg")
-	require.NoError(t, err)
-
 	// move to root => /c
 	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
 	require.NoError(t, err)
@@ -794,6 +791,9 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.True(t, li.Item.IsDir)
 	assert.Len(t, li.Item.Items, 4)
 
+	li, err = client.ListPath(ctx, buck.Root.Key, "root.jpg")
+	require.NoError(t, err)
+
 	// move root should fail
 	_, err = client.MovePath(ctx, buck.Root.Key, "", "a")
 	require.Error(t, err, "source is root directory")
@@ -802,11 +802,6 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	require.NoError(t, err)
 	assert.True(t, li.Item.IsDir)
 	assert.Len(t, li.Item.Items, 1)
-
-	li, err = client.ListPath(ctx, buck.Root.Key, "")
-	require.NoError(t, err)
-	assert.True(t, li.Item.IsDir)
-	assert.Len(t, li.Item.Items, 4)
 
 	// move non existant should fail
 	_, err = client.MovePath(ctx, buck.Root.Key, "x", "a")
@@ -848,7 +843,7 @@ func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	require.NoError(t, err)
 
 	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func TestClient_RemovePath(t *testing.T) {

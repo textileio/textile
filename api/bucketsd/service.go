@@ -1043,12 +1043,7 @@ func (s *Service) copyNode(ctx context.Context, buck *tdb.Bucket, rootNode ipld.
 	pn := nmap[rootNode.Cid()].node
 	ctx, dirPath, err := s.insertNodeAtPath(ctx, pn, path.Join(path.New(buck.Path), toPath), buck.GetLinkEncryptionKey())
 	if err != nil {
-		return nil, fmt.Errorf("updating pinned root: %v", err)
-	}
-
-	_, err = s.addAndPinNodes(ctx, nodes)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("inserting at path: %v", err)
 	}
 
 	// If updating root, add seedfile back to node.
@@ -1056,8 +1051,14 @@ func (s *Service) copyNode(ctx context.Context, buck *tdb.Bucket, rootNode ipld.
 		sn, err := makeSeed(fileKey)
 		ctx, dirPath, err = s.insertNodeAtPath(ctx, sn, path.Join(dirPath, buckets.SeedName), buck.GetLinkEncryptionKey())
 		if err != nil {
-			return nil, fmt.Errorf("updating pinned root: %v", err)
+			return nil, fmt.Errorf("replacing seedfile: %v", err)
 		}
+		nodes = append(nodes, sn)
+	}
+
+	_, err = s.addAndPinNodes(ctx, nodes)
+	if err != nil {
+		return nil, err
 	}
 
 	return dirPath, nil
@@ -1104,6 +1105,10 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		return nil, fmt.Errorf("getting path: %v", err)
 	}
 
+	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, fmt.Errorf("verifying bucket update: %v", err)
+	}
+
 	fromNodePath, err := inflateFilePath(buck, fromPth)
 	if err != nil {
 		return nil, err
@@ -1131,7 +1136,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		}
 	}
 
-	// IPNS node
+	// bucket node
 	buckNode, err := s.getNodeAtPath(ctx, pth, buck.GetLinkEncryptionKey())
 	if err != nil {
 		return nil, fmt.Errorf("getting node: %v", err)
@@ -1151,43 +1156,28 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 			return nil, fmt.Errorf("error copying path: %v", err)
 		}
 	}
-
 	buck.Path = dirPath.String()
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.SetMetadataAtPath(toPth, tdb.Metadata{
-		UpdatedAt: buck.UpdatedAt,
-	})
-	buck.UnsetMetadataWithPrefix(fromPth)
-
-	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("verifying bucket update: %v", err)
-	}
-	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, fmt.Errorf("error saving update: %v", err)
-	}
 
 	// If "a/b" => "a/", cleanup only needed for priv
 	if strings.HasPrefix(fromPth, toPth) {
 		if buck.IsPrivate() {
-			_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
-				Key:  req.Key,
-				Path: fromPth,
-			}, fromPth)
+			dirPath, err := s.removePath(ctx, dbID, dbToken, buck, fromPth)
 			if err != nil {
 				return nil, fmt.Errorf("cleaning path: %v", err)
 			}
+			buck.Path = dirPath.String()
 		}
 
+		if err = s.saveAndPublish(ctx, dbID, dbToken, buck); err != nil {
+			return nil, err
+		}
 		return &pb.MovePathResponse{}, nil
 	}
 
-	// If "a/" => "a/b" cleanup each leaf in "a" that isn't "b" (skipping .textileseed)
 	if strings.HasPrefix(toPth, fromPth) {
-		// todo: optimize by removing the listpath roundtrip
-		item, err := s.ListPath(ctx, &pb.ListPathRequest{
-			Key:  req.Key,
-			Path: fromPth,
-		})
+		// If "a/" => "a/b" cleanup each leaf in "a" that isn't "b" (skipping .textileseed)
+		ppth := path.Join(path.New(buck.Path), fromPth)
+		item, err := s.listPath(ctx, dbID, dbToken, buck, ppth)
 		if err != nil {
 			return nil, fmt.Errorf("list failed: %v", err)
 		}
@@ -1197,30 +1187,41 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 			if strings.Compare(chld.Name, buckets.SeedName) == 0 || sp == toPth {
 				continue
 			}
-
 			spClean := cleanPath(sp)
-			_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
-				Key:  req.Key,
-				Path: spClean,
-			}, spClean)
+			dirPath, err := s.removePath(ctx, dbID, dbToken, buck, spClean)
 			if err != nil {
-				return nil, fmt.Errorf("remove path failed: %v", err)
+				return nil, fmt.Errorf("cleaning path: %v", err)
 			}
+			buck.Path = dirPath.String()
 		}
-		return &pb.MovePathResponse{}, nil
+	} else {
+		// if a/ => b/ remove a
+		dirPath, err := s.removePath(ctx, dbID, dbToken, buck, fromPth)
+		if err != nil {
+			return nil, fmt.Errorf("removing path: %v", err)
+		}
+		buck.Path = dirPath.String()
 	}
 
-	// if a/ => b/ remove a
-	_, err = s.removePath(ctx, dbID, dbToken, &pb.RemovePathRequest{
-		Key:  req.Key,
-		Path: fromPth,
-		// Root: root.Root.Key,
-	}, fromPth)
-	if err != nil {
-		return nil, fmt.Errorf("remove path failed: %v", err)
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(toPth, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(fromPth)
+
+	if err = s.saveAndPublish(ctx, dbID, dbToken, buck); err != nil {
+		return nil, err
 	}
 
 	return &pb.MovePathResponse{}, nil
+}
+
+func (s *Service) saveAndPublish(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket) error {
+	if err := s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return fmt.Errorf("error saving update: %v", err)
+	}
+	go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
+	return nil
 }
 func (s *Service) SetPath(ctx context.Context, req *pb.SetPathRequest) (res *pb.SetPathResponse, err error) {
 	log.Debugf("received set path request")
@@ -1464,7 +1465,10 @@ func (s *Service) ListPath(ctx context.Context, req *pb.ListPathRequest) (*pb.Li
 	if err != nil {
 		return nil, err
 	}
+	return s.listPath(ctx, dbID, dbToken, buck, pth)
+}
 
+func (s *Service) listPath(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket, pth path.Path) (*pb.ListPathResponse, error) {
 	rep, err := s.pathToPb(ctx, dbID, buck, pth, true)
 	if err != nil {
 		return nil, err
@@ -2100,13 +2104,13 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 		if !changed {
 			return err
 		}
-		if serr := s.Buckets.Save(sctx, dbID, buck, tdb.WithToken(dbToken)); serr != nil {
+
+		if serr := s.saveAndPublish(sctx, dbID, dbToken, buck); serr != nil {
 			if err != nil {
 				return err
 			}
 			return fmt.Errorf("saving bucket: %v", serr)
 		}
-		go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
 		return err
 	}
 
@@ -2688,12 +2692,27 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	lck.Acquire()
 	defer lck.Release()
 
-	buck, err := s.removePath(ctx, dbID, dbToken, req, filePath)
+	buck := &tdb.Bucket{}
+	if err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, err
+	}
+
+	if req.Root != "" && req.Root != buck.Path {
+		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
+	}
+
+	dirPath, err := s.removePath(ctx, dbID, dbToken, buck, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.UnsetMetadataWithPrefix(filePath)
+
+	buck.Path = dirPath.String()
+	if err = s.saveAndPublish(ctx, dbID, dbToken, buck); err != nil {
+		return nil, err
+	}
 
 	log.Debugf("removed %s from bucket: %s", filePath, buck.Key)
 	root, err := getPbRoot(dbID, buck)
@@ -2706,20 +2725,8 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 	}, nil
 }
 
-func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread.Token, req *pb.RemovePathRequest, filePath string) (*tdb.Bucket, error) {
-	buck := &tdb.Bucket{}
-	err := s.Buckets.GetSafe(ctx, dbID, req.Key, buck, tdb.WithToken(dbToken))
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Root != "" && req.Root != buck.Path {
-		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
-	}
-
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.UnsetMetadataWithPrefix(filePath)
-
+func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket, filePath string) (path.Resolved, error) {
+	var err error
 	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, err
 	}
@@ -2746,11 +2753,7 @@ func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread
 		}
 	}
 
-	buck.Path = dirPath.String()
-	if err = s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, err
-	}
-	return buck, nil
+	return dirPath, nil
 }
 
 // removeNodeAtPath removes node at the location of path.
