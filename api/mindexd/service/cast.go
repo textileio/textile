@@ -104,20 +104,19 @@ func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexS
 
 func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (store.QueryIndexSortField, error) {
 	switch field {
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_DEAL_TOTAL_SUCCESSFUL:
+	case pb.QueryIndexRequestSortField_TEXTILE_DEALS_TOTAL_SUCCESSFUL:
 		return store.SortFieldTextileDealTotalSuccessful, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_DEAL_LAST_SUCCESSFUL:
+	case pb.QueryIndexRequestSortField_TEXTILE_DEALS_LAST_SUCCESSFUL:
 		return store.SortFieldTextileDealLastSuccessful, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_RETRIEVAL_TOTAL_SUCCESSFUL:
+	case pb.QueryIndexRequestSortField_TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL:
 		return store.SortFieldTextileRetrievalTotalSuccessful, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_TEXTILE_RETRIEVAL_LAST_SUCCESSFUL:
+	case pb.QueryIndexRequestSortField_TEXTILE_RETRIEVALS_LAST_SUCCESSFUL:
 		return store.SortFieldTextileRetrievalLastSuccessful, nil
-
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ASK_PRICE:
+	case pb.QueryIndexRequestSortField_ASK_PRICE:
 		return store.SortFieldAskPrice, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_VERIFIED_ASK_PRICE:
+	case pb.QueryIndexRequestSortField_VERIFIED_ASK_PRICE:
 		return store.SortFieldVerifiedAskPrice, nil
-	case pb.QueryIndexRequestSortField_QUERY_INDEX_REQUEST_SORT_FIELD_ACTIVE_SECTORS:
+	case pb.QueryIndexRequestSortField_ACTIVE_SECTORS:
 		return store.SortFieldActiveSectors, nil
 	default:
 		return 0, fmt.Errorf("unkown sorting field %s", pb.QueryIndexRequestSortField_name[int32(field)])
