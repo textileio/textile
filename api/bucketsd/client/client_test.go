@@ -782,7 +782,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.False(t, li.Item.IsDir)
 	assert.Equal(t, li.Item.Name, "file3.jpg")
 
-	// move to root => /c
+	// move a/b/c to root => c
 	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
 	require.NoError(t, err)
 
