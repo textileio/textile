@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
 	"net"
@@ -16,6 +17,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
 	powClient "github.com/textileio/powergate/v2/api/client"
+	swagger "github.com/textileio/swagger-ui"
 	"github.com/textileio/textile/v2/api/mindexd/collector"
 	"github.com/textileio/textile/v2/api/mindexd/indexer"
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
@@ -153,16 +155,32 @@ func (s *Service) Start() error {
 		}
 	}()
 
-	// Register gRPC server endpoint
-	// Note: Make sure the gRPC server is running properly and accessible
-	mux := runtime.NewServeMux()
+	grpcMux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	err = pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), mux, "localhost:5000", opts)
+	err = pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), grpcMux, "localhost:5000", opts)
 	cmd.ErrCheck(err)
+
+	swaggerContent, err := ioutil.ReadFile("api/mindexd/pb/mindexd.swagger.json")
+	if err != nil {
+		return fmt.Errorf("opening swagger file: %s", err)
+	}
+	if err := grpcMux.HandlePath("GET", "/docs", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		http.Redirect(w, r, "/docs/index.html", 301)
+
+	}); err != nil {
+		return fmt.Errorf("registering redirect docs path: %s", err)
+	}
+	if err := grpcMux.HandlePath("GET", "/docs/*", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		swagger.Handler(func() ([]byte, error) {
+			return swaggerContent, nil
+		}).ServeHTTP(w, r)
+	}); err != nil {
+		return fmt.Errorf("registering docs handler: %s", err)
+	}
 
 	s.grpcRESTServer = &http.Server{
 		Addr:    s.config.ListenAddrREST,
-		Handler: mux,
+		Handler: grpcMux,
 	}
 	go func() {
 		if err := s.grpcRESTServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {

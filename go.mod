@@ -21,7 +21,6 @@ require (
 	github.com/google/go-cmp v0.5.4
 	github.com/gosimple/slug v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
-	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-blockservice v0.1.4
@@ -74,6 +73,7 @@ require (
 	github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5
 	github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80
 	github.com/textileio/powergate/v2 v2.1.1-0.20210222162356-69b1f3f2a3a7
+	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.4.1
