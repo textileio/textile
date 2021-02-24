@@ -1218,7 +1218,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 
 func (s *Service) saveAndPublish(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket) error {
 	if err := s.Buckets.Save(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return fmt.Errorf("saving update: %v", err)
+		return fmt.Errorf("saving bucket: %v", err)
 	}
 	go s.IPNSManager.Publish(path.New(buck.Path), buck.Key)
 	return nil
@@ -2110,7 +2110,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 			if err != nil {
 				return err
 			}
-			return fmt.Errorf("saving bucket: %v", serr)
+			return serr
 		}
 		return err
 	}
