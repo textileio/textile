@@ -261,7 +261,6 @@ func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest)
 
 // CalculateDealPrice calculates deal price for a miner.
 func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealPriceRequest) (*pb.CalculateDealPriceResponse, error) {
-
 	durationEpochs := req.DurationDays * 24 * 60 * 60 / epochDurationSeconds
 	paddedSize := int64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
 
@@ -271,6 +270,8 @@ func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealP
 		Results:        make([]*pb.CalculateDealPriceMiner, len(req.MinerAddresses)),
 	}
 
+	gibEpochs := big.NewInt(0).Mul(big.NewInt(paddedSize), big.NewInt(durationEpochs))
+	gibEpochs = gibEpochs.Div(gibEpochs, big.NewInt(1<<30))
 	for i, minerAddr := range req.MinerAddresses {
 		mi, err := s.store.GetMinerInfo(ctx, minerAddr)
 		if err == store.ErrMinerNotExists {
@@ -284,7 +285,6 @@ func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealP
 			return nil, fmt.Errorf("parsing ask verified price: %s", err)
 		}
 
-		gibEpochs := big.NewInt(0).Mul(&askPrice, big.NewInt(durationEpochs))
 		ret.Results[i] = &pb.CalculateDealPriceMiner{
 			Miner:             minerAddr,
 			TotalCost:         big.NewInt(0).Mul(gibEpochs, &askPrice).String(),

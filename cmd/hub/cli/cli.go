@@ -30,6 +30,10 @@ var (
 				Key:      "api",
 				DefValue: "api.hub.textile.io:443",
 			},
+			"apiMinerIndex": {
+				Key:      "apiMinerIndex",
+				DefValue: "minerindex.hub.textile.io:443",
+			},
 			"session": {
 				Key:      "session",
 				DefValue: "",
@@ -88,12 +92,14 @@ func Init(rootCmd *cobra.Command) {
 	orgsCmd.AddCommand(orgsCreateCmd, orgsLsCmd, orgsMembersCmd, orgsInviteCmd, orgsLeaveCmd, orgsDestroyCmd)
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
-	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filSignCmd, filVerifyCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd)
+	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filSignCmd, filVerifyCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd, filIndexCmd)
+	filIndexCmd.AddCommand(filCalculateDealPrice)
 	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd, billingUsersCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
 
-	rootCmd.PersistentFlags().String("api", config.Flags["api"].DefValue.(string), "API target")
+	rootCmd.PersistentFlags().String("api", config.Flags["api"].DefValue.(string), "API Hub target")
+	rootCmd.PersistentFlags().String("apiMinerIndex", config.Flags["apiMinerIndex"].DefValue.(string), "API MinerIndex target")
 	rootCmd.PersistentFlags().StringP("session", "s", config.Flags["session"].DefValue.(string), "User session token")
 	rootCmd.PersistentFlags().StringP("org", "o", config.Flags["org"].DefValue.(string), "Org username")
 	rootCmd.PersistentFlags().String("apiKey", config.Flags["apiKey"].DefValue.(string), "User API key")

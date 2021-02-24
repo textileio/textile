@@ -36,7 +36,9 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(hub.Config().Viper, hub.Config().Flags)
 
-		clients = cmd.NewClients(hub.Config().Viper.GetString("api"), true)
+		hubTarget := hub.Config().Viper.GetString("api")
+		minerIndexTarget := hub.Config().Viper.GetString("apiMinerIndex")
+		clients = cmd.NewClients(hubTarget, true, minerIndexTarget)
 		hub.SetClients(clients)
 
 		config := local.DefaultConfConfig()
