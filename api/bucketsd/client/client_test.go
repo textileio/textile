@@ -810,6 +810,26 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	} else {
 		assert.True(t, strings.Contains(err.Error(), "no link named"))
 	}
+
+	ctx, userctx, threadsclient, client := setupForUsers(t)
+
+	user1, user1ctx := newUser(t, userctx, threadsclient)
+	// Check initial access (none)
+	check := accessCheck{
+		Key:  buck.Root.Key,
+		Path: "a/b/file3.jpg",
+	}
+
+	check.Read = !private // public buckets readable by all
+	checkAccess(t, user1ctx, client, check)
+
+	// Grant admin
+	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a/b", map[string]bucks.Role{
+		user1.GetPublic().String(): bucks.Admin,
+	})
+	require.NoError(t, err)
+	check.Admin = true
+	checkAccess(t, user1ctx, client, check)
 }
 
 func TestClient_Remove(t *testing.T) {
