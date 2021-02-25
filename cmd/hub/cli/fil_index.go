@@ -95,14 +95,14 @@ var filQueryMiners = &cobra.Command{
 		for i, m := range res.Miners {
 			data[i] = []string{
 				m.Address,
-				fmt.Sprintf("%s FIL/GiB/epoch", attoFilToFil(m.AskPrice)),
-				fmt.Sprintf("%s FIL/GiB/epoch", attoFilToFil(m.AskVerifiedPrice)),
+				fmt.Sprintf("%s", attoFilToFil(m.AskPrice)),
+				fmt.Sprintf("%s", attoFilToFil(m.AskVerifiedPrice)),
 				m.Location,
 				fmt.Sprintf("%s", humanize.Bytes(uint64(m.MinPieceSize))),
 				fmt.Sprintf("%s", prettyFormatTime(m.TextileDealLastSuccessful)),
 			}
 		}
-		cmd.RenderTable([]string{"miner", "ask-price", "verified ask-price", "location", "min-piece-size", "textile-last-deal"}, data)
+		cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal"}, data)
 	},
 }
 
@@ -211,6 +211,9 @@ var filCalculateDealPrice = &cobra.Command{
 }
 
 func attoFilToFil(attoFil string) string {
+	if attoFil == "" {
+		return "<none>"
+	}
 	attoBig, _ := big.NewInt(0).SetString(attoFil, 10)
 	r := new(big.Rat).SetFrac(attoBig, big.NewInt(1_000_000_000_000_000_000))
 	if r.Sign() == 0 {
