@@ -39,13 +39,13 @@ type MinerSummary struct {
 }
 
 type QueryIndexFilters struct {
-	MinerCountry  string
-	TextileRegion string
+	MinerLocation string
 }
 
 type QueryIndexSort struct {
-	Ascending bool
-	Field     QueryIndexSortField
+	Ascending     bool
+	TextileRegion string
+	Field         QueryIndexSortField
 }
 
 func (s *Store) GetMinerInfo(ctx context.Context, miner string) (model.MinerInfo, error) {
@@ -134,8 +134,8 @@ func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort 
 func buildMongoFiltersAndSort(filters QueryIndexFilters, sort QueryIndexSort) (bson.M, bson.D, error) {
 	// Filter
 	f := bson.M{}
-	if filters.MinerCountry != "" {
-		f["metadata.location"] = filters.MinerCountry
+	if filters.MinerLocation != "" {
+		f["metadata.location"] = filters.MinerLocation
 	}
 
 	// Sort
@@ -148,23 +148,23 @@ func buildMongoFiltersAndSort(filters QueryIndexFilters, sort QueryIndexSort) (b
 	switch sort.Field {
 	case SortFieldTextileDealTotalSuccessful:
 		s = bson.E{Key: "textile.deals_summary.total", Value: sortVal}
-		if filters.TextileRegion != "" {
-			s = bson.E{Key: "textile.regions." + filters.TextileRegion + ".deals.total", Value: sortVal}
+		if sort.TextileRegion != "" {
+			s = bson.E{Key: "textile.regions." + sort.TextileRegion + ".deals.total", Value: sortVal}
 		}
 	case SortFieldTextileDealLastSuccessful:
 		s = bson.E{Key: "textile.deals_summary.last", Value: sortVal}
-		if filters.TextileRegion != "" {
-			s = bson.E{Key: "textile.regions." + filters.TextileRegion + ".deals.last", Value: sortVal}
+		if sort.TextileRegion != "" {
+			s = bson.E{Key: "textile.regions." + sort.TextileRegion + ".deals.last", Value: sortVal}
 		}
 	case SortFieldTextileRetrievalTotalSuccessful:
 		s = bson.E{Key: "textile.retrievals_summary.total", Value: sortVal}
-		if filters.TextileRegion != "" {
-			s = bson.E{Key: "textile.regions." + filters.TextileRegion + ".retrievals.total", Value: sortVal}
+		if sort.TextileRegion != "" {
+			s = bson.E{Key: "textile.regions." + sort.TextileRegion + ".retrievals.total", Value: sortVal}
 		}
 	case SortFieldTextileRetrievalLastSuccessful:
 		s = bson.E{Key: "textile.retrievals_summary.last", Value: sortVal}
-		if filters.TextileRegion != "" {
-			s = bson.E{Key: "textile.regions." + filters.TextileRegion + ".retrievals.last", Value: sortVal}
+		if sort.TextileRegion != "" {
+			s = bson.E{Key: "textile.regions." + sort.TextileRegion + ".retrievals.last", Value: sortVal}
 		}
 	case SortFieldAskPrice:
 		s = bson.E{Key: "textile.filecoin.ask_price", Value: sortVal}

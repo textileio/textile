@@ -95,13 +95,13 @@ message QueryIndexRequest {
 }
 
 message QueryIndexRequestFilters {
-	string miner_country = 1;
-        string textile_region = 2;
+	string miner_location = 1;
 }
 
 message QueryIndexRequestSort {
 	bool ascending = 1;
-	QueryIndexRequestSortField field = 2;
+        string textile_region = 2;
+	QueryIndexRequestSortField field = 3;
 }
 
 enum QueryIndexRequestSortField {

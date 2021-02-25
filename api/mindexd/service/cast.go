@@ -99,8 +99,7 @@ func toPbSealedDurationMins(ss []model.SealedDurationMins) []*pb.SealedDurationM
 func fromPbQueryIndexRequestFilters(f *pb.QueryIndexRequestFilters) store.QueryIndexFilters {
 	r := store.QueryIndexFilters{}
 	if f != nil {
-		r.MinerCountry = f.MinerCountry
-		r.TextileRegion = f.TextileRegion
+		r.MinerLocation = f.MinerLocation
 	}
 	return r
 }
@@ -112,8 +111,9 @@ func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexS
 	}
 
 	return store.QueryIndexSort{
-		Ascending: s.Ascending,
-		Field:     field,
+		Ascending:     s.Ascending,
+		TextileRegion: s.TextileRegion,
+		Field:         field,
 	}, nil
 }
 

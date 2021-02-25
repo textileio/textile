@@ -10,9 +10,20 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func init() {
+	filQueryMiners.Flags().Bool("ascending", false, "sort results ascending, default is sort descending")
+	filQueryMiners.Flags().Int32("limit", 10, "maximum results per page")
+	filQueryMiners.Flags().Int64("offset", 0, "number of results to skip")
+	filQueryMiners.Flags().String("sort-field", "textile-deals-last-successful", "sort field")
+	filQueryMiners.Flags().String("sort-textile-region", "", "make the sorting criteria in a specified region.")
+	filQueryMiners.Flags().String("filter-miner-location", "", "filter by miner's location")
+}
 
 var m49Table = map[string]string{
 	"021": "North America",
@@ -24,6 +35,75 @@ var filIndexCmd = &cobra.Command{
 	Short:   "Interact with the Miner Index.",
 	Long:    `Interact with the Miner Index.`,
 	Args:    cobra.ExactArgs(0),
+}
+
+var filQueryMiners = &cobra.Command{
+	Use:   "query",
+	Short: "Query miners in the index",
+	Long: `Query miners in the index.
+	The API allows to handle paging with filters and sorting.
+	The sort-field flag can take the following values:
+	- "textile-deals-total-successful": Total successful deals in Textile.
+	- "textile-deals-last-successful": Last successful deal in Textile.
+	- "ask-price": Raw ask-price.
+	- "verified-ask-price": Verified ask-price.
+	- "active-sectors": Total active sectors in the network.
+
+	The default sorting field is "textile-deals-last-successful".
+	The sort-textile-region allows to apply textile-deals-* flags to a specific 
+	textile region. An empty value would be interpreted to the aggregate of all
+	regions (default).
+	`,
+	Args: cobra.ExactArgs(0),
+	Run: func(c *cobra.Command, args []string) {
+		ascending, err := c.Flags().GetBool("ascending")
+		cmd.ErrCheck(err)
+		limit, err := c.Flags().GetInt32("limit")
+		cmd.ErrCheck(err)
+		offset, err := c.Flags().GetInt64("offset")
+		cmd.ErrCheck(err)
+		sortField, err := c.Flags().GetString("sort-field")
+		cmd.ErrCheck(err)
+		sortTextileRegion, err := c.Flags().GetString("sort-textile-region")
+		cmd.ErrCheck(err)
+		filterMinerLocation, err := c.Flags().GetString("filter-miner-location")
+		cmd.ErrCheck(err)
+
+		req := &pb.QueryIndexRequest{
+			Filters: &pb.QueryIndexRequestFilters{
+				MinerLocation: filterMinerLocation,
+			},
+			Sort: &pb.QueryIndexRequestSort{
+				Ascending:     ascending,
+				TextileRegion: sortTextileRegion,
+				Field:         mapSortField(sortField),
+			},
+			Limit:  limit,
+			Offset: offset,
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		res, err := clients.MinerIndex.QueryIndex(ctx, req)
+		cmd.ErrCheck(err)
+
+		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
+
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Results --")))
+		data := make([][]string, len(res.Miners))
+		for i, m := range res.Miners {
+			data[i] = []string{
+				m.Address,
+				fmt.Sprintf("%s FIL/GiB/epoch", attoFilToFil(m.AskPrice)),
+				fmt.Sprintf("%s FIL/GiB/epoch", attoFilToFil(m.AskVerifiedPrice)),
+				m.Location,
+				fmt.Sprintf("%s", humanize.Bytes(uint64(m.MinPieceSize))),
+				fmt.Sprintf("%s", prettyFormatTime(m.TextileDealLastSuccessful)),
+			}
+		}
+		cmd.RenderTable([]string{"miner", "ask-price", "verified ask-price", "location", "min-piece-size", "textile-last-deal"}, data)
+	},
 }
 
 var filGetMinerInfo = &cobra.Command{
@@ -145,4 +225,21 @@ func prettyFormatTime(t *timestamppb.Timestamp) string {
 	}
 
 	return fmt.Sprintf("%s (%s)", t.AsTime().Format("2006-01-02 15:04:05"), humanize.Time(t.AsTime()))
+}
+
+func mapSortField(field string) pb.QueryIndexRequestSortField {
+	switch field {
+	case "textile-deals-total-successful":
+		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_TOTAL_SUCCESSFUL
+	case "textile-deals-last-successful":
+		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_LAST_SUCCESSFUL
+	case "ask-price":
+		return pb.QueryIndexRequestSortField_ASK_PRICE
+	case "verified-ask-price":
+		return pb.QueryIndexRequestSortField_VERIFIED_ASK_PRICE
+	case "active-sectors":
+		return pb.QueryIndexRequestSortField_ACTIVE_SECTORS
+	default:
+		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_LAST_SUCCESSFUL
+	}
 }

@@ -117,9 +117,10 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		indexer.WithSnapshotMaxAge(config.IndexerSnapshotMaxAge),
 	}
 
-	pow, err := (*powClient.Client)(nil), nil
+	//pow, err := (*powClient.Client)(nil), nil
+	pow, err := powClient.NewClient(config.PowAddrAPI)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connecting to powergate: %s", err)
 	}
 
 	sub := collector.Subscribe()
@@ -160,7 +161,7 @@ func (s *Service) Start() error {
 	err = pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), grpcMux, "localhost:5000", opts)
 	cmd.ErrCheck(err)
 
-	swaggerContent, err := ioutil.ReadFile("api/mindexd/pb/mindexd.swagger.json")
+	swaggerContent, err := ioutil.ReadFile("swagger.json")
 	if err != nil {
 		return fmt.Errorf("opening swagger file: %s", err)
 	}
@@ -251,7 +252,7 @@ func (s *Service) QueryIndex(ctx context.Context, req *pb.QueryIndexRequest) (*p
 func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest) (*pb.GetMinerInfoResponse, error) {
 	mi, err := s.store.GetMinerInfo(ctx, req.MinerAddress)
 	if err == store.ErrMinerNotExists {
-		return nil, status.Error(codes.NotFound, "Miner not found")
+		return nil, status.Error(codes.NotFound, "miner not found")
 	}
 
 	return &pb.GetMinerInfoResponse{
@@ -262,7 +263,16 @@ func (s *Service) GetMinerInfo(ctx context.Context, req *pb.GetMinerInfoRequest)
 // CalculateDealPrice calculates deal price for a miner.
 func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealPriceRequest) (*pb.CalculateDealPriceResponse, error) {
 	durationEpochs := req.DurationDays * 24 * 60 * 60 / epochDurationSeconds
-	paddedSize := int64(128 << int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes)/127)))))
+
+	if req.DataSizeBytes <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "data size should be greater than zero")
+	}
+
+	shifting := int(math.Ceil(math.Log2(math.Ceil(float64(req.DataSizeBytes) / 127))))
+	if shifting < 0 {
+		shifting = 0
+	}
+	paddedSize := int64(128 << shifting)
 
 	ret := &pb.CalculateDealPriceResponse{
 		DurationEpochs: durationEpochs,

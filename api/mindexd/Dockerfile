@@ -70,7 +70,7 @@ RUN mkdir -p $MINDEXD_PATH \
   && adduser -D -h $MINDEXD_PATH -u 1000 -G users mindexd \
   && chown mindexd:users $MINDEXD_PATH
 
-COPY --from=0 $SRC_DIR/api/mindexd/pb/mindexd.swagger.json $MINDEXD_PATH/swagger.json
+COPY --from=0 $SRC_DIR/api/mindexd/pb/mindexd.swagger.json /swagger.json
 
 # Switch to a non-privileged user.
 USER mindexd

@@ -93,7 +93,7 @@ func Init(rootCmd *cobra.Command) {
 	keysCmd.AddCommand(keysCreateCmd, keysInvalidateCmd, keysLsCmd)
 	threadsCmd.AddCommand(threadsLsCmd)
 	filCmd.AddCommand(filAddrsCmd, filBalanceCmd, filSignCmd, filVerifyCmd, filInfoCmd, filStorageCmd, filRetrievalsCmd, filIndexCmd)
-	filIndexCmd.AddCommand(filCalculateDealPrice, filGetMinerInfo)
+	filIndexCmd.AddCommand(filCalculateDealPrice, filGetMinerInfo, filQueryMiners)
 	billingCmd.AddCommand(billingSetupCmd, billingPortalCmd, billingUsageCmd, billingUsersCmd)
 	rootCmd.AddCommand(bucketCmd)
 	buck.Init(bucketCmd)
