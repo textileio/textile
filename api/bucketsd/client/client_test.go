@@ -742,7 +742,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	q.Close()
 
 	// move a dir into a new path  => a/c
-	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "a/c")
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "a/c")
 	require.NoError(t, err)
 	// check source files no longer exists
 	li, err := client.ListPath(ctx, buck.Root.Key, "a/b/c")
@@ -755,7 +755,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.Len(t, li.Item.Items, 0)
 
 	// move a dir into an existing path => a/b/c
-	_, err = client.MovePath(ctx, buck.Root.Key, "a/c", "a/b")
+	err = client.MovePath(ctx, buck.Root.Key, "a/c", "a/b")
 	require.NoError(t, err)
 	// check source dir no longer exists
 	li, err = client.ListPath(ctx, buck.Root.Key, "a/c")
@@ -774,7 +774,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.Len(t, li.Item.Items, 2)
 
 	// move and rename file => a/b/c/file2.jpg + a/b/file3.jpg
-	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c/file1.jpg", "a/b/file3.jpg")
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c/file1.jpg", "a/b/file3.jpg")
 	require.NoError(t, err)
 
 	li, err = client.ListPath(ctx, buck.Root.Key, "a/b/file3.jpg")
@@ -783,7 +783,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.Equal(t, li.Item.Name, "file3.jpg")
 
 	// move a/b/c to root => c
-	_, err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
 	require.NoError(t, err)
 
 	li, err = client.ListPath(ctx, buck.Root.Key, "")
@@ -795,7 +795,7 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	require.NoError(t, err)
 
 	// move root should fail
-	_, err = client.MovePath(ctx, buck.Root.Key, "", "a")
+	err = client.MovePath(ctx, buck.Root.Key, "", "a")
 	require.Error(t, err, "source is root directory")
 
 	li, err = client.ListPath(ctx, buck.Root.Key, "a")
@@ -804,32 +804,12 @@ func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 	assert.Len(t, li.Item.Items, 1)
 
 	// move non existant should fail
-	_, err = client.MovePath(ctx, buck.Root.Key, "x", "a")
+	err = client.MovePath(ctx, buck.Root.Key, "x", "a")
 	if private {
 		assert.True(t, strings.Contains(err.Error(), "could not resolve path"))
 	} else {
 		assert.True(t, strings.Contains(err.Error(), "no link named"))
 	}
-
-	ctx, userctx, threadsclient, client := setupForUsers(t)
-
-	user1, user1ctx := newUser(t, userctx, threadsclient)
-	// Check initial access (none)
-	check := accessCheck{
-		Key:  buck.Root.Key,
-		Path: "a/b/file3.jpg",
-	}
-
-	check.Read = !private // public buckets readable by all
-	checkAccess(t, user1ctx, client, check)
-
-	// Grant admin
-	err = client.PushPathAccessRoles(ctx, buck.Root.Key, "a/b", map[string]bucks.Role{
-		user1.GetPublic().String(): bucks.Admin,
-	})
-	require.NoError(t, err)
-	check.Admin = true
-	checkAccess(t, user1ctx, client, check)
 }
 
 func TestClient_Remove(t *testing.T) {
@@ -998,6 +978,85 @@ func pushPathAccessRoles(
 		check.Write = false
 		check.Admin = false
 		checkAccess(t, user1ctx, client, check)
+	})
+
+	t.Run("moving path", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+
+		q, err := client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("file", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Check initial access (none)
+		check := accessCheck{
+			Key:  buck.Root.Key,
+			Path: "moving",
+		}
+		check.Read = !private // public buckets readable by all
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant reader
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		check.Write = true
+		check.Read = true
+		checkAccess(t, user1ctx, client, check)
+
+		// move the shared file to a new path
+		err = client.MovePath(ctx, buck.Root.Key, "moving", "moving2")
+		require.NoError(t, err)
+		q, err = client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("moving", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Permissions reset with move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving2",
+			Admin: false,
+			Read:  !private,
+			Write: false,
+		})
+
+		// Grant admin at root
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Admin,
+		})
+		require.NoError(t, err)
+
+		// now user has access to new file again
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving2",
+			Admin: true,
+			Read:  true,
+			Write: true,
+		})
+
+		// Move file again
+		err = client.MovePath(ctx, buck.Root.Key, "moving2", "moving3")
+		require.NoError(t, err)
+
+		// User still has access to shared file after move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving3",
+			Admin: true,
+			Read:  true,
+			Write: true,
+		})
 	})
 
 	t.Run("overlapping paths", func(t *testing.T) {

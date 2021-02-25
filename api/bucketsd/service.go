@@ -1109,7 +1109,7 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 	buck.SetMetadataAtPath(toPth, tdb.Metadata{
 		UpdatedAt: buck.UpdatedAt,
 	})
-	buck.UnsetMetadataWithPrefix(fromPth)
+	buck.UnsetMetadataWithPrefix(fromPth + "/")
 
 	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("verifying bucket update: %v", err)

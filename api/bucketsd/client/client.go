@@ -115,12 +115,13 @@ func (c *Client) SetPath(ctx context.Context, key, pth string, remoteCid cid.Cid
 }
 
 // MovePath moves a particular path to another path in the existing IPFS UnixFS DAG.
-func (c *Client) MovePath(ctx context.Context, key, pth string, dest string) (*pb.MovePathResponse, error) {
-	return c.c.MovePath(ctx, &pb.MovePathRequest{
+func (c *Client) MovePath(ctx context.Context, key, pth string, dest string) error {
+	_, err := c.c.MovePath(ctx, &pb.MovePathRequest{
 		Key:      key,
 		FromPath: filepath.ToSlash(pth),
 		ToPath:   filepath.ToSlash(dest),
 	})
+	return err
 }
 
 type pushPathResult struct {
