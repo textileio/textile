@@ -49,6 +49,7 @@
         "parameters": [
           {
             "name": "minerAddresses",
+            "description": "List of miner addresses to calculate deal costs",
             "in": "query",
             "required": false,
             "type": "array",
@@ -59,6 +60,7 @@
           },
           {
             "name": "dataSizeBytes",
+            "description": "Data size in bytes of the data to store",
             "in": "query",
             "required": false,
             "type": "string",
@@ -66,10 +68,12 @@
           },
           {
             "name": "durationDays",
+            "description": "Duration in days of the deal",
             "in": "query",
             "required": false,
             "type": "string",
-            "format": "int64"
+            "format": "int64",
+            "default": "180"
           }
         ],
         "tags": [
@@ -97,6 +101,7 @@
         "parameters": [
           {
             "name": "minerAddress",
+            "description": "Miner address from which get index information",
             "in": "path",
             "required": true,
             "type": "string"
@@ -126,13 +131,7 @@
         },
         "parameters": [
           {
-            "name": "filters.minerCountry",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "filters.textileRegion",
+            "name": "filters.minerLocation",
             "in": "query",
             "required": false,
             "type": "string"
@@ -142,6 +141,12 @@
             "in": "query",
             "required": false,
             "type": "boolean"
+          },
+          {
+            "name": "sort.textileRegion",
+            "in": "query",
+            "required": false,
+            "type": "string"
           },
           {
             "name": "sort.field",
@@ -185,13 +190,24 @@
       "type": "object",
       "properties": {
         "miner": {
-          "type": "string"
+          "type": "string",
+          "description": "Miner address of this calculations."
         },
         "totalCost": {
-          "type": "string"
+          "type": "string",
+          "description": "Total cost of the deal for the unverified price for the provided duration"
         },
         "verifiedTotalCost": {
-          "type": "string"
+          "type": "string",
+          "description": "The verified-client total cost of the deal for the provided duration"
+        },
+        "price": {
+          "type": "string",
+          "description": "The price in attoFIL/GiB/epoch for unverified clients"
+        },
+        "verifiedPrice": {
+          "type": "string",
+          "description": "The price in attoFIL/GiB/epoch for verified clients"
         }
       }
     },
@@ -304,10 +320,7 @@
     "pbQueryIndexRequestFilters": {
       "type": "object",
       "properties": {
-        "minerCountry": {
-          "type": "string"
-        },
-        "textileRegion": {
+        "minerLocation": {
           "type": "string"
         }
       }
@@ -317,6 +330,9 @@
       "properties": {
         "ascending": {
           "type": "boolean"
+        },
+        "textileRegion": {
+          "type": "string"
         },
         "field": {
           "$ref": "#/definitions/pbQueryIndexRequestSortField"

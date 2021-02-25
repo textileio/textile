@@ -117,7 +117,7 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		indexer.WithSnapshotMaxAge(config.IndexerSnapshotMaxAge),
 	}
 
-	//pow, err := (*powClient.Client)(nil), nil
+	//	pow, err := (*powClient.Client)(nil), nil
 	pow, err := powClient.NewClient(config.PowAddrAPI)
 	if err != nil {
 		return nil, fmt.Errorf("connecting to powergate: %s", err)
@@ -163,7 +163,7 @@ func (s *Service) Start() error {
 
 	swaggerContent, err := ioutil.ReadFile("swagger.json")
 	if err != nil {
-		return fmt.Errorf("opening swagger file: %s", err)
+		log.Warnf("opening swagger file: %s", err)
 	}
 	if err := grpcMux.HandlePath("GET", "/docs", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		http.Redirect(w, r, "/docs/index.html", 301)

@@ -129,7 +129,9 @@ message QueryIndexResponseMiner {
 
 // rpc GetMinerInfo
 message GetMinerInfoRequest {
-	string miner_address = 1;
+	string miner_address = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Miner address from which get index information",
+	}];
 }
 
 message GetMinerInfoResponse {
@@ -138,22 +140,44 @@ message GetMinerInfoResponse {
 
 // rpc CalculateDealPrice
 message CalculateDealPriceRequest {
-	repeated string miner_addresses = 1;
-	int64 data_size_bytes = 2;
-	int64 duration_days = 3;
+	repeated string miner_addresses = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "List of miner addresses to calculate deal costs",
+	}];
+	int64 data_size_bytes = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Data size in bytes of the data to store",
+	}];
+	int64 duration_days = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Duration in days of the deal",
+                default: "180",
+	}];
+
 }
 
 message CalculateDealPriceResponse {
 	repeated CalculateDealPriceMiner results = 1;
         int64 padded_size = 2;
-	int64 duration_epochs = 3;
+	int64 duration_epochs = 3; 
 }
 message CalculateDealPriceMiner {
-	string miner = 1;
-	string total_cost = 2;
-	string verified_total_cost = 3;
-	string price = 4;
-	string verified_price = 5;
+	string miner = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Miner address of this calculations.",
+	}];
+	string total_cost = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Total cost of the deal for the unverified price for the provided duration",
+	}];
+
+	string verified_total_cost = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The verified-client total cost of the deal for the provided duration",
+	}];
+
+	string price = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The price in attoFIL/GiB/epoch for unverified clients", 
+	}];
+
+	string verified_price = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The price in attoFIL/GiB/epoch for verified clients", 
+	}];
+
 }
 
 service APIService {
