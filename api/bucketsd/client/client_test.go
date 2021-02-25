@@ -980,85 +980,6 @@ func pushPathAccessRoles(
 		checkAccess(t, user1ctx, client, check)
 	})
 
-	t.Run("moving path", func(t *testing.T) {
-		user1, user1ctx := newUser(t, userctx, threadsclient)
-
-		q, err := client.PushPaths(ctx, buck.Root.Key)
-		require.NoError(t, err)
-		err = q.AddFile("file", "testdata/file1.jpg")
-		require.NoError(t, err)
-		for q.Next() {
-			require.NoError(t, q.Err())
-		}
-		q.Close()
-
-		// Check initial access (none)
-		check := accessCheck{
-			Key:  buck.Root.Key,
-			Path: "moving",
-		}
-		check.Read = !private // public buckets readable by all
-		checkAccess(t, user1ctx, client, check)
-
-		// Grant reader
-		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving", map[string]bucks.Role{
-			user1.GetPublic().String(): bucks.Writer,
-		})
-		require.NoError(t, err)
-		check.Write = true
-		check.Read = true
-		checkAccess(t, user1ctx, client, check)
-
-		// move the shared file to a new path
-		err = client.MovePath(ctx, buck.Root.Key, "moving", "moving2")
-		require.NoError(t, err)
-		q, err = client.PushPaths(ctx, buck.Root.Key)
-		require.NoError(t, err)
-		err = q.AddFile("moving", "testdata/file1.jpg")
-		require.NoError(t, err)
-		for q.Next() {
-			require.NoError(t, q.Err())
-		}
-		q.Close()
-
-		// Permissions reset with move
-		checkAccess(t, user1ctx, client, accessCheck{
-			Key:   buck.Root.Key,
-			Path:  "moving2",
-			Admin: false,
-			Read:  !private,
-			Write: false,
-		})
-
-		// Grant admin at root
-		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "", map[string]bucks.Role{
-			user1.GetPublic().String(): bucks.Admin,
-		})
-		require.NoError(t, err)
-
-		// now user has access to new file again
-		checkAccess(t, user1ctx, client, accessCheck{
-			Key:   buck.Root.Key,
-			Path:  "moving2",
-			Admin: true,
-			Read:  true,
-			Write: true,
-		})
-
-		// Move file again
-		err = client.MovePath(ctx, buck.Root.Key, "moving2", "moving3")
-		require.NoError(t, err)
-
-		// User still has access to shared file after move
-		checkAccess(t, user1ctx, client, accessCheck{
-			Key:   buck.Root.Key,
-			Path:  "moving3",
-			Admin: true,
-			Read:  true,
-			Write: true,
-		})
-	})
-
 	t.Run("overlapping paths", func(t *testing.T) {
 		user1, user1ctx := newUser(t, userctx, threadsclient)
 		user2, user2ctx := newUser(t, userctx, threadsclient)
@@ -1129,6 +1050,85 @@ func pushPathAccessRoles(
 		checkAccess(t, user1ctx, client, accessCheck{
 			Key:   buck.Root.Key,
 			Path:  "a/b/f1",
+			Read:  true,
+			Write: true,
+		})
+	})
+
+	t.Run("moving path", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+
+		q, err := client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("moving/file", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Check initial access (none)
+		check := accessCheck{
+			Key:  buck.Root.Key,
+			Path: "moving/file",
+		}
+		check.Read = !private // public buckets readable by all
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant reader
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving/file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		check.Write = true
+		check.Read = true
+		checkAccess(t, user1ctx, client, check)
+
+		// move the shared file to a new path
+		err = client.MovePath(ctx, buck.Root.Key, "moving/file", "moving/file2")
+		require.NoError(t, err)
+		q, err = client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("moving/file", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Permissions reset with move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file2",
+			Admin: false,
+			Read:  !private,
+			Write: false,
+		})
+
+		// Grant admin at root
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Admin,
+		})
+		require.NoError(t, err)
+
+		// now user has access to new file again
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file2",
+			Admin: true,
+			Read:  true,
+			Write: true,
+		})
+
+		// Move file again
+		err = client.MovePath(ctx, buck.Root.Key, "moving/file2", "moving/file3")
+		require.NoError(t, err)
+
+		// User still has access to shared file after move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file3",
+			Admin: true,
 			Read:  true,
 			Write: true,
 		})
