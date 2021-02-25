@@ -6,13 +6,17 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/cmd"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var m49Table = map[string]string{
+	"021": "North America",
+}
 
 var filIndexCmd = &cobra.Command{
 	Use:     "index",
@@ -35,11 +39,7 @@ var filGetMinerInfo = &cobra.Command{
 		res, err := clients.MinerIndex.GetMinerInfo(ctx, minerAddr)
 		cmd.ErrCheck(err)
 
-		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", string(json))
-
-		cmd.Message("%s\n", aurora.Bold("Miner "+res.Info.MinerAddr))
+		fmt.Printf("%s\n\n", aurora.Bold("Miner "+res.Info.MinerAddr))
 
 		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Filecoin --")))
 		cmd.Message("Relative Power: %s%%", humanize.FtoaWithDigits(res.Info.Filecoin.RelativePower, 5))
@@ -56,7 +56,33 @@ var filGetMinerInfo = &cobra.Command{
 		cmd.Message("Total successful deals: %d", res.Info.Textile.DealsSummary.Total)
 		cmd.Message("Last successful deal  : %s", prettyFormatTime(res.Info.Textile.DealsSummary.Last))
 		cmd.Message("Total failed deals: %d", res.Info.Textile.DealsSummary.Failures)
-		cmd.Message("Last failed deal  : %s", prettyFormatTime(res.Info.Textile.DealsSummary.LastFailure))
+		cmd.Message("Last failed deal  : %s\n", prettyFormatTime(res.Info.Textile.DealsSummary.LastFailure))
+
+		for m49Code, regionData := range res.Info.Textile.Regions {
+			var dataTransfers [][]string
+			for _, t := range regionData.Deals.TailTransfers {
+				dataTransfers = append(dataTransfers, []string{
+					fmt.Sprintf("%s", prettyFormatTime(t.TransferedAt)),
+					fmt.Sprintf("~%.02f MiB/s", t.MibPerSec),
+				})
+			}
+			var sealingDuration [][]string
+			for _, s := range regionData.Deals.TailSealed {
+				sealingDuration = append(sealingDuration, []string{
+					fmt.Sprintf("%s", prettyFormatTime(s.SealedAt)),
+					fmt.Sprintf("~%.0f hours", (time.Second * time.Duration(s.DurationSeconds)).Hours()),
+				})
+			}
+
+			fmt.Print(aurora.Brown(fmt.Sprintf("%s deals telemetry:\n", m49Table[m49Code])))
+			cmd.Message("Total successful: %d", regionData.Deals.Total)
+			cmd.Message("Last successful : %s", prettyFormatTime(regionData.Deals.Last))
+			cmd.Message("Total failed    : %d", regionData.Deals.Failures)
+			cmd.Message("Last failed     : %s\n", prettyFormatTime(regionData.Deals.LastFailure))
+			cmd.RenderTableWithoutNewLines([]string{"date", "datatransfer-speed"}, dataTransfers)
+			fmt.Println()
+			cmd.RenderTableWithoutNewLines([]string{"date", "sealing-duration"}, sealingDuration)
+		}
 	},
 }
 
@@ -81,15 +107,26 @@ var filCalculateDealPrice = &cobra.Command{
 		res, err := clients.MinerIndex.CalculateDealPrice(ctx, minersAddr, int64(dataSizeBytes), durationDays)
 		cmd.ErrCheck(err)
 
-		cmd.Message("Padded size: %s", humanize.IBytes(uint64(res.PaddedSize)))
-		cmd.Message("Duration in epochs: %d", res.DurationEpochs)
-
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Calculated prices --")))
 		data := make([][]string, len(res.Results))
 		for i, p := range res.Results {
-			data[i] = []string{p.Miner, attoFilToFil(p.TotalCost), attoFilToFil(p.VerifiedTotalCost)}
+			data[i] = []string{
+				p.Miner,
+				fmt.Sprintf("%s (%s FIL/GiB/epoch)", attoFilToFil(p.TotalCost), attoFilToFil(p.Price)),
+				fmt.Sprintf("%s (%s FIL/GiB/epoch)", attoFilToFil(p.VerifiedTotalCost), attoFilToFil(p.VerifiedPrice)),
+			}
 		}
-
+		cmd.Message("Padded size: %s", humanize.IBytes(uint64(res.PaddedSize)))
+		cmd.Message("Duration in epochs: %d", res.DurationEpochs)
 		cmd.RenderTable([]string{"miner", "cost", "verified-client cost"}, data)
+
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Lotus CLI --")))
+		for _, p := range res.Results {
+			cmd.Message("lotus client deal --fast-retrieval <data-cid> %s %s %d", p.Miner, p.TotalCost, res.DurationEpochs)
+			cmd.Message("lotus client deal --fast-retrieval --verified-deal <data-cid> %s %s %d", p.Miner, p.VerifiedTotalCost, res.DurationEpochs)
+			fmt.Println()
+		}
+		cmd.Message("Remember that to make verified deals, your wallet address should be verified: https://plus.fil.org/")
 	},
 }
 
@@ -107,5 +144,5 @@ func prettyFormatTime(t *timestamppb.Timestamp) string {
 		return "<none>"
 	}
 
-	return t.AsTime().Format("2006-01-02 15:04:05 -07:00")
+	return fmt.Sprintf("%s (%s)", t.AsTime().Format("2006-01-02 15:04:05"), humanize.Time(t.AsTime()))
 }

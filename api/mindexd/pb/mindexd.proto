@@ -152,6 +152,8 @@ message CalculateDealPriceMiner {
 	string miner = 1;
 	string total_cost = 2;
 	string verified_total_cost = 3;
+	string price = 4;
+	string verified_price = 5;
 }
 
 service APIService {

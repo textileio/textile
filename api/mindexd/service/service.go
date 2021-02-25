@@ -289,6 +289,8 @@ func (s *Service) CalculateDealPrice(ctx context.Context, req *pb.CalculateDealP
 			Miner:             minerAddr,
 			TotalCost:         big.NewInt(0).Mul(gibEpochs, &askPrice).String(),
 			VerifiedTotalCost: big.NewInt(0).Mul(gibEpochs, &askVerifiedPrice).String(),
+			Price:             askPrice.String(),
+			VerifiedPrice:     askVerifiedPrice.String(),
 		}
 	}
 
