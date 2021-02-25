@@ -1105,6 +1105,12 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		return nil, fmt.Errorf("getting path: %v", err)
 	}
 
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.SetMetadataAtPath(toPth, tdb.Metadata{
+		UpdatedAt: buck.UpdatedAt,
+	})
+	buck.UnsetMetadataWithPrefix(fromPth)
+
 	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
 		return nil, fmt.Errorf("verifying bucket update: %v", err)
 	}
@@ -1202,12 +1208,6 @@ func (s *Service) MovePath(ctx context.Context, req *pb.MovePathRequest) (res *p
 		}
 		buck.Path = dirPath.String()
 	}
-
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.SetMetadataAtPath(toPth, tdb.Metadata{
-		UpdatedAt: buck.UpdatedAt,
-	})
-	buck.UnsetMetadataWithPrefix(fromPth)
 
 	if err = s.saveAndPublish(ctx, dbID, dbToken, buck); err != nil {
 		return nil, err
@@ -2702,13 +2702,16 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 		return nil, status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
 
+	buck.UpdatedAt = time.Now().UnixNano()
+	buck.UnsetMetadataWithPrefix(filePath)
+	if err := s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+		return nil, err
+	}
+
 	dirPath, err := s.removePath(ctx, dbID, dbToken, buck, filePath)
 	if err != nil {
 		return nil, err
 	}
-
-	buck.UpdatedAt = time.Now().UnixNano()
-	buck.UnsetMetadataWithPrefix(filePath)
 
 	buck.Path = dirPath.String()
 	if err = s.saveAndPublish(ctx, dbID, dbToken, buck); err != nil {
@@ -2727,13 +2730,9 @@ func (s *Service) RemovePath(ctx context.Context, req *pb.RemovePathRequest) (re
 }
 
 func (s *Service) removePath(ctx context.Context, dbID thread.ID, dbToken thread.Token, buck *tdb.Bucket, filePath string) (path.Resolved, error) {
-	var err error
-	if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
-		return nil, err
-	}
-
 	buckPath := path.New(buck.Path)
 	var dirPath path.Resolved
+	var err error
 	if buck.IsPrivate() {
 		ctx, dirPath, err = s.removeNodeAtPath(
 			ctx,
