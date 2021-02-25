@@ -1,0 +1,50 @@
+syntax = "proto3";
+package api.sendfild.pb;
+option go_package = "github.com/textileio/textile/v2/api/sendfild/pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum MessageState {
+  MESSAGE_STATE_UNSPECIFIED = 0;
+  MESSAGE_STATE_PENDING = 1;
+  MESSAGE_STATE_ACTIVE = 2;
+  MESSAGE_STATE_FAILED = 3;
+}
+
+message Txn {
+  string id = 1;
+	string from = 2;
+	string to = 3;
+	string amount = 4;
+	string message_cid = 5;
+	MessageState message_state = 6;
+	bool waiting = 7;
+	string failure_msg = 8;
+	google.protobuf.Timestamp created_at = 9;
+	google.protobuf.Timestamp updated_at = 10;
+}
+
+message SendFilRequest {
+  string from = 1;
+  string to = 2;
+  string amount = 3;
+  bool wait = 4;
+}
+
+message SendFilResponse {
+  Txn txn = 1;
+}
+
+message TxnRequest {
+  string message_cid = 1;
+  bool wait = 2;
+}
+
+message TxnResponse {
+  Txn txn = 1;
+}
+
+service SendFilService {
+  rpc SendFil(SendFilRequest) returns (SendFilResponse) {}
+  rpc Txn(TxnRequest) returns (TxnResponse) {}
+}

@@ -13,7 +13,9 @@ require (
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/customerio/go-customerio v2.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/filecoin-project/go-address v0.0.5-0.20201103152444-f2023ef3f5bb
 	github.com/filecoin-project/go-fil-markets v1.0.10
+	github.com/filecoin-project/lotus v1.4.0
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
