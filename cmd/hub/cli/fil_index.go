@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	ccodes "github.com/launchdarkly/go-country-codes"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/cmd"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -86,10 +86,6 @@ var filQueryMiners = &cobra.Command{
 		res, err := clients.MinerIndex.QueryIndex(ctx, req)
 		cmd.ErrCheck(err)
 
-		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
-		cmd.ErrCheck(err)
-		cmd.Success("\n%v", string(json))
-
 		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Results --")))
 		data := make([][]string, len(res.Miners))
 		for i, m := range res.Miners {
@@ -97,8 +93,8 @@ var filQueryMiners = &cobra.Command{
 				m.Address,
 				fmt.Sprintf("%s", attoFilToFil(m.AskPrice)),
 				fmt.Sprintf("%s", attoFilToFil(m.AskVerifiedPrice)),
-				m.Location,
-				fmt.Sprintf("%s", humanize.Bytes(uint64(m.MinPieceSize))),
+				isoLocationToCountryName(m.Location),
+				fmt.Sprintf("%s", humanize.IBytes(uint64(m.MinPieceSize))),
 				fmt.Sprintf("%s", prettyFormatTime(m.TextileDealLastSuccessful)),
 			}
 		}
@@ -245,4 +241,13 @@ func mapSortField(field string) pb.QueryIndexRequestSortField {
 	default:
 		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_LAST_SUCCESSFUL
 	}
+}
+
+func isoLocationToCountryName(isoCode string) string {
+	c, ok := ccodes.GetByAlpha2(isoCode)
+	if !ok {
+		return isoCode
+	}
+
+	return c.Name
 }

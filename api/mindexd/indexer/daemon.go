@@ -65,6 +65,10 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 		if err := i.store.PutFilecoinInfo(ctx, mi.Address, onchain); err != nil {
 			log.Errorf("put miner on-chain info in store: %s", err)
 		}
+
+		if err := i.store.PutMetadataLocation(ctx, mi.Address, mi.Location); err != nil {
+			log.Errorf("put miner on-chain info in store: %s", err)
+		}
 	}
 
 	return nil
