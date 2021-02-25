@@ -103,7 +103,7 @@ var filQueryMiners = &cobra.Command{
 }
 
 var filGetMinerInfo = &cobra.Command{
-	Use:   "miner [minerAddr]",
+	Use:   "get [minerAddr]",
 	Short: "Get miner information",
 	Long:  `Get miner information`,
 	Args:  cobra.ExactArgs(1),
