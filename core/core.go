@@ -117,6 +117,7 @@ var (
 		"/api.bucketsd.pb.APIService/PushPath",
 		"/api.bucketsd.pb.APIService/PullPath",
 		"/api.bucketsd.pb.APIService/SetPath",
+		"/api.bucketsd.pb.APIService/MovePath",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PullPathAccessRoles",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles",

@@ -1232,13 +1232,13 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
-	//bconf := apitest.DefaultBillingConfig(t)
-	//apitest.MakeBillingWithConfig(t, bconf)
+	bconf := apitest.DefaultBillingConfig(t)
+	apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	//billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
-	//require.NoError(t, err)
-	//conf.AddrBillingAPI = billingApi
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	conf.AddrBillingAPI = billingApi
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }
