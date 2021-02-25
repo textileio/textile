@@ -119,6 +119,7 @@ var filGetMinerInfo = &cobra.Command{
 
 		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Filecoin --")))
 		cmd.Message("Relative Power: %s%%", humanize.FtoaWithDigits(res.Info.Filecoin.RelativePower, 5))
+		cmd.Message("Location: %s", isoLocationToCountryName(res.Info.Metadata.Location))
 		cmd.Message("Sector size   : %s", humanize.IBytes(uint64(res.Info.Filecoin.SectorSize)))
 		cmd.Message("Active sectors: %d", res.Info.Filecoin.ActiveSectors)
 		cmd.Message("Faulty sectors: %d\n", res.Info.Filecoin.ActiveSectors)

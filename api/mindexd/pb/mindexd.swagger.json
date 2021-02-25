@@ -298,11 +298,22 @@
         }
       }
     },
+    "pbMetadataInfo": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        }
+      }
+    },
     "pbMinerIndexInfo": {
       "type": "object",
       "properties": {
         "minerAddr": {
           "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/pbMetadataInfo"
         },
         "filecoin": {
           "$ref": "#/definitions/pbFilecoinInfo"

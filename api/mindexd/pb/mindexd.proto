@@ -10,9 +10,14 @@ import "api/mindexd/pb/protoc-gen-openapiv2/options/annotations.proto";
 // Domain
 message MinerIndexInfo  {
 	string miner_addr = 1;
+	MetadataInfo metadata = 2;
 	FilecoinInfo filecoin = 3;
 	TextileInfo textile = 4;
 	google.protobuf.Timestamp updated_at = 5;
+}
+
+message MetadataInfo {
+	string location = 1;
 }
 
 message FilecoinInfo {

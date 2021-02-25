@@ -13,6 +13,9 @@ import (
 func toPbMinerIndexInfo(mi model.MinerInfo) *pb.MinerIndexInfo {
 	return &pb.MinerIndexInfo{
 		MinerAddr: mi.MinerID,
+		Metadata: &pb.MetadataInfo{
+			Location: mi.Metadata.Location,
+		},
 		Filecoin: &pb.FilecoinInfo{
 			AskPrice:         mi.Filecoin.AskPrice,
 			AskVerifiedPrice: mi.Filecoin.AskVerifiedPrice,
