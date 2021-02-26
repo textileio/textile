@@ -32,7 +32,7 @@ var (
 			},
 			"apiMinerIndex": {
 				Key:      "apiMinerIndex",
-				DefValue: "minerindex.hub.textile.io:443",
+				DefValue: "api.minerindex.hub.textile.io:443",
 			},
 			"session": {
 				Key:      "session",

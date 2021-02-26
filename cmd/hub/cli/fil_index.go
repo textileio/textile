@@ -122,7 +122,7 @@ var filGetMinerInfo = &cobra.Command{
 		cmd.Message("Location: %s", isoLocationToCountryName(res.Info.Metadata.Location))
 		cmd.Message("Sector size   : %s", humanize.IBytes(uint64(res.Info.Filecoin.SectorSize)))
 		cmd.Message("Active sectors: %d", res.Info.Filecoin.ActiveSectors)
-		cmd.Message("Faulty sectors: %d\n", res.Info.Filecoin.ActiveSectors)
+		cmd.Message("Faulty sectors: %d\n", res.Info.Filecoin.FaultySectors)
 
 		cmd.Message("Unverified Price: %s FIL/GiB/epoch", attoFilToFil(res.Info.Filecoin.AskPrice))
 		cmd.Message("Verified Price  : %s FIL/GiB/epoch\n", attoFilToFil(res.Info.Filecoin.AskPrice))
