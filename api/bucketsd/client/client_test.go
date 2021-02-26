@@ -712,6 +712,106 @@ func setPath(t *testing.T, private bool) {
 	}
 }
 
+func TestClient_Move(t *testing.T) {
+	ctx, client := setup(t)
+
+	t.Run("public", func(t *testing.T) {
+		move(t, ctx, client, false)
+	})
+
+	t.Run("private", func(t *testing.T) {
+		move(t, ctx, client, true)
+	})
+}
+
+func move(t *testing.T, ctx context.Context, client *c.Client, private bool) {
+	buck, err := client.Create(ctx, c.WithPrivate(private))
+	require.NoError(t, err)
+
+	q, err := client.PushPaths(ctx, buck.Root.Key)
+	require.NoError(t, err)
+	err = q.AddFile("root.jpg", "testdata/file1.jpg")
+	require.NoError(t, err)
+	err = q.AddFile("a/b/c/file1.jpg", "testdata/file1.jpg")
+	require.NoError(t, err)
+	err = q.AddFile("a/b/c/file2.jpg", "testdata/file2.jpg")
+	require.NoError(t, err)
+	for q.Next() {
+		require.NoError(t, q.Err())
+	}
+	q.Close()
+
+	// move a dir into a new path  => a/c
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "a/c")
+	require.NoError(t, err)
+	// check source files no longer exists
+	li, err := client.ListPath(ctx, buck.Root.Key, "a/b/c")
+	require.Error(t, err)
+
+	// check source parent remains untouched
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 0)
+
+	// move a dir into an existing path => a/b/c
+	err = client.MovePath(ctx, buck.Root.Key, "a/c", "a/b")
+	require.NoError(t, err)
+	// check source dir no longer exists
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/c")
+	require.Error(t, err)
+
+	// check source parent contains all the right children
+	li, err = client.ListPath(ctx, buck.Root.Key, "a")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 1)
+
+	// check source parent contains all the right children
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b/c")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 2)
+
+	// move and rename file => a/b/c/file2.jpg + a/b/file3.jpg
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c/file1.jpg", "a/b/file3.jpg")
+	require.NoError(t, err)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "a/b/file3.jpg")
+	require.NoError(t, err)
+	assert.False(t, li.Item.IsDir)
+	assert.Equal(t, li.Item.Name, "file3.jpg")
+
+	// move a/b/c to root => c
+	err = client.MovePath(ctx, buck.Root.Key, "a/b/c", "")
+	require.NoError(t, err)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 4)
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "root.jpg")
+	require.NoError(t, err)
+
+	// move root should fail
+	err = client.MovePath(ctx, buck.Root.Key, "", "a")
+	require.Error(t, err, "source is root directory")
+
+	li, err = client.ListPath(ctx, buck.Root.Key, "a")
+	require.NoError(t, err)
+	assert.True(t, li.Item.IsDir)
+	assert.Len(t, li.Item.Items, 1)
+
+	// move non existant should fail
+	err = client.MovePath(ctx, buck.Root.Key, "x", "a")
+	if private {
+		assert.True(t, strings.Contains(err.Error(), "could not resolve path"))
+	} else {
+		assert.True(t, strings.Contains(err.Error(), "no link named"))
+	}
+}
+
 func TestClient_Remove(t *testing.T) {
 	ctx, client := setup(t)
 
@@ -741,6 +841,7 @@ func remove(t *testing.T, ctx context.Context, client *c.Client, private bool) {
 
 	err = client.Remove(ctx, buck.Root.Key)
 	require.NoError(t, err)
+
 	_, err = client.ListPath(ctx, buck.Root.Key, "again/file2.jpg")
 	require.Error(t, err)
 }
@@ -953,6 +1054,85 @@ func pushPathAccessRoles(
 			Write: true,
 		})
 	})
+
+	t.Run("moving path", func(t *testing.T) {
+		user1, user1ctx := newUser(t, userctx, threadsclient)
+
+		q, err := client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("moving/file", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Check initial access (none)
+		check := accessCheck{
+			Key:  buck.Root.Key,
+			Path: "moving/file",
+		}
+		check.Read = !private // public buckets readable by all
+		checkAccess(t, user1ctx, client, check)
+
+		// Grant reader
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving/file", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Writer,
+		})
+		require.NoError(t, err)
+		check.Write = true
+		check.Read = true
+		checkAccess(t, user1ctx, client, check)
+
+		// move the shared file to a new path
+		err = client.MovePath(ctx, buck.Root.Key, "moving/file", "moving/file2")
+		require.NoError(t, err)
+		q, err = client.PushPaths(ctx, buck.Root.Key)
+		require.NoError(t, err)
+		err = q.AddFile("moving/file", "testdata/file1.jpg")
+		require.NoError(t, err)
+		for q.Next() {
+			require.NoError(t, q.Err())
+		}
+		q.Close()
+
+		// Permissions reset with move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file2",
+			Admin: false,
+			Read:  !private,
+			Write: false,
+		})
+
+		// Grant admin at root
+		err = client.PushPathAccessRoles(ctx, buck.Root.Key, "moving", map[string]bucks.Role{
+			user1.GetPublic().String(): bucks.Admin,
+		})
+		require.NoError(t, err)
+
+		// now user has access to new file again
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file2",
+			Admin: true,
+			Read:  true,
+			Write: true,
+		})
+
+		// Move file again
+		err = client.MovePath(ctx, buck.Root.Key, "moving/file2", "moving/file3")
+		require.NoError(t, err)
+
+		// User still has access to shared file after move
+		checkAccess(t, user1ctx, client, accessCheck{
+			Key:   buck.Root.Key,
+			Path:  "moving/file3",
+			Admin: true,
+			Read:  true,
+			Write: true,
+		})
+	})
 }
 
 type accessCheck struct {
@@ -1052,13 +1232,13 @@ func TestClose(t *testing.T) {
 }
 
 func setup(t *testing.T) (context.Context, *c.Client) {
-	//bconf := apitest.DefaultBillingConfig(t)
-	//apitest.MakeBillingWithConfig(t, bconf)
+	bconf := apitest.DefaultBillingConfig(t)
+	apitest.MakeBillingWithConfig(t, bconf)
 
 	conf := apitest.DefaultTextileConfig(t)
-	//billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
-	//require.NoError(t, err)
-	//conf.AddrBillingAPI = billingApi
+	billingApi, err := tutil.TCPAddrFromMultiAddr(bconf.ListenAddr)
+	require.NoError(t, err)
+	conf.AddrBillingAPI = billingApi
 	ctx, _, _, client := setupWithConf(t, conf)
 	return ctx, client
 }

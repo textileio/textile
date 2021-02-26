@@ -189,6 +189,14 @@ message SetPathResponse {
     int64 pinned = 1;
 }
 
+message MovePathRequest {
+    string key = 1;
+    string from_path = 2;
+    string to_path = 3;
+}
+
+message MovePathResponse {}
+
 message RemoveRequest {
     string key = 1;
 }
@@ -343,6 +351,7 @@ service APIService {
     rpc PullPath(PullPathRequest) returns (stream PullPathResponse) {}
     rpc PullIpfsPath(PullIpfsPathRequest) returns (stream PullIpfsPathResponse) {}
     rpc SetPath(SetPathRequest) returns (SetPathResponse) {}
+    rpc MovePath(MovePathRequest) returns (MovePathResponse) {}
     rpc Remove(RemoveRequest) returns (RemoveResponse) {}
     rpc RemovePath(RemovePathRequest) returns (RemovePathResponse) {}
     rpc PushPathAccessRoles(PushPathAccessRolesRequest) returns (PushPathAccessRolesResponse) {}
