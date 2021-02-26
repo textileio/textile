@@ -116,8 +116,6 @@ func NewService(ctx context.Context, config Config) (*Service, error) {
 		indexer.WithSnapshotMaxAge(config.IndexerSnapshotMaxAge),
 	}
 
-	// TTODO
-	//pow, err := (*powClient.Client)(nil), nil
 	pow, err := powClient.NewClient(config.PowAddrAPI)
 	if err != nil {
 		return nil, fmt.Errorf("connecting to powergate: %s", err)

@@ -10,6 +10,15 @@ lint:
     - DEFAULT
   except:
     - PACKAGE_VERSION_SUFFIX
+  ignore_only:
+    ENUM_ZERO_VALUE_SUFFIX:
+      - api/mindexd/pb/mindexd.proto
+    ENUM_VALUE_PREFIX:
+      - api/mindexd/pb/mindexd.proto
+  ignore:
+    - api/mindexd/pb/google
+    - api/mindexd/pb/protoc-gen-openapiv2
+
 breaking:
   use:
     - FILE

@@ -377,23 +377,23 @@
     "pbQueryIndexResponseMiner": {
       "type": "object",
       "properties": {
-        "Address": {
+        "address": {
           "type": "string"
         },
-        "Location": {
+        "location": {
           "type": "string"
         },
-        "AskPrice": {
+        "askPrice": {
           "type": "string"
         },
-        "AskVerifiedPrice": {
+        "askVerifiedPrice": {
           "type": "string"
         },
-        "MinPieceSize": {
+        "minPieceSize": {
           "type": "string",
           "format": "int64"
         },
-        "TextileDealLastSuccessful": {
+        "textileDealLastSuccessful": {
           "type": "string",
           "format": "date-time"
         }

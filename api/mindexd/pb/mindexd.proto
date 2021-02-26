@@ -124,12 +124,12 @@ message QueryIndexResponse {
 }
 
 message QueryIndexResponseMiner {
-	string Address = 1;
-	string Location = 2;
-	string AskPrice = 3;
-	string AskVerifiedPrice = 4;
-	int64 MinPieceSize = 5;
-	google.protobuf.Timestamp TextileDealLastSuccessful = 6;
+	string address = 1;
+	string location = 2;
+	string ask_price = 3;
+	string ask_verified_price = 4;
+	int64 min_piece_size = 5;
+	google.protobuf.Timestamp textile_deal_last_successful = 6;
 }
 
 // rpc GetMinerInfo
