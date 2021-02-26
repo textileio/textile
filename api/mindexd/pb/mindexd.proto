@@ -129,7 +129,7 @@ message QueryIndexResponseMiner {
 	string AskPrice = 3;
 	string AskVerifiedPrice = 4;
 	int64 MinPieceSize = 5;
-        google.protobuf.Timestamp TextileDealLastSuccessful = 6;
+	google.protobuf.Timestamp TextileDealLastSuccessful = 6;
 }
 
 // rpc GetMinerInfo

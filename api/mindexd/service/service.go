@@ -23,7 +23,6 @@ import (
 	"github.com/textileio/textile/v2/api/mindexd/migrations"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/api/mindexd/store"
-	"github.com/textileio/textile/v2/cmd"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -159,8 +158,9 @@ func (s *Service) Start() error {
 
 	grpcMux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	err = pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), grpcMux, "localhost:5000", opts)
-	cmd.ErrCheck(err)
+	if err := pb.RegisterAPIServiceHandlerFromEndpoint(context.Background(), grpcMux, "localhost:5000", opts); err != nil {
+		return fmt.Errorf("starting REST api server: %s", err)
+	}
 
 	swaggerContent, err := ioutil.ReadFile("swagger.json")
 	if err != nil {
