@@ -44,7 +44,7 @@ func TestIt(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
-	res, err := c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), Amount: "1000", Wait: false})
+	res, err := c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), AmountNanoFil: 1000, Wait: false})
 	require.NoError(t, err)
 	require.NotEmpty(t, res.Txn.MessageCid)
 	infoRes, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: res.Txn.MessageCid, Wait: false})
@@ -56,6 +56,22 @@ func TestIt(t *testing.T) {
 	infoRes3, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: res.Txn.MessageCid, Wait: true})
 	require.NoError(t, err)
 	require.NotNil(t, infoRes3)
+}
+
+func TestSummary(t *testing.T) {
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	defer cleanup()
+	addr := requireLotusAddress(t, ctx, lc)
+	addr2 := requireLotusAddress(t, ctx, lc)
+	_, err := c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), AmountNanoFil: 2500, Wait: false})
+	require.NoError(t, err)
+	_, err = c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr2.String(), AmountNanoFil: 1000, Wait: false})
+	require.NoError(t, err)
+	_, err = c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), AmountNanoFil: 400, Wait: true})
+	require.NoError(t, err)
+	summary, err := c.Summary(ctx, &pb.SummaryRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, summary)
 }
 
 func requireSetup(t *testing.T, ctx context.Context) (pb.SendFilServiceClient, *apistruct.FullNodeStruct, address.Address, func()) {

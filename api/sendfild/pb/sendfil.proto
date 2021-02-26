@@ -11,11 +11,17 @@ enum MessageState {
   MESSAGE_STATE_FAILED = 3;
 }
 
+enum WaitingFilter {
+  WAITING_FILTER_UNSPECIFIED = 0;
+  WAITING_FILTER_WAITING = 1;
+  WAITING_FILTER_NOT_WAITING = 2;
+}
+
 message Txn {
   string id = 1;
 	string from = 2;
 	string to = 3;
-	string amount = 4;
+	int64 amount_nano_fil = 4;
 	string message_cid = 5;
 	MessageState message_state = 6;
 	bool waiting = 7;
@@ -27,7 +33,7 @@ message Txn {
 message SendFilRequest {
   string from = 1;
   string to = 2;
-  string amount = 3;
+  int64 amount_nano_fil = 3;
   bool wait = 4;
 }
 
@@ -44,7 +50,54 @@ message TxnResponse {
   Txn txn = 1;
 }
 
+message ListTxnsRequest {
+  string from_filter = 1;
+  string to_filter = 2;
+  string involving_filter = 3;
+  int64 amount_nano_fil_lt_filter = 4;
+  int64 amount_nano_fil_gt_filter = 5;
+  int64 amount_nano_fil_lteq_filter = 6;
+  int64 amount_nano_fil_gteq_filter = 7;
+  int64 amount_nano_fil_eq_filter = 8;
+  MessageState message_state_filter = 9;
+  WaitingFilter waiting_filter = 10;
+  google.protobuf.Timestamp created_before = 11;
+  google.protobuf.Timestamp created_after = 12;
+  google.protobuf.Timestamp updated_before = 13;
+  google.protobuf.Timestamp updated_after = 14;
+  bool ascending = 15;
+  int64 more_token = 16;
+  int64 limit = 17;
+}
+
+message ListTxnsResponse {
+  repeated Txn txns = 1;
+  bool more = 2;
+  int64 more_token = 3;
+}
+
+message SummaryRequest {
+  google.protobuf.Timestamp since = 1;
+  google.protobuf.Timestamp before = 2;
+}
+
+message SummaryResponse {
+  int64 count_txns = 1;
+  int64 count_pending = 2;
+  int64 count_active = 3;
+  int64 count_failed = 4;
+  int64 count_waiting = 5;
+  int64 count_from_addrs = 6;
+  int64 count_to_addrs = 7;
+  int64 total_nano_fil_sent = 8;
+  float avg_nano_fil_sent = 9;
+  int64 max_nano_fil_sent = 10;
+  int64 min_nano_fil_sent = 11;
+}
+
 service SendFilService {
   rpc SendFil(SendFilRequest) returns (SendFilResponse) {}
   rpc Txn(TxnRequest) returns (TxnResponse) {}
+  rpc ListTxns(ListTxnsRequest) returns (ListTxnsResponse) {}
+  rpc Summary(SummaryRequest) returns (SummaryResponse) {}
 }

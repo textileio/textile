@@ -40,16 +40,16 @@ type msgCid struct {
 }
 
 type txn struct {
-	ID           primitive.ObjectID `bson:"_id"`
-	From         string             `bson:"from"`
-	To           string             `bson:"to"`
-	Amount       string             `bson:"amount"`
-	MessageCids  []msgCid           `bson:"message_cids"`
-	MessageState pb.MessageState    `bson:"message_state"`
-	Waiting      bool               `bson:"waiting"`
-	FailureMsg   string             `bson:"failure_msg"`
-	CreatedAt    time.Time          `bson:"created_at"`
-	UpdatedAt    time.Time          `bson:"updated_at"`
+	ID            primitive.ObjectID `bson:"_id"`
+	From          string             `bson:"from"`
+	To            string             `bson:"to"`
+	AmountNanoFil int64              `bson:"amount_nano_fil"`
+	MessageCids   []msgCid           `bson:"message_cids"`
+	MessageState  pb.MessageState    `bson:"message_state"`
+	Waiting       bool               `bson:"waiting"`
+	FailureMsg    string             `bson:"failure_msg"`
+	CreatedAt     time.Time          `bson:"created_at"`
+	UpdatedAt     time.Time          `bson:"updated_at"`
 }
 
 func (t txn) latestMsgCid() (msgCid, error) {
@@ -98,7 +98,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 			Keys: bson.D{primitive.E{Key: "to", Value: 1}},
 		},
 		{
-			Keys: bson.D{primitive.E{Key: "amount", Value: 1}},
+			Keys: bson.D{primitive.E{Key: "amount_nano_fil", Value: 1}},
 		},
 		// MongoDB automatically creates a multikey index if any indexed field is an array;
 		// you do not need to explicitly specify the multikey type.
@@ -150,10 +150,7 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 		return nil, status.Errorf(codes.InvalidArgument, "parsing to address: %v", err)
 	}
 	amount := &big.Int{}
-	_, ok := amount.SetString(req.Amount, 10)
-	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "parsing amount")
-	}
+	_ = amount.SetInt64(req.AmountNanoFil)
 	msg := &types.Message{
 		From:  f,
 		To:    t,
@@ -173,14 +170,14 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	now := time.Now()
 
 	tx := txn{
-		ID:           primitive.NewObjectID(),
-		From:         req.From,
-		To:           req.To,
-		Amount:       req.Amount,
-		MessageCids:  []msgCid{{Cid: sm.Message.Cid().String(), CreatedAt: now}},
-		MessageState: pb.MessageState_MESSAGE_STATE_PENDING,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:            primitive.NewObjectID(),
+		From:          req.From,
+		To:            req.To,
+		AmountNanoFil: req.AmountNanoFil,
+		MessageCids:   []msgCid{{Cid: sm.Message.Cid().String(), CreatedAt: now}},
+		MessageState:  pb.MessageState_MESSAGE_STATE_PENDING,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	if _, err = s.col.InsertOne(ctx, &tx); err != nil {
@@ -233,6 +230,235 @@ func (s *Service) Txn(ctx context.Context, req *pb.TxnRequest) (*pb.TxnResponse,
 	}
 
 	return &pb.TxnResponse{Txn: pbTx}, nil
+}
+
+func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
+	findOpts := options.Find()
+	if req.Limit > 0 {
+		findOpts.Limit = &req.Limit
+	}
+	sort := -1
+	if req.Ascending {
+		sort = 1
+	}
+	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
+	filter := bson.M{}
+
+	// Involving/from/to
+	if req.InvolvingFilter != "" {
+		filter["$or"] = bson.A{bson.M{"from": req.InvolvingFilter}, bson.M{"to": req.InvolvingFilter}}
+	} else {
+		if req.FromFilter != "" {
+			filter["from"] = req.FromFilter
+		}
+		if req.ToFilter != "" {
+			filter["to"] = req.ToFilter
+		}
+	}
+
+	// Amount eq/gte/lts/gt/lt
+	if req.AmountNanoFilEqFilter != 0 {
+		filter["amount_nano_fil"] = req.AmountNanoFilEqFilter
+	} else {
+		if req.AmountNanoFilGteqFilter != 0 {
+			filter["amount_nano_fil"] = bson.M{"$gte": req.AmountNanoFilGteqFilter}
+		} else if req.AmountNanoFilGtFilter != 0 {
+			filter["amount_nano_fil"] = bson.M{"$gt": req.AmountNanoFilGtFilter}
+		}
+
+		if req.AmountNanoFilLteqFilter != 0 {
+			filter["amount_nano_fil"] = bson.M{"$lte": req.AmountNanoFilLteqFilter}
+		} else if req.AmountNanoFilLtFilter != 0 {
+			filter["amount_nano_fil"] = bson.M{"$lt": req.AmountNanoFilLtFilter}
+		}
+	}
+
+	// MessageState
+	if req.MessageStateFilter != pb.MessageState_MESSAGE_STATE_UNSPECIFIED {
+		filter["message_state"] = req.MessageStateFilter
+	}
+
+	// Waiting
+	if req.WaitingFilter != pb.WaitingFilter_WAITING_FILTER_UNSPECIFIED {
+		filter["waiting"] = req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING
+	}
+
+	// Updated after/before
+	if req.UpdatedAfter != nil {
+		filter["updated_at"] = bson.M{"$gt": req.UpdatedAfter.AsTime()}
+	}
+	if req.UpdatedBefore != nil {
+		filter["updated_at"] = bson.M{"$lt": req.UpdatedBefore.AsTime()}
+	}
+
+	// Created after/before
+	if req.CreatedAfter != nil {
+		filter["created_at"] = bson.M{"$gt": req.CreatedAfter.AsTime()}
+	}
+	if req.CreatedBefore != nil {
+		filter["created_at"] = bson.M{"$lt": req.CreatedBefore.AsTime()}
+	}
+
+	// Apply paging info
+	comp := "$lt"
+	if req.MoreToken != 0 {
+		if req.Ascending {
+			comp = "$gt"
+		}
+		t := time.Unix(0, req.MoreToken)
+		filter["created_at"] = bson.M{comp: &t}
+	}
+
+	cursor, err := s.col.Find(ctx, filter, findOpts)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "querying txns: %v", err)
+	}
+	defer cursor.Close(ctx)
+	var txns []txn
+	err = cursor.All(ctx, &txns)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "decoding txns query results: %v", err)
+	}
+
+	more := false
+	var startAt *time.Time
+	if len(txns) > 0 {
+		lastCreatedAt := &txns[len(txns)-1].CreatedAt
+		filter["created_at"] = bson.M{comp: *lastCreatedAt}
+		res := s.col.FindOne(ctx, filter)
+		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
+			return nil, status.Errorf(codes.Internal, "checking for more data: %v", err)
+		}
+		if res.Err() != mongo.ErrNoDocuments {
+			more = true
+			startAt = lastCreatedAt
+		}
+	}
+	var pbTxns []*pb.Txn
+	for _, rec := range txns {
+		pbTxn, err := toPbTxn(rec)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "converting txn to pb: %v", err)
+		}
+		pbTxns = append(pbTxns, pbTxn)
+	}
+	res := &pb.ListTxnsResponse{
+		Txns: pbTxns,
+		More: more,
+	}
+	if startAt != nil {
+		res.MoreToken = startAt.UnixNano()
+	}
+	return res, nil
+}
+
+func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.SummaryResponse, error) {
+	type entityCount struct {
+		ID    interface{} `bson:"_id"`
+		Count int64       `bson:"count"`
+	}
+	type stats struct {
+		ID    string  `bson:"_id"`
+		Total int64   `bson:"total"`
+		Avg   float32 `bson:"avg"`
+		Min   int64   `bson:"min"`
+		Max   int64   `bson:"max"`
+	}
+	type report struct {
+		All            []entityCount `bson:"all"`
+		ByMessageState []entityCount `bson:"by_message_state"`
+		Waiting        []entityCount `bson:"waiting"`
+		UniqueFrom     []entityCount `bson:"unique_from"`
+		UniqueTo       []entityCount `bson:"unique_to"`
+		SentFilStats   []stats       `bson:"sent_fil_stats"`
+	}
+
+	createdAtMatch := bson.M{}
+	if req.Before != nil {
+		createdAtMatch["$lt"] = req.Before.AsTime()
+	}
+	if req.Since != nil {
+		createdAtMatch["$gt"] = req.Since.AsTime()
+	}
+	match := bson.M{}
+	if len(createdAtMatch) > 0 {
+		match["created_at"] = createdAtMatch
+	}
+	cursor, err := s.col.Aggregate(ctx, bson.A{
+		bson.M{"$match": match},
+		bson.M{"$facet": bson.M{
+			"all": bson.A{
+				bson.M{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			},
+			"by_message_state": bson.A{
+				bson.M{"$group": bson.M{"_id": "$message_state", "count": bson.M{"$sum": 1}}},
+			},
+			"waiting": bson.A{
+				bson.M{"$match": bson.M{"waiting": true}},
+				bson.M{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			},
+			"unique_from": bson.A{
+				bson.M{"$group": bson.M{"_id": "$from", "count": bson.M{"$sum": 1}}},
+			},
+			"unique_to": bson.A{
+				bson.M{"$group": bson.M{"_id": "$to", "count": bson.M{"$sum": 1}}},
+			},
+			"sent_fil_stats": bson.A{
+				bson.M{"$group": bson.M{
+					"_id":   nil,
+					"total": bson.M{"$sum": "$amount_nano_fil"},
+					"avg":   bson.M{"$avg": "$amount_nano_fil"},
+					"max":   bson.M{"$max": "$amount_nano_fil"},
+					"min":   bson.M{"$min": "$amount_nano_fil"},
+				}},
+			},
+		}},
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling aggregate: %v", err)
+	}
+	var res []report
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, status.Errorf(codes.Internal, "decoding cursor results: %v", err)
+	}
+	if len(res) != 1 {
+		return nil, status.Errorf(codes.Internal, "unexpected number of aggregate results: %v", len(res))
+	}
+
+	r := res[0]
+
+	resp := &pb.SummaryResponse{}
+
+	if len(r.All) == 1 {
+		resp.CountTxns = r.All[0].Count
+	}
+
+	for _, state := range r.ByMessageState {
+		switch pb.MessageState(state.ID.(int32)) {
+		case pb.MessageState_MESSAGE_STATE_PENDING:
+			resp.CountPending = state.Count
+		case pb.MessageState_MESSAGE_STATE_ACTIVE:
+			resp.CountActive = state.Count
+		case pb.MessageState_MESSAGE_STATE_FAILED:
+			resp.CountFailed = state.Count
+		}
+	}
+
+	if len(r.Waiting) == 1 {
+		resp.CountWaiting = r.Waiting[0].Count
+	}
+
+	resp.CountFromAddrs = int64(len(r.UniqueFrom))
+	resp.CountToAddrs = int64(len(r.UniqueTo))
+
+	if len(r.SentFilStats) == 1 {
+		resp.TotalNanoFilSent = r.SentFilStats[0].Total
+		resp.AvgNanoFilSent = r.SentFilStats[0].Avg
+		resp.MaxNanoFilSent = r.SentFilStats[0].Max
+		resp.MinNanoFilSent = r.SentFilStats[0].Min
+	}
+
+	return resp, nil
 }
 
 type waitResult struct {
@@ -401,15 +627,15 @@ func toPbTxn(txn txn) (*pb.Txn, error) {
 		return nil, err
 	}
 	return &pb.Txn{
-		Id:           txn.ID.Hex(),
-		From:         txn.From,
-		To:           txn.To,
-		Amount:       txn.Amount,
-		MessageCid:   latestMsgCid.Cid,
-		MessageState: txn.MessageState,
-		Waiting:      txn.Waiting,
-		FailureMsg:   txn.FailureMsg,
-		CreatedAt:    timestamppb.New(txn.CreatedAt),
-		UpdatedAt:    timestamppb.New(txn.UpdatedAt),
+		Id:            txn.ID.Hex(),
+		From:          txn.From,
+		To:            txn.To,
+		AmountNanoFil: txn.AmountNanoFil,
+		MessageCid:    latestMsgCid.Cid,
+		MessageState:  txn.MessageState,
+		Waiting:       txn.Waiting,
+		FailureMsg:    txn.FailureMsg,
+		CreatedAt:     timestamppb.New(txn.CreatedAt),
+		UpdatedAt:     timestamppb.New(txn.UpdatedAt),
 	}, nil
 }
