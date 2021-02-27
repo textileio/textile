@@ -92,7 +92,8 @@ var rootCmd = &cobra.Command{
 			c.Use != "init" &&
 			c.Use != "login" &&
 			c.Use != "version" &&
-			c.Use != "update" {
+			c.Use != "update" &&
+			c.Parent().Use != "index" {
 			msg := "unauthorized! run `%s` or use `%s` to authorize"
 			cmd.Fatal(errors.New(msg), aurora.Cyan(hub.Name+" init|login"), aurora.Cyan("--session"))
 		}
