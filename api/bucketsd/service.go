@@ -1950,6 +1950,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	}
 
 	var wg sync.WaitGroup
+	var ctxLock sync.RWMutex
 	addedCh := make(chan addedFile)
 	doneCh := make(chan struct{})
 	errCh := make(chan error)
@@ -1972,6 +1973,9 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 					errCh <- fmt.Errorf("parsing path: %v", err)
 					return
 				}
+				ctxLock.RLock()
+				ctx := ctx
+				ctxLock.RUnlock()
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
 					wg.Add(1)
 					buck.UpdatedAt = time.Now().UnixNano()
@@ -2058,10 +2062,13 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("adding bucket link: %v", err))
 				}
-				ctx, err = s.updateOrAddPin(ctx, path.New(buck.Path), dir)
+				ctx2, err := s.updateOrAddPin(ctx, path.New(buck.Path), dir)
 				if err != nil {
 					return saveWithErr(fmt.Errorf("updating bucket pin: %v", err))
 				}
+				ctxLock.Lock()
+				ctx = ctx2
+				ctxLock.Unlock()
 			}
 			buck.Path = dir.String()
 			buck.UpdatedAt = time.Now().UnixNano()
