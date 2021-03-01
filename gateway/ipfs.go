@@ -84,6 +84,8 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 			return
 		}
 	} else {
+		contentType := http.DetectContentType(data)
+		c.Writer.Header().Set("Content-Type", contentType)
 		c.Render(200, render.Data{Data: data})
 	}
 }
