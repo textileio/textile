@@ -98,7 +98,7 @@ func testDealLastSuccess(s *Store) func(t *testing.T) {
 
 		res, err := s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: false, Field: SortFieldTextileDealLastSuccessful}, 2, 0)
 		require.NoError(t, err)
-		require.True(t, res[0].TextileDealLastSuccessful.After(res[0].TextileDealLastSuccessful))
+		require.True(t, res[0].TextileDealLastSuccessful.After(res[1].TextileDealLastSuccessful))
 
 		res, err = s.QueryIndex(ctx, QueryIndexFilters{}, QueryIndexSort{Ascending: true, Field: SortFieldTextileDealLastSuccessful}, 2, 0)
 		require.NoError(t, err)
