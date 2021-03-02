@@ -58,6 +58,12 @@ var filQueryMiners = &cobra.Command{
 	The sort-textile-region allows to apply textile-deals-* flags to a specific 
 	textile region. An empty value would be interpreted to the aggregate of all
 	regions (default).
+
+	If the flag --show-full-details is set, an extra set of columns with more details
+	is printed.
+
+	If the flag --json is set, the output will be printed in JSON and it always contains
+	full details.
 	`,
 	Args: cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
