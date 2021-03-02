@@ -481,11 +481,13 @@ func requireSetup(t *testing.T, ctx context.Context, speed int) (pb.SendFilServi
 	listener := bufconn.Listen(bufSize)
 
 	conf := Config{
-		Listener:      listener,
-		ClientBuilder: clientBuilder,
-		MongoUri:      test.GetMongoUri(),
-		MongoDbName:   util.MakeToken(12),
-		Debug:         true,
+		Listener:           listener,
+		ClientBuilder:      clientBuilder,
+		MongoUri:           test.GetMongoUri(),
+		MongoDbName:        util.MakeToken(12),
+		MessageWaitTimeout: time.Minute,
+		MessageConfidence:  2,
+		Debug:              true,
 	}
 	s, err := New(ctx, conf)
 	require.NoError(t, err)

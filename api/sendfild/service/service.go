@@ -65,15 +65,18 @@ type Service struct {
 	col           *mongo.Collection
 	server        *grpc.Server
 	waiting       map[primitive.ObjectID]chan waitResult
+	config        Config
 	waitingLck    sync.Mutex
 }
 
 type Config struct {
-	Listener      net.Listener
-	ClientBuilder lotus.ClientBuilder
-	MongoUri      string
-	MongoDbName   string
-	Debug         bool
+	Listener           net.Listener
+	ClientBuilder      lotus.ClientBuilder
+	MongoUri           string
+	MongoDbName        string
+	MessageWaitTimeout time.Duration
+	MessageConfidence  uint64
+	Debug              bool
 }
 
 func New(ctx context.Context, config Config) (*Service, error) {
@@ -128,6 +131,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		clientBuilder: config.ClientBuilder,
 		col:           col,
 		waiting:       make(map[primitive.ObjectID]chan waitResult),
+		config:        config,
 	}
 
 	s.server = grpc.NewServer()
@@ -487,8 +491,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 	s.waiting[tx.ID] = ch
 
 	go func() {
-		// ToDo: make timeout configurable
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+		ctx, cancel := context.WithTimeout(context.Background(), s.config.MessageWaitTimeout)
 
 		client, closeClient, err := s.clientBuilder(ctx)
 		defer func() {
@@ -532,8 +535,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 			return
 		}
 
-		// ToDo: Make confidence configurable
-		res, err := client.StateWaitMsg(ctx, c, 3)
+		res, err := client.StateWaitMsg(ctx, c, s.config.MessageConfidence)
 		tx.Waiting = false
 		if err != nil {
 			if err := s.updateTxn(ctx, tx); err != nil {
