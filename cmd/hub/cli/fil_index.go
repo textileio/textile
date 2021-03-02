@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/api/mindexd/pb"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -23,6 +24,10 @@ func init() {
 	filQueryMiners.Flags().String("sort-field", "textile-deals-last-successful", "sort field")
 	filQueryMiners.Flags().String("sort-textile-region", "", "make the sorting criteria in a specified region.")
 	filQueryMiners.Flags().String("filter-miner-location", "", "filter by miner's location")
+	filQueryMiners.Flags().Bool("show-full-details", false, "indicates that the results should be printed in JSON")
+	filQueryMiners.Flags().Bool("json", false, "indicates that the results should be printed in JSON")
+
+	filGetMinerInfo.Flags().Bool("json", false, "indicates that the miner's info should be outputed in JSON")
 }
 
 var m49Table = map[string]string{
@@ -86,20 +91,91 @@ var filQueryMiners = &cobra.Command{
 		res, err := clients.MinerIndex.QueryIndex(ctx, req)
 		cmd.ErrCheck(err)
 
+		rawJSON, err := c.Flags().GetBool("json")
+		cmd.ErrCheck(err)
+		if rawJSON {
+			json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+			cmd.ErrCheck(err)
+			fmt.Println(string(json))
+			return
+		}
+
+		showFullDetails, err := c.Flags().GetBool("show-full-details")
+		cmd.ErrCheck(err)
 		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Results --")))
 		data := make([][]string, len(res.Miners))
 		for i, m := range res.Miners {
+			if showFullDetails {
+				data[i] = []string{
+					m.Miner.MinerAddr,
+					fmt.Sprintf("%s%%", humanize.FtoaWithDigits(m.Miner.Filecoin.RelativePower, 5)),
+					fmt.Sprintf("%s | %s", attoFilToFil(m.Miner.Filecoin.AskPrice), attoFilToFil(m.Miner.Filecoin.AskVerifiedPrice)),
+					fmt.Sprintf("%s | %s", humanize.IBytes(uint64(m.Miner.Filecoin.MinPieceSize)), humanize.IBytes(uint64(m.Miner.Filecoin.MaxPieceSize))),
+					fmt.Sprintf("%s", humanize.IBytes(uint64(m.Miner.Filecoin.SectorSize))),
+					fmt.Sprintf("%d | %d", m.Miner.Filecoin.ActiveSectors, m.Miner.Filecoin.FaultySectors),
+					isoLocationToCountryName(m.Miner.Metadata.Location),
+					fmt.Sprintf("%d | %d", m.Miner.Textile.DealsSummary.Total, m.Miner.Textile.DealsSummary.Failures),
+					fmt.Sprintf("%s", peekAndFormatTransferTimes(m.Miner.Textile)),
+					fmt.Sprintf("%s", peekAndFormatSealingTimes(m.Miner.Textile)),
+				}
+				continue
+			}
 			data[i] = []string{
-				m.Address,
-				fmt.Sprintf("%s", attoFilToFil(m.AskPrice)),
-				fmt.Sprintf("%s", attoFilToFil(m.AskVerifiedPrice)),
-				isoLocationToCountryName(m.Location),
-				fmt.Sprintf("%s", humanize.IBytes(uint64(m.MinPieceSize))),
-				fmt.Sprintf("%s", prettyFormatTime(m.TextileDealLastSuccessful)),
+				m.Miner.MinerAddr,
+				fmt.Sprintf("%s", attoFilToFil(m.Miner.Filecoin.AskPrice)),
+				fmt.Sprintf("%s", attoFilToFil(m.Miner.Filecoin.AskVerifiedPrice)),
+				isoLocationToCountryName(m.Miner.Metadata.Location),
+				fmt.Sprintf("%s", humanize.IBytes(uint64(m.Miner.Filecoin.MinPieceSize))),
+				fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.DealsSummary.Last)),
 			}
 		}
-		cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal"}, data)
+		if showFullDetails {
+			cmd.RenderTable([]string{"miner", "relative power", "raw/verified ask price", "min/max piece size", "sector size", "active/faulty sectors", "location", "textile total/failed deals", "last data-transfer", "last sealing-time"}, data)
+		} else {
+			cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal"}, data)
+		}
 	},
+}
+
+func peekAndFormatTransferTimes(ti *pb.TextileInfo) string {
+	var last *time.Time
+	var lastThroughput *float64
+	for _, r := range ti.Regions {
+		if len(r.Deals.TailTransfers) > 0 {
+			if last == nil || last.Before(r.Deals.TailTransfers[0].TransferedAt.AsTime()) {
+				lastThroughput = &r.Deals.TailTransfers[0].MibPerSec
+				t := r.Deals.TailTransfers[0].TransferedAt.AsTime()
+				last = &t
+			}
+		}
+	}
+
+	if last == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("~%.02f MiB/s %s", *lastThroughput, prettyFormatTime(last))
+}
+
+func peekAndFormatSealingTimes(ti *pb.TextileInfo) string {
+	var last *time.Time
+	var lastDuration *float64
+	for _, r := range ti.Regions {
+		if len(r.Deals.TailSealed) > 0 {
+			if last == nil || last.Before(r.Deals.TailSealed[0].SealedAt.AsTime()) {
+				durationHours := time.Duration(time.Second * time.Duration(r.Deals.TailSealed[0].DurationSeconds)).Hours()
+				t := r.Deals.TailTransfers[0].TransferedAt.AsTime()
+				lastDuration = &durationHours
+				last = &t
+			}
+		}
+	}
+
+	if last == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("~%.0f hours %s", *lastDuration, prettyFormatTime(last))
 }
 
 var filGetMinerInfo = &cobra.Command{
@@ -114,6 +190,15 @@ var filGetMinerInfo = &cobra.Command{
 		defer cancel()
 		res, err := clients.MinerIndex.GetMinerInfo(ctx, minerAddr)
 		cmd.ErrCheck(err)
+
+		rawJSON, err := c.Flags().GetBool("json")
+		cmd.ErrCheck(err)
+		if rawJSON {
+			json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
+			cmd.ErrCheck(err)
+			fmt.Println(string(json))
+			return
+		}
 
 		fmt.Printf("%s\n\n", aurora.Bold("Miner "+res.Info.MinerAddr))
 
@@ -131,31 +216,31 @@ var filGetMinerInfo = &cobra.Command{
 
 		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Textile --")))
 		cmd.Message("Total successful deals: %d", res.Info.Textile.DealsSummary.Total)
-		cmd.Message("Last successful deal  : %s", prettyFormatTime(res.Info.Textile.DealsSummary.Last))
+		cmd.Message("Last successful deal  : %s", prettyFormatPbTime(res.Info.Textile.DealsSummary.Last))
 		cmd.Message("Total failed deals: %d", res.Info.Textile.DealsSummary.Failures)
-		cmd.Message("Last failed deal  : %s\n", prettyFormatTime(res.Info.Textile.DealsSummary.LastFailure))
+		cmd.Message("Last failed deal  : %s\n", prettyFormatPbTime(res.Info.Textile.DealsSummary.LastFailure))
 
 		for m49Code, regionData := range res.Info.Textile.Regions {
 			var dataTransfers [][]string
 			for _, t := range regionData.Deals.TailTransfers {
 				dataTransfers = append(dataTransfers, []string{
-					fmt.Sprintf("%s", prettyFormatTime(t.TransferedAt)),
+					fmt.Sprintf("%s", prettyFormatPbTime(t.TransferedAt)),
 					fmt.Sprintf("~%.02f MiB/s", t.MibPerSec),
 				})
 			}
 			var sealingDuration [][]string
 			for _, s := range regionData.Deals.TailSealed {
 				sealingDuration = append(sealingDuration, []string{
-					fmt.Sprintf("%s", prettyFormatTime(s.SealedAt)),
+					fmt.Sprintf("%s", prettyFormatPbTime(s.SealedAt)),
 					fmt.Sprintf("~%.0f hours", (time.Second * time.Duration(s.DurationSeconds)).Hours()),
 				})
 			}
 
 			fmt.Print(aurora.Brown(fmt.Sprintf("%s deals telemetry:\n", m49Table[m49Code])))
 			cmd.Message("Total successful: %d", regionData.Deals.Total)
-			cmd.Message("Last successful : %s", prettyFormatTime(regionData.Deals.Last))
+			cmd.Message("Last successful : %s", prettyFormatPbTime(regionData.Deals.Last))
 			cmd.Message("Total failed    : %d", regionData.Deals.Failures)
-			cmd.Message("Last failed     : %s\n", prettyFormatTime(regionData.Deals.LastFailure))
+			cmd.Message("Last failed     : %s\n", prettyFormatPbTime(regionData.Deals.LastFailure))
 			cmd.RenderTableWithoutNewLines([]string{"date", "datatransfer-speed"}, dataTransfers)
 			fmt.Println()
 			cmd.RenderTableWithoutNewLines([]string{"date", "sealing-duration"}, sealingDuration)
@@ -219,12 +304,21 @@ func attoFilToFil(attoFil string) string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".") + " FIL"
 }
 
-func prettyFormatTime(t *timestamppb.Timestamp) string {
+func prettyFormatPbTime(t *timestamppb.Timestamp) string {
 	if t == nil {
 		return "<none>"
 	}
 
-	return fmt.Sprintf("%s (%s)", t.AsTime().Format("2006-01-02 15:04:05"), humanize.Time(t.AsTime()))
+	ti := t.AsTime()
+	return prettyFormatTime(&ti)
+}
+
+func prettyFormatTime(t *time.Time) string {
+	if t == nil {
+		return "<none>"
+	}
+
+	return fmt.Sprintf("%s (%s)", t.Format("2006-01-02 15:04:05"), humanize.Time(*t))
 }
 
 func mapSortField(field string) pb.QueryIndexRequestSortField {

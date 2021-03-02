@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/textileio/textile/v2/api/mindexd/model"
 	"go.mongodb.org/mongo-driver/bson"
@@ -27,16 +26,6 @@ const (
 	SortFieldVerifiedAskPrice
 	SortFieldActiveSectors
 )
-
-type MinerSummary struct {
-	Address                   string
-	Location                  string
-	AskPrice                  string
-	AskVerifiedPrice          string
-	MinPieceSize              int64
-	TextileDealLastSuccessful time.Time
-	TextileTotalSuccessful    int
-}
 
 type QueryIndexFilters struct {
 	MinerLocation string
@@ -78,7 +67,7 @@ func (s *Store) GetAllMiners(ctx context.Context) ([]model.MinerInfo, error) {
 	return ms, nil
 }
 
-func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort QueryIndexSort, limit int, offset int64) ([]MinerSummary, error) {
+func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort QueryIndexSort, limit int, offset int64) ([]model.MinerInfo, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("limit should be greater than zero")
 	}
@@ -92,15 +81,6 @@ func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort 
 	opts = opts.SetSort(qSort)
 	opts = opts.SetLimit(int64(limit))
 	opts = opts.SetSkip(offset)
-	opts = opts.SetProjection(bson.M{
-		"_id":                         1,
-		"metadata.location":           1,
-		"filecoin.ask_price":          1,
-		"filecoin.ask_verified_price": 1,
-		"filecoin.min_piece_size":     1,
-		"textile.deals_summary.total": 1,
-		"textile.deals_summary.last":  1,
-	})
 	c, err := s.idxc.Find(ctx, qFilters, opts)
 	if err != nil {
 		return nil, fmt.Errorf("executing query: %s", err)
@@ -115,20 +95,7 @@ func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort 
 		return nil, fmt.Errorf("decoding all results: %s", err)
 	}
 
-	ret := make([]MinerSummary, len(ms))
-	for i, m := range ms {
-		ret[i] = MinerSummary{
-			Address:                   m.MinerID,
-			Location:                  m.Metadata.Location,
-			AskPrice:                  m.Filecoin.AskPrice,
-			AskVerifiedPrice:          m.Filecoin.AskVerifiedPrice,
-			MinPieceSize:              m.Filecoin.MinPieceSize,
-			TextileTotalSuccessful:    m.Textile.DealsSummary.Total,
-			TextileDealLastSuccessful: m.Textile.DealsSummary.Last,
-		}
-	}
-
-	return ret, nil
+	return ms, nil
 }
 
 func buildMongoFiltersAndSort(filters QueryIndexFilters, sort QueryIndexSort) (bson.M, bson.D, error) {

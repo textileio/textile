@@ -68,16 +68,18 @@ func (i *Indexer) runDaemon() {
 	}
 
 	go func() {
-		select {
-		case <-i.daemonCtx.Done():
-			log.Infof("daemon shutting down")
-			return
-		case <-time.After(i.cfg.daemonFrequency):
-			log.Infof("daemon ticker fired")
-			collect <- struct{}{}
-		case <-i.daemonSub:
-			log.Infof("received new records notification")
-			collect <- struct{}{}
+		for {
+			select {
+			case <-i.daemonCtx.Done():
+				log.Infof("daemon shutting down")
+				return
+			case <-time.After(i.cfg.daemonFrequency):
+				log.Infof("daemon ticker fired")
+				collect <- struct{}{}
+			case <-i.daemonSub:
+				log.Infof("received new records notification")
+				collect <- struct{}{}
+			}
 		}
 	}()
 

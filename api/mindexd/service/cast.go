@@ -141,18 +141,13 @@ func fromPbQueryIndexRequestSortField(field pb.QueryIndexRequestSortField) (stor
 	}
 }
 
-func toPbQueryIndexResponse(ss []store.MinerSummary) *pb.QueryIndexResponse {
+func toPbQueryIndexResponse(ss []model.MinerInfo) *pb.QueryIndexResponse {
 	res := &pb.QueryIndexResponse{
 		Miners: make([]*pb.QueryIndexResponseMiner, len(ss)),
 	}
 	for i, m := range ss {
 		res.Miners[i] = &pb.QueryIndexResponseMiner{
-			Address:                   m.Address,
-			Location:                  m.Location,
-			AskPrice:                  m.AskPrice,
-			AskVerifiedPrice:          m.AskVerifiedPrice,
-			MinPieceSize:              m.MinPieceSize,
-			TextileDealLastSuccessful: formatPbTime(m.TextileDealLastSuccessful),
+			Miner: toPbMinerIndexInfo(m),
 		}
 	}
 

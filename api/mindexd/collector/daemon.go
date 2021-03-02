@@ -71,7 +71,7 @@ func (c *Collector) collectNewStorageDealRecords(ctx context.Context, pc *pow.Cl
 		ctx, cancel := context.WithTimeout(ctx, c.cfg.fetchTimeout)
 		defer cancel()
 
-		res, err := pc.Admin.Records.GetUpdatedStorageDealRecordsSince(ctx, lastUpdatedAt.Add(time.Nanosecond), c.cfg.fetchLimit)
+		res, err := pc.Admin.Records.GetUpdatedStorageDealRecordsSince(ctx, lastUpdatedAt, c.cfg.fetchLimit)
 		if err != nil {
 			return 0, fmt.Errorf("get storage deal records: %s", err)
 		}

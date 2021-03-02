@@ -124,12 +124,7 @@ message QueryIndexResponse {
 }
 
 message QueryIndexResponseMiner {
-	string address = 1;
-	string location = 2;
-	string ask_price = 3;
-	string ask_verified_price = 4;
-	int64 min_piece_size = 5;
-	google.protobuf.Timestamp textile_deal_last_successful = 6;
+	MinerIndexInfo miner = 1;
 }
 
 // rpc GetMinerInfo
@@ -163,6 +158,7 @@ message CalculateDealPriceResponse {
         int64 padded_size = 2;
 	int64 duration_epochs = 3; 
 }
+
 message CalculateDealPriceMiner {
 	string miner = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
 		description: "Miner address of this calculations.",
