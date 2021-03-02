@@ -269,6 +269,19 @@ func TestListTxnsAmtGtLteq(t *testing.T) {
 	require.Len(t, res.Txns, 1)
 }
 
+func TestListTxnsAmtEq(t *testing.T) {
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	defer cleanup()
+	addr1 := requireLotusAddress(t, ctx, lc)
+	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
+	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilEqFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res.Txns, 1)
+}
+
 func TestListTxnsMessageState(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx, 1000)
 	defer cleanup()
