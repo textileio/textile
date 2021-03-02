@@ -89,16 +89,19 @@ func (i *Indexer) runDaemon() {
 			log.Errorf("get last index snapshot: %s", err)
 			return
 		}
-		select {
-		case <-i.daemonCtx.Done():
-			log.Infof("daemon snapshot shutting down")
-		case <-time.After(15 * time.Minute):
-			if time.Now().Sub(lastSnapshot) > i.cfg.daemonSnapshotMaxAge {
-				if err := i.store.GenerateMinerIndexSnapshot(i.daemonCtx); err != nil {
-					log.Errorf("generating index snapshot: %s", err)
+		for {
+			select {
+			case <-i.daemonCtx.Done():
+				log.Infof("daemon snapshot shutting down")
+				return
+			case <-time.After(15 * time.Minute):
+				if time.Now().Sub(lastSnapshot) > i.cfg.daemonSnapshotMaxAge {
+					if err := i.store.GenerateMinerIndexSnapshot(i.daemonCtx); err != nil {
+						log.Errorf("generating index snapshot: %s", err)
+					}
 				}
+				lastSnapshot = time.Now()
 			}
-			lastSnapshot = time.Now()
 		}
 	}()
 
