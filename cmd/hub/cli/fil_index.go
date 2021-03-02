@@ -19,15 +19,15 @@ import (
 
 func init() {
 	filQueryMiners.Flags().Bool("ascending", false, "sort results ascending, default is sort descending")
-	filQueryMiners.Flags().Int32("limit", 10, "maximum results per page")
+	filQueryMiners.Flags().Int64("limit", 10, "maximum results per page")
 	filQueryMiners.Flags().Int64("offset", 0, "number of results to skip")
 	filQueryMiners.Flags().String("sort-field", "textile-deals-last-successful", "sort field")
-	filQueryMiners.Flags().String("sort-textile-region", "", "make the sorting criteria in a specified region.")
+	filQueryMiners.Flags().String("sort-textile-region", "", "make the sorting criteria in a specified region")
 	filQueryMiners.Flags().String("filter-miner-location", "", "filter by miner's location")
-	filQueryMiners.Flags().Bool("show-full-details", false, "indicates that the results should be printed in JSON")
-	filQueryMiners.Flags().Bool("json", false, "indicates that the results should be printed in JSON")
+	filQueryMiners.Flags().Bool("show-full-details", false, "indicates that the results will contain extended data about miners")
+	filQueryMiners.Flags().Bool("json", false, "indicates that the output should be printed in JSON")
 
-	filGetMinerInfo.Flags().Bool("json", false, "indicates that the miner's info should be outputed in JSON")
+	filGetMinerInfo.Flags().Bool("json", false, "indicates that output should be printed in JSON")
 }
 
 var m49Table = map[string]string{
