@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"net"
 	"sync"
@@ -149,8 +150,9 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "parsing to address: %v", err)
 	}
-	amount := &big.Int{}
-	_ = amount.SetInt64(req.AmountNanoFil)
+	nanoAmount := (&big.Int{}).SetInt64(req.AmountNanoFil)
+	factor := (&big.Int{}).SetInt64(int64(math.Pow10(9)))
+	amount := (&big.Int{}).Mul(nanoAmount, factor)
 	msg := &types.Message{
 		From:  f,
 		To:    t,
@@ -205,7 +207,7 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 func (s *Service) Txn(ctx context.Context, req *pb.TxnRequest) (*pb.TxnResponse, error) {
 	res := s.col.FindOne(ctx, bson.M{"message_cids.cid": req.MessageCid})
 	if res.Err() == mongo.ErrNoDocuments {
-		return nil, status.Error(codes.InvalidArgument, "no txn found for cid")
+		return nil, status.Error(codes.NotFound, "no txn found for cid")
 	}
 	if res.Err() != nil {
 		return nil, status.Errorf(codes.Internal, "querying for cid txn: %v", res.Err())
@@ -256,23 +258,6 @@ func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.Li
 		}
 	}
 
-	// Amount eq/gte/lts/gt/lt
-	if req.AmountNanoFilEqFilter != 0 {
-		filter["amount_nano_fil"] = req.AmountNanoFilEqFilter
-	} else {
-		if req.AmountNanoFilGteqFilter != 0 {
-			filter["amount_nano_fil"] = bson.M{"$gte": req.AmountNanoFilGteqFilter}
-		} else if req.AmountNanoFilGtFilter != 0 {
-			filter["amount_nano_fil"] = bson.M{"$gt": req.AmountNanoFilGtFilter}
-		}
-
-		if req.AmountNanoFilLteqFilter != 0 {
-			filter["amount_nano_fil"] = bson.M{"$lte": req.AmountNanoFilLteqFilter}
-		} else if req.AmountNanoFilLtFilter != 0 {
-			filter["amount_nano_fil"] = bson.M{"$lt": req.AmountNanoFilLtFilter}
-		}
-	}
-
 	// MessageState
 	if req.MessageStateFilter != pb.MessageState_MESSAGE_STATE_UNSPECIFIED {
 		filter["message_state"] = req.MessageStateFilter
@@ -283,20 +268,39 @@ func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.Li
 		filter["waiting"] = req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING
 	}
 
+	ands := bson.A{}
+
+	// Amount eq/gte/lts/gt/lt
+	if req.AmountNanoFilEqFilter != 0 {
+		filter["amount_nano_fil"] = req.AmountNanoFilEqFilter
+	} else {
+		if req.AmountNanoFilGteqFilter != 0 {
+			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$gte": req.AmountNanoFilGteqFilter}})
+		} else if req.AmountNanoFilGtFilter != 0 {
+			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$gt": req.AmountNanoFilGtFilter}})
+		}
+
+		if req.AmountNanoFilLteqFilter != 0 {
+			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$lte": req.AmountNanoFilLteqFilter}})
+		} else if req.AmountNanoFilLtFilter != 0 {
+			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$lt": req.AmountNanoFilLtFilter}})
+		}
+	}
+
 	// Updated after/before
 	if req.UpdatedAfter != nil {
-		filter["updated_at"] = bson.M{"$gt": req.UpdatedAfter.AsTime()}
+		ands = append(ands, bson.M{"updated_at": bson.M{"$gt": req.UpdatedAfter.AsTime()}})
 	}
 	if req.UpdatedBefore != nil {
-		filter["updated_at"] = bson.M{"$lt": req.UpdatedBefore.AsTime()}
+		ands = append(ands, bson.M{"updated_at": bson.M{"$lt": req.UpdatedBefore.AsTime()}})
 	}
 
 	// Created after/before
 	if req.CreatedAfter != nil {
-		filter["created_at"] = bson.M{"$gt": req.CreatedAfter.AsTime()}
+		ands = append(ands, bson.M{"created_at": bson.M{"$gt": req.CreatedAfter.AsTime()}})
 	}
 	if req.CreatedBefore != nil {
-		filter["created_at"] = bson.M{"$lt": req.CreatedBefore.AsTime()}
+		ands = append(ands, bson.M{"created_at": bson.M{"$lt": req.CreatedBefore.AsTime()}})
 	}
 
 	// Apply paging info
@@ -306,7 +310,11 @@ func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.Li
 			comp = "$gt"
 		}
 		t := time.Unix(0, req.MoreToken)
-		filter["created_at"] = bson.M{comp: &t}
+		ands = append(ands, bson.M{"created_at": bson.M{comp: &t}})
+	}
+
+	if len(ands) > 0 {
+		filter["$and"] = ands
 	}
 
 	cursor, err := s.col.Find(ctx, filter, findOpts)
@@ -360,7 +368,7 @@ func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.Summ
 	type stats struct {
 		ID    string  `bson:"_id"`
 		Total int64   `bson:"total"`
-		Avg   float32 `bson:"avg"`
+		Avg   float64 `bson:"avg"`
 		Min   int64   `bson:"min"`
 		Max   int64   `bson:"max"`
 	}
@@ -377,8 +385,8 @@ func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.Summ
 	if req.Before != nil {
 		createdAtMatch["$lt"] = req.Before.AsTime()
 	}
-	if req.Since != nil {
-		createdAtMatch["$gt"] = req.Since.AsTime()
+	if req.After != nil {
+		createdAtMatch["$gt"] = req.After.AsTime()
 	}
 	match := bson.M{}
 	if len(createdAtMatch) > 0 {

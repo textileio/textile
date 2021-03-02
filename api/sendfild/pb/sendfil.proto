@@ -77,7 +77,7 @@ message ListTxnsResponse {
 }
 
 message SummaryRequest {
-  google.protobuf.Timestamp since = 1;
+  google.protobuf.Timestamp after = 1;
   google.protobuf.Timestamp before = 2;
 }
 
@@ -90,7 +90,7 @@ message SummaryResponse {
   int64 count_from_addrs = 6;
   int64 count_to_addrs = 7;
   int64 total_nano_fil_sent = 8;
-  float avg_nano_fil_sent = 9;
+  double avg_nano_fil_sent = 9;
   int64 max_nano_fil_sent = 10;
   int64 min_nano_fil_sent = 11;
 }
