@@ -92,6 +92,7 @@ var (
 		FastRetrieval:   true,
 		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
 		MaxPrice:        100_000_000_000,
+		VerifiedDeal:    false,
 	}
 )
 
@@ -3359,6 +3360,7 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 			MaxPrice:        pbConfig.MaxPrice,
 			FastRetrieval:   pbConfig.FastRetrieval,
 			DealStartOffset: pbConfig.DealStartOffset,
+			VerifiedDeal:    pbConfig.VerifiedDeal,
 		}
 		if pbConfig.Renew != nil {
 			config.Renew = mdb.ArchiveRenew{
@@ -3387,6 +3389,7 @@ func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 			Threshold: int64(config.Renew.Threshold),
 		},
 		TrustedMiners: config.TrustedMiners,
+		VerifiedDeal:  config.VerifiedDeal,
 	}
 }
 

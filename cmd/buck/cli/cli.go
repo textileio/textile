@@ -81,15 +81,15 @@ func Init(baseCmd *cobra.Command) {
 	archiveCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 
 	setDefaultArchiveConfigCmd.Flags().IntP("rep-factor", "r", 1, "Target number of active deals")
-	setDefaultArchiveConfigCmd.Flags().Int64P("deal-min-duration", "d", 518400, "Minimum duration for the deal")
+	setDefaultArchiveConfigCmd.Flags().Int64P("deal-min-duration", "d", 0, "Minimum duration for the deal")
 	setDefaultArchiveConfigCmd.Flags().StringSliceP("excluded-miners", "x", nil, "Miner addresses that should not be used")
 	setDefaultArchiveConfigCmd.Flags().StringSliceP("trusted-miners", "t", nil, "Miner addresses that must be used")
 	setDefaultArchiveConfigCmd.Flags().StringSliceP("country-codes", "c", nil, "Select miners with specific countries")
 	setDefaultArchiveConfigCmd.Flags().Uint64P("max-price", "p", 0, "Maximum price that will be spent per RepFactor in AttoFIL/GiB per Epoch")
 	setDefaultArchiveConfigCmd.Flags().BoolP("fast-retrieval", "f", true, "Created deals should enable the fast retrieval feature")
 	setDefaultArchiveConfigCmd.Flags().BoolP("verified-deal", "v", false, "Deal is originating from a verified client with DataCap")
-	setDefaultArchiveConfigCmd.Flags().Int64P("deal-start-offset", "e", 8640, "Epochs in the future impose a deadline for deals to be on-chain")
-	setDefaultArchiveConfigCmd.Flags().BoolP("", "i", false, "Set config from stdin JSON")
+	setDefaultArchiveConfigCmd.Flags().Int64P("deal-start-offset", "e", 0, "Epochs in the future impose a deadline for deals to be on-chain")
+	setDefaultArchiveConfigCmd.Flags().BoolP("stdin", "i", false, "Set config from stdin JSON")
 
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 

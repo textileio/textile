@@ -76,6 +76,9 @@ type ArchiveConfig struct {
 	// if miners accept deals, since they should seal fast enough to satisfy
 	// this constraint.
 	DealStartOffset int64 `bson:"deal_start_offset"`
+	// VerifiedDeal indicates that new deals should be marked as verified,
+	// assuming the wallet address has enough data-cap.
+	VerifiedDeal bool `bson:"verified_deal"`
 }
 
 // ArchiveRenew contains renew configuration for a ArchiveConfig.

@@ -35,14 +35,22 @@ var defaultArchiveConfigCmd = &cobra.Command{
 }
 
 var setDefaultArchiveConfigCmd = &cobra.Command{
-	Use:     "set-default-config [(optional)file]",
-	Short:   "Set the default archive storage configuration for the specified Bucket.",
-	Long:    `Set the default archive storage configuration for the specified Bucket from a file, stdin, or options.`,
+	Use:   "set-default-config [(optional)file]",
+	Short: "Set the default archive storage configuration for the specified Bucket.",
+	Long: `Set the default archive storage configuration for the specified Bucket from a file, stdin, or flags.
+
+If flags are specified, this command updates the current default storage-config with the *explicitely set* flags. 
+Flags that aren't explicitely set won't set the default value, and thus keep the original value in the storage-config.
+
+If a file or stdin is used, the storage-config will be completely overriden by the provided one.`,
 	Example: "hub buck archive set-default-config --rep-factor=3 --fast-retrieval --verified-deal --trusted-miners=f08240,f023467,f09848",
 	Args:    cobra.RangeArgs(0, 1),
 	Run: func(c *cobra.Command, args []string) {
-		config := local.ArchiveConfig{}
-		stdIn, err := c.Flags().GetBool("")
+		var config local.ArchiveConfig
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+
+		stdIn, err := c.Flags().GetBool("stdin")
 		cmd.ErrCheck(err)
 		if stdIn {
 			// Read config json from stdin
@@ -50,6 +58,7 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 			buf := new(bytes.Buffer)
 			_, err := buf.ReadFrom(reader)
 			cmd.ErrCheck(err)
+
 			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
 		} else if len(args) > 0 {
 			// Read config json from path
@@ -63,47 +72,71 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 			buf := new(bytes.Buffer)
 			_, err = buf.ReadFrom(reader)
 			cmd.ErrCheck(err)
+
 			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
 		} else {
-			repFactor, err := c.Flags().GetInt("rep-factor")
+			ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+			defer cancel()
+			buck, err := bucks.GetLocalBucket(ctx, conf)
 			cmd.ErrCheck(err)
-			config.RepFactor = repFactor
+			config, err = buck.DefaultArchiveConfig(ctx)
+			cmd.ErrCheck(err)
 
-			dealMinDuration, err := c.Flags().GetInt64("deal-min-duration")
-			cmd.ErrCheck(err)
-			config.DealMinDuration = dealMinDuration
+			if c.Flags().Changed("rep-factor") {
+				repFactor, err := c.Flags().GetInt("rep-factor")
+				cmd.ErrCheck(err)
+				config.RepFactor = repFactor
+			}
 
-			maxPrice, err := c.Flags().GetUint64("max-price")
-			cmd.ErrCheck(err)
-			config.MaxPrice = maxPrice
+			if c.Flags().Changed("deal-min-duration") {
+				dealMinDuration, err := c.Flags().GetInt64("deal-min-duration")
+				cmd.ErrCheck(err)
+				config.DealMinDuration = dealMinDuration
+			}
 
-			excludedMiners, err := c.Flags().GetStringSlice("excluded-miners")
-			cmd.ErrCheck(err)
-			config.ExcludedMiners = excludedMiners
+			if c.Flags().Changed("max-price") {
+				maxPrice, err := c.Flags().GetUint64("max-price")
+				cmd.ErrCheck(err)
+				config.MaxPrice = maxPrice
+			}
 
-			trustedMiners, err := c.Flags().GetStringSlice("trusted-miners")
-			cmd.ErrCheck(err)
-			config.TrustedMiners = trustedMiners
+			if c.Flags().Changed("excluded-miners") {
+				excludedMiners, err := c.Flags().GetStringSlice("excluded-miners")
+				cmd.ErrCheck(err)
+				config.ExcludedMiners = excludedMiners
+			}
 
-			countryCodes, err := c.Flags().GetStringSlice("country-codes")
-			cmd.ErrCheck(err)
-			config.CountryCodes = countryCodes
+			if c.Flags().Changed("trusted-miners") {
+				trustedMiners, err := c.Flags().GetStringSlice("trusted-miners")
+				cmd.ErrCheck(err)
+				config.TrustedMiners = trustedMiners
+			}
 
-			fastRetrieval, err := c.Flags().GetBool("fast-retrieval")
-			cmd.ErrCheck(err)
-			config.FastRetrieval = fastRetrieval
+			if c.Flags().Changed("country-codes") {
+				countryCodes, err := c.Flags().GetStringSlice("country-codes")
+				cmd.ErrCheck(err)
+				config.CountryCodes = countryCodes
+			}
 
-			verifiedDeal, err := c.Flags().GetBool("verified-deal")
-			cmd.ErrCheck(err)
-			config.VerifiedDeal = verifiedDeal
+			if c.Flags().Changed("fast-retrieval") {
+				fastRetrieval, err := c.Flags().GetBool("fast-retrieval")
+				cmd.ErrCheck(err)
+				config.FastRetrieval = fastRetrieval
+			}
 
-			dealStartOffset, err := c.Flags().GetInt64("deal-start-offset")
-			cmd.ErrCheck(err)
-			config.DealStartOffset = dealStartOffset
+			if c.Flags().Changed("verified-deal") {
+				verifiedDeal, err := c.Flags().GetBool("verified-deal")
+				cmd.ErrCheck(err)
+				config.VerifiedDeal = verifiedDeal
+			}
+
+			if c.Flags().Changed("deal-start-offset") {
+				dealStartOffset, err := c.Flags().GetInt64("deal-start-offset")
+				cmd.ErrCheck(err)
+				config.DealStartOffset = dealStartOffset
+			}
 		}
 
-		conf, err := bucks.NewConfigFromCmd(c, ".")
-		cmd.ErrCheck(err)
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
