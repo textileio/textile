@@ -85,11 +85,13 @@ func (c *Collector) runDaemon() {
 	}
 
 	go func() {
-		select {
-		case <-c.daemonCtx.Done():
-			return
-		case <-time.After(c.cfg.daemonFrequency):
-			collect <- struct{}{}
+		for {
+			select {
+			case <-c.daemonCtx.Done():
+				return
+			case <-time.After(c.cfg.daemonFrequency):
+				collect <- struct{}{}
+			}
 		}
 	}()
 
@@ -103,6 +105,7 @@ func (c *Collector) runDaemon() {
 			if totalImported > 0 {
 				c.notifySubscribers()
 			}
+			log.Infof("daemon finished importing %d records", totalImported)
 		}
 	}
 }

@@ -61,12 +61,16 @@ COPY --from=0 /usr/lib/*-linux-gnu*/libcrypto.so* /usr/lib/
 
 # addrApi; can be exposed to the public
 EXPOSE 5000
+# rest-api
+EXPOSE 8081
 
 # Create the repo directory.
 ENV MINDEXD_PATH /data/mindexd
 RUN mkdir -p $MINDEXD_PATH \
   && adduser -D -h $MINDEXD_PATH -u 1000 -G users mindexd \
   && chown mindexd:users $MINDEXD_PATH
+
+COPY --from=0 $SRC_DIR/api/mindexd/pb/mindexd.swagger.json /swagger.json
 
 # Switch to a non-privileged user.
 USER mindexd

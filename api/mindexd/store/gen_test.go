@@ -36,9 +36,9 @@ func TestMinerIndexGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check we have 3 miners.
-	count, err := s.SummaryCount(ctx)
+	all, err := s.GetAllMiners(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 2, count)
+	require.Len(t, all, 2)
 
 	// Check non-existant miner
 	_, err = s.GetMinerInfo(ctx, "i-dont-exist")
@@ -52,6 +52,14 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.False(t, f0100.UpdatedAt.IsZero())
 		require.False(t, f0100.Textile.UpdatedAt.IsZero())
 		require.Len(t, f0100.Textile.Regions, 3)
+		require.Equal(t, 4, f0100.Textile.DealsSummary.Total)
+		require.Equal(t, int64(303), f0100.Textile.DealsSummary.Last.Unix())
+		require.Equal(t, 1, f0100.Textile.DealsSummary.Failures)
+		require.Equal(t, int64(304), f0100.Textile.DealsSummary.LastFailure.Unix())
+		require.Equal(t, 4, f0100.Textile.RetrievalsSummary.Total)
+		require.Equal(t, int64(1003), f0100.Textile.RetrievalsSummary.Last.Unix())
+		require.Equal(t, 2, f0100.Textile.RetrievalsSummary.Failures)
+		require.Equal(t, int64(1012), f0100.Textile.RetrievalsSummary.LastFailure.Unix())
 
 		// <south-america>
 		f0100_south_america := f0100.Textile.Regions["005"]
@@ -74,6 +82,10 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.Equal(t, int64(56000), f0100_south_america.Deals.TailSealed[0].SealedAt.Unix())
 
 		// !Retrievals
+		require.Equal(t, 2, f0100_south_america.Retrievals.Total)
+		require.Equal(t, 1, f0100_south_america.Retrievals.Failures)
+		require.Equal(t, int64(1002), f0100_south_america.Retrievals.Last.Unix())
+		require.Equal(t, int64(1011), f0100_south_america.Retrievals.LastFailure.Unix())
 		require.Len(t, f0100_south_america.Retrievals.TailTransfers, 2)
 		require.Equal(t, float64(10), f0100_south_america.Retrievals.TailTransfers[0].MiBPerSec)
 		require.Equal(t, int64(1010), f0100_south_america.Retrievals.TailTransfers[0].TransferedAt.Unix())
@@ -99,6 +111,10 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.Equal(t, int64(38000), f0100_north_america.Deals.TailSealed[0].SealedAt.Unix())
 
 		// !Retrievals
+		require.Equal(t, 2, f0100_north_america.Retrievals.Total)
+		require.Equal(t, 1, f0100_north_america.Retrievals.Failures)
+		require.Equal(t, int64(1003), f0100_north_america.Retrievals.Last.Unix())
+		require.Equal(t, int64(1012), f0100_north_america.Retrievals.LastFailure.Unix())
 		require.Len(t, f0100_north_america.Retrievals.TailTransfers, 1)
 		require.Equal(t, float64(6.25), f0100_north_america.Retrievals.TailTransfers[0].MiBPerSec)
 		require.Equal(t, int64(1016), f0100_north_america.Retrievals.TailTransfers[0].TransferedAt.Unix())
@@ -120,6 +136,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 
 		// !Retrievals
 		require.Len(t, f0100_africa.Retrievals.TailTransfers, 0)
+
 		// <africa>
 	}
 
@@ -131,6 +148,15 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.False(t, f0101.UpdatedAt.IsZero())
 		require.False(t, f0101.Textile.UpdatedAt.IsZero())
 		require.Len(t, f0101.Textile.Regions, 3)
+		require.Equal(t, 2, f0101.Textile.DealsSummary.Total)
+		require.Equal(t, int64(311), f0101.Textile.DealsSummary.Last.Unix())
+		require.Equal(t, 2, f0101.Textile.DealsSummary.Failures)
+		require.Equal(t, int64(311), f0101.Textile.DealsSummary.Last.Unix())
+		require.Equal(t, 1, f0101.Textile.RetrievalsSummary.Total)
+		require.Equal(t, int64(1050), f0101.Textile.RetrievalsSummary.Last.Unix())
+		require.Equal(t, 1, f0101.Textile.RetrievalsSummary.Failures)
+		require.Equal(t, int64(1042), f0101.Textile.RetrievalsSummary.LastFailure.Unix())
+
 		// <south-america>
 		f0101_south_america := f0101.Textile.Regions["005"]
 		// !Deals
@@ -138,6 +164,10 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.Len(t, f0101_south_america.Deals.TailSealed, 0)
 
 		// !Retrievals
+		require.Equal(t, 1, f0101_south_america.Retrievals.Total)
+		require.Equal(t, 0, f0101_south_america.Retrievals.Failures)
+		require.Equal(t, int64(1050), f0101_south_america.Retrievals.Last.Unix())
+		require.Equal(t, time.Time{}.Unix(), f0101_south_america.Retrievals.LastFailure.Unix())
 		require.Len(t, f0101_south_america.Retrievals.TailTransfers, 1)
 		require.Equal(t, float64(0.1), f0101_south_america.Retrievals.TailTransfers[0].MiBPerSec)
 		require.Equal(t, int64(1010), f0101_south_america.Retrievals.TailTransfers[0].TransferedAt.Unix())
@@ -160,6 +190,11 @@ func TestMinerIndexGeneration(t *testing.T) {
 		require.Equal(t, int64(38000), f0101_north_america.Deals.TailSealed[0].SealedAt.Unix())
 
 		// !Retrievals
+		require.Equal(t, 0, f0101_north_america.Retrievals.Total)
+		require.Equal(t, 1, f0101_north_america.Retrievals.Failures)
+		require.Equal(t, time.Time{}.Unix(), f0101_north_america.Retrievals.Last.Unix())
+		require.Equal(t, int64(1042), f0101_north_america.Retrievals.LastFailure.Unix())
+
 		require.Len(t, f0101_north_america.Retrievals.TailTransfers, 0)
 		// </north-america>
 
@@ -181,7 +216,7 @@ func TestMinerIndexGeneration(t *testing.T) {
 	}
 
 	// Get all testing
-	all, err := s.GetAllMiners(ctx)
+	all, err = s.GetAllMiners(ctx)
 	require.NoError(t, err)
 	require.Len(t, all, 2)
 }
@@ -333,6 +368,14 @@ var (
 			UpdatedAt:         time.Unix(1001, 0),
 		},
 		{
+			ID: "0_5",
+			DealInfo: model.PowRetrievalRecordDealInfo{
+				Miner: "f0100",
+			},
+			Failed:    true,
+			UpdatedAt: time.Unix(1011, 0),
+		},
+		{
 			ID: "1_1",
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0101",
@@ -364,11 +407,20 @@ var (
 			BytesReceived:     1024 * 1024 * 100,
 		},
 		{
+			ID: "0_6",
+			DealInfo: model.PowRetrievalRecordDealInfo{
+				Miner: "f0100",
+			},
+			Failed:    true,
+			UpdatedAt: time.Unix(1012, 0),
+		},
+		{
 			ID: "1_2",
 			DealInfo: model.PowRetrievalRecordDealInfo{
 				Miner: "f0101",
 			},
-			Failed: true, // Fail for f0101, so no data for this region.
+			Failed:    true, // Fail for f0101, so no data for this region.
+			UpdatedAt: time.Unix(1042, 0),
 		},
 	}
 )

@@ -27,16 +27,34 @@ type MetadataInfo struct {
 type FilecoinInfo struct {
 	RelativePower    float64   `bson:"relative_power"`
 	AskPrice         string    `bson:"ask_price"`
-	AskVerifiedPrice string    `bson:"ask_verifed_price"`
+	AskVerifiedPrice string    `bson:"ask_verified_price"`
 	MinPieceSize     int64     `bson:"min_piece_size"`
 	MaxPieceSize     int64     `bson:"max_piece_size"`
 	SectorSize       int64     `bson:"sector_size"`
+	ActiveSectors    int64     `bson:"active_sectors"`
+	FaultySectors    int64     `bson:"faulty_sectors"`
 	UpdatedAt        time.Time `bson:"updated_at"`
 }
 
 type TextileInfo struct {
-	Regions   map[string]TextileRegionInfo `bson:"regions"`
-	UpdatedAt time.Time                    `bson:"updated_at"`
+	Regions           map[string]TextileRegionInfo `bson:"regions"`
+	DealsSummary      TextileDealsSummary          `bson:"deals_summary"`
+	RetrievalsSummary TextileRetrievalSummary      `bson:"retrievals_summary"`
+	UpdatedAt         time.Time                    `bson:"updated_at"`
+}
+
+type TextileDealsSummary struct {
+	Total       int       `bson:"total"`
+	Last        time.Time `bson:"last"`
+	Failures    int       `bson:"failures"`
+	LastFailure time.Time `bson:"last_failure"`
+}
+
+type TextileRetrievalSummary struct {
+	Total       int       `bson:"total"`
+	Last        time.Time `bson:"last"`
+	Failures    int       `bson:"failures"`
+	LastFailure time.Time `bson:"last_failure"`
 }
 
 type TextileRegionInfo struct {

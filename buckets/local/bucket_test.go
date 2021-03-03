@@ -408,7 +408,7 @@ func TestBucket_Watch(t *testing.T) {
 	stopTextile1 := apitest.MakeTextileWithConfig(t, tconf, apitest.WithoutAutoShutdown())
 	target, err := tutil.TCPAddrFromMultiAddr(tconf.AddrAPI)
 	require.NoError(t, err)
-	clients := cmd.NewClients(target, false)
+	clients := cmd.NewClients(target, false, "")
 	buckets1 := NewBuckets(clients, DefaultConfConfig())
 	defer clients.Close()
 

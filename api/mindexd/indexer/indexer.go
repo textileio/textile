@@ -46,7 +46,7 @@ func New(pow *pow.Client, sub <-chan struct{}, powAdminToken string, store *stor
 		daemonSub:       sub,
 	}
 
-	i.runDaemon()
+	go i.runDaemon()
 
 	return i, nil
 }
@@ -68,16 +68,18 @@ func (i *Indexer) runDaemon() {
 	}
 
 	go func() {
-		select {
-		case <-i.daemonCtx.Done():
-			log.Infof("daemon shutting down")
-			return
-		case <-time.After(i.cfg.daemonFrequency):
-			log.Infof("daemon ticker fired")
-			collect <- struct{}{}
-		case <-i.daemonSub:
-			log.Infof("received new records notification")
-			collect <- struct{}{}
+		for {
+			select {
+			case <-i.daemonCtx.Done():
+				log.Infof("daemon shutting down")
+				return
+			case <-time.After(i.cfg.daemonFrequency):
+				log.Infof("daemon ticker fired")
+				collect <- struct{}{}
+			case <-i.daemonSub:
+				log.Infof("received new records notification")
+				collect <- struct{}{}
+			}
 		}
 	}()
 
@@ -87,16 +89,19 @@ func (i *Indexer) runDaemon() {
 			log.Errorf("get last index snapshot: %s", err)
 			return
 		}
-		select {
-		case <-i.daemonCtx.Done():
-			log.Infof("daemon snapshot shutting down")
-		case <-time.After(15 * time.Minute):
-			if time.Now().Sub(lastSnapshot) > i.cfg.daemonSnapshotMaxAge {
-				if err := i.store.GenerateMinerIndexSnapshot(i.daemonCtx); err != nil {
-					log.Errorf("generating index snapshot: %s", err)
+		for {
+			select {
+			case <-i.daemonCtx.Done():
+				log.Infof("daemon snapshot shutting down")
+				return
+			case <-time.After(15 * time.Minute):
+				if time.Now().Sub(lastSnapshot) > i.cfg.daemonSnapshotMaxAge {
+					if err := i.store.GenerateMinerIndexSnapshot(i.daemonCtx); err != nil {
+						log.Errorf("generating index snapshot: %s", err)
+					}
 				}
+				lastSnapshot = time.Now()
 			}
-			lastSnapshot = time.Now()
 		}
 	}()
 
@@ -106,7 +111,9 @@ func (i *Indexer) runDaemon() {
 			log.Infof("closing daemon")
 			return
 		case <-collect:
-			i.generateIndex(i.daemonCtx)
+			if err := i.generateIndex(i.daemonCtx); err != nil {
+				log.Errorf("generating index: %s", err)
+			}
 		}
 	}
 }

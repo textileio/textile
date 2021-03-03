@@ -57,10 +57,16 @@ func (i *Indexer) updateOnChainMinersInfo(ctx context.Context, miners []string) 
 			MinPieceSize:     int64(mi.MinPieceSize),
 			MaxPieceSize:     int64(mi.MaxPieceSize),
 			SectorSize:       int64(mi.SectorSize),
+			ActiveSectors:    int64(mi.SectorsActive),
+			FaultySectors:    int64(mi.SectorsFaulty),
 			UpdatedAt:        time.Now(),
 		}
 
 		if err := i.store.PutFilecoinInfo(ctx, mi.Address, onchain); err != nil {
+			log.Errorf("put miner on-chain info in store: %s", err)
+		}
+
+		if err := i.store.PutMetadataLocation(ctx, mi.Address, mi.Location); err != nil {
 			log.Errorf("put miner on-chain info in store: %s", err)
 		}
 	}

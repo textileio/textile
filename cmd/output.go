@@ -98,6 +98,11 @@ func ErrCheck(err error, args ...interface{}) {
 
 func RenderTable(header []string, data [][]string) {
 	fmt.Println()
+	RenderTableWithoutNewLines(header, data)
+	fmt.Println()
+}
+
+func RenderTableWithoutNewLines(header []string, data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoWrapText(false)
@@ -118,7 +123,6 @@ func RenderTable(header []string, data [][]string) {
 	table.SetHeaderColor(headersColors...)
 	table.AppendBulk(data)
 	table.Render()
-	fmt.Println()
 }
 
 func HandleInterrupt(stop func()) {

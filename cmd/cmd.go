@@ -15,6 +15,7 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	fc "github.com/textileio/textile/v2/api/filecoin/client"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
+	mi "github.com/textileio/textile/v2/api/mindexd/client"
 	uc "github.com/textileio/textile/v2/api/usersd/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -80,48 +81,64 @@ func (cc ConfConfig) NewConfig(pth string, flags map[string]Flag, global bool) (
 
 // Clients wraps all the possible hubd/buckd clients.
 type Clients struct {
-	Buckets  *bc.Client
-	Threads  *tc.Client
-	Hub      *hc.Client
-	Users    *uc.Client
-	Filecoin *fc.Client
+	Buckets    *bc.Client
+	Threads    *tc.Client
+	Hub        *hc.Client
+	Users      *uc.Client
+	Filecoin   *fc.Client
+	MinerIndex *mi.Client
 }
 
 // NewClients returns a new clients object pointing to the target address.
 // If isHub is true, the hub's admin and user clients are also created.
-func NewClients(target string, isHub bool) *Clients {
-	var opts []grpc.DialOption
+func NewClients(hubTarget string, isHub bool, minerIndexTarget string) *Clients {
+	var hubOpts []grpc.DialOption
 	auth := common.Credentials{}
-	if strings.Contains(target, "443") {
+	if strings.Contains(hubTarget, "443") {
 		creds := credentials.NewTLS(&tls.Config{})
-		opts = append(opts, grpc.WithTransportCredentials(creds))
+		hubOpts = append(hubOpts, grpc.WithTransportCredentials(creds))
 		auth.Secure = true
 	} else {
-		opts = append(opts, grpc.WithInsecure())
+		hubOpts = append(hubOpts, grpc.WithInsecure())
 	}
-	opts = append(opts, grpc.WithPerRPCCredentials(auth))
+	hubOpts = append(hubOpts, grpc.WithPerRPCCredentials(auth))
 
 	c := &Clients{}
 	var err error
-	c.Threads, err = tc.NewClient(target, opts...)
+	c.Threads, err = tc.NewClient(hubTarget, hubOpts...)
 	if err != nil {
 		Fatal(err)
 	}
-	c.Buckets, err = bc.NewClient(target, opts...)
+	c.Buckets, err = bc.NewClient(hubTarget, hubOpts...)
 	if err != nil {
 		Fatal(err)
 	}
 	if isHub {
-		c.Hub, err = hc.NewClient(target, opts...)
+		c.Hub, err = hc.NewClient(hubTarget, hubOpts...)
 		if err != nil {
 			Fatal(err)
 		}
-		c.Users, err = uc.NewClient(target, opts...)
+		c.Users, err = uc.NewClient(hubTarget, hubOpts...)
+		if err != nil {
+			Fatal(err)
+		}
+
+		var mindexOpts []grpc.DialOption
+		auth := common.Credentials{}
+		if strings.Contains(minerIndexTarget, "443") {
+			creds := credentials.NewTLS(&tls.Config{})
+			mindexOpts = append(hubOpts, grpc.WithTransportCredentials(creds))
+			auth.Secure = true
+		} else {
+			mindexOpts = append(mindexOpts, grpc.WithInsecure())
+		}
+
+		c.MinerIndex, err = mi.NewClient(minerIndexTarget, mindexOpts...)
 		if err != nil {
 			Fatal(err)
 		}
 	}
-	c.Filecoin, err = fc.NewClient(target, opts...)
+	c.Filecoin, err = fc.NewClient(hubTarget, hubOpts...)
 	if err != nil {
 		Fatal(err)
 	}

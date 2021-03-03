@@ -1,0 +1,555 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Textile Miner's Index",
+    "version": "1.0",
+    "contact": {
+      "name": "Textile",
+      "url": "https://github.com/grpc-ecosystem/grpc-gateway",
+      "email": "contact@textile.io"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://raw.githubusercontent.com/textileio/textile/master/LICENSE"
+    }
+  },
+  "tags": [
+    {
+      "name": "APIService"
+    }
+  ],
+  "schemes": [
+    "https",
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/calculator/calculate": {
+      "get": {
+        "operationId": "APIService_CalculateDealPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbCalculateDealPriceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddresses",
+            "description": "List of miner addresses to calculate deal costs",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "dataSizeBytes",
+            "description": "Data size in bytes of the data to store",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "durationDays",
+            "description": "Duration in days of the deal",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64",
+            "default": "180"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    },
+    "/v1/index/miner/{minerAddress}": {
+      "get": {
+        "operationId": "APIService_GetMinerInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbGetMinerInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddress",
+            "description": "Miner address from which to get index information",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    },
+    "/v1/index/query": {
+      "get": {
+        "operationId": "APIService_QueryIndex",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbQueryIndexResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "filters.minerLocation",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sort.ascending",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "sort.textileRegion",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sort.field",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "TEXTILE_DEALS_TOTAL_SUCCESSFUL",
+              "TEXTILE_DEALS_LAST_SUCCESSFUL",
+              "TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL",
+              "TEXTILE_RETRIEVALS_LAST_SUCCESSFUL",
+              "ASK_PRICE",
+              "VERIFIED_ASK_PRICE",
+              "ACTIVE_SECTORS"
+            ],
+            "default": "TEXTILE_DEALS_TOTAL_SUCCESSFUL"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "APIService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "pbCalculateDealPriceMiner": {
+      "type": "object",
+      "properties": {
+        "miner": {
+          "type": "string",
+          "description": "Miner address of this calculations."
+        },
+        "totalCost": {
+          "type": "string",
+          "description": "Total cost of the deal for the unverified price for the provided duration"
+        },
+        "verifiedTotalCost": {
+          "type": "string",
+          "description": "The verified-client total cost of the deal for the provided duration"
+        },
+        "price": {
+          "type": "string",
+          "description": "The price in attoFIL/GiB/epoch for unverified clients"
+        },
+        "verifiedPrice": {
+          "type": "string",
+          "description": "The price in attoFIL/GiB/epoch for verified clients"
+        }
+      }
+    },
+    "pbCalculateDealPriceResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbCalculateDealPriceMiner"
+          }
+        },
+        "paddedSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationEpochs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbDealsSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pbFilecoinInfo": {
+      "type": "object",
+      "properties": {
+        "relativePower": {
+          "type": "number",
+          "format": "double"
+        },
+        "askPrice": {
+          "type": "string"
+        },
+        "askVerifiedPrice": {
+          "type": "string"
+        },
+        "minPieceSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxPieceSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sectorSize": {
+          "type": "string",
+          "format": "int64"
+        },
+        "activeSectors": {
+          "type": "string",
+          "format": "int64"
+        },
+        "faultySectors": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pbGetMinerInfoResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/pbMinerIndexInfo"
+        }
+      }
+    },
+    "pbMetadataInfo": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        }
+      }
+    },
+    "pbMinerIndexInfo": {
+      "type": "object",
+      "properties": {
+        "minerAddr": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/pbMetadataInfo"
+        },
+        "filecoin": {
+          "$ref": "#/definitions/pbFilecoinInfo"
+        },
+        "textile": {
+          "$ref": "#/definitions/pbTextileInfo"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Domain"
+    },
+    "pbQueryIndexRequestFilters": {
+      "type": "object",
+      "properties": {
+        "minerLocation": {
+          "type": "string"
+        }
+      }
+    },
+    "pbQueryIndexRequestSort": {
+      "type": "object",
+      "properties": {
+        "ascending": {
+          "type": "boolean"
+        },
+        "textileRegion": {
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/definitions/pbQueryIndexRequestSortField"
+        }
+      }
+    },
+    "pbQueryIndexRequestSortField": {
+      "type": "string",
+      "enum": [
+        "TEXTILE_DEALS_TOTAL_SUCCESSFUL",
+        "TEXTILE_DEALS_LAST_SUCCESSFUL",
+        "TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL",
+        "TEXTILE_RETRIEVALS_LAST_SUCCESSFUL",
+        "ASK_PRICE",
+        "VERIFIED_ASK_PRICE",
+        "ACTIVE_SECTORS"
+      ],
+      "default": "TEXTILE_DEALS_TOTAL_SUCCESSFUL"
+    },
+    "pbQueryIndexResponse": {
+      "type": "object",
+      "properties": {
+        "miners": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbQueryIndexResponseMiner"
+          }
+        }
+      }
+    },
+    "pbQueryIndexResponseMiner": {
+      "type": "object",
+      "properties": {
+        "miner": {
+          "$ref": "#/definitions/pbMinerIndexInfo"
+        }
+      }
+    },
+    "pbRetrievalsSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pbSealedDurationMins": {
+      "type": "object",
+      "properties": {
+        "sealedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationSeconds": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pbTextileDealsInfo": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tailTransfers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbTransferMiBPerSec"
+          }
+        },
+        "tailSealed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbSealedDurationMins"
+          }
+        }
+      }
+    },
+    "pbTextileInfo": {
+      "type": "object",
+      "properties": {
+        "regions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/pbTextileRegionInfo"
+          }
+        },
+        "dealsSummary": {
+          "$ref": "#/definitions/pbDealsSummary"
+        },
+        "retrievalsSummary": {
+          "$ref": "#/definitions/pbRetrievalsSummary"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pbTextileRegionInfo": {
+      "type": "object",
+      "properties": {
+        "deals": {
+          "$ref": "#/definitions/pbTextileDealsInfo"
+        },
+        "retrievals": {
+          "$ref": "#/definitions/pbTextileRetrievalsInfo"
+        }
+      }
+    },
+    "pbTextileRetrievalsInfo": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failures": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastFailure": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tailTransfers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbTransferMiBPerSec"
+          }
+        }
+      }
+    },
+    "pbTransferMiBPerSec": {
+      "type": "object",
+      "properties": {
+        "transferedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mibPerSec": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

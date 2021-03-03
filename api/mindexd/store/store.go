@@ -92,5 +92,48 @@ func (s *Store) ensureIndexes() error {
 		return fmt.Errorf("creating retrieval records index: %s", err)
 	}
 
+	// Index indexes
+	_, err = s.idxc.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{bson.E{Key: "metadata.location", Value: 1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "filecoin.ask_price", Value: 1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "filecoin.ask_verified_price", Value: 1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "filecoin.active_sectors", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.deals_summary.total", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.deals_summary.last", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.retrievals_summary.total", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.retrievals_summary.last", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.region.021.deals.total", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.region.021.deals.last", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.region.021.retrievals.total", Value: -1}},
+		},
+		{
+			Keys: bson.D{bson.E{Key: "textile.region.021.retrievals.last", Value: -1}},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("creating retrieval records index: %s", err)
+	}
+
 	return nil
 }

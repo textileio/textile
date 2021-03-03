@@ -91,6 +91,8 @@ var (
 		DealMinDuration: powUtil.MinDealDuration,
 		FastRetrieval:   true,
 		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
+		MaxPrice:        100_000_000_000,
+		VerifiedDeal:    false,
 	}
 )
 
@@ -1950,6 +1952,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	}
 
 	var wg sync.WaitGroup
+	var ctxLock sync.RWMutex
 	addedCh := make(chan addedFile)
 	doneCh := make(chan struct{})
 	errCh := make(chan error)
@@ -1972,6 +1975,9 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 					errCh <- fmt.Errorf("parsing path: %v", err)
 					return
 				}
+				ctxLock.RLock()
+				ctx := ctx
+				ctxLock.RUnlock()
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
 					wg.Add(1)
 					buck.UpdatedAt = time.Now().UnixNano()
@@ -2038,7 +2044,8 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 
 			var dir path.Resolved
 			if buck.IsPrivate() {
-				ctx, dir, err = s.insertNodeAtPath(
+				var ctx2 context.Context
+				ctx2, dir, err = s.insertNodeAtPath(
 					ctx,
 					fn,
 					path.Join(path.New(buck.Path), res.path),
@@ -2047,6 +2054,10 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("inserting added node: %v", err))
 				}
+				ctxLock.Lock()
+				ctx = ctx2
+				ctxLock.Unlock()
+
 			} else {
 				dir, err = s.IPFSClient.Object().AddLink(
 					ctx,
@@ -2058,10 +2069,13 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("adding bucket link: %v", err))
 				}
-				ctx, err = s.updateOrAddPin(ctx, path.New(buck.Path), dir)
+				ctx2, err := s.updateOrAddPin(ctx, path.New(buck.Path), dir)
 				if err != nil {
 					return saveWithErr(fmt.Errorf("updating bucket pin: %v", err))
 				}
+				ctxLock.Lock()
+				ctx = ctx2
+				ctxLock.Unlock()
 			}
 			buck.Path = dir.String()
 			buck.UpdatedAt = time.Now().UnixNano()
@@ -3346,6 +3360,7 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) *mdb.ArchiveConfig {
 			MaxPrice:        pbConfig.MaxPrice,
 			FastRetrieval:   pbConfig.FastRetrieval,
 			DealStartOffset: pbConfig.DealStartOffset,
+			VerifiedDeal:    pbConfig.VerifiedDeal,
 		}
 		if pbConfig.Renew != nil {
 			config.Renew = mdb.ArchiveRenew{
@@ -3374,6 +3389,7 @@ func toFilConfig(config *mdb.ArchiveConfig) *userPb.FilConfig {
 			Threshold: int64(config.Renew.Threshold),
 		},
 		TrustedMiners: config.TrustedMiners,
+		VerifiedDeal:  config.VerifiedDeal,
 	}
 }
 
