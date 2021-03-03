@@ -91,6 +91,7 @@ var (
 		DealMinDuration: powUtil.MinDealDuration,
 		FastRetrieval:   true,
 		DealStartOffset: 72 * 60 * 60 / powUtil.EpochDurationSeconds, // 72hs
+		MaxPrice:        100_000_000_000,
 	}
 )
 
