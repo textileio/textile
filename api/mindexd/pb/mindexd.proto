@@ -130,7 +130,7 @@ message QueryIndexResponseMiner {
 // rpc GetMinerInfo
 message GetMinerInfoRequest {
 	string miner_address = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-		description: "Miner address from which get index information",
+		description: "Miner address from which to get index information",
 	}];
 }
 

@@ -101,7 +101,7 @@
         "parameters": [
           {
             "name": "minerAddress",
-            "description": "Miner address from which get index information",
+            "description": "Miner address from which to get index information",
             "in": "path",
             "required": true,
             "type": "string"
@@ -377,25 +377,8 @@
     "pbQueryIndexResponseMiner": {
       "type": "object",
       "properties": {
-        "address": {
-          "type": "string"
-        },
-        "location": {
-          "type": "string"
-        },
-        "askPrice": {
-          "type": "string"
-        },
-        "askVerifiedPrice": {
-          "type": "string"
-        },
-        "minPieceSize": {
-          "type": "string",
-          "format": "int64"
-        },
-        "textileDealLastSuccessful": {
-          "type": "string",
-          "format": "date-time"
+        "miner": {
+          "$ref": "#/definitions/pbMinerIndexInfo"
         }
       }
     },

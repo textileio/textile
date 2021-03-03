@@ -105,7 +105,7 @@ func (c *Collector) runDaemon() {
 			if totalImported > 0 {
 				c.notifySubscribers()
 			}
-			log.Infof("daemon finally imported %d records", totalImported)
+			log.Infof("daemon finished importing %d records", totalImported)
 		}
 	}
 }

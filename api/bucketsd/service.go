@@ -2043,7 +2043,8 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 
 			var dir path.Resolved
 			if buck.IsPrivate() {
-				ctx, dir, err = s.insertNodeAtPath(
+				var ctx2 context.Context
+				ctx2, dir, err = s.insertNodeAtPath(
 					ctx,
 					fn,
 					path.Join(path.New(buck.Path), res.path),
@@ -2052,6 +2053,10 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("inserting added node: %v", err))
 				}
+				ctxLock.Lock()
+				ctx = ctx2
+				ctxLock.Unlock()
+
 			} else {
 				dir, err = s.IPFSClient.Object().AddLink(
 					ctx,
