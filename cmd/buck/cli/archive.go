@@ -38,7 +38,7 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 	Use:     "set-default-config [(optional)file]",
 	Short:   "Set the default archive storage configuration for the specified Bucket.",
 	Long:    `Set the default archive storage configuration for the specified Bucket from a file, stdin, or options.`,
-	Example: "hub buck archive set-default-config --repFactor=3 --fast-retrieval --verified-deal --trusted-miners=f08240,f023467,f09848",
+	Example: "hub buck archive set-default-config --rep-factor=3 --fast-retrieval --verified-deal --trusted-miners=f08240,f023467,f09848",
 	Args:    cobra.RangeArgs(0, 1),
 	Run: func(c *cobra.Command, args []string) {
 		config := local.ArchiveConfig{}
