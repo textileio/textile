@@ -35,30 +35,72 @@ var defaultArchiveConfigCmd = &cobra.Command{
 }
 
 var setDefaultArchiveConfigCmd = &cobra.Command{
-	Use:   "set-default-config [(optional)file]",
-	Short: "Set the default archive storage configuration for the specified Bucket from a file or stdin.",
-	Long:  `Set the default archive storage configuration for the specified Bucket from a file or stdin.`,
-	Args:  cobra.RangeArgs(0, 1),
+	Use:     "set-default-config [(optional)file]",
+	Short:   "Set the default archive storage configuration for the specified Bucket.",
+	Long:    `Set the default archive storage configuration for the specified Bucket from a file, stdin, or options.`,
+	Example: "hub buck archive set-default-config --repFactor=3 --fast-retrieval --verified-deal --trusted-miners=f08240,f023467,f09848",
+	Args:    cobra.RangeArgs(0, 1),
 	Run: func(c *cobra.Command, args []string) {
-		var reader io.Reader
-		if len(args) > 0 {
+		config := local.ArchiveConfig{}
+		stdIn, err := c.Flags().GetBool("")
+		cmd.ErrCheck(err)
+		if stdIn {
+			// Read config json from stdin
+			reader := c.InOrStdin()
+			buf := new(bytes.Buffer)
+			_, err := buf.ReadFrom(reader)
+			cmd.ErrCheck(err)
+			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
+		} else if len(args) > 0 {
+			// Read config json from path
 			file, err := os.Open(args[0])
 			defer func() {
 				err := file.Close()
 				cmd.ErrCheck(err)
 			}()
-			reader = file
+			reader := file
 			cmd.ErrCheck(err)
+			buf := new(bytes.Buffer)
+			_, err = buf.ReadFrom(reader)
+			cmd.ErrCheck(err)
+			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
 		} else {
-			reader = c.InOrStdin()
+			repFactor, err := c.Flags().GetInt("rep-factor")
+			cmd.ErrCheck(err)
+			config.RepFactor = repFactor
+
+			dealMinDuration, err := c.Flags().GetInt64("deal-min-duration")
+			cmd.ErrCheck(err)
+			config.DealMinDuration = dealMinDuration
+
+			maxPrice, err := c.Flags().GetUint64("max-price")
+			cmd.ErrCheck(err)
+			config.MaxPrice = maxPrice
+
+			excludedMiners, err := c.Flags().GetStringSlice("excluded-miners")
+			cmd.ErrCheck(err)
+			config.ExcludedMiners = excludedMiners
+
+			trustedMiners, err := c.Flags().GetStringSlice("trusted-miners")
+			cmd.ErrCheck(err)
+			config.TrustedMiners = trustedMiners
+
+			countryCodes, err := c.Flags().GetStringSlice("country-codes")
+			cmd.ErrCheck(err)
+			config.CountryCodes = countryCodes
+
+			fastRetrieval, err := c.Flags().GetBool("fast-retrieval")
+			cmd.ErrCheck(err)
+			config.FastRetrieval = fastRetrieval
+
+			verifiedDeal, err := c.Flags().GetBool("verified-deal")
+			cmd.ErrCheck(err)
+			config.VerifiedDeal = verifiedDeal
+
+			dealStartOffset, err := c.Flags().GetInt64("deal-start-offset")
+			cmd.ErrCheck(err)
+			config.DealStartOffset = dealStartOffset
 		}
-
-		buf := new(bytes.Buffer)
-		_, err := buf.ReadFrom(reader)
-		cmd.ErrCheck(err)
-
-		config := local.ArchiveConfig{}
-		cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
 
 		conf, err := bucks.NewConfigFromCmd(c, ".")
 		cmd.ErrCheck(err)
