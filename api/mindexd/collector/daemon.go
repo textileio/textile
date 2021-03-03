@@ -35,19 +35,17 @@ func (c *Collector) collectTargets(ctx context.Context) int {
 				return
 			}
 
-			log.Infof("collecting new storage-deal records from %s", source.Name)
 			countSDR, err := c.collectNewStorageDealRecords(ctx, client, source)
 			if err != nil {
 				log.Errorf("collecting new storage deal records from %s: %s", source.Name, err)
 			}
-			log.Infof("collected %d storeage-deal records", countSDR)
+			log.Infof("collected %d storage-deal records from %s", countSDR, source.Name)
 
-			log.Infof("collecting new retrieval records from %s", source.Name)
 			countRR, err := c.collectNewRetrievalRecords(ctx, client, source)
 			if err != nil {
 				log.Errorf("collecting new retrieval records from %s: %s", source.Name, err)
 			}
-			log.Infof("collected %d retrieval records", countRR)
+			log.Infof("collected %d retrieval records from %s", countRR, source.Name)
 
 			lock.Lock()
 			countImported += countSDR + countRR
