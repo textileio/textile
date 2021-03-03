@@ -38,6 +38,9 @@ type ArchiveConfig struct {
 	// if miners accept deals, since they should seal fast enough to satisfy
 	// this constraint.
 	DealStartOffset int64 `json:"dealStartOffset"`
+	// verifiedDeal indicates that new deals will be verified-deals, using
+	// available data-cap from the wallet address.
+	VerifiedDeal bool `json:"verifiedDeal"`
 }
 
 // ArchiveRenew contains renew configuration for a ArchiveConfig.
@@ -78,6 +81,7 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) ArchiveConfig {
 		MaxPrice:        pbConfig.MaxPrice,
 		FastRetrieval:   pbConfig.FastRetrieval,
 		DealStartOffset: pbConfig.DealStartOffset,
+		VerifiedDeal:    pbConfig.VerifiedDeal,
 	}
 	if pbConfig.Renew != nil {
 		config.Renew = ArchiveRenew{

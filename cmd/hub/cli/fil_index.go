@@ -289,7 +289,14 @@ var filCalculateDealPrice = &cobra.Command{
 		cmd.Message("Duration in epochs: %d", res.DurationEpochs)
 		cmd.RenderTable([]string{"miner", "cost", "verified-client cost"}, data)
 
-		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Lotus CLI --")))
+		fmt.Printf("%s\n", aurora.Bold(aurora.Green("-- Buckets --")))
+		for _, p := range res.Results {
+			cmd.Message("hub buck archive set-default-config --fast-retrieval --trusted-miners %s", p.Miner)
+			cmd.Message("hub buck archive set-default-config --fast-retrieval --verified-deal --trusted-miners %s", p.Miner)
+			fmt.Println()
+		}
+
+		fmt.Printf("\n%s\n", aurora.Bold(aurora.Green("-- Lotus CLI --")))
 		for _, p := range res.Results {
 			cmd.Message("lotus client deal --fast-retrieval <data-cid> %s %s %d", p.Miner, p.TotalCost, res.DurationEpochs)
 			cmd.Message("lotus client deal --fast-retrieval --verified-deal <data-cid> %s %s %d", p.Miner, p.VerifiedTotalCost, res.DurationEpochs)

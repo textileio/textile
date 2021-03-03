@@ -252,6 +252,7 @@ message ArchiveConfig {
     uint64 max_price = 7;
     bool fast_retrieval = 8;
     int64 deal_start_offset = 9;
+    bool verified_deal = 10;
 }
 
 message Archives {
