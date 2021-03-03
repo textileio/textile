@@ -123,9 +123,9 @@ func init() {
 		config.Flags["messageWaitTimeout"].DefValue.(time.Duration),
 		"Timeout for listening for messages to become active on chain")
 
-	rootCmd.PersistentFlags().Int64(
+	rootCmd.PersistentFlags().Uint64(
 		"messageConfidence",
-		config.Flags["messageConfidence"].DefValue.(int64),
+		config.Flags["messageConfidence"].DefValue.(uint64),
 		"Confidence, in epochs, used to consider a message active on chain",
 	)
 
