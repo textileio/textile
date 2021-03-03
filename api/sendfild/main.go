@@ -166,7 +166,7 @@ var rootCmd = &cobra.Command{
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
 		messageTimeout := config.Viper.GetDuration("message_timeout")
-		messageConfidence := config.Viper.GetInt64("message_confidence")
+		messageConfidence := config.Viper.GetUint64("message_confidence")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)
@@ -186,7 +186,7 @@ var rootCmd = &cobra.Command{
 			MongoUri:           mongoUri,
 			MongoDbName:        mongoDb,
 			MessageWaitTimeout: messageTimeout,
-			MessageConfidence:  uint64(messageConfidence),
+			MessageConfidence:  messageConfidence,
 			Debug:              debug,
 		}
 		api, err := service.New(ctx, conf)
