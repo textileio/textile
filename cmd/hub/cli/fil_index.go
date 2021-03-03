@@ -121,6 +121,7 @@ var filQueryMiners = &cobra.Command{
 					fmt.Sprintf("%d | %d", m.Miner.Filecoin.ActiveSectors, m.Miner.Filecoin.FaultySectors),
 					isoLocationToCountryName(m.Miner.Metadata.Location),
 					fmt.Sprintf("%d | %d", m.Miner.Textile.DealsSummary.Total, m.Miner.Textile.DealsSummary.Failures),
+					fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.DealsSummary.Last)),
 					fmt.Sprintf("%s", peekAndFormatTransferTimes(m.Miner.Textile)),
 					fmt.Sprintf("%s", peekAndFormatSealingTimes(m.Miner.Textile)),
 				}
@@ -136,7 +137,7 @@ var filQueryMiners = &cobra.Command{
 			}
 		}
 		if showFullDetails {
-			cmd.RenderTable([]string{"miner", "relative power", "raw/verified ask price", "min/max piece size", "sector size", "active/faulty sectors", "location", "textile total/failed deals", "last data-transfer", "last sealing-time"}, data)
+			cmd.RenderTable([]string{"miner", "relative power", "raw/verified ask price", "min/max piece size", "sector size", "active/faulty sectors", "location", "textile total/failed deals", "last successful", "last data-transfer", "last sealing-time"}, data)
 		} else {
 			cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal"}, data)
 		}
@@ -160,7 +161,7 @@ func peekAndFormatTransferTimes(ti *pb.TextileInfo) string {
 		return ""
 	}
 
-	return fmt.Sprintf("~%.02f MiB/s %s", *lastThroughput, prettyFormatTime(last))
+	return fmt.Sprintf("~%.02f MiB/s (%s)", *lastThroughput, humanize.Time(*last))
 }
 
 func peekAndFormatSealingTimes(ti *pb.TextileInfo) string {
@@ -181,7 +182,7 @@ func peekAndFormatSealingTimes(ti *pb.TextileInfo) string {
 		return ""
 	}
 
-	return fmt.Sprintf("~%.0f hours %s", *lastDuration, prettyFormatTime(last))
+	return fmt.Sprintf("~%.0f hours (%s)", *lastDuration, humanize.Time(*last))
 }
 
 var filGetMinerInfo = &cobra.Command{
