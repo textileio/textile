@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ type Service struct {
 	server        *grpc.Server
 	waiting       map[primitive.ObjectID]chan waitResult
 	config        Config
+	ticker        *time.Ticker
 	waitingLck    sync.Mutex
 }
 
@@ -76,6 +78,7 @@ type Config struct {
 	MongoDbName        string
 	MessageWaitTimeout time.Duration
 	MessageConfidence  uint64
+	RetryWaitFrequency time.Duration
 	Debug              bool
 }
 
@@ -132,6 +135,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		col:           col,
 		waiting:       make(map[primitive.ObjectID]chan waitResult),
 		config:        config,
+		ticker:        time.NewTicker(config.RetryWaitFrequency),
 	}
 
 	s.server = grpc.NewServer()
@@ -142,7 +146,49 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		}
 	}()
 
+	if err := s.waitAllQualifying(ctx, true); err != nil {
+		return nil, fmt.Errorf("calling waitAllQualifying: %v", err)
+	}
+
+	s.bindTicker(ctx)
+
 	return s, nil
+}
+
+func (s *Service) waitAllQualifying(ctx context.Context, isInitialRun bool) error {
+	filter := bson.M{"$and": bson.A{
+		bson.M{"message_state": bson.M{"$ne": pb.MessageState_MESSAGE_STATE_ACTIVE}},
+		bson.M{"message_state": bson.M{"$ne": pb.MessageState_MESSAGE_STATE_FAILED}},
+	}}
+	if !isInitialRun {
+		filter["waiting"] = false
+	}
+	cursor, err := s.col.Find(ctx, filter)
+	if err != nil {
+		return status.Errorf(codes.Internal, "querying txns: %v", err)
+	}
+	defer cursor.Close(ctx)
+	var txns []txn
+	err = cursor.All(ctx, &txns)
+	if err != nil {
+		return status.Errorf(codes.Internal, "decoding txns query results: %v", err)
+	}
+	log.Infof("found %v txns to initiate waiting on", len(txns))
+	for _, txn := range txns {
+		s.wait(txn)
+	}
+	return nil
+}
+
+func (s *Service) bindTicker(ctx context.Context) {
+	go func() {
+		for {
+			<-s.ticker.C
+			if err := s.waitAllQualifying(ctx, false); err != nil {
+				log.Errorf("waitAllQualifying from ticker: %v", err)
+			}
+		}
+	}()
 }
 
 func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.SendFilResponse, error) {
@@ -509,6 +555,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 			tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
 			tx.FailureMsg = fmt.Sprintf("getting latest message cid from txn: %v", err)
 			tx.UpdatedAt = time.Now()
+			log.Warnf("failing txn with err: %s", tx.FailureMsg)
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
@@ -521,6 +568,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 			tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
 			tx.FailureMsg = fmt.Sprintf("decoding latest message cid for txn: %v", err)
 			tx.UpdatedAt = time.Now()
+			log.Warnf("failing txn with err: %s", tx.FailureMsg)
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
@@ -538,11 +586,22 @@ func (s *Service) wait(tx txn) chan waitResult {
 		res, err := client.StateWaitMsg(ctx, c, s.config.MessageConfidence)
 		tx.Waiting = false
 		if err != nil {
+			// If for some reason the lotus node doesn't know about the cid, consider that a final error.
+			if strings.Contains(err.Error(), "block not found") {
+				tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
+				tx.FailureMsg = err.Error()
+				tx.UpdatedAt = time.Now()
+				log.Warnf("failing txn with err: %s", tx.FailureMsg)
+			}
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
 			}
-			ch <- waitResult{err: fmt.Errorf("calling StateWaitMsg: %v", err)}
+			if tx.MessageState == pb.MessageState_MESSAGE_STATE_FAILED {
+				ch <- waitResult{txn: tx}
+			} else {
+				ch <- waitResult{err: fmt.Errorf("calling StateWaitMsg: %v", err)}
+			}
 			return
 		}
 
@@ -550,6 +609,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 			tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
 			tx.FailureMsg = fmt.Sprintf("error exit code: %v", res.Receipt.ExitCode.Error())
 			tx.UpdatedAt = time.Now()
+			log.Warnf("failing txn with err: %s", tx.FailureMsg)
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
@@ -596,6 +656,8 @@ func (s *Service) wait(tx txn) chan waitResult {
 }
 
 func (s *Service) Close() {
+	s.ticker.Stop()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := s.col.Database().Client().Disconnect(ctx); err != nil {

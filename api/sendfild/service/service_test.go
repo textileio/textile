@@ -16,6 +16,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-ds-mongo/test"
+	"github.com/textileio/powergate/v2/lotus"
 	"github.com/textileio/powergate/v2/tests"
 	powutil "github.com/textileio/powergate/v2/util"
 	pb "github.com/textileio/textile/v2/api/sendfild/pb"
@@ -48,8 +49,35 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
+func TestRestartWaiting(t *testing.T) {
+	cb, lc, dAddr, cleanupLotus := requireSetupLotus(t, ctx, setupWithSpeed(1000))
+	defer cleanupLotus()
+
+	c, cleanupService := requireSetupService(t, ctx, cb, setupWithDbName("restart_waiting"))
+	addr := requireLotusAddress(t, ctx, lc)
+	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, true)
+	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
+	res, err := c.Summary(ctx, &pb.SummaryRequest{})
+	require.NoError(t, err)
+	require.Equal(t, int64(3), res.CountWaiting)
+	require.Equal(t, int64(3), res.CountPending)
+	require.Equal(t, int64(1), res.CountActive)
+	cleanupService()
+	c, cleanupService = requireSetupService(t, ctx, cb, setupWithDbName("restart_waiting"))
+	defer cleanupService()
+	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
+	res, err = c.Summary(ctx, &pb.SummaryRequest{})
+	require.NoError(t, err)
+	require.Equal(t, int64(3), res.CountWaiting)
+	require.Equal(t, int64(3), res.CountPending)
+	require.Equal(t, int64(1), res.CountActive)
+}
+
 func TestSendFil(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
@@ -57,7 +85,7 @@ func TestSendFil(t *testing.T) {
 }
 
 func TestSendFilWait(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, true)
@@ -65,7 +93,7 @@ func TestSendFilWait(t *testing.T) {
 }
 
 func TestTxn(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 1000)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
@@ -76,7 +104,7 @@ func TestTxn(t *testing.T) {
 }
 
 func TestTxnWait(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
@@ -87,14 +115,14 @@ func TestTxnWait(t *testing.T) {
 }
 
 func TestTxnNonExistent(t *testing.T) {
-	c, _, _, cleanup := requireSetup(t, ctx, 300)
+	c, _, _, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	_, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: randomCid().String()})
 	require.Equal(t, codes.NotFound, status.Code(err))
 }
 
 func TestListTxns(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
@@ -106,7 +134,7 @@ func TestListTxns(t *testing.T) {
 }
 
 func TestListTxnsFrom(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	addr2 := requireLotusAddress(t, ctx, lc)
@@ -123,7 +151,7 @@ func TestListTxnsFrom(t *testing.T) {
 }
 
 func TestListTxnsTo(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	addr2 := requireLotusAddress(t, ctx, lc)
@@ -140,7 +168,7 @@ func TestListTxnsTo(t *testing.T) {
 }
 
 func TestListTxnsInvolving(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	addr2 := requireLotusAddress(t, ctx, lc)
@@ -160,7 +188,7 @@ func TestListTxnsInvolving(t *testing.T) {
 }
 
 func TestListTxnsAmtGt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -175,7 +203,7 @@ func TestListTxnsAmtGt(t *testing.T) {
 }
 
 func TestListTxnsAmtGteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -190,7 +218,7 @@ func TestListTxnsAmtGteq(t *testing.T) {
 }
 
 func TestListTxnsAmtLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -205,7 +233,7 @@ func TestListTxnsAmtLt(t *testing.T) {
 }
 
 func TestListTxnsAmtLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -220,7 +248,7 @@ func TestListTxnsAmtLteq(t *testing.T) {
 }
 
 func TestListTxnsAmtGtLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -232,7 +260,7 @@ func TestListTxnsAmtGtLt(t *testing.T) {
 }
 
 func TestListTxnsAmtGteqLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -245,7 +273,7 @@ func TestListTxnsAmtGteqLteq(t *testing.T) {
 }
 
 func TestListTxnsAmtGteqLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -257,7 +285,7 @@ func TestListTxnsAmtGteqLt(t *testing.T) {
 }
 
 func TestListTxnsAmtGtLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -270,7 +298,7 @@ func TestListTxnsAmtGtLteq(t *testing.T) {
 }
 
 func TestListTxnsAmtEq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
@@ -283,7 +311,7 @@ func TestListTxnsAmtEq(t *testing.T) {
 }
 
 func TestListTxnsMessageState(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 1000)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
@@ -298,7 +326,7 @@ func TestListTxnsMessageState(t *testing.T) {
 }
 
 func TestListTxnsWaiting(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 1000)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
@@ -314,7 +342,7 @@ func TestListTxnsWaiting(t *testing.T) {
 }
 
 func TestListTxnsCreatedAfter(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -326,7 +354,7 @@ func TestListTxnsCreatedAfter(t *testing.T) {
 }
 
 func TestListTxnsCreatedBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -338,7 +366,7 @@ func TestListTxnsCreatedBefore(t *testing.T) {
 }
 
 func TestListTxnsCreatedAfterBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -350,7 +378,7 @@ func TestListTxnsCreatedAfterBefore(t *testing.T) {
 }
 
 func TestListTxnsUpdatedAfter(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -362,7 +390,7 @@ func TestListTxnsUpdatedAfter(t *testing.T) {
 }
 
 func TestListTxnsUpdatedBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -374,7 +402,7 @@ func TestListTxnsUpdatedBefore(t *testing.T) {
 }
 
 func TestListTxnsUpdatedAfterBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -386,7 +414,7 @@ func TestListTxnsUpdatedAfterBefore(t *testing.T) {
 }
 
 func TestListTxnsOrder(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -403,7 +431,7 @@ func TestListTxnsOrder(t *testing.T) {
 }
 
 func TestListTxnsPaging(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 300)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	txFirst := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
@@ -450,7 +478,7 @@ func TestListTxnsPaging(t *testing.T) {
 }
 
 func TestSummary(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, 1000)
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
 	addr2 := requireLotusAddress(t, ctx, lc)
@@ -487,19 +515,61 @@ func TestSummary(t *testing.T) {
 	require.Equal(t, int64(oneFil*4), res.TotalNanoFilSent)
 }
 
-func requireSetup(t *testing.T, ctx context.Context, speed int) (pb.SendFilServiceClient, *apistruct.FullNodeStruct, address.Address, func()) {
-	clientBuilder, addr, _ := tests.CreateLocalDevnet(t, 1, speed)
+type setupConfig struct {
+	dbName string
+	speed  int
+}
+
+type setupOption = func(*setupConfig)
+
+func setupWithSpeed(speed int) setupOption {
+	return func(config *setupConfig) {
+		config.speed = speed
+	}
+}
+
+func setupWithDbName(dbName string) setupOption {
+	return func(config *setupConfig) {
+		config.dbName = dbName
+	}
+}
+
+func requireSetupLotus(t *testing.T, ctx context.Context, opts ...setupOption) (lotus.ClientBuilder, *apistruct.FullNodeStruct, address.Address, func()) {
+	config := &setupConfig{
+		speed: 300,
+	}
+	for _, opt := range opts {
+		opt(config)
+	}
+	clientBuilder, addr, _ := tests.CreateLocalDevnet(t, 1, config.speed)
 	time.Sleep(time.Millisecond * 500) // Allow the network to some tipsets
 
+	lotusClient, closeLotusClient, err := clientBuilder(ctx)
+	require.NoError(t, err)
+
+	cleanup := func() {
+		closeLotusClient()
+	}
+	return clientBuilder, lotusClient, addr, cleanup
+}
+
+func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuilder, opts ...setupOption) (pb.SendFilServiceClient, func()) {
+	config := &setupConfig{
+		dbName: util.MakeToken(12),
+	}
+	for _, opt := range opts {
+		opt(config)
+	}
 	listener := bufconn.Listen(bufSize)
 
 	conf := Config{
 		Listener:           listener,
-		ClientBuilder:      clientBuilder,
+		ClientBuilder:      cb,
 		MongoUri:           test.GetMongoUri(),
-		MongoDbName:        util.MakeToken(12),
+		MongoDbName:        config.dbName,
 		MessageWaitTimeout: time.Minute,
 		MessageConfidence:  2,
+		RetryWaitFrequency: time.Minute,
 		Debug:              true,
 	}
 	s, err := New(ctx, conf)
@@ -513,16 +583,25 @@ func requireSetup(t *testing.T, ctx context.Context, speed int) (pb.SendFilServi
 	require.NoError(t, err)
 	client := pb.NewSendFilServiceClient(conn)
 
-	lotusClient, closeLotusClient, err := clientBuilder(ctx)
-	require.NoError(t, err)
-
 	cleanup := func() {
 		conn.Close()
 		s.Close()
-		closeLotusClient()
 	}
 
-	return client, lotusClient, addr, cleanup
+	return client, cleanup
+}
+
+func requireSetup(t *testing.T, ctx context.Context, opts ...setupOption) (pb.SendFilServiceClient, *apistruct.FullNodeStruct, address.Address, func()) {
+
+	cb, lotusClient, addr, cleanupLouts := requireSetupLotus(t, ctx, opts...)
+	serviceClient, cleanupService := requireSetupService(t, ctx, cb, opts...)
+
+	cleanup := func() {
+		cleanupLouts()
+		cleanupService()
+	}
+
+	return serviceClient, lotusClient, addr, cleanup
 }
 
 func requireLotusAddress(t *testing.T, ctx context.Context, lotusClient *apistruct.FullNodeStruct) address.Address {

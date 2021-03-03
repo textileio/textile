@@ -66,6 +66,10 @@ var (
 				Key:      "message_confidence",
 				DefValue: uint64(2),
 			},
+			"retryWaitFrequency": {
+				Key:      "retry_wait_frequency",
+				DefValue: time.Minute,
+			},
 		},
 		EnvPre: "SENDFIL",
 		Global: true,
@@ -122,12 +126,14 @@ func init() {
 		"messageWaitTimeout",
 		config.Flags["messageWaitTimeout"].DefValue.(time.Duration),
 		"Timeout for listening for messages to become active on chain")
-
 	rootCmd.PersistentFlags().Uint64(
 		"messageConfidence",
 		config.Flags["messageConfidence"].DefValue.(uint64),
-		"Confidence, in epochs, used to consider a message active on chain",
-	)
+		"Confidence, in epochs, used to consider a message active on chain")
+	rootCmd.PersistentFlags().Duration(
+		"retryWaitFrequency",
+		config.Flags["retryWaitFrequency"].DefValue.(time.Duration),
+		"Frequency with which to query for txns that need to be monitored for completion")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
@@ -167,6 +173,7 @@ var rootCmd = &cobra.Command{
 		mongoDb := config.Viper.GetString("mongo_db")
 		messageTimeout := config.Viper.GetDuration("message_timeout")
 		messageConfidence := config.Viper.GetUint64("message_confidence")
+		retryWaitFrequency := config.Viper.GetDuration("retry_wait_frequency")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)
@@ -187,6 +194,7 @@ var rootCmd = &cobra.Command{
 			MongoDbName:        mongoDb,
 			MessageWaitTimeout: messageTimeout,
 			MessageConfidence:  messageConfidence,
+			RetryWaitFrequency: retryWaitFrequency,
 			Debug:              debug,
 		}
 		api, err := service.New(ctx, conf)
