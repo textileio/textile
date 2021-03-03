@@ -69,7 +69,7 @@ var filQueryMiners = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		ascending, err := c.Flags().GetBool("ascending")
 		cmd.ErrCheck(err)
-		limit, err := c.Flags().GetInt32("limit")
+		limit, err := c.Flags().GetInt64("limit")
 		cmd.ErrCheck(err)
 		offset, err := c.Flags().GetInt64("offset")
 		cmd.ErrCheck(err)
@@ -89,7 +89,7 @@ var filQueryMiners = &cobra.Command{
 				TextileRegion: sortTextileRegion,
 				Field:         mapSortField(sortField),
 			},
-			Limit:  limit,
+			Limit:  int32(limit),
 			Offset: offset,
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
