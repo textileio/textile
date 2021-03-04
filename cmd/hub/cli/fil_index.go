@@ -171,7 +171,7 @@ func peekAndFormatSealingTimes(ti *pb.TextileInfo) string {
 		if len(r.Deals.TailSealed) > 0 {
 			if last == nil || last.Before(r.Deals.TailSealed[0].SealedAt.AsTime()) {
 				durationHours := time.Duration(time.Second * time.Duration(r.Deals.TailSealed[0].DurationSeconds)).Hours()
-				t := r.Deals.TailTransfers[0].TransferedAt.AsTime()
+				t := r.Deals.TailSealed[0].SealedAt.AsTime()
 				lastDuration = &durationHours
 				last = &t
 			}
