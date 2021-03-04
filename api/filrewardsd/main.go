@@ -34,7 +34,7 @@ var (
 			},
 			"listenAddr": {
 				Key:      "listen_addr",
-				DefValue: "/ip4/127.0.0.1/tcp/7006",
+				DefValue: "127.0.0.1:5000",
 			},
 			"mongoUri": {
 				Key:      "mongo_uri",
@@ -132,7 +132,7 @@ var rootCmd = &cobra.Command{
 
 		debug := config.Viper.GetBool("debug")
 		logFile := config.Viper.GetString("log_file")
-		listenAddr := cmd.AddrFromStr(config.Viper.GetString("listen_addr"))
+		listenAddr := config.Viper.GetString("listen_addr")
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
@@ -143,10 +143,7 @@ var rootCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 		}
 
-		target, err := util.TCPAddrFromMultiAddr(listenAddr)
-		cmd.ErrCheck(err)
-
-		listener, err := net.Listen("tcp", target)
+		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
 		ctx, cancel := context.WithCancel(context.Background())

@@ -25,8 +25,7 @@ COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 $SRC_DIR/filrewardsd /usr/local/bin/filrewardsd
 
-EXPOSE 10006
-EXPOSE 8010
+EXPOSE 5000
 
 ENV FILREWARDS_PATH /data/filrewards
 RUN adduser --home $FILREWARDS_PATH --disabled-login --gecos "" --ingroup users filrewards

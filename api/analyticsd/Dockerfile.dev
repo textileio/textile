@@ -25,8 +25,7 @@ COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 $SRC_DIR/analyticsd /usr/local/bin/analyticsd
 
-EXPOSE 10006
-EXPOSE 8010
+EXPOSE 5000
 
 ENV ANALYTICS_PATH /data/analytics
 RUN adduser --home $ANALYTICS_PATH --disabled-login --gecos "" --ingroup users analytics

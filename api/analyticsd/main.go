@@ -33,7 +33,7 @@ var (
 			},
 			"listenAddr": {
 				Key:      "listen_addr",
-				DefValue: "/ip4/127.0.0.1/tcp/6006",
+				DefValue: "127.0.0.1:5000",
 			},
 			"segmentApiKey": {
 				Key:      "segment_api_key",
@@ -121,7 +121,7 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		log.Debugf("loaded config: %s", string(settings))
 
-		listenAddr := cmd.AddrFromStr(config.Viper.GetString("listen_addr"))
+		listenAddr := config.Viper.GetString("listen_addr")
 		segmentApiKey := config.Viper.GetString("segment_api_key")
 		segmentPrefix := config.Viper.GetString("segment_prefix")
 		filrewardsAddr := config.Viper.GetString("filrewards_addr")
@@ -133,10 +133,7 @@ var rootCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 		}
 
-		target, err := util.TCPAddrFromMultiAddr(listenAddr)
-		cmd.ErrCheck(err)
-
-		listener, err := net.Listen("tcp", target)
+		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
 		conf := service.Config{

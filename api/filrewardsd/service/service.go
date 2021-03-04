@@ -335,10 +335,10 @@ func (s *Service) ListRewards(ctx context.Context, req *pb.ListRewardsRequest) (
 		lastCreatedAt := &rewards[len(rewards)-1].CreatedAt
 		filter["created_at"] = bson.M{comp: *lastCreatedAt}
 		res := s.rewardsCol.FindOne(ctx, filter)
-		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
+		if res.Err() != nil && !errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.Internal, "checking for more data: %v", err)
 		}
-		if res.Err() != mongo.ErrNoDocuments {
+		if !errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			more = true
 			startAt = lastCreatedAt
 		}
@@ -438,7 +438,7 @@ func (s *Service) FinalizeClaim(ctx context.Context, req *pb.FinalizeClaimReques
 		bson.M{"_id": objID},
 		bson.M{"$set": bson.M{"state": state, "txn_cid": req.TxnCid, "failure_message": req.FailureMessage, "updated_at": time.Now()}},
 	)
-	if res.Err() == mongo.ErrNoDocuments {
+	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 		return nil, status.Errorf(codes.NotFound, "updating claim: %v", res.Err())
 	}
 	if res.Err() != nil {
@@ -508,10 +508,10 @@ func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*p
 		lastCreatedAt := &claims[len(claims)-1].CreatedAt
 		filter["created_at"] = bson.M{comp: *lastCreatedAt}
 		res := s.claimsCol.FindOne(ctx, filter)
-		if res.Err() != nil && res.Err() != mongo.ErrNoDocuments {
+		if res.Err() != nil && !errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.Internal, "checking for more data: %v", err)
 		}
-		if res.Err() != mongo.ErrNoDocuments {
+		if !errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			more = true
 			startAt = lastCreatedAt
 		}

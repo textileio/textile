@@ -27,11 +27,11 @@ RUN cd $SRC_DIR \
 ENV SUEXEC_VERSION v0.2
 ENV TINI_VERSION v0.19.0
 RUN set -eux; \
-    dpkgArch="$(dpkg --print-architecture)"; \
-    case "${dpkgArch##*-}" in \
-        "amd64" | "armhf" | "arm64") tiniArch="tini-static-$dpkgArch" ;;\
-        *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
-    esac; \
+  dpkgArch="$(dpkg --print-architecture)"; \
+  case "${dpkgArch##*-}" in \
+  "amd64" | "armhf" | "arm64") tiniArch="tini-static-$dpkgArch" ;;\
+  *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
+  esac; \
   cd /tmp \
   && git clone https://github.com/ncopa/su-exec.git \
   && cd su-exec \
@@ -60,7 +60,7 @@ COPY --from=0 /usr/lib/*-linux-gnu*/libssl.so* /usr/lib/
 COPY --from=0 /usr/lib/*-linux-gnu*/libcrypto.so* /usr/lib/
 
 # listenAddrs
-EXPOSE 6006
+EXPOSE 5000
 
 # Create the repo directory.
 ENV ANALYTICS_PATH /data/analytics
