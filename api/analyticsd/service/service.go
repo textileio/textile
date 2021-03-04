@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/gogo/status"
@@ -117,11 +118,13 @@ func (s *Service) Track(ctx context.Context, req *pb.TrackRequest) (*pb.TrackRes
 		props.Set(key, value)
 	}
 
-	log.Infof("enqueing event %v with props %v", eventToString(req.Event), props)
+	eventString := strings.ToLower(req.Event.String())
+
+	log.Infof("enqueing event %v with props %v", eventString, props)
 
 	if err := s.segment.Enqueue(segment.Track{
 		UserId:     req.Key,
-		Event:      eventToString(req.Event),
+		Event:      eventString,
 		Properties: props,
 		Context: &segment.Context{
 			Extra: map[string]interface{}{
@@ -183,47 +186,4 @@ func (s *Service) Close() error {
 	log.Info("gRPC server stopped")
 
 	return e
-}
-
-func eventToString(e pb.Event) string {
-	switch e {
-	case pb.Event_EVENT_SIGN_IN:
-		return "signin"
-	case pb.Event_EVENT_ACCOUNT_DESTROYED:
-		return "account_destroyed"
-	case pb.Event_EVENT_KEY_ACCOUNT_CREATED:
-		return "key_account_created"
-	case pb.Event_EVENT_KEY_USER_CREATED:
-		return "key_user_created"
-	case pb.Event_EVENT_ORG_CREATED:
-		return "org_created"
-	case pb.Event_EVENT_ORG_LEAVE:
-		return "org_leave"
-	case pb.Event_EVENT_ORG_DESTROYED:
-		return "org_destroyed"
-	case pb.Event_EVENT_ORG_INVITE_CREATED:
-		return "org_invite_created"
-	case pb.Event_EVENT_GRACE_PERIOD_START:
-		return "grace_period_start"
-	case pb.Event_EVENT_GRACE_PERIOD_END:
-		return "grace_period_end"
-	case pb.Event_EVENT_BILLING_SETUP:
-		return "billing_setup"
-	case pb.Event_EVENT_BUCKET_CREATED:
-		return "bucket_created"
-	case pb.Event_EVENT_BUCKET_ARCHIVE_CREATED:
-		return "bucket_archive_created"
-	case pb.Event_EVENT_MAILBOX_CREATED:
-		return "mailbox_created"
-	case pb.Event_EVENT_THREAD_DB_CREATED:
-		return "threaddb_created"
-	case pb.Event_EVENT_FIL_REWARD:
-		return "fil_reward"
-	case pb.Event_EVENT_FIL_CLAIM:
-		return "fil_claim"
-	case pb.Event_EVENT_FIL_FINALIZE_CLAIM:
-		return "fil_finalize_claim"
-	default:
-		return fmt.Sprintf("%d", int(e))
-	}
 }
