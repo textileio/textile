@@ -162,11 +162,14 @@ func (s *Service) Track(ctx context.Context, req *pb.TrackRequest) (*pb.TrackRes
 	return &pb.TrackResponse{}, nil
 }
 
-func (s *Service) Close() {
+func (s *Service) Close() error {
+	var e error
 	if err := s.segment.Close(); err != nil {
-		log.Errorf("closing segment client: %s", err)
+		e = err
+		log.Errorf("closing segment client: %v", err)
+	} else {
+		log.Info("segment client stopped")
 	}
-	log.Info("segment client disconnected")
 
 	stopped := make(chan struct{})
 	go func() {
@@ -181,6 +184,8 @@ func (s *Service) Close() {
 		t.Stop()
 	}
 	log.Info("gRPC server stopped")
+
+	return e
 }
 
 func eventToString(e pb.Event) string {

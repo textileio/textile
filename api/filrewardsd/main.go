@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -146,7 +145,6 @@ var rootCmd = &cobra.Command{
 		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
-		ctx, cancel := context.WithCancel(context.Background())
 		conf := service.Config{
 			Listener:          listener,
 			MongoUri:          mongoUri,
@@ -155,14 +153,13 @@ var rootCmd = &cobra.Command{
 			BaseNanoFILReward: baseFilReward,
 			Debug:             debug,
 		}
-		api, err := service.New(ctx, conf)
+		api, err := service.New(conf)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Filrewards!")
 
 		cmd.HandleInterrupt(func() {
-			api.Close()
-			cancel()
+			cmd.ErrCheck(api.Close())
 		})
 	},
 }

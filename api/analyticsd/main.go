@@ -149,7 +149,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Welcome to Hub Analytics!")
 
 		cmd.HandleInterrupt(func() {
-			api.Close()
+			cmd.ErrCheck(api.Close())
 		})
 	},
 }

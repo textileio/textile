@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/status"
 	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
-	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	pb "github.com/textileio/textile/v2/api/usersd/pb"
 	"github.com/textileio/textile/v2/threaddb"
 	"google.golang.org/grpc"
@@ -333,47 +332,4 @@ func (c *Client) ArchiveRetrievalLogs(ctx context.Context, id string, ch chan<- 
 		ch <- reply.Msg
 	}
 	return nil
-}
-
-func (c *Client) ListFilRewards(ctx context.Context, opts ...ListFilRewardsOption) ([]*filrewardspb.Reward, bool, int64, error) {
-	req := &pb.ListFilRewardsRequest{}
-	for _, opt := range opts {
-		opt(req)
-	}
-	res, err := c.c.ListFilRewards(ctx, req)
-	if err != nil {
-		return nil, false, 0, fmt.Errorf("calling list fil rewards rpc: %v", err)
-	}
-	return res.Rewards, res.More, res.MoreToken, nil
-}
-
-func (c *Client) ClaimFil(ctx context.Context, amount int64) error {
-	req := &pb.ClaimFilRequest{
-		Amount: amount,
-	}
-	_, err := c.c.ClaimFil(ctx, req)
-	if err != nil {
-		return fmt.Errorf("calling claim fil rpc: %v", err)
-	}
-	return nil
-}
-
-func (c *Client) ListFilClaims(ctx context.Context, opts ...ListFilClaimsOption) ([]*filrewardspb.Claim, bool, int64, error) {
-	req := &pb.ListFilClaimsRequest{}
-	for _, opt := range opts {
-		opt(req)
-	}
-	res, err := c.c.ListFilClaims(ctx, req)
-	if err != nil {
-		return nil, false, 0, fmt.Errorf("calling list fil claims rpc: %v", err)
-	}
-	return res.Claims, res.More, res.MoreToken, nil
-}
-
-func (c *Client) FilRewardsBalance(ctx context.Context) (*pb.FilRewardsBalanceResponse, error) {
-	res, err := c.c.FilRewardsBalance(ctx, &pb.FilRewardsBalanceRequest{})
-	if err != nil {
-		return nil, fmt.Errorf("calling fil rewards balance rpc: %v", err)
-	}
-	return res, nil
 }

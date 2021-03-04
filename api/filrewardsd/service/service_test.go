@@ -97,7 +97,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 		MongoUri:    test.GetMongoUri(),
 		MongoDbName: "mydb",
 	}
-	s1, err := New(ctx, conf1)
+	s1, err := New(conf1)
 	require.NoError(t, err)
 
 	conn1, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer1), grpc.WithInsecure())
@@ -124,7 +124,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 		MongoUri:    test.GetMongoUri(),
 		MongoDbName: "mydb",
 	}
-	s2, err := New(ctx, conf2)
+	s2, err := New(conf2)
 	require.NoError(t, err)
 
 	conn2, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer2), grpc.WithInsecure())
@@ -642,7 +642,7 @@ func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient
 		MongoDbName:       util.MakeToken(12),
 		BaseNanoFILReward: 2,
 	}
-	s, err := New(ctx, conf)
+	s, err := New(conf)
 	require.NoError(t, err)
 
 	bufDialer := func(context.Context, string) (net.Conn, error) {

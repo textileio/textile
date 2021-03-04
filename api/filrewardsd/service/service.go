@@ -86,6 +86,7 @@ type Service struct {
 	baseNanoFILReward int64
 	server            *grpc.Server
 	semaphores        *nutil.SemaphorePool
+	mainCtxCancel     context.CancelFunc
 }
 
 type Config struct {
@@ -97,7 +98,7 @@ type Config struct {
 	Debug             bool
 }
 
-func New(ctx context.Context, config Config) (*Service, error) {
+func New(config Config) (*Service, error) {
 	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"filrewards": logging.LevelDebug,
@@ -106,8 +107,11 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.MongoUri))
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
 	}
 	db := client.Database(config.MongoDbName)
@@ -135,6 +139,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
 		},
 	}); err != nil {
+		cancel()
 		return nil, fmt.Errorf("creating rewards collection indexes: %v", err)
 	}
 
@@ -152,6 +157,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 			Keys: bson.D{primitive.E{Key: "created_at", Value: 1}},
 		},
 	}); err != nil {
+		cancel()
 		return nil, fmt.Errorf("creating claims collection indexes: %v", err)
 	}
 
@@ -159,6 +165,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 	opts := options.Find()
 	cursor, err := rewardsCol.Find(ctx, bson.M{}, opts)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("querying RewardRecords to populate cache: %s", err)
 	}
 	defer cursor.Close(ctx)
@@ -167,6 +174,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 	for cursor.Next(ctx) {
 		var rec reward
 		if err := cursor.Decode(&rec); err != nil {
+			cancel()
 			return nil, fmt.Errorf("decoding RewardRecord while building cache: %v", err)
 		}
 		ensureKeyRewardCache(cacheOrg, rec.OrgKey)
@@ -175,6 +183,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		cacheDev[rec.DevKey][rec.Type] = struct{}{}
 	}
 	if err := cursor.Err(); err != nil {
+		cancel()
 		return nil, fmt.Errorf("iterating cursor while building cache: %v", err)
 	}
 
@@ -185,11 +194,13 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		rewardsCacheDev:   cacheDev,
 		baseNanoFILReward: config.BaseNanoFILReward,
 		semaphores:        nutil.NewSemaphorePool(1),
+		mainCtxCancel:     cancel,
 	}
 
 	if config.AnalyticsAddr != "" {
 		s.ac, err = analytics.New(config.AnalyticsAddr, grpc.WithInsecure())
 		if err != nil {
+			cancel()
 			return nil, fmt.Errorf("creating analytics client: %s", err)
 		}
 	}
@@ -555,13 +566,17 @@ func (s *Service) Balance(ctx context.Context, req *pb.BalanceRequest) (*pb.Bala
 	}, nil
 }
 
-func (s *Service) Close() {
+func (s *Service) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
+	var e error
 	if err := s.rewardsCol.Database().Client().Disconnect(ctx); err != nil {
+		e = err
 		log.Errorf("disconnecting mongo client: %s", err)
+	} else {
+		log.Info("mongo client disconnected")
 	}
-	log.Info("mongo client disconnected")
 
 	stopped := make(chan struct{})
 	go func() {
@@ -576,6 +591,10 @@ func (s *Service) Close() {
 		t.Stop()
 	}
 	log.Info("gRPC server stopped")
+
+	s.mainCtxCancel()
+
+	return e
 }
 
 func (s *Service) totalRewarded(ctx context.Context, orgKey string) (int64, error) {
