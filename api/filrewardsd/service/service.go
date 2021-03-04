@@ -220,6 +220,9 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 	if req.OrgKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "must provide org key")
 	}
+	if req.DevKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "must provide dev key")
+	}
 	if req.AnalyticsEvent == analyticspb.Event_EVENT_UNSPECIFIED {
 		return nil, status.Error(codes.InvalidArgument, "must provide analytics event")
 	}
