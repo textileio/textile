@@ -82,8 +82,8 @@ fi
 
 mkdir -p "${PLUGIN_OUT}"
 for proto_path in "${PROTO_PATHS[@]}"; do
-  for dir in $(find "${proto_path}" -type f ! -path './buildtools/*' ! -path '*/node_modules/*' -name '*.proto' -print0  | xargs -0 -n1 dirname | sort | uniq); do
-    echo protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*')"
-    ./buildtools/protoc/bin/protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*')"
+  for dir in $(find "${proto_path}" -type f ! -path './buildtools/*' ! -path '*/node_modules/*' ! -path '*/pb/google/*' ! -path '*/pb/protoc-gen-openapiv2/*' -name '*.proto' -print0  | xargs -0 -n1 dirname | sort | uniq); do
+    echo protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*' ! -path '*/pb/google/*' ! -path '*/pb/protoc-gen-openapiv2/*')"
+    ./buildtools/protoc/bin/protoc "${PROTOC_FLAGS[@]}" "$(find "${dir}" -name '*.proto' ! -path '*/node_modules/*' ! -path '*/pb/google/*' ! -path '*/pb/protoc-gen-openapiv2/*')"
   done
 done

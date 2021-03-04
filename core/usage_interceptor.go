@@ -165,6 +165,7 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 		"/api.bucketsd.pb.APIService/PushPath",
 		"/api.bucketsd.pb.APIService/PushPaths",
 		"/api.bucketsd.pb.APIService/SetPath",
+		"/api.bucketsd.pb.APIService/MovePath",
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
@@ -235,6 +236,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/PushPath",
 		"/api.bucketsd.pb.APIService/PushPaths",
 		"/api.bucketsd.pb.APIService/SetPath",
+		"/api.bucketsd.pb.APIService/MovePath",
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":

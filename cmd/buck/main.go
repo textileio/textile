@@ -29,9 +29,10 @@ var rootCmd = &cobra.Command{
 Manages files and folders in an object storage bucket.`,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		config := local.DefaultConfConfig()
-		target := cmd.GetFlagOrEnvValue(c, "api", config.EnvPrefix)
+		hubTarget := cmd.GetFlagOrEnvValue(c, "api", config.EnvPrefix)
+		minerIndexTarget := cmd.GetFlagOrEnvValue(c, "apimindex", config.EnvPrefix)
 
-		clients = cmd.NewClients(target, false)
+		clients = cmd.NewClients(hubTarget, false, minerIndexTarget)
 		buck.SetBucks(local.NewBuckets(clients, config))
 	},
 	PersistentPostRun: func(c *cobra.Command, args []string) {

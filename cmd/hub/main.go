@@ -36,7 +36,9 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(c *cobra.Command, args []string) {
 		cmd.ExpandConfigVars(hub.Config().Viper, hub.Config().Flags)
 
-		clients = cmd.NewClients(hub.Config().Viper.GetString("api"), true)
+		hubTarget := hub.Config().Viper.GetString("api")
+		minerIndexTarget := hub.Config().Viper.GetString("apiMinerIndex")
+		clients = cmd.NewClients(hubTarget, true, minerIndexTarget)
 		hub.SetClients(clients)
 
 		config := local.DefaultConfConfig()
@@ -90,7 +92,8 @@ var rootCmd = &cobra.Command{
 			c.Use != "init" &&
 			c.Use != "login" &&
 			c.Use != "version" &&
-			c.Use != "update" {
+			c.Use != "update" &&
+			c.Parent().Use != "index" {
 			msg := "unauthorized! run `%s` or use `%s` to authorize"
 			cmd.Fatal(errors.New(msg), aurora.Cyan(hub.Name+" init|login"), aurora.Cyan("--session"))
 		}
