@@ -120,13 +120,16 @@ func (k *IPNSKeys) List(ctx context.Context) ([]IPNSKey, error) {
 
 // SetPath updates the latest path for the ipnskey
 func (k *IPNSKeys) SetPath(ctx context.Context, pth string, name string) error {
-	_, err := k.col.UpdateOne(
+	res, err := k.col.UpdateOne(
 		ctx,
 		bson.M{"_id": name},
 		bson.D{{"$set", bson.D{{"path", pth}}}},
 	)
 	if err != nil {
 		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
 	}
 	return nil
 }

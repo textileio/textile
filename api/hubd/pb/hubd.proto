@@ -3,6 +3,7 @@ package api.hubd.pb;
 option go_package = "github.com/textileio/textile/v2/api/hubd/pb";
 
 import "api/billingd/pb/billingd.proto";
+import "api/filrewardsd/pb/filrewards.proto";
 
 message BuildInfoRequest {}
 
@@ -178,6 +179,51 @@ message DestroyAccountRequest {}
 
 message DestroyAccountResponse {}
 
+message ListFilRewardsRequest {
+    bool unlocked_by_dev = 1;
+    api.filrewardsd.pb.RewardType reward_type_filter = 2;
+    bool ascending = 3;
+    int64 more_token = 4;
+    int64 limit = 5;
+}
+
+message ListFilRewardsResponse {
+    repeated api.filrewardsd.pb.Reward rewards = 1;
+    bool more = 2;
+    int64 more_token = 3;
+}
+
+message ClaimFilRequest {
+    int64 amount = 1;
+}
+
+message ClaimFilResponse {
+}
+
+message ListFilClaimsRequest {
+    bool claimed_by_dev = 1;
+    api.filrewardsd.pb.ClaimState state_filter = 2;
+    bool ascending = 3;
+    int64 more_token = 4;
+    int64 limit = 5;
+}
+
+message ListFilClaimsResponse {
+    repeated api.filrewardsd.pb.Claim claims = 1;
+    bool more = 2;
+    int64 more_token = 3;
+}
+
+message FilRewardsBalanceRequest {
+}
+
+message FilRewardsBalanceResponse {
+    int64 rewarded = 1;
+    int64 pending = 2;
+    int64 claimed = 3;
+    int64 available = 4;
+}
+
 service APIService {
     rpc BuildInfo(BuildInfoRequest) returns (BuildInfoResponse) {}
 
@@ -207,4 +253,9 @@ service APIService {
     rpc IsOrgNameAvailable(IsOrgNameAvailableRequest) returns (IsOrgNameAvailableResponse) {}
 
     rpc DestroyAccount(DestroyAccountRequest) returns (DestroyAccountResponse) {}
+
+    rpc ListFilRewards(ListFilRewardsRequest) returns (ListFilRewardsResponse) {}
+    rpc ClaimFil(ClaimFilRequest) returns (ClaimFilResponse) {}
+    rpc ListFilClaims(ListFilClaimsRequest) returns (ListFilClaimsResponse) {}
+    rpc FilRewardsBalance(FilRewardsBalanceRequest) returns (FilRewardsBalanceResponse) {}
 }

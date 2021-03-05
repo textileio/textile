@@ -77,7 +77,7 @@ services:
         tail -f /var/log/mongod.log
 
   lotus:
-    image: textile/lotus-devnet:v1.3.0
+    image: textile/lotus-devnet:v1.4.2
     environment:
       - TEXLOTUSDEVNET_SPEED=100
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001

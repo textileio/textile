@@ -28,21 +28,11 @@ func New(target string, opts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-type ProcessAnalyticsEventOption = func(*pb.ProcessAnalyticsEventRequest)
-
-func ProcessAnalyticsEventDevKey(devKey string) ProcessAnalyticsEventOption {
-	return func(req *pb.ProcessAnalyticsEventRequest) {
-		req.DevKey = devKey
-	}
-}
-
-func (c *Client) ProcessAnalyticsEvent(ctx context.Context, orgKey string, event analyticspb.Event, opts ...ProcessAnalyticsEventOption) (*pb.Reward, error) {
+func (c *Client) ProcessAnalyticsEvent(ctx context.Context, orgKey, devKey string, event analyticspb.Event) (*pb.Reward, error) {
 	req := &pb.ProcessAnalyticsEventRequest{
 		OrgKey:         orgKey,
+		DevKey:         devKey,
 		AnalyticsEvent: event,
-	}
-	for _, opt := range opts {
-		opt(req)
 	}
 	res, err := c.fsc.ProcessAnalyticsEvent(ctx, req)
 	if err != nil {

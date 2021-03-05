@@ -1,0 +1,220 @@
+syntax = "proto3";
+package api.mindexd.pb;
+option go_package = "github.com/textileio/textile/v2/api/mindexd/pb";
+
+import "google/protobuf/timestamp.proto";
+import "api/mindexd/pb/google/api/annotations.proto";
+import "api/mindexd/pb/protoc-gen-openapiv2/options/annotations.proto";
+
+
+// Domain
+message MinerIndexInfo  {
+	string miner_addr = 1;
+	MetadataInfo metadata = 2;
+	FilecoinInfo filecoin = 3;
+	TextileInfo textile = 4;
+	google.protobuf.Timestamp updated_at = 5;
+}
+
+message MetadataInfo {
+	string location = 1;
+}
+
+message FilecoinInfo {
+	double relative_power = 1;
+	string ask_price = 2;
+	string ask_verified_price = 3;
+	int64 min_piece_size = 4;
+	int64 max_piece_size = 5;
+	int64 sector_size = 6;
+	int64 active_sectors = 7;
+	int64 faulty_sectors = 8;
+	google.protobuf.Timestamp updated_at = 9;
+}
+
+message TextileInfo {
+	map<string, TextileRegionInfo> regions = 1;
+	DealsSummary deals_summary = 2;
+	RetrievalsSummary retrievals_summary = 3;
+	google.protobuf.Timestamp updated_at = 4;
+}
+
+message TextileRegionInfo {
+	TextileDealsInfo deals = 1;
+	TextileRetrievalsInfo retrievals = 2;
+}
+
+message DealsSummary {
+	int64 total = 1;
+        google.protobuf.Timestamp last = 2;
+        int64 failures = 3;
+        google.protobuf.Timestamp last_failure = 4;
+}
+
+message RetrievalsSummary {
+	int64 total = 1;
+        google.protobuf.Timestamp last = 2;
+        int64 failures = 3;
+        google.protobuf.Timestamp last_failure = 4;
+}
+
+message TextileDealsInfo {
+	int64 total = 1;
+	google.protobuf.Timestamp last = 2;
+
+	int64 failures = 3;
+	google.protobuf.Timestamp last_failure = 4;
+
+	repeated TransferMiBPerSec tail_transfers = 5;
+	repeated SealedDurationMins tail_sealed = 6;
+}
+
+message TextileRetrievalsInfo {
+	int64 total = 1;
+	google.protobuf.Timestamp last = 2;
+	int64 failures = 3;
+	google.protobuf.Timestamp last_failure = 4;
+	repeated TransferMiBPerSec tail_transfers = 5;
+}
+
+message TransferMiBPerSec {
+	google.protobuf.Timestamp transfered_at = 1;
+	double mib_per_sec = 2;
+}
+
+message SealedDurationMins {
+	google.protobuf.Timestamp sealed_at = 1;
+	int64 duration_seconds = 2;
+}
+
+message GetMinersResponse {
+	string miner_address = 1;
+}
+
+// rpc QueryIndexDashboard
+message QueryIndexRequest {
+	QueryIndexRequestFilters filters = 1;
+	QueryIndexRequestSort sort = 2;
+	int32 limit = 3;
+	int64 offset = 4;
+}
+
+message QueryIndexRequestFilters {
+	string miner_location = 1;
+}
+
+message QueryIndexRequestSort {
+	bool ascending = 1;
+        string textile_region = 2;
+	QueryIndexRequestSortField field = 3;
+}
+
+enum QueryIndexRequestSortField {
+        TEXTILE_DEALS_TOTAL_SUCCESSFUL = 0;
+        TEXTILE_DEALS_LAST_SUCCESSFUL = 1;
+        TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL = 2;
+        TEXTILE_RETRIEVALS_LAST_SUCCESSFUL = 3;
+        ASK_PRICE = 4;
+        VERIFIED_ASK_PRICE = 5;
+        ACTIVE_SECTORS = 6;
+}
+
+message QueryIndexResponse {
+	repeated QueryIndexResponseMiner miners = 1;
+}
+
+message QueryIndexResponseMiner {
+	MinerIndexInfo miner = 1;
+}
+
+// rpc GetMinerInfo
+message GetMinerInfoRequest {
+	string miner_address = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Miner address from which to get index information",
+	}];
+}
+
+message GetMinerInfoResponse {
+	MinerIndexInfo info = 1;
+}
+
+// rpc CalculateDealPrice
+message CalculateDealPriceRequest {
+	repeated string miner_addresses = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "List of miner addresses to calculate deal costs",
+	}];
+	int64 data_size_bytes = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Data size in bytes of the data to store",
+	}];
+	int64 duration_days = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Duration in days of the deal",
+                default: "180",
+	}];
+
+}
+
+message CalculateDealPriceResponse {
+	repeated CalculateDealPriceMiner results = 1;
+        int64 padded_size = 2;
+	int64 duration_epochs = 3; 
+}
+
+message CalculateDealPriceMiner {
+	string miner = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Miner address of this calculations.",
+	}];
+	string total_cost = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "Total cost of the deal for the unverified price for the provided duration",
+	}];
+
+	string verified_total_cost = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The verified-client total cost of the deal for the provided duration",
+	}];
+
+	string price = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The price in attoFIL/GiB/epoch for unverified clients", 
+	}];
+
+	string verified_price = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+		description: "The price in attoFIL/GiB/epoch for verified clients", 
+	}];
+
+}
+
+service APIService {
+	rpc QueryIndex(QueryIndexRequest) returns (QueryIndexResponse) {
+            option (google.api.http) = {
+	      get: "/v1/index/query"
+	    };
+	}
+	rpc GetMinerInfo(GetMinerInfoRequest) returns (GetMinerInfoResponse) {
+            option (google.api.http) = {
+	      get: "/v1/index/miner/{miner_address}"
+	    };
+	}
+	rpc CalculateDealPrice(CalculateDealPriceRequest) returns (CalculateDealPriceResponse) {
+	    option (google.api.http) = {
+	      get: "/v1/calculator/calculate"
+	    };
+	}
+}
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+	info: {
+		title: "Textile Miner's Index";
+		version: "1.0";
+		contact: {
+			name: "Textile";
+			url: "https://github.com/grpc-ecosystem/grpc-gateway";
+			email: "contact@textile.io";
+		};
+		license: {
+			name: "MIT";
+			url: "https://raw.githubusercontent.com/textileio/textile/master/LICENSE";
+		};
+	};
+	schemes: HTTPS;
+        schemes: HTTP;
+	consumes: "application/json";
+	produces: "application/json";
+};

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
-	uc "github.com/textileio/textile/v2/api/usersd/client"
+	hc "github.com/textileio/textile/v2/api/hubd/client"
 	"github.com/textileio/textile/v2/cmd"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -210,7 +210,7 @@ var filRewardsCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 
-		var opts []uc.ListFilRewardsOption
+		var opts []hc.ListFilRewardsOption
 
 		ascending, err := c.Flags().GetBool("ascending")
 		cmd.ErrCheck(err)
@@ -218,13 +218,13 @@ var filRewardsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		if ascending {
-			opts = append(opts, uc.ListFilRewardsAscending())
+			opts = append(opts, hc.ListFilRewardsAscending())
 		}
 		if dev {
-			opts = append(opts, uc.ListFilRewardsUnlockedByDev())
+			opts = append(opts, hc.ListFilRewardsUnlockedByDev())
 		}
 
-		rewards, _, _, err := clients.Users.ListFilRewards(ctx, opts...)
+		rewards, _, _, err := clients.Hub.ListFilRewards(ctx, opts...)
 		cmd.ErrCheck(err)
 
 		if len(rewards) > 0 {
@@ -254,7 +254,7 @@ var filClaimCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		nanofil := int64(fil * math.Pow10(9))
 
-		err = clients.Users.ClaimFil(ctx, nanofil)
+		err = clients.Hub.ClaimFil(ctx, nanofil)
 		cmd.ErrCheck(err)
 
 		cmd.Success("\n%v", "claimed")
@@ -270,7 +270,7 @@ var filClaimsCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 
-		var opts []uc.ListFilClaimsOption
+		var opts []hc.ListFilClaimsOption
 
 		ascending, err := c.Flags().GetBool("ascending")
 		cmd.ErrCheck(err)
@@ -278,13 +278,13 @@ var filClaimsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		if ascending {
-			opts = append(opts, uc.ListFilClaimsAscending())
+			opts = append(opts, hc.ListFilClaimsAscending())
 		}
 		if dev {
-			opts = append(opts, uc.ListFilClaimsClaimedByDev())
+			opts = append(opts, hc.ListFilClaimsClaimedByDev())
 		}
 
-		claims, _, _, err := clients.Users.ListFilClaims(ctx, opts...)
+		claims, _, _, err := clients.Hub.ListFilClaims(ctx, opts...)
 		cmd.ErrCheck(err)
 
 		if len(claims) > 0 {
@@ -309,7 +309,7 @@ var filRewardsBalanceCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(Auth(context.Background()), cmd.Timeout)
 		defer cancel()
 
-		res, err := clients.Users.FilRewardsBalance(ctx)
+		res, err := clients.Hub.FilRewardsBalance(ctx)
 		cmd.ErrCheck(err)
 
 		rewarded := fmt.Sprintf("%.8f", float64(res.Rewarded)/math.Pow10(9))

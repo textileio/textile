@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -34,7 +33,7 @@ var (
 			},
 			"listenAddr": {
 				Key:      "listen_addr",
-				DefValue: "/ip4/127.0.0.1/tcp/7006",
+				DefValue: "127.0.0.1:5000",
 			},
 			"mongoUri": {
 				Key:      "mongo_uri",
@@ -132,7 +131,7 @@ var rootCmd = &cobra.Command{
 
 		debug := config.Viper.GetBool("debug")
 		logFile := config.Viper.GetString("log_file")
-		listenAddr := cmd.AddrFromStr(config.Viper.GetString("listen_addr"))
+		listenAddr := config.Viper.GetString("listen_addr")
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
@@ -143,13 +142,9 @@ var rootCmd = &cobra.Command{
 			cmd.ErrCheck(err)
 		}
 
-		target, err := util.TCPAddrFromMultiAddr(listenAddr)
+		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
-		listener, err := net.Listen("tcp", target)
-		cmd.ErrCheck(err)
-
-		ctx, cancel := context.WithCancel(context.Background())
 		conf := service.Config{
 			Listener:          listener,
 			MongoUri:          mongoUri,
@@ -158,14 +153,13 @@ var rootCmd = &cobra.Command{
 			BaseNanoFILReward: baseFilReward,
 			Debug:             debug,
 		}
-		api, err := service.New(ctx, conf)
+		api, err := service.New(conf)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Filrewards!")
 
 		cmd.HandleInterrupt(func() {
-			api.Close()
-			cancel()
+			cmd.ErrCheck(api.Close())
 		})
 	},
 }

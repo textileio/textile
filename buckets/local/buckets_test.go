@@ -267,7 +267,7 @@ func setup(t *testing.T) *Buckets {
 	apitest.MakeTextileWithConfig(t, conf)
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
 	require.NoError(t, err)
-	clients := cmd.NewClients(target, false)
+	clients := cmd.NewClients(target, false, "")
 	t.Cleanup(func() {
 		clients.Close()
 	})

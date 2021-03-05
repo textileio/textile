@@ -20,6 +20,8 @@ import (
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
+	filrewards "github.com/textileio/textile/v2/api/filrewardsd/client"
+	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	bi "github.com/textileio/textile/v2/buildinfo"
@@ -41,6 +43,8 @@ var (
 
 	loginTimeout = time.Minute * 30
 	emailTimeout = time.Second * 10
+
+	_ pb.APIServiceServer = (*Service)(nil)
 )
 
 type Service struct {
@@ -57,6 +61,7 @@ type Service struct {
 	BillingClient       *billing.Client
 	PowergateClient     *pow.Client
 	PowergateAdminToken string
+	FilRewardsClient    *filrewards.Client
 }
 
 // Info provides the currently running API's build information
@@ -825,6 +830,146 @@ func (s *Service) DestroyAccount(ctx context.Context, _ *pb.DestroyAccountReques
 	}
 
 	return &pb.DestroyAccountResponse{}, nil
+}
+
+func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequest) (*pb.ListFilRewardsResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+	user := account.User
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	if user != nil && user.Type != mdb.Dev {
+		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
+	}
+
+	opts := []filrewards.ListRewardsOption{filrewards.ListRewardsOrgKeyFilter(org.Key.String())}
+	if req.Ascending {
+		opts = append(opts, filrewards.ListRewardsAscending())
+	}
+	if req.Limit > 0 {
+		opts = append(opts, filrewards.ListRewardsLimit(req.Limit))
+	}
+	if req.RewardTypeFilter != filrewardspb.RewardType_REWARD_TYPE_UNSPECIFIED {
+		opts = append(opts, filrewards.ListRewardsRewardTypeFilter(req.RewardTypeFilter))
+	}
+	if req.MoreToken != 0 {
+		opts = append(opts, filrewards.ListRewardsMoreToken(req.MoreToken))
+	}
+	if req.UnlockedByDev {
+		if user == nil {
+			return nil, status.Error(codes.InvalidArgument, "must provide a dev user to use unlocked by dev option")
+		}
+		opts = append(opts, filrewards.ListRewardsDevKeyFilter(user.Key.String()))
+	}
+	recs, more, moreToken, err := s.FilRewardsClient.ListRewards(ctx, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards list rewards: %v", err)
+	}
+	return &pb.ListFilRewardsResponse{
+		Rewards:   recs,
+		More:      more,
+		MoreToken: moreToken,
+	}, nil
+}
+
+func (s *Service) ClaimFil(ctx context.Context, req *pb.ClaimFilRequest) (*pb.ClaimFilResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+	user := account.User
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	if user == nil {
+		return nil, status.Error(codes.Unauthenticated, "no user provided")
+	}
+
+	if user.Type != mdb.Dev {
+		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
+	}
+
+	claim, err := s.FilRewardsClient.Claim(ctx, org.Key.String(), user.Key.String(), req.Amount)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards claim: %v", err)
+	}
+
+	// ToDo: Integrate sending of FIL and montoring txn status on network.
+	// ToDo: Consider returning claim or claim id so user can check status of claim.
+
+	if err := s.FilRewardsClient.FinalizeClaim(ctx, claim.Id, org.Key.String(), filrewards.FinalizeClaimTxnCid("todo-some-cid")); err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards finalize claim: %v", err)
+	}
+
+	return &pb.ClaimFilResponse{}, nil
+}
+
+func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsRequest) (*pb.ListFilClaimsResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+	user := account.User
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	if user != nil && user.Type != mdb.Dev {
+		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
+	}
+
+	opts := []filrewards.ListClaimsOption{filrewards.ListClaimsOrgKeyFilter(org.Key.String())}
+	if req.Ascending {
+		opts = append(opts, filrewards.ListClaimsAscending())
+	}
+	if req.Limit > 0 {
+		opts = append(opts, filrewards.ListClaimsLimit(req.Limit))
+	}
+	if req.StateFilter != filrewardspb.ClaimState_CLAIM_STATE_UNSPECIFIED {
+		opts = append(opts, filrewards.ListClaimsStateFilter(req.StateFilter))
+	}
+	if req.MoreToken != 0 {
+		opts = append(opts, filrewards.ListClaimsMoreToken(req.MoreToken))
+	}
+	if req.ClaimedByDev {
+		if user == nil {
+			return nil, status.Error(codes.InvalidArgument, "must provide a dev user to use claimed by dev option")
+		}
+		opts = append(opts, filrewards.ListClaimsClaimedByFilter(user.Key.String()))
+	}
+
+	recs, more, moreToken, err := s.FilRewardsClient.ListClaims(ctx, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards list claims: %v", err)
+	}
+	return &pb.ListFilClaimsResponse{
+		Claims:    recs,
+		More:      more,
+		MoreToken: moreToken,
+	}, nil
+}
+
+func (s *Service) FilRewardsBalance(ctx context.Context, req *pb.FilRewardsBalanceRequest) (*pb.FilRewardsBalanceResponse, error) {
+	account, _ := mdb.AccountFromContext(ctx)
+	org := account.Org
+
+	if org == nil {
+		return nil, status.Error(codes.Unauthenticated, "no org provided")
+	}
+
+	res, err := s.FilRewardsClient.Balance(ctx, org.Key.String())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "calling filrewards balance: %v", err)
+	}
+
+	return &pb.FilRewardsBalanceResponse{
+		Rewarded:  res.Rewarded,
+		Pending:   res.Pending,
+		Claimed:   res.Claimed,
+		Available: res.Available,
+	}, nil
 }
 
 func (s *Service) destroyAccount(ctx context.Context, a *mdb.Account) error {

@@ -119,6 +119,7 @@ var (
 		"/api.bucketsd.pb.APIService/PushPath",
 		"/api.bucketsd.pb.APIService/PullPath",
 		"/api.bucketsd.pb.APIService/SetPath",
+		"/api.bucketsd.pb.APIService/MovePath",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PullPathAccessRoles",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles",
@@ -184,7 +185,8 @@ type Config struct {
 	ThreadsConnManager       connmgr.ConnManager
 
 	// IPNS
-	IPNSRepublishSchedule string
+	IPNSRepublishSchedule    string
+	IPNSRepublishConcurrency int
 
 	// Powergate
 	PowergateAdminToken string
@@ -251,7 +253,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	if err != nil {
 		return nil, err
 	}
-	t.ipnsm, err = ipns.NewManager(t.collections.IPNSKeys, ic.Key(), ic.Name(), conf.Debug)
+	t.ipnsm, err = ipns.NewManager(t.collections.IPNSKeys, ic.Key(), ic.Name(), conf.IPNSRepublishConcurrency, conf.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -400,14 +402,14 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			BillingClient:       t.bc,
 			PowergateClient:     t.pc,
 			PowergateAdminToken: conf.PowergateAdminToken,
+			FilRewardsClient:    t.frc,
 		}
 		us = &usersd.Service{
-			Collections:      t.collections,
-			Mail:             t.mail,
-			BillingClient:    t.bc,
-			FilRetrieval:     t.filRetrieval,
-			PowergateClient:  t.pc,
-			FilRewardsClient: t.frc,
+			Collections:     t.collections,
+			Mail:            t.mail,
+			BillingClient:   t.bc,
+			FilRetrieval:    t.filRetrieval,
+			PowergateClient: t.pc,
 		}
 	}
 

@@ -42,6 +42,10 @@ build-sendfild: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/sendfild
 .PHONY: build-sendfild
 
+build-mindexd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/mindexd
+.PHONY: build-mindexd
+
 install: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./...
 .PHONY: install
@@ -77,6 +81,12 @@ install-filrewardsd: $(GOVVV)
 install-sendfild: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/sendfild
 .PHONY: install-sendfild
+
+install-mindexd: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/mindexd
+.PHONY: install-mindexd
+
+
 
 define gen_release_files
 	$(GOX) -osarch=$(3) -output="build/$(2)/$(2)_${TXTL_VERSION}_{{.OS}}-{{.Arch}}/$(2)" -ldflags="${GOVVV_FLAGS}" $(1)
@@ -186,3 +196,11 @@ buf-https: $(BUF)
 buf-ssh: $(BUF)
 	$(BUF) check lint
 	# $(BUF) check breaking --against-input "$(SSH_GIT)#branch=master"
+
+
+MINDEXDPB=$(shell pwd)/api/mindexd
+PROTOC=$(shell pwd)/buildtools/protoc/bin
+.PHONY: mindex-rest
+mindex-rest:
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+	PATH=$(PROTOC):$(PATH) protoc -I . --grpc-gateway_out . --grpc-gateway_opt logtostderr=true --grpc-gateway_opt paths=source_relative --grpc-gateway_opt generate_unbound_methods=true --openapiv2_out . --openapiv2_opt generate_unbound_methods=true  --openapiv2_opt logtostderr=true  api/mindexd/pb/mindexd.proto
