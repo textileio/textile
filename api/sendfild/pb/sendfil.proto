@@ -41,12 +41,12 @@ message SendFilResponse {
   Txn txn = 1;
 }
 
-message TxnRequest {
+message GetTxnRequest {
   string message_cid = 1;
   bool wait = 2;
 }
 
-message TxnResponse {
+message GetTxnResponse {
   Txn txn = 1;
 }
 
@@ -97,7 +97,7 @@ message SummaryResponse {
 
 service SendFilService {
   rpc SendFil(SendFilRequest) returns (SendFilResponse) {}
-  rpc Txn(TxnRequest) returns (TxnResponse) {}
+  rpc GetTxn(GetTxnRequest) returns (GetTxnResponse) {}
   rpc ListTxns(ListTxnsRequest) returns (ListTxnsResponse) {}
   rpc Summary(SummaryRequest) returns (SummaryResponse) {}
 }

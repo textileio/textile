@@ -53,22 +53,22 @@ func (c *Client) SendFil(ctx context.Context, from, to string, amountNanoFil int
 	return res.Txn, nil
 }
 
-type TxnOption = func(*pb.TxnRequest)
+type GetTxnOption = func(*pb.GetTxnRequest)
 
-func TxnWait() TxnOption {
-	return func(req *pb.TxnRequest) {
+func GetTxnWait() GetTxnOption {
+	return func(req *pb.GetTxnRequest) {
 		req.Wait = true
 	}
 }
 
-func (c *Client) Txn(ctx context.Context, messageCid string, opts ...TxnOption) (*pb.Txn, error) {
-	req := &pb.TxnRequest{
+func (c *Client) GetTxn(ctx context.Context, messageCid string, opts ...GetTxnOption) (*pb.Txn, error) {
+	req := &pb.GetTxnRequest{
 		MessageCid: messageCid,
 	}
 	for _, opt := range opts {
 		opt(req)
 	}
-	res, err := c.c.Txn(ctx, req)
+	res, err := c.c.GetTxn(ctx, req)
 	if err != nil {
 		return nil, err
 	}

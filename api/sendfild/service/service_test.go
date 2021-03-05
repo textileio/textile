@@ -92,32 +92,32 @@ func TestSendFilWait(t *testing.T) {
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, txn.MessageState)
 }
 
-func TestTxn(t *testing.T) {
+func TestGetTxn(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	res, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: txn.MessageCid, Wait: false})
+	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn.MessageCid, Wait: false})
 	require.NoError(t, err)
 	require.Equal(t, txn.MessageCid, res.Txn.MessageCid)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, res.Txn.MessageState)
 }
 
-func TestTxnWait(t *testing.T) {
+func TestGetTxnWait(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr := requireLotusAddress(t, ctx, lc)
 	txn1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	res, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: txn1.MessageCid, Wait: true})
+	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn1.MessageCid, Wait: true})
 	require.NoError(t, err)
 	require.Equal(t, txn1.MessageCid, res.Txn.MessageCid)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, res.Txn.MessageState)
 }
 
-func TestTxnNonExistent(t *testing.T) {
+func TestGetTxnNonExistent(t *testing.T) {
 	c, _, _, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	_, err := c.Txn(ctx, &pb.TxnRequest{MessageCid: randomCid().String()})
+	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: randomCid().String()})
 	require.Equal(t, codes.NotFound, status.Code(err))
 }
 

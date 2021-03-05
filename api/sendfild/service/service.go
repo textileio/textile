@@ -261,7 +261,7 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	return &pb.SendFilResponse{Txn: pbTx}, nil
 }
 
-func (s *Service) Txn(ctx context.Context, req *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxnResponse, error) {
 	res := s.col.FindOne(ctx, bson.M{"message_cids.cid": req.MessageCid})
 	if res.Err() == mongo.ErrNoDocuments {
 		return nil, status.Error(codes.NotFound, "no txn found for cid")
@@ -288,7 +288,7 @@ func (s *Service) Txn(ctx context.Context, req *pb.TxnRequest) (*pb.TxnResponse,
 		return nil, status.Errorf(codes.Internal, "converting to pb txn: %v", err)
 	}
 
-	return &pb.TxnResponse{Txn: pbTx}, nil
+	return &pb.GetTxnResponse{Txn: pbTx}, nil
 }
 
 func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
