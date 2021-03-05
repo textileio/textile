@@ -60,7 +60,7 @@ COPY --from=0 /usr/lib/*-linux-gnu*/libssl.so* /usr/lib/
 COPY --from=0 /usr/lib/*-linux-gnu*/libcrypto.so* /usr/lib/
 
 # listenAddrs
-EXPOSE 7006
+EXPOSE 5000
 
 # Create the repo directory.
 ENV SENDFIL_PATH /data/sendfil

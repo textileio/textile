@@ -25,8 +25,7 @@ COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 $SRC_DIR/sendfild /usr/local/bin/sendfild
 
-EXPOSE 10006
-EXPOSE 8010
+EXPOSE 5000
 
 ENV SENDFIL_PATH /data/sendfil
 RUN adduser --home $SENDFIL_PATH --disabled-login --gecos "" --ingroup users sendfil

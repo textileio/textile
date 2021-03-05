@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -64,7 +63,7 @@ var (
 			},
 			"messageConfidence": {
 				Key:      "message_confidence",
-				DefValue: uint64(2),
+				DefValue: uint64(5),
 			},
 			"retryWaitFrequency": {
 				Key:      "retry_wait_frequency",
@@ -186,7 +185,6 @@ var rootCmd = &cobra.Command{
 		cb, err := lotus.NewBuilder(lotusAddr, lotusAuthToken, lotusConnRetries)
 		cmd.ErrCheck(err)
 
-		ctx, cancel := context.WithCancel(context.Background())
 		conf := service.Config{
 			Listener:           listener,
 			ClientBuilder:      cb,
@@ -197,14 +195,13 @@ var rootCmd = &cobra.Command{
 			RetryWaitFrequency: retryWaitFrequency,
 			Debug:              debug,
 		}
-		api, err := service.New(ctx, conf)
+		api, err := service.New(conf)
 		cmd.ErrCheck(err)
 
 		fmt.Println("Welcome to Hub Sendfil!")
 
 		cmd.HandleInterrupt(func() {
-			api.Close()
-			cancel()
+			cmd.ErrCheck(api.Close())
 		})
 	},
 }

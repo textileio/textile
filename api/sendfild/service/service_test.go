@@ -572,7 +572,7 @@ func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 		RetryWaitFrequency: time.Minute,
 		Debug:              true,
 	}
-	s, err := New(ctx, conf)
+	s, err := New(conf)
 	require.NoError(t, err)
 
 	bufDialer := func(context.Context, string) (net.Conn, error) {

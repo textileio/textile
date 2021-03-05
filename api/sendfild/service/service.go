@@ -69,6 +69,7 @@ type Service struct {
 	config        Config
 	ticker        *time.Ticker
 	waitingLck    sync.Mutex
+	mainCtxCancel context.CancelFunc
 }
 
 type Config struct {
@@ -82,17 +83,20 @@ type Config struct {
 	Debug              bool
 }
 
-func New(ctx context.Context, config Config) (*Service, error) {
+func New(config Config) (*Service, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	if config.Debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"sendfil": logging.LevelDebug,
 		}); err != nil {
+			cancel()
 			return nil, err
 		}
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.MongoUri))
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
 	}
 	db := client.Database(config.MongoDbName)
@@ -127,6 +131,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 			Keys: bson.D{primitive.E{Key: "updated_at", Value: 1}},
 		},
 	}); err != nil {
+		cancel()
 		return nil, fmt.Errorf("creating collection indexes: %v", err)
 	}
 
@@ -136,6 +141,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 		waiting:       make(map[primitive.ObjectID]chan waitResult),
 		config:        config,
 		ticker:        time.NewTicker(config.RetryWaitFrequency),
+		mainCtxCancel: cancel,
 	}
 
 	s.server = grpc.NewServer()
@@ -147,6 +153,7 @@ func New(ctx context.Context, config Config) (*Service, error) {
 	}()
 
 	if err := s.waitAllQualifying(ctx, true); err != nil {
+		cancel()
 		return nil, fmt.Errorf("calling waitAllQualifying: %v", err)
 	}
 
@@ -655,15 +662,19 @@ func (s *Service) wait(tx txn) chan waitResult {
 	return ch
 }
 
-func (s *Service) Close() {
+func (s *Service) Close() error {
+	var e error
+
 	s.ticker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := s.col.Database().Client().Disconnect(ctx); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
+		e = err
+	} else {
+		log.Info("mongo client disconnected")
 	}
-	log.Info("mongo client disconnected")
 
 	stopped := make(chan struct{})
 	go func() {
@@ -678,6 +689,10 @@ func (s *Service) Close() {
 		t.Stop()
 	}
 	log.Info("gRPC server stopped")
+
+	s.mainCtxCancel()
+
+	return e
 }
 
 func (s *Service) updateTxn(ctx context.Context, t txn) error {
