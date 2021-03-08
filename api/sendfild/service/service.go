@@ -56,6 +56,7 @@ type txn struct {
 
 func (t txn) latestMsgCid() (msgCid, error) {
 	if len(t.MessageCids) == 0 {
+		log.Errorf("no message cid found for txn object id %v", t.ID.Hex())
 		return msgCid{}, fmt.Errorf("no message cids found")
 	}
 	return t.MessageCids[len(t.MessageCids)-1], nil
@@ -556,6 +557,7 @@ func (s *Service) wait(tx txn) chan waitResult {
 			cancel()
 		}()
 		if err != nil {
+			log.Errorf("creating lotus client: %v", err)
 			ch <- waitResult{err: fmt.Errorf("creating lotus client: %v", err)}
 			return
 		}
@@ -565,7 +567,6 @@ func (s *Service) wait(tx txn) chan waitResult {
 			tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
 			tx.FailureMsg = fmt.Sprintf("getting latest message cid from txn: %v", err)
 			tx.UpdatedAt = time.Now()
-			log.Warnf("failing txn with err: %s", tx.FailureMsg)
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
@@ -575,10 +576,10 @@ func (s *Service) wait(tx txn) chan waitResult {
 		}
 		c, err := cid.Decode(lastestMsgCid.Cid)
 		if err != nil {
+			log.Errorf("decoding message cid: %s", tx.FailureMsg)
 			tx.MessageState = pb.MessageState_MESSAGE_STATE_FAILED
 			tx.FailureMsg = fmt.Sprintf("decoding latest message cid for txn: %v", err)
 			tx.UpdatedAt = time.Now()
-			log.Warnf("failing txn with err: %s", tx.FailureMsg)
 			if err := s.updateTxn(ctx, tx); err != nil {
 				ch <- waitResult{err: err}
 				return
