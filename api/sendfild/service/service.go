@@ -277,7 +277,7 @@ func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxn
 		return nil, status.Errorf(codes.Internal, "decoding cid txn result: %v", res.Err())
 	}
 
-	if tx.MessageState != pb.MessageState_MESSAGE_STATE_ACTIVE && tx.MessageState != pb.MessageState_MESSAGE_STATE_FAILED && req.Wait {
+	if tx.MessageState == pb.MessageState_MESSAGE_STATE_PENDING && req.Wait {
 		res := <-s.wait(tx)
 		if res.err != nil {
 			return nil, status.Errorf(codes.Internal, "waiting for result: %v", res.err)
@@ -296,13 +296,14 @@ func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxn
 func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
 	findOpts := options.Find()
 	if req.Limit > 0 {
-		findOpts.Limit = &req.Limit
+		findOpts = findOpts.SetLimit(req.Limit)
 	}
 	sort := -1
 	if req.Ascending {
 		sort = 1
 	}
-	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
+	findOpts = findOpts.SetSort(bson.D{primitive.E{Key: "created_at", Value: sort}})
+
 	filter := bson.M{}
 
 	// Involving/from/to
