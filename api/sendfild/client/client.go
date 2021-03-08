@@ -89,9 +89,9 @@ func ListTxnsTo(to string) ListTxnsOption {
 	}
 }
 
-func ListTxnsInvolving(involving string) ListTxnsOption {
+func ListTxnsInvolvingAddress(involving string) ListTxnsOption {
 	return func(req *pb.ListTxnsRequest) {
-		req.InvolvingFilter = involving
+		req.InvolvingAddressFilter = involving
 	}
 }
 

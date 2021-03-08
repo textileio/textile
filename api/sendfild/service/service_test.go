@@ -167,7 +167,7 @@ func TestListTxnsTo(t *testing.T) {
 	require.Len(t, res.Txns, 1)
 }
 
-func TestListTxnsInvolving(t *testing.T) {
+func TestListTxnsInvolvingAddress(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	addr1 := requireLotusAddress(t, ctx, lc)
@@ -176,13 +176,13 @@ func TestListTxnsInvolving(t *testing.T) {
 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
 	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
 	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingFilter: dAddr.String()})
+	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: dAddr.String()})
 	require.NoError(t, err)
 	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingFilter: addr1.String()})
+	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr1.String()})
 	require.NoError(t, err)
 	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingFilter: addr2.String()})
+	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr2.String()})
 	require.NoError(t, err)
 	require.Len(t, res.Txns, 2)
 }

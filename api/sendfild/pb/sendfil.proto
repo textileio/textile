@@ -53,7 +53,7 @@ message GetTxnResponse {
 message ListTxnsRequest {
   string from_filter = 1;
   string to_filter = 2;
-  string involving_filter = 3;
+  string involving_address_filter = 3;
   int64 amount_nano_fil_lt_filter = 4;
   int64 amount_nano_fil_gt_filter = 5;
   int64 amount_nano_fil_lteq_filter = 6;

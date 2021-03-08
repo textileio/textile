@@ -308,8 +308,8 @@ func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.Li
 	filter := bson.M{}
 
 	// Involving/from/to
-	if req.InvolvingFilter != "" {
-		filter["$or"] = bson.A{bson.M{"from": req.InvolvingFilter}, bson.M{"to": req.InvolvingFilter}}
+	if req.InvolvingAddressFilter != "" {
+		filter["$or"] = bson.A{bson.M{"from": req.InvolvingAddressFilter}, bson.M{"to": req.InvolvingAddressFilter}}
 	} else {
 		if req.FromFilter != "" {
 			filter["from"] = req.FromFilter
