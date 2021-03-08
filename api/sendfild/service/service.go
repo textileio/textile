@@ -152,9 +152,9 @@ func New(config Config) (*Service, error) {
 		}
 	}()
 
-	if err := s.waitAllQualifying(ctx, true); err != nil {
+	if err := s.waitAllPending(ctx, true); err != nil {
 		cancel()
-		return nil, fmt.Errorf("calling waitAllQualifying: %v", err)
+		return nil, fmt.Errorf("calling waitAllPending: %v", err)
 	}
 
 	s.bindTicker(ctx)
@@ -162,11 +162,8 @@ func New(config Config) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) waitAllQualifying(ctx context.Context, isInitialRun bool) error {
-	filter := bson.M{"$and": bson.A{
-		bson.M{"message_state": bson.M{"$ne": pb.MessageState_MESSAGE_STATE_ACTIVE}},
-		bson.M{"message_state": bson.M{"$ne": pb.MessageState_MESSAGE_STATE_FAILED}},
-	}}
+func (s *Service) waitAllPending(ctx context.Context, isInitialRun bool) error {
+	filter := bson.M{"message_state": pb.MessageState_MESSAGE_STATE_PENDING}
 	if !isInitialRun {
 		filter["waiting"] = false
 	}
@@ -190,9 +187,14 @@ func (s *Service) waitAllQualifying(ctx context.Context, isInitialRun bool) erro
 func (s *Service) bindTicker(ctx context.Context) {
 	go func() {
 		for {
-			<-s.ticker.C
-			if err := s.waitAllQualifying(ctx, false); err != nil {
-				log.Errorf("waitAllQualifying from ticker: %v", err)
+			select {
+			case <-s.ticker.C:
+				if err := s.waitAllPending(ctx, false); err != nil {
+					log.Errorf("waitAllPending from ticker: %v", err)
+				}
+			case <-ctx.Done():
+				log.Info("unbinding ticker")
+				return
 			}
 		}
 	}()
