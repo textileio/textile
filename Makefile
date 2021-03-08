@@ -38,6 +38,10 @@ build-filrewardsd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/filrewardsd
 .PHONY: build-filrewardsd
 
+build-sendfild: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/sendfild
+.PHONY: build-sendfild
+
 build-mindexd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go build -ldflags="${GOVVV_FLAGS}" ./api/mindexd
 .PHONY: build-mindexd
@@ -73,6 +77,10 @@ install-analyticsd: $(GOVVV)
 install-filrewardsd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/filrewardsd
 .PHONY: install-filrewardsd
+
+install-sendfild: $(GOVVV)
+	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/sendfild
+.PHONY: install-sendfild
 
 install-mindexd: $(GOVVV)
 	$(TXTL_BUILD_FLAGS) go install -ldflags="${GOVVV_FLAGS}" ./api/mindexd

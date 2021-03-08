@@ -162,8 +162,7 @@ func New(config Config) (*Service, error) {
 	}
 
 	// Populate caches.
-	opts := options.Find()
-	cursor, err := rewardsCol.Find(ctx, bson.M{}, opts)
+	cursor, err := rewardsCol.Find(ctx, bson.M{}, options.Find())
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("querying RewardRecords to populate cache: %s", err)
@@ -307,13 +306,13 @@ func (s *Service) ProcessAnalyticsEvent(ctx context.Context, req *pb.ProcessAnal
 func (s *Service) ListRewards(ctx context.Context, req *pb.ListRewardsRequest) (*pb.ListRewardsResponse, error) {
 	findOpts := options.Find()
 	if req.Limit > 0 {
-		findOpts.Limit = &req.Limit
+		findOpts = findOpts.SetLimit(req.Limit)
 	}
 	sort := -1
 	if req.Ascending {
 		sort = 1
 	}
-	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
+	findOpts = findOpts.SetSort(bson.D{primitive.E{Key: "created_at", Value: sort}})
 	filter := bson.M{}
 	if req.OrgKeyFilter != "" {
 		filter["org_key"] = req.OrgKeyFilter
@@ -480,13 +479,13 @@ func (s *Service) FinalizeClaim(ctx context.Context, req *pb.FinalizeClaimReques
 func (s *Service) ListClaims(ctx context.Context, req *pb.ListClaimsRequest) (*pb.ListClaimsResponse, error) {
 	findOpts := options.Find()
 	if req.Limit > 0 {
-		findOpts.Limit = &req.Limit
+		findOpts = findOpts.SetLimit(req.Limit)
 	}
 	sort := -1
 	if req.Ascending {
 		sort = 1
 	}
-	findOpts.Sort = bson.D{primitive.E{Key: "created_at", Value: sort}}
+	findOpts = findOpts.SetSort(bson.D{primitive.E{Key: "created_at", Value: sort}})
 	filter := bson.M{}
 	if req.OrgKeyFilter != "" {
 		filter["org_key"] = req.OrgKeyFilter
