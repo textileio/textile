@@ -60,9 +60,6 @@ var (
 	// ErrArchivingFeatureDisabled indicates an archive was requested with archiving disabled.
 	ErrArchivingFeatureDisabled = errors.New("archiving feature is disabled")
 
-	// ErrMaxArchiveSizeExceeded indicates the requested operation exceeds the max archive size.
-	ErrMaxArchiveSizeExceeded = errors.New("requested archive exceeds max size limit of 64 GiB")
-
 	// ErrStorageQuotaExhausted indicates the requested operation exceeds the storage allowance.
 	ErrStorageQuotaExhausted = errors.New("storage quota exhausted")
 
