@@ -103,7 +103,7 @@ var (
 				DefValue: 32 * gib,
 			},
 			"bucketsArchiveMinSize": {
-				Key:      "buckets.archive_max_size",
+				Key:      "buckets.archive_min_size",
 				DefValue: 64 * mib,
 			},
 
