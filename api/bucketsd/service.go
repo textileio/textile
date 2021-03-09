@@ -3361,6 +3361,7 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 			MaxPrice:        config.MaxPrice,
 			FastRetrieval:   config.FastRetrieval,
 			DealStartOffset: config.DealStartOffset,
+			VerifiedDeal:    config.VerifiedDeal,
 		}
 	}
 	return pbConfig

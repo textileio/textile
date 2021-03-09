@@ -1723,8 +1723,8 @@ github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5 h1:wy2WAFw
 github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5/go.mod h1:Zf6JlMPiIQUUmGlFFn5Z65C9p9LAvPg7XvX+qdGmTsU=
 github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80 h1:UJbiLtEmaRp9zUif+thvxsIOkeZnTECIWcaURCBaXS4=
 github.com/textileio/go-threads v1.0.3-0.20201216032729-f7b034a0de80/go.mod h1:kvIXqo4T4fS6fDyNeqRAIE5CXDguBXUi8kZVb4FGg0U=
-github.com/textileio/powergate/v2 v2.2.0 h1:OizZ2XPIfVBGG3xbtcOSqj6SJwVijJTEFmFTPW6yrgo=
-github.com/textileio/powergate/v2 v2.2.0/go.mod h1:MxwU95rhpoSBsrKk5hWf4y6tGXbW4na8ta1FPlzWIFI=
+github.com/textileio/powergate/v2 v2.2.1-0.20210308170300-1912f81755cf h1:H31oAG8Bn4uIm1SPuG7H2Ss7MR0VKAO6l5LNi8W5EzQ=
+github.com/textileio/powergate/v2 v2.2.1-0.20210308170300-1912f81755cf/go.mod h1:MxwU95rhpoSBsrKk5hWf4y6tGXbW4na8ta1FPlzWIFI=
 github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7 h1:qUEurT6kJF+nFkiNjUPMJJ7hgg9OIDnb8iLn6VtBukE=
 github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7/go.mod h1:IG3de1dcR5Hmcz57nScHHoq5Ju1AABd8z5GnLDgDCks=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=

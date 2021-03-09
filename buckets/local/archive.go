@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	powPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 	pb "github.com/textileio/textile/v2/api/bucketsd/pb"
 )
@@ -71,6 +72,21 @@ func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig
 	return
 }
 
+// Addresses returns information about the Filecoin address associated with the account.
+func (b *Bucket) Addresses(ctx context.Context) (*powPb.AddressesResponse, error) {
+	b.Lock()
+	defer b.Unlock()
+	ctx, err := b.context(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting context: %s", err)
+	}
+	ar, err := b.clients.Filecoin.Addresses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting addresses: %s", err)
+	}
+	return ar, nil
+}
+
 func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) ArchiveConfig {
 	config := ArchiveConfig{
 		RepFactor:       int(pbConfig.RepFactor),
@@ -118,6 +134,7 @@ func toPbArchiveConfig(config ArchiveConfig) *pb.ArchiveConfig {
 		MaxPrice:        config.MaxPrice,
 		FastRetrieval:   config.FastRetrieval,
 		DealStartOffset: config.DealStartOffset,
+		VerifiedDeal:    config.VerifiedDeal,
 	}
 }
 
