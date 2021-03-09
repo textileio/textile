@@ -169,6 +169,27 @@ var archiveCmd = &cobra.Command{
 			fmt.Println("")
 		}
 
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, conf)
+		cmd.ErrCheck(err)
+
+		diff, err := buck.DiffLocal()
+		cmd.ErrCheck(err)
+		if len(diff) != 0 && !yes {
+			cmd.Warn("You have unpushed local changes, are you sure want to archive last pushed bucket?")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
+			fmt.Println("")
+		}
+
 		var reader io.Reader
 		if c.Flags().Changed("file") {
 			configPath, err := c.Flags().GetString("file")
@@ -190,12 +211,6 @@ var archiveCmd = &cobra.Command{
 
 		var opts []local.ArchiveRemoteOption
 
-		conf, err := bucks.NewConfigFromCmd(c, ".")
-		cmd.ErrCheck(err)
-		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
-		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, conf)
-		cmd.ErrCheck(err)
 		config := local.ArchiveConfig{}
 		if reader != nil {
 			buf := new(bytes.Buffer)
@@ -210,17 +225,23 @@ var archiveCmd = &cobra.Command{
 		}
 		opts = append(opts, local.WithArchiveConfig(config))
 
+		addrs, err := buck.Addresses(ctx)
+		cmd.ErrCheck(err)
+		if len(addrs.Addresses) != 1 {
+			cmd.Error(fmt.Errorf("There should be exactly one wallet address but are there're %d", len(addrs.Addresses)))
+		}
+
+		addrInfo := addrs.Addresses[0]
+		balance, err := big.FromString(addrInfo.Balance)
+		cmd.ErrCheck(err)
+		if balance.IsZero() {
+			cmd.Error(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
+		}
+
 		skipVerifiedDealOverride, err := c.Flags().GetBool("skip-verified-deal-override")
 		cmd.ErrCheck(err)
 		if !skipVerifiedDealOverride {
-			addrs, err := buck.Addresses(ctx)
-			cmd.ErrCheck(err)
 
-			if len(addrs.Addresses) != 1 {
-				cmd.Error(fmt.Errorf("There should be exactly one wallet address but are there're %d", len(addrs.Addresses)))
-			}
-
-			addrInfo := addrs.Addresses[0]
 			if !config.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
 				remainingDataCap, err := big.FromString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes)
 				cmd.ErrCheck(err)
@@ -272,7 +293,7 @@ var archiveCmd = &cobra.Command{
 
 		if config.MaxPrice == 0 && !yes {
 			cmd.Warn("The storage-config doesn't specify a limit to pay for storage price")
-			cmd.Message("You can set a limit with `hub buck set-storage-config --set-max-price")
+			cmd.Message("You can set a limit with `hub buck set-storage-config --set-max-price`")
 			cmd.Warn("Are you sure you want to make a deal without a max-price limit?")
 			prompt := promptui.Prompt{
 				Label:     "Proceed",
@@ -284,8 +305,6 @@ var archiveCmd = &cobra.Command{
 			fmt.Println("")
 		}
 
-		// TTODO
-		return
 		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
 

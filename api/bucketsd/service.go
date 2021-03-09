@@ -50,8 +50,6 @@ import (
 const (
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32 // 32 KiB
-	// maxArchiveSize is the max bucket size that can be archived to filecoin.
-	maxArchiveSize = 1024 * 1024 * 1024 * 64 // 64 GiB
 	// pinNotRecursiveMsg is used to match an IPFS "recursively pinned already" error.
 	pinNotRecursiveMsg = "'from' cid was not recursively pinned already"
 )
@@ -112,6 +110,7 @@ type Service struct {
 	FilRetrieval              *retrieval.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketArchiveSize      int64
+	MinBucketArchiveSize      int64
 	MaxBucketArchiveRepFactor int
 }
 
@@ -3029,8 +3028,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket size: %v", err)
 	}
-	if buckSize > maxArchiveSize {
+	if buckSize > s.MaxBucketArchiveSize {
 		return nil, ErrMaxArchiveSizeExceeded
+	}
+	if buckSize < s.MinBucketArchiveSize {
+		return nil, fmt.Errorf("archive size is too small, should be greater than: %d MiB", s.MinBucketArchiveSize/1024/1024)
 	}
 
 	p, err := util.NewResolvedPath(buck.Path)
