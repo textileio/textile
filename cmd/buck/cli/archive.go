@@ -228,7 +228,7 @@ var archiveCmd = &cobra.Command{
 		addrs, err := buck.Addresses(ctx)
 		cmd.ErrCheck(err)
 		if len(addrs.Addresses) != 1 {
-			cmd.Error(fmt.Errorf("There should be exactly one wallet address but are there're %d", len(addrs.Addresses)))
+			cmd.Error(fmt.Errorf("There should be exactly one wallet address but there are %d", len(addrs.Addresses)))
 		}
 
 		addrInfo := addrs.Addresses[0]
