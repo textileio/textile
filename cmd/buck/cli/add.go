@@ -12,8 +12,8 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add [cid] [path]",
-	Short: "Add adds a UnixFs DAG locally at path",
-	Long:  `Add adds a UnixFs DAG locally at path, merging with existing content.`,
+	Short: "Adds a UnixFs DAG locally at path",
+	Long:  `Adds a UnixFs DAG locally at path, merging with existing content.`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(c *cobra.Command, args []string) {
 		yes, err := c.Flags().GetBool("yes")
