@@ -179,7 +179,7 @@ var archiveCmd = &cobra.Command{
 		diff, err := buck.DiffLocal()
 		cmd.ErrCheck(err)
 		if len(diff) != 0 && !yes {
-			cmd.Warn("You have unpushed local changes, are you sure want to archive last pushed bucket?")
+			cmd.Warn("You have unpushed local changes. Are you sure you want to archive the last pushed bucket?")
 			prompt := promptui.Prompt{
 				Label:     "Proceed",
 				IsConfirm: true,
@@ -305,6 +305,7 @@ var archiveCmd = &cobra.Command{
 			fmt.Println("")
 		}
 
+		return
 		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
 
