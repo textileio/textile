@@ -3029,7 +3029,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 		return nil, fmt.Errorf("getting bucket size: %v", err)
 	}
 	if buckSize > s.MaxBucketArchiveSize {
-		return nil, ErrMaxArchiveSizeExceeded
+		return nil, fmt.Errorf("archive size is too big, should be less than: %d GiB", s.MaxBucketArchiveSize/1024/1024/1024)
 	}
 	if buckSize < s.MinBucketArchiveSize {
 		return nil, fmt.Errorf("archive size is too small, should be greater than: %d MiB", s.MinBucketArchiveSize/1024/1024)

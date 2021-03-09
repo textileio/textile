@@ -521,6 +521,8 @@ func createInfra(t util.TestingTWithCleanup) (*hc.Client, *uc.Client, *tc.Client
 	conf.AddrPowergateAPI = powAddr
 	conf.ArchiveJobPollIntervalFast = time.Second * 5
 	conf.ArchiveJobPollIntervalSlow = time.Second * 10
+	conf.MinBucketArchiveSize = 0
+	conf.MaxBucketArchiveSize = 500 * 1024 * 1024
 	repo := t.TempDir()
 	shutdown := apitest.MakeTextileWithConfig(t, conf, apitest.WithRepoPath(repo), apitest.WithoutAutoShutdown())
 	target, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPI)
