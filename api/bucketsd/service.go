@@ -3133,6 +3133,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	// tunning, and the wallet address is verified, then automatically enable
 	// verified deals in the storage-config used for the archive.
 	if !req.SkipAutomaticVerifiedDeal {
+		log.Debugf("executing automatic verified deal logic")
 		if !storageConfig.Cold.Filecoin.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
 			remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
 			if !ok {
@@ -3149,6 +3150,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("storage-config has set verified deals but the client is unverified")
 		}
 	}
+	log.Debugf("archiving with filecoin config: %#v", storageConfig.Cold.Filecoin)
 
 	// Archive pushes the current root Cid to the corresponding user of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.

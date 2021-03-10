@@ -50,7 +50,7 @@ func (c *Client) ConfirmAddress(ctx context.Context, id, username, email, url, s
 		return nil
 	}
 	request := cio.SendEmailRequest{
-		To: email,
+		To:                     email,
 		TransactionalMessageID: c.confirmTmpl,
 		Identifiers: map[string]string{
 			"id":           id,
@@ -65,7 +65,7 @@ func (c *Client) ConfirmAddress(ctx context.Context, id, username, email, url, s
 		return err
 	}
 
-	log.Debug("sent confirm address for %s to %s", username, email)
+	log.Debugf("sent confirm address for %s to %s", username, email)
 	return nil
 }
 
@@ -75,7 +75,7 @@ func (c *Client) InviteAddress(ctx context.Context, id, org, from, to, url, toke
 		return nil
 	}
 	request := cio.SendEmailRequest{
-		To: to,
+		To:                     to,
 		TransactionalMessageID: c.inviteTmpl,
 		Identifiers: map[string]string{
 			"id":    id,

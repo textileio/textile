@@ -216,9 +216,7 @@ var archiveCmd = &cobra.Command{
 			buf := new(bytes.Buffer)
 			_, err := buf.ReadFrom(reader)
 			cmd.ErrCheck(err)
-
 			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
-
 		} else {
 			config, err = buck.DefaultArchiveConfig(ctx)
 			cmd.ErrCheck(err)
