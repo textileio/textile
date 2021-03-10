@@ -256,6 +256,43 @@ func (b *Bucket) ensureNoNulls() {
 	}
 }
 
+func (b *Bucket) Copy() *Bucket {
+	md := make(map[string]Metadata)
+	for k, v := range b.Metadata {
+		md[k] = v
+	}
+	ar := Archives{
+		Current: copyArchives(b.Archives.Current),
+		History: make([]Archive, len(b.Archives.History)),
+	}
+	for i, j := range b.Archives.History {
+		ar.History[i] = copyArchives(j)
+	}
+	return &Bucket{
+		Key: b.Key,
+		Owner: b.Owner,
+		Name: b.Name,
+		Version: b.Version,
+		LinkKey: b.LinkKey,
+		Path: b.Path,
+		Metadata: md,
+		Archives: ar,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+	}
+}
+
+func copyArchives(archive Archive) Archive {
+	a := Archive{
+		Cid: archive.Cid,
+		Deals: make([]Deal, len(archive.Deals)),
+	}
+	for i, j := range archive.Deals {
+		a.Deals[i] = j
+	}
+	return a
+}
+
 // BucketOptions defines options for interacting with buckets.
 type BucketOptions struct {
 	Name  string

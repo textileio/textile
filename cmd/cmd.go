@@ -123,17 +123,15 @@ func NewClients(hubTarget string, isHub bool, minerIndexTarget string) *Clients 
 			Fatal(err)
 		}
 
-		var mindexOpts []grpc.DialOption
-		auth := common.Credentials{}
+		var minerIndexOpts []grpc.DialOption
 		if strings.Contains(minerIndexTarget, "443") {
 			creds := credentials.NewTLS(&tls.Config{})
-			mindexOpts = append(hubOpts, grpc.WithTransportCredentials(creds))
-			auth.Secure = true
+			minerIndexOpts = append(minerIndexOpts, grpc.WithTransportCredentials(creds))
 		} else {
-			mindexOpts = append(mindexOpts, grpc.WithInsecure())
+			minerIndexOpts = append(minerIndexOpts, grpc.WithInsecure())
 		}
 
-		c.MinerIndex, err = mi.NewClient(minerIndexTarget, mindexOpts...)
+		c.MinerIndex, err = mi.NewClient(minerIndexTarget, minerIndexOpts...)
 		if err != nil {
 			Fatal(err)
 		}

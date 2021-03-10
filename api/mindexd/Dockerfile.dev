@@ -27,6 +27,7 @@ COPY --from=0 $SRC_DIR/mindexd /usr/local/bin/mindexd
 
 EXPOSE 5000
 EXPOSE 8081
+EXPOSE 40000
 
 ENV MINDEXD_PATH /data/mindexd
 RUN adduser --home $MINDEXD_PATH --disabled-login --gecos "" --ingroup users mindexd

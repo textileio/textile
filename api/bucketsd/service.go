@@ -490,6 +490,10 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("pinBlock: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && totalAddedSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
@@ -539,6 +543,10 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("createBootstrappedPath: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && bootSize > owner.StorageAvailable {
 		return ctx, nil, ErrStorageQuotaExhausted
 	}
@@ -1950,6 +1958,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	if buckRoot != "" && buckRoot != buck.Path {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
+	verifyBuck := buck.Copy()
 
 	var wg sync.WaitGroup
 	var ctxLock sync.RWMutex
@@ -1980,15 +1989,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				ctxLock.RUnlock()
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
 					wg.Add(1)
-					buck.UpdatedAt = time.Now().UnixNano()
-					buck.SetMetadataAtPath(pth, tdb.Metadata{
-						UpdatedAt: buck.UpdatedAt,
+					verifyBuck.UpdatedAt = time.Now().UnixNano()
+					verifyBuck.SetMetadataAtPath(pth, tdb.Metadata{
+						UpdatedAt: verifyBuck.UpdatedAt,
 					})
-					buck.UnsetMetadataWithPrefix(pth + "/")
-					if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+					verifyBuck.UnsetMetadataWithPrefix(pth + "/")
+					if err = s.Buckets.Verify(ctx, dbID, verifyBuck, tdb.WithToken(dbToken)); err != nil {
 						return nil, fmt.Errorf("verifying bucket update: %v", err)
 					}
-					key, err := buck.GetFileEncryptionKeyForPath(pth)
+					key, err := verifyBuck.GetFileEncryptionKeyForPath(pth)
 					if err != nil {
 						return nil, fmt.Errorf("getting bucket key: %v", err)
 					}
@@ -2024,12 +2033,13 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 		if !changed {
 			return err
 		}
-
 		if serr := s.saveAndPublish(sctx, dbID, dbToken, buck); serr != nil {
 			if err != nil {
 				return err
 			}
 			return serr
+		} else {
+			log.Debugf("saved bucket %s with path: %s", buck.Key, buck.Path)
 		}
 		return err
 	}
@@ -2037,16 +2047,19 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	for {
 		select {
 		case res := <-addedCh:
-			fn, err := s.IPFSClient.ResolveNode(ctx, res.resolved)
+			ctxLock.RLock()
+			newCtx := ctx
+			ctxLock.RUnlock()
+
+			fn, err := s.IPFSClient.ResolveNode(newCtx, res.resolved)
 			if err != nil {
 				return saveWithErr(fmt.Errorf("resolving added node: %v", err))
 			}
 
 			var dir path.Resolved
 			if buck.IsPrivate() {
-				var ctx2 context.Context
-				ctx2, dir, err = s.insertNodeAtPath(
-					ctx,
+				newCtx, dir, err = s.insertNodeAtPath(
+					newCtx,
 					fn,
 					path.Join(path.New(buck.Path), res.path),
 					buck.GetLinkEncryptionKey(),
@@ -2054,13 +2067,9 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("inserting added node: %v", err))
 				}
-				ctxLock.Lock()
-				ctx = ctx2
-				ctxLock.Unlock()
-
 			} else {
 				dir, err = s.IPFSClient.Object().AddLink(
-					ctx,
+					newCtx,
 					path.New(buck.Path),
 					res.path,
 					res.resolved,
@@ -2069,16 +2078,17 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("adding bucket link: %v", err))
 				}
-				ctx2, err := s.updateOrAddPin(ctx, path.New(buck.Path), dir)
+				newCtx, err = s.updateOrAddPin(newCtx, path.New(buck.Path), dir)
 				if err != nil {
 					return saveWithErr(fmt.Errorf("updating bucket pin: %v", err))
 				}
-				ctxLock.Lock()
-				ctx = ctx2
-				ctxLock.Unlock()
 			}
 			buck.Path = dir.String()
 			buck.UpdatedAt = time.Now().UnixNano()
+			buck.SetMetadataAtPath(res.path, tdb.Metadata{
+				UpdatedAt: buck.UpdatedAt,
+			})
+			buck.UnsetMetadataWithPrefix(res.path + "/")
 
 			root, err := getPbRoot(dbID, buck)
 			if err != nil {
@@ -2088,11 +2098,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				Path:   res.path,
 				Cid:    res.resolved.Cid().String(),
 				Size:   res.size,
-				Pinned: s.getPinnedBytes(ctx),
+				Pinned: s.getPinnedBytes(newCtx),
 				Root:   root,
 			}); err != nil {
 				return saveWithErr(fmt.Errorf("sending event: %v", err))
 			}
+
+			ctxLock.Lock()
+			ctx = newCtx
+			ctxLock.Unlock()
 
 			log.Debugf("pushed %s to bucket: %s", res.path, buck.Key)
 
@@ -2385,6 +2399,10 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("updateOrAddPin: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && deltaSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
