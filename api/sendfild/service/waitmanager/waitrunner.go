@@ -2,7 +2,6 @@ package waitmanager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -19,23 +18,29 @@ type WaitResult struct {
 }
 
 type WaitRunner struct {
-	messageCid  string
-	confidence  uint64
-	waitTimeout time.Duration
-	store       *store.Store
-	cb          lotus.ClientBuilder
-	listeners   []chan WaitResult
-	lock        sync.Mutex
-	ctxCancel   context.CancelFunc
+	messageCid    string
+	confidence    uint64
+	waitTimeout   time.Duration
+	store         *store.Store
+	cb            lotus.ClientBuilder
+	listeners     []chan WaitResult
+	lock          sync.Mutex
+	mainCtx       context.Context
+	mainCtxCancel context.CancelFunc
+	waitCtx       context.Context
+	waitCtxCancel context.CancelFunc
 }
 
-func NewWaitRunner(messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) *WaitRunner {
+func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) *WaitRunner {
+	mainCtx, mainCtxCancel := context.WithCancel(ctx)
 	w := &WaitRunner{
-		messageCid:  messageCid,
-		confidence:  confidence,
-		waitTimeout: waitTimeout,
-		store:       store,
-		cb:          cb,
+		messageCid:    messageCid,
+		confidence:    confidence,
+		waitTimeout:   waitTimeout,
+		store:         store,
+		cb:            cb,
+		mainCtx:       mainCtx,
+		mainCtxCancel: mainCtxCancel,
 	}
 	return w
 }
@@ -43,12 +48,11 @@ func NewWaitRunner(messageCid string, confidence uint64, waitTimeout time.Durati
 func (w *WaitRunner) Start() {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	if w.ctxCancel != nil {
+	if w.waitCtxCancel != nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), w.waitTimeout)
-	w.ctxCancel = cancel
-	w.waitAndNotify(ctx)
+	w.waitCtx, w.waitCtxCancel = context.WithTimeout(w.mainCtx, w.waitTimeout)
+	w.waitAndNotify()
 }
 
 type CancelListenerFunc = func()
@@ -78,13 +82,14 @@ func (w *WaitRunner) AddListener(listener chan WaitResult) CancelListenerFunc {
 func (w *WaitRunner) Close() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	w.ctxCancel()
+	w.waitCtxCancel()
+	w.mainCtxCancel()
 	return nil
 }
 
-func (w *WaitRunner) waitAndNotify(ctx context.Context) {
+func (w *WaitRunner) waitAndNotify() {
 	go func() {
-		client, closeClient, err := w.cb(ctx)
+		client, closeClient, err := w.cb(w.mainCtx)
 		if err != nil {
 			w.notifyErr(fmt.Errorf("building lotus client: %v", err))
 			return
@@ -93,7 +98,7 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 
 		c, err := cid.Decode(w.messageCid)
 		if err != nil {
-			if err := w.store.FailTxn(ctx, w.messageCid, err.Error()); err != nil {
+			if err := w.store.FailTxn(w.mainCtx, w.messageCid, err.Error()); err != nil {
 				w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 				return
 			}
@@ -101,14 +106,14 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 			return
 		}
 
-		if err := w.store.SetWaiting(ctx, w.messageCid, true); err != nil {
+		if err := w.store.SetWaiting(w.mainCtx, w.messageCid, true); err != nil {
 			w.notifyErr(fmt.Errorf("setting txn to waiting: %v", err))
 			return
 		}
 
-		res, err := client.StateWaitMsg(ctx, c, w.confidence)
+		res, err := client.StateWaitMsg(w.waitCtx, c, w.confidence)
 
-		if err := w.store.SetWaiting(ctx, w.messageCid, false); err != nil {
+		if err := w.store.SetWaiting(w.mainCtx, w.messageCid, false); err != nil {
 			w.notifyErr(fmt.Errorf("setting txn to not waiting: %v", err))
 			return
 		}
@@ -117,15 +122,16 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 			// If for some reason the lotus node doesn't know about the cid, consider that a final error.
 			if strings.Contains(err.Error(), "block not found") {
 				log.Errorf("calling StateWaitMsg block not found: %s", err.Error())
-				if err := w.store.FailTxn(ctx, w.messageCid, "block not found in lotus"); err != nil {
+				if err := w.store.FailTxn(w.mainCtx, w.messageCid, "block not found in lotus"); err != nil {
 					w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 					return
 				}
 				w.notify(w.messageCid)
 				return
 			}
-			if errors.Is(err, context.DeadlineExceeded) {
-				w.notifyErr(fmt.Errorf("waiting for txn status timed out, but tnx is still processing, query txn again if needed"))
+			// ugly but seems to be the only way to detect this
+			if err.Error() == "context canceled" {
+				w.notifyErr(fmt.Errorf("waiting for txn status timed out, but txn is still processing, query txn again if needed"))
 				return
 			}
 			w.notifyErr(fmt.Errorf("calling StateWaitMsg: %v", err))
@@ -138,7 +144,7 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 			} else {
 				log.Infof("received exit code error: %s", res.Receipt.ExitCode.String())
 			}
-			if err := w.store.FailTxn(ctx, w.messageCid, fmt.Sprintf("error exit code: %v", res.Receipt.ExitCode.Error())); err != nil {
+			if err := w.store.FailTxn(w.mainCtx, w.messageCid, fmt.Sprintf("error exit code: %v", res.Receipt.ExitCode.Error())); err != nil {
 				w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 				return
 			}
@@ -152,7 +158,7 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 			return
 		}
 
-		if err := w.store.ActivateTxn(ctx, w.messageCid, res.Message.String()); err != nil {
+		if err := w.store.ActivateTxn(w.mainCtx, w.messageCid, res.Message.String()); err != nil {
 			w.notifyErr(fmt.Errorf("activating txn in store: %v", err))
 			return
 		}

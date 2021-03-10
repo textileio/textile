@@ -92,6 +92,15 @@ func TestSendFilWait(t *testing.T) {
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, txn.MessageState)
 }
 
+func TestSendFilWaitTimeout(t *testing.T) {
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(3000), setupWithMessageWaitTimeout(time.Second))
+	defer cleanup()
+	addr := requireLotusAddress(t, ctx, lc)
+	_, err := c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), AmountNanoFil: oneFil, Wait: true})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "waiting for txn status timed out, but txn is still processing, query txn again if needed")
+}
+
 func TestGetTxn(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
 	defer cleanup()
@@ -112,6 +121,16 @@ func TestGetTxnWait(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, txn1.MessageCid, res.Txn.MessageCid)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, res.Txn.MessageState)
+}
+
+func TestGetTxnWaitTimeout(t *testing.T) {
+	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(3000), setupWithMessageWaitTimeout(time.Second))
+	defer cleanup()
+	addr := requireLotusAddress(t, ctx, lc)
+	txn1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn1.MessageCid, Wait: true})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "waiting for txn status timed out, but txn is still processing, query txn again if needed")
 }
 
 func TestGetTxnNonExistent(t *testing.T) {
@@ -516,8 +535,11 @@ func TestSummary(t *testing.T) {
 }
 
 type setupConfig struct {
-	dbName string
-	speed  int
+	dbName             string
+	messageWaitTimeout time.Duration
+	messageConfidence  uint64
+	retryWaitFrequency time.Duration
+	speed              int
 }
 
 type setupOption = func(*setupConfig)
@@ -531,6 +553,24 @@ func setupWithSpeed(speed int) setupOption {
 func setupWithDbName(dbName string) setupOption {
 	return func(config *setupConfig) {
 		config.dbName = dbName
+	}
+}
+
+func setupWithMessageWaitTimeout(messageWaitTimeout time.Duration) setupOption {
+	return func(config *setupConfig) {
+		config.messageWaitTimeout = messageWaitTimeout
+	}
+}
+
+func setupWithMessageConfidence(messageConfidence uint64) setupOption {
+	return func(config *setupConfig) {
+		config.messageConfidence = messageConfidence
+	}
+}
+
+func setupWithRetryWaitFrequency(retryWaitFrequency time.Duration) setupOption {
+	return func(config *setupConfig) {
+		config.retryWaitFrequency = retryWaitFrequency
 	}
 }
 
@@ -555,7 +595,10 @@ func requireSetupLotus(t *testing.T, ctx context.Context, opts ...setupOption) (
 
 func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuilder, opts ...setupOption) (pb.SendFilServiceClient, func()) {
 	config := &setupConfig{
-		dbName: util.MakeToken(12),
+		dbName:             util.MakeToken(12),
+		messageWaitTimeout: time.Minute,
+		messageConfidence:  2,
+		retryWaitFrequency: time.Minute,
 	}
 	for _, opt := range opts {
 		opt(config)
@@ -567,9 +610,9 @@ func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 		ClientBuilder:      cb,
 		MongoUri:           test.GetMongoUri(),
 		MongoDbName:        config.dbName,
-		MessageWaitTimeout: time.Minute,
-		MessageConfidence:  2,
-		RetryWaitFrequency: time.Minute,
+		MessageWaitTimeout: config.messageWaitTimeout,
+		MessageConfidence:  config.messageConfidence,
+		RetryWaitFrequency: config.retryWaitFrequency,
 		Debug:              true,
 	}
 	s, err := New(conf)

@@ -74,16 +74,20 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 
 	runner, found := w.waiting[objID]
 	if !found {
-		runner = NewWaitRunner(messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
+		runner = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
 		w.waiting[objID] = runner
 		listener := make(chan WaitResult)
 		_ = runner.AddListener(listener)
 		go func() {
+			var err error
 			select {
 			case <-listener:
-				w.deleteWaitRunner(objID)
+				err = w.deleteWaitRunner(objID)
 			case <-w.mainCtx.Done():
-				w.deleteWaitRunner(objID)
+				err = w.deleteWaitRunner(objID)
+			}
+			if err != nil {
+				log.Errorf("deleting wait runner: %v", err)
 			}
 		}()
 	}
@@ -122,8 +126,14 @@ func (w *WaitManager) bindTicker(ctx context.Context) {
 	}()
 }
 
-func (w *WaitManager) deleteWaitRunner(objID primitive.ObjectID) {
+func (w *WaitManager) deleteWaitRunner(objID primitive.ObjectID) error {
 	w.waitingLck.Lock()
 	defer w.waitingLck.Unlock()
+	runner, ok := w.waiting[objID]
+	if !ok {
+		return nil
+	}
+	err := runner.Close()
 	delete(w.waiting, objID)
+	return err
 }
