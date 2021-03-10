@@ -24,9 +24,15 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var _ pb.SendFilServiceServer = (*Service)(nil)
+const (
+	listMaxLimit = 1000
+)
 
-var log = logging.Logger("sendfil")
+var (
+	_ pb.SendFilServiceServer = (*Service)(nil)
+
+	log = logging.Logger("sendfil")
+)
 
 type Service struct {
 	clientBuilder lotus.ClientBuilder
@@ -164,6 +170,9 @@ func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxn
 }
 
 func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
+	if req.Limit > listMaxLimit {
+		req.Limit = listMaxLimit
+	}
 	txns, moreToken, err := s.store.ListTxns(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "getting txns list: %v", err)
