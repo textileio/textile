@@ -3123,7 +3123,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 	bal, ok := new(big.Int).SetString(addrInfo.Balance, 10)
 	if !ok {
-		return nil, fmt.Errorf("converting balance %v to big int", addrInfo.Balance)
+		return nil, fmt.Errorf("converting balance %s to big int", addrInfo.Balance)
 	}
 	if bal.Cmp(big.NewInt(0)) == 0 {
 		return nil, buckets.ErrZeroBalance
