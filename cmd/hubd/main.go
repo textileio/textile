@@ -100,11 +100,11 @@ var (
 			},
 			"bucketsArchiveMaxSize": {
 				Key:      "buckets.archive_max_size",
-				DefValue: 32 * gib,
+				DefValue: int64(32 * gib),
 			},
 			"bucketsArchiveMinSize": {
 				Key:      "buckets.archive_min_size",
-				DefValue: 64 * mib,
+				DefValue: int64(64 * mib),
 			},
 
 			// Threads

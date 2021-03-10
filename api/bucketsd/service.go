@@ -3114,7 +3114,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 	bal, ok := new(big.Int).SetString(balRes.Balance, 10)
 	if !ok {
-		return nil, fmt.Errorf("error converting balance %v to big int", balRes.Balance)
+		return nil, fmt.Errorf("converting balance %v to big int", balRes.Balance)
 	}
 	if bal.Cmp(big.NewInt(0)) == 0 {
 		return nil, buckets.ErrZeroBalance

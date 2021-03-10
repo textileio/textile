@@ -223,7 +223,6 @@ var archiveCmd = &cobra.Command{
 			config, err = buck.DefaultArchiveConfig(ctx)
 			cmd.ErrCheck(err)
 		}
-		opts = append(opts, local.WithArchiveConfig(config))
 
 		addrs, err := buck.Addresses(ctx)
 		cmd.ErrCheck(err)
@@ -305,7 +304,7 @@ var archiveCmd = &cobra.Command{
 			fmt.Println("")
 		}
 
-		return
+		opts = append(opts, local.WithArchiveConfig(config))
 		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
 
