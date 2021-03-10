@@ -179,16 +179,16 @@ func ListTxnsLimit(limit int64) ListTxnsOption {
 	}
 }
 
-func (c *Client) ListTxns(ctx context.Context, opts ...ListTxnsOption) ([]*pb.Txn, bool, int64, error) {
+func (c *Client) ListTxns(ctx context.Context, opts ...ListTxnsOption) ([]*pb.Txn, int64, error) {
 	req := &pb.ListTxnsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.c.ListTxns(ctx, req)
 	if err != nil {
-		return nil, false, 0, err
+		return nil, 0, err
 	}
-	return res.Txns, res.More, res.MoreToken, nil
+	return res.Txns, res.MoreToken, nil
 }
 
 func (c *Client) Close() error {

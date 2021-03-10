@@ -466,29 +466,28 @@ func TestListTxnsPaging(t *testing.T) {
 
 	pageResults := func(ascending bool) {
 		numPages := 0
-		more := true
 		var moreToken int64 = 0
-		for more {
+		for {
 			req := &pb.ListTxnsRequest{CreatedAfter: txFirst.CreatedAt, CreatedBefore: txLast.CreatedAt, Limit: 3, Ascending: ascending}
 			if moreToken != 0 {
 				req.MoreToken = moreToken
 			}
 			res, err := c.ListTxns(ctx, req)
 			require.NoError(t, err)
+			if len(res.Txns) == 0 {
+				break
+			}
 			requireTxnsOrder(t, res.Txns, ascending)
 			numPages++
 			if numPages < 3 {
-				require.True(t, res.More)
 				require.Greater(t, res.MoreToken, int64(0))
 				require.Len(t, res.Txns, 3)
 			}
 			if numPages == 3 {
-				require.False(t, res.More)
-				require.Equal(t, int64(0), res.MoreToken)
+				require.Greater(t, res.MoreToken, int64(0))
 				require.Len(t, res.Txns, 2)
 			}
 			moreToken = res.MoreToken
-			more = res.More
 		}
 		require.Equal(t, 3, numPages)
 	}

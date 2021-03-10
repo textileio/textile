@@ -72,7 +72,6 @@ message ListTxnsRequest {
 
 message ListTxnsResponse {
   repeated Txn txns = 1;
-  bool more = 2;
   int64 more_token = 3;
 }
 
