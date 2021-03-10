@@ -139,7 +139,8 @@ func toPbArchiveConfig(config ArchiveConfig) *pb.ArchiveConfig {
 }
 
 type archiveRemoteOptions struct {
-	archiveConfig *ArchiveConfig
+	archiveConfig             *ArchiveConfig
+	skipAutomaticVerifiedDeal bool
 }
 
 type ArchiveRemoteOption func(*archiveRemoteOptions)
@@ -148,6 +149,14 @@ type ArchiveRemoteOption func(*archiveRemoteOptions)
 func WithArchiveConfig(config ArchiveConfig) ArchiveRemoteOption {
 	return func(opts *archiveRemoteOptions) {
 		opts.archiveConfig = &config
+	}
+}
+
+// WithSkipAutomaticVerifiedDeal allows to skip backend logic to automatically set
+// the verified deal flag for making the archive.
+func WithSkipAutomaticVerifiedDeal(enabled bool) ArchiveRemoteOption {
+	return func(opts *archiveRemoteOptions) {
+		opts.skipAutomaticVerifiedDeal = enabled
 	}
 }
 
@@ -164,6 +173,9 @@ func (b *Bucket) ArchiveRemote(ctx context.Context, opts ...ArchiveRemoteOption)
 	var clientOpts []client.ArchiveOption
 	if options.archiveConfig != nil {
 		clientOpts = append(clientOpts, client.WithArchiveConfig(toPbArchiveConfig(*options.archiveConfig)))
+	}
+	if options.skipAutomaticVerifiedDeal {
+		clientOpts = append(clientOpts, client.WithSkipAutomaticVerifiedDeal(true))
 	}
 
 	ctx, err := b.context(ctx)

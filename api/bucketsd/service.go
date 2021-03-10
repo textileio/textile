@@ -3067,7 +3067,6 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	ctxPow := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-
 	defConfRes, err := s.PowergateClient.StorageConfig.Default(ctxPow)
 	if err != nil {
 		if !strings.Contains(err.Error(), "auth token not found") {
@@ -3108,16 +3107,47 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 
 	// Check that user wallet addr balance is > 0, if not, fail fast.
-	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
+	addrs, err := s.PowergateClient.Wallet.Addresses(ctxPow)
 	if err != nil {
-		return nil, fmt.Errorf("getting powergate wallet address balance: %v", err)
+		return nil, fmt.Errorf("getting powergate wallet addresses: %v", err)
 	}
-	bal, ok := new(big.Int).SetString(balRes.Balance, 10)
+	var addrInfo *userPb.AddrInfo
+	for _, addr := range addrs.Addresses {
+		if addr.Address == storageConfig.Cold.Filecoin.Address {
+			addrInfo = addr
+			break
+		}
+	}
+	if addrInfo == nil {
+		return nil, fmt.Errorf("wallet address not found in account: %v", err)
+	}
+	bal, ok := new(big.Int).SetString(addrInfo.Balance, 10)
 	if !ok {
-		return nil, fmt.Errorf("converting balance %v to big int", balRes.Balance)
+		return nil, fmt.Errorf("converting balance %v to big int", addrInfo.Balance)
 	}
 	if bal.Cmp(big.NewInt(0)) == 0 {
 		return nil, buckets.ErrZeroBalance
+	}
+
+	// If we don't get an explicit instruction of avoiding automatic verified-deal
+	// tunning, and the wallet address is verified, then automatically enable
+	// verified deals in the storage-config used for the archive.
+	if !req.SkipAutomaticVerifiedDeal {
+		if !storageConfig.Cold.Filecoin.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
+			remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
+			if !ok {
+				return nil, fmt.Errorf("parsing remaining datacap")
+			}
+			if remainingDataCap.Cmp(big.NewInt(0)) == 0 {
+				return nil, fmt.Errorf("the remaining datacap is zero: %s", err)
+			}
+			storageConfig.Cold.Filecoin.VerifiedDeal = true
+			// TODO(jsign): we'll soon add some more work here to
+			// see if the archive fits into the remaining data-cap
+			// and take a decision of what to do.
+		} else if storageConfig.Cold.Filecoin.VerifiedDeal && addrInfo.VerifiedClientInfo == nil {
+			return nil, fmt.Errorf("storage-config has set verified deals but the client is unverified")
+		}
 	}
 
 	// Archive pushes the current root Cid to the corresponding user of the bucket.

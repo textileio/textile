@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
@@ -209,7 +209,7 @@ var archiveCmd = &cobra.Command{
 			}
 		}
 
-		var opts []local.ArchiveRemoteOption
+		opts := []local.ArchiveRemoteOption{local.WithSkipAutomaticVerifiedDeal(true)}
 
 		config := local.ArchiveConfig{}
 		if reader != nil {
@@ -231,20 +231,23 @@ var archiveCmd = &cobra.Command{
 		}
 
 		addrInfo := addrs.Addresses[0]
-		balance, err := big.FromString(addrInfo.Balance)
-		cmd.ErrCheck(err)
-		if balance.IsZero() {
+		balance, ok := big.NewInt(0).SetString(addrInfo.Balance, 10)
+		if !ok {
+			cmd.Error(fmt.Errorf("parsing current balance"))
+		}
+		if balance.Cmp(big.NewInt(0)) == 0 {
 			cmd.Error(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
 		}
 
 		skipVerifiedDealOverride, err := c.Flags().GetBool("skip-verified-deal-override")
 		cmd.ErrCheck(err)
 		if !skipVerifiedDealOverride {
-
 			if !config.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
-				remainingDataCap, err := big.FromString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes)
-				cmd.ErrCheck(err)
-				if !remainingDataCap.IsZero() {
+				remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
+				if !ok {
+					cmd.Error(fmt.Errorf("Parsing remaining datacap"))
+				}
+				if remainingDataCap.Cmp(big.NewInt(0)) > 0 {
 					// If the default storage-config is !verified-deal, but the client
 					// is verified, then help him set this value automatically.
 					cmd.Message("The Filecoin wallet is verified, enabling verified deals automatically.")
