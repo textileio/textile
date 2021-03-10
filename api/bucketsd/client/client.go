@@ -548,7 +548,6 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 			}
 			buf := make([]byte, chunkSize)
 			for {
-
 				n, err := r.Read(buf)
 				c := &pb.PushPathsRequest_Chunk{
 					Path: p.path,
