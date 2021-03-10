@@ -2,6 +2,7 @@ package waitmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -121,6 +122,10 @@ func (w *WaitRunner) waitAndNotify(ctx context.Context) {
 					return
 				}
 				w.notify(w.messageCid)
+				return
+			}
+			if errors.Is(err, context.DeadlineExceeded) {
+				w.notifyErr(fmt.Errorf("waiting for txn status timed out, but tnx is still processing, query txn again if needed"))
 				return
 			}
 			w.notifyErr(fmt.Errorf("calling StateWaitMsg: %v", err))

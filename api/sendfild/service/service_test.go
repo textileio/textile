@@ -592,7 +592,6 @@ func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 }
 
 func requireSetup(t *testing.T, ctx context.Context, opts ...setupOption) (pb.SendFilServiceClient, *apistruct.FullNodeStruct, address.Address, func()) {
-
 	cb, lotusClient, addr, cleanupLouts := requireSetupLotus(t, ctx, opts...)
 	serviceClient, cleanupService := requireSetupService(t, ctx, cb, opts...)
 
