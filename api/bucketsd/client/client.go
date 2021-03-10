@@ -300,11 +300,7 @@ func (c *PushPathsQueue) AddFile(pth, name string) error {
 	c.q = append(c.q, pushPath{
 		path: filepath.ToSlash(pth),
 		r: func() (io.ReadCloser, error) {
-			f, err := os.Open(name)
-			if err != nil {
-				return nil, err
-			}
-			return f, nil
+			return os.Open(name)
 		},
 	})
 	return nil
