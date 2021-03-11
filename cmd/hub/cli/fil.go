@@ -22,6 +22,9 @@ func init() {
 	filRetrievalsCmd.Flags().StringSlice("addrs", []string{}, "limit the records to deals initiated from  the specified wallet addresses, treated as and AND operation if --cids is also provided")
 }
 
+const addrsWarning = "Funds in this wallet are for network and storage fees only; they cannot be transferred or sold."
+const addrsGetVerified = "Get your address verified on https://plus.fil.org/."
+
 var filCmd = &cobra.Command{
 	Use:     "fil",
 	Aliases: []string{"filecoin", "pow"},
@@ -42,6 +45,17 @@ var filAddrsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
+		cmd.Message(addrsWarning)
+		// provide link for verification
+		showVerificationInfo := true
+		for _, addr := range res.Addresses {
+			if addr.VerifiedClientInfo != nil {
+				showVerificationInfo = false
+			}
+		}
+		if showVerificationInfo {
+			cmd.Message(addrsGetVerified)
+		}
 		cmd.Success("\n%v", string(json))
 	},
 }
@@ -58,6 +72,7 @@ var filBalanceCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
+		cmd.Message(addrsWarning)
 		cmd.Success("\n%v", string(json))
 	},
 }
