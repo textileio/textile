@@ -7,12 +7,13 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/textileio/go-threads/util"
 	"github.com/textileio/powergate/v2/lotus"
 	"github.com/textileio/textile/v2/api/sendfild/service/store"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var log = logging.Logger("sendfil-waitmanager")
+var log = logging.Logger("waitmanager")
 
 type WaitManager struct {
 	clientBuilder lotus.ClientBuilder
@@ -26,7 +27,15 @@ type WaitManager struct {
 	mainCtxCancel context.CancelFunc
 }
 
-func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTimeout time.Duration, retryWaitFrequency time.Duration) (*WaitManager, error) {
+func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTimeout time.Duration, retryWaitFrequency time.Duration, debug bool) (*WaitManager, error) {
+	if debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"waitmanger": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	w := &WaitManager{

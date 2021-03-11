@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	log = logging.Logger("sendfil-store")
+	log = logging.Logger("store")
 
 	ErrNotFound = fmt.Errorf("no Txn found")
 )
@@ -60,7 +60,7 @@ func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
-			"sendfil-store": logging.LevelDebug,
+			"store": logging.LevelDebug,
 		}); err != nil {
 			cancel()
 			return nil, err

@@ -152,7 +152,7 @@ func (w *WaitRunner) waitAndNotify() {
 				return
 			}
 
-			cidToNotify := c.String()
+			cidToNotify := w.messageCid
 			if res.Message.Defined() {
 				cidToNotify = res.Message.String()
 			}
