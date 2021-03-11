@@ -45,6 +45,7 @@ var filAddrsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
+		cmd.Success("\n%v", string(json))
 		cmd.Message(addrsWarning)
 		// provide link for verification
 		showVerificationInfo := true
@@ -56,7 +57,6 @@ var filAddrsCmd = &cobra.Command{
 		if showVerificationInfo {
 			cmd.Message(addrsGetVerified)
 		}
-		cmd.Success("\n%v", string(json))
 	},
 }
 
@@ -72,8 +72,8 @@ var filBalanceCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
-		cmd.Message(addrsWarning)
 		cmd.Success("\n%v", string(json))
+		cmd.Message(addrsWarning)
 	},
 }
 
