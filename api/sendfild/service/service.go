@@ -123,7 +123,9 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 		return nil, status.Errorf(codes.Internal, "creating new txn: %v", err)
 	}
 
-	s.waitManager.RegisterTxn(txn.ID, sm.Message.Cid().String())
+	if err := s.waitManager.RegisterTxn(txn.ID, sm.Message.Cid().String()); err != nil {
+		return nil, status.Errorf(codes.Internal, "registering txn: %v", err)
+	}
 
 	if req.Wait {
 		txn, err = s.waitForTxn(ctx, txn.ID, sm.Message.Cid().String())
@@ -277,7 +279,10 @@ func (s *Service) Close() error {
 
 func (s *Service) waitForTxn(ctx context.Context, objID primitive.ObjectID, messageCid string) (*store.Txn, error) {
 	listener := make(chan waitmanager.WaitResult)
-	cancel := s.waitManager.Subscribe(objID, messageCid, listener)
+	cancel, err := s.waitManager.Subscribe(objID, messageCid, listener)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "subscribing: %v", err)
+	}
 	select {
 	case res := <-listener:
 		if res.Err != nil {

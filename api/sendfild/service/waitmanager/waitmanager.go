@@ -50,16 +50,23 @@ func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTime
 	return w, nil
 }
 
-func (w *WaitManager) RegisterTxn(objID primitive.ObjectID, messageCid string) {
-	runner := w.getOrCreateRunner(objID, messageCid)
+func (w *WaitManager) RegisterTxn(objID primitive.ObjectID, messageCid string) error {
+	runner, err := w.getOrCreateRunner(objID, messageCid)
+	if err != nil {
+		return fmt.Errorf("getting wait runner: %v", err)
+	}
 	runner.Start()
+	return nil
 }
 
-func (w *WaitManager) Subscribe(objID primitive.ObjectID, messageCid string, listener chan WaitResult) CancelListenerFunc {
-	runner := w.getOrCreateRunner(objID, messageCid)
+func (w *WaitManager) Subscribe(objID primitive.ObjectID, messageCid string, listener chan WaitResult) (CancelListenerFunc, error) {
+	runner, err := w.getOrCreateRunner(objID, messageCid)
+	if err != nil {
+		return nil, fmt.Errorf("getting wait runner: %v", err)
+	}
 	cancel := runner.AddListener(listener)
 	runner.Start()
-	return cancel
+	return cancel, nil
 }
 
 func (w *WaitManager) Close() error {
@@ -68,13 +75,17 @@ func (w *WaitManager) Close() error {
 	return nil
 }
 
-func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid string) *WaitRunner {
+func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid string) (*WaitRunner, error) {
 	w.waitingLck.Lock()
 	defer w.waitingLck.Unlock()
 
 	runner, found := w.waiting[objID]
 	if !found {
-		runner = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
+		var err error
+		runner, err = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
+		if err != nil {
+			return nil, err
+		}
 		w.waiting[objID] = runner
 		listener := make(chan WaitResult)
 		_ = runner.AddListener(listener)
@@ -91,7 +102,7 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 			}
 		}()
 	}
-	return runner
+	return runner, nil
 }
 
 func (w *WaitManager) waitAllPending(ctx context.Context, isInitialRun bool) error {
@@ -105,7 +116,9 @@ func (w *WaitManager) waitAllPending(ctx context.Context, isInitialRun bool) err
 		if err != nil {
 			return err
 		}
-		w.RegisterTxn(txn.ID, latestMessageCid.Cid)
+		if err := w.RegisterTxn(txn.ID, latestMessageCid.Cid); err != nil {
+			return err
+		}
 	}
 	return nil
 }

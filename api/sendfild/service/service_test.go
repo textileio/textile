@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	ctx, _ = context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx = context.Background()
 )
 
 func TestMain(m *testing.M) {

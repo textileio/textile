@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/ipfs/go-cid"
 	"github.com/textileio/powergate/v2/lotus"
 	"github.com/textileio/textile/v2/api/sendfild/service/store"
@@ -18,31 +19,39 @@ type WaitResult struct {
 }
 
 type WaitRunner struct {
-	messageCid    string
-	confidence    uint64
-	waitTimeout   time.Duration
-	store         *store.Store
-	cb            lotus.ClientBuilder
-	listeners     []chan WaitResult
-	lock          sync.Mutex
-	mainCtx       context.Context
-	mainCtxCancel context.CancelFunc
-	waitCtx       context.Context
-	waitCtxCancel context.CancelFunc
+	messageCid       string
+	confidence       uint64
+	waitTimeout      time.Duration
+	store            *store.Store
+	lotusClient      *apistruct.FullNodeStruct
+	closeLotusClient func()
+	listeners        []chan WaitResult
+	lock             sync.Mutex
+	mainCtx          context.Context
+	mainCtxCancel    context.CancelFunc
+	waitCtx          context.Context
+	waitCtxCancel    context.CancelFunc
 }
 
-func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) *WaitRunner {
+func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) (*WaitRunner, error) {
 	mainCtx, mainCtxCancel := context.WithCancel(ctx)
+
 	w := &WaitRunner{
 		messageCid:    messageCid,
 		confidence:    confidence,
 		waitTimeout:   waitTimeout,
 		store:         store,
-		cb:            cb,
 		mainCtx:       mainCtx,
 		mainCtxCancel: mainCtxCancel,
 	}
-	return w
+
+	var err error
+	w.lotusClient, w.closeLotusClient, err = cb(mainCtx)
+	if err != nil {
+		return nil, fmt.Errorf("creating lotus client: %v", err)
+	}
+
+	return w, nil
 }
 
 func (w *WaitRunner) Start() {
@@ -82,6 +91,7 @@ func (w *WaitRunner) AddListener(listener chan WaitResult) CancelListenerFunc {
 func (w *WaitRunner) Close() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
+	w.closeLotusClient()
 	w.waitCtxCancel()
 	w.mainCtxCancel()
 	return nil
@@ -89,13 +99,6 @@ func (w *WaitRunner) Close() error {
 
 func (w *WaitRunner) waitAndNotify() {
 	go func() {
-		client, closeClient, err := w.cb(w.mainCtx)
-		if err != nil {
-			w.notifyErr(fmt.Errorf("building lotus client: %v", err))
-			return
-		}
-		defer closeClient()
-
 		c, err := cid.Decode(w.messageCid)
 		if err != nil {
 			if err := w.store.FailTxn(w.mainCtx, w.messageCid, err.Error()); err != nil {
@@ -111,7 +114,7 @@ func (w *WaitRunner) waitAndNotify() {
 			return
 		}
 
-		res, err := client.StateWaitMsg(w.waitCtx, c, w.confidence)
+		res, err := w.lotusClient.StateWaitMsg(w.waitCtx, c, w.confidence)
 
 		if err := w.store.SetWaiting(w.mainCtx, w.messageCid, false); err != nil {
 			w.notifyErr(fmt.Errorf("setting txn to not waiting: %v", err))
