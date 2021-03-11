@@ -67,7 +67,7 @@ func New(config Config) (*Service, error) {
 		return nil, fmt.Errorf("creating store: %v", err)
 	}
 
-	wm, err := waitmanager.New(config.ClientBuilder, st, config.MessageConfidence, config.MessageWaitTimeout, config.RetryWaitFrequency)
+	wm, err := waitmanager.New(config.ClientBuilder, st, config.MessageConfidence, config.MessageWaitTimeout, config.RetryWaitFrequency, config.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("creating waitmanager: %v", err)
 	}
