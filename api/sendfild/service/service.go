@@ -111,9 +111,9 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "creating filecoin client: %v", err)
 	}
-	defer cls()
 
 	sm, err := client.MpoolPushMessage(ctx, msg, nil)
+	cls()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "pushing message: %v", err)
 	}
