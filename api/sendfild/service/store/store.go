@@ -255,12 +255,10 @@ func (s *Store) ActivateTxn(ctx context.Context, knownCid, latestCid string) err
 	return nil
 }
 
-// ToDo: What to do about more token
-func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, int64, error) {
+func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, error) {
 	findOpts := options.Find()
-	if req.Limit > 0 {
-		findOpts = findOpts.SetLimit(req.Limit)
-	}
+	findOpts = findOpts.SetLimit(req.PageSize)
+	findOpts = findOpts.SetSkip(req.PageSize * req.Page)
 	sort := -1
 	if req.Ascending {
 		sort = 1
@@ -326,37 +324,22 @@ func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, 
 		ands = append(ands, bson.M{"created_at": bson.M{"$lt": req.CreatedBefore.AsTime()}})
 	}
 
-	// Apply paging info
-	comp := "$lt"
-	if req.MoreToken != 0 {
-		if req.Ascending {
-			comp = "$gt"
-		}
-		t := time.Unix(0, req.MoreToken)
-		ands = append(ands, bson.M{"created_at": bson.M{comp: &t}})
-	}
-
 	if len(ands) > 0 {
 		filter["$and"] = ands
 	}
 
 	cursor, err := s.col.Find(ctx, filter, findOpts)
 	if err != nil {
-		return nil, 0, fmt.Errorf("querying txns: %v", err)
+		return nil, fmt.Errorf("querying txns: %v", err)
 	}
 	defer cursor.Close(ctx)
 	var txns []*Txn
 	err = cursor.All(ctx, &txns)
 	if err != nil {
-		return nil, 0, fmt.Errorf("decoding txns query results: %v", err)
+		return nil, fmt.Errorf("decoding txns query results: %v", err)
 	}
 
-	var moreToken int64 = 0
-	if len(txns) > 0 {
-		moreToken = txns[len(txns)-1].CreatedAt.UnixNano()
-	}
-
-	return txns, moreToken, nil
+	return txns, nil
 }
 
 type EntityCount struct {

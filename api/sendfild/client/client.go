@@ -167,28 +167,28 @@ func ListTxnsAscending() ListTxnsOption {
 	}
 }
 
-func ListTxnsMoreToken(moreToken int64) ListTxnsOption {
+func ListTxnsPageSize(pageSize int64) ListTxnsOption {
 	return func(req *pb.ListTxnsRequest) {
-		req.MoreToken = moreToken
+		req.PageSize = pageSize
 	}
 }
 
-func ListTxnsLimit(limit int64) ListTxnsOption {
+func ListTxnsPage(page int64) ListTxnsOption {
 	return func(req *pb.ListTxnsRequest) {
-		req.Limit = limit
+		req.Page = page
 	}
 }
 
-func (c *Client) ListTxns(ctx context.Context, opts ...ListTxnsOption) ([]*pb.Txn, int64, error) {
+func (c *Client) ListTxns(ctx context.Context, opts ...ListTxnsOption) ([]*pb.Txn, error) {
 	req := &pb.ListTxnsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.c.ListTxns(ctx, req)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return res.Txns, res.MoreToken, nil
+	return res.Txns, nil
 }
 
 func (c *Client) Close() error {

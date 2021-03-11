@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	listMaxLimit = 1000
+	listMaxPageSize = 1000
 )
 
 var (
@@ -170,10 +170,10 @@ func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxn
 }
 
 func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
-	if req.Limit > listMaxLimit {
-		req.Limit = listMaxLimit
+	if req.PageSize > listMaxPageSize || req.PageSize == 0 {
+		req.PageSize = listMaxPageSize
 	}
-	txns, moreToken, err := s.store.ListTxns(ctx, req)
+	txns, err := s.store.ListTxns(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "getting txns list: %v", err)
 	}
@@ -187,10 +187,7 @@ func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.Li
 		pbTxns = append(pbTxns, pbTxn)
 	}
 
-	return &pb.ListTxnsResponse{
-		Txns:      pbTxns,
-		MoreToken: moreToken,
-	}, nil
+	return &pb.ListTxnsResponse{Txns: pbTxns}, nil
 }
 
 func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.SummaryResponse, error) {

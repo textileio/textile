@@ -465,12 +465,14 @@ func TestListTxnsPaging(t *testing.T) {
 	txLast := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
 
 	pageResults := func(ascending bool) {
-		numPages := 0
-		var moreToken int64 = 0
+		page := int64(0)
 		for {
-			req := &pb.ListTxnsRequest{CreatedAfter: txFirst.CreatedAt, CreatedBefore: txLast.CreatedAt, Limit: 3, Ascending: ascending}
-			if moreToken != 0 {
-				req.MoreToken = moreToken
+			req := &pb.ListTxnsRequest{
+				CreatedAfter:  txFirst.CreatedAt,
+				CreatedBefore: txLast.CreatedAt,
+				PageSize:      3,
+				Page:          page,
+				Ascending:     ascending,
 			}
 			res, err := c.ListTxns(ctx, req)
 			require.NoError(t, err)
@@ -478,18 +480,15 @@ func TestListTxnsPaging(t *testing.T) {
 				break
 			}
 			requireTxnsOrder(t, res.Txns, ascending)
-			numPages++
-			if numPages < 3 {
-				require.Greater(t, res.MoreToken, int64(0))
+			if page < 2 {
 				require.Len(t, res.Txns, 3)
 			}
-			if numPages == 3 {
-				require.Greater(t, res.MoreToken, int64(0))
+			if page == 2 {
 				require.Len(t, res.Txns, 2)
 			}
-			moreToken = res.MoreToken
+			page++
 		}
-		require.Equal(t, 3, numPages)
+		require.Equal(t, int64(3), page)
 	}
 	pageResults(false)
 	pageResults(true)
