@@ -23,7 +23,7 @@ func init() {
 }
 
 const addrsWarning = "Funds in this wallet are for network and storage fees only; they cannot be transferred or sold."
-const addrsGetVerified = "Get your address verified on https://plus.fil.org/."
+const addrsGetVerified = "Get your address verified on https://plus.fil.org/landing."
 
 var filCmd = &cobra.Command{
 	Use:     "fil",
