@@ -88,15 +88,25 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 	}
 	defer f.Close()
 
-	var buf [512]byte
-	n, err := io.ReadAtLeast(f, buf[:], len(buf))
-	if err != nil && err != io.ErrUnexpectedEOF {
-		renderError(c, http.StatusInternalServerError, err)
+	contentType, r, err := detectReaderContentType(f)
+	if err != nil {
+		renderError(c, http.StatusInternalServerError, fmt.Errorf("detecting mime: %s", err))
 		return
 	}
-	contentType := http.DetectContentType(buf[:])
+
 	c.Writer.Header().Set("Content-Type", contentType)
-	c.Render(200, render.Reader{ContentLength: -1, Reader: io.MultiReader(bytes.NewReader(buf[:n]), f)})
+	c.Render(200, render.Reader{ContentLength: -1, Reader: r})
+}
+
+func detectReaderContentType(r io.Reader) (string, io.Reader, error) {
+	var buf [512]byte
+	n, err := io.ReadAtLeast(r, buf[:], len(buf))
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return "", nil, fmt.Errorf("reading reader: %s", err)
+	}
+	contentType := http.DetectContentType(buf[:])
+
+	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
 }
 
 func (g *Gateway) openPath(ctx context.Context, pth path.Path) (io.ReadCloser, error) {

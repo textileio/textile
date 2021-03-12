@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +15,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
 	"github.com/textileio/textile/v2/api/bucketsd/client"
+	bucketsclient "github.com/textileio/textile/v2/api/bucketsd/client"
 	"github.com/textileio/textile/v2/api/common"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
@@ -84,9 +83,12 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		return
 	}
 	if !rep.Item.IsDir {
-		if err := g.buckets.PullPath(ctx, buck.Key, pth, c.Writer); err != nil {
+		contentType, r, err := getContentTypeFromPullPath(ctx, g.buckets, buck.Key, pth)
+		if err != nil {
 			render404(c)
 		}
+		c.Writer.Header().Set("Content-Type", contentType)
+		io.Copy(c.Writer, r)
 	} else {
 		var base string
 		if g.subdomains {
@@ -132,7 +134,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 type serveBucketFS interface {
 	GetThread(ctx context.Context, key string) (thread.ID, error)
 	Exists(ctx context.Context, bucket, pth string) (bool, string)
-	Write(ctx context.Context, bucket, pth string, writer io.Writer) error
+	GetPathWithContentType(ctx context.Context, bucket, pth string) (string, io.Reader, error)
 	ValidHost() string
 }
 
@@ -165,24 +167,23 @@ func serveBucket(fs serveBucketFS) gin.HandlerFunc {
 		exists, target := fs.Exists(ctx, key, c.Request.URL.Path)
 		if exists {
 			c.Writer.WriteHeader(http.StatusOK)
-			ctype := mime.TypeByExtension(filepath.Ext(c.Request.URL.Path))
-			if ctype == "" {
-				ctype = "application/octet-stream"
-			}
-			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(ctx, key, c.Request.URL.Path, c.Writer); err != nil {
+			contentType, r, err := fs.GetPathWithContentType(ctx, key, c.Request.URL.Path)
+			if err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
+				c.Writer.Header().Set("Content-Type", contentType)
+				io.Copy(c.Writer, r)
 				c.Abort()
 			}
 		} else if target != "" {
 			content := path.Join(c.Request.URL.Path, target)
-			ctype := mime.TypeByExtension(filepath.Ext(content))
 			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Header().Set("Content-Type", ctype)
-			if err := fs.Write(ctx, key, content, c.Writer); err != nil {
+			contentType, r, err := fs.GetPathWithContentType(ctx, key, content)
+			if err != nil {
 				renderError(c, http.StatusInternalServerError, err)
 			} else {
+				c.Writer.Header().Set("Content-Type", contentType)
+				io.Copy(c.Writer, r)
 				c.Abort()
 			}
 		}
@@ -217,9 +218,13 @@ func (f *bucketFS) Exists(ctx context.Context, key, pth string) (ok bool, name s
 	return true, ""
 }
 
-func (f *bucketFS) Write(ctx context.Context, key, pth string, writer io.Writer) error {
+func (f *bucketFS) GetPathWithContentType(ctx context.Context, key, pth string) (string, io.Reader, error) {
 	ctx = common.NewSessionContext(ctx, f.session)
-	return f.client.PullPath(ctx, key, pth, writer)
+	contentType, r, err := getContentTypeFromPullPath(ctx, f.client, key, pth)
+	if err != nil {
+		return "", nil, err
+	}
+	return contentType, r, nil
 }
 
 func (f *bucketFS) ValidHost() string {
@@ -254,14 +259,33 @@ func (g *Gateway) renderWWWBucket(c *gin.Context, key string) {
 	for _, item := range rep.Item.Items {
 		if item.Name == "index.html" {
 			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Header().Set("Content-Type", "text/html")
-			if err := g.buckets.PullPath(ctx, buck.Key, item.Name, c.Writer); err != nil {
+			contentType, r, err := getContentTypeFromPullPath(ctx, g.buckets, buck.Key, item.Name)
+			if err != nil {
 				render404(c)
 			}
+			c.Writer.Header().Set("Content-Type", contentType)
+			io.Copy(c.Writer, r)
 			return
 		}
 	}
 	renderError(c, http.StatusNotFound, fmt.Errorf("an index.html file was not found in this bucket"))
+}
+
+func getContentTypeFromPullPath(ctx context.Context, client *bucketsclient.Client, buckKey, pth string) (string, io.Reader, error) {
+	pr, pw := io.Pipe()
+	go func() {
+		defer pw.Close()
+		if err := client.PullPath(ctx, buckKey, pth, pw); err != nil {
+			log.Errorf("pulling path: %s", err)
+		}
+	}()
+
+	contentType, r, err := detectReaderContentType(pr)
+	if err != nil {
+		return "", nil, fmt.Errorf("detecting content-type: %s", err)
+	}
+
+	return contentType, r, nil
 }
 
 func bucketFromHost(host, valid string) (key string, err error) {
