@@ -513,10 +513,11 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 
 	sendChunk := func(c *pb.PushPathsRequest_Chunk) bool {
 		q.lk.Lock()
-		defer q.lk.Unlock()
 		if q.closed {
+			q.lk.Unlock()
 			return false
 		}
+		q.lk.Unlock()
 
 		if err := stream.Send(&pb.PushPathsRequest{
 			Payload: &pb.PushPathsRequest_Chunk_{
