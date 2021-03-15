@@ -1954,7 +1954,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	if buckRoot != "" && buckRoot != buck.Path {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
-	verifyBuck := buck.Copy()
+	readOnlyBuck := buck.Copy()
 
 	var wg sync.WaitGroup
 	var ctxLock sync.RWMutex
@@ -1985,15 +1985,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				ctxLock.RUnlock()
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
 					wg.Add(1)
-					verifyBuck.UpdatedAt = time.Now().UnixNano()
-					verifyBuck.SetMetadataAtPath(pth, tdb.Metadata{
-						UpdatedAt: verifyBuck.UpdatedAt,
+					readOnlyBuck.UpdatedAt = time.Now().UnixNano()
+					readOnlyBuck.SetMetadataAtPath(pth, tdb.Metadata{
+						UpdatedAt: readOnlyBuck.UpdatedAt,
 					})
-					verifyBuck.UnsetMetadataWithPrefix(pth + "/")
-					if err = s.Buckets.Verify(ctx, dbID, verifyBuck, tdb.WithToken(dbToken)); err != nil {
+					readOnlyBuck.UnsetMetadataWithPrefix(pth + "/")
+					if err = s.Buckets.Verify(ctx, dbID, readOnlyBuck, tdb.WithToken(dbToken)); err != nil {
 						return nil, fmt.Errorf("verifying bucket update: %v", err)
 					}
-					key, err := verifyBuck.GetFileEncryptionKeyForPath(pth)
+					key, err := readOnlyBuck.GetFileEncryptionKeyForPath(pth)
 					if err != nil {
 						return nil, fmt.Errorf("getting bucket key: %v", err)
 					}

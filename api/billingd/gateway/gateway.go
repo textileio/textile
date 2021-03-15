@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -15,6 +16,7 @@ import (
 	tutil "github.com/textileio/go-threads/util"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
 	"github.com/textileio/textile/v2/api/common"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 )
 
@@ -157,7 +159,13 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 		defer cancel()
 		if err := g.client.UpdateCustomer(ctx, cus.ID, cus.Balance, billable, cus.Delinquent); err != nil {
-			log.Warnf("updating customer: %v", err)
+			// This webhook receives events from all deployments (production and staging),
+			// which leads to a lot of "customer not found" errors.
+			// To avoid this, we'll need a Stripe account for each deployment.
+			// See https://github.com/textileio/textile/issues/523.
+			if !errors.Is(err, mongo.ErrNoDocuments) {
+				log.Errorf("updating customer: %v", err)
+			}
 			c.Status(http.StatusOK)
 			return
 		}
@@ -182,7 +190,13 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			sub.CurrentPeriodStart,
 			sub.CurrentPeriodEnd,
 		); err != nil {
-			log.Warnf("updating customer subscription: %v", err)
+			// This webhook receives events from all deployments (production and staging),
+			// which leads to a lot of "customer not found" errors.
+			// To avoid this, we'll need a Stripe account for each deployment.
+			// See https://github.com/textileio/textile/issues/523.
+			if !errors.Is(err, mongo.ErrNoDocuments) {
+				log.Errorf("updating customer subscription: %v", err)
+			}
 			c.Status(http.StatusOK)
 			return
 		}
