@@ -192,10 +192,10 @@ func (s *Store) FailTxn(ctx context.Context, messageCid, failureMsg string) erro
 		ctx,
 		bson.M{"message_cids.cid": messageCid},
 		bson.M{"$set": bson.M{
-			"message_state":   pb.MessageState_MESSAGE_STATE_FAILED,
-			"failure_message": failureMsg,
-			"waiting":         false,
-			"updated_at":      time.Now(),
+			"message_state": pb.MessageState_MESSAGE_STATE_FAILED,
+			"failure_msg":   failureMsg,
+			"waiting":       false,
+			"updated_at":    time.Now(),
 		}},
 	)
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
