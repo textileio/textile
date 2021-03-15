@@ -52,24 +52,21 @@ func (t *Txn) LatestMsgCid() (MsgCid, error) {
 }
 
 type Store struct {
-	col           *mongo.Collection
-	mainCtxCancel context.CancelFunc
+	col *mongo.Collection
 }
 
 func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"store": logging.LevelDebug,
 		}); err != nil {
-			cancel()
 			return nil, err
 		}
 	}
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
 	if err != nil {
-		cancel()
 		return nil, fmt.Errorf("connecting to mongo: %v", err)
 	}
 	db := client.Database(mongoDbName)
@@ -104,19 +101,21 @@ func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
 			Keys: bson.D{primitive.E{Key: "updated_at", Value: 1}},
 		},
 	}); err != nil {
-		cancel()
 		return nil, fmt.Errorf("creating collection indexes: %v", err)
 	}
 
 	s := &Store{
-		col:           col,
-		mainCtxCancel: cancel,
+		col: col,
 	}
 
 	return s, nil
 }
 
 func (s *Store) NewTxn(ctx context.Context, messageCid, from, to string, amountNanoFil int64) (*Txn, error) {
+	if amountNanoFil <= 0 {
+		return nil, fmt.Errorf("amountNanoFil must be greater than 0")
+	}
+
 	now := time.Now()
 
 	txn := &Txn{
@@ -165,8 +164,7 @@ func (s *Store) GetAllPending(ctx context.Context, excludeAlreadyWaiting bool) (
 	}
 	defer cursor.Close(ctx)
 	var txns []*Txn
-	err = cursor.All(ctx, &txns)
-	if err != nil {
+	if err := cursor.All(ctx, &txns); err != nil {
 		return nil, fmt.Errorf("decoding txns query results: %v", err)
 	}
 	return txns, nil
@@ -428,8 +426,6 @@ func (s *Store) Close() error {
 	} else {
 		log.Info("mongo client disconnected")
 	}
-
-	s.mainCtxCancel()
 
 	return e
 }

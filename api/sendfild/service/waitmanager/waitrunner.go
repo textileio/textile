@@ -31,6 +31,7 @@ type WaitRunner struct {
 	mainCtxCancel    context.CancelFunc
 	waitCtx          context.Context
 	waitCtxCancel    context.CancelFunc
+	done             bool
 }
 
 func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) (*WaitRunner, error) {
@@ -51,24 +52,20 @@ func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, wa
 		return nil, fmt.Errorf("creating lotus client: %v", err)
 	}
 
-	return w, nil
-}
-
-func (w *WaitRunner) Start() {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	if w.waitCtxCancel != nil {
-		return
-	}
 	w.waitCtx, w.waitCtxCancel = context.WithTimeout(w.mainCtx, w.waitTimeout)
 	w.waitAndNotify()
+
+	return w, nil
 }
 
 type CancelListenerFunc = func()
 
-func (w *WaitRunner) AddListener(listener chan WaitResult) CancelListenerFunc {
+func (w *WaitRunner) AddListener(listener chan WaitResult) (CancelListenerFunc, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
+	if w.done {
+		return nil, fmt.Errorf("runner already done, can't add listener")
+	}
 	w.listeners = append(w.listeners, listener)
 	return func() {
 		w.lock.Lock()
@@ -85,7 +82,7 @@ func (w *WaitRunner) AddListener(listener chan WaitResult) CancelListenerFunc {
 			w.listeners[index] = w.listeners[len(w.listeners)-1]
 			w.listeners = w.listeners[:len(w.listeners)-1]
 		}
-	}
+	}, nil
 }
 
 func (w *WaitRunner) Close() error {
@@ -116,11 +113,12 @@ func (w *WaitRunner) waitAndNotify() {
 
 		res, err := w.lotusClient.StateWaitMsg(w.waitCtx, c, w.confidence)
 
-		if err := w.store.SetWaiting(w.mainCtx, w.messageCid, false); err != nil {
-			w.notifyErr(fmt.Errorf("setting txn to not waiting: %v", err))
+		if setWaitingErr := w.store.SetWaiting(w.mainCtx, w.messageCid, false); setWaitingErr != nil {
+			w.notifyErr(fmt.Errorf("setting txn to not waiting: %v", setWaitingErr))
 			return
 		}
 
+		// The err check here corresponds to the StateWaitMsg, don't move since this is correct.
 		if err != nil {
 			// If for some reason the lotus node doesn't know about the cid, consider that a final error.
 			if strings.Contains(err.Error(), "block not found") {
@@ -133,7 +131,7 @@ func (w *WaitRunner) waitAndNotify() {
 				return
 			}
 			// ugly but seems to be the only way to detect this
-			if err.Error() == "context canceled" {
+			if strings.Contains(err.Error(), "context canceled") {
 				w.notifyErr(fmt.Errorf("waiting for txn status timed out, but txn is still processing, query txn again if needed"))
 				return
 			}
@@ -172,6 +170,7 @@ func (w *WaitRunner) waitAndNotify() {
 func (w *WaitRunner) notifyErr(err error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
+	w.done = true
 	for _, l := range w.listeners {
 		l <- WaitResult{Err: err}
 		close(l)
@@ -181,6 +180,7 @@ func (w *WaitRunner) notifyErr(err error) {
 func (w *WaitRunner) notify(messageCid string) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
+	w.done = true
 	for _, l := range w.listeners {
 		l <- WaitResult{LatestMessageCid: messageCid}
 		close(l)

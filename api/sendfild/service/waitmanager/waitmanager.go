@@ -60,11 +60,10 @@ func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTime
 }
 
 func (w *WaitManager) RegisterTxn(objID primitive.ObjectID, messageCid string) error {
-	runner, err := w.getOrCreateRunner(objID, messageCid)
+	_, err := w.getOrCreateRunner(objID, messageCid)
 	if err != nil {
 		return fmt.Errorf("getting wait runner: %v", err)
 	}
-	runner.Start()
 	return nil
 }
 
@@ -73,9 +72,7 @@ func (w *WaitManager) Subscribe(objID primitive.ObjectID, messageCid string, lis
 	if err != nil {
 		return nil, fmt.Errorf("getting wait runner: %v", err)
 	}
-	cancel := runner.AddListener(listener)
-	runner.Start()
-	return cancel, nil
+	return runner.AddListener(listener)
 }
 
 func (w *WaitManager) Close() error {
@@ -97,7 +94,9 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 		}
 		w.waiting[objID] = runner
 		listener := make(chan WaitResult)
-		_ = runner.AddListener(listener)
+		if _, err := runner.AddListener(listener); err != nil {
+			return nil, err
+		}
 		go func() {
 			var err error
 			select {

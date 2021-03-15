@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	listMaxPageSize = 1000
+	listMaxPageSize = 100
 )
 
 var (
@@ -243,20 +243,6 @@ func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.Summ
 func (s *Service) Close() error {
 	var errs []error
 
-	if err := s.waitManager.Close(); err != nil {
-		log.Errorf("closing wait manager: %s", err)
-		errs = append(errs, err)
-	} else {
-		log.Info("wait manager closed")
-	}
-
-	if err := s.store.Close(); err != nil {
-		log.Errorf("disconnecting mongo client: %s", err)
-		errs = append(errs, err)
-	} else {
-		log.Info("mongo client disconnected")
-	}
-
 	stopped := make(chan struct{})
 	go func() {
 		s.server.GracefulStop()
@@ -271,6 +257,20 @@ func (s *Service) Close() error {
 	}
 	log.Info("gRPC server stopped")
 
+	if err := s.waitManager.Close(); err != nil {
+		log.Errorf("closing wait manager: %s", err)
+		errs = append(errs, err)
+	} else {
+		log.Info("wait manager closed")
+	}
+
+	if err := s.store.Close(); err != nil {
+		log.Errorf("disconnecting mongo client: %s", err)
+		errs = append(errs, err)
+	} else {
+		log.Info("mongo client disconnected")
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("closing sendfil service: %q", errs)
 	}
@@ -280,21 +280,24 @@ func (s *Service) Close() error {
 func (s *Service) waitForTxn(ctx context.Context, objID primitive.ObjectID, messageCid string) (*store.Txn, error) {
 	listener := make(chan waitmanager.WaitResult)
 	cancel, err := s.waitManager.Subscribe(objID, messageCid, listener)
+	defer cancel()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "subscribing: %v", err)
 	}
 	select {
-	case res := <-listener:
+	case res, ok := <-listener:
+		if !ok {
+			return nil, status.Error(codes.Internal, "subscription unexpectedly closed")
+		}
 		if res.Err != nil {
 			return nil, status.Errorf(codes.Internal, "listening for result: %v", res.Err)
 		}
 		txn, err := s.store.GetTxn(ctx, res.LatestMessageCid)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "getting updated txn: %v", res.Err)
+			return nil, status.Errorf(codes.Internal, "getting updated txn: %v", err)
 		}
 		return txn, nil
 	case <-ctx.Done():
-		cancel()
 		return nil, status.Errorf(codes.Aborted, "request canceled")
 	}
 }
