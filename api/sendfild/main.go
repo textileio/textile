@@ -69,6 +69,14 @@ var (
 				Key:      "retry_wait_frequency",
 				DefValue: time.Minute,
 			},
+			"allowedFromAddrs": {
+				Key:      "allowed_from_addrs",
+				DefValue: []string{},
+			},
+			"allowEmptyFromAddrs": {
+				Key:      "allow_empty_from_addrs",
+				DefValue: false,
+			},
 		},
 		EnvPre: "SENDFIL",
 		Global: true,
@@ -134,6 +142,15 @@ func init() {
 		config.Flags["retryWaitFrequency"].DefValue.(time.Duration),
 		"Frequency with which to query for txns that need to be monitored for completion")
 
+	rootCmd.PersistentFlags().StringSlice(
+		"allowedFromAddrs",
+		config.Flags["allowedFromAddrs"].DefValue.([]string),
+		"A list of filecoin address allowed to be used as transaction from addresses")
+	rootCmd.PersistentFlags().Bool(
+		"allowEmptyFromAddrs",
+		config.Flags["allowEmptyFromAddrs"].DefValue.(bool),
+		"Allow not specifying --allowedFromAddrs list")
+
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
 }
@@ -173,6 +190,8 @@ var rootCmd = &cobra.Command{
 		messageTimeout := config.Viper.GetDuration("message_timeout")
 		messageConfidence := config.Viper.GetUint64("message_confidence")
 		retryWaitFrequency := config.Viper.GetDuration("retry_wait_frequency")
+		allowedFromAddrs := config.Viper.GetStringSlice("allowed_from_addrs")
+		allowEmptyFromAddrs := config.Viper.GetBool("allow_empty_from_addrs")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)
@@ -186,14 +205,16 @@ var rootCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		conf := service.Config{
-			Listener:           listener,
-			ClientBuilder:      cb,
-			MongoUri:           mongoUri,
-			MongoDbName:        mongoDb,
-			MessageWaitTimeout: messageTimeout,
-			MessageConfidence:  messageConfidence,
-			RetryWaitFrequency: retryWaitFrequency,
-			Debug:              debug,
+			Listener:            listener,
+			ClientBuilder:       cb,
+			MongoUri:            mongoUri,
+			MongoDbName:         mongoDb,
+			MessageWaitTimeout:  messageTimeout,
+			MessageConfidence:   messageConfidence,
+			RetryWaitFrequency:  retryWaitFrequency,
+			AllowedFromAddrs:    allowedFromAddrs,
+			AllowEmptyFromAddrs: allowEmptyFromAddrs,
+			Debug:               debug,
 		}
 		api, err := service.New(conf)
 		cmd.ErrCheck(err)

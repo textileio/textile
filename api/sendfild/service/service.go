@@ -43,14 +43,16 @@ type Service struct {
 }
 
 type Config struct {
-	Listener           net.Listener
-	ClientBuilder      lotus.ClientBuilder
-	MongoUri           string
-	MongoDbName        string
-	MessageWaitTimeout time.Duration
-	MessageConfidence  uint64
-	RetryWaitFrequency time.Duration
-	Debug              bool
+	Listener            net.Listener
+	ClientBuilder       lotus.ClientBuilder
+	MongoUri            string
+	MongoDbName         string
+	MessageWaitTimeout  time.Duration
+	MessageConfidence   uint64
+	RetryWaitFrequency  time.Duration
+	AllowedFromAddrs    []string
+	AllowEmptyFromAddrs bool
+	Debug               bool
 }
 
 func New(config Config) (*Service, error) {
@@ -60,6 +62,10 @@ func New(config Config) (*Service, error) {
 		}); err != nil {
 			return nil, err
 		}
+	}
+
+	if !config.AllowEmptyFromAddrs && len(config.AllowedFromAddrs) == 0 {
+		return nil, fmt.Errorf("empty allowed from addrs not allowed")
 	}
 
 	st, err := store.New(config.MongoUri, config.MongoDbName, config.Debug)
@@ -91,6 +97,17 @@ func New(config Config) (*Service, error) {
 }
 
 func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.SendFilResponse, error) {
+	isAllowedFromAddr := s.config.AllowEmptyFromAddrs
+	for _, allowedFromAddr := range s.config.AllowedFromAddrs {
+		if allowedFromAddr == req.From {
+			isAllowedFromAddr = true
+			break
+		}
+	}
+	if !isAllowedFromAddr {
+		return nil, status.Error(codes.InvalidArgument, "from address not allowed")
+	}
+
 	f, err := address.NewFromString(req.From)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "parsing from address: %v", err)
