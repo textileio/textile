@@ -86,6 +86,7 @@ func (g *Gateway) renderBucketPath(c *gin.Context, ctx context.Context, threadID
 		contentType, r, err := getContentTypeFromPullPath(ctx, g.buckets, buck.Key, pth)
 		if err != nil {
 			render404(c)
+			return
 		}
 		c.Writer.Header().Set("Content-Type", contentType)
 		io.Copy(c.Writer, r)
