@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -267,14 +268,7 @@ type PushPathsQueue struct {
 
 type pushPath struct {
 	path string
-	r    io.Reader
-	c    io.Closer
-}
-
-func (p pushPath) close() {
-	if p.c != nil {
-		_ = p.c.Close()
-	}
+	r    func() (io.ReadCloser, error)
 }
 
 // AddFile adds a file to the queue.
@@ -302,10 +296,12 @@ func (c *PushPathsQueue) AddFile(pth, name string) error {
 	}
 
 	atomic.AddInt64(&c.size, info.Size())
+	f.Close()
 	c.q = append(c.q, pushPath{
 		path: filepath.ToSlash(pth),
-		r:    f,
-		c:    f,
+		r: func() (io.ReadCloser, error) {
+			return os.Open(name)
+		},
 	})
 	return nil
 }
@@ -328,7 +324,7 @@ func (c *PushPathsQueue) AddReader(pth string, r io.Reader, size int64) error {
 	atomic.AddInt64(&c.size, size)
 	c.q = append(c.q, pushPath{
 		path: filepath.ToSlash(pth),
-		r:    r,
+		r:    func() (io.ReadCloser, error) { return ioutil.NopCloser(r), nil },
 	})
 	return nil
 }
@@ -382,21 +378,20 @@ func (c *PushPathsQueue) start() {
 		for {
 			c.lk.Lock()
 			if c.closed {
-				for _, p := range c.q {
-					p.close()
-				}
 				c.q = nil
 				c.lk.Unlock()
 				return
 			}
-			c.lk.Unlock()
 			if len(c.q) == 0 {
+				c.lk.Unlock()
 				return
 			}
 			var p pushPath
 			p, c.q = c.q[0], c.q[1:]
+			c.lk.Unlock()
 			c.inCh <- p
 		}
+
 	}()
 }
 
@@ -542,9 +537,14 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 
 	go func() {
 		for p := range q.inCh {
+			r, err := p.r()
+			if err != nil {
+				q.outCh <- PushPathsResult{err: err}
+				break
+			}
 			buf := make([]byte, chunkSize)
 			for {
-				n, err := p.r.Read(buf)
+				n, err := r.Read(buf)
 				c := &pb.PushPathsRequest_Chunk{
 					Path: p.path,
 				}
@@ -552,18 +552,17 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 					c.Data = make([]byte, n)
 					copy(c.Data, buf[:n])
 					if ok := sendChunk(c); !ok {
-						p.close()
 						break
 					}
 				} else if err == io.EOF {
 					sendChunk(c)
-					p.close()
 					break
 				} else if err != nil {
 					q.outCh <- PushPathsResult{err: err}
 					break
 				}
 			}
+			r.Close()
 		}
 	}()
 

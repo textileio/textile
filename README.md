@@ -236,7 +236,7 @@ Usage:
   buck [command]
 
 Available Commands:
-  add         Add adds a UnixFs DAG locally at path
+  add         Add a UnixFs DAG locally at path
   archive     Create a Filecoin archive
   cat         Cat bucket objects at path
   decrypt     Decrypt bucket objects at path with password

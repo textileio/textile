@@ -34,6 +34,9 @@ func init() {
 	filClaimsCmd.Flags().BoolP("dev", "d", false, "filter results to claims claimed by the current dev")
 }
 
+const addrsWarning = "Funds in this wallet are for network and storage fees only; they cannot be transferred or sold."
+const addrsGetVerified = "Get your address verified on https://plus.fil.org/landing."
+
 var filCmd = &cobra.Command{
 	Use:     "fil",
 	Aliases: []string{"filecoin", "pow"},
@@ -55,6 +58,17 @@ var filAddrsCmd = &cobra.Command{
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
 		cmd.Success("\n%v", string(json))
+		cmd.Message(addrsWarning)
+		// provide link for verification
+		showVerificationInfo := true
+		for _, addr := range res.Addresses {
+			if addr.VerifiedClientInfo != nil {
+				showVerificationInfo = false
+			}
+		}
+		if showVerificationInfo {
+			cmd.Message(addrsGetVerified)
+		}
 	},
 }
 
@@ -71,6 +85,7 @@ var filBalanceCmd = &cobra.Command{
 		json, err := protojson.MarshalOptions{Multiline: true, Indent: "  ", EmitUnpopulated: true}.Marshal(res)
 		cmd.ErrCheck(err)
 		cmd.Success("\n%v", string(json))
+		cmd.Message(addrsWarning)
 	},
 }
 

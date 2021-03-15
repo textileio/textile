@@ -79,6 +79,7 @@ func Init(baseCmd *cobra.Command) {
 
 	archiveCmd.Flags().StringP("file", "f", "", "Optional path to a file containing archive config json that will override the default")
 	archiveCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	archiveCmd.Flags().Bool("skip-verified-deal-override", false, "Skips automatic set of verified-deal in storage-config")
 
 	setDefaultArchiveConfigCmd.Flags().IntP("rep-factor", "r", 1, "Target number of active deals")
 	setDefaultArchiveConfigCmd.Flags().Int64P("deal-min-duration", "d", 0, "Minimum duration for the deal")

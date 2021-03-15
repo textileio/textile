@@ -50,8 +50,6 @@ import (
 const (
 	// chunkSize for get file requests.
 	chunkSize = 1024 * 32 // 32 KiB
-	// maxArchiveSize is the max bucket size that can be archived to filecoin.
-	maxArchiveSize = 1024 * 1024 * 1024 * 64 // 64 GiB
 	// pinNotRecursiveMsg is used to match an IPFS "recursively pinned already" error.
 	pinNotRecursiveMsg = "'from' cid was not recursively pinned already"
 )
@@ -61,9 +59,6 @@ var (
 
 	// ErrArchivingFeatureDisabled indicates an archive was requested with archiving disabled.
 	ErrArchivingFeatureDisabled = errors.New("archiving feature is disabled")
-
-	// ErrMaxArchiveSizeExceeded indicates the requested operation exceeds the max archive size.
-	ErrMaxArchiveSizeExceeded = errors.New("requested archive exceeds max size limit of 64 GiB")
 
 	// ErrStorageQuotaExhausted indicates the requested operation exceeds the storage allowance.
 	ErrStorageQuotaExhausted = errors.New("storage quota exhausted")
@@ -112,6 +107,7 @@ type Service struct {
 	FilRetrieval              *retrieval.FilRetrieval
 	Semaphores                *nutil.SemaphorePool
 	MaxBucketArchiveSize      int64
+	MinBucketArchiveSize      int64
 	MaxBucketArchiveRepFactor int
 }
 
@@ -490,6 +486,10 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("pinBlock: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && totalAddedSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
@@ -539,6 +539,10 @@ func (s *Service) createBootstrappedPath(
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("createBootstrappedPath: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && bootSize > owner.StorageAvailable {
 		return ctx, nil, ErrStorageQuotaExhausted
 	}
@@ -1950,6 +1954,7 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	if buckRoot != "" && buckRoot != buck.Path {
 		return status.Error(codes.FailedPrecondition, buckets.ErrNonFastForward.Error())
 	}
+	readOnlyBuck := buck.Copy()
 
 	var wg sync.WaitGroup
 	var ctxLock sync.RWMutex
@@ -1980,15 +1985,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				ctxLock.RUnlock()
 				fa, err := queue.add(ctx, s.IPFSClient.Unixfs(), pth, func() ([]byte, error) {
 					wg.Add(1)
-					buck.UpdatedAt = time.Now().UnixNano()
-					buck.SetMetadataAtPath(pth, tdb.Metadata{
-						UpdatedAt: buck.UpdatedAt,
+					readOnlyBuck.UpdatedAt = time.Now().UnixNano()
+					readOnlyBuck.SetMetadataAtPath(pth, tdb.Metadata{
+						UpdatedAt: readOnlyBuck.UpdatedAt,
 					})
-					buck.UnsetMetadataWithPrefix(pth + "/")
-					if err = s.Buckets.Verify(ctx, dbID, buck, tdb.WithToken(dbToken)); err != nil {
+					readOnlyBuck.UnsetMetadataWithPrefix(pth + "/")
+					if err = s.Buckets.Verify(ctx, dbID, readOnlyBuck, tdb.WithToken(dbToken)); err != nil {
 						return nil, fmt.Errorf("verifying bucket update: %v", err)
 					}
-					key, err := buck.GetFileEncryptionKeyForPath(pth)
+					key, err := readOnlyBuck.GetFileEncryptionKeyForPath(pth)
 					if err != nil {
 						return nil, fmt.Errorf("getting bucket key: %v", err)
 					}
@@ -2024,12 +2029,13 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 		if !changed {
 			return err
 		}
-
 		if serr := s.saveAndPublish(sctx, dbID, dbToken, buck); serr != nil {
 			if err != nil {
 				return err
 			}
 			return serr
+		} else {
+			log.Debugf("saved bucket %s with path: %s", buck.Key, buck.Path)
 		}
 		return err
 	}
@@ -2037,16 +2043,19 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	for {
 		select {
 		case res := <-addedCh:
-			fn, err := s.IPFSClient.ResolveNode(ctx, res.resolved)
+			ctxLock.RLock()
+			newCtx := ctx
+			ctxLock.RUnlock()
+
+			fn, err := s.IPFSClient.ResolveNode(newCtx, res.resolved)
 			if err != nil {
 				return saveWithErr(fmt.Errorf("resolving added node: %v", err))
 			}
 
 			var dir path.Resolved
 			if buck.IsPrivate() {
-				var ctx2 context.Context
-				ctx2, dir, err = s.insertNodeAtPath(
-					ctx,
+				newCtx, dir, err = s.insertNodeAtPath(
+					newCtx,
 					fn,
 					path.Join(path.New(buck.Path), res.path),
 					buck.GetLinkEncryptionKey(),
@@ -2054,13 +2063,9 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("inserting added node: %v", err))
 				}
-				ctxLock.Lock()
-				ctx = ctx2
-				ctxLock.Unlock()
-
 			} else {
 				dir, err = s.IPFSClient.Object().AddLink(
-					ctx,
+					newCtx,
 					path.New(buck.Path),
 					res.path,
 					res.resolved,
@@ -2069,16 +2074,17 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				if err != nil {
 					return saveWithErr(fmt.Errorf("adding bucket link: %v", err))
 				}
-				ctx2, err := s.updateOrAddPin(ctx, path.New(buck.Path), dir)
+				newCtx, err = s.updateOrAddPin(newCtx, path.New(buck.Path), dir)
 				if err != nil {
 					return saveWithErr(fmt.Errorf("updating bucket pin: %v", err))
 				}
-				ctxLock.Lock()
-				ctx = ctx2
-				ctxLock.Unlock()
 			}
 			buck.Path = dir.String()
 			buck.UpdatedAt = time.Now().UnixNano()
+			buck.SetMetadataAtPath(res.path, tdb.Metadata{
+				UpdatedAt: buck.UpdatedAt,
+			})
+			buck.UnsetMetadataWithPrefix(res.path + "/")
 
 			root, err := getPbRoot(dbID, buck)
 			if err != nil {
@@ -2088,11 +2094,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 				Path:   res.path,
 				Cid:    res.resolved.Cid().String(),
 				Size:   res.size,
-				Pinned: s.getPinnedBytes(ctx),
+				Pinned: s.getPinnedBytes(newCtx),
 				Root:   root,
 			}); err != nil {
 				return saveWithErr(fmt.Errorf("sending event: %v", err))
 			}
+
+			ctxLock.Lock()
+			ctx = newCtx
+			ctxLock.Unlock()
 
 			log.Debugf("pushed %s to bucket: %s", res.path, buck.Key)
 
@@ -2385,6 +2395,10 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("updateOrAddPin: storage: %d used, %d available, %d delta",
+			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+	}
 	if ok && deltaSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
@@ -3011,8 +3025,11 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket size: %v", err)
 	}
-	if buckSize > maxArchiveSize {
-		return nil, ErrMaxArchiveSizeExceeded
+	if buckSize > s.MaxBucketArchiveSize {
+		return nil, fmt.Errorf("archive size is too big, should be less than: %d GiB", s.MaxBucketArchiveSize/1024/1024/1024)
+	}
+	if buckSize < s.MinBucketArchiveSize {
+		return nil, fmt.Errorf("archive size is too small, should be greater than: %d MiB", s.MinBucketArchiveSize/1024/1024)
 	}
 
 	p, err := util.NewResolvedPath(buck.Path)
@@ -3050,7 +3067,6 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	}
 
 	ctxPow := context.WithValue(ctx, pow.AuthKey, account.Owner().PowInfo.Token)
-
 	defConfRes, err := s.PowergateClient.StorageConfig.Default(ctxPow)
 	if err != nil {
 		if !strings.Contains(err.Error(), "auth token not found") {
@@ -3091,17 +3107,50 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 	storageConfig.Cold.Filecoin.Address = defConfRes.DefaultStorageConfig.Cold.Filecoin.Address
 
 	// Check that user wallet addr balance is > 0, if not, fail fast.
-	balRes, err := s.PowergateClient.Wallet.Balance(ctx, storageConfig.Cold.Filecoin.Address)
+	addrs, err := s.PowergateClient.Wallet.Addresses(ctxPow)
 	if err != nil {
-		return nil, fmt.Errorf("getting powergate wallet address balance: %v", err)
+		return nil, fmt.Errorf("getting powergate wallet addresses: %v", err)
 	}
-	bal, ok := new(big.Int).SetString(balRes.Balance, 10)
+	var addrInfo *userPb.AddrInfo
+	for _, addr := range addrs.Addresses {
+		if addr.Address == storageConfig.Cold.Filecoin.Address {
+			addrInfo = addr
+			break
+		}
+	}
+	if addrInfo == nil {
+		return nil, fmt.Errorf("wallet address not found in account: %v", err)
+	}
+	bal, ok := new(big.Int).SetString(addrInfo.Balance, 10)
 	if !ok {
-		return nil, fmt.Errorf("error converting balance %v to big int", balRes.Balance)
+		return nil, fmt.Errorf("converting balance %s to big int", addrInfo.Balance)
 	}
 	if bal.Cmp(big.NewInt(0)) == 0 {
 		return nil, buckets.ErrZeroBalance
 	}
+
+	// If we don't get an explicit instruction of avoiding automatic verified-deal
+	// tunning, and the wallet address is verified, then automatically enable
+	// verified deals in the storage-config used for the archive.
+	if !req.SkipAutomaticVerifiedDeal {
+		log.Debugf("executing automatic verified deal logic")
+		if !storageConfig.Cold.Filecoin.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
+			remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
+			if !ok {
+				return nil, fmt.Errorf("parsing remaining datacap")
+			}
+			if remainingDataCap.Cmp(big.NewInt(0)) == 0 {
+				return nil, fmt.Errorf("the remaining datacap is zero: %s", err)
+			}
+			storageConfig.Cold.Filecoin.VerifiedDeal = true
+			// TODO(jsign): we'll soon add some more work here to
+			// see if the archive fits into the remaining data-cap
+			// and take a decision of what to do.
+		} else if storageConfig.Cold.Filecoin.VerifiedDeal && addrInfo.VerifiedClientInfo == nil {
+			return nil, fmt.Errorf("storage-config has set verified deals but the client is unverified")
+		}
+	}
+	log.Debugf("archiving with filecoin config: %#v", storageConfig.Cold.Filecoin)
 
 	// Archive pushes the current root Cid to the corresponding user of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.
@@ -3343,6 +3392,7 @@ func toPbArchiveConfig(config *mdb.ArchiveConfig) *pb.ArchiveConfig {
 			MaxPrice:        config.MaxPrice,
 			FastRetrieval:   config.FastRetrieval,
 			DealStartOffset: config.DealStartOffset,
+			VerifiedDeal:    config.VerifiedDeal,
 		}
 	}
 	return pbConfig

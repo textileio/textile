@@ -27,6 +27,7 @@ COPY --from=0 $SRC_DIR/billingd /usr/local/bin/billingd
 
 EXPOSE 10006
 EXPOSE 8010
+EXPOSE 40000
 
 ENV BILLING_PATH /data/billing
 RUN adduser --home $BILLING_PATH --disabled-login --gecos "" --ingroup users billing

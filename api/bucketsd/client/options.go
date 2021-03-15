@@ -74,3 +74,11 @@ func WithArchiveConfig(config *pb.ArchiveConfig) ArchiveOption {
 		req.ArchiveConfig = config
 	}
 }
+
+// WithSkipAutomaticVerifiedDeal allows to skip backend logic to automatically make
+// a verified deal for the archive.
+func WithSkipAutomaticVerifiedDeal(enabled bool) ArchiveOption {
+	return func(req *pb.ArchiveRequest) {
+		req.SkipAutomaticVerifiedDeal = enabled
+	}
+}

@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/textileio/textile/v2/buckets/local"
@@ -46,9 +48,14 @@ func handleWatchEvents(events chan local.Event) {
 	for e := range events {
 		switch e.Type {
 		case local.EventFileComplete:
-			cmd.Message("%s: %s (%s)", aurora.Green("+ "+e.Path), e.Cid, formatBytes(e.Size, false))
+			_, _ = fmt.Fprintf(os.Stdout,
+				"+ %s %s %s\n",
+				e.Cid,
+				e.Path,
+				formatBytes(e.Size, false),
+			)
 		case local.EventFileRemoved:
-			cmd.Message("%s", aurora.Red("- "+e.Path))
+			_, _ = fmt.Fprintf(os.Stdout, "- %s\n", e.Path)
 		}
 	}
 }

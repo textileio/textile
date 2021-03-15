@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math/big"
 	"os"
 
 	"github.com/manifoldco/promptui"
@@ -39,10 +41,10 @@ var setDefaultArchiveConfigCmd = &cobra.Command{
 	Short: "Set the default archive storage configuration for the specified Bucket.",
 	Long: `Set the default archive storage configuration for the specified Bucket from a file, stdin, or flags.
 
-If flags are specified, this command updates the current default storage-config with the *explicitely set* flags. 
-Flags that aren't explicitely set won't set the default value, and thus keep the original value in the storage-config.
+If flags are specified, this command updates the current default storage-config with the *explicitly set* flags. 
+Flags that aren't explicitly set won't set the default value, and thus keep the original value in the storage-config.
 
-If a file or stdin is used, the storage-config will be completely overriden by the provided one.`,
+If a file or stdin is used, the storage-config will be completely overridden by the provided one.`,
 	Example: "hub buck archive set-default-config --rep-factor=3 --fast-retrieval --verified-deal --trusted-miners=f08240,f023467,f09848",
 	Args:    cobra.RangeArgs(0, 1),
 	Run: func(c *cobra.Command, args []string) {
@@ -156,7 +158,7 @@ var archiveCmd = &cobra.Command{
 		yes, err := c.Flags().GetBool("yes")
 		cmd.ErrCheck(err)
 		if !yes {
-			cmd.Warn("Archives are Filecoin Mainnet. Use with caution.")
+			cmd.Warn("The archive will be done in the Filecoin Mainnet. Use with caution.")
 			prompt := promptui.Prompt{
 				Label:     "Proceed",
 				IsConfirm: true,
@@ -164,6 +166,28 @@ var archiveCmd = &cobra.Command{
 			if _, err := prompt.Run(); err != nil {
 				cmd.End("")
 			}
+			fmt.Println("")
+		}
+
+		conf, err := bucks.NewConfigFromCmd(c, ".")
+		cmd.ErrCheck(err)
+		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+		defer cancel()
+		buck, err := bucks.GetLocalBucket(ctx, conf)
+		cmd.ErrCheck(err)
+
+		diff, err := buck.DiffLocal()
+		cmd.ErrCheck(err)
+		if len(diff) != 0 && !yes {
+			cmd.Warn("You have unpushed local changes. Are you sure you want to archive the last pushed bucket?")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
+			fmt.Println("")
 		}
 
 		var reader io.Reader
@@ -177,16 +201,6 @@ var archiveCmd = &cobra.Command{
 			}()
 			cmd.ErrCheck(err)
 			reader = file
-			if !yes {
-				cmd.Warn("ArchiveConfig properties RepFactor, ExcludedMiners, TrustedMiners and CountryCodes are currently ignored in Filecoin mainnet.")
-				prompt := promptui.Prompt{
-					Label:     "Proceed",
-					IsConfirm: true,
-				}
-				if _, err := prompt.Run(); err != nil {
-					cmd.End("")
-				}
-			}
 		} else {
 			stat, _ := os.Stdin.Stat()
 			// stdin is being piped in (not being read from terminal)
@@ -195,27 +209,106 @@ var archiveCmd = &cobra.Command{
 			}
 		}
 
-		var opts []local.ArchiveRemoteOption
+		opts := []local.ArchiveRemoteOption{local.WithSkipAutomaticVerifiedDeal(true)}
 
+		config := local.ArchiveConfig{}
 		if reader != nil {
 			buf := new(bytes.Buffer)
 			_, err := buf.ReadFrom(reader)
 			cmd.ErrCheck(err)
-
-			config := local.ArchiveConfig{}
 			cmd.ErrCheck(json.Unmarshal(buf.Bytes(), &config))
-
-			opts = append(opts, local.WithArchiveConfig(config))
+		} else {
+			config, err = buck.DefaultArchiveConfig(ctx)
+			cmd.ErrCheck(err)
 		}
 
-		conf, err := bucks.NewConfigFromCmd(c, ".")
+		addrs, err := buck.Addresses(ctx)
 		cmd.ErrCheck(err)
-		ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
-		defer cancel()
-		buck, err := bucks.GetLocalBucket(ctx, conf)
+		if len(addrs.Addresses) != 1 {
+			cmd.Error(fmt.Errorf("There should be exactly one wallet address but there are %d", len(addrs.Addresses)))
+		}
+
+		addrInfo := addrs.Addresses[0]
+		balance, ok := big.NewInt(0).SetString(addrInfo.Balance, 10)
+		if !ok {
+			cmd.Error(fmt.Errorf("parsing current balance"))
+		}
+		if balance.Cmp(big.NewInt(0)) == 0 {
+			cmd.Error(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
+		}
+
+		skipVerifiedDealOverride, err := c.Flags().GetBool("skip-verified-deal-override")
 		cmd.ErrCheck(err)
+		if !skipVerifiedDealOverride {
+			if !config.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
+				remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
+				if !ok {
+					cmd.Error(fmt.Errorf("Parsing remaining datacap"))
+				}
+				if remainingDataCap.Cmp(big.NewInt(0)) > 0 {
+					// If the default storage-config is !verified-deal, but the client
+					// is verified, then help him set this value automatically.
+					cmd.Message("The Filecoin wallet is verified, enabling verified deals automatically.")
+					config.VerifiedDeal = true
+				} else {
+					cmd.Message("The Filecoin wallet is verified, but the remaining data-cap is zero.")
+				}
+			} else if !config.VerifiedDeal && addrInfo.VerifiedClientInfo == nil {
+				// If the client isn't verified, we can't tune its storage-config
+				// to get a verified deal. Explain how to get automatically verified.
+				cmd.Warn("The Filecoin wallet address isn't verified, which can potentially lead to paying high-prices for storage.")
+				cmd.Message("You can get verified automatically using your GitHub account at https://verify.glif.io")
+			} else if config.VerifiedDeal && addrInfo.VerifiedClientInfo == nil {
+				// Explain to the user that despite she has set the verifiedDeal
+				// attribute in it's storage config, it needs to get verified first.
+				cmd.Warn("Despite the storage-config has verified-deals enabled, the Filecoin wallet address isn't verified.")
+				cmd.Message("You can get verified automatically using your GitHub account at https://verify.glif.io")
+			}
+		}
+
+		if !config.VerifiedDeal && !yes {
+			cmd.Warn("Are you sure you want to archive with an unverified deal?")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
+			fmt.Println("")
+		}
+		if len(config.TrustedMiners) == 0 && !yes {
+			cmd.Message("The storage-config trusted miners list is empty, which can lead to unreliable and high-cost Filecoin deal making.")
+			cmd.Message("You can discover reliable miners by exploring: `hub fil query` and `hub fil calculate`.")
+			cmd.Warn("Are you sure want to use potentially unreliable miners?")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
+			fmt.Println("")
+		}
+
+		if config.MaxPrice == 0 && !yes {
+			cmd.Warn("The storage-config doesn't specify a limit to pay for storage price")
+			cmd.Message("You can set a limit with `hub buck set-storage-config --set-max-price`")
+			cmd.Warn("Are you sure you want to make a deal without a max-price limit?")
+			prompt := promptui.Prompt{
+				Label:     "Proceed",
+				IsConfirm: true,
+			}
+			if _, err := prompt.Run(); err != nil {
+				cmd.End("")
+			}
+			fmt.Println("")
+		}
+
+		opts = append(opts, local.WithArchiveConfig(config))
 		err = buck.ArchiveRemote(ctx, opts...)
 		cmd.ErrCheck(err)
+
 		cmd.Success("Archive queued successfully")
 	},
 }

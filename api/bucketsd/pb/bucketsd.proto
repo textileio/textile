@@ -318,6 +318,7 @@ message SetDefaultArchiveConfigResponse {}
 message ArchiveRequest {
     string key = 1;
     ArchiveConfig archive_config = 2;
+    bool skip_automatic_verified_deal = 3;
 }
 
 message ArchiveResponse {}

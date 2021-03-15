@@ -173,10 +173,18 @@ func (t *Textile) preUsageFunc(ctx context.Context, method string) (context.Cont
 			StorageUsed: cus.DailyUsage["stored_data"].Total,
 		}
 		if cus.Billable {
+			// Customer is paying for storage, quota is unbounded
 			owner.StorageAvailable = int64(math.MaxInt64)
 		} else if now.Unix() < cus.GracePeriodEnd {
+			// Customer is in grace period, quota is grace
+			owner.StorageAvailable = cus.DailyUsage["stored_data"].Grace
+		} else if cus.GracePeriodEnd == 0 {
+			// Customer has not started grace period, but there's no way to start the grace period _after_
+			// a successful request, so we use grace quota here and let the post usage handler start the
+			// grace period in the event the request exceeds the free quota
 			owner.StorageAvailable = cus.DailyUsage["stored_data"].Grace
 		} else {
+			// Customer's grace period has expired, fall back to free quota.
 			owner.StorageAvailable = cus.DailyUsage["stored_data"].Free
 		}
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
@@ -279,7 +287,6 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 			log.Errorf("calling analytics track: %v", err)
 		}
 	}
-
 	return nil
 }
 

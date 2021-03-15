@@ -201,11 +201,11 @@ service APIService {
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 	info: {
-		title: "Textile Miner's Index";
+		title: "Textile Miner Index";
 		version: "1.0";
 		contact: {
 			name: "Textile";
-			url: "https://github.com/grpc-ecosystem/grpc-gateway";
+			url: "https://textile.io";
 			email: "contact@textile.io";
 		};
 		license: {
