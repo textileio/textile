@@ -1,9 +1,10 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	gopath "path"
 	"strings"
@@ -27,7 +28,7 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
 	defer cancel()
 	pth = strings.TrimSuffix(pth, "/")
-	data, err := g.openPath(ctx, path.New(pth))
+	f, err := g.openPath(ctx, path.New(pth))
 	if err != nil {
 		if err == iface.ErrIsDir {
 			var root, dir, back string
@@ -79,23 +80,40 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 				"Links":   links,
 			}
 			c.HTML(http.StatusOK, "/public/html/unixfs.gohtml", params)
-		} else {
-			renderError(c, http.StatusBadRequest, err)
 			return
 		}
-	} else {
-		contentType := http.DetectContentType(data)
-		c.Writer.Header().Set("Content-Type", contentType)
-		c.Render(200, render.Data{Data: data})
+
+		renderError(c, http.StatusBadRequest, err)
+		return
 	}
+	defer f.Close()
+
+	contentType, r, err := detectReaderContentType(f)
+	if err != nil {
+		renderError(c, http.StatusInternalServerError, fmt.Errorf("detecting mime: %s", err))
+		return
+	}
+
+	c.Writer.Header().Set("Content-Type", contentType)
+	c.Render(200, render.Reader{ContentLength: -1, Reader: r})
 }
 
-func (g *Gateway) openPath(ctx context.Context, pth path.Path) ([]byte, error) {
+func detectReaderContentType(r io.Reader) (string, io.Reader, error) {
+	var buf [512]byte
+	n, err := io.ReadAtLeast(r, buf[:], len(buf))
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return "", nil, fmt.Errorf("reading reader: %s", err)
+	}
+	contentType := http.DetectContentType(buf[:])
+
+	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
+}
+
+func (g *Gateway) openPath(ctx context.Context, pth path.Path) (io.ReadCloser, error) {
 	f, err := g.ipfs.Unixfs().Get(ctx, pth)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 	var file files.File
 	switch f := f.(type) {
 	case files.File:
@@ -105,7 +123,7 @@ func (g *Gateway) openPath(ctx context.Context, pth path.Path) ([]byte, error) {
 	default:
 		return nil, iface.ErrNotSupported
 	}
-	return ioutil.ReadAll(file)
+	return file, nil
 }
 
 func (g *Gateway) ipnsHandler(c *gin.Context) {
