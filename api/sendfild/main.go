@@ -73,10 +73,6 @@ var (
 				Key:      "allowed_from_addrs",
 				DefValue: []string{},
 			},
-			"allowEmptyFromAddrs": {
-				Key:      "allow_empty_from_addrs",
-				DefValue: false,
-			},
 		},
 		EnvPre: "SENDFIL",
 		Global: true,
@@ -145,11 +141,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSlice(
 		"allowedFromAddrs",
 		config.Flags["allowedFromAddrs"].DefValue.([]string),
-		"A list of filecoin address allowed to be used as transaction from addresses")
-	rootCmd.PersistentFlags().Bool(
-		"allowEmptyFromAddrs",
-		config.Flags["allowEmptyFromAddrs"].DefValue.(bool),
-		"Allow not specifying --allowedFromAddrs list")
+		"A comma separated list of filecoin address allowed to be used as transaction from addresses or * for all addresses")
 
 	err := cmd.BindFlags(config.Viper, rootCmd, config.Flags)
 	cmd.ErrCheck(err)
