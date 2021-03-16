@@ -30,7 +30,7 @@ type WaitManager struct {
 func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTimeout time.Duration, retryWaitFrequency time.Duration, debug bool) (*WaitManager, error) {
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
-			"waitmanger": logging.LevelDebug,
+			"waitmanager": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
