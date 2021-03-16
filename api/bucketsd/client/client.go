@@ -513,10 +513,11 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 
 	sendChunk := func(c *pb.PushPathsRequest_Chunk) bool {
 		q.lk.Lock()
-		defer q.lk.Unlock()
 		if q.closed {
+			q.lk.Unlock()
 			return false
 		}
+		q.lk.Unlock()
 
 		if err := stream.Send(&pb.PushPathsRequest{
 			Payload: &pb.PushPathsRequest_Chunk_{
@@ -529,9 +530,12 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 			return false
 		}
 		atomic.AddInt64(&q.complete, int64(len(c.Data)))
-		if args.progress != nil {
-			args.progress <- q.complete
+
+		q.lk.Lock()
+		if !q.closed && args.progress != nil {
+			args.progress <- atomic.LoadInt64(&q.complete)
 		}
+		q.lk.Unlock()
 		return true
 	}
 
