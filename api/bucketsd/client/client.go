@@ -530,9 +530,12 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 			return false
 		}
 		atomic.AddInt64(&q.complete, int64(len(c.Data)))
-		if args.progress != nil {
+
+		q.lk.Lock()
+		if !q.closed && args.progress != nil {
 			args.progress <- atomic.LoadInt64(&q.complete)
 		}
+		q.lk.Unlock()
 		return true
 	}
 
