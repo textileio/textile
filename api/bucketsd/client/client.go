@@ -531,7 +531,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 		}
 		atomic.AddInt64(&q.complete, int64(len(c.Data)))
 		if args.progress != nil {
-			args.progress <- q.complete
+			args.progress <- atomic.LoadInt64(&q.complete)
 		}
 		return true
 	}
