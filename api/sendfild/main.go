@@ -191,7 +191,6 @@ var rootCmd = &cobra.Command{
 		messageConfidence := config.Viper.GetUint64("message_confidence")
 		retryWaitFrequency := config.Viper.GetDuration("retry_wait_frequency")
 		allowedFromAddrs := config.Viper.GetStringSlice("allowed_from_addrs")
-		allowEmptyFromAddrs := config.Viper.GetBool("allow_empty_from_addrs")
 
 		if logFile != "" {
 			err = cmd.SetupDefaultLoggingConfig(logFile)
@@ -213,7 +212,7 @@ var rootCmd = &cobra.Command{
 			MessageConfidence:   messageConfidence,
 			RetryWaitFrequency:  retryWaitFrequency,
 			AllowedFromAddrs:    allowedFromAddrs,
-			AllowEmptyFromAddrs: allowEmptyFromAddrs,
+			AllowEmptyFromAddrs: len(allowedFromAddrs) == 1 && allowedFromAddrs[0] == "*",
 			Debug:               debug,
 		}
 		api, err := service.New(conf)
