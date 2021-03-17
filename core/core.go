@@ -532,10 +532,10 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	}
 	t.gateway.Start()
 
-	// Start pulling threads
-	t.tn.StartPulling()
 	// Start republishing ipns keys
-	t.ipnsm.StartRepublishing(conf.IPNSRepublishSchedule)
+	if err := t.ipnsm.StartRepublishing(conf.IPNSRepublishSchedule); err != nil {
+		return nil, err
+	}
 
 	log.Info("started")
 
