@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -36,6 +37,9 @@ var retrievalsLsCmd = &cobra.Command{
 		cmd.ErrCheck(err)
 
 		if len(rs.Retrievals) > 0 {
+			sort.Slice(rs.Retrievals, func(i, j int) bool {
+				return rs.Retrievals[i].CreatedAt > rs.Retrievals[j].CreatedAt
+			})
 			data := make([][]string, len(rs.Retrievals))
 			for i, r := range rs.Retrievals {
 				data[i] = []string{
@@ -46,6 +50,7 @@ var retrievalsLsCmd = &cobra.Command{
 					r.FailureCause,
 				}
 			}
+
 			cmd.RenderTable([]string{"Id", "Cid", "Status", "Created", "Failure cause"}, data)
 		}
 		cmd.Message("Found %d retrievals", aurora.White(len(rs.Retrievals)).Bold())
