@@ -80,23 +80,23 @@ define gen_release_files
 endef
 
 build-hub-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./cmd/hub,hub,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./cmd/hub,hub,"linux/amd64 linux/386 linux/arm darwin/amd64 darwin/arm64 windows/amd64")
 .PHONY: build-hub-release
 
 build-hubd-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./cmd/hubd,hubd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./cmd/hubd,hubd,"linux/amd64 linux/386 linux/arm darwin/amd64 darwin/arm64 windows/amd64")
 .PHONY: build-hubd-release
 
 build-buck-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./cmd/buck,buck,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./cmd/buck,buck,"linux/amd64 linux/386 linux/arm darwin/amd64 darwin/arm64 windows/amd64")
 .PHONY: build-buck-release
 
 build-buckd-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./cmd/buckd,buckd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./cmd/buckd,buckd,"linux/amd64 linux/386 linux/arm darwin/amd64 darwin/arm64 windows/amd64")
 .PHONY: build-buckd-release
 
 build-billingd-release: $(GOX) $(GOVVV) $(GOMPLATE)
-	$(call gen_release_files,./api/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 windows/amd64")
+	$(call gen_release_files,./api/billingd,billingd,"linux/amd64 linux/386 linux/arm darwin/amd64 darwin/arm64 windows/amd64")
 .PHONY: build-billingd-release
 
 build-releases: build-hub-release build-hubd-release build-buck-release build-buckd-release build-billingd-release
