@@ -225,16 +225,16 @@ var archiveCmd = &cobra.Command{
 		addrs, err := buck.Addresses(ctx)
 		cmd.ErrCheck(err)
 		if len(addrs.Addresses) != 1 {
-			cmd.Error(fmt.Errorf("There should be exactly one wallet address but there are %d", len(addrs.Addresses)))
+			cmd.Fatal(fmt.Errorf("There should be exactly one wallet address but there are %d", len(addrs.Addresses)))
 		}
 
 		addrInfo := addrs.Addresses[0]
 		balance, ok := big.NewInt(0).SetString(addrInfo.Balance, 10)
 		if !ok {
-			cmd.Error(fmt.Errorf("parsing current balance"))
+			cmd.Fatal(fmt.Errorf("parsing current balance"))
 		}
 		if balance.Cmp(big.NewInt(0)) == 0 {
-			cmd.Error(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
+			cmd.Fatal(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
 		}
 
 		skipVerifiedDealOverride, err := c.Flags().GetBool("skip-verified-deal-override")
@@ -243,7 +243,7 @@ var archiveCmd = &cobra.Command{
 			if !config.VerifiedDeal && addrInfo.VerifiedClientInfo != nil {
 				remainingDataCap, ok := big.NewInt(0).SetString(addrInfo.VerifiedClientInfo.RemainingDatacapBytes, 10)
 				if !ok {
-					cmd.Error(fmt.Errorf("Parsing remaining datacap"))
+					cmd.Fatal(fmt.Errorf("Parsing remaining datacap"))
 				}
 				if remainingDataCap.Cmp(big.NewInt(0)) > 0 {
 					// If the default storage-config is !verified-deal, but the client

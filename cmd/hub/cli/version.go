@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 
 	"github.com/blang/semver"
 	"github.com/caarlos0/spin"
@@ -12,7 +14,7 @@ import (
 )
 
 func getLatestRelease() (*su.Release, error) {
-	s := spin.New("%s Checking latest Hub CLI release")
+	s := spin.New("%s Checking for new Hub CLI version")
 	s.Start()
 	defer s.Stop()
 	config := su.Config{
@@ -26,9 +28,12 @@ func getLatestRelease() (*su.Release, error) {
 	}
 
 	latest, found, err := updater.DetectLatest(cmd.Repo)
-	if err != nil || !found {
+	if err != nil {
 		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("%s_%s build not found", runtime.GOOS, runtime.GOARCH)
 	}
+
 	return latest, nil
 }
 
@@ -40,7 +45,7 @@ func getAPIVersion() (string, error) {
 	defer cancel()
 	res, err := clients.Hub.BuildInfo(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("getting API build info: %v", err)
 	}
 	if res.GitSummary == "" {
 		res.GitSummary = "git"
@@ -50,8 +55,8 @@ func getAPIVersion() (string, error) {
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show current version",
-	Long:  `Shows the installed CLI version.`,
+	Short: "Show version info",
+	Long:  `Shows version info.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
 		isGovvvBuild := bi.GitSummary != ""
@@ -61,42 +66,27 @@ var versionCmd = &cobra.Command{
 		if !isReleaseBuild && isGovvvBuild {
 			displayVersion = bi.GitSummary
 		}
-
 		cmd.Message("%s", aurora.Green(displayVersion))
 
 		apiVersion, err := getAPIVersion()
 		if err != nil {
-			cmd.Error(err)
-			cmd.Warn("Unable to check API version.")
+			cmd.Warn("Unable to get Hub API version: %v", err)
 		} else {
-			cmd.Message("The Hub API is running %s", apiVersion)
+			cmd.Message("Hub API: %s", apiVersion)
 		}
 
 		latestRelease, err := getLatestRelease()
 		if err != nil {
-			cmd.Error(err)
-			cmd.Warn("Unable to get latest release.")
+			cmd.Warn("Unable to get latest version: %v", err)
 		} else {
+			latest := "v" + latestRelease.Version.String()
 			current, err := semver.ParseTolerant(bi.Version)
-			if err != nil {
-				// Display warning if not using a release
-				cmd.Warn("Running a custom hub build. Run %s to install the latest release.", aurora.White("hub update").Bold())
-				if isGovvvBuild {
-					cmd.Message("Custom build info:")
-					cmd.RenderTable(
-						[]string{},
-						[][]string{
-							{"Git Branch", bi.GitBranch},
-							{"Git State", bi.GitState},
-							{"Git Commit", bi.GitCommit},
-							{"Git Summary", bi.GitSummary},
-							{"Build Date", bi.BuildDate},
-						},
-					)
-				}
-			} else if current.LT(latestRelease.Version) {
-				// Display warning if outdated
-				cmd.Warn("There is a new hub release. Run %s to install %s.", aurora.White("hub update").Bold(), aurora.Cyan(latestRelease.Version.String()))
+			if err != nil || current.LT(latestRelease.Version) {
+				// Display message if outdated of we're running a custom build
+				cmd.Message("New version of hub available! %s -> %s. Run %s to update.",
+					aurora.Red(displayVersion),
+					aurora.Cyan(latest),
+					aurora.White("hub update").Bold())
 			}
 		}
 	},
