@@ -20,8 +20,8 @@ import (
 var powAddr = "127.0.0.1:5002"
 var ipfsAddr = "/ip4/127.0.0.1/tcp/5022"
 
-func StartPowergate(t util.TestingTWithCleanup, onlineMode bool) (*pc.Client, *httpapi.HttpApi) {
-	os.Setenv("LOTUS_ONLINEMODE", strconv.FormatBool(onlineMode))
+func StartPowergate(t util.TestingTWithCleanup) (*pc.Client, *httpapi.HttpApi) {
+	os.Setenv("LOTUS_ONLINEMODE", strconv.FormatBool(false))
 	_, currentFilePath, _, _ := runtime.Caller(0)
 	dirpath := path.Dir(currentFilePath)
 

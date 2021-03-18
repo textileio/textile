@@ -466,6 +466,9 @@ func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*p
 		if err != nil {
 			return nil, fmt.Errorf("getting cid info: %s", err)
 		}
+		if ci.CidInfo.CurrentStorageInfo == nil {
+			continue
+		}
 		props := ci.CidInfo.CurrentStorageInfo.Cold.Filecoin.Proposals
 		ali := &pb.ArchiveLsItem{
 			Cid:  cs.Cid,

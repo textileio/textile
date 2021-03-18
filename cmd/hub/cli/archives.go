@@ -44,7 +44,7 @@ var archivesLsCmd = &cobra.Command{
 }
 
 var archivesImportCmd = &cobra.Command{
-	Use:   "import", // cid [deal-id ...]",
+	Use:   "import cid [deal-id ...]",
 	Short: "Imports a list of active deal-ids from the Filecoin network for a Cid.",
 	Long:  "Imports a list of active deal-ids from the Filecoin network for a Cid. At least one deal-id must be provided. Cids must be UnixFS DAGs.",
 	Args:  cobra.MinimumNArgs(2),
