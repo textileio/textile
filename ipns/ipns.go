@@ -255,6 +255,6 @@ func (m *Manager) republish() error {
 		return err
 	}
 
-	log.Infof("republished %d/%d keys in %v", len(keys), withPath, time.Since(start))
+	log.Infof("republished %d/%d keys in %v", withPath, len(keys), time.Since(start))
 	return nil
 }

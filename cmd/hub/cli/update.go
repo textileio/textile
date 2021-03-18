@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/blang/semver"
@@ -27,53 +28,35 @@ func install(assetURL string) error {
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update the hub CLI",
-	Long:  `Update the installed hub CLI version to latest release.`,
+	Short: "Update hub",
+	Long:  `Update hub to the latest version.`,
 	Args:  cobra.ExactArgs(0),
 	Run: func(c *cobra.Command, args []string) {
-		version := bi.Version
-
-		latest, err := getLatestRelease()
+		latestRelease, err := getLatestRelease()
 		if err != nil {
-			cmd.Error(err)
-			cmd.Warn("Unable to fetch latest public release.")
+			cmd.Fatal(fmt.Errorf("unable to get latest version: %v", err))
+		}
+		latest := "v" + latestRelease.Version.String()
+
+		current, err := semver.ParseTolerant(bi.Version)
+		if err != nil {
+			// Overwrite local build
+			if err := install(latestRelease.AssetURL); err != nil {
+				cmd.Fatal(fmt.Errorf("install failed: %v", err))
+			} else {
+				cmd.Success("hub updated to %s", aurora.Green(latest))
+			}
 		} else {
-			current, err := semver.ParseTolerant(version)
-			if err == nil {
-				if current.LT(latest.Version) {
-					if err = install(latest.AssetURL); err != nil {
-						cmd.Error(err)
-						cmd.Warn("Error: install failed.")
-					} else {
-						version = latest.Version.String()
-						cmd.Message("Success: hub updated.")
-					}
+			// Install if not up-to-date
+			if current.LT(latestRelease.Version) {
+				if err = install(latestRelease.AssetURL); err != nil {
+					cmd.Fatal(fmt.Errorf("install failed: %v", err))
 				} else {
-					cmd.Message("Already up-to-date.")
+					cmd.Success("hub updated to %s", aurora.Green(latest))
 				}
 			} else {
-				if err = install(latest.AssetURL); err != nil {
-					cmd.Error(err)
-					cmd.Warn("Error: install failed.")
-				} else {
-					version = latest.Version.String()
-					cmd.Message("Success: hub updated.")
-				}
+				cmd.Message("Already up-to-date.")
 			}
-		}
-		if version == "git" {
-			cmd.Message("Custom version:")
-			cmd.RenderTable(
-				[]string{"GitBranch", "GitState", "GitSummary"},
-				[][]string{{
-					bi.GitBranch,
-					bi.GitState,
-					bi.GitSummary,
-				}},
-			)
-			cmd.Message("%s (%s)", aurora.Green(bi.GitCommit), bi.BuildDate)
-		} else {
-			cmd.Message("%s", aurora.Green(version))
 		}
 	},
 }

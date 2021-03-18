@@ -14,7 +14,7 @@ import (
 type WatchState struct {
 	// State of the watch connection (online/offline).
 	State ConnectionState
-	// Error returned by the watch operation.
+	// Err returned by the watch operation.
 	Err error
 	// Aborted indicates whether or not the associated error aborted the watch.
 	// (Connectivity related errors do not abort the watch.)

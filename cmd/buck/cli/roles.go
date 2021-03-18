@@ -62,7 +62,7 @@ Access roles:
 		}
 		role, err := buckets.NewRoleFromString(roleStr)
 		if err != nil {
-			cmd.Error(fmt.Errorf("access role must be one of: none, reader, writer, or admin"))
+			cmd.Fatal(fmt.Errorf("access role must be one of: none, reader, writer, or admin"))
 		}
 		var pth string
 		if len(args) > 1 {
