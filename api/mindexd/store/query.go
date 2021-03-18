@@ -78,7 +78,7 @@ func (s *Store) QueryIndex(ctx context.Context, filters QueryIndexFilters, sort 
 	}
 
 	opts := options.Find()
-	opts = opts.SetSort(qSort)
+	opts = opts.SetSort(qSort).SetCollation(&options.Collation{Locale: "en", NumericOrdering: true})
 	opts = opts.SetLimit(int64(limit))
 	opts = opts.SetSkip(offset)
 	c, err := s.idxc.Find(ctx, qFilters, opts)
@@ -134,11 +134,11 @@ func buildMongoFiltersAndSort(filters QueryIndexFilters, sort QueryIndexSort) (b
 			s = bson.E{Key: "textile.regions." + sort.TextileRegion + ".retrievals.last", Value: sortVal}
 		}
 	case SortFieldAskPrice:
-		s = bson.E{Key: "textile.filecoin.ask_price", Value: sortVal}
+		s = bson.E{Key: "filecoin.ask_price", Value: sortVal}
 	case SortFieldVerifiedAskPrice:
-		s = bson.E{Key: "textile.filecoin.ask_verified_price", Value: sortVal}
+		s = bson.E{Key: "filecoin.ask_verified_price", Value: sortVal}
 	case SortFieldActiveSectors:
-		s = bson.E{Key: "textile.filecoin.active_sectors", Value: sortVal}
+		s = bson.E{Key: "filecoin.active_sectors", Value: sortVal}
 	default:
 		return nil, nil, fmt.Errorf("unkown sort field")
 	}
