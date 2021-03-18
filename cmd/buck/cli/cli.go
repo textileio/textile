@@ -60,8 +60,7 @@ func Init(baseCmd *cobra.Command) {
 	initCmd.Flags().Bool("hard", false, "Discards all local changes if true")
 	initCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
 	initCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
-	// (jsign): disabled until this feature is usable in mainnet.
-	// initCmd.Flags().Bool("unfreeze", false, "Unfreeze --cid from a known or imported deals in Filecoin.")
+	initCmd.Flags().Bool("unfreeze", false, "Unfreeze --cid from a known or imported deals in Filecoin.")
 
 	pushCmd.Flags().BoolP("force", "f", false, "Allows non-fast-forward updates if true")
 	pushCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")

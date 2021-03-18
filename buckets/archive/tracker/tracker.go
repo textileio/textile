@@ -278,7 +278,7 @@ func (t *Tracker) trackRetrievalProgress(ctx context.Context, accKey, jid string
 		message = "non-final status"
 		status = archive.TrackedJobStatusExecuting
 	default:
-		return 0, "", fmt.Errorf("unkown storage-job status: %d", res.StorageJob.Status)
+		return 0, "", fmt.Errorf("unknown storage-job status: %d", res.StorageJob.Status)
 	}
 
 	t.jfe <- archive.JobEvent{

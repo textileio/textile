@@ -1,7 +1,7 @@
 version: "3"
 services:
   powergate:
-    image: textile/powergate:v2.0.0
+    image: textile/powergate:v2.3.2-jsign
     ports:
       - "8889:8889"
       - "8888:8888"

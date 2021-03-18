@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gogo/status"
@@ -100,6 +101,7 @@ type FilRetrieval struct {
 	internalSession string
 
 	// daemon vars
+	lock       sync.Mutex
 	started    bool
 	daemonWork chan struct{}
 	ctx        context.Context
@@ -134,10 +136,16 @@ func NewFilRetrieval(
 }
 
 func (fr *FilRetrieval) SetBucketCreator(bc BucketCreator) {
+	fr.lock.Lock()
+	defer fr.lock.Unlock()
+
 	fr.bc = bc
 }
 
 func (fr *FilRetrieval) RunDaemon() {
+	fr.lock.Lock()
+	defer fr.lock.Unlock()
+
 	if !fr.started {
 		go fr.daemon()
 		fr.started = true
@@ -313,9 +321,11 @@ func (fr *FilRetrieval) daemon() {
 			fr.processQueuedMoveToBucket()
 		case ju := <-fr.jfe:
 			if ju.Type != archive.TrackedJobTypeRetrieval {
+				log.Debugf("ignoring non-retrieval job status update")
 				// We're not interested in other jobs type events.
 				continue
 			}
+			log.Debugf("processing retrieval job status update: %#v", ju)
 			fr.updateRetrievalStatus(ju)
 		}
 	}
@@ -345,7 +355,7 @@ func (fr *FilRetrieval) updateRetrievalStatus(ju archive.JobEvent) {
 	case archive.TrackedJobStatusSuccess:
 		r.Status = StatusMoveToBucket
 	default:
-		log.Errorf("unkown job event status: %d", ju.Status)
+		log.Errorf("unknown job event status: %d", ju.Status)
 		return
 	}
 
@@ -365,22 +375,20 @@ func (fr *FilRetrieval) updateRetrievalStatus(ju archive.JobEvent) {
 	}
 
 	// If the retrieval switched to executing, or failed we're done.
-	if ju.Status != archive.TrackedJobStatusSuccess {
-		return
-	}
-
-	// We know the Cid data is available (Success), move to next phase to move the data
-	// to the bucket. We do it in phases as to avoid failing all the retrieval if the process
-	// crashes, or shutdowns. When is spinned up again, we can recover the process to move the data
-	// to the bucket without having retrievals stuck or forcing the user to create a new retrieval
-	// starting from zero.
-	//
-	// The daemon() will take these retrievals, and continue with the process. After it finishes,
-	// it will be removed from the pending list (reached final status).
-	key := dsMoveToBucketQueueKey(ju.AccKey, ju.JobID)
-	if err := txn.Put(key, []byte{}); err != nil {
-		log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Status, ju.FailureCause, err)
-		return
+	if ju.Status == archive.TrackedJobStatusSuccess {
+		// We know the Cid data is available (Success), move to next phase to move the data
+		// to the bucket. We do it in phases as to avoid failing all the retrieval if the process
+		// crashes, or shutdowns. When is spinned up again, we can recover the process to move the data
+		// to the bucket without having retrievals stuck or forcing the user to create a new retrieval
+		// starting from zero.
+		//
+		// The daemon() will take these retrievals, and continue with the process. After it finishes,
+		// it will be removed from the pending list (reached final status).
+		key := dsMoveToBucketQueueKey(ju.AccKey, ju.JobID)
+		if err := txn.Put(key, []byte{}); err != nil {
+			log.Errorf("inserting into move-to-bucket queue (accKey:%s, jobID:%s, status:%d, failureCause: %s): %s", ju.AccKey, ju.JobID, ju.Status, ju.FailureCause, err)
+			return
+		}
 	}
 
 	if err := txn.Commit(); err != nil {

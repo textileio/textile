@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateBucket(t *testing.T) {
-	powc, _ := StartPowergate(t, true)
+	powc, _ := StartPowergate(t)
 	ctx, _, _, _, client, _, shutdown := setup(t)
 	defer shutdown()
 
@@ -61,7 +61,7 @@ func TestCreateBucket(t *testing.T) {
 
 func TestArchiveTracker(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		ctx, conf, _, _, client, repo, shutdown := setup(t)
 
 		// Create bucket with a file.
@@ -107,7 +107,7 @@ func TestArchiveTracker(t *testing.T) {
 
 func TestArchiveBucketWorkflow(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		ctx, _, _, usersClient, buckClient, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -172,7 +172,7 @@ func TestArchiveBucketWorkflow(t *testing.T) {
 
 func TestArchivesLs(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		ctx, _, _, usersClient, buckClient, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -239,7 +239,7 @@ func TestArchivesLs(t *testing.T) {
 
 func TestArchivesImport(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		hubClient, usersClient, threadsclient, buckClient, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 
@@ -285,7 +285,7 @@ func TestArchivesImport(t *testing.T) {
 
 func TestArchiveUnfreeze(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, ipfsPow := StartPowergate(t, false)
+		_, ipfsPow := StartPowergate(t)
 		hubClient, usersClient, threadsclient, client, conf, _, shutdown := createInfra(t)
 		defer shutdown()
 		// Create an archive for account-1.
@@ -294,11 +294,6 @@ func TestArchiveUnfreeze(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(4 * time.Second) // Give a sec to fund the Fil address.
 		rootCid1 := addDataFileToBucket(ctxAccount1, t, client, buck.Root.Key, "Data1.txt")
-
-		// <LOTUS-BUG-HACK>
-		ccid2, _ := cid.Decode(rootCid1)
-		err = ipfsPow.Pin().Add(context.Background(), path.IpldPath(ccid2))
-		// </LOTUS-BUG-HACK>
 
 		err = client.Archive(ctxAccount1, buck.Root.Key)
 		require.NoError(t, err)
@@ -332,10 +327,6 @@ func TestArchiveUnfreeze(t *testing.T) {
 		// we'll delete now the archive bucket data from both go-ipfs nodes (Hub's
 		// and Powergate).
 		ctx := context.Background()
-
-		// <LOTUS-BUG-HACK>
-		err = ipfsPow.Pin().Rm(context.Background(), path.IpldPath(ccid2), options.Pin.RmRecursive(true))
-		// </LOTUS-BUG-HACK>
 
 		err = ipfsPow.Dag().Remove(context.Background(), ccid)
 		require.NoError(t, err)
@@ -411,7 +402,7 @@ func TestArchiveUnfreeze(t *testing.T) {
 
 func TestArchiveWatch(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		ctx, _, _, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
@@ -445,7 +436,7 @@ func TestArchiveWatch(t *testing.T) {
 
 func TestFailingArchive(t *testing.T) {
 	util.RunFlaky(t, func(t *util.FlakyT) {
-		_, _ = StartPowergate(t, true)
+		_, _ = StartPowergate(t)
 		ctx, _, _, _, client, _, shutdown := setup(t)
 		defer shutdown()
 
