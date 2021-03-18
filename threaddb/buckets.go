@@ -269,14 +269,14 @@ func (b *Bucket) Copy() *Bucket {
 		ar.History[i] = copyArchives(j)
 	}
 	return &Bucket{
-		Key: b.Key,
-		Owner: b.Owner,
-		Name: b.Name,
-		Version: b.Version,
-		LinkKey: b.LinkKey,
-		Path: b.Path,
-		Metadata: md,
-		Archives: ar,
+		Key:       b.Key,
+		Owner:     b.Owner,
+		Name:      b.Name,
+		Version:   b.Version,
+		LinkKey:   b.LinkKey,
+		Path:      b.Path,
+		Metadata:  md,
+		Archives:  ar,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
@@ -284,7 +284,7 @@ func (b *Bucket) Copy() *Bucket {
 
 func copyArchives(archive Archive) Archive {
 	a := Archive{
-		Cid: archive.Cid,
+		Cid:   archive.Cid,
 		Deals: make([]Deal, len(archive.Deals)),
 	}
 	for i, j := range archive.Deals {
@@ -626,7 +626,8 @@ func (b *Buckets) ArchiveWatch(ctx context.Context, key string, powToken string,
 		if le.Err != nil {
 			return le.Err
 		}
-		ch <- le.Res.LogEntry.Message
+		timestamp := time.Unix(le.Res.LogEntry.Time, 0)
+		ch <- fmt.Sprintf("%s: %s", timestamp.Format("2006-01-02 15:04:05"), le.Res.LogEntry.Message)
 	}
 	return nil
 }
