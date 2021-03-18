@@ -126,7 +126,7 @@ var (
 			},
 			"archivesJobPollIntervalFast": {
 				Key:      "archives.job_poll_interval_fast",
-				DefValue: time.Minute * 15,
+				DefValue: time.Minute * 5,
 			},
 
 			// IPNS
