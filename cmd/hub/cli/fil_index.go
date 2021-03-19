@@ -50,6 +50,8 @@ var filQueryMiners = &cobra.Command{
 	The sort-field flag can take the following values:
 	- "textile-deals-total-successful": Total successful deals in Textile.
 	- "textile-deals-last-successful": Last successful deal in Textile.
+	- "textile-retrievals-total-successful": Total successful retrievals in Textile.
+	- "textile-retrievals-last-successful": Last successful retrievals in Textile.
 	- "ask-price": Raw ask-price.
 	- "verified-ask-price": Verified ask-price.
 	- "active-sectors": Total active sectors in the network.
@@ -122,8 +124,10 @@ var filQueryMiners = &cobra.Command{
 					isoLocationToCountryName(m.Miner.Metadata.Location),
 					fmt.Sprintf("%d | %d", m.Miner.Textile.DealsSummary.Total, m.Miner.Textile.DealsSummary.Failures),
 					fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.DealsSummary.Last)),
-					fmt.Sprintf("%s", peekAndFormatTransferTimes(m.Miner.Textile)),
+					fmt.Sprintf("%s", peekAndFormatDealsTransferTimes(m.Miner.Textile)),
 					fmt.Sprintf("%s", peekAndFormatSealingTimes(m.Miner.Textile)),
+					fmt.Sprintf("%s", peekAndFormatRetrievalsTransferTimes(m.Miner.Textile)),
+					fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.RetrievalsSummary.Last)),
 				}
 				continue
 			}
@@ -134,17 +138,18 @@ var filQueryMiners = &cobra.Command{
 				isoLocationToCountryName(m.Miner.Metadata.Location),
 				fmt.Sprintf("%s", humanize.IBytes(uint64(m.Miner.Filecoin.MinPieceSize))),
 				fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.DealsSummary.Last)),
+				fmt.Sprintf("%s", prettyFormatPbTime(m.Miner.Textile.RetrievalsSummary.Last)),
 			}
 		}
 		if showFullDetails {
-			cmd.RenderTable([]string{"miner", "relative power", "raw/verified ask price", "min/max piece size", "sector size", "active/faulty sectors", "location", "textile total/failed deals", "last successful", "last data-transfer", "last sealing-time"}, data)
+			cmd.RenderTable([]string{"miner", "relative power", "raw/verified ask price", "min/max piece size", "sector size", "active/faulty sectors", "location", "textile total/failed deals", "last successful deal", "last deal data-transfer", "last deal sealing-time", "last successful retrieval", "retrieval last data-transfer"}, data)
 		} else {
-			cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal"}, data)
+			cmd.RenderTable([]string{"miner", "ask-price (FIL/GiB/epoch)", "verified ask-price (FIL/GiB/epoch)", "location", "min-piece-size", "textile-last-deal", "textile-last-retrieval"}, data)
 		}
 	},
 }
 
-func peekAndFormatTransferTimes(ti *pb.TextileInfo) string {
+func peekAndFormatDealsTransferTimes(ti *pb.TextileInfo) string {
 	var last *time.Time
 	var lastThroughput *float64
 	for _, r := range ti.Regions {
@@ -152,6 +157,26 @@ func peekAndFormatTransferTimes(ti *pb.TextileInfo) string {
 			if last == nil || last.Before(r.Deals.TailTransfers[0].TransferedAt.AsTime()) {
 				lastThroughput = &r.Deals.TailTransfers[0].MibPerSec
 				t := r.Deals.TailTransfers[0].TransferedAt.AsTime()
+				last = &t
+			}
+		}
+	}
+
+	if last == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("~%.02f MiB/s (%s)", *lastThroughput, humanize.Time(*last))
+}
+
+func peekAndFormatRetrievalsTransferTimes(ti *pb.TextileInfo) string {
+	var last *time.Time
+	var lastThroughput *float64
+	for _, r := range ti.Regions {
+		if len(r.Retrievals.TailTransfers) > 0 {
+			if last == nil || last.Before(r.Retrievals.TailTransfers[0].TransferedAt.AsTime()) {
+				lastThroughput = &r.Retrievals.TailTransfers[0].MibPerSec
+				t := r.Retrievals.TailTransfers[0].TransferedAt.AsTime()
 				last = &t
 			}
 		}
@@ -228,6 +253,7 @@ var filGetMinerInfo = &cobra.Command{
 		cmd.Message("Last failed deal  : %s\n", prettyFormatPbTime(res.Info.Textile.DealsSummary.LastFailure))
 
 		for m49Code, regionData := range res.Info.Textile.Regions {
+			// Deals
 			var dataTransfers [][]string
 			for _, t := range regionData.Deals.TailTransfers {
 				dataTransfers = append(dataTransfers, []string{
@@ -248,9 +274,33 @@ var filGetMinerInfo = &cobra.Command{
 			cmd.Message("Last successful : %s", prettyFormatPbTime(regionData.Deals.Last))
 			cmd.Message("Total failed    : %d", regionData.Deals.Failures)
 			cmd.Message("Last failed     : %s\n", prettyFormatPbTime(regionData.Deals.LastFailure))
-			cmd.RenderTableWithoutNewLines([]string{"date", "datatransfer-speed"}, dataTransfers)
+
+			if len(dataTransfers) > 0 {
+				cmd.RenderTableWithoutNewLines([]string{"date", "datatransfer-speed"}, dataTransfers)
+				fmt.Println()
+			}
+			if len(sealingDuration) > 0 {
+				cmd.RenderTableWithoutNewLines([]string{"date", "sealing-duration"}, sealingDuration)
+			}
+
 			fmt.Println()
-			cmd.RenderTableWithoutNewLines([]string{"date", "sealing-duration"}, sealingDuration)
+			// Retrievals
+			var retrTransfers [][]string
+			for _, t := range regionData.Retrievals.TailTransfers {
+				retrTransfers = append(retrTransfers, []string{
+					fmt.Sprintf("%s", prettyFormatPbTime(t.TransferedAt)),
+					fmt.Sprintf("~%.02f MiB/s", t.MibPerSec),
+				})
+			}
+
+			fmt.Print(aurora.Brown(fmt.Sprintf("%s retrievals telemetry:\n", m49Table[m49Code])))
+			cmd.Message("Total successful: %d", regionData.Retrievals.Total)
+			cmd.Message("Last successful : %s", prettyFormatPbTime(regionData.Retrievals.Last))
+			cmd.Message("Total failed    : %d", regionData.Retrievals.Failures)
+			cmd.Message("Last failed     : %s\n", prettyFormatPbTime(regionData.Retrievals.LastFailure))
+			if len(retrTransfers) > 0 {
+				cmd.RenderTableWithoutNewLines([]string{"date", "transfer-speed"}, retrTransfers)
+			}
 		}
 	},
 }
@@ -341,6 +391,10 @@ func mapSortField(field string) pb.QueryIndexRequestSortField {
 		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_TOTAL_SUCCESSFUL
 	case "textile-deals-last-successful":
 		return pb.QueryIndexRequestSortField_TEXTILE_DEALS_LAST_SUCCESSFUL
+	case "textile-retrievals-total-successful":
+		return pb.QueryIndexRequestSortField_TEXTILE_RETRIEVALS_TOTAL_SUCCESSFUL
+	case "textile-retrievals-last-successful":
+		return pb.QueryIndexRequestSortField_TEXTILE_RETRIEVALS_LAST_SUCCESSFUL
 	case "ask-price":
 		return pb.QueryIndexRequestSortField_ASK_PRICE
 	case "verified-ask-price":
