@@ -138,7 +138,7 @@ func Auth(ctx context.Context) context.Context {
 			ctx, err = common.CreateAPISigContext(
 				ctx,
 				time.Now().Add(time.Hour),
-				config.Viper.GetString("secret"),
+				config.Viper.GetString("apiSecret"),
 			)
 			if err != nil {
 				cmd.Fatal(fmt.Errorf("invalid secret: %w", err))
