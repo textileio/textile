@@ -281,7 +281,7 @@ func getContentTypeFromPullPath(ctx context.Context, client *bucketsclient.Clien
 		}
 	}()
 
-	contentType, r, err := detectReaderContentType(pr)
+	contentType, r, err := detectReaderContentType(pr, pth)
 	if err != nil {
 		return "", nil, fmt.Errorf("detecting content-type: %s", err)
 	}
