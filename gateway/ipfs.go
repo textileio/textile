@@ -101,7 +101,7 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 
 // detectReaderContentType detects the best available mime type for some bytes.
 // Note: file extension is used here due to the inability to detect some known
-// content types from extension alone, those include CSS.
+// content types from content alone, those include CSS.
 func detectReaderContentType(r io.Reader, pth string) (string, io.Reader, error) {
 	var buf [512]byte
 	n, err := io.ReadAtLeast(r, buf[:], len(buf))
