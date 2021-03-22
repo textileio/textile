@@ -14,13 +14,13 @@ jobs:
           - textile/buckets
           - textile/mindexd
         include:
-          - package: textile/hub
+          - imageRepo: textile/hub
             dockerFile: cmd/hubd/Dockerfile
-          - package: textile/billing
+          - imageRepo: textile/billing
             dockerFile: api/billingd/Dockerfile
-          - package: textile/buckets
+          - imageRepo: textile/buckets
             dockerFile: cmd/buckd/Dockerfile
-          - package: textile/mindexd
+          - imageRepo: textile/mindexd
             dockerFile: api/mindexd/Dockerfile
     steps:
       - uses: actions/checkout@v2
