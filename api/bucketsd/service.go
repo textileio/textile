@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +75,9 @@ var (
 	baseArchiveStorageConfig = &userPb.StorageConfig{
 		Hot: &userPb.HotConfig{
 			Enabled: false,
+			Ipfs: &userPb.IpfsConfig{
+				AddTimeout: 15 * 60,
+			},
 		},
 		Cold: &userPb.ColdConfig{
 			Enabled: true,
@@ -3150,7 +3154,8 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			return nil, fmt.Errorf("storage-config has set verified deals but the client is unverified")
 		}
 	}
-	log.Debugf("archiving with filecoin config: %#v", storageConfig.Cold.Filecoin)
+	scjson, _ := json.Marshal(storageConfig)
+	log.Debugf("archiving with filecoin config: %s", scjson)
 
 	// Archive pushes the current root Cid to the corresponding user of the bucket.
 	// The behaviour changes depending on different cases, depending on a previous archive.
