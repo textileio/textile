@@ -1,0 +1,48 @@
+name: Docker image master branch
+on:
+  push:
+    branches:
+      - master
+jobs:
+  docker-build-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        imageRepo:
+          - textile/hub
+          - textile/billing
+          - textile/buckets
+          - textile/mindexd
+        include:
+          - package: textile/hub
+            dockerFile: cmd/hubd/Dockerfile
+          - package: textile/billing
+            dockerFile: api/billingd/Dockerfile
+          - package: textile/buckets
+            dockerFile: cmd/buckd/Dockerfile
+          - package: textile/mindexd
+            dockerFile: api/mindexd/Dockerfile
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get git sha
+        id: git_sha
+        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      - name: Check outputs
+        run: echo ${{ steps.git_sha.outputs.sha_short }}
+      - name: Fail if no git sha
+        run: exit 1
+        if: ${{ steps.git_sha.outputs.sha_short == 0 }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}    
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          file: ${{ matrix.dockerFile }}
+          tags: ${{ matrix.imageRepo }}:latest,${{ matrix.imageRepo }}:sha-${{ steps.git_sha.outputs.sha_short }}
