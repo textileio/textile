@@ -1,7 +1,7 @@
 version: "3"
 services:
   powergate:
-    image: textile/powergate:v2.3.2-jsign
+    image: textile/powergate:v2.3.3
     ports:
       - "8889:8889"
       - "8888:8888"
@@ -19,7 +19,7 @@ services:
       - POWD_FFSMINERSELECTOR=reputation
     restart: unless-stopped
   lotus:
-    image: textile/lotus-devnet:v1.4.2
+    image: textile/lotus-devnet:v1.5.2
     environment:
       - TEXLOTUSDEVNET_SPEED=100
       - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
