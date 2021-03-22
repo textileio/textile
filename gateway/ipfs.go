@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	gopath "path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -88,7 +89,7 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 	}
 	defer f.Close()
 
-	contentType, r, err := detectReaderContentType(f)
+	contentType, r, err := detectReaderContentType(f, pth)
 	if err != nil {
 		renderError(c, http.StatusInternalServerError, fmt.Errorf("detecting mime: %s", err))
 		return
@@ -98,15 +99,29 @@ func (g *Gateway) renderIPFSPath(c *gin.Context, base, pth string) {
 	c.Render(200, render.Reader{ContentLength: -1, Reader: r})
 }
 
-func detectReaderContentType(r io.Reader) (string, io.Reader, error) {
+// detectReaderContentType detects the best available mime type for some bytes.
+// Note: file extension is used here due to the inability to detect some known
+// content types from content alone, those include CSS.
+func detectReaderContentType(r io.Reader, pth string) (string, io.Reader, error) {
 	var buf [512]byte
 	n, err := io.ReadAtLeast(r, buf[:], len(buf))
 	if err != nil && err != io.ErrUnexpectedEOF {
 		return "", nil, fmt.Errorf("reading reader: %s", err)
 	}
-	contentType := http.DetectContentType(buf[:])
 
-	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
+	reader := io.MultiReader(bytes.NewReader(buf[:n]), r)
+
+	ext := filepath.Ext(pth)
+	switch ext {
+	case ".htm", ".html":
+		return "text/html", reader, nil
+	case ".css":
+		return "text/css", reader, nil
+	case ".js":
+		return "application/javascript", reader, nil
+	default:
+		return http.DetectContentType(buf[:]), reader, nil
+	}
 }
 
 func (g *Gateway) openPath(ctx context.Context, pth path.Path) (io.ReadCloser, error) {
