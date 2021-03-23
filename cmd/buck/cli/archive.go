@@ -234,7 +234,7 @@ var archiveCmd = &cobra.Command{
 			cmd.Fatal(fmt.Errorf("parsing current balance"))
 		}
 		if balance.Cmp(big.NewInt(0)) == 0 {
-			cmd.Fatal(fmt.Errorf("The wallet address balance is zero, you'll need to add some funds!"))
+			cmd.Warn("The wallet address balance is zero, you may need to add some funds!")
 		}
 
 		skipVerifiedDealOverride, err := c.Flags().GetBool("skip-verified-deal-override")
