@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -132,6 +133,9 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	sm, err := client.MpoolPushMessage(ctx, msg, nil)
 	cls()
 	if err != nil {
+		if strings.Contains(err.Error(), "not enough funds") {
+			log.Errorf("not enough funds in %s to send %s fil to %s", f.String(), amount.String(), t.String())
+		}
 		return nil, status.Errorf(codes.Internal, "pushing message: %v", err)
 	}
 

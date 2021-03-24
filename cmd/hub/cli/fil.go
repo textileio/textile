@@ -12,6 +12,7 @@ import (
 	userPb "github.com/textileio/powergate/v2/api/gen/powergate/user/v1"
 	filrewardspb "github.com/textileio/textile/v2/api/filrewardsd/pb"
 	hc "github.com/textileio/textile/v2/api/hubd/client"
+	sendfilpb "github.com/textileio/textile/v2/api/sendfild/pb"
 	"github.com/textileio/textile/v2/cmd"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -239,7 +240,9 @@ var filRewardsCmd = &cobra.Command{
 			opts = append(opts, hc.ListFilRewardsUnlockedByDev())
 		}
 
-		rewards, _, _, err := clients.Hub.ListFilRewards(ctx, opts...)
+		// ToDo: Deal with paging.
+
+		rewards, err := clients.Hub.ListFilRewards(ctx, opts...)
 		cmd.ErrCheck(err)
 
 		if len(rewards) > 0 {
@@ -299,15 +302,17 @@ var filClaimsCmd = &cobra.Command{
 			opts = append(opts, hc.ListFilClaimsClaimedByDev())
 		}
 
-		claims, _, _, err := clients.Hub.ListFilClaims(ctx, opts...)
+		// ToDo: Deal with paging.
+
+		claims, err := clients.Hub.ListFilClaims(ctx, opts...)
 		cmd.ErrCheck(err)
 
 		if len(claims) > 0 {
 			data := make([][]string, len(claims))
 			for i, claim := range claims {
-				amount := fmt.Sprintf("%.8f", float64(claim.Amount)/math.Pow10(9))
+				amount := fmt.Sprintf("%.8f", float64(claim.AmountNanoFil)/math.Pow10(9))
 				createdAt := claim.CreatedAt.AsTime().Format(time.RFC3339)
-				state := filrewardspb.ClaimState_name[int32(claim.State)]
+				state := sendfilpb.MessageState_name[int32(claim.State)]
 				data[i] = []string{amount, state, claim.TxnCid, claim.FailureMessage, createdAt}
 			}
 			cmd.RenderTable([]string{"amount (fil)", "state", "txn cid", "failure message", "created at"}, data)
@@ -327,17 +332,17 @@ var filRewardsBalanceCmd = &cobra.Command{
 		res, err := clients.Hub.FilRewardsBalance(ctx)
 		cmd.ErrCheck(err)
 
-		rewarded := fmt.Sprintf("%.8f", float64(res.Rewarded)/math.Pow10(9))
-		pending := fmt.Sprintf("%.8f", float64(res.Pending)/math.Pow10(9))
-		claimed := fmt.Sprintf("%.8f", float64(res.Claimed)/math.Pow10(9))
-		available := fmt.Sprintf("%.8f", float64(res.Available)/math.Pow10(9))
+		rewarded := fmt.Sprintf("%.8f", float64(res.RewardedNanoFil)/math.Pow10(9))
+		pending := fmt.Sprintf("%.8f", float64(res.ClaimedPendingNanoFil)/math.Pow10(9))
+		complete := fmt.Sprintf("%.8f", float64(res.ClaimedCompleteNanoFil)/math.Pow10(9))
+		available := fmt.Sprintf("%.8f", float64(res.AvailableNanoFil)/math.Pow10(9))
 
 		cmd.RenderTable(
 			[]string{"category", "amount (FIL)"},
 			[][]string{
 				{"Rewarded", rewarded},
-				{"Pending", pending},
-				{"Claimed", claimed},
+				{"Claimed Pending", pending},
+				{"Claimed Complete", complete},
 				{"Available", available},
 			},
 		)

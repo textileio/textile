@@ -87,6 +87,7 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 
 	runner, found := w.waiting[objID]
 	if !found {
+		log.Infof("creating new wait runner %s for cid %s", objID.Hex(), messageCid)
 		var err error
 		runner, err = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
 		if err != nil {
@@ -150,6 +151,7 @@ func (w *WaitManager) bindTicker(ctx context.Context) {
 func (w *WaitManager) deleteWaitRunner(objID primitive.ObjectID) error {
 	w.waitingLck.Lock()
 	defer w.waitingLck.Unlock()
+	log.Infof("deleting wait runner: %s", objID.Hex())
 	runner, ok := w.waiting[objID]
 	if !ok {
 		return nil

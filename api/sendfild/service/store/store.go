@@ -265,33 +265,42 @@ func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, 
 
 	filter := bson.M{}
 
+	ands := bson.A{}
+
+	// Message cids
+	messageCidsOrs := bson.A{}
+	for _, messageCid := range req.MessageCidsFilter {
+		messageCidsOrs = append(messageCidsOrs, bson.M{"message_cids.cid": messageCid})
+	}
+	if len(messageCidsOrs) > 0 {
+		ands = append(ands, bson.M{"$or": messageCidsOrs})
+	}
+
 	// Involving/from/to
 	if req.InvolvingAddressFilter != "" {
-		filter["$or"] = bson.A{bson.M{"from": req.InvolvingAddressFilter}, bson.M{"to": req.InvolvingAddressFilter}}
+		ands = append(ands, bson.M{"$or": bson.A{bson.M{"from": req.InvolvingAddressFilter}, bson.M{"to": req.InvolvingAddressFilter}}})
 	} else {
 		if req.FromFilter != "" {
-			filter["from"] = req.FromFilter
+			ands = append(ands, bson.M{"from": req.FromFilter})
 		}
 		if req.ToFilter != "" {
-			filter["to"] = req.ToFilter
+			ands = append(ands, bson.M{"to": req.ToFilter})
 		}
 	}
 
 	// MessageState
 	if req.MessageStateFilter != pb.MessageState_MESSAGE_STATE_UNSPECIFIED {
-		filter["message_state"] = req.MessageStateFilter
+		ands = append(ands, bson.M{"message_state": req.MessageStateFilter})
 	}
 
 	// Waiting
 	if req.WaitingFilter != pb.WaitingFilter_WAITING_FILTER_UNSPECIFIED {
-		filter["waiting"] = req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING
+		ands = append(ands, bson.M{"waiting": req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING})
 	}
-
-	ands := bson.A{}
 
 	// Amount eq/gte/lts/gt/lt
 	if req.AmountNanoFilEqFilter != 0 {
-		filter["amount_nano_fil"] = req.AmountNanoFilEqFilter
+		ands = append(ands, bson.M{"amount_nano_fil": req.AmountNanoFilEqFilter})
 	} else {
 		if req.AmountNanoFilGteqFilter != 0 {
 			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$gte": req.AmountNanoFilGteqFilter}})

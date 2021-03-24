@@ -849,14 +849,14 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 	if req.Ascending {
 		opts = append(opts, filrewards.ListRewardsAscending())
 	}
-	if req.Limit > 0 {
-		opts = append(opts, filrewards.ListRewardsLimit(req.Limit))
+	if req.Page > 0 {
+		opts = append(opts, filrewards.ListRewardsPage(req.Page))
+	}
+	if req.PageSize > 0 {
+		opts = append(opts, filrewards.ListRewardsPageSize(req.PageSize))
 	}
 	if req.RewardTypeFilter != filrewardspb.RewardType_REWARD_TYPE_UNSPECIFIED {
 		opts = append(opts, filrewards.ListRewardsRewardTypeFilter(req.RewardTypeFilter))
-	}
-	if req.MoreToken != 0 {
-		opts = append(opts, filrewards.ListRewardsMoreToken(req.MoreToken))
 	}
 	if req.UnlockedByDev {
 		if user == nil {
@@ -864,14 +864,12 @@ func (s *Service) ListFilRewards(ctx context.Context, req *pb.ListFilRewardsRequ
 		}
 		opts = append(opts, filrewards.ListRewardsDevKeyFilter(user.Key.String()))
 	}
-	recs, more, moreToken, err := s.FilRewardsClient.ListRewards(ctx, opts...)
+	recs, err := s.FilRewardsClient.ListRewards(ctx, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calling filrewards list rewards: %v", err)
 	}
 	return &pb.ListFilRewardsResponse{
-		Rewards:   recs,
-		More:      more,
-		MoreToken: moreToken,
+		Rewards: recs,
 	}, nil
 }
 
@@ -892,19 +890,12 @@ func (s *Service) ClaimFil(ctx context.Context, req *pb.ClaimFilRequest) (*pb.Cl
 		return nil, status.Error(codes.Unauthenticated, "provided user must be a dev")
 	}
 
-	claim, err := s.FilRewardsClient.Claim(ctx, org.Key.String(), user.Key.String(), req.Amount)
+	claim, err := s.FilRewardsClient.Claim(ctx, org.Key.String(), user.Key.String(), req.AmountNanoFil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calling filrewards claim: %v", err)
 	}
 
-	// ToDo: Integrate sending of FIL and montoring txn status on network.
-	// ToDo: Consider returning claim or claim id so user can check status of claim.
-
-	if err := s.FilRewardsClient.FinalizeClaim(ctx, claim.Id, org.Key.String(), filrewards.FinalizeClaimTxnCid("todo-some-cid")); err != nil {
-		return nil, status.Errorf(codes.Internal, "calling filrewards finalize claim: %v", err)
-	}
-
-	return &pb.ClaimFilResponse{}, nil
+	return &pb.ClaimFilResponse{Claim: claim}, nil
 }
 
 func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsRequest) (*pb.ListFilClaimsResponse, error) {
@@ -924,14 +915,11 @@ func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsReques
 	if req.Ascending {
 		opts = append(opts, filrewards.ListClaimsAscending())
 	}
-	if req.Limit > 0 {
-		opts = append(opts, filrewards.ListClaimsLimit(req.Limit))
+	if req.Page > 0 {
+		opts = append(opts, filrewards.ListClaimsPage(req.Page))
 	}
-	if req.StateFilter != filrewardspb.ClaimState_CLAIM_STATE_UNSPECIFIED {
-		opts = append(opts, filrewards.ListClaimsStateFilter(req.StateFilter))
-	}
-	if req.MoreToken != 0 {
-		opts = append(opts, filrewards.ListClaimsMoreToken(req.MoreToken))
+	if req.PageSize > 0 {
+		opts = append(opts, filrewards.ListClaimsPageSize(req.PageSize))
 	}
 	if req.ClaimedByDev {
 		if user == nil {
@@ -940,14 +928,12 @@ func (s *Service) ListFilClaims(ctx context.Context, req *pb.ListFilClaimsReques
 		opts = append(opts, filrewards.ListClaimsClaimedByFilter(user.Key.String()))
 	}
 
-	recs, more, moreToken, err := s.FilRewardsClient.ListClaims(ctx, opts...)
+	recs, err := s.FilRewardsClient.ListClaims(ctx, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "calling filrewards list claims: %v", err)
 	}
 	return &pb.ListFilClaimsResponse{
-		Claims:    recs,
-		More:      more,
-		MoreToken: moreToken,
+		Claims: recs,
 	}, nil
 }
 
@@ -965,10 +951,10 @@ func (s *Service) FilRewardsBalance(ctx context.Context, req *pb.FilRewardsBalan
 	}
 
 	return &pb.FilRewardsBalanceResponse{
-		Rewarded:  res.Rewarded,
-		Pending:   res.Pending,
-		Claimed:   res.Claimed,
-		Available: res.Available,
+		RewardedNanoFil:        res.RewardedNanoFil,
+		ClaimedPendingNanoFil:  res.ClaimedPendingNanoFil,
+		ClaimedCompleteNanoFil: res.ClaimedCompleteNanoFil,
+		AvailableNanoFil:       res.AvailableNanoFil,
 	}, nil
 }
 

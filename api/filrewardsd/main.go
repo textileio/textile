@@ -11,6 +11,7 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/textile/v2/api/filrewardsd/service"
 	"github.com/textileio/textile/v2/cmd"
+	"google.golang.org/grpc"
 )
 
 const daemonName = "filrewardsd"
@@ -43,9 +44,25 @@ var (
 				Key:      "mongo_db",
 				DefValue: "textile_filrewards",
 			},
+			"mongoAccountsDb": {
+				Key:      "mongo_accounts_db",
+				DefValue: "textile",
+			},
 			"analyticsAddr": {
 				Key:      "analytics_addr",
 				DefValue: "",
+			},
+			"sendfilAddr": {
+				Key:      "sendfil_addr",
+				DefValue: "",
+			},
+			"powAddr": {
+				Key:      "pow_addr",
+				DefValue: "",
+			},
+			"isDevnet": {
+				Key:      "is_devnet",
+				DefValue: false,
 			},
 			"baseNanoFilReward": {
 				Key:      "base_nano_fil_reward",
@@ -89,11 +106,28 @@ func init() {
 		"mongoDb",
 		config.Flags["mongoDb"].DefValue.(string),
 		"MongoDB database name")
+	rootCmd.PersistentFlags().String(
+		"mongoAccountsDb",
+		config.Flags["mongoAccountsDb"].DefValue.(string),
+		"MongoDB accounts database name")
 
 	rootCmd.PersistentFlags().String(
 		"analyticsAddr",
 		config.Flags["analyticsAddr"].DefValue.(string),
 		"Analytics API address")
+	rootCmd.PersistentFlags().String(
+		"sendfilAddr",
+		config.Flags["sendfilAddr"].DefValue.(string),
+		"Sendfil API address")
+	rootCmd.PersistentFlags().String(
+		"powAddr",
+		config.Flags["powAddr"].DefValue.(string),
+		"Powergate API address")
+
+	rootCmd.PersistentFlags().Bool(
+		"isDevnet",
+		config.Flags["isDevnet"].DefValue.(bool),
+		"Whether or not we're running lotus-devnet")
 
 	rootCmd.PersistentFlags().Int64(
 		"baseNanoFilReward",
@@ -134,7 +168,11 @@ var rootCmd = &cobra.Command{
 		listenAddr := config.Viper.GetString("listen_addr")
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
+		mongoAccountsDb := config.Viper.GetString("mongo_accounts_db")
 		analyticsAddr := config.Viper.GetString("analytics_addr")
+		sendfilAddr := config.Viper.GetString("sendfil_addr")
+		powAddr := config.Viper.GetString("pow_addr")
+		isDevnet := config.Viper.GetBool("is_devnet")
 		baseFilReward := config.Viper.GetInt64("base_nano_fil_reward")
 
 		if logFile != "" {
@@ -145,13 +183,20 @@ var rootCmd = &cobra.Command{
 		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
+		sendfilConn, err := grpc.Dial(sendfilAddr, grpc.WithInsecure())
+		cmd.ErrCheck(err)
+
 		conf := service.Config{
-			Listener:          listener,
-			MongoUri:          mongoUri,
-			MongoDbName:       mongoDb,
-			AnalyticsAddr:     analyticsAddr,
-			BaseNanoFILReward: baseFilReward,
-			Debug:             debug,
+			Listener:              listener,
+			MongoUri:              mongoUri,
+			MongoFilRewardsDbName: mongoDb,
+			MongoAccountsDbName:   mongoAccountsDb,
+			SendfilClientConn:     sendfilConn,
+			AnalyticsAddr:         analyticsAddr,
+			PowAddr:               powAddr,
+			IsDevnet:              isDevnet,
+			BaseNanoFILReward:     baseFilReward,
+			Debug:                 debug,
 		}
 		api, err := service.New(conf)
 		cmd.ErrCheck(err)

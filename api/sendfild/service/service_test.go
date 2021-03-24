@@ -152,6 +152,20 @@ func TestListTxns(t *testing.T) {
 	require.Len(t, res.Txns, 3)
 }
 
+func TestListTxnsMessageCids(t *testing.T) {
+	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	defer cleanup()
+	addr := requireLotusAddress(t, ctx, lc)
+	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{MessageCidsFilter: []string{t1.MessageCid, t3.MessageCid}, Ascending: true})
+	require.NoError(t, err)
+	require.Len(t, res.Txns, 2)
+	require.Equal(t, t1.MessageCid, res.Txns[0].MessageCid)
+	require.Equal(t, t3.MessageCid, res.Txns[1].MessageCid)
+}
+
 func TestListTxnsFrom(t *testing.T) {
 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
 	defer cleanup()
@@ -604,14 +618,15 @@ func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 	listener := bufconn.Listen(bufSize)
 
 	conf := Config{
-		Listener:           listener,
-		ClientBuilder:      cb,
-		MongoUri:           test.GetMongoUri(),
-		MongoDbName:        config.dbName,
-		MessageWaitTimeout: config.messageWaitTimeout,
-		MessageConfidence:  config.messageConfidence,
-		RetryWaitFrequency: config.retryWaitFrequency,
-		Debug:              true,
+		Listener:            listener,
+		ClientBuilder:       cb,
+		MongoUri:            test.GetMongoUri(),
+		MongoDbName:         config.dbName,
+		MessageWaitTimeout:  config.messageWaitTimeout,
+		MessageConfidence:   config.messageConfidence,
+		RetryWaitFrequency:  config.retryWaitFrequency,
+		Debug:               true,
+		AllowEmptyFromAddrs: true,
 	}
 	s, err := New(conf)
 	require.NoError(t, err)

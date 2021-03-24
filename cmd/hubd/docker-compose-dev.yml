@@ -21,7 +21,7 @@ services:
       - HUB_ADDR_BILLING_API=billing:10006
       - HUB_ADDR_ANALYTICS_API=analytics:5000
       - HUB_ADDR_FILREWARDS_API=filrewards:5000
-      - HUB_ADDR_POWERGATE_API
+      - HUB_ADDR_POWERGATE_API=powergate:5002
       - HUB_BUCKETS_MAX_SIZE
       - HUB_THREADS_MAX_NUMBER_PER_OWNER
       - HUB_IPNS_REPUBLISH_SCHEDULE
@@ -40,9 +40,12 @@ services:
     cap_add:
       - SYS_PTRACE
     depends_on:
+      - ipfs
       - mongo
+      - billing
       - filrewards
       - analytics
+      - powergate
   billing:
     build:
       context: ../../
@@ -51,7 +54,6 @@ services:
       - BILLING_LOG_DEBUG=true
       - BILLING_ADDR_API=/ip4/0.0.0.0/tcp/10006
       - BILLING_ADDR_ANALYTICS_API=analytics:5000
-      - BILLING_ADDR_FILREWARDS_API=filrewards:5000
       - BILLING_ADDR_MONGO_URI=mongodb://mongo:27017
       - BILLING_ADDR_MONGO_NAME=textile_billing
       - BILLING_ADDR_GATEWAY_HOST=/ip4/0.0.0.0/tcp/8010
@@ -69,7 +71,6 @@ services:
     depends_on:
       - mongo
       - analytics
-      - filrewards
   analytics:
     build:
       context: ../../
@@ -80,8 +81,6 @@ services:
       - ANALYTICS_FILREWARDS_ADDR=filrewards:5000
       - ANALYTICS_SEGMENT_API_KEY
       - ANALYTICS_SEGMENT_PREFIX
-    ports:
-      - "127.0.0.1:5000:5000"
     security_opt:
       - "seccomp:unconfined"
     cap_add:
@@ -97,16 +96,39 @@ services:
       - FILREWARDS_LISTEN_ADDR=0.0.0.0:5000
       - FILREWARDS_MONGO_URI=mongodb://mongo:27017
       - FILREWARDS_MONGO_DB=textile_filrewards
+      - FILREWARDS_MONGO_ACCOUNTS_DB=textile
       - FILREWARDS_ANALYTICS_ADDR=analytics:5000
+      - FILREWARDS_SENDFIL_ADDR=sendfil:5000
+      - FILREWARDS_POW_ADDR=powergate:5002
+      - FILREWARDS_IS_DEVNET=true
       - FILREWARDS_BASE_NANO_FIL_REWARD
-    ports:
-      - "127.0.0.1:5000:5000"
     security_opt:
       - "seccomp:unconfined"
     cap_add:
       - SYS_PTRACE
     depends_on:
       - mongo
+      - sendfil
+      - powergate
+    restart: unless-stopped
+  sendfil:
+    build:
+      context: ../../
+      dockerfile: ./api/sendfild/Dockerfile.dev
+    environment:
+      - SENDFIL_DEBUG=true
+      - SENDFIL_LISTEN_ADDR=0.0.0.0:5000
+      - SENDFIL_LOTUS_MULTIADDR=/dns4/lotus/tcp/7777
+      - SENDFIL_MONGO_URI=mongodb://mongo:27017
+      - SENDFIL_MONGO_DB=textile_sendfil
+      - SENDFIL_ALLOWED_FROM_ADDRS=*
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
+    depends_on:
+      - mongo
+      - lotus
   mongo:
     image: mongo:latest
     volumes:
@@ -131,3 +153,20 @@ services:
       - "4001:4001/udp"
       - "127.0.0.1:5001:5001"
       - "127.0.0.1:8080:8080"
+  powergate:
+    image: textile/powergate:v2.3.2
+    depends_on:
+      - ipfs
+      - lotus
+    environment:
+      - POWD_DEVNET=true
+      - POWD_LOTUSHOST=/dns4/lotus/tcp/7777
+      - POWD_IPFSAPIADDR=/dns4/ipfs/tcp/5001
+    restart: unless-stopped
+  lotus:
+    image: textile/lotus-devnet:v1.4.2
+    environment:
+      - TEXLOTUSDEVNET_SPEED=100
+      - TEXLOTUSDEVNET_IPFSADDR=/dns4/ipfs/tcp/5001
+      - TEXLOTUSDEVNET_BIGSECTORS=false
+      - TEXLOTUSDEVNET_ONLINEMODE=true

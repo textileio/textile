@@ -7,6 +7,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/textileio/go-threads/util"
@@ -37,9 +38,9 @@ var (
 				Key:      "listen_addr",
 				DefValue: "127.0.0.1:5000",
 			},
-			"lotusAddr": {
-				Key:      "lotus_addr",
-				DefValue: "127.0.0.1:7777",
+			"lotusMultiaddr": {
+				Key:      "lotus_multiaddr",
+				DefValue: "/dns4/127.0.0.1/tcp/7777",
 			},
 			"lotusAuthToken": {
 				Key:      "lotus_auth_token",
@@ -104,9 +105,9 @@ func init() {
 		"Sendfil API listen address")
 
 	rootCmd.PersistentFlags().String(
-		"lotusAddr",
-		config.Flags["lotusAddr"].DefValue.(string),
-		"Lotus API address")
+		"lotusMultiaddr",
+		config.Flags["lotusMultiaddr"].DefValue.(string),
+		"Lotus API multiaddress")
 	rootCmd.PersistentFlags().String(
 		"lotusAuthToken",
 		config.Flags["lotusAuthToken"].DefValue.(string),
@@ -174,12 +175,11 @@ var rootCmd = &cobra.Command{
 		debug := config.Viper.GetBool("debug")
 		logFile := config.Viper.GetString("log_file")
 		listenAddr := config.Viper.GetString("listen_addr")
-		lotusAddr := config.Viper.GetString("lotus_addr")
 		lotusAuthToken := config.Viper.GetString("lotus_auth_token")
 		lotusConnRetries := config.Viper.GetInt("lotus_conn_retries")
 		mongoUri := config.Viper.GetString("mongo_uri")
 		mongoDb := config.Viper.GetString("mongo_db")
-		messageTimeout := config.Viper.GetDuration("message_timeout")
+		messageWaitTimeout := config.Viper.GetDuration("message_wait_timeout")
 		messageConfidence := config.Viper.GetUint64("message_confidence")
 		retryWaitFrequency := config.Viper.GetDuration("retry_wait_frequency")
 		allowedFromAddrs := config.Viper.GetStringSlice("allowed_from_addrs")
@@ -192,7 +192,10 @@ var rootCmd = &cobra.Command{
 		listener, err := net.Listen("tcp", listenAddr)
 		cmd.ErrCheck(err)
 
-		cb, err := lotus.NewBuilder(lotusAddr, lotusAuthToken, lotusConnRetries)
+		lotusMultiaddr, err := ma.NewMultiaddr(config.Viper.GetString("lotus_multiaddr"))
+		cmd.ErrCheck(err)
+
+		cb, err := lotus.NewBuilder(lotusMultiaddr, lotusAuthToken, lotusConnRetries)
 		cmd.ErrCheck(err)
 
 		conf := service.Config{
@@ -200,7 +203,7 @@ var rootCmd = &cobra.Command{
 			ClientBuilder:       cb,
 			MongoUri:            mongoUri,
 			MongoDbName:         mongoDb,
-			MessageWaitTimeout:  messageTimeout,
+			MessageWaitTimeout:  messageWaitTimeout,
 			MessageConfidence:   messageConfidence,
 			RetryWaitFrequency:  retryWaitFrequency,
 			AllowedFromAddrs:    allowedFromAddrs,

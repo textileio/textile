@@ -171,6 +171,7 @@ func (w *WaitRunner) notifyErr(err error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done = true
+	log.Infof("notifying error: %s", err.Error())
 	for _, l := range w.listeners {
 		l <- WaitResult{Err: err}
 		close(l)
@@ -181,6 +182,7 @@ func (w *WaitRunner) notify(messageCid string) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done = true
+	log.Infof("notifying complete for cid: %s", messageCid)
 	for _, l := range w.listeners {
 		l <- WaitResult{LatestMessageCid: messageCid}
 		close(l)
