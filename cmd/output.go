@@ -144,7 +144,7 @@ func SetupDefaultLoggingConfig(file string) error {
 		Format: logging.ColorizedOutput,
 		Stderr: true,
 		File:   file,
-		Level:  logging.LevelInfo,
+		Level:  logging.LevelError,
 	}
 	logging.SetupLogging(c)
 	return nil

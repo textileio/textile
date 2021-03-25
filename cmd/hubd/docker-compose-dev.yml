@@ -78,7 +78,7 @@ services:
         mongo --eval 'rs.initiate({_id: "rs0", version: 1, members: [{ _id: 0, host: "mongo:27017" }]})'
         tail -f /var/log/mongod.log
   ipfs:
-    image: ipfs/go-ipfs:v0.7.0
+    image: ipfs/go-ipfs:v0.8.0
     volumes:
       - "${REPO_PATH}/ipfs:/data/ipfs"
     environment:
