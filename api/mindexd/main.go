@@ -211,10 +211,8 @@ var rootCmd = &cobra.Command{
 		addrMongoName := config.Viper.GetString("addr.mongo_name")
 
 		logFile := config.Viper.GetString("log.file")
-		if logFile != "" {
-			err = cmd.SetupDefaultLoggingConfig(logFile)
-			cmd.ErrCheck(err)
-		}
+		err = cmd.SetupDefaultLoggingConfig(logFile)
+		cmd.ErrCheck(err)
 
 		powAddrAPI := config.Viper.GetString("pow.addr_api")
 		powAdminToken := config.Viper.GetString("pow.admin_token")
