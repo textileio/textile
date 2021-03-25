@@ -313,6 +313,14 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			return nil, err
 		}
 	}
+	// @todo (sander): Update all packages to default to INFO logging when !conf.Debug.
+	// @todo (sander): This requires changes to go-threads. For now, we just want to see
+	// @todo (sander): the log output of the DB Manager while it spins up.
+	if err := tutil.SetLogLevels(map[string]logging.LogLevel{
+		"db": logging.LevelInfo,
+	}); err != nil {
+		return nil, err
+	}
 	ts, err := dbapi.NewService(t.ts, t.tn, dbapi.Config{
 		Debug: conf.Debug,
 	})

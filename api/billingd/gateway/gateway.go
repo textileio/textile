@@ -3,9 +3,9 @@ package gateway
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -163,7 +163,7 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			// which leads to a lot of "customer not found" errors.
 			// To avoid this, we'll need a Stripe account for each deployment.
 			// See https://github.com/textileio/textile/issues/523.
-			if !errors.Is(err, mongo.ErrNoDocuments) {
+			if !strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
 				log.Errorf("updating customer: %v", err)
 			}
 			c.Status(http.StatusOK)
@@ -194,7 +194,7 @@ func (g *Gateway) webhookHandler(c *gin.Context) {
 			// which leads to a lot of "customer not found" errors.
 			// To avoid this, we'll need a Stripe account for each deployment.
 			// See https://github.com/textileio/textile/issues/523.
-			if !errors.Is(err, mongo.ErrNoDocuments) {
+			if !strings.Contains(err.Error(), mongo.ErrNoDocuments.Error()) {
 				log.Errorf("updating customer subscription: %v", err)
 			}
 			c.Status(http.StatusOK)
