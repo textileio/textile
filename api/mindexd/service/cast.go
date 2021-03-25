@@ -108,6 +108,9 @@ func fromPbQueryIndexRequestFilters(f *pb.QueryIndexRequestFilters) store.QueryI
 }
 
 func fromPbQueryIndexRequestSort(s *pb.QueryIndexRequestSort) (store.QueryIndexSort, error) {
+	if s == nil {
+		return store.QueryIndexSort{}, nil
+	}
 	field, err := fromPbQueryIndexRequestSortField(s.Field)
 	if err != nil {
 		return store.QueryIndexSort{}, fmt.Errorf("parsing sort field: %s", err)
