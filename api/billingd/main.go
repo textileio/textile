@@ -197,10 +197,8 @@ var rootCmd = &cobra.Command{
 		segmentPrefix := config.Viper.GetString("segment.prefix")
 
 		logFile := config.Viper.GetString("log.file")
-		if logFile != "" {
-			err = cmd.SetupDefaultLoggingConfig(logFile)
-			cmd.ErrCheck(err)
-		}
+		err = cmd.SetupDefaultLoggingConfig(logFile)
+		cmd.ErrCheck(err)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

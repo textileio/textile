@@ -249,10 +249,8 @@ var rootCmd = &cobra.Command{
 
 		debug := config.Viper.GetBool("log.debug")
 		logFile := config.Viper.GetString("log.file")
-		if logFile != "" {
-			err = cmd.SetupDefaultLoggingConfig(logFile)
-			cmd.ErrCheck(err)
-		}
+		err = cmd.SetupDefaultLoggingConfig(logFile)
+		cmd.ErrCheck(err)
 
 		addrApi := cmd.AddrFromStr(config.Viper.GetString("addr.api"))
 		addrApiProxy := cmd.AddrFromStr(config.Viper.GetString("addr.api_proxy"))
