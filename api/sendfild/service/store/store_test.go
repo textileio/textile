@@ -14,6 +14,8 @@ import (
 	"github.com/textileio/textile/v2/util"
 )
 
+const oneFil = int64(1000000000)
+
 var (
 	ctx = context.Background()
 )
@@ -31,13 +33,13 @@ func TestMain(m *testing.M) {
 func TestNewTxn(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	requireNewTxn(t, ctx, s, "cid")
+	requireNewTxn(t, ctx, s, "cid", "from", "to", oneFil)
 }
 
 func TestGetTxn(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	txn := requireNewTxn(t, ctx, s, "cid")
+	txn := requireNewTxn(t, ctx, s, "cid", "from", "to", oneFil)
 	res := requireGetTxn(t, ctx, s, txn.MessageCid)
 	require.Equal(t, txn.MessageCid, res.MessageCid)
 	require.Equal(t, txn.From, res.From)
@@ -49,9 +51,9 @@ func TestGetTxn(t *testing.T) {
 func TestGetAllPendingAll(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	requireNewTxn(t, ctx, s, "cid1")
-	requireNewTxn(t, ctx, s, "cid2")
-	requireNewTxn(t, ctx, s, "cid3")
+	requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "from", "to", oneFil)
 	res, err := s.GetAllPending(ctx, false)
 	require.NoError(t, err)
 	require.Len(t, res, 3)
@@ -60,9 +62,9 @@ func TestGetAllPendingAll(t *testing.T) {
 func TestGetAllPendingExcludeWaiting(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	requireNewTxn(t, ctx, s, "cid1")
-	requireNewTxn(t, ctx, s, "cid2")
-	requireNewTxn(t, ctx, s, "cid3")
+	requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "from", "to", oneFil)
 	requireSetWaiting(t, ctx, s, "cid3", true)
 	res, err := s.GetAllPending(ctx, true)
 	require.NoError(t, err)
@@ -72,7 +74,7 @@ func TestGetAllPendingExcludeWaiting(t *testing.T) {
 func TestSetWaiting(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	txn := requireNewTxn(t, ctx, s, "cid1")
+	txn := requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
 	require.Equal(t, false, txn.Waiting)
 	requireSetWaiting(t, ctx, s, txn.MessageCid, true)
 	txn = requireGetTxn(t, ctx, s, txn.MessageCid)
@@ -85,7 +87,7 @@ func TestSetWaiting(t *testing.T) {
 func TestFail(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	txn := requireNewTxn(t, ctx, s, "cid1")
+	txn := requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, txn.MessageState)
 	require.Equal(t, false, txn.Waiting)
 	requireSetWaiting(t, ctx, s, txn.MessageCid, true)
@@ -103,7 +105,7 @@ func TestFail(t *testing.T) {
 func TestActivate(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	txn := requireNewTxn(t, ctx, s, "cid1")
+	txn := requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, txn.MessageState)
 	require.Equal(t, false, txn.Waiting)
 	requireSetWaiting(t, ctx, s, txn.MessageCid, true)
@@ -117,392 +119,387 @@ func TestActivate(t *testing.T) {
 	require.Equal(t, false, txn.Waiting)
 }
 
-func TestListTxns(t *testing.T) {
-	// ToDo: Test this more thuroughtly since it will be mocked in service_test.go
+func TestList(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	requireNewTxn(t, ctx, s, "cid1")
-	requireNewTxn(t, ctx, s, "cid2")
-	requireNewTxn(t, ctx, s, "cid3")
+	requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "from", "to", oneFil)
 	res, err := s.List(ctx, &pb.ListTxnsRequest{})
 	require.NoError(t, err)
 	require.Len(t, res, 3)
 }
 
-// func TestListTxnsMessageCids(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr := requireLotusAddress(t, ctx, lc)
-// 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-// 	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{MessageCidsFilter: []string{t1.MessageCid, t3.MessageCid}, Ascending: true})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// 	require.Equal(t, t1.MessageCid, res.Txns[0].MessageCid)
-// 	require.Equal(t, t3.MessageCid, res.Txns[1].MessageCid)
-// }
-
-// func TestListTxnsFrom(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	addr2 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-// 	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{FromFilter: dAddr.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{FromFilter: addr2.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsTo(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	addr2 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-// 	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{ToFilter: addr1.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{ToFilter: addr2.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsInvolvingAddress(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	addr2 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-// 	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: dAddr.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr1.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr2.String()})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsAmtGt(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil * 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 0)
-// }
-
-// func TestListTxnsAmtGteq(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil * 3})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 0)
-// }
-
-// func TestListTxnsAmtLt(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil / 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 0)
-// }
-
-// func TestListTxnsAmtLteq(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil / 3})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 0)
-// }
-
-// func TestListTxnsAmtGtLt(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsAmtGteqLteq(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsAmtGteqLt(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsAmtGtLteq(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsAmtEq(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilEqFilter: oneFil})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsMessageState(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_ACTIVE})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_PENDING})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsWaiting(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_NOT_WAITING})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_WAITING})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsCreatedAfter(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsCreatedBefore(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedBefore: t3.CreatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsCreatedAfterBefore(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt, CreatedBefore: t3.CreatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsUpdatedAfter(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsUpdatedBefore(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedBefore: t3.UpdatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 2)
-// }
-
-// func TestListTxnsUpdatedAfterBefore(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt, UpdatedBefore: t3.UpdatedAt})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 1)
-// }
-
-// func TestListTxnsOrder(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{Ascending: false})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	requireTxnsOrder(t, res.Txns, false)
-// 	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{Ascending: true})
-// 	require.NoError(t, err)
-// 	require.Len(t, res.Txns, 3)
-// 	requireTxnsOrder(t, res.Txns, true)
-// }
-
-// func TestListTxnsPaging(t *testing.T) {
-// 	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-// 	defer cleanup()
-// 	addr1 := requireLotusAddress(t, ctx, lc)
-// 	txFirst := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-// 	txLast := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-
-// 	pageResults := func(ascending bool) {
-// 		page := int64(0)
-// 		for {
-// 			req := &pb.ListTxnsRequest{
-// 				CreatedAfter:  txFirst.CreatedAt,
-// 				CreatedBefore: txLast.CreatedAt,
-// 				PageSize:      3,
-// 				Page:          page,
-// 				Ascending:     ascending,
-// 			}
-// 			res, err := c.ListTxns(ctx, req)
-// 			require.NoError(t, err)
-// 			if len(res.Txns) == 0 {
-// 				break
-// 			}
-// 			requireTxnsOrder(t, res.Txns, ascending)
-// 			if page < 2 {
-// 				require.Len(t, res.Txns, 3)
-// 			}
-// 			if page == 2 {
-// 				require.Len(t, res.Txns, 2)
-// 			}
-// 			page++
-// 		}
-// 		require.Equal(t, int64(3), page)
-// 	}
-// 	pageResults(false)
-// 	pageResults(true)
-// }
-
-func TestSummary(t *testing.T) {
-	// ToDo: Test this more thuroughtly since it will be mocked in service_test.go
+func TestListMessageCids(t *testing.T) {
 	s, cleanup := requireSetup(t)
 	defer cleanup()
-	requireNewTxn(t, ctx, s, "cid1")
-	requireNewTxn(t, ctx, s, "cid2")
-	requireNewTxn(t, ctx, s, "cid3")
-	res, err := s.Summary(ctx, time.Time{}, time.Time{})
+	t1 := requireNewTxn(t, ctx, s, "cid1", "from", "to", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "from", "to", oneFil)
+	t3 := requireNewTxn(t, ctx, s, "cid3", "from", "to", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{MessageCidsFilter: []string{t1.MessageCid, t3.MessageCid}, Ascending: true})
 	require.NoError(t, err)
-	require.Equal(t, int64(3), res.CountTxns)
+	require.Len(t, res, 2)
+	require.Equal(t, t1.MessageCid, res[0].MessageCid)
+	require.Equal(t, t3.MessageCid, res[1].MessageCid)
 }
 
-func requireNewTxn(t *testing.T, ctx context.Context, s *Store, cid string) *pb.Txn {
-	res, err := s.New(ctx, cid, "from", "to", 100)
+func TestListFrom(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid4", "addr2", "addr1", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{FromFilter: "addr1"})
 	require.NoError(t, err)
-	require.Equal(t, int64(100), res.AmountNanoFil)
-	require.Equal(t, "from", res.From)
-	require.Equal(t, "to", res.To)
+	require.Len(t, res, 3)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{FromFilter: "addr2"})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListTo(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid4", "addr2", "addr1", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{ToFilter: "addr1"})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{ToFilter: "addr2"})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+}
+
+func TestListInvolvingAddress(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr3", oneFil)
+	requireNewTxn(t, ctx, s, "cid4", "addr3", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: "addr1"})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: "addr2"})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: "addr3"})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListAmtGt(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil * 2})
+	require.NoError(t, err)
+	require.Len(t, res, 0)
+}
+
+func TestListAmtGteq(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil * 3})
+	require.NoError(t, err)
+	require.Len(t, res, 0)
+}
+
+func TestListAmtLt(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil / 2})
+	require.NoError(t, err)
+	require.Len(t, res, 0)
+}
+
+func TestListAmtLteq(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil / 3})
+	require.NoError(t, err)
+	require.Len(t, res, 0)
+}
+
+func TestListAmtGtLt(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListAmtGteqLteq(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	requireNewTxn(t, ctx, s, "cid4", "addr1", "addr2", oneFil*3)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListAmtGteqLt(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListAmtGtLteq(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	requireNewTxn(t, ctx, s, "cid4", "addr1", "addr2", oneFil*3)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListAmtEq(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil/2)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil*2)
+	requireNewTxn(t, ctx, s, "cid4", "addr1", "addr2", oneFil*3)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{AmountNanoFilEqFilter: oneFil})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListMessageState(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr3", oneFil)
+	err := s.Activate(ctx, "cid1", "cid1")
+	require.NoError(t, err)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_ACTIVE})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_PENDING})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListWaiting(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr3", oneFil)
+	err := s.SetWaiting(ctx, "cid1", true)
+	require.NoError(t, err)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_NOT_WAITING})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_WAITING})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListCreatedAfter(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	t1 := requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListCreatedBefore(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	t3 := requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{CreatedBefore: t3.CreatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListCreatedAfterBefore(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	t1 := requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	t3 := requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt, CreatedBefore: t3.CreatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListUpdatedAfter(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	t1 := requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListUpdatedBefore(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	t3 := requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{UpdatedBefore: t3.UpdatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+}
+
+func TestListUpdatedAfterBefore(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	t1 := requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	t3 := requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt, UpdatedBefore: t3.UpdatedAt})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+}
+
+func TestListOrder(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	res, err := s.List(ctx, &pb.ListTxnsRequest{Ascending: false})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	requireTxnsOrder(t, res, false)
+	res, err = s.List(ctx, &pb.ListTxnsRequest{Ascending: true})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	requireTxnsOrder(t, res, true)
+}
+
+func TestListPaging(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	txFirst := requireNewTxn(t, ctx, s, "cid1", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid4", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid5", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid6", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid7", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid8", "addr1", "addr2", oneFil)
+	requireNewTxn(t, ctx, s, "cid9", "addr1", "addr2", oneFil)
+	txLast := requireNewTxn(t, ctx, s, "cid10", "addr1", "addr2", oneFil)
+
+	pageResults := func(ascending bool) {
+		page := int64(0)
+		for {
+			req := &pb.ListTxnsRequest{
+				CreatedAfter:  txFirst.CreatedAt,
+				CreatedBefore: txLast.CreatedAt,
+				PageSize:      3,
+				Page:          page,
+				Ascending:     ascending,
+			}
+			res, err := s.List(ctx, req)
+			require.NoError(t, err)
+			if len(res) == 0 {
+				break
+			}
+			requireTxnsOrder(t, res, ascending)
+			if page < 2 {
+				require.Len(t, res, 3)
+			}
+			if page == 2 {
+				require.Len(t, res, 2)
+			}
+			page++
+		}
+		require.Equal(t, int64(3), page)
+	}
+	pageResults(false)
+	pageResults(true)
+}
+
+func TestSummary(t *testing.T) {
+	s, cleanup := requireSetup(t)
+	defer cleanup()
+	first := requireNewTxn(t, ctx, s, "cid0", "from1", "to1", oneFil)
+	requireNewTxn(t, ctx, s, "cid1", "from1", "to1", oneFil)
+	requireNewTxn(t, ctx, s, "cid2", "from1", "to1", oneFil)
+	requireNewTxn(t, ctx, s, "cid3", "from1", "to1", oneFil)
+	requireNewTxn(t, ctx, s, "cid4", "from2", "to1", oneFil)
+	requireNewTxn(t, ctx, s, "cid5", "from3", "to2", oneFil*6)
+	last := requireNewTxn(t, ctx, s, "cid6", "from1", "to1", oneFil)
+	err := s.SetWaiting(ctx, "cid1", true)
+	require.NoError(t, err)
+	err = s.Activate(ctx, "cid2", "cid2")
+	require.NoError(t, err)
+	err = s.Fail(ctx, "cid3", "oops")
+	require.NoError(t, err)
+	res, err := s.Summary(ctx, first.CreatedAt.AsTime(), last.CreatedAt.AsTime())
+	require.NoError(t, err)
+	require.Equal(t, float64(oneFil*2), res.AvgNanoFilSent)
+	require.Equal(t, int64(1), res.CountActive)
+	require.Equal(t, int64(1), res.CountFailed)
+	require.Equal(t, int64(3), res.CountFromAddrs)
+	require.Equal(t, int64(3), res.CountPending)
+	require.Equal(t, int64(2), res.CountToAddrs)
+	require.Equal(t, int64(5), res.CountTxns)
+	require.Equal(t, int64(1), res.CountWaiting)
+	require.Equal(t, oneFil*6, res.MaxNanoFilSent)
+	require.Equal(t, oneFil, res.MinNanoFilSent)
+	require.Equal(t, oneFil*10, res.TotalNanoFilSent)
+}
+
+func requireNewTxn(t *testing.T, ctx context.Context, s *Store, cid, from, to string, amt int64) *pb.Txn {
+	res, err := s.New(ctx, cid, from, to, amt)
+	require.NoError(t, err)
+	require.Equal(t, amt, res.AmountNanoFil)
+	require.Equal(t, from, res.From)
+	require.Equal(t, to, res.To)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, res.MessageState)
 	require.Equal(t, cid, res.MessageCid)
 	return res
