@@ -11,18 +11,15 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
+	chainTypes "github.com/filecoin-project/lotus/chain/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/powergate/v2/lotus"
 	pb "github.com/textileio/textile/v2/api/sendfild/pb"
-	"github.com/textileio/textile/v2/api/sendfild/service/store"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 	"github.com/textileio/textile/v2/api/sendfild/service/waitmanager"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -36,8 +33,8 @@ var (
 )
 
 type Service struct {
-	clientBuilder lotus.ClientBuilder
-	store         *store.Store
+	clientBuilder interfaces.FilecoinClientBuilder
+	txnStore      interfaces.TxnStore
 	waitManager   *waitmanager.WaitManager
 	server        *grpc.Server
 	config        Config
@@ -45,9 +42,8 @@ type Service struct {
 
 type Config struct {
 	Listener            net.Listener
-	ClientBuilder       lotus.ClientBuilder
-	MongoUri            string
-	MongoDbName         string
+	ClientBuilder       interfaces.FilecoinClientBuilder
+	TxnStore            interfaces.TxnStore
 	MessageWaitTimeout  time.Duration
 	MessageConfidence   uint64
 	RetryWaitFrequency  time.Duration
@@ -69,19 +65,14 @@ func New(config Config) (*Service, error) {
 		return nil, fmt.Errorf("empty allowed from addrs not allowed")
 	}
 
-	st, err := store.New(config.MongoUri, config.MongoDbName, config.Debug)
-	if err != nil {
-		return nil, fmt.Errorf("creating store: %v", err)
-	}
-
-	wm, err := waitmanager.New(config.ClientBuilder, st, config.MessageConfidence, config.MessageWaitTimeout, config.RetryWaitFrequency, config.Debug)
+	wm, err := waitmanager.New(config.ClientBuilder, config.TxnStore, config.MessageConfidence, config.MessageWaitTimeout, config.RetryWaitFrequency, config.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("creating waitmanager: %v", err)
 	}
 
 	s := &Service{
 		clientBuilder: config.ClientBuilder,
-		store:         st,
+		txnStore:      config.TxnStore,
 		waitManager:   wm,
 		config:        config,
 	}
@@ -120,10 +111,10 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 	nanoAmount := (&big.Int{}).SetInt64(req.AmountNanoFil)
 	factor := (&big.Int{}).SetInt64(int64(math.Pow10(9)))
 	amount := (&big.Int{}).Mul(nanoAmount, factor)
-	msg := &types.Message{
+	msg := &chainTypes.Message{
 		From:  f,
 		To:    t,
-		Value: types.BigInt{Int: amount},
+		Value: chainTypes.BigInt{Int: amount},
 	}
 	client, cls, err := s.clientBuilder(ctx)
 	if err != nil {
@@ -139,78 +130,54 @@ func (s *Service) SendFil(ctx context.Context, req *pb.SendFilRequest) (*pb.Send
 		return nil, status.Errorf(codes.Internal, "pushing message: %v", err)
 	}
 
-	txn, err := s.store.NewTxn(ctx, sm.Message.Cid().String(), req.From, req.To, req.AmountNanoFil)
+	txn, err := s.txnStore.New(ctx, sm.Cid().String(), req.From, req.To, req.AmountNanoFil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "creating new txn: %v", err)
 	}
 
-	if err := s.waitManager.RegisterTxn(txn.ID, sm.Message.Cid().String()); err != nil {
+	if err := s.waitManager.RegisterTxn(txn.Id, sm.Cid().String()); err != nil {
 		return nil, status.Errorf(codes.Internal, "registering txn: %v", err)
 	}
 
 	if req.Wait {
-		txn, err = s.waitForTxn(ctx, txn.ID, sm.Message.Cid().String())
+		txn, err = s.waitForTxn(ctx, txn.Id, sm.Cid().String())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "waiting for txn: %v", err)
 		}
 	}
 
-	pbTx, err := toPbTxn(txn)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "converting to pb txn: %v", err)
-	}
-
-	return &pb.SendFilResponse{Txn: pbTx}, nil
+	return &pb.SendFilResponse{Txn: txn}, nil
 }
 
 func (s *Service) GetTxn(ctx context.Context, req *pb.GetTxnRequest) (*pb.GetTxnResponse, error) {
-	txn, err := s.store.GetTxn(ctx, req.MessageCid)
-	if errors.Is(err, store.ErrNotFound) {
+	txn, err := s.txnStore.Get(ctx, req.MessageCid)
+	if errors.Is(err, interfaces.ErrTxnNotFound) {
 		return nil, status.Error(codes.NotFound, "no txn found for cid")
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "getting txn for cid: %v", err)
 	}
 
-	latestCid, err := txn.LatestMsgCid()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "getting latest txn message cid: %v", err)
-	}
-
 	if txn.MessageState == pb.MessageState_MESSAGE_STATE_PENDING && req.Wait {
-		txn, err = s.waitForTxn(ctx, txn.ID, latestCid.Cid)
+		txn, err = s.waitForTxn(ctx, txn.Id, txn.MessageCid)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "waiting for txn: %v", err)
 		}
 	}
 
-	pbTx, err := toPbTxn(txn)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "converting to pb txn: %v", err)
-	}
-
-	return &pb.GetTxnResponse{Txn: pbTx}, nil
+	return &pb.GetTxnResponse{Txn: txn}, nil
 }
 
 func (s *Service) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) (*pb.ListTxnsResponse, error) {
 	if req.PageSize > listMaxPageSize || req.PageSize == 0 {
 		req.PageSize = listMaxPageSize
 	}
-	txns, err := s.store.ListTxns(ctx, req)
+	txns, err := s.txnStore.List(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "getting txns list: %v", err)
 	}
 
-	var pbTxns []*pb.Txn
-	for _, rec := range txns {
-		pbTxn, err := toPbTxn(rec)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "converting txn to pb: %v", err)
-		}
-		pbTxns = append(pbTxns, pbTxn)
-	}
-
-	return &pb.ListTxnsResponse{Txns: pbTxns}, nil
+	return &pb.ListTxnsResponse{Txns: txns}, nil
 }
 
 func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.SummaryResponse, error) {
@@ -222,43 +189,12 @@ func (s *Service) Summary(ctx context.Context, req *pb.SummaryRequest) (*pb.Summ
 	if req.Before != nil {
 		before = req.Before.AsTime()
 	}
-	summary, err := s.store.GenerateSummary(ctx, after, before)
+	summary, err := s.txnStore.Summary(ctx, after, before)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "generating summary: %v", err)
 	}
 
-	resp := &pb.SummaryResponse{}
-
-	if len(summary.All) == 1 {
-		resp.CountTxns = summary.All[0].Count
-	}
-
-	for _, state := range summary.ByMessageState {
-		switch pb.MessageState(state.ID.(int32)) {
-		case pb.MessageState_MESSAGE_STATE_PENDING:
-			resp.CountPending = state.Count
-		case pb.MessageState_MESSAGE_STATE_ACTIVE:
-			resp.CountActive = state.Count
-		case pb.MessageState_MESSAGE_STATE_FAILED:
-			resp.CountFailed = state.Count
-		}
-	}
-
-	if len(summary.Waiting) == 1 {
-		resp.CountWaiting = summary.Waiting[0].Count
-	}
-
-	resp.CountFromAddrs = int64(len(summary.UniqueFrom))
-	resp.CountToAddrs = int64(len(summary.UniqueTo))
-
-	if len(summary.SentFilStats) == 1 {
-		resp.TotalNanoFilSent = summary.SentFilStats[0].Total
-		resp.AvgNanoFilSent = summary.SentFilStats[0].Avg
-		resp.MaxNanoFilSent = summary.SentFilStats[0].Max
-		resp.MinNanoFilSent = summary.SentFilStats[0].Min
-	}
-
-	return resp, nil
+	return summary, nil
 }
 
 func (s *Service) Close() error {
@@ -285,7 +221,7 @@ func (s *Service) Close() error {
 		log.Info("wait manager closed")
 	}
 
-	if err := s.store.Close(); err != nil {
+	if err := s.txnStore.Close(); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
 		errs = append(errs, err)
 	} else {
@@ -298,9 +234,9 @@ func (s *Service) Close() error {
 	return nil
 }
 
-func (s *Service) waitForTxn(ctx context.Context, objID primitive.ObjectID, messageCid string) (*store.Txn, error) {
+func (s *Service) waitForTxn(ctx context.Context, txnID string, messageCid string) (*pb.Txn, error) {
 	listener := make(chan waitmanager.WaitResult)
-	cancel, err := s.waitManager.Subscribe(objID, messageCid, listener)
+	cancel, err := s.waitManager.Subscribe(txnID, messageCid, listener)
 	defer cancel()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "subscribing: %v", err)
@@ -313,7 +249,7 @@ func (s *Service) waitForTxn(ctx context.Context, objID primitive.ObjectID, mess
 		if res.Err != nil {
 			return nil, status.Errorf(codes.Internal, "listening for result: %v", res.Err)
 		}
-		txn, err := s.store.GetTxn(ctx, res.LatestMessageCid)
+		txn, err := s.txnStore.Get(ctx, res.LatestMessageCid)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "getting updated txn: %v", err)
 		}
@@ -321,23 +257,4 @@ func (s *Service) waitForTxn(ctx context.Context, objID primitive.ObjectID, mess
 	case <-ctx.Done():
 		return nil, status.Errorf(codes.Aborted, "request canceled")
 	}
-}
-
-func toPbTxn(txn *store.Txn) (*pb.Txn, error) {
-	latestMsgCid, err := txn.LatestMsgCid()
-	if err != nil {
-		return nil, err
-	}
-	return &pb.Txn{
-		Id:            txn.ID.Hex(),
-		From:          txn.From,
-		To:            txn.To,
-		AmountNanoFil: txn.AmountNanoFil,
-		MessageCid:    latestMsgCid.Cid,
-		MessageState:  txn.MessageState,
-		Waiting:       txn.Waiting,
-		FailureMsg:    txn.FailureMsg,
-		CreatedAt:     timestamppb.New(txn.CreatedAt),
-		UpdatedAt:     timestamppb.New(txn.UpdatedAt),
-	}, nil
 }

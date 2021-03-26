@@ -9,11 +9,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/powergate/v2/lotus"
 	"github.com/textileio/powergate/v2/tests"
 	pb "github.com/textileio/textile/v2/api/sendfild/pb"
 	service "github.com/textileio/textile/v2/api/sendfild/service"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -63,26 +62,30 @@ func SetupWithRetryWaitFrequency(retryWaitFrequency time.Duration) SetupOption {
 	}
 }
 
-func RequireSetupLotus(t *testing.T, ctx context.Context, opts ...SetupOption) (lotus.ClientBuilder, *apistruct.FullNodeStruct, address.Address, func()) {
+func RequireSetupLotus(t *testing.T, ctx context.Context, opts ...SetupOption) (interfaces.FilecoinClientBuilder, *apistruct.FullNodeStruct, address.Address, func()) {
 	config := &setupConfig{
 		speed: 300,
 	}
 	for _, opt := range opts {
 		opt(config)
 	}
-	clientBuilder, addr, _ := tests.CreateLocalDevnet(t, 1, config.speed)
+	cb, addr, _ := tests.CreateLocalDevnet(t, 1, config.speed)
 	time.Sleep(time.Millisecond * 500) // Allow the network to some tipsets
 
-	lotusClient, closeLotusClient, err := clientBuilder(ctx)
+	lotusClient, closeLotusClient, err := cb(ctx)
 	require.NoError(t, err)
 
 	cleanup := func() {
 		closeLotusClient()
 	}
+
+	clientBuilder := func(ctx context.Context) (interfaces.FilecoinClient, func(), error) {
+		return cb(ctx)
+	}
 	return clientBuilder, lotusClient, addr, cleanup
 }
 
-func RequireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuilder, opts ...SetupOption) (pb.SendFilServiceClient, *grpc.ClientConn, func()) {
+func RequireSetupService(t *testing.T, ctx context.Context, cb interfaces.FilecoinClientBuilder, opts ...SetupOption) (pb.SendFilServiceClient, *grpc.ClientConn, func()) {
 	config := &setupConfig{
 		dbName:             util.MakeToken(12),
 		messageWaitTimeout: time.Minute,
@@ -97,8 +100,6 @@ func RequireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 	conf := service.Config{
 		Listener:            listener,
 		ClientBuilder:       cb,
-		MongoUri:            test.GetMongoUri(),
-		MongoDbName:         config.dbName,
 		MessageWaitTimeout:  config.messageWaitTimeout,
 		MessageConfidence:   config.messageConfidence,
 		RetryWaitFrequency:  config.retryWaitFrequency,

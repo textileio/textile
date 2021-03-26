@@ -15,6 +15,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-fil-markets v1.1.9
+	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/lotus v1.5.0
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
