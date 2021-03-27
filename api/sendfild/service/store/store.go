@@ -488,18 +488,16 @@ func (s *Store) Summary(ctx context.Context, after, before time.Time) (*pb.Summa
 }
 
 func (s *Store) Close() error {
-	var e error
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := s.col.Database().Client().Disconnect(ctx); err != nil {
 		log.Errorf("disconnecting mongo client: %s", err)
-		e = err
-	} else {
-		log.Info("mongo client disconnected")
+		return err
 	}
 
-	return e
+	log.Info("mongo client disconnected")
+
+	return nil
 }
 
 func toPbTxn(t *txn) (*pb.Txn, error) {
