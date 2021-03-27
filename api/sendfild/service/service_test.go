@@ -60,7 +60,6 @@ func TestRestartWaiting(t *testing.T) {
 	).Return([]*pb.Txn{{Id: "id", MessageCid: cid.String()}}, nil)
 	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
 	storeMock.On("Activate", mock.Anything, cid.String(), cid.String()).Return(nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	_, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -135,7 +134,6 @@ func TestSendFil(t *testing.T) {
 		signedMessage.Cid().String(),
 	).Return(nil).Maybe()
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -220,7 +218,6 @@ func TestSendFilWait(t *testing.T) {
 		nil,
 	)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -286,7 +283,6 @@ func TestSendFilWaitTimeout(t *testing.T) {
 	)
 	storeMock.On("SetWaiting", mock.Anything, signedMessage.Cid().String(), mock.AnythingOfType("bool")).Return(nil)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -317,7 +313,6 @@ func TestGetTxn(t *testing.T) {
 	storeMock := interfaces.MockTxnStore{}
 	storeMock.On("Get", mock.Anything, cid.String()).Return(&pb.Txn{MessageCid: cid.String()}, nil)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -374,7 +369,6 @@ func TestGetTxnWait(t *testing.T) {
 		nil,
 	)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -434,7 +428,6 @@ func TestGetTxnWaitSendFailure(t *testing.T) {
 		nil,
 	).Once()
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -478,7 +471,6 @@ func TestGetTxnWaitTimeout(t *testing.T) {
 	).Once()
 	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -501,7 +493,6 @@ func TestGetTxnNonExistent(t *testing.T) {
 	storeMock := interfaces.MockTxnStore{}
 	storeMock.On("Get", mock.Anything, cid.String()).Return(nil, interfaces.ErrTxnNotFound)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -523,7 +514,6 @@ func TestListTxns(t *testing.T) {
 		mock.AnythingOfType("*pb.ListTxnsRequest"),
 	).Return([]*pb.Txn{{Id: "1"}, {Id: "2"}, {Id: "3"}}, nil)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -544,7 +534,6 @@ func TestListTxnsStoreErr(t *testing.T) {
 	storeMock := interfaces.MockTxnStore{}
 	storeMock.On("List", mock.Anything, mock.AnythingOfType("*pb.ListTxnsRequest")).Return(nil, fmt.Errorf("error"))
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
@@ -566,7 +555,6 @@ func TestSummary(t *testing.T) {
 		mock.AnythingOfType("time.Time"),
 	).Return(&pb.SummaryResponse{CountTxns: 5}, nil)
 	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
-	storeMock.On("Close").Return(nil).Maybe()
 
 	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()

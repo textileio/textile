@@ -221,13 +221,6 @@ func (s *Service) Close() error {
 		log.Info("wait manager closed")
 	}
 
-	if err := s.txnStore.Close(); err != nil {
-		log.Errorf("disconnecting mongo client: %s", err)
-		errs = append(errs, err)
-	} else {
-		log.Info("mongo client disconnected")
-	}
-
 	if len(errs) > 0 {
 		return fmt.Errorf("closing sendfil service: %q", errs)
 	}

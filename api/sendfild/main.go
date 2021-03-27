@@ -225,6 +225,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Welcome to Hub Sendfil!")
 
 		cmd.HandleInterrupt(func() {
+			cmd.ErrCheck(txnStore.Close())
 			cmd.ErrCheck(api.Close())
 		})
 	},

@@ -30,20 +30,6 @@ func (_m *MockTxnStore) Activate(ctx context.Context, knownCid string, latestCid
 	return r0
 }
 
-// Close provides a mock function with given fields:
-func (_m *MockTxnStore) Close() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Fail provides a mock function with given fields: ctx, messageCid, failureMsg
 func (_m *MockTxnStore) Fail(ctx context.Context, messageCid string, failureMsg string) error {
 	ret := _m.Called(ctx, messageCid, failureMsg)

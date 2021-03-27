@@ -3,7 +3,6 @@ package interfaces
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
@@ -30,5 +29,4 @@ type TxnStore interface {
 	Activate(ctx context.Context, knownCid, latestCid string) error
 	List(ctx context.Context, req *pb.ListTxnsRequest) ([]*pb.Txn, error)
 	Summary(ctx context.Context, after, before time.Time) (*pb.SummaryResponse, error)
-	io.Closer
 }
