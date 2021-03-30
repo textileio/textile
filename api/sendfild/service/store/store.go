@@ -55,7 +55,7 @@ type Store struct {
 	col *mongo.Collection
 }
 
-func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
+func New(db *mongo.Database, debug bool) (*Store, error) {
 	ctx := context.Background()
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
@@ -65,11 +65,6 @@ func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
 		}
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
-	if err != nil {
-		return nil, fmt.Errorf("connecting to mongo: %v", err)
-	}
-	db := client.Database(mongoDbName)
 	col := db.Collection(collectionName)
 	if _, err := col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
@@ -485,19 +480,6 @@ func (s *Store) Summary(ctx context.Context, after, before time.Time) (*pb.Summa
 	}
 
 	return resp, nil
-}
-
-func (s *Store) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	if err := s.col.Database().Client().Disconnect(ctx); err != nil {
-		log.Errorf("disconnecting mongo client: %s", err)
-		return err
-	}
-
-	log.Info("mongo client disconnected")
-
-	return nil
 }
 
 func toPbTxn(t *txn) (*pb.Txn, error) {

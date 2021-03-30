@@ -17,6 +17,8 @@ import (
 	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 	"github.com/textileio/textile/v2/api/sendfild/service/store"
 	"github.com/textileio/textile/v2/cmd"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const daemonName = "sendfild"
@@ -205,7 +207,11 @@ var rootCmd = &cobra.Command{
 			return cb(ctx)
 		}
 
-		txnStore, err := store.New(mongoUri, mongoDb, debug)
+		client, err := mongo.Connect(c.Context(), options.Client().ApplyURI(mongoUri))
+		cmd.ErrCheck(err)
+		db := client.Database(mongoDb)
+
+		txnStore, err := store.New(db, debug)
 		cmd.ErrCheck(err)
 
 		conf := service.Config{
@@ -225,7 +231,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Welcome to Hub Sendfil!")
 
 		cmd.HandleInterrupt(func() {
-			cmd.ErrCheck(txnStore.Close())
+			cmd.ErrCheck(client.Disconnect(c.Context()))
 			cmd.ErrCheck(api.Close())
 		})
 	},

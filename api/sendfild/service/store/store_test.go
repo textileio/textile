@@ -12,6 +12,8 @@ import (
 	powutil "github.com/textileio/powergate/v2/util"
 	"github.com/textileio/textile/v2/api/sendfild/pb"
 	"github.com/textileio/textile/v2/util"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const oneFil = int64(1000000000)
@@ -518,11 +520,14 @@ func requireSetWaiting(t *testing.T, ctx context.Context, s *Store, cid string, 
 }
 
 func requireSetup(t *testing.T) (*Store, func()) {
-	s, err := New(test.GetMongoUri(), util.MakeToken(12), true)
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(test.GetMongoUri()))
+	require.NoError(t, err)
+	db := mongoClient.Database(util.MakeToken(12))
+	s, err := New(db, true)
 	require.NoError(t, err)
 
 	cleanup := func() {
-		s.Close()
+		require.NoError(t, mongoClient.Disconnect(ctx))
 	}
 
 	return s, cleanup
