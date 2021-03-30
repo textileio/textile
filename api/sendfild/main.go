@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -13,7 +14,11 @@ import (
 	"github.com/textileio/go-threads/util"
 	"github.com/textileio/powergate/v2/lotus"
 	"github.com/textileio/textile/v2/api/sendfild/service"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
+	"github.com/textileio/textile/v2/api/sendfild/service/store"
 	"github.com/textileio/textile/v2/cmd"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const daemonName = "sendfild"
@@ -198,11 +203,21 @@ var rootCmd = &cobra.Command{
 		cb, err := lotus.NewBuilder(lotusMultiaddr, lotusAuthToken, lotusConnRetries)
 		cmd.ErrCheck(err)
 
+		clientBuilder := func(ctx context.Context) (interfaces.FilecoinClient, func(), error) {
+			return cb(ctx)
+		}
+
+		client, err := mongo.Connect(c.Context(), options.Client().ApplyURI(mongoUri))
+		cmd.ErrCheck(err)
+		db := client.Database(mongoDb)
+
+		txnStore, err := store.New(db, debug)
+		cmd.ErrCheck(err)
+
 		conf := service.Config{
 			Listener:            listener,
-			ClientBuilder:       cb,
-			MongoUri:            mongoUri,
-			MongoDbName:         mongoDb,
+			ClientBuilder:       clientBuilder,
+			TxnStore:            txnStore,
 			MessageWaitTimeout:  messageWaitTimeout,
 			MessageConfidence:   messageConfidence,
 			RetryWaitFrequency:  retryWaitFrequency,
@@ -216,6 +231,7 @@ var rootCmd = &cobra.Command{
 		fmt.Println("Welcome to Hub Sendfil!")
 
 		cmd.HandleInterrupt(func() {
+			cmd.ErrCheck(client.Disconnect(c.Context()))
 			cmd.ErrCheck(api.Close())
 		})
 	},

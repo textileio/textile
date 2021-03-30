@@ -3,38 +3,23 @@ package service
 import (
 	"context"
 	"net"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
+	"github.com/textileio/textile/v2/api/filrewardsd/service/interfaces"
 	sendfilpb "github.com/textileio/textile/v2/api/sendfild/pb"
-	"github.com/textileio/textile/v2/api/sendfild/service/testutils"
-	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
-
-// TODO: Figure out how to test things that previously relied on local claim state.
 
 const bufSize = 1024 * 1024
 
 var (
 	ctx, _ = context.WithTimeout(context.Background(), 1*time.Minute)
 )
-
-func TestMain(m *testing.M) {
-	cleanup := func() {}
-	if os.Getenv("SKIP_SERVICES") != "true" {
-		cleanup = test.StartMongoDB()
-	}
-	exitVal := m.Run()
-	cleanup()
-	os.Exit(exitVal)
-}
 
 func TestProcessEvent(t *testing.T) {
 	t.Parallel()
@@ -96,9 +81,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf1 := Config{
-		Listener:              listener1,
-		MongoUri:              test.GetMongoUri(),
-		MongoFilRewardsDbName: "mydb",
+		Listener: listener1,
 	}
 	s1, err := New(conf1)
 	require.NoError(t, err)
@@ -123,9 +106,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf2 := Config{
-		Listener:              listener2,
-		MongoUri:              test.GetMongoUri(),
-		MongoFilRewardsDbName: "mydb",
+		Listener: listener2,
 	}
 	s2, err := New(conf2)
 	require.NoError(t, err)
@@ -525,18 +506,28 @@ func TestClaimedBalance(t *testing.T) {
 	requireBalance(t, ctx, c, "org1", 2, 0, 1, 1)
 }
 
-func requireSetup(t *testing.T, ctx context.Context, opts ...testutils.SetupOption) (pb.FilRewardsServiceClient, func()) {
-	_, sendfilClientConn, _, _, cleanupSendfil := testutils.RequireSetup(t, ctx, opts...)
-
+func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient, func()) {
 	listener := bufconn.Listen(bufSize)
 
+	// ToDo: Configure and pass in the mocks for each test.
+	rewardStore := &interfaces.MockRewardStore{}
+	claimStore := &interfaces.MockClaimStore{}
+	accountStore := &interfaces.MockAccountStore{}
+	analytics := &interfaces.MockAnalytics{}
+	sendfil := &interfaces.MockSendFil{}
+	powergate := &interfaces.MockPowergate{}
+
 	conf := Config{
-		Listener:              listener,
-		SendfilClientConn:     sendfilClientConn,
-		MongoUri:              test.GetMongoUri(),
-		MongoAccountsDbName:   "TODO",
-		MongoFilRewardsDbName: util.MakeToken(12),
-		BaseNanoFILReward:     2,
+		Listener:          listener,
+		RewardStore:       rewardStore,
+		ClaimStore:        claimStore,
+		AccountStore:      accountStore,
+		Analytics:         analytics,
+		Sendfil:           sendfil,
+		Powergate:         powergate,
+		FundingAddr:       "an address", // ToDo: Create a real address.
+		Debug:             true,
+		BaseNanoFILReward: 2,
 	}
 	s, err := New(conf)
 	require.NoError(t, err)
@@ -552,7 +543,6 @@ func requireSetup(t *testing.T, ctx context.Context, opts ...testutils.SetupOpti
 	cleanup := func() {
 		conn.Close()
 		s.Close()
-		cleanupSendfil()
 	}
 
 	return client, cleanup
