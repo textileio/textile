@@ -9,10 +9,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/util"
 	pb "github.com/textileio/textile/v2/api/sendfild/pb"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -21,21 +23,19 @@ const (
 
 var (
 	log = logging.Logger("store")
-
-	ErrNotFound = fmt.Errorf("no Txn found")
 )
 
-type MsgCid struct {
+type msgCid struct {
 	Cid       string    `bson:"cid"`
 	CreatedAt time.Time `bson:"created_at"`
 }
 
-type Txn struct {
+type txn struct {
 	ID            primitive.ObjectID `bson:"_id"`
 	From          string             `bson:"from"`
 	To            string             `bson:"to"`
 	AmountNanoFil int64              `bson:"amount_nano_fil"`
-	MessageCids   []MsgCid           `bson:"message_cids"`
+	MessageCids   []msgCid           `bson:"message_cids"`
 	MessageState  pb.MessageState    `bson:"message_state"`
 	Waiting       bool               `bson:"waiting"`
 	FailureMsg    string             `bson:"failure_msg"`
@@ -43,10 +43,10 @@ type Txn struct {
 	UpdatedAt     time.Time          `bson:"updated_at"`
 }
 
-func (t *Txn) LatestMsgCid() (MsgCid, error) {
+func (t *txn) LatestMsgCid() (msgCid, error) {
 	if len(t.MessageCids) == 0 {
 		log.Errorf("no message cid found for txn object id %v", t.ID.Hex())
-		return MsgCid{}, fmt.Errorf("no message cids found")
+		return msgCid{}, fmt.Errorf("no message cids found")
 	}
 	return t.MessageCids[len(t.MessageCids)-1], nil
 }
@@ -55,7 +55,7 @@ type Store struct {
 	col *mongo.Collection
 }
 
-func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
+func New(db *mongo.Database, debug bool) (*Store, error) {
 	ctx := context.Background()
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
@@ -65,11 +65,6 @@ func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
 		}
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
-	if err != nil {
-		return nil, fmt.Errorf("connecting to mongo: %v", err)
-	}
-	db := client.Database(mongoDbName)
 	col := db.Collection(collectionName)
 	if _, err := col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
@@ -111,49 +106,59 @@ func New(mongoUri, mongoDbName string, debug bool) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) NewTxn(ctx context.Context, messageCid, from, to string, amountNanoFil int64) (*Txn, error) {
+func (s *Store) New(ctx context.Context, messageCid, from, to string, amountNanoFil int64) (*pb.Txn, error) {
 	if amountNanoFil <= 0 {
 		return nil, fmt.Errorf("amountNanoFil must be greater than 0")
 	}
 
 	now := time.Now()
 
-	txn := &Txn{
+	t := &txn{
 		ID:            primitive.NewObjectID(),
 		From:          from,
 		To:            to,
 		AmountNanoFil: amountNanoFil,
-		MessageCids:   []MsgCid{{Cid: messageCid, CreatedAt: now}},
+		MessageCids:   []msgCid{{Cid: messageCid, CreatedAt: now}},
 		MessageState:  pb.MessageState_MESSAGE_STATE_PENDING,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 
-	if _, err := s.col.InsertOne(ctx, &txn); err != nil {
+	if _, err := s.col.InsertOne(ctx, &t); err != nil {
 		return nil, fmt.Errorf("inserting txn into collection: %v", err)
 	}
 
-	return txn, nil
+	pbTxn, err := toPbTxn(t)
+	if err != nil {
+		return nil, fmt.Errorf("converting to pb txn: %v", err)
+	}
+
+	return pbTxn, nil
 }
 
-func (s *Store) GetTxn(ctx context.Context, messageCid string) (*Txn, error) {
+func (s *Store) Get(ctx context.Context, messageCid string) (*pb.Txn, error) {
 	res := s.col.FindOne(ctx, bson.M{"message_cids.cid": messageCid})
 	if res.Err() == mongo.ErrNoDocuments {
-		return nil, ErrNotFound
+		return nil, interfaces.ErrTxnNotFound
 	}
 	if res.Err() != nil {
 		return nil, fmt.Errorf("querying for cid Txn: %v", res.Err())
 	}
 
-	var txn Txn
-	if err := res.Decode(&txn); err != nil {
+	var t txn
+	if err := res.Decode(&t); err != nil {
 		return nil, fmt.Errorf("decoding cid Txn result: %v", err)
 	}
 
-	return &txn, nil
+	pbTxn, err := toPbTxn(&t)
+	if err != nil {
+		return nil, fmt.Errorf("converting to pb txn: %v", err)
+	}
+
+	return pbTxn, nil
 }
 
-func (s *Store) GetAllPending(ctx context.Context, excludeAlreadyWaiting bool) ([]*Txn, error) {
+func (s *Store) GetAllPending(ctx context.Context, excludeAlreadyWaiting bool) ([]*pb.Txn, error) {
 	filter := bson.M{"message_state": pb.MessageState_MESSAGE_STATE_PENDING}
 	if excludeAlreadyWaiting {
 		filter["waiting"] = false
@@ -163,11 +168,21 @@ func (s *Store) GetAllPending(ctx context.Context, excludeAlreadyWaiting bool) (
 		return nil, fmt.Errorf("querying txns: %v", err)
 	}
 	defer cursor.Close(ctx)
-	var txns []*Txn
+	var txns []*txn
 	if err := cursor.All(ctx, &txns); err != nil {
 		return nil, fmt.Errorf("decoding txns query results: %v", err)
 	}
-	return txns, nil
+
+	var pbTxns []*pb.Txn
+	for _, t := range txns {
+		pbTxn, err := toPbTxn(t)
+		if err != nil {
+			return nil, fmt.Errorf("converting txn to pb: %v", err)
+		}
+		pbTxns = append(pbTxns, pbTxn)
+	}
+
+	return pbTxns, nil
 }
 
 func (s *Store) SetWaiting(ctx context.Context, messageCid string, waiting bool) error {
@@ -179,7 +194,7 @@ func (s *Store) SetWaiting(ctx context.Context, messageCid string, waiting bool)
 		}},
 	)
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-		return ErrNotFound
+		return interfaces.ErrTxnNotFound
 	}
 	if res.Err() != nil {
 		return fmt.Errorf("updating txn: %v", res.Err())
@@ -187,7 +202,7 @@ func (s *Store) SetWaiting(ctx context.Context, messageCid string, waiting bool)
 	return nil
 }
 
-func (s *Store) FailTxn(ctx context.Context, messageCid, failureMsg string) error {
+func (s *Store) Fail(ctx context.Context, messageCid, failureMsg string) error {
 	res := s.col.FindOneAndUpdate(
 		ctx,
 		bson.M{"message_cids.cid": messageCid},
@@ -199,7 +214,7 @@ func (s *Store) FailTxn(ctx context.Context, messageCid, failureMsg string) erro
 		}},
 	)
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-		return ErrNotFound
+		return interfaces.ErrTxnNotFound
 	}
 	if res.Err() != nil {
 		return fmt.Errorf("updating txn: %v", res.Err())
@@ -207,30 +222,30 @@ func (s *Store) FailTxn(ctx context.Context, messageCid, failureMsg string) erro
 	return nil
 }
 
-func (s *Store) ActivateTxn(ctx context.Context, knownCid, latestCid string) error {
+func (s *Store) Activate(ctx context.Context, knownCid, latestCid string) error {
 	res := s.col.FindOne(ctx, bson.M{"message_cids.cid": knownCid})
 	if res.Err() == mongo.ErrNoDocuments {
-		return ErrNotFound
+		return interfaces.ErrTxnNotFound
 	}
 	if res.Err() != nil {
 		return fmt.Errorf("querying for cid txn: %v", res.Err())
 	}
 
-	var txn Txn
-	if err := res.Decode(&txn); err != nil {
+	var t txn
+	if err := res.Decode(&t); err != nil {
 		return fmt.Errorf("decoding cid txn result: %v", err)
 	}
 
 	now := time.Now()
 
-	txn.MessageState = pb.MessageState_MESSAGE_STATE_ACTIVE
-	txn.Waiting = false
-	txn.UpdatedAt = now
+	t.MessageState = pb.MessageState_MESSAGE_STATE_ACTIVE
+	t.Waiting = false
+	t.UpdatedAt = now
 
 	// This would probably not ever be true because we would already know about and have tracked
 	// the new message cid if we replaced the message with a new one. Checking just in case.
 	isNewCid := true
-	for _, msgCid := range txn.MessageCids {
+	for _, msgCid := range t.MessageCids {
 		if latestCid == msgCid.Cid {
 			isNewCid = false
 			break
@@ -238,22 +253,22 @@ func (s *Store) ActivateTxn(ctx context.Context, knownCid, latestCid string) err
 	}
 
 	if isNewCid {
-		txn.MessageCids = append(txn.MessageCids, MsgCid{Cid: latestCid, CreatedAt: now})
+		t.MessageCids = append(t.MessageCids, msgCid{Cid: latestCid, CreatedAt: now})
 	}
 
-	updateRes, err := s.col.ReplaceOne(ctx, bson.M{"_id": txn.ID}, txn)
+	updateRes, err := s.col.ReplaceOne(ctx, bson.M{"_id": t.ID}, t)
 	if err != nil {
 		log.Errorf("calling ReplaceOne to update txn: %v", err)
 		return err
 	}
 	if updateRes.MatchedCount == 0 {
 		log.Error("no document matched calling ReplaceOne to update txn")
-		return ErrNotFound
+		return interfaces.ErrTxnNotFound
 	}
 	return nil
 }
 
-func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, error) {
+func (s *Store) List(ctx context.Context, req *pb.ListTxnsRequest) ([]*pb.Txn, error) {
 	findOpts := options.Find()
 	findOpts = findOpts.SetLimit(req.PageSize)
 	findOpts = findOpts.SetSkip(req.PageSize * req.Page)
@@ -265,33 +280,42 @@ func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, 
 
 	filter := bson.M{}
 
+	ands := bson.A{}
+
+	// Message cids
+	messageCidsOrs := bson.A{}
+	for _, messageCid := range req.MessageCidsFilter {
+		messageCidsOrs = append(messageCidsOrs, bson.M{"message_cids.cid": messageCid})
+	}
+	if len(messageCidsOrs) > 0 {
+		ands = append(ands, bson.M{"$or": messageCidsOrs})
+	}
+
 	// Involving/from/to
 	if req.InvolvingAddressFilter != "" {
-		filter["$or"] = bson.A{bson.M{"from": req.InvolvingAddressFilter}, bson.M{"to": req.InvolvingAddressFilter}}
+		ands = append(ands, bson.M{"$or": bson.A{bson.M{"from": req.InvolvingAddressFilter}, bson.M{"to": req.InvolvingAddressFilter}}})
 	} else {
 		if req.FromFilter != "" {
-			filter["from"] = req.FromFilter
+			ands = append(ands, bson.M{"from": req.FromFilter})
 		}
 		if req.ToFilter != "" {
-			filter["to"] = req.ToFilter
+			ands = append(ands, bson.M{"to": req.ToFilter})
 		}
 	}
 
 	// MessageState
 	if req.MessageStateFilter != pb.MessageState_MESSAGE_STATE_UNSPECIFIED {
-		filter["message_state"] = req.MessageStateFilter
+		ands = append(ands, bson.M{"message_state": req.MessageStateFilter})
 	}
 
 	// Waiting
 	if req.WaitingFilter != pb.WaitingFilter_WAITING_FILTER_UNSPECIFIED {
-		filter["waiting"] = req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING
+		ands = append(ands, bson.M{"waiting": req.WaitingFilter == pb.WaitingFilter_WAITING_FILTER_WAITING})
 	}
-
-	ands := bson.A{}
 
 	// Amount eq/gte/lts/gt/lt
 	if req.AmountNanoFilEqFilter != 0 {
-		filter["amount_nano_fil"] = req.AmountNanoFilEqFilter
+		ands = append(ands, bson.M{"amount_nano_fil": req.AmountNanoFilEqFilter})
 	} else {
 		if req.AmountNanoFilGteqFilter != 0 {
 			ands = append(ands, bson.M{"amount_nano_fil": bson.M{"$gte": req.AmountNanoFilGteqFilter}})
@@ -331,13 +355,22 @@ func (s *Store) ListTxns(ctx context.Context, req *pb.ListTxnsRequest) ([]*Txn, 
 		return nil, fmt.Errorf("querying txns: %v", err)
 	}
 	defer cursor.Close(ctx)
-	var txns []*Txn
+	var txns []*txn
 	err = cursor.All(ctx, &txns)
 	if err != nil {
 		return nil, fmt.Errorf("decoding txns query results: %v", err)
 	}
 
-	return txns, nil
+	var pbTxns []*pb.Txn
+	for _, t := range txns {
+		pbTxn, err := toPbTxn(t)
+		if err != nil {
+			return nil, fmt.Errorf("converting txn to pb: %v", err)
+		}
+		pbTxns = append(pbTxns, pbTxn)
+	}
+
+	return pbTxns, nil
 }
 
 type EntityCount struct {
@@ -360,7 +393,7 @@ type Summary struct {
 	SentFilStats   []Stats       `bson:"sent_fil_stats"`
 }
 
-func (s *Store) GenerateSummary(ctx context.Context, after, before time.Time) (*Summary, error) {
+func (s *Store) Summary(ctx context.Context, after, before time.Time) (*pb.SummaryResponse, error) {
 	createdAtMatch := bson.M{}
 	if !before.IsZero() {
 		createdAtMatch["$lt"] = before
@@ -412,20 +445,58 @@ func (s *Store) GenerateSummary(ctx context.Context, after, before time.Time) (*
 	if len(res) != 1 {
 		return nil, fmt.Errorf("unexpected number of aggregate results: %v", len(res))
 	}
-	return res[0], nil
-}
 
-func (s *Store) Close() error {
-	var e error
+	summary := res[0]
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	if err := s.col.Database().Client().Disconnect(ctx); err != nil {
-		log.Errorf("disconnecting mongo client: %s", err)
-		e = err
-	} else {
-		log.Info("mongo client disconnected")
+	resp := &pb.SummaryResponse{}
+
+	if len(summary.All) == 1 {
+		resp.CountTxns = summary.All[0].Count
 	}
 
-	return e
+	for _, state := range summary.ByMessageState {
+		switch pb.MessageState(state.ID.(int32)) {
+		case pb.MessageState_MESSAGE_STATE_PENDING:
+			resp.CountPending = state.Count
+		case pb.MessageState_MESSAGE_STATE_ACTIVE:
+			resp.CountActive = state.Count
+		case pb.MessageState_MESSAGE_STATE_FAILED:
+			resp.CountFailed = state.Count
+		}
+	}
+
+	if len(summary.Waiting) == 1 {
+		resp.CountWaiting = summary.Waiting[0].Count
+	}
+
+	resp.CountFromAddrs = int64(len(summary.UniqueFrom))
+	resp.CountToAddrs = int64(len(summary.UniqueTo))
+
+	if len(summary.SentFilStats) == 1 {
+		resp.TotalNanoFilSent = summary.SentFilStats[0].Total
+		resp.AvgNanoFilSent = summary.SentFilStats[0].Avg
+		resp.MaxNanoFilSent = summary.SentFilStats[0].Max
+		resp.MinNanoFilSent = summary.SentFilStats[0].Min
+	}
+
+	return resp, nil
+}
+
+func toPbTxn(t *txn) (*pb.Txn, error) {
+	latestMsgCid, err := t.LatestMsgCid()
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Txn{
+		Id:            t.ID.Hex(),
+		From:          t.From,
+		To:            t.To,
+		AmountNanoFil: t.AmountNanoFil,
+		MessageCid:    latestMsgCid.Cid,
+		MessageState:  t.MessageState,
+		Waiting:       t.Waiting,
+		FailureMsg:    t.FailureMsg,
+		CreatedAt:     timestamppb.New(t.CreatedAt),
+		UpdatedAt:     timestamppb.New(t.UpdatedAt),
+	}, nil
 }

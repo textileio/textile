@@ -51,23 +51,24 @@ message GetTxnResponse {
 }
 
 message ListTxnsRequest {
-  string from_filter = 1;
-  string to_filter = 2;
-  string involving_address_filter = 3;
-  int64 amount_nano_fil_lt_filter = 4;
-  int64 amount_nano_fil_gt_filter = 5;
-  int64 amount_nano_fil_lteq_filter = 6;
-  int64 amount_nano_fil_gteq_filter = 7;
-  int64 amount_nano_fil_eq_filter = 8;
-  MessageState message_state_filter = 9;
-  WaitingFilter waiting_filter = 10;
-  google.protobuf.Timestamp created_before = 11;
-  google.protobuf.Timestamp created_after = 12;
-  google.protobuf.Timestamp updated_before = 13;
-  google.protobuf.Timestamp updated_after = 14;
-  bool ascending = 15;
-  int64 page_size = 16;
-  int64 page = 17;
+  repeated string message_cids_filter = 1;
+  string from_filter = 2;
+  string to_filter = 3;
+  string involving_address_filter = 4;
+  int64 amount_nano_fil_lt_filter = 5;
+  int64 amount_nano_fil_gt_filter = 6;
+  int64 amount_nano_fil_lteq_filter = 7;
+  int64 amount_nano_fil_gteq_filter = 8;
+  int64 amount_nano_fil_eq_filter = 9;
+  MessageState message_state_filter = 10;
+  WaitingFilter waiting_filter = 11;
+  google.protobuf.Timestamp created_before = 12;
+  google.protobuf.Timestamp created_after = 13;
+  google.protobuf.Timestamp updated_before = 14;
+  google.protobuf.Timestamp updated_after = 15;
+  bool ascending = 16;
+  int64 page_size = 17;
+  int64 page = 18;
 }
 
 message ListTxnsResponse {

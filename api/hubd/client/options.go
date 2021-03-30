@@ -46,15 +46,15 @@ func ListFilRewardsAscending() ListFilRewardsOption {
 	}
 }
 
-func ListFilRewardsMoreToken(moreToken int64) ListFilRewardsOption {
+func ListFilRewardsPage(page int64) ListFilRewardsOption {
 	return func(req *pb.ListFilRewardsRequest) {
-		req.MoreToken = moreToken
+		req.Page = page
 	}
 }
 
-func ListFilRewardsLimit(limit int64) ListFilRewardsOption {
+func ListFilRewardsPageSize(pageSize int64) ListFilRewardsOption {
 	return func(req *pb.ListFilRewardsRequest) {
-		req.Limit = limit
+		req.PageSize = pageSize
 	}
 }
 
@@ -66,26 +66,20 @@ func ListFilClaimsClaimedByDev() ListFilClaimsOption {
 	}
 }
 
-func ListFilClaimsStateFilter(state filrewardspb.ClaimState) ListFilClaimsOption {
-	return func(req *pb.ListFilClaimsRequest) {
-		req.StateFilter = state
-	}
-}
-
 func ListFilClaimsAscending() ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
 		req.Ascending = true
 	}
 }
 
-func ListFilClaimsMoreToken(moreToken int64) ListFilClaimsOption {
+func ListFilClaimsPage(page int64) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
-		req.MoreToken = moreToken
+		req.Page = page
 	}
 }
 
-func ListFilClaimsLimit(limit int64) ListFilClaimsOption {
+func ListFilClaimsPageSize(pageSize int64) ListFilClaimsOption {
 	return func(req *pb.ListFilClaimsRequest) {
-		req.Limit = limit
+		req.PageSize = pageSize
 	}
 }

@@ -2,25 +2,24 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"math/big"
 	"math/rand"
 	"net"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/chain/types"
+	addr "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/lotus/api"
+	chainTypes "github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
-	"github.com/textileio/powergate/v2/lotus"
-	"github.com/textileio/powergate/v2/tests"
-	powutil "github.com/textileio/powergate/v2/util"
 	pb "github.com/textileio/textile/v2/api/sendfild/pb"
-	"github.com/textileio/textile/v2/util"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,589 +28,564 @@ import (
 
 const (
 	bufSize = 1024 * 1024
-	oneFil  = 1000000000
+	oneFil  = int64(1000000000)
 )
 
 var (
 	ctx = context.Background()
 )
 
-func TestMain(m *testing.M) {
-	powutil.AvgBlockTime = time.Millisecond * 100
-	logging.SetAllLoggers(logging.LevelError)
-
-	cleanup := func() {}
-	if os.Getenv("SKIP_SERVICES") != "true" {
-		cleanup = test.StartMongoDB()
-	}
-	exitVal := m.Run()
-	cleanup()
-	os.Exit(exitVal)
-}
-
 func TestRestartWaiting(t *testing.T) {
-	cb, lc, dAddr, cleanupLotus := requireSetupLotus(t, ctx, setupWithSpeed(1000))
-	defer cleanupLotus()
+	cid := randomCid()
 
-	c, cleanupService := requireSetupService(t, ctx, cb, setupWithDbName("restart_waiting"))
-	addr := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, true)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
-	res, err := c.Summary(ctx, &pb.SummaryRequest{})
-	require.NoError(t, err)
-	require.Equal(t, int64(3), res.CountWaiting)
-	require.Equal(t, int64(3), res.CountPending)
-	require.Equal(t, int64(1), res.CountActive)
-	cleanupService()
-	c, cleanupService = requireSetupService(t, ctx, cb, setupWithDbName("restart_waiting"))
-	defer cleanupService()
-	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
-	res, err = c.Summary(ctx, &pb.SummaryRequest{})
-	require.NoError(t, err)
-	require.Equal(t, int64(3), res.CountWaiting)
-	require.Equal(t, int64(3), res.CountPending)
-	require.Equal(t, int64(1), res.CountActive)
+	fcMock := interfaces.MockFilecoinClient{}
+	msgLookup := &api.MsgLookup{
+		Message: cid,
+		Receipt: chainTypes.MessageReceipt{
+			ExitCode: exitcode.Ok,
+		},
+	}
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(msgLookup, nil)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"GetAllPending",
+		mock.Anything,
+		mock.AnythingOfType("bool"),
+	).Return([]*pb.Txn{{Id: "id", MessageCid: cid.String()}}, nil)
+	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("Activate", mock.Anything, cid.String(), cid.String()).Return(nil)
+
+	_, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
+	defer cleanup()
+
+	time.Sleep(time.Millisecond * 500) // sleep to let the goroutines spin up
+
+	storeMock.AssertExpectations(t)
+	fcMock.AssertExpectations(t)
 }
 
 func TestSendFil(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	fromAddr, err := addr.NewIDAddress(0)
+	require.NoError(t, err)
+	toAddr, err := addr.NewIDAddress(1)
+	require.NoError(t, err)
+
+	attoFilAmt := (&big.Int{}).Mul((&big.Int{}).SetInt64(oneFil), (&big.Int{}).SetInt64(int64(math.Pow10(9))))
+
+	signedMessage := &chainTypes.SignedMessage{
+		Message: chainTypes.Message{
+			To:    toAddr,
+			From:  fromAddr,
+			Value: chainTypes.BigInt{Int: attoFilAmt},
+		},
+	}
+
+	fcMock := interfaces.MockFilecoinClient{}
+	fcMock.On(
+		"MpoolPushMessage",
+		mock.Anything,
+		mock.AnythingOfType("*types.Message"),
+		mock.AnythingOfType("*api.MessageSendSpec"),
+	).Return(signedMessage, nil)
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(
+		&api.MsgLookup{
+			Message: signedMessage.Cid(),
+			Receipt: chainTypes.MessageReceipt{
+				ExitCode: exitcode.Ok,
+			},
+		},
+		nil,
+	)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"New",
+		mock.Anything,
+		signedMessage.Cid().String(),
+		fromAddr.String(),
+		toAddr.String(),
+		oneFil,
+	).Return(
+		&pb.Txn{
+			MessageCid:    signedMessage.Cid().String(),
+			From:          fromAddr.String(),
+			To:            toAddr.String(),
+			AmountNanoFil: oneFil,
+			MessageState:  pb.MessageState_MESSAGE_STATE_PENDING,
+		},
+		nil,
+	)
+	storeMock.On("SetWaiting", mock.Anything, signedMessage.Cid().String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On(
+		"Activate",
+		mock.Anything,
+		signedMessage.Cid().String(),
+		signedMessage.Cid().String(),
+	).Return(nil).Maybe()
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+
+	txn := requireSendFil(t, ctx, c, fromAddr.String(), toAddr.String(), oneFil, false)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, txn.MessageState)
+
+	storeMock.AssertExpectations(t)
+	fcMock.AssertExpectations(t)
 }
 
 func TestSendFilWait(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	fromAddr, err := addr.NewIDAddress(0)
+	require.NoError(t, err)
+	toAddr, err := addr.NewIDAddress(1)
+	require.NoError(t, err)
+
+	attoFilAmt := (&big.Int{}).Mul((&big.Int{}).SetInt64(oneFil), (&big.Int{}).SetInt64(int64(math.Pow10(9))))
+
+	signedMessage := &chainTypes.SignedMessage{
+		Message: chainTypes.Message{
+			To:    toAddr,
+			From:  fromAddr,
+			Value: chainTypes.BigInt{Int: attoFilAmt},
+		},
+	}
+
+	fcMock := interfaces.MockFilecoinClient{}
+	fcMock.On(
+		"MpoolPushMessage",
+		mock.Anything,
+		mock.AnythingOfType("*types.Message"),
+		mock.AnythingOfType("*api.MessageSendSpec"),
+	).Return(signedMessage, nil)
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(
+		&api.MsgLookup{
+			Message: signedMessage.Cid(),
+			Receipt: chainTypes.MessageReceipt{
+				ExitCode: exitcode.Ok,
+			},
+		},
+		nil,
+	)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"New",
+		mock.Anything,
+		signedMessage.Cid().String(),
+		fromAddr.String(),
+		toAddr.String(),
+		oneFil,
+	).Return(
+		&pb.Txn{
+			MessageCid:    signedMessage.Cid().String(),
+			From:          fromAddr.String(),
+			To:            toAddr.String(),
+			AmountNanoFil: oneFil,
+			MessageState:  pb.MessageState_MESSAGE_STATE_PENDING,
+		},
+		nil,
+	)
+	storeMock.On("SetWaiting", mock.Anything, signedMessage.Cid().String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("Activate", mock.Anything, signedMessage.Cid().String(), signedMessage.Cid().String()).Return(nil)
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		signedMessage.Cid().String(),
+	).Return(
+		&pb.Txn{
+			MessageCid:    signedMessage.Cid().String(),
+			From:          fromAddr.String(),
+			To:            toAddr.String(),
+			AmountNanoFil: oneFil,
+			MessageState:  pb.MessageState_MESSAGE_STATE_ACTIVE,
+		},
+		nil,
+	)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, true)
+
+	txn := requireSendFil(t, ctx, c, fromAddr.String(), toAddr.String(), oneFil, true)
+	require.Equal(t, signedMessage.Cid().String(), txn.MessageCid)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, txn.MessageState)
+
+	storeMock.AssertExpectations(t)
+	fcMock.AssertExpectations(t)
 }
 
 func TestSendFilWaitTimeout(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(3000), setupWithMessageWaitTimeout(time.Second))
+	fromAddr, err := addr.NewIDAddress(0)
+	require.NoError(t, err)
+	toAddr, err := addr.NewIDAddress(1)
+	require.NoError(t, err)
+
+	attoFilAmt := (&big.Int{}).Mul((&big.Int{}).SetInt64(oneFil), (&big.Int{}).SetInt64(int64(math.Pow10(9))))
+
+	signedMessage := &chainTypes.SignedMessage{
+		Message: chainTypes.Message{
+			To:    toAddr,
+			From:  fromAddr,
+			Value: chainTypes.BigInt{Int: attoFilAmt},
+		},
+	}
+
+	fcMock := interfaces.MockFilecoinClient{}
+	fcMock.On(
+		"MpoolPushMessage",
+		mock.Anything,
+		mock.AnythingOfType("*types.Message"),
+		mock.AnythingOfType("*api.MessageSendSpec"),
+	).Return(signedMessage, nil)
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(
+		nil,
+		fmt.Errorf("context canceled"),
+	)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"New",
+		mock.Anything,
+		signedMessage.Cid().String(),
+		fromAddr.String(),
+		toAddr.String(),
+		oneFil,
+	).Return(
+		&pb.Txn{
+			MessageCid:    signedMessage.Cid().String(),
+			From:          fromAddr.String(),
+			To:            toAddr.String(),
+			AmountNanoFil: oneFil,
+			MessageState:  pb.MessageState_MESSAGE_STATE_PENDING,
+		},
+		nil,
+	)
+	storeMock.On("SetWaiting", mock.Anything, signedMessage.Cid().String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	_, err := c.SendFil(ctx, &pb.SendFilRequest{From: dAddr.String(), To: addr.String(), AmountNanoFil: oneFil, Wait: true})
+
+	_, err = c.SendFil(
+		ctx,
+		&pb.SendFilRequest{
+			From:          fromAddr.String(),
+			To:            toAddr.String(),
+			AmountNanoFil: oneFil,
+			Wait:          true,
+		},
+	)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "waiting for txn status timed out, but txn is still processing, query txn again if needed")
+	require.Contains(
+		t,
+		err.Error(),
+		"waiting for txn status timed out, but txn is still processing, query txn again if needed",
+	)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
 func TestGetTxn(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
+	cid := randomCid()
+	fcMock := interfaces.MockFilecoinClient{}
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On("Get", mock.Anything, cid.String()).Return(&pb.Txn{MessageCid: cid.String()}, nil)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	txn := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn.MessageCid, Wait: false})
+
+	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: cid.String()})
 	require.NoError(t, err)
-	require.Equal(t, txn.MessageCid, res.Txn.MessageCid)
-	require.Equal(t, pb.MessageState_MESSAGE_STATE_PENDING, res.Txn.MessageState)
+	require.Equal(t, cid.String(), res.Txn.MessageCid)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
 func TestGetTxnWait(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	cid := randomCid()
+
+	fcMock := interfaces.MockFilecoinClient{}
+	msgLookup := &api.MsgLookup{
+		Message: cid,
+		Receipt: chainTypes.MessageReceipt{
+			ExitCode: exitcode.Ok,
+		},
+	}
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(msgLookup, nil)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		cid.String(),
+	).Return(
+		&pb.Txn{
+			Id:           "id",
+			MessageCid:   cid.String(),
+			MessageState: pb.MessageState_MESSAGE_STATE_PENDING},
+		nil,
+	).Once()
+	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("Activate", mock.Anything, cid.String(), cid.String()).Return(nil)
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		cid.String(),
+	).Return(
+		&pb.Txn{
+			Id:           "id",
+			MessageCid:   cid.String(),
+			MessageState: pb.MessageState_MESSAGE_STATE_ACTIVE,
+		},
+		nil,
+	)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	txn1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn1.MessageCid, Wait: true})
+
+	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: cid.String(), Wait: true})
 	require.NoError(t, err)
-	require.Equal(t, txn1.MessageCid, res.Txn.MessageCid)
+	require.Equal(t, cid.String(), res.Txn.MessageCid)
 	require.Equal(t, pb.MessageState_MESSAGE_STATE_ACTIVE, res.Txn.MessageState)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
+}
+
+func TestGetTxnWaitSendFailure(t *testing.T) {
+	cid := randomCid()
+
+	fcMock := interfaces.MockFilecoinClient{}
+	msgLookup := &api.MsgLookup{
+		Message: cid,
+		Receipt: chainTypes.MessageReceipt{
+			ExitCode: exitcode.SysErrSenderInvalid,
+		},
+	}
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(msgLookup, nil)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		cid.String(),
+	).Return(
+		&pb.Txn{
+			Id:           "id",
+			MessageCid:   cid.String(),
+			MessageState: pb.MessageState_MESSAGE_STATE_PENDING,
+		},
+		nil,
+	).Once()
+	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("Fail", mock.Anything, cid.String(), mock.AnythingOfType("string")).Return(nil)
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		cid.String(),
+	).Return(
+		&pb.Txn{
+			Id:           "id",
+			MessageCid:   cid.String(),
+			MessageState: pb.MessageState_MESSAGE_STATE_FAILED,
+			FailureMsg:   "oops",
+		},
+		nil,
+	).Once()
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
+	defer cleanup()
+
+	res, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: cid.String(), Wait: true})
+	require.NoError(t, err)
+	require.Equal(t, cid.String(), res.Txn.MessageCid)
+	require.Equal(t, pb.MessageState_MESSAGE_STATE_FAILED, res.Txn.MessageState)
+	require.Equal(t, "oops", res.Txn.FailureMsg)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
 func TestGetTxnWaitTimeout(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(3000), setupWithMessageWaitTimeout(time.Second))
+	cid := randomCid()
+
+	fcMock := interfaces.MockFilecoinClient{}
+	fcMock.On(
+		"StateWaitMsg",
+		mock.Anything,
+		mock.AnythingOfType("cid.Cid"),
+		mock.AnythingOfType("uint64"),
+	).Return(
+		nil,
+		fmt.Errorf("context canceled"),
+	)
+
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"Get",
+		mock.Anything,
+		cid.String(),
+	).Return(
+		&pb.Txn{
+			Id:           "id",
+			MessageCid:   cid.String(),
+			MessageState: pb.MessageState_MESSAGE_STATE_PENDING,
+		},
+		nil,
+	).Once()
+	storeMock.On("SetWaiting", mock.Anything, cid.String(), mock.AnythingOfType("bool")).Return(nil)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	txn1 := requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: txn1.MessageCid, Wait: true})
+
+	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: cid.String(), Wait: true})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "waiting for txn status timed out, but txn is still processing, query txn again if needed")
+	require.Contains(
+		t,
+		err.Error(),
+		"waiting for txn status timed out, but txn is still processing, query txn again if needed",
+	)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
 func TestGetTxnNonExistent(t *testing.T) {
-	c, _, _, cleanup := requireSetup(t, ctx)
+	cid := randomCid()
+	fcMock := interfaces.MockFilecoinClient{}
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On("Get", mock.Anything, cid.String()).Return(nil, interfaces.ErrTxnNotFound)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: randomCid().String()})
-	require.Equal(t, codes.NotFound, status.Code(err))
+
+	_, err := c.GetTxn(ctx, &pb.GetTxnRequest{MessageCid: cid.String()})
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	require.Equal(t, codes.NotFound, st.Code())
+	require.Contains(t, st.Message(), "no txn found for cid")
 }
 
 func TestListTxns(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	fcMock := interfaces.MockFilecoinClient{}
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"List",
+		mock.Anything,
+		mock.AnythingOfType("*pb.ListTxnsRequest"),
+	).Return([]*pb.Txn{{Id: "1"}, {Id: "2"}, {Id: "3"}}, nil)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr.String(), oneFil, false)
+
 	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{})
 	require.NoError(t, err)
 	require.Len(t, res.Txns, 3)
+	require.Equal(t, "1", res.Txns[0].Id)
+	require.Equal(t, "2", res.Txns[1].Id)
+	require.Equal(t, "3", res.Txns[2].Id)
+
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
-func TestListTxnsFrom(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	addr2 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{FromFilter: dAddr.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{FromFilter: addr2.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
+func TestListTxnsStoreErr(t *testing.T) {
+	fcMock := interfaces.MockFilecoinClient{}
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On("List", mock.Anything, mock.AnythingOfType("*pb.ListTxnsRequest")).Return(nil, fmt.Errorf("error"))
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
 
-func TestListTxnsTo(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	addr2 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{ToFilter: addr1.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{ToFilter: addr2.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
 
-func TestListTxnsInvolvingAddress(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	addr2 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*2, true)
-	requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: dAddr.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr1.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{InvolvingAddressFilter: addr2.String()})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
+	_, err := c.ListTxns(ctx, &pb.ListTxnsRequest{})
+	require.Error(t, err)
 
-func TestListTxnsAmtGt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil * 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 0)
-}
-
-func TestListTxnsAmtGteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil * 3})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 0)
-}
-
-func TestListTxnsAmtLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLtFilter: oneFil / 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 0)
-}
-
-func TestListTxnsAmtLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilLteqFilter: oneFil / 3})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 0)
-}
-
-func TestListTxnsAmtGtLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
-
-func TestListTxnsAmtGteqLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsAmtGteqLt(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGteqFilter: oneFil / 2, AmountNanoFilLtFilter: oneFil * 3 / 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsAmtGtLteq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilGtFilter: oneFil, AmountNanoFilLteqFilter: oneFil * 2})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
-
-func TestListTxnsAmtEq(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil/2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*3, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{AmountNanoFilEqFilter: oneFil})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
-
-func TestListTxnsMessageState(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_ACTIVE})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{MessageStateFilter: pb.MessageState_MESSAGE_STATE_PENDING})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsWaiting(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, true)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_NOT_WAITING})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{WaitingFilter: pb.WaitingFilter_WAITING_FILTER_WAITING})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsCreatedAfter(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsCreatedBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedBefore: t3.CreatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsCreatedAfterBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{CreatedAfter: t1.CreatedAt, CreatedBefore: t3.CreatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
-
-func TestListTxnsUpdatedAfter(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsUpdatedBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedBefore: t3.UpdatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 2)
-}
-
-func TestListTxnsUpdatedAfterBefore(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	t1 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	t3 := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{UpdatedAfter: t1.UpdatedAt, UpdatedBefore: t3.UpdatedAt})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 1)
-}
-
-func TestListTxnsOrder(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	res, err := c.ListTxns(ctx, &pb.ListTxnsRequest{Ascending: false})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	requireTxnsOrder(t, res.Txns, false)
-	res, err = c.ListTxns(ctx, &pb.ListTxnsRequest{Ascending: true})
-	require.NoError(t, err)
-	require.Len(t, res.Txns, 3)
-	requireTxnsOrder(t, res.Txns, true)
-}
-
-func TestListTxnsPaging(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	txFirst := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-	txLast := requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil, false)
-
-	pageResults := func(ascending bool) {
-		page := int64(0)
-		for {
-			req := &pb.ListTxnsRequest{
-				CreatedAfter:  txFirst.CreatedAt,
-				CreatedBefore: txLast.CreatedAt,
-				PageSize:      3,
-				Page:          page,
-				Ascending:     ascending,
-			}
-			res, err := c.ListTxns(ctx, req)
-			require.NoError(t, err)
-			if len(res.Txns) == 0 {
-				break
-			}
-			requireTxnsOrder(t, res.Txns, ascending)
-			if page < 2 {
-				require.Len(t, res.Txns, 3)
-			}
-			if page == 2 {
-				require.Len(t, res.Txns, 2)
-			}
-			page++
-		}
-		require.Equal(t, int64(3), page)
-	}
-	pageResults(false)
-	pageResults(true)
+	fcMock.AssertExpectations(t)
+	storeMock.AssertExpectations(t)
 }
 
 func TestSummary(t *testing.T) {
-	c, lc, dAddr, cleanup := requireSetup(t, ctx, setupWithSpeed(1000))
+	fcMock := interfaces.MockFilecoinClient{}
+	storeMock := interfaces.MockTxnStore{}
+	storeMock.On(
+		"Summary",
+		mock.Anything,
+		mock.AnythingOfType("time.Time"),
+		mock.AnythingOfType("time.Time"),
+	).Return(&pb.SummaryResponse{CountTxns: 5}, nil)
+	storeMock.On("GetAllPending", mock.Anything, mock.AnythingOfType("bool")).Return([]*pb.Txn{}, nil)
+
+	c, cleanup := requireSetup(t, ctx, &fcMock, &storeMock)
 	defer cleanup()
-	addr1 := requireLotusAddress(t, ctx, lc)
-	addr2 := requireLotusAddress(t, ctx, lc)
-	txFirst := requireSendFil(t, ctx, c, dAddr.String(), addr2.String(), oneFil*3, true)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	requireSendFil(t, ctx, c, dAddr.String(), addr1.String(), oneFil*2, false)
-	txLast := requireSendFil(t, ctx, c, addr2.String(), addr1.String(), oneFil, false)
-	time.Sleep(time.Millisecond * 100) // Little time to allow the monitoring process to start waiting for all the txns.
+
+	// ToDo: Test this more thuroughly in store tests.
 	res, err := c.Summary(ctx, &pb.SummaryRequest{})
 	require.NoError(t, err)
-	require.Equal(t, float64(oneFil*2), res.AvgNanoFilSent)
-	require.Equal(t, int64(1), res.CountActive)
-	require.Equal(t, int64(0), res.CountFailed)
-	require.Equal(t, int64(2), res.CountFromAddrs)
-	require.Equal(t, int64(3), res.CountPending)
-	require.Equal(t, int64(2), res.CountToAddrs)
-	require.Equal(t, int64(4), res.CountTxns)
-	require.Equal(t, int64(3), res.CountWaiting)
-	require.Equal(t, int64(oneFil*3), res.MaxNanoFilSent)
-	require.Equal(t, int64(oneFil), res.MinNanoFilSent)
-	require.Equal(t, int64(oneFil*8), res.TotalNanoFilSent)
-	res, err = c.Summary(ctx, &pb.SummaryRequest{After: txFirst.CreatedAt, Before: txLast.CreatedAt})
-	require.NoError(t, err)
-	require.Equal(t, float64(oneFil*2), res.AvgNanoFilSent)
-	require.Equal(t, int64(0), res.CountActive)
-	require.Equal(t, int64(0), res.CountFailed)
-	require.Equal(t, int64(1), res.CountFromAddrs)
-	require.Equal(t, int64(2), res.CountPending)
-	require.Equal(t, int64(1), res.CountToAddrs)
-	require.Equal(t, int64(2), res.CountTxns)
-	require.Equal(t, int64(2), res.CountWaiting)
-	require.Equal(t, int64(oneFil*2), res.MaxNanoFilSent)
-	require.Equal(t, int64(oneFil*2), res.MinNanoFilSent)
-	require.Equal(t, int64(oneFil*4), res.TotalNanoFilSent)
+	require.Equal(t, int64(5), res.CountTxns)
 }
 
-type setupConfig struct {
-	dbName             string
-	messageWaitTimeout time.Duration
-	messageConfidence  uint64
-	retryWaitFrequency time.Duration
-	speed              int
-}
-
-type setupOption = func(*setupConfig)
-
-func setupWithSpeed(speed int) setupOption {
-	return func(config *setupConfig) {
-		config.speed = speed
-	}
-}
-
-func setupWithDbName(dbName string) setupOption {
-	return func(config *setupConfig) {
-		config.dbName = dbName
-	}
-}
-
-func setupWithMessageWaitTimeout(messageWaitTimeout time.Duration) setupOption {
-	return func(config *setupConfig) {
-		config.messageWaitTimeout = messageWaitTimeout
-	}
-}
-
-func setupWithMessageConfidence(messageConfidence uint64) setupOption {
-	return func(config *setupConfig) {
-		config.messageConfidence = messageConfidence
-	}
-}
-
-func setupWithRetryWaitFrequency(retryWaitFrequency time.Duration) setupOption {
-	return func(config *setupConfig) {
-		config.retryWaitFrequency = retryWaitFrequency
-	}
-}
-
-func requireSetupLotus(t *testing.T, ctx context.Context, opts ...setupOption) (lotus.ClientBuilder, *apistruct.FullNodeStruct, address.Address, func()) {
-	config := &setupConfig{
-		speed: 300,
-	}
-	for _, opt := range opts {
-		opt(config)
-	}
-	clientBuilder, addr, _ := tests.CreateLocalDevnet(t, 1, config.speed)
-	time.Sleep(time.Millisecond * 500) // Allow the network to some tipsets
-
-	lotusClient, closeLotusClient, err := clientBuilder(ctx)
-	require.NoError(t, err)
-
-	cleanup := func() {
-		closeLotusClient()
-	}
-	return clientBuilder, lotusClient, addr, cleanup
-}
-
-func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuilder, opts ...setupOption) (pb.SendFilServiceClient, func()) {
-	config := &setupConfig{
-		dbName:             util.MakeToken(12),
-		messageWaitTimeout: time.Minute,
-		messageConfidence:  2,
-		retryWaitFrequency: time.Minute,
-	}
-	for _, opt := range opts {
-		opt(config)
-	}
+func requireSetup(
+	t *testing.T,
+	ctx context.Context,
+	fcClient interfaces.FilecoinClient,
+	txnStore interfaces.TxnStore,
+) (pb.SendFilServiceClient, func()) {
 	listener := bufconn.Listen(bufSize)
 
+	clientBuilder := func(ctx context.Context) (interfaces.FilecoinClient, func(), error) {
+		return fcClient, func() {}, nil
+	}
+
 	conf := Config{
-		Listener:           listener,
-		ClientBuilder:      cb,
-		MongoUri:           test.GetMongoUri(),
-		MongoDbName:        config.dbName,
-		MessageWaitTimeout: config.messageWaitTimeout,
-		MessageConfidence:  config.messageConfidence,
-		RetryWaitFrequency: config.retryWaitFrequency,
-		Debug:              true,
+		Listener:            listener,
+		ClientBuilder:       clientBuilder,
+		TxnStore:            txnStore,
+		MessageWaitTimeout:  time.Minute,
+		MessageConfidence:   2,
+		RetryWaitFrequency:  time.Minute,
+		Debug:               true,
+		AllowEmptyFromAddrs: true,
 	}
 	s, err := New(conf)
 	require.NoError(t, err)
@@ -632,26 +606,15 @@ func requireSetupService(t *testing.T, ctx context.Context, cb lotus.ClientBuild
 	return client, cleanup
 }
 
-func requireSetup(t *testing.T, ctx context.Context, opts ...setupOption) (pb.SendFilServiceClient, *apistruct.FullNodeStruct, address.Address, func()) {
-	cb, lotusClient, addr, cleanupLouts := requireSetupLotus(t, ctx, opts...)
-	serviceClient, cleanupService := requireSetupService(t, ctx, cb, opts...)
-
-	cleanup := func() {
-		cleanupLouts()
-		cleanupService()
-	}
-
-	return serviceClient, lotusClient, addr, cleanup
-}
-
-func requireLotusAddress(t *testing.T, ctx context.Context, lotusClient *apistruct.FullNodeStruct) address.Address {
-	addr, err := lotusClient.WalletNew(ctx, types.KTBLS)
-	require.NoError(t, err)
-	require.Greater(t, len(addr.String()), 0)
-	return addr
-}
-
-func requireSendFil(t *testing.T, ctx context.Context, c pb.SendFilServiceClient, from, to string, amt int64, wait bool) *pb.Txn {
+func requireSendFil(
+	t *testing.T,
+	ctx context.Context,
+	c pb.SendFilServiceClient,
+	from,
+	to string,
+	amt int64,
+	wait bool,
+) *pb.Txn {
 	res, err := c.SendFil(ctx, &pb.SendFilRequest{From: from, To: to, AmountNanoFil: amt, Wait: wait})
 	require.NoError(t, err)
 	require.Equal(t, from, res.Txn.From)
@@ -659,23 +622,6 @@ func requireSendFil(t *testing.T, ctx context.Context, c pb.SendFilServiceClient
 	require.Equal(t, amt, res.Txn.AmountNanoFil)
 	require.NotEmpty(t, res.Txn.MessageCid)
 	return res.Txn
-}
-
-func requireTxnsOrder(t *testing.T, txns []*pb.Txn, ascending bool) {
-	var last *time.Time
-	for _, txn := range txns {
-		if last != nil {
-			a := *last
-			b := txn.CreatedAt.AsTime()
-			if ascending {
-				a = txn.CreatedAt.AsTime()
-				b = *last
-			}
-			require.True(t, a.After(b))
-		}
-		t := txn.CreatedAt.AsTime()
-		last = &t
-	}
 }
 
 func randomCid() cid.Cid {

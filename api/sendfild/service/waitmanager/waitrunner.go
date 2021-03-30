@@ -7,10 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/ipfs/go-cid"
-	"github.com/textileio/powergate/v2/lotus"
-	"github.com/textileio/textile/v2/api/sendfild/service/store"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 )
 
 type WaitResult struct {
@@ -22,8 +20,8 @@ type WaitRunner struct {
 	messageCid       string
 	confidence       uint64
 	waitTimeout      time.Duration
-	store            *store.Store
-	lotusClient      *apistruct.FullNodeStruct
+	txnStore         interfaces.TxnStore
+	filecoinClient   interfaces.FilecoinClient
 	closeLotusClient func()
 	listeners        []chan WaitResult
 	lock             sync.Mutex
@@ -34,20 +32,20 @@ type WaitRunner struct {
 	done             bool
 }
 
-func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, store *store.Store, cb lotus.ClientBuilder) (*WaitRunner, error) {
+func NewWaitRunner(ctx context.Context, messageCid string, confidence uint64, waitTimeout time.Duration, txnStore interfaces.TxnStore, cb interfaces.FilecoinClientBuilder) (*WaitRunner, error) {
 	mainCtx, mainCtxCancel := context.WithCancel(ctx)
 
 	w := &WaitRunner{
 		messageCid:    messageCid,
 		confidence:    confidence,
 		waitTimeout:   waitTimeout,
-		store:         store,
+		txnStore:      txnStore,
 		mainCtx:       mainCtx,
 		mainCtxCancel: mainCtxCancel,
 	}
 
 	var err error
-	w.lotusClient, w.closeLotusClient, err = cb(mainCtx)
+	w.filecoinClient, w.closeLotusClient, err = cb(mainCtx)
 	if err != nil {
 		return nil, fmt.Errorf("creating lotus client: %v", err)
 	}
@@ -98,7 +96,7 @@ func (w *WaitRunner) waitAndNotify() {
 	go func() {
 		c, err := cid.Decode(w.messageCid)
 		if err != nil {
-			if err := w.store.FailTxn(w.mainCtx, w.messageCid, err.Error()); err != nil {
+			if err := w.txnStore.Fail(w.mainCtx, w.messageCid, err.Error()); err != nil {
 				w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 				return
 			}
@@ -106,14 +104,14 @@ func (w *WaitRunner) waitAndNotify() {
 			return
 		}
 
-		if err := w.store.SetWaiting(w.mainCtx, w.messageCid, true); err != nil {
+		if err := w.txnStore.SetWaiting(w.mainCtx, w.messageCid, true); err != nil {
 			w.notifyErr(fmt.Errorf("setting txn to waiting: %v", err))
 			return
 		}
 
-		res, err := w.lotusClient.StateWaitMsg(w.waitCtx, c, w.confidence)
+		res, err := w.filecoinClient.StateWaitMsg(w.waitCtx, c, w.confidence)
 
-		if setWaitingErr := w.store.SetWaiting(w.mainCtx, w.messageCid, false); setWaitingErr != nil {
+		if setWaitingErr := w.txnStore.SetWaiting(w.mainCtx, w.messageCid, false); setWaitingErr != nil {
 			w.notifyErr(fmt.Errorf("setting txn to not waiting: %v", setWaitingErr))
 			return
 		}
@@ -123,7 +121,7 @@ func (w *WaitRunner) waitAndNotify() {
 			// If for some reason the lotus node doesn't know about the cid, consider that a final error.
 			if strings.Contains(err.Error(), "block not found") {
 				log.Errorf("calling StateWaitMsg block not found: %s", err.Error())
-				if err := w.store.FailTxn(w.mainCtx, w.messageCid, "block not found in lotus"); err != nil {
+				if err := w.txnStore.Fail(w.mainCtx, w.messageCid, "block not found in lotus"); err != nil {
 					w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 					return
 				}
@@ -145,7 +143,7 @@ func (w *WaitRunner) waitAndNotify() {
 			} else {
 				log.Infof("received exit code error: %s", res.Receipt.ExitCode.String())
 			}
-			if err := w.store.FailTxn(w.mainCtx, w.messageCid, fmt.Sprintf("error exit code: %v", res.Receipt.ExitCode.Error())); err != nil {
+			if err := w.txnStore.Fail(w.mainCtx, w.messageCid, fmt.Sprintf("error exit code: %v", res.Receipt.ExitCode.Error())); err != nil {
 				w.notifyErr(fmt.Errorf("failing txn in store: %v", err))
 				return
 			}
@@ -159,7 +157,7 @@ func (w *WaitRunner) waitAndNotify() {
 			return
 		}
 
-		if err := w.store.ActivateTxn(w.mainCtx, w.messageCid, res.Message.String()); err != nil {
+		if err := w.txnStore.Activate(w.mainCtx, w.messageCid, res.Message.String()); err != nil {
 			w.notifyErr(fmt.Errorf("activating txn in store: %v", err))
 			return
 		}
@@ -171,6 +169,7 @@ func (w *WaitRunner) notifyErr(err error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done = true
+	log.Infof("notifying error: %s", err.Error())
 	for _, l := range w.listeners {
 		l <- WaitResult{Err: err}
 		close(l)
@@ -181,6 +180,7 @@ func (w *WaitRunner) notify(messageCid string) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done = true
+	log.Infof("notifying complete for cid: %s", messageCid)
 	for _, l := range w.listeners {
 		l <- WaitResult{LatestMessageCid: messageCid}
 		close(l)

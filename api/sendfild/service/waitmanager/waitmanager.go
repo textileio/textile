@@ -8,26 +8,24 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/textileio/go-threads/util"
-	"github.com/textileio/powergate/v2/lotus"
-	"github.com/textileio/textile/v2/api/sendfild/service/store"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/textileio/textile/v2/api/sendfild/service/interfaces"
 )
 
 var log = logging.Logger("waitmanager")
 
 type WaitManager struct {
-	clientBuilder lotus.ClientBuilder
-	store         *store.Store
-	confidence    uint64
-	waitTimeout   time.Duration
-	waiting       map[primitive.ObjectID]*WaitRunner
-	waitingLck    sync.Mutex
-	ticker        *time.Ticker
-	mainCtx       context.Context
-	mainCtxCancel context.CancelFunc
+	filecoinClientBuilder interfaces.FilecoinClientBuilder
+	txnStore              interfaces.TxnStore
+	confidence            uint64
+	waitTimeout           time.Duration
+	waiting               map[string]*WaitRunner
+	waitingLck            sync.Mutex
+	ticker                *time.Ticker
+	mainCtx               context.Context
+	mainCtxCancel         context.CancelFunc
 }
 
-func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTimeout time.Duration, retryWaitFrequency time.Duration, debug bool) (*WaitManager, error) {
+func New(cb interfaces.FilecoinClientBuilder, txnStore interfaces.TxnStore, confidence uint64, waitTimeout time.Duration, retryWaitFrequency time.Duration, debug bool) (*WaitManager, error) {
 	if debug {
 		if err := util.SetLogLevels(map[string]logging.LogLevel{
 			"waitmanager": logging.LevelDebug,
@@ -39,14 +37,14 @@ func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTime
 	ctx, cancel := context.WithCancel(context.Background())
 
 	w := &WaitManager{
-		clientBuilder: cb,
-		store:         store,
-		confidence:    confidence,
-		waitTimeout:   waitTimeout,
-		waiting:       make(map[primitive.ObjectID]*WaitRunner),
-		ticker:        time.NewTicker(retryWaitFrequency),
-		mainCtx:       ctx,
-		mainCtxCancel: cancel,
+		filecoinClientBuilder: cb,
+		txnStore:              txnStore,
+		confidence:            confidence,
+		waitTimeout:           waitTimeout,
+		waiting:               make(map[string]*WaitRunner),
+		ticker:                time.NewTicker(retryWaitFrequency),
+		mainCtx:               ctx,
+		mainCtxCancel:         cancel,
 	}
 
 	if err := w.waitAllPending(ctx, true); err != nil {
@@ -59,16 +57,16 @@ func New(cb lotus.ClientBuilder, store *store.Store, confidence uint64, waitTime
 	return w, nil
 }
 
-func (w *WaitManager) RegisterTxn(objID primitive.ObjectID, messageCid string) error {
-	_, err := w.getOrCreateRunner(objID, messageCid)
+func (w *WaitManager) RegisterTxn(txnID string, messageCid string) error {
+	_, err := w.getOrCreateRunner(txnID, messageCid)
 	if err != nil {
 		return fmt.Errorf("getting wait runner: %v", err)
 	}
 	return nil
 }
 
-func (w *WaitManager) Subscribe(objID primitive.ObjectID, messageCid string, listener chan WaitResult) (CancelListenerFunc, error) {
-	runner, err := w.getOrCreateRunner(objID, messageCid)
+func (w *WaitManager) Subscribe(txnID string, messageCid string, listener chan WaitResult) (CancelListenerFunc, error) {
+	runner, err := w.getOrCreateRunner(txnID, messageCid)
 	if err != nil {
 		return nil, fmt.Errorf("getting wait runner: %v", err)
 	}
@@ -81,18 +79,19 @@ func (w *WaitManager) Close() error {
 	return nil
 }
 
-func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid string) (*WaitRunner, error) {
+func (w *WaitManager) getOrCreateRunner(txnID string, messageCid string) (*WaitRunner, error) {
 	w.waitingLck.Lock()
 	defer w.waitingLck.Unlock()
 
-	runner, found := w.waiting[objID]
+	runner, found := w.waiting[txnID]
 	if !found {
+		log.Infof("creating new wait runner %s for cid %s", txnID, messageCid)
 		var err error
-		runner, err = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.store, w.clientBuilder)
+		runner, err = NewWaitRunner(w.mainCtx, messageCid, w.confidence, w.waitTimeout, w.txnStore, w.filecoinClientBuilder)
 		if err != nil {
 			return nil, err
 		}
-		w.waiting[objID] = runner
+		w.waiting[txnID] = runner
 		listener := make(chan WaitResult)
 		if _, err := runner.AddListener(listener); err != nil {
 			return nil, err
@@ -101,9 +100,9 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 			var err error
 			select {
 			case <-listener:
-				err = w.deleteWaitRunner(objID)
+				err = w.deleteWaitRunner(txnID)
 			case <-w.mainCtx.Done():
-				err = w.deleteWaitRunner(objID)
+				err = w.deleteWaitRunner(txnID)
 			}
 			if err != nil {
 				log.Errorf("deleting wait runner: %v", err)
@@ -114,17 +113,13 @@ func (w *WaitManager) getOrCreateRunner(objID primitive.ObjectID, messageCid str
 }
 
 func (w *WaitManager) waitAllPending(ctx context.Context, isInitialRun bool) error {
-	txns, err := w.store.GetAllPending(ctx, !isInitialRun)
+	txns, err := w.txnStore.GetAllPending(ctx, !isInitialRun)
 	if err != nil {
 		return err
 	}
 	log.Infof("found %v txns to initiate waiting on", len(txns))
 	for _, txn := range txns {
-		latestMessageCid, err := txn.LatestMsgCid()
-		if err != nil {
-			return err
-		}
-		if err := w.RegisterTxn(txn.ID, latestMessageCid.Cid); err != nil {
+		if err := w.RegisterTxn(txn.Id, txn.MessageCid); err != nil {
 			return err
 		}
 	}
@@ -147,14 +142,15 @@ func (w *WaitManager) bindTicker(ctx context.Context) {
 	}()
 }
 
-func (w *WaitManager) deleteWaitRunner(objID primitive.ObjectID) error {
+func (w *WaitManager) deleteWaitRunner(txnID string) error {
 	w.waitingLck.Lock()
 	defer w.waitingLck.Unlock()
-	runner, ok := w.waiting[objID]
+	log.Infof("deleting wait runner: %s", txnID)
+	runner, ok := w.waiting[txnID]
 	if !ok {
 		return nil
 	}
 	err := runner.Close()
-	delete(w.waiting, objID)
+	delete(w.waiting, txnID)
 	return err
 }

@@ -3,16 +3,14 @@ package service
 import (
 	"context"
 	"net"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/textileio/go-ds-mongo/test"
 	analyticspb "github.com/textileio/textile/v2/api/analyticsd/pb"
 	pb "github.com/textileio/textile/v2/api/filrewardsd/pb"
-	"github.com/textileio/textile/v2/util"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/textileio/textile/v2/api/filrewardsd/service/interfaces"
+	sendfilpb "github.com/textileio/textile/v2/api/sendfild/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -22,16 +20,6 @@ const bufSize = 1024 * 1024
 var (
 	ctx, _ = context.WithTimeout(context.Background(), 1*time.Minute)
 )
-
-func TestMain(m *testing.M) {
-	cleanup := func() {}
-	if os.Getenv("SKIP_SERVICES") != "true" {
-		cleanup = test.StartMongoDB()
-	}
-	exitVal := m.Run()
-	cleanup()
-	os.Exit(exitVal)
-}
 
 func TestProcessEvent(t *testing.T) {
 	t.Parallel()
@@ -93,9 +81,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf1 := Config{
-		Listener:    listener1,
-		MongoUri:    test.GetMongoUri(),
-		MongoDbName: "mydb",
+		Listener: listener1,
 	}
 	s1, err := New(conf1)
 	require.NoError(t, err)
@@ -120,9 +106,7 @@ func TestDuplicateFromInitializedCache(t *testing.T) {
 	}
 
 	conf2 := Config{
-		Listener:    listener2,
-		MongoUri:    test.GetMongoUri(),
-		MongoDbName: "mydb",
+		Listener: listener2,
 	}
 	s2, err := New(conf2)
 	require.NoError(t, err)
@@ -303,38 +287,30 @@ func TestListRewardsPaging(t *testing.T) {
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_BUCKET_ARCHIVE_CREATED)
 	requireProcessedEvent(t, ctx, c, "org3", "user3", analyticspb.Event_EVENT_BILLING_SETUP)
 	requireProcessedEvent(t, ctx, c, "org3", "user3", analyticspb.Event_EVENT_BUCKET_CREATED)
-	numPages := 0
-	more := true
-	var moreToken int64 = 0
-	for more {
-		req := &pb.ListRewardsRequest{Limit: 3}
-		if moreToken != 0 {
-			req.MoreToken = moreToken
-		}
+	page := int64(0)
+	for {
+		req := &pb.ListRewardsRequest{Page: page, PageSize: 3}
 		res, err := c.ListRewards(ctx, req)
 		require.NoError(t, err)
-		numPages++
-		if numPages < 3 {
-			require.True(t, res.More)
-			require.Greater(t, res.MoreToken, int64(0))
+		if len(res.Rewards) == 0 {
+			break
+		}
+		if page < 2 {
 			require.Len(t, res.Rewards, 3)
 		}
-		if numPages == 3 {
-			require.False(t, res.More)
-			require.Equal(t, int64(0), res.MoreToken)
+		if page == 2 {
 			require.Len(t, res.Rewards, 2)
 		}
-		moreToken = res.MoreToken
-		more = res.More
+		page++
 	}
-	require.Equal(t, 3, numPages)
+	require.Equal(t, int64(3), page)
 }
 
 func TestClaimNoRewarded(t *testing.T) {
 	t.Parallel()
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
-	_, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: "org1", ClaimedBy: "me", Amount: 1})
+	_, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: "org1", ClaimedBy: "me", AmountNanoFil: 1})
 	require.Error(t, err)
 }
 
@@ -353,8 +329,8 @@ func TestClaimAllAvailable(t *testing.T) {
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
 	bal, err := c.Balance(ctx, &pb.BalanceRequest{OrgKey: "org1"})
 	require.NoError(t, err)
-	require.Greater(t, bal.Available, int64(0))
-	requireClaim(t, ctx, c, "org1", "me", bal.Available)
+	require.Greater(t, bal.AvailableNanoFil, int64(0))
+	requireClaim(t, ctx, c, "org1", "me", bal.AvailableNanoFil)
 }
 
 func TestClaimTooMuch(t *testing.T) {
@@ -362,26 +338,7 @@ func TestClaimTooMuch(t *testing.T) {
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	_, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: "org1", ClaimedBy: "me", Amount: 100})
-	require.Error(t, err)
-}
-
-func TestFinalizeClaim(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	claim := requireClaim(t, ctx, c, "org1", "me", 1)
-	requireFinalizeClaim(t, ctx, c, claim.Id, "org1", "acid", "")
-}
-
-func TestFinalizeNonExistentClaim(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	requireClaim(t, ctx, c, "org1", "me", 1)
-	_, err := c.FinalizeClaim(ctx, &pb.FinalizeClaimRequest{Id: primitive.NewObjectID().Hex(), OrgKey: "org1", TxnCid: "acid"})
+	_, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: "org1", ClaimedBy: "me", AmountNanoFil: 100})
 	require.Error(t, err)
 }
 
@@ -446,87 +403,12 @@ func TestListClaimsStateFilterEmpty(t *testing.T) {
 	defer cleanup()
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
 	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
-	c1 := requireClaim(t, ctx, c, "org1", "user1", 1)
-	c2 := requireClaim(t, ctx, c, "org1", "user2", 1)
+	_ = requireClaim(t, ctx, c, "org1", "user1", 1)
+	_ = requireClaim(t, ctx, c, "org1", "user2", 1)
 	requireClaim(t, ctx, c, "org1", "user3", 1)
-	requireFinalizeClaim(t, ctx, c, c1.Id, "org1", "acid", "")
-	requireFinalizeClaim(t, ctx, c, c2.Id, "org1", "", "it failed")
 	res, err := c.ListClaims(ctx, &pb.ListClaimsRequest{})
 	require.NoError(t, err)
 	require.Len(t, res.Claims, 3)
-}
-
-func TestListClaimsStateFilterUnspecified(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
-	c1 := requireClaim(t, ctx, c, "org1", "user1", 1)
-	c2 := requireClaim(t, ctx, c, "org1", "user2", 1)
-	requireClaim(t, ctx, c, "org1", "user3", 1)
-	requireFinalizeClaim(t, ctx, c, c1.Id, "org1", "acid", "")
-	requireFinalizeClaim(t, ctx, c, c2.Id, "org1", "", "it failed")
-	res, err := c.ListClaims(ctx, &pb.ListClaimsRequest{StateFilter: pb.ClaimState_CLAIM_STATE_UNSPECIFIED})
-	require.NoError(t, err)
-	require.Len(t, res.Claims, 3)
-}
-
-func TestListClaimsStateFilterPending(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
-	c1 := requireClaim(t, ctx, c, "org1", "user1", 1)
-	c2 := requireClaim(t, ctx, c, "org1", "user2", 1)
-	requireClaim(t, ctx, c, "org1", "user3", 1)
-	requireFinalizeClaim(t, ctx, c, c1.Id, "org1", "acid", "")
-	requireFinalizeClaim(t, ctx, c, c2.Id, "org1", "", "it failed")
-	res, err := c.ListClaims(ctx, &pb.ListClaimsRequest{StateFilter: pb.ClaimState_CLAIM_STATE_PENDING})
-	require.NoError(t, err)
-	require.Len(t, res.Claims, 1)
-	require.Equal(t, "org1", res.Claims[0].OrgKey)
-	require.Equal(t, "user3", res.Claims[0].ClaimedBy)
-	require.Equal(t, int64(1), res.Claims[0].Amount)
-}
-
-func TestListClaimsStateFilterComplete(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
-	c1 := requireClaim(t, ctx, c, "org1", "user1", 1)
-	c2 := requireClaim(t, ctx, c, "org1", "user2", 1)
-	requireClaim(t, ctx, c, "org1", "user3", 1)
-	requireFinalizeClaim(t, ctx, c, c1.Id, "org1", "acid", "")
-	requireFinalizeClaim(t, ctx, c, c2.Id, "org1", "", "it failed")
-	res, err := c.ListClaims(ctx, &pb.ListClaimsRequest{StateFilter: pb.ClaimState_CLAIM_STATE_COMPLETE})
-	require.NoError(t, err)
-	require.Len(t, res.Claims, 1)
-	require.Equal(t, "org1", res.Claims[0].OrgKey)
-	require.Equal(t, "user1", res.Claims[0].ClaimedBy)
-	require.Equal(t, int64(1), res.Claims[0].Amount)
-}
-
-func TestListClaimsStateFilterFailed(t *testing.T) {
-	t.Parallel()
-	c, cleanup := requireSetup(t, ctx)
-	defer cleanup()
-	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_ORG_CREATED)
-	requireProcessedEvent(t, ctx, c, "org2", "user2", analyticspb.Event_EVENT_ORG_CREATED)
-	c1 := requireClaim(t, ctx, c, "org1", "user1", 1)
-	c2 := requireClaim(t, ctx, c, "org1", "user2", 1)
-	requireClaim(t, ctx, c, "org1", "user3", 1)
-	requireFinalizeClaim(t, ctx, c, c1.Id, "org1", "acid", "")
-	requireFinalizeClaim(t, ctx, c, c2.Id, "org1", "", "it failed")
-	res, err := c.ListClaims(ctx, &pb.ListClaimsRequest{StateFilter: pb.ClaimState_CLAIM_STATE_FAILED})
-	require.NoError(t, err)
-	require.Len(t, res.Claims, 1)
-	require.Equal(t, "org1", res.Claims[0].OrgKey)
-	require.Equal(t, "user2", res.Claims[0].ClaimedBy)
-	require.Equal(t, int64(1), res.Claims[0].Amount)
 }
 
 func TestListClaimsDescending(t *testing.T) {
@@ -572,31 +454,23 @@ func TestListClaimsPaging(t *testing.T) {
 	requireClaim(t, ctx, c, "org2", "user2", 1)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
 	requireClaim(t, ctx, c, "org2", "user2", 1)
-	numPages := 0
-	more := true
-	var moreToken int64 = 0
-	for more {
-		req := &pb.ListClaimsRequest{Limit: 3}
-		if moreToken != 0 {
-			req.MoreToken = moreToken
-		}
+	page := int64(0)
+	for {
+		req := &pb.ListClaimsRequest{Page: page, PageSize: 3}
 		res, err := c.ListClaims(ctx, req)
 		require.NoError(t, err)
-		numPages++
-		if numPages < 3 {
-			require.True(t, res.More)
-			require.Greater(t, res.MoreToken, int64(0))
+		if len(res.Claims) == 0 {
+			break
+		}
+		if page < 2 {
 			require.Len(t, res.Claims, 3)
 		}
-		if numPages == 3 {
-			require.False(t, res.More)
-			require.Equal(t, int64(0), res.MoreToken)
+		if page == 2 {
 			require.Len(t, res.Claims, 2)
 		}
-		moreToken = res.MoreToken
-		more = res.More
+		page++
 	}
-	require.Equal(t, 3, numPages)
+	require.Equal(t, int64(3), page)
 }
 
 func TestEmtptyBalance(t *testing.T) {
@@ -628,18 +502,31 @@ func TestClaimedBalance(t *testing.T) {
 	c, cleanup := requireSetup(t, ctx)
 	defer cleanup()
 	requireProcessedEvent(t, ctx, c, "org1", "user1", analyticspb.Event_EVENT_BILLING_SETUP)
-	claim := requireClaim(t, ctx, c, "org1", "me", 1)
-	requireFinalizeClaim(t, ctx, c, claim.Id, "org1", "acid", "")
+	_ = requireClaim(t, ctx, c, "org1", "me", 1)
 	requireBalance(t, ctx, c, "org1", 2, 0, 1, 1)
 }
 
 func requireSetup(t *testing.T, ctx context.Context) (pb.FilRewardsServiceClient, func()) {
 	listener := bufconn.Listen(bufSize)
 
+	// ToDo: Configure and pass in the mocks for each test.
+	rewardStore := &interfaces.MockRewardStore{}
+	claimStore := &interfaces.MockClaimStore{}
+	accountStore := &interfaces.MockAccountStore{}
+	analytics := &interfaces.MockAnalytics{}
+	sendfil := &interfaces.MockSendFil{}
+	powergate := &interfaces.MockPowergate{}
+
 	conf := Config{
 		Listener:          listener,
-		MongoUri:          test.GetMongoUri(),
-		MongoDbName:       util.MakeToken(12),
+		RewardStore:       rewardStore,
+		ClaimStore:        claimStore,
+		AccountStore:      accountStore,
+		Analytics:         analytics,
+		Sendfil:           sendfil,
+		Powergate:         powergate,
+		FundingAddr:       "an address", // ToDo: Create a real address.
+		Debug:             true,
 		BaseNanoFILReward: 2,
 	}
 	s, err := New(conf)
@@ -719,27 +606,22 @@ func requireNoProcessedEvent(t *testing.T, ctx context.Context, c pb.FilRewardsS
 }
 
 func requireClaim(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey, claimedBy string, amount int64) *pb.Claim {
-	res, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: orgKey, ClaimedBy: claimedBy, Amount: amount})
+	res, err := c.Claim(ctx, &pb.ClaimRequest{OrgKey: orgKey, ClaimedBy: claimedBy, AmountNanoFil: amount})
 	require.NoError(t, err)
 	require.Equal(t, orgKey, res.Claim.OrgKey)
-	require.Equal(t, amount, res.Claim.Amount)
+	require.Equal(t, amount, res.Claim.AmountNanoFil)
 	require.Equal(t, claimedBy, res.Claim.ClaimedBy)
-	require.Equal(t, pb.ClaimState_CLAIM_STATE_PENDING, res.Claim.State)
+	require.Equal(t, sendfilpb.MessageState_MESSAGE_STATE_PENDING, res.Claim.State)
 	require.Greater(t, len(res.Claim.Id), 0)
 	return res.Claim
 }
 
-func requireFinalizeClaim(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, id, orgKey, txnCid, failureMsg string) {
-	_, err := c.FinalizeClaim(ctx, &pb.FinalizeClaimRequest{Id: id, OrgKey: orgKey, TxnCid: txnCid, FailureMessage: failureMsg})
-	require.NoError(t, err)
-}
-
-func requireBalance(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey string, rewarded, pending, claimed, available int64) *pb.BalanceResponse {
+func requireBalance(t *testing.T, ctx context.Context, c pb.FilRewardsServiceClient, orgKey string, rewarded, pending, complete, available int64) *pb.BalanceResponse {
 	res, err := c.Balance(ctx, &pb.BalanceRequest{OrgKey: orgKey})
 	require.NoError(t, err)
-	require.Equal(t, rewarded, res.Rewarded)
-	require.Equal(t, pending, res.Pending)
-	require.Equal(t, claimed, res.Claimed)
-	require.Equal(t, available, res.Available)
+	require.Equal(t, rewarded, res.RewardedNanoFil)
+	require.Equal(t, pending, res.ClaimedPendingNanoFil)
+	require.Equal(t, complete, res.ClaimedCompleteNanoFil)
+	require.Equal(t, available, res.AvailableNanoFil)
 	return res
 }

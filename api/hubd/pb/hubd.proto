@@ -183,45 +183,41 @@ message ListFilRewardsRequest {
     bool unlocked_by_dev = 1;
     api.filrewardsd.pb.RewardType reward_type_filter = 2;
     bool ascending = 3;
-    int64 more_token = 4;
-    int64 limit = 5;
+    int64 page_size = 4;
+    int64 page = 5;
 }
 
 message ListFilRewardsResponse {
     repeated api.filrewardsd.pb.Reward rewards = 1;
-    bool more = 2;
-    int64 more_token = 3;
 }
 
 message ClaimFilRequest {
-    int64 amount = 1;
+    int64 amount_nano_fil = 1;
 }
 
 message ClaimFilResponse {
+    api.filrewardsd.pb.Claim claim = 1;
 }
 
 message ListFilClaimsRequest {
     bool claimed_by_dev = 1;
-    api.filrewardsd.pb.ClaimState state_filter = 2;
-    bool ascending = 3;
-    int64 more_token = 4;
-    int64 limit = 5;
+    bool ascending = 2;
+    int64 page_size = 3;
+    int64 page = 4;
 }
 
 message ListFilClaimsResponse {
     repeated api.filrewardsd.pb.Claim claims = 1;
-    bool more = 2;
-    int64 more_token = 3;
 }
 
 message FilRewardsBalanceRequest {
 }
 
 message FilRewardsBalanceResponse {
-    int64 rewarded = 1;
-    int64 pending = 2;
-    int64 claimed = 3;
-    int64 available = 4;
+    int64 rewarded_nano_fil = 1;
+    int64 claimed_pending_nano_fil = 2;
+    int64 claimed_complete_nano_fil = 3;
+    int64 available_nano_fil = 4;
 }
 
 service APIService {

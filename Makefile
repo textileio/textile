@@ -127,7 +127,7 @@ build-releases: build-hub-release build-hubd-release build-buck-release build-bu
 .PHONY: build-releases
 
 hub-up:
-	docker-compose -f cmd/hubd/docker-compose-dev.yml up --build
+	DOCKER_BUILDKIT=1 docker-compose -f cmd/hubd/docker-compose-dev.yml up --build
 
 hub-stop:
 	docker-compose -f cmd/hubd/docker-compose-dev.yml stop
@@ -136,7 +136,7 @@ hub-clean:
 	docker-compose -f cmd/hubd/docker-compose-dev.yml down -v --remove-orphans
 
 buck-up:
-	docker-compose -f cmd/buckd/docker-compose-dev.yml up --build
+	DOCKER_BUILDKIT=1 docker-compose -f cmd/buckd/docker-compose-dev.yml up --build
 
 buck-stop:
 	docker-compose -f cmd/buckd/docker-compose-dev.yml stop

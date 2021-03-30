@@ -10,28 +10,28 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type config struct {
+type Config struct {
 	active     bool
 	email      string
 	properties map[string]interface{}
 }
 
-type Option = func(*config)
+type Option = func(*Config)
 
 func WithActive() Option {
-	return func(c *config) {
+	return func(c *Config) {
 		c.active = true
 	}
 }
 
 func WithEmail(email string) Option {
-	return func(c *config) {
+	return func(c *Config) {
 		c.email = email
 	}
 }
 
 func WithProperties(properties map[string]interface{}) Option {
-	return func(c *config) {
+	return func(c *Config) {
 		c.properties = properties
 	}
 }
@@ -59,7 +59,7 @@ func (c *Client) Identify(ctx context.Context, key string, accountType pb.Accoun
 	if c == nil {
 		return nil
 	}
-	conf := &config{}
+	conf := &Config{}
 	for _, opt := range opts {
 		opt(conf)
 	}
@@ -86,7 +86,7 @@ func (c *Client) Track(ctx context.Context, key string, accountType pb.AccountTy
 	if c == nil {
 		return nil
 	}
-	conf := &config{}
+	conf := &Config{}
 	for _, opt := range opts {
 		opt(conf)
 	}

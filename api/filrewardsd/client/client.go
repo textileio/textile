@@ -67,67 +67,41 @@ func ListRewardsAscending() ListRewardsOption {
 	}
 }
 
-func ListRewardsMoreToken(moreToken int64) ListRewardsOption {
+func ListRewardsPage(page int64) ListRewardsOption {
 	return func(req *pb.ListRewardsRequest) {
-		req.MoreToken = moreToken
+		req.Page = page
 	}
 }
 
-func ListRewardsLimit(limit int64) ListRewardsOption {
+func ListRewardsPageSize(pageSize int64) ListRewardsOption {
 	return func(req *pb.ListRewardsRequest) {
-		req.Limit = limit
+		req.PageSize = pageSize
 	}
 }
 
-func (c *Client) ListRewards(ctx context.Context, opts ...ListRewardsOption) ([]*pb.Reward, bool, int64, error) {
+func (c *Client) ListRewards(ctx context.Context, opts ...ListRewardsOption) ([]*pb.Reward, error) {
 	req := &pb.ListRewardsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.fsc.ListRewards(ctx, req)
 	if err != nil {
-		return nil, false, 0, fmt.Errorf("calling list rewards rpc: %v", err)
+		return nil, fmt.Errorf("calling list rewards rpc: %v", err)
 	}
-	return res.Rewards, res.More, res.MoreToken, nil
+	return res.Rewards, nil
 }
 
-func (c *Client) Claim(ctx context.Context, orgKey, claimedBy string, amount int64) (*pb.Claim, error) {
+func (c *Client) Claim(ctx context.Context, orgKey, claimedBy string, amountNanoFil int64) (*pb.Claim, error) {
 	req := &pb.ClaimRequest{
-		OrgKey:    orgKey,
-		ClaimedBy: claimedBy,
-		Amount:    amount,
+		OrgKey:        orgKey,
+		ClaimedBy:     claimedBy,
+		AmountNanoFil: amountNanoFil,
 	}
 	res, err := c.fsc.Claim(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("calling claim rpc: %v", err)
 	}
 	return res.Claim, nil
-}
-
-type FinalizeClaimOption = func(*pb.FinalizeClaimRequest)
-
-func FinalizeClaimTxnCid(txnCid string) FinalizeClaimOption {
-	return func(req *pb.FinalizeClaimRequest) {
-		req.TxnCid = txnCid
-	}
-}
-
-func FinalizeClaimFailureMessage(failureMessage string) FinalizeClaimOption {
-	return func(req *pb.FinalizeClaimRequest) {
-		req.FailureMessage = failureMessage
-	}
-}
-
-func (c *Client) FinalizeClaim(ctx context.Context, id, orgKey string, opts ...FinalizeClaimOption) error {
-	req := &pb.FinalizeClaimRequest{Id: id, OrgKey: orgKey}
-	for _, opt := range opts {
-		opt(req)
-	}
-	_, err := c.fsc.FinalizeClaim(ctx, req)
-	if err != nil {
-		return fmt.Errorf("calling finalize claim rpc: %v", err)
-	}
-	return nil
 }
 
 type ListClaimsOption = func(*pb.ListClaimsRequest)
@@ -144,40 +118,34 @@ func ListClaimsClaimedByFilter(claimedBy string) ListClaimsOption {
 	}
 }
 
-func ListClaimsStateFilter(state pb.ClaimState) ListClaimsOption {
-	return func(req *pb.ListClaimsRequest) {
-		req.StateFilter = state
-	}
-}
-
 func ListClaimsAscending() ListClaimsOption {
 	return func(req *pb.ListClaimsRequest) {
 		req.Ascending = true
 	}
 }
 
-func ListClaimsMoreToken(moreToken int64) ListClaimsOption {
+func ListClaimsPage(page int64) ListClaimsOption {
 	return func(req *pb.ListClaimsRequest) {
-		req.MoreToken = moreToken
+		req.Page = page
 	}
 }
 
-func ListClaimsLimit(limit int64) ListClaimsOption {
+func ListClaimsPageSize(pageSize int64) ListClaimsOption {
 	return func(req *pb.ListClaimsRequest) {
-		req.Limit = limit
+		req.PageSize = pageSize
 	}
 }
 
-func (c *Client) ListClaims(ctx context.Context, opts ...ListClaimsOption) ([]*pb.Claim, bool, int64, error) {
+func (c *Client) ListClaims(ctx context.Context, opts ...ListClaimsOption) ([]*pb.Claim, error) {
 	req := &pb.ListClaimsRequest{}
 	for _, opt := range opts {
 		opt(req)
 	}
 	res, err := c.fsc.ListClaims(ctx, req)
 	if err != nil {
-		return nil, false, 0, fmt.Errorf("calling list claims rpc: %v", err)
+		return nil, fmt.Errorf("calling list claims rpc: %v", err)
 	}
-	return res.Claims, res.More, res.MoreToken, nil
+	return res.Claims, nil
 }
 
 func (c *Client) Balance(ctx context.Context, orgKey string) (*pb.BalanceResponse, error) {

@@ -4,6 +4,7 @@ option go_package = "github.com/textileio/textile/v2/api/filrewardsd/pb";
 
 import "google/protobuf/timestamp.proto";
 import "api/analyticsd/pb/analytics.proto";
+import "api/sendfild/pb/sendfil.proto";
 
 enum RewardType {
   REWARD_TYPE_UNSPECIFIED = 0;
@@ -26,19 +27,12 @@ message Reward {
   google.protobuf.Timestamp created_at = 6;
 }
 
-enum ClaimState {
-  CLAIM_STATE_UNSPECIFIED = 0;
-  CLAIM_STATE_PENDING = 1;
-  CLAIM_STATE_COMPLETE = 2;
-  CLAIM_STATE_FAILED = 3;
-}
-
 message Claim {
   string id = 1;
   string org_key = 2;
   string claimed_by = 3;
-  int64 amount = 4;
-  ClaimState state = 5;
+  int64 amount_nano_fil = 4;
+  api.sendfild.pb.MessageState state = 5;
   string txn_cid = 6;
   string failure_message = 7;
   google.protobuf.Timestamp created_at = 8;
@@ -60,49 +54,35 @@ message ListRewardsRequest {
   string dev_key_filter = 2;
   RewardType reward_type_filter = 3;
   bool ascending = 4;
-  int64 more_token = 5;
-  int64 limit = 6;
+  int64 page_size = 5;
+  int64 page = 6;
 }
 
 message ListRewardsResponse {
   repeated Reward rewards = 1;
-  bool more = 2;
-  int64 more_token = 3;
 }
 
 message ClaimRequest {
   string org_key = 1;
-  string claimed_by = 2;
-  int64 amount = 3;
+  string address = 2;
+  string claimed_by = 3;
+  int64 amount_nano_fil = 4;
 }
 
 message ClaimResponse {
   Claim claim = 1;
 }
 
-message FinalizeClaimRequest {
-  string id = 1;
-  string org_key = 2;
-  string txn_cid = 3;
-  string failure_message = 4;
-}
-
-message FinalizeClaimResponse {
-}
-
 message ListClaimsRequest {
   string org_key_filter = 1;
   string claimed_by_filter = 2;
-  ClaimState state_filter = 3;
-  bool ascending = 4;
-  int64 more_token = 5;
-  int64 limit = 6;
+  bool ascending = 3;
+  int64 page_size = 4;
+  int64 page = 5;
 }
 
 message ListClaimsResponse {
   repeated Claim claims = 1;
-  bool more = 2;
-  int64 more_token = 3;
 }
 
 message BalanceRequest {
@@ -110,17 +90,16 @@ message BalanceRequest {
 }
 
 message BalanceResponse {
-  int64 rewarded = 1;
-  int64 pending = 2;
-  int64 claimed = 3;
-  int64 available = 4;
+  int64 rewarded_nano_fil = 1;
+  int64 claimed_pending_nano_fil = 2;
+  int64 claimed_complete_nano_fil = 3;
+  int64 available_nano_fil = 4;
 }
 
 service FilRewardsService {
   rpc ProcessAnalyticsEvent(ProcessAnalyticsEventRequest) returns (ProcessAnalyticsEventResponse) {}
   rpc ListRewards(ListRewardsRequest) returns (ListRewardsResponse) {}
   rpc Claim(ClaimRequest) returns (ClaimResponse) {}
-  rpc FinalizeClaim(FinalizeClaimRequest) returns (FinalizeClaimResponse) {}
   rpc ListClaims(ListClaimsRequest) returns (ListClaimsResponse) {}
   rpc Balance(BalanceRequest) returns (BalanceResponse) {}
 }

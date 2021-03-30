@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/textileio/textile/v2/api/sendfild/pb"
@@ -17,12 +16,7 @@ type Client struct {
 }
 
 // New creates a new sendfil client.
-func New(target string, opts ...grpc.DialOption) (*Client, error) {
-	conn, err := grpc.Dial(target, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("creating gRPC client conn: %v", err)
-	}
-
+func New(conn *grpc.ClientConn) (*Client, error) {
 	c := pb.NewSendFilServiceClient(conn)
 
 	return &Client{
@@ -85,6 +79,13 @@ func (c *Client) GetTxn(ctx context.Context, messageCid string, opts ...GetTxnOp
 
 // ListTxnsOption controls the behavior of calling ListTxns.
 type ListTxnsOption = func(*pb.ListTxnsRequest)
+
+// ListTxnsMessageCids filters results to Txns for the specified message cids.
+func ListTxnsMessageCids(cids []string) ListTxnsOption {
+	return func(req *pb.ListTxnsRequest) {
+		req.MessageCidsFilter = cids
+	}
+}
 
 // ListTxnsFrom filters results to Txns from the specified address.
 func ListTxnsFrom(from string) ListTxnsOption {
