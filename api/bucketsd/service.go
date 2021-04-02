@@ -3202,7 +3202,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			case userPb.JobStatus_JOB_STATUS_EXECUTING, userPb.JobStatus_JOB_STATUS_QUEUED:
 				return nil, fmt.Errorf("there is an in progress archive")
 			// Case 1.c.
-			case userPb.JobStatus_JOB_STATUS_FAILED, userPb.JobStatus_JOB_STATUS_CANCELED:
+			case userPb.JobStatus_JOB_STATUS_FAILED, userPb.JobStatus_JOB_STATUS_CANCELED, userPb.JobStatus_JOB_STATUS_UNSPECIFIED:
 				res, err := s.PowergateClient.StorageConfig.Apply(
 					ctxPow,
 					p.Cid().String(),
