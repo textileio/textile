@@ -22,6 +22,8 @@ jobs:
             dockerFile: cmd/buckd/Dockerfile
           - imageRepo: textile/mindexd
             dockerFile: api/mindexd/Dockerfile
+    outputs:
+      sha_short: ${{ steps.git_sha.outputs.sha_short }}
     steps:
       - uses: actions/checkout@v2
       - name: Get git sha
@@ -46,3 +48,16 @@ jobs:
           push: true
           file: ${{ matrix.dockerFile }}
           tags: ${{ matrix.imageRepo }}:latest,${{ matrix.imageRepo }}:sha-${{ steps.git_sha.outputs.sha_short }}
+  deploy-hub-staging:
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    steps:
+      - name: Check outputs
+        run: echo ${{needs.docker-build-push.outputs.sha_short}}
+      - name: Invoke hub staging deployment hook
+        uses: distributhor/workflow-webhook@v1
+        env:
+          webhook_type: json-extended
+          webhook_url: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          webhook_secret: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+          data: '{ "shaToDeploy": "${{needs.docker-build-push.outputs.sha_short}}" }'
