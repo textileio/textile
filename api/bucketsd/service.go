@@ -3218,12 +3218,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			}
 		} else { // Case 2.
 			res, err := s.PowergateClient.Data.CidInfo(ctxPow, oldCid.String())
-			isKnownToPowergate := err == nil || status.Convert(err).Code() != codes.NotFound
-			if err != nil && isKnownToPowergate {
+			isNotKnownToPowergate := err != nil && status.Convert(err).Code() == codes.NotFound
+			if err != nil && !isNotKnownToPowergate {
 				return nil, fmt.Errorf("looking up old storage config: %v", err)
 			}
 
-			if isKnownToPowergate && cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
+			if !isNotKnownToPowergate && cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
 				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
@@ -3232,7 +3232,7 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				jid = res.JobId
 			} else {
 				// New storage config.
-				if isKnownToPowergate {
+				if !isNotKnownToPowergate {
 					// Remove previous storage config.
 					_, err = s.PowergateClient.StorageConfig.Apply(
 						ctxPow,
