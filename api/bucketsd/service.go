@@ -3218,11 +3218,12 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 			}
 		} else { // Case 2.
 			res, err := s.PowergateClient.Data.CidInfo(ctxPow, oldCid.String())
-			if err != nil {
+			isNotKnownToPowergate := err != nil && status.Convert(err).Code() == codes.NotFound
+			if err != nil && !isNotKnownToPowergate {
 				return nil, fmt.Errorf("looking up old storage config: %v", err)
 			}
 
-			if cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
+			if !isNotKnownToPowergate && cmp.Equal(&storageConfig, res.CidInfo.LatestPushedStorageConfig) {
 				// Old storage config is the same as the new so use replace.
 				res, err := s.PowergateClient.Data.ReplaceData(ctxPow, oldCid.String(), p.Cid().String())
 				if err != nil {
@@ -3230,20 +3231,24 @@ func (s *Service) Archive(ctx context.Context, req *pb.ArchiveRequest) (*pb.Arch
 				}
 				jid = res.JobId
 			} else {
-				// New storage config, so remove and push.
-				_, err = s.PowergateClient.StorageConfig.Apply(
-					ctxPow,
-					oldCid.String(),
-					pow.WithStorageConfig(&userPb.StorageConfig{}),
-					pow.WithOverride(true),
-				)
-				if err != nil {
-					return nil, fmt.Errorf("pushing config to disable hot and cold storage: %v", err)
+				// New storage config.
+				if !isNotKnownToPowergate {
+					// Remove previous storage config.
+					_, err = s.PowergateClient.StorageConfig.Apply(
+						ctxPow,
+						oldCid.String(),
+						pow.WithStorageConfig(&userPb.StorageConfig{}),
+						pow.WithOverride(true),
+					)
+					if err != nil {
+						return nil, fmt.Errorf("pushing config to disable hot and cold storage: %v", err)
+					}
+					_, err = s.PowergateClient.StorageConfig.Remove(ctxPow, oldCid.String())
+					if err != nil {
+						return nil, fmt.Errorf("removing old cid storage: %v", err)
+					}
 				}
-				_, err = s.PowergateClient.StorageConfig.Remove(ctxPow, oldCid.String())
-				if err != nil {
-					return nil, fmt.Errorf("removing old cid storage: %v", err)
-				}
+				// Push new storage config.
 				res, err := s.PowergateClient.StorageConfig.Apply(
 					ctxPow,
 					p.Cid().String(),

@@ -36,7 +36,7 @@ type DealInfo struct {
 	Miner       string `bson:"miner"`
 
 	PieceCID string `bson:"piece_cid"`
-	Size     uint64
+	Size     uint64 `bson:"size"`
 
 	PricePerEpoch uint64 `bson:"price_per_epoch"`
 	StartEpoch    uint64 `bson:"start_epoch"`

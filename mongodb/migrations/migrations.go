@@ -8,6 +8,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	migrate "github.com/xakep666/mongo-migrate"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -180,6 +181,55 @@ var m004 = migrate.Migration{
 	},
 }
 
+var m005 = migrate.Migration{
+	Version:     5,
+	Description: "rename any bucket archive job_status to status",
+	Up: func(db *mongo.Database) error {
+		log.Info("migrating 005 up")
+		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
+		defer cancel()
+		if _, err := db.Collection("bucketarchives").UpdateMany(ctx, bson.M{}, bson.M{
+			"$rename": bson.M{"archives.current.job_status": "archives.current.status"},
+		}); err != nil {
+			return err
+		}
+		if _, err := db.Collection("bucketarchives").Aggregate(ctx, mongo.Pipeline{
+			bson.D{primitive.E{Key: "$addFields", Value: bson.M{
+				"archives.history": bson.M{
+					"$map": bson.M{
+						"input": "$archives.history",
+						"as":    "archive",
+						"in": bson.M{
+							"$mergeObjects": bson.A{
+								bson.M{"status": "$$archive.job_status"},
+								bson.M{
+									"$arrayToObject": bson.M{
+										"$filter": bson.M{
+											"input": bson.M{"$objectToArray": "$$archive"},
+											"as":    "archive",
+											"cond":  bson.M{"$ne": bson.A{"$$archive.k", "job_status"}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}}},
+			bson.D{
+				primitive.E{Key: "$out", Value: "bucketarchives"},
+			},
+		}); err != nil {
+			return err
+		}
+		return nil
+	},
+	Down: func(db *mongo.Database) error {
+		log.Info("nothing to do for 005 down")
+		return nil
+	},
+}
+
 func Migrate(db *mongo.Database) error {
 	m := migrate.NewMigrate(
 		db,
@@ -187,6 +237,7 @@ func Migrate(db *mongo.Database) error {
 		m002,
 		m003,
 		m004,
+		m005,
 	)
 	return m.Up(migrate.AllAvailable)
 }
