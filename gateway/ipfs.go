@@ -119,6 +119,10 @@ func detectReaderContentType(r io.Reader, pth string) (string, io.Reader, error)
 		return "text/css", reader, nil
 	case ".js":
 		return "application/javascript", reader, nil
+	case ".json":
+		return "application/json", reader, nil
+	case ".svg":
+		return "image/svg+xml", reader, nil
 	case ".txt", ".md":
 		return "text/plain", reader, nil
 	default:
