@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"math/big"
 	gopath "path"
 	"regexp"
@@ -492,7 +493,7 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
 		log.Debugf("pinBlock: storage: %d used, %d available, %d delta",
-			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+			owner.StorageUsed, owner.StorageAvailable, totalAddedSize)
 	}
 	if ok && totalAddedSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
@@ -511,7 +512,10 @@ func (s *Service) addPinnedBytes(ctx context.Context, delta int64) context.Conte
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
 		owner.StorageUsed += delta
-		owner.StorageAvailable -= delta
+		// int64(math.MaxInt64) indicates that the user has no current cap so don't deduct
+		if owner.StorageAvailable < int64(math.MaxInt64) {
+			owner.StorageAvailable -= delta
+		}
 		owner.StorageDelta += delta
 		ctx = buckets.NewBucketOwnerContext(ctx, owner)
 	}
@@ -2401,7 +2405,7 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
 		log.Debugf("updateOrAddPin: storage: %d used, %d available, %d delta",
-			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+			owner.StorageUsed, owner.StorageAvailable, deltaSize)
 	}
 	if ok && deltaSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
