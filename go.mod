@@ -11,13 +11,13 @@ require (
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/customerio/go-customerio v2.0.0+incompatible
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/filecoin-project/go-fil-markets v1.1.9
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-contrib/static v0.0.0-20191128031702-f81c604d8ac2
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gogo/status v1.1.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.5
 	github.com/gosimple/slug v1.9.0
@@ -75,7 +75,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5-0.20201230201018-2b7fdca787a5
-	github.com/textileio/go-threads v1.1.0-rc1.0.20210811053303-29b91f6bfb77
+	github.com/textileio/go-threads v1.1.0-rc1.0.20210811181210-9058a25616dc
 	github.com/textileio/powergate/v2 v2.3.0
 	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1

@@ -1611,7 +1611,7 @@ func (s *Service) getBucketPath(
 }
 
 func cleanPath(pth string) string {
-	return strings.TrimPrefix(strings.TrimPrefix(pth, "."), "/")
+	return strings.TrimPrefix(pth, "/")
 }
 
 func inflateFilePath(buck *tdb.Bucket, filePath string) (path.Path, error) {
