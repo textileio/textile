@@ -257,7 +257,7 @@ type PushPathsQueue struct {
 	stopped     bool
 	closeFunc   func() error
 	closed      bool
-	closeWaitCh chan struct{}
+	closeWaitCh chan error
 
 	size     int64
 	complete int64
@@ -430,7 +430,7 @@ func (c *PushPathsQueue) Close() error {
 		return err
 	}
 	if wait {
-		<-c.closeWaitCh
+		return <-c.closeWaitCh
 	}
 	return nil
 }
@@ -470,7 +470,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 		closeFunc: func() error {
 			return stream.CloseSend()
 		},
-		closeWaitCh: make(chan struct{}),
+		closeWaitCh: make(chan error),
 	}
 
 	go func() {
@@ -479,7 +479,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 			rep, err := stream.Recv()
 			if err == io.EOF {
 				select {
-				case q.closeWaitCh <- struct{}{}:
+				case q.closeWaitCh <- nil:
 				default:
 				}
 				return
@@ -487,7 +487,17 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 				if strings.Contains(err.Error(), "STREAM_CLOSED") {
 					err = ErrPushPathQueueClosed
 				}
-				q.outCh <- PushPathsResult{err: err}
+				q.lk.Lock()
+				closed := q.closed
+				q.lk.Unlock()
+				if closed {
+					select {
+					case q.closeWaitCh <- err:
+					default:
+					}
+				} else {
+					q.outCh <- PushPathsResult{err: err}
+				}
 				return
 			}
 

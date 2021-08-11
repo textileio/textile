@@ -492,10 +492,10 @@ func (s *Service) pinBlocks(ctx context.Context, nodes []ipld.Node) (context.Con
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
-		log.Debugf("pinBlock: storage: %d used, %d available, %d delta",
+		log.Debugf("pinBlocks: storage: %d used, %d available, %d requested",
 			owner.StorageUsed, owner.StorageAvailable, totalAddedSize)
 	}
-	if ok && totalAddedSize > owner.StorageAvailable {
+	if ok && totalAddedSize > 0 && totalAddedSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
 
@@ -548,10 +548,10 @@ func (s *Service) createBootstrappedPath(
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
-		log.Debugf("createBootstrappedPath: storage: %d used, %d available, %d delta",
-			owner.StorageUsed, owner.StorageAvailable, owner.StorageDelta)
+		log.Debugf("createBootstrappedPath: storage: %d used, %d available, %d requested",
+			owner.StorageUsed, owner.StorageAvailable, bootSize)
 	}
-	if ok && bootSize > owner.StorageAvailable {
+	if ok && bootSize > 0 && bootSize > owner.StorageAvailable {
 		return ctx, nil, ErrStorageQuotaExhausted
 	}
 
@@ -1363,6 +1363,12 @@ func (s *Service) unpinPath(ctx context.Context, path path.Path) (context.Contex
 	if err != nil {
 		return ctx, fmt.Errorf("getting size of removed node: %v", err)
 	}
+	// Check context owner's storage allowance
+	owner, ok := buckets.BucketOwnerFromContext(ctx)
+	if ok {
+		log.Debugf("unpinPath: storage: %d used, %d available, %d requested",
+			owner.StorageUsed, owner.StorageAvailable, -size)
+	}
 	return s.addPinnedBytes(ctx, -size), nil
 }
 
@@ -1605,7 +1611,7 @@ func (s *Service) getBucketPath(
 }
 
 func cleanPath(pth string) string {
-	return strings.TrimPrefix(pth, "/")
+	return strings.TrimPrefix(strings.TrimPrefix(pth, "."), "/")
 }
 
 func inflateFilePath(buck *tdb.Bucket, filePath string) (path.Path, error) {
@@ -2404,10 +2410,10 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 	// Check context owner's storage allowance
 	owner, ok := buckets.BucketOwnerFromContext(ctx)
 	if ok {
-		log.Debugf("updateOrAddPin: storage: %d used, %d available, %d delta",
+		log.Debugf("updateOrAddPin: storage: %d used, %d available, %d requested",
 			owner.StorageUsed, owner.StorageAvailable, deltaSize)
 	}
-	if ok && deltaSize > owner.StorageAvailable {
+	if ok && deltaSize > 0 && deltaSize > owner.StorageAvailable {
 		return ctx, ErrStorageQuotaExhausted
 	}
 

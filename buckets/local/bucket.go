@@ -105,6 +105,29 @@ func (b *Bucket) Path() (string, error) {
 	return filepath.Dir(filepath.Dir(conf)), nil
 }
 
+// Cwd returns the bucket's local current working directory.
+func (b *Bucket) Cwd() string {
+	return b.cwd
+}
+
+// ConfDir returns the bucket's local configuration directory path.
+func (b *Bucket) ConfDir() string {
+	return b.conf.Dir
+}
+
+// Context returns an authorized context for the bucket.
+func (b *Bucket) Context(ctx context.Context) (context.Context, error) {
+	id, err := b.Thread()
+	if err != nil {
+		return nil, err
+	}
+	ctx = common.NewThreadIDContext(ctx, id)
+	if b.auth != nil {
+		ctx = b.auth(ctx)
+	}
+	return ctx, nil
+}
+
 // LocalSize returns the cumalative size of the bucket's local files.
 func (b *Bucket) LocalSize() (int64, error) {
 	if b.repo == nil {
@@ -189,7 +212,7 @@ type Deal struct {
 
 // Info returns info about a bucket from the remote.
 func (b *Bucket) Info(ctx context.Context) (info Info, err error) {
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -325,7 +348,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context, pth string) (links Links, err 
 	if b.links != nil {
 		return *b.links, nil
 	}
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -341,7 +364,7 @@ func (b *Bucket) RemoteLinks(ctx context.Context, pth string) (links Links, err 
 // DBInfo returns info about the bucket's ThreadDB.
 // This info can be used to add replicas or additional peers to the bucket.
 func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, cc db.CollectionConfig, err error) {
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -362,7 +385,7 @@ func (b *Bucket) DBInfo(ctx context.Context) (info db.Info, cc db.CollectionConf
 
 // CatRemotePath writes the content of the remote path to writer.
 func (b *Bucket) CatRemotePath(ctx context.Context, pth string, w io.Writer) error {
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return err
 	}
@@ -377,7 +400,7 @@ func (b *Bucket) Destroy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return err
 	}
@@ -432,7 +455,7 @@ func (b *Bucket) containsPath(pth string) (c bool, err error) {
 }
 
 func (b *Bucket) getRemoteRoot(ctx context.Context) (cid.Cid, error) {
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -445,16 +468,4 @@ func (b *Bucket) getRemoteRoot(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	return rp.Cid(), nil
-}
-
-func (b *Bucket) context(ctx context.Context) (context.Context, error) {
-	id, err := b.Thread()
-	if err != nil {
-		return nil, err
-	}
-	ctx = common.NewThreadIDContext(ctx, id)
-	if b.auth != nil {
-		ctx = b.auth(ctx)
-	}
-	return ctx, nil
 }

@@ -22,7 +22,7 @@ const (
 // Returns a channel of watch connectivity states.
 // Cancel context to stop watching.
 func (b *Bucket) Watch(ctx context.Context, opts ...WatchOption) (<-chan cmd.WatchState, error) {
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return nil, err
 	}

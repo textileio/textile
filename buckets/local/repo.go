@@ -41,8 +41,8 @@ func init() {
 }
 
 var (
-	// patchExt is used to ignore tmp files during a pull.
-	patchExt = ".buckpatch"
+	// PatchExt is used to ignore tmp files during a pull.
+	PatchExt = ".buckpatch"
 
 	// ignoredFilenames is a list of default ignored file names.
 	ignoredFilenames = []string{
@@ -227,7 +227,7 @@ func (b *Repo) recursiveAddPath(
 			}
 			p := n
 			n = strings.TrimPrefix(n, abs+string(os.PathSeparator))
-			if strings.HasPrefix(n, filepath.Dir(b.name)+string(os.PathSeparator)) || strings.HasSuffix(n, patchExt) {
+			if strings.HasPrefix(n, filepath.Dir(b.name)+string(os.PathSeparator)) || strings.HasSuffix(n, PatchExt) {
 				return nil
 			}
 			file, err := os.Open(p)
@@ -583,7 +583,7 @@ func stashChanges(diff []Change) error {
 	for _, c := range diff {
 		switch c.Type {
 		case du.Mod, du.Add:
-			if err := os.Rename(c.Name, c.Name+patchExt); err != nil {
+			if err := os.Rename(c.Name, c.Name+PatchExt); err != nil {
 				return err
 			}
 		}
@@ -595,7 +595,7 @@ func applyChanges(diff []Change) error {
 	for _, c := range diff {
 		switch c.Type {
 		case du.Mod, du.Add:
-			if err := os.Rename(c.Name+patchExt, c.Name); err != nil {
+			if err := os.Rename(c.Name+PatchExt, c.Name); err != nil {
 				return err
 			}
 		case du.Remove:

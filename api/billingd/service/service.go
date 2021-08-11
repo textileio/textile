@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	cron "github.com/robfig/cron/v3"
@@ -613,15 +614,11 @@ func getCost(product Product, paidUnits int64) float64 {
 }
 
 func getUsage(product Product, total int64, period Period) *pb.Usage {
-	freeUnits, paidUnits := getUnits(product, total)
-	free := product.FreeQuotaSize - total
-	if free < 0 {
-		free = 0
-	}
-	grace := product.FreeQuotaGracePeriodSize - total
-	if free < 0 {
-		free = 0
-	}
+	var (
+		freeUnits, paidUnits = getUnits(product, total)
+		free                 = product.FreeQuotaSize - total
+		grace                = product.FreeQuotaGracePeriodSize - total
+	)
 	return &pb.Usage{
 		Description: product.Name,
 		Units:       freeUnits + paidUnits,
@@ -960,19 +957,18 @@ func (s *Service) handleCustomerUsage(
 	res := &pb.IncCustomerUsageResponse{
 		DailyUsage: make(map[string]*pb.Usage),
 	}
+	merr := &multierror.Error{}
 	for k, inc := range req.ProductUsage {
 		if product, ok := s.products[k]; ok && inc != 0 {
 			usage, err := s.handleUsage(ctx, cus, product, inc)
-			if err != nil {
-				return nil, err
-			}
+			merr = multierror.Append(merr, err)
 			if usage != nil {
 				log.Debugf("%s %s: total=%d free=%d", cus.Key, k, usage.Total, usage.Free)
 				res.DailyUsage[k] = usage
 			}
 		}
 	}
-	return res, nil
+	return res, merr.ErrorOrNil()
 }
 
 func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Product, incSize int64) (*pb.Usage, error) {
@@ -987,6 +983,7 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	}
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 
+	var err error
 	if total > product.FreeQuotaSize && !cus.Billable {
 		now := time.Now().Unix()
 		if cus.GracePeriodStart == 0 {
@@ -1001,14 +998,14 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
 			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, nil)
-			return nil, common.ErrExceedsFreeQuota
+			err = fmt.Errorf("%w for %s", common.ErrExceedsFreeQuota, product.Key)
 		}
 	}
 	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
 	start, end := getCurrentDayBounds()
-	return getUsage(product, total, Period{UnixStart: start, UnixEnd: end}), nil
+	return getUsage(product, total, Period{UnixStart: start, UnixEnd: end}), err
 }
 
 func (s *Service) ReportCustomerUsage(
@@ -1109,41 +1106,29 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 }
 
 // Identify creates or updates the user traits
-func (s *Service) Identify(
-	ctx context.Context,
-	req *pb.IdentifyRequest,
-) (*pb.IdentifyResponse, error) {
+func (s *Service) Identify(_ context.Context, req *pb.IdentifyRequest) (*pb.IdentifyResponse, error) {
 	props := map[string]interface{}{}
 	for k, v := range req.Properties {
 		props[k] = v
 	}
-	err := s.analytics.Identify(
+	s.analytics.Identify(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
 		req.Email,
 		props,
 	)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.IdentifyResponse{}, nil
 }
 
 // TrackEvent records a new event
-func (s *Service) TrackEvent(
-	ctx context.Context,
-	req *pb.TrackEventRequest,
-) (*pb.TrackEventResponse, error) {
-	err := s.analytics.TrackEvent(
+func (s *Service) TrackEvent(_ context.Context, req *pb.TrackEventRequest) (*pb.TrackEventResponse, error) {
+	s.analytics.TrackEvent(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
 		analytics.Event(req.Event),
 		req.Properties,
 	)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.TrackEventResponse{}, nil
 }

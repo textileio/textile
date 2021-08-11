@@ -12,12 +12,12 @@ import (
 	"github.com/textileio/textile/v2/api/bucketsd/client"
 )
 
-// PushRemote pushes local files.
+// PushLocal pushes local files.
 // By default, only staged changes are pushed. See PathOption for more info.
 func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots, err error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -85,14 +85,14 @@ func (b *Bucket) PushLocal(ctx context.Context, opts ...PathOption) (roots Roots
 			rm = append(rm, c)
 		}
 	}
-	xr, err = b.addFiles(ctx, key, xr, add, args.force, args.events)
+	xr, err = b.AddRemoteFiles(ctx, key, xr, add, args.force, args.events)
 	if err != nil {
 		return roots, err
 	}
 	if len(rm) > 0 {
 		for _, c := range rm {
 			var err error
-			xr, err = b.rmFile(ctx, key, xr, c, args.force, args.events)
+			xr, err = b.RemoveRemoteFile(ctx, key, xr, c, args.force, args.events)
 			if err != nil {
 				return roots, err
 			}
@@ -119,14 +119,16 @@ type pendingFile struct {
 	rel  string
 }
 
-func (b *Bucket) addFiles(
+// AddRemoteFiles applies "add" and "modify" changes to a remote bucket.
+// See PathOption for more info.
+func (b *Bucket) AddRemoteFiles(
 	ctx context.Context,
 	key string,
 	xroot path.Resolved,
 	changes []Change,
 	force bool,
 	events chan<- Event,
-) (path.Resolved, error) {
+) (root path.Resolved, err error) {
 	progress := make(chan int64)
 	defer close(progress)
 	files := make(map[string]pendingFile)
@@ -139,7 +141,11 @@ func (b *Bucket) addFiles(
 	if err != nil {
 		return nil, err
 	}
-	defer q.Close()
+	defer func() {
+		if cerr := q.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	for _, c := range changes {
 		file := pendingFile{
@@ -172,7 +178,6 @@ func (b *Bucket) addFiles(
 		}
 	}()
 
-	var root path.Resolved
 	for q.Next() {
 		if q.Err() != nil {
 			return nil, q.Err()
@@ -198,7 +203,9 @@ func (b *Bucket) addFiles(
 	return root, nil
 }
 
-func (b *Bucket) rmFile(
+// RemoveRemoteFile applies a "remove" change to a remote bucket.
+// See PathOption for more info.
+func (b *Bucket) RemoveRemoteFile(
 	ctx context.Context,
 	key string,
 	xroot path.Resolved,

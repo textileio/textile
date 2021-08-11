@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	logging "github.com/ipfs/go-log/v2"
 	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
@@ -10,6 +11,8 @@ import (
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"google.golang.org/grpc"
 )
+
+var log = logging.Logger("billing.client")
 
 // Client provides the client api.
 type Client struct {
@@ -178,15 +181,16 @@ func (c *Client) Identify(
 	active bool,
 	email string,
 	properties map[string]string,
-) error {
-	_, err := c.c.Identify(ctx, &pb.IdentifyRequest{
+) {
+	if _, err := c.c.Identify(ctx, &pb.IdentifyRequest{
 		Key:         key.String(),
 		AccountType: int32(accountType),
 		Active:      active,
 		Email:       email,
 		Properties:  properties,
-	})
-	return err
+	}); err != nil {
+		log.Error(err)
+	}
 }
 
 // TrackEvent records a new event
@@ -197,13 +201,14 @@ func (c *Client) TrackEvent(
 	active bool,
 	event analytics.Event,
 	properties map[string]string,
-) error {
-	_, err := c.c.TrackEvent(ctx, &pb.TrackEventRequest{
+) {
+	if _, err := c.c.TrackEvent(ctx, &pb.TrackEventRequest{
 		Key:         key.String(),
 		AccountType: int32(accountType),
 		Active:      active,
 		Event:       int32(event),
 		Properties:  properties,
-	})
-	return err
+	}); err != nil {
+		log.Error(err)
+	}
 }

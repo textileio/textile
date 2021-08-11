@@ -60,8 +60,7 @@ func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterc
 		}
 		wrapped := grpcm.WrapServerStream(stream)
 		wrapped.WrappedContext = newCtx
-		err = handler(srv, wrapped)
-		if err != nil {
+		if err := handler(srv, wrapped); err != nil {
 			return err
 		}
 		return post(newCtx, info.FullMethod)
@@ -254,7 +253,7 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 				"stored_data": owner.StorageDelta,
 			},
 		); err != nil {
-			return err
+			log.Infof("postUsageFunc: %v", err)
 		}
 	}
 

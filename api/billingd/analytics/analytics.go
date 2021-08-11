@@ -4,6 +4,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/textileio/go-threads/util"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	segment "gopkg.in/segmentio/analytics-go.v3"
 )
@@ -16,31 +17,38 @@ var (
 type Client struct {
 	api    segment.Client
 	prefix string
-	debug  bool
 }
 
 // NewClient return a segment client.
 func NewClient(segmentAPIKey, prefix string, debug bool) (*Client, error) {
+	if debug {
+		if err := util.SetLogLevels(map[string]logging.LogLevel{
+			"analytics": logging.LevelDebug,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	var api segment.Client
-	var err error
 	if segmentAPIKey != "" {
 		config := segment.Config{
 			Verbose: debug,
 		}
+		var err error
 		api, err = segment.NewWithConfig(segmentAPIKey, config)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	client := &Client{
+	return &Client{
 		api:    api,
 		prefix: prefix,
-		debug:  debug,
-	}
-
-	return client, err
+	}, nil
 }
 
 // Identify creates or updates the user traits
-func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) error {
+func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, email string, properties map[string]interface{}) {
 	if c.api != nil && accountType != mdb.User {
 		traits := segment.NewTraits()
 		traits.Set("account_type", accountType)
@@ -51,7 +59,7 @@ func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, 
 		for key, value := range properties {
 			traits.Set(key, value)
 		}
-		return c.api.Enqueue(segment.Identify{
+		if err := c.api.Enqueue(segment.Identify{
 			UserId: key,
 			Traits: traits,
 			Context: &segment.Context{
@@ -59,20 +67,21 @@ func (c *Client) Identify(key string, accountType mdb.AccountType, active bool, 
 					"active": active,
 				},
 			},
-		})
+		}); err != nil {
+			log.Errorf("identifying user: %v", err)
+		}
 	}
-	return nil
 }
 
 // TrackEvent logs a new event
-func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) error {
+func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool, event Event, properties map[string]string) {
 	if c.api != nil && accountType != mdb.User {
 		props := segment.NewProperties()
 		for key, value := range properties {
 			props.Set(key, value)
 		}
 
-		return c.api.Enqueue(segment.Track{
+		if err := c.api.Enqueue(segment.Track{
 			UserId:     key,
 			Event:      event.String(),
 			Properties: props,
@@ -81,9 +90,10 @@ func (c *Client) TrackEvent(key string, accountType mdb.AccountType, active bool
 					"active": active,
 				},
 			},
-		})
+		}); err != nil {
+			log.Errorf("tracking event: %v", err)
+		}
 	}
-	return nil
 }
 
 // FormatUnix converts seconds to string in same format for all analytics requests

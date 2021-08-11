@@ -145,7 +145,7 @@ func (b *Buckets) NewBucket(ctx context.Context, conf Config, opts ...NewOption)
 		auth:      b.auth,
 		pushBlock: make(chan struct{}, 1),
 	}
-	ctx, err = buck.context(ctx)
+	ctx, err = buck.Context(ctx)
 	if err != nil {
 		return nil, err
 	}
