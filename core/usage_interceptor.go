@@ -38,9 +38,13 @@ func unaryServerInterceptor(pre preFunc, post postFunc) grpc.UnaryServerIntercep
 		}
 		res, err := handler(newCtx, req)
 		if err != nil {
+			perr := post(newCtx, info.FullMethod)
+			if perr != nil {
+				log.Errorf("unaryServerInterceptor postFunc: %v", err)
+			}
 			return nil, err
 		}
-		if err = post(newCtx, info.FullMethod); err != nil {
+		if err := post(newCtx, info.FullMethod); err != nil {
 			return nil, err
 		}
 		return res, nil
@@ -61,6 +65,10 @@ func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterc
 		wrapped := grpcm.WrapServerStream(stream)
 		wrapped.WrappedContext = newCtx
 		if err := handler(srv, wrapped); err != nil {
+			perr := post(newCtx, info.FullMethod)
+			if perr != nil {
+				log.Errorf("streamServerInterceptor postFunc: %v", err)
+			}
 			return err
 		}
 		return post(newCtx, info.FullMethod)

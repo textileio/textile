@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -16,11 +17,9 @@ import (
 
 var remoteCmd = &cobra.Command{
 	Use:   "remote",
-	Short: "Add a file or folder to and remove remote bucket paths",
-	Long: `Adds files and folders to and removes remote bucket paths.
-
-Note: When using this command, the local bucket repo is ignored.`,
-	Args: cobra.ExactArgs(0),
+	Short: "Manage a remote bucket without effecting the local filesystem",
+	Long:  `Manages a remote bucket without effecting the local filesystem.`,
+	Args:  cobra.ExactArgs(0),
 }
 
 var remoteAddCmd = &cobra.Command{
@@ -48,9 +47,11 @@ var remoteAddCmd = &cobra.Command{
 			go handleEvents(events)
 		}
 
+		src, err := filepath.Abs(args[0])
+		cmd.ErrCheck(err)
+
 		var (
-			src   = filepath.Clean(args[0])
-			pth   = filepath.Clean(args[1])
+			pth   = filepath.ToSlash(filepath.Clean(args[1]))
 			names []string
 			diff  []local.Change
 		)
@@ -62,8 +63,8 @@ var remoteAddCmd = &cobra.Command{
 			if !info.IsDir() {
 				f := strings.TrimPrefix(n, pth+string(os.PathSeparator))
 				if local.Ignore(n) ||
-					f == buckets.SeedName ||
-					strings.HasPrefix(f, buck.ConfDir()) ||
+					strings.Contains(f, buckets.SeedName) ||
+					strings.Contains(f, buck.ConfDir()) ||
 					strings.HasSuffix(f, local.PatchExt) {
 					return nil
 				}
@@ -75,8 +76,10 @@ var remoteAddCmd = &cobra.Command{
 
 		for _, n := range names {
 			r, err := filepath.Rel(buck.Cwd(), n)
-			cmd.ErrCheck(err)
-			p := filepath.Join(args[1], filepath.Base(n))
+			if err != nil {
+				r = n
+			}
+			p := path.Join(pth, strings.TrimPrefix(filepath.ToSlash(n), filepath.ToSlash(filepath.Dir(src))))
 			diff = append(diff, local.Change{Type: du.Add, Name: n, Path: p, Rel: r})
 		}
 

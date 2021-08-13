@@ -54,6 +54,8 @@ const (
 	chunkSize = 1024 * 32 // 32 KiB
 	// pinNotRecursiveMsg is used to match an IPFS "recursively pinned already" error.
 	pinNotRecursiveMsg = "'from' cid was not recursively pinned already"
+	// pinAlreadyRecursiveMsg is used to match an IPFS "already recursively pinned" error.
+	pinAlreadyRecursiveMsg = "'to' cid was already recursively pinned"
 )
 
 var (
@@ -2425,6 +2427,8 @@ func (s *Service) updateOrAddPin(ctx context.Context, from, to path.Path) (conte
 		if err := s.IPFSClient.Pin().Update(ctx, from, to); err != nil {
 			if err.Error() == pinNotRecursiveMsg {
 				return ctx, s.IPFSClient.Pin().Add(ctx, to)
+			} else if err.Error() == pinAlreadyRecursiveMsg {
+				return ctx, s.IPFSClient.Pin().Rm(ctx, from)
 			}
 			return ctx, err
 		}

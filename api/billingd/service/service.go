@@ -619,6 +619,12 @@ func getUsage(product Product, total int64, period Period) *pb.Usage {
 		free                 = product.FreeQuotaSize - total
 		grace                = product.FreeQuotaGracePeriodSize - total
 	)
+	if free < 0 {
+		free = 0
+	}
+	if grace < 0 {
+		grace = 0
+	}
 	return &pb.Usage{
 		Description: product.Name,
 		Units:       freeUnits + paidUnits,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
@@ -262,6 +264,11 @@ func (c Credentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[s
 	threadToken, ok := thread.TokenFromContext(ctx)
 	if ok {
 		md["authorization"] = "bearer " + string(threadToken)
+	}
+	for k, v := range md {
+		if strings.Contains(v, "\n") {
+			fmt.Println(fmt.Sprintf("NEWLINE FOUND IN KEY %s: %s", k, v))
+		}
 	}
 	return md, nil
 }

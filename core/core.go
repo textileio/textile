@@ -54,6 +54,7 @@ import (
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -470,6 +471,10 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		grpcopts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
+			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+				MinTime:             time.Minute * 5,
+				PermitWithoutStream: true,
+			}),
 		}
 	}
 	t.server = grpc.NewServer(grpcopts...)

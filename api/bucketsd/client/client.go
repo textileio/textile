@@ -470,7 +470,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 		closeFunc: func() error {
 			return stream.CloseSend()
 		},
-		closeWaitCh: make(chan error),
+		closeWaitCh: make(chan error, 1),
 	}
 
 	go func() {
@@ -478,10 +478,7 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 		for {
 			rep, err := stream.Recv()
 			if err == io.EOF {
-				select {
-				case q.closeWaitCh <- nil:
-				default:
-				}
+				q.closeWaitCh <- nil
 				return
 			} else if err != nil {
 				if strings.Contains(err.Error(), "STREAM_CLOSED") {
@@ -490,14 +487,10 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 				q.lk.Lock()
 				closed := q.closed
 				q.lk.Unlock()
-				if closed {
-					select {
-					case q.closeWaitCh <- err:
-					default:
-					}
-				} else {
+				if !closed {
 					q.outCh <- PushPathsResult{err: err}
 				}
+				q.closeWaitCh <- err
 				return
 			}
 
