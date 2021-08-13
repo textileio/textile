@@ -2042,10 +2042,15 @@ func (s *Service) PushPaths(server pb.APIService_PushPathsServer) error {
 	sctx := util.NewClonedContext(ctx)
 	saveWithErr := func(err error) error {
 		cancel()
+		if err != nil {
+			log.Errorf("push paths ended with error: %v", err)
+		}
 		if !changed {
+			log.Warnf("no changes to save")
 			return err
 		}
 		if serr := s.saveAndPublish(sctx, dbID, dbToken, buck); serr != nil {
+			log.Warnf("save error: %v", serr)
 			if err != nil {
 				return err
 			}

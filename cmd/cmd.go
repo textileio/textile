@@ -19,6 +19,7 @@ import (
 	uc "github.com/textileio/textile/v2/api/usersd/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -102,6 +103,11 @@ func NewClients(hubTarget string, isHub bool, minerIndexTarget string) *Clients 
 		hubOpts = append(hubOpts, grpc.WithInsecure())
 	}
 	hubOpts = append(hubOpts, grpc.WithPerRPCCredentials(auth))
+	hubOpts = append(hubOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                time.Hour * 2,
+		Timeout:             time.Hour * 2,
+		PermitWithoutStream: false,
+	}))
 
 	c := &Clients{}
 	var err error
