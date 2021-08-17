@@ -83,7 +83,7 @@ func (g *Gateway) Start() {
 
 	router := gin.Default()
 	router.GET("/health", func(c *gin.Context) {
-		c.Writer.WriteHeader(http.StatusNoContent)
+		c.Writer.WriteHeader(http.StatusOK)
 	})
 	router.POST("/webhooks", g.webhookHandler)
 
