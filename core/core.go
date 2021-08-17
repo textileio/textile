@@ -54,6 +54,8 @@ import (
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -69,6 +71,7 @@ var (
 		"/api.hubd.pb.APIService/Signup",
 		"/api.hubd.pb.APIService/Signin",
 		"/api.hubd.pb.APIService/IsUsernameAvailable",
+		"/grpc.health.v1.Health/Check",
 	}
 
 	// usageIgnoredMethods are not intercepted by the usage interceptor.
@@ -490,6 +493,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		return nil, err
 	}
 	go func() {
+		healthpb.RegisterHealthServer(t.server, health.NewServer())
 		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
 		if conf.Hub {

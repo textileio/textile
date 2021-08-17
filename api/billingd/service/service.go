@@ -30,6 +30,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -402,6 +404,7 @@ func (s *Service) Start() error {
 	}
 	s.semaphores = nutil.NewSemaphorePool(1)
 	go func() {
+		healthpb.RegisterHealthServer(s.server, health.NewServer())
 		pb.RegisterAPIServiceServer(s.server, s)
 		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Errorf("serve error: %v", err)
