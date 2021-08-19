@@ -1,3 +1,4 @@
+version: v1beta1
 build:
   roots:
     - .
@@ -22,4 +23,3 @@ lint:
 breaking:
   use:
     - FILE
-    
