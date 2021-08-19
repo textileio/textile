@@ -30,8 +30,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -404,7 +402,6 @@ func (s *Service) Start() error {
 	}
 	s.semaphores = nutil.NewSemaphorePool(1)
 	go func() {
-		healthpb.RegisterHealthServer(s.server, health.NewServer())
 		pb.RegisterAPIServiceServer(s.server, s)
 		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Errorf("serve error: %v", err)
@@ -574,8 +571,7 @@ func (s *Service) createSubscription(cus *Customer) error {
 	return nil
 }
 
-func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
-	*pb.GetCustomerResponse, error) {
+func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (*pb.GetCustomerResponse, error) {
 	doc, err := s.getCustomer(ctx, "_id", req.Key)
 	if err != nil {
 		return nil, err
@@ -785,6 +781,10 @@ func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequ
 	if err != nil {
 		return nil, err
 	}
+	if doc.ParentKey != "" && req.Billable == true {
+		return nil, fmt.Errorf("customer %s is a dependent; billing not permitted", doc.CustomerID)
+	}
+
 	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
@@ -905,7 +905,8 @@ func (s *Service) GetCustomerUsage(
 				if err != nil {
 					return nil, err
 				}
-				total += (free.TotalUsage + paid.TotalUsage) * product.UnitSize
+				// Hack: Stipe is recording reported units * 100, so divide here to compensate
+				total += (free.TotalUsage/100 + paid.TotalUsage/100) * product.UnitSize
 			}
 			usage[k] = getUsage(product, total, doc.InvoicePeriod)
 		}
@@ -954,13 +955,14 @@ func (s *Service) handleCustomerUsage(
 	if err != nil {
 		return nil, err
 	}
+	var parentErr error
 	if cus.ParentKey != "" {
-		if _, err := s.handleCustomerUsage(ctx, cus.ParentKey, req); err != nil {
+		_, parentErr = s.handleCustomerUsage(ctx, cus.ParentKey, req)
+		// Continue recording usage on the child, we'll return this error at the end
+	} else {
+		if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 			return nil, err
 		}
-	}
-	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
-		return nil, err
 	}
 
 	res := &pb.IncCustomerUsageResponse{
@@ -977,7 +979,13 @@ func (s *Service) handleCustomerUsage(
 			}
 		}
 	}
-	return res, merr.ErrorOrNil()
+
+	// Response is still valid when err is not nil because we always track usage even
+	// if it resulted in an overage. This is because usage is reported _after_ it's used.
+	if err := merr.ErrorOrNil(); err != nil {
+		return res, err
+	}
+	return res, parentErr
 }
 
 func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Product, incSize int64) (*pb.Usage, error) {
@@ -993,7 +1001,7 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 
 	var err error
-	if total > product.FreeQuotaSize && !cus.Billable {
+	if total > product.FreeQuotaSize && !cus.Billable && cus.ParentKey == "" {
 		now := time.Now().Unix()
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
@@ -1085,6 +1093,9 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 	return nil
 }
 
+// reportUnits sends daily product units to Stripe for aggregation and invoicing.
+// Hack fix: Report units * 100 since the immutable unit price used to calculate
+// unit price is in dollars, and the Stripe API expects cents.
 func (s *Service) reportUnits(product Product, usage Usage, parentKey string) error {
 	freeUnits, paidUnits := getUnits(product, usage.Total)
 	if parentKey != "" {
@@ -1094,7 +1105,7 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 	if freeUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.FreeItemID),
-			Quantity:         stripe.Int64(freeUnits),
+			Quantity:         stripe.Int64(freeUnits * 100),
 			Timestamp:        stripe.Int64(time.Now().Unix()),
 			Action:           stripe.String(stripe.UsageRecordActionIncrement),
 		}); err != nil {
@@ -1104,7 +1115,7 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 	if paidUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.PaidItemID),
-			Quantity:         stripe.Int64(paidUnits),
+			Quantity:         stripe.Int64(paidUnits * 100),
 			Timestamp:        stripe.Int64(time.Now().Unix()),
 			Action:           stripe.String(stripe.UsageRecordActionIncrement),
 		}); err != nil {

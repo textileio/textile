@@ -16,6 +16,7 @@ import (
 	"github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -254,8 +255,11 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
+		// If the main context is canceled, we still want to be able to record usage.
+		sctx, cancel := context.WithTimeout(util.NewClonedContext(ctx), time.Second*10)
+		defer cancel()
 		if _, err := t.bc.IncCustomerUsage(
-			ctx,
+			sctx,
 			account.Owner().Key,
 			map[string]int64{
 				"stored_data": owner.StorageDelta,

@@ -141,7 +141,7 @@ func (t *Tracker) checkPendingTrackings() {
 			log.Errorf("getting tracked archives: %s", err)
 			break
 		}
-		// log.Debugf("got %d ready archives to check", len(archives))
+		log.Debugf("got %d ready archives to check", len(archives))
 		if len(archives) == 0 {
 			break
 		}
