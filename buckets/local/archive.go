@@ -57,7 +57,7 @@ type ArchiveRenew struct {
 func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig, err error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -76,7 +76,7 @@ func (b *Bucket) DefaultArchiveConfig(ctx context.Context) (config ArchiveConfig
 func (b *Bucket) Addresses(ctx context.Context) (*powPb.AddressesResponse, error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting context: %s", err)
 	}
@@ -112,7 +112,7 @@ func fromPbArchiveConfig(pbConfig *pb.ArchiveConfig) ArchiveConfig {
 func (b *Bucket) SetDefaultArchiveConfig(ctx context.Context, config ArchiveConfig) (err error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -178,7 +178,7 @@ func (b *Bucket) ArchiveRemote(ctx context.Context, opts ...ArchiveRemoteOption)
 		clientOpts = append(clientOpts, client.WithSkipAutomaticVerifiedDeal(true))
 	}
 
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ const (
 func (b *Bucket) Archives(ctx context.Context) (*pb.ArchivesResponse, error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (b *Bucket) Archives(ctx context.Context) (*pb.ArchivesResponse, error) {
 func (b *Bucket) ArchiveWatch(ctx context.Context) (<-chan ArchiveStatusMessage, error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -50,6 +50,7 @@ func NewGateway(conf Config) (*Gateway, error) {
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
 			"billing.gateway": logging.LevelDebug,
+			"billing.client":  logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -82,7 +83,7 @@ func (g *Gateway) Start() {
 
 	router := gin.Default()
 	router.GET("/health", func(c *gin.Context) {
-		c.Writer.WriteHeader(http.StatusNoContent)
+		c.Writer.WriteHeader(http.StatusOK)
 	})
 	router.POST("/webhooks", g.webhookHandler)
 

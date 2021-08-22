@@ -97,11 +97,17 @@ Use the --user flag to get usage for a dependent user.`,
 		}
 		cmd.RenderTable(header, rows)
 		if !cus.Billable && cus.GracePeriodEnd > 0 {
-			ends := time.Unix(cus.GracePeriodEnd, 0).Format("02 Jan 06 15:04 MST")
-			cmd.Warn(
-				"You must add a payment method with `%s` before the grace period ends at %s",
-				aurora.Cyan("hub billing portal"),
-				aurora.Bold(ends))
+			if cus.GracePeriodEnd > time.Now().Unix() {
+				ends := time.Unix(cus.GracePeriodEnd, 0).Format("Mon Jan _2 15:04:05 MST")
+				cmd.Warn(
+					"Grace period ending soon. Please add a payment method with `%s` before %s.",
+					aurora.Cyan("hub billing portal"),
+					aurora.Bold(ends))
+			} else {
+				cmd.Warn(
+					"Grace period ended. Please add a payment method with `%s` to continue using your account.",
+					aurora.Cyan("hub billing portal"))
+			}
 		}
 	},
 }
@@ -114,7 +120,12 @@ func getUsageRow(usage *pb.Usage) []string {
 		free = strconv.Itoa(int(usage.Free))
 	case "Stored data", "Network egress":
 		total = util.ByteCountDecimal(usage.Total)
-		free = util.ByteCountDecimal(usage.Free)
+		if usage.Free < 0 {
+			free = util.ByteCountDecimal(-usage.Free)
+			free = "-" + free
+		} else {
+			free = util.ByteCountDecimal(usage.Free)
+		}
 	}
 	return []string{
 		usage.Description,

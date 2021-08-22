@@ -29,7 +29,7 @@ func (b *Bucket) ListRemotePath(ctx context.Context, pth string) (items []Bucket
 	if pth == "." || pth == "/" || pth == "./" {
 		pth = ""
 	}
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}

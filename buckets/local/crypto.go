@@ -105,7 +105,7 @@ func (b *Bucket) decryptRemotePath(
 	fn decryptFunc,
 	w io.Writer,
 ) error {
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return err
 	}

@@ -408,7 +408,7 @@ func (s *Service) getOrCreateMailbox(ctx context.Context, key thread.PubKey, opt
 }
 
 // ArchiveRetrievalLs lists existing retrievals for the account.
-func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
+func (s *Service) ArchiveRetrievalLs(ctx context.Context, _ *pb.ArchiveRetrievalLsRequest) (*pb.ArchiveRetrievalLsResponse, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	owner := account.Owner().Key
 
@@ -446,7 +446,7 @@ func (s *Service) ArchiveRetrievalLs(ctx context.Context, req *pb.ArchiveRetriev
 }
 
 // ArchivesLs lists all known archives for an account.
-func (s *Service) ArchivesLs(ctx context.Context, req *pb.ArchivesLsRequest) (*pb.ArchivesLsResponse, error) {
+func (s *Service) ArchivesLs(ctx context.Context, _ *pb.ArchivesLsRequest) (*pb.ArchivesLsResponse, error) {
 	account, _ := mdb.AccountFromContext(ctx)
 	if account.Owner().PowInfo == nil {
 		return nil, fmt.Errorf("no powergate info associated with account")

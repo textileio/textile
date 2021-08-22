@@ -18,7 +18,7 @@ import (
 func (b *Bucket) AddRemoteCid(ctx context.Context, c cid.Cid, dest string, opts ...AddOption) error {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err := b.context(ctx)
+	ctx, err := b.Context(ctx)
 	if err != nil {
 		return err
 	}

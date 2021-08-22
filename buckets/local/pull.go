@@ -24,7 +24,7 @@ var MaxPullConcurrency = 10
 func (b *Bucket) PullRemote(ctx context.Context, opts ...PathOption) (roots Roots, err error) {
 	b.Lock()
 	defer b.Unlock()
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}

@@ -15,6 +15,7 @@ import (
 	ktipfs "github.com/ipfs/go-datastore/keytransform"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	logging "github.com/ipfs/go-log/v2"
+	caopts "github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
@@ -53,6 +54,9 @@ import (
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -67,6 +71,7 @@ var (
 		"/api.hubd.pb.APIService/Signup",
 		"/api.hubd.pb.APIService/Signin",
 		"/api.hubd.pb.APIService/IsUsernameAvailable",
+		"/grpc.health.v1.Health/Check",
 	}
 
 	// usageIgnoredMethods are not intercepted by the usage interceptor.
@@ -214,12 +219,13 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 
 	if conf.Debug {
 		if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-			"core":          logging.LevelDebug,
-			"hubapi":        logging.LevelDebug,
-			"bucketsapi":    logging.LevelDebug,
-			"usersapi":      logging.LevelDebug,
-			"job-tracker":   logging.LevelDebug,
-			"fil-retrieval": logging.LevelDebug,
+			"core":           logging.LevelDebug,
+			"hubapi":         logging.LevelDebug,
+			"bucketsapi":     logging.LevelDebug,
+			"usersapi":       logging.LevelDebug,
+			"job-tracker":    logging.LevelDebug,
+			"fil-retrieval":  logging.LevelDebug,
+			"billing.client": logging.LevelDebug,
 		}); err != nil {
 			return nil, err
 		}
@@ -230,7 +236,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	}
 
 	// Configure clients
-	ic, err := httpapi.NewApi(conf.AddrIPFSAPI)
+	ipfsapi, err := httpapi.NewApi(conf.AddrIPFSAPI)
+	if err != nil {
+		return nil, err
+	}
+	// Don't allow using textile as a gateway to non-bucket files
+	ic, err := ipfsapi.WithOptions(caopts.Api.FetchBlocks(false))
 	if err != nil {
 		return nil, err
 	}
@@ -312,14 +323,6 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		if err != nil {
 			return nil, err
 		}
-	}
-	// @todo (sander): Update all packages to default to INFO logging when !conf.Debug.
-	// @todo (sander): This requires changes to go-threads. For now, we just want to see
-	// @todo (sander): the log output of the DB Manager while it spins up.
-	if err := tutil.SetLogLevels(map[string]logging.LogLevel{
-		"db": logging.LevelInfo,
-	}); err != nil {
-		return nil, err
 	}
 	ts, err := dbapi.NewService(t.ts, t.tn, dbapi.Config{
 		Debug: conf.Debug,
@@ -471,6 +474,17 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		grpcopts = []grpc.ServerOption{
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
+			grpc.KeepaliveParams(keepalive.ServerParameters{
+				MaxConnectionIdle:     time.Hour * 24,
+				MaxConnectionAge:      time.Hour * 24,
+				MaxConnectionAgeGrace: time.Hour * 24,
+				Time:                  time.Hour * 2,
+				Timeout:               time.Hour * 2,
+			}),
+			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+				MinTime:             time.Minute * 5,
+				PermitWithoutStream: true,
+			}),
 		}
 	}
 	t.server = grpc.NewServer(grpcopts...)
@@ -479,6 +493,7 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		return nil, err
 	}
 	go func() {
+		healthpb.RegisterHealthServer(t.server, health.NewServer())
 		dbpb.RegisterAPIServer(t.server, ts)
 		netpb.RegisterAPIServer(t.server, ns)
 		if conf.Hub {

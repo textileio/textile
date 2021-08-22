@@ -19,7 +19,7 @@ func (b *Bucket) PushPathAccessRoles(
 	pth string,
 	roles map[string]buckets.Role,
 ) (merged map[string]buckets.Role, err error) {
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}
@@ -32,7 +32,7 @@ func (b *Bucket) PushPathAccessRoles(
 
 // PullPathAccessRoles returns access roles for a path.
 func (b *Bucket) PullPathAccessRoles(ctx context.Context, pth string) (roles map[string]buckets.Role, err error) {
-	ctx, err = b.context(ctx)
+	ctx, err = b.Context(ctx)
 	if err != nil {
 		return
 	}

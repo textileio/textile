@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	cron "github.com/robfig/cron/v3"
@@ -570,8 +571,7 @@ func (s *Service) createSubscription(cus *Customer) error {
 	return nil
 }
 
-func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (
-	*pb.GetCustomerResponse, error) {
+func (s *Service) GetCustomer(ctx context.Context, req *pb.GetCustomerRequest) (*pb.GetCustomerResponse, error) {
 	doc, err := s.getCustomer(ctx, "_id", req.Key)
 	if err != nil {
 		return nil, err
@@ -613,14 +613,16 @@ func getCost(product Product, paidUnits int64) float64 {
 }
 
 func getUsage(product Product, total int64, period Period) *pb.Usage {
-	freeUnits, paidUnits := getUnits(product, total)
-	free := product.FreeQuotaSize - total
+	var (
+		freeUnits, paidUnits = getUnits(product, total)
+		free                 = product.FreeQuotaSize - total
+		grace                = product.FreeQuotaGracePeriodSize - total
+	)
 	if free < 0 {
 		free = 0
 	}
-	grace := product.FreeQuotaGracePeriodSize - total
-	if free < 0 {
-		free = 0
+	if grace < 0 {
+		grace = 0
 	}
 	return &pb.Usage{
 		Description: product.Name,
@@ -779,6 +781,10 @@ func (s *Service) UpdateCustomer(ctx context.Context, req *pb.UpdateCustomerRequ
 	if err != nil {
 		return nil, err
 	}
+	if doc.ParentKey != "" && req.Billable == true {
+		return nil, fmt.Errorf("customer %s is a dependent; billing not permitted", doc.CustomerID)
+	}
+
 	lck := s.semaphores.Get(customerLock(doc.Key))
 	lck.Acquire()
 	defer lck.Release()
@@ -899,7 +905,8 @@ func (s *Service) GetCustomerUsage(
 				if err != nil {
 					return nil, err
 				}
-				total += (free.TotalUsage + paid.TotalUsage) * product.UnitSize
+				// Hack: Stipe is recording reported units * 100, so divide here to compensate
+				total += (free.TotalUsage/100 + paid.TotalUsage/100) * product.UnitSize
 			}
 			usage[k] = getUsage(product, total, doc.InvoicePeriod)
 		}
@@ -948,31 +955,37 @@ func (s *Service) handleCustomerUsage(
 	if err != nil {
 		return nil, err
 	}
+	var parentErr error
 	if cus.ParentKey != "" {
-		if _, err := s.handleCustomerUsage(ctx, cus.ParentKey, req); err != nil {
+		_, parentErr = s.handleCustomerUsage(ctx, cus.ParentKey, req)
+		// Continue recording usage on the child, we'll return this error at the end
+	} else {
+		if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
 			return nil, err
 		}
-	}
-	if err := common.StatusCheck(cus.SubscriptionStatus); err != nil {
-		return nil, err
 	}
 
 	res := &pb.IncCustomerUsageResponse{
 		DailyUsage: make(map[string]*pb.Usage),
 	}
+	merr := &multierror.Error{}
 	for k, inc := range req.ProductUsage {
 		if product, ok := s.products[k]; ok && inc != 0 {
 			usage, err := s.handleUsage(ctx, cus, product, inc)
-			if err != nil {
-				return nil, err
-			}
+			merr = multierror.Append(merr, err)
 			if usage != nil {
 				log.Debugf("%s %s: total=%d free=%d", cus.Key, k, usage.Total, usage.Free)
 				res.DailyUsage[k] = usage
 			}
 		}
 	}
-	return res, nil
+
+	// Response is still valid when err is not nil because we always track usage even
+	// if it resulted in an overage. This is because usage is reported _after_ it's used.
+	if err := merr.ErrorOrNil(); err != nil {
+		return res, err
+	}
+	return res, parentErr
 }
 
 func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Product, incSize int64) (*pb.Usage, error) {
@@ -987,7 +1000,8 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 	}
 	update := bson.M{"daily_usage." + product.Key + ".total": total}
 
-	if total > product.FreeQuotaSize && !cus.Billable {
+	var err error
+	if total > product.FreeQuotaSize && !cus.Billable && cus.ParentKey == "" {
 		now := time.Now().Unix()
 		if cus.GracePeriodStart == 0 {
 			cus.GracePeriodStart = now
@@ -1001,14 +1015,14 @@ func (s *Service) handleUsage(ctx context.Context, cus *Customer, product Produc
 			summary := s.getSummary(cus, 0)
 			addProductToSummary(summary, product, total)
 			s.analytics.TrackEvent(cus.Key, cus.AccountType, false, analytics.GracePeriodEnd, nil)
-			return nil, common.ErrExceedsFreeQuota
+			err = fmt.Errorf("%w for %s", common.ErrExceedsFreeQuota, product.Key)
 		}
 	}
 	if _, err := s.cdb.UpdateOne(ctx, bson.M{"_id": cus.Key}, bson.M{"$set": update}); err != nil {
 		return nil, err
 	}
 	start, end := getCurrentDayBounds()
-	return getUsage(product, total, Period{UnixStart: start, UnixEnd: end}), nil
+	return getUsage(product, total, Period{UnixStart: start, UnixEnd: end}), err
 }
 
 func (s *Service) ReportCustomerUsage(
@@ -1079,6 +1093,9 @@ func (s *Service) reportCustomerUsage(ctx context.Context, cus *Customer) error 
 	return nil
 }
 
+// reportUnits sends daily product units to Stripe for aggregation and invoicing.
+// Hack fix: Report units * 100 since the immutable unit price used to calculate
+// unit price is in dollars, and the Stripe API expects cents.
 func (s *Service) reportUnits(product Product, usage Usage, parentKey string) error {
 	freeUnits, paidUnits := getUnits(product, usage.Total)
 	if parentKey != "" {
@@ -1088,7 +1105,7 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 	if freeUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.FreeItemID),
-			Quantity:         stripe.Int64(freeUnits),
+			Quantity:         stripe.Int64(freeUnits * 100),
 			Timestamp:        stripe.Int64(time.Now().Unix()),
 			Action:           stripe.String(stripe.UsageRecordActionIncrement),
 		}); err != nil {
@@ -1098,7 +1115,7 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 	if paidUnits > 0 {
 		if _, err := s.stripe.UsageRecords.New(&stripe.UsageRecordParams{
 			SubscriptionItem: stripe.String(usage.PaidItemID),
-			Quantity:         stripe.Int64(paidUnits),
+			Quantity:         stripe.Int64(paidUnits * 100),
 			Timestamp:        stripe.Int64(time.Now().Unix()),
 			Action:           stripe.String(stripe.UsageRecordActionIncrement),
 		}); err != nil {
@@ -1109,41 +1126,29 @@ func (s *Service) reportUnits(product Product, usage Usage, parentKey string) er
 }
 
 // Identify creates or updates the user traits
-func (s *Service) Identify(
-	ctx context.Context,
-	req *pb.IdentifyRequest,
-) (*pb.IdentifyResponse, error) {
+func (s *Service) Identify(_ context.Context, req *pb.IdentifyRequest) (*pb.IdentifyResponse, error) {
 	props := map[string]interface{}{}
 	for k, v := range req.Properties {
 		props[k] = v
 	}
-	err := s.analytics.Identify(
+	s.analytics.Identify(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
 		req.Email,
 		props,
 	)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.IdentifyResponse{}, nil
 }
 
 // TrackEvent records a new event
-func (s *Service) TrackEvent(
-	ctx context.Context,
-	req *pb.TrackEventRequest,
-) (*pb.TrackEventResponse, error) {
-	err := s.analytics.TrackEvent(
+func (s *Service) TrackEvent(_ context.Context, req *pb.TrackEventRequest) (*pb.TrackEventResponse, error) {
+	s.analytics.TrackEvent(
 		req.Key,
 		mdb.AccountType(req.AccountType),
 		req.Active,
 		analytics.Event(req.Event),
 		req.Properties,
 	)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.TrackEventResponse{}, nil
 }

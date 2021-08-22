@@ -16,6 +16,7 @@ import (
 	"github.com/textileio/textile/v2/api/billingd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	mdb "github.com/textileio/textile/v2/mongodb"
+	"github.com/textileio/textile/v2/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,9 +39,13 @@ func unaryServerInterceptor(pre preFunc, post postFunc) grpc.UnaryServerIntercep
 		}
 		res, err := handler(newCtx, req)
 		if err != nil {
+			perr := post(newCtx, info.FullMethod)
+			if perr != nil {
+				log.Errorf("unaryServerInterceptor postFunc: %v", err)
+			}
 			return nil, err
 		}
-		if err = post(newCtx, info.FullMethod); err != nil {
+		if err := post(newCtx, info.FullMethod); err != nil {
 			return nil, err
 		}
 		return res, nil
@@ -60,8 +65,11 @@ func streamServerInterceptor(pre preFunc, post postFunc) grpc.StreamServerInterc
 		}
 		wrapped := grpcm.WrapServerStream(stream)
 		wrapped.WrappedContext = newCtx
-		err = handler(srv, wrapped)
-		if err != nil {
+		if err := handler(srv, wrapped); err != nil {
+			perr := post(newCtx, info.FullMethod)
+			if perr != nil {
+				log.Errorf("streamServerInterceptor postFunc: %v", err)
+			}
 			return err
 		}
 		return post(newCtx, info.FullMethod)
@@ -247,14 +255,17 @@ func (t *Textile) postUsageFunc(ctx context.Context, method string) error {
 		"/api.bucketsd.pb.APIService/Remove",
 		"/api.bucketsd.pb.APIService/RemovePath",
 		"/api.bucketsd.pb.APIService/PushPathAccessRoles":
+		// If the main context is canceled, we still want to be able to record usage.
+		sctx, cancel := context.WithTimeout(util.NewClonedContext(ctx), time.Second*10)
+		defer cancel()
 		if _, err := t.bc.IncCustomerUsage(
-			ctx,
+			sctx,
 			account.Owner().Key,
 			map[string]int64{
 				"stored_data": owner.StorageDelta,
 			},
 		); err != nil {
-			return err
+			log.Infof("postUsageFunc: %v", err)
 		}
 	}
 

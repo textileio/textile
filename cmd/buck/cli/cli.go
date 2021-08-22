@@ -45,6 +45,7 @@ func Init(baseCmd *cobra.Command) {
 		decryptCmd,
 		archiveCmd,
 		rolesCmd,
+		remoteCmd,
 	)
 	archiveCmd.AddCommand(defaultArchiveConfigCmd, setDefaultArchiveConfigCmd, archiveWatchCmd, archiveLsCmd)
 	rolesCmd.AddCommand(rolesGrantCmd, rolesLsCmd)
@@ -94,6 +95,15 @@ func Init(baseCmd *cobra.Command) {
 	rolesGrantCmd.Flags().StringP("role", "r", "", "Access role: none, reader, writer, admin")
 
 	linksCmd.Flags().String("format", "default", "Display URL links in the provided format. Options: [default,json]")
+
+	remoteCmd.AddCommand(remoteAddCmd)
+	remoteCmd.AddCommand(remoteRemoveCmd)
+
+	remoteAddCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	remoteAddCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
+
+	remoteRemoveCmd.Flags().BoolP("yes", "y", false, "Skips the confirmation prompt if true")
+	remoteRemoveCmd.Flags().BoolP("quiet", "q", false, "Write minimal output")
 }
 
 func SetBucks(b *local.Buckets) {

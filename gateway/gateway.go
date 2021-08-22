@@ -150,7 +150,7 @@ func (g *Gateway) Start() {
 	router.Use(gincors.New(cors.Options{}))
 
 	router.GET("/health", func(c *gin.Context) {
-		c.Writer.WriteHeader(http.StatusNoContent)
+		c.Writer.WriteHeader(http.StatusOK)
 	})
 
 	router.GET("/thread/:thread/:collection", g.subdomainOptionHandler, g.collectionHandler)

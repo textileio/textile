@@ -57,7 +57,7 @@ type Service struct {
 	PowergateAdminToken string
 }
 
-// Info provides the currently running API's build information
+// BuildInfo provides the currently running API's build information
 func (s *Service) BuildInfo(_ context.Context, _ *pb.BuildInfoRequest) (*pb.BuildInfoResponse, error) {
 	return &pb.BuildInfoResponse{
 		GitCommit:  bi.GitCommit,
