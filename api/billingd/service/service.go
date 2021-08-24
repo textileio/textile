@@ -680,13 +680,47 @@ func (s *Service) getSummary(cus *Customer, deps int64) map[string]interface{} {
 }
 
 func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCustomerResponse, error) {
-	deps, err := s.cdb.CountDocuments(ctx, bson.M{"parent_key": doc.Key})
-	if err != nil {
-		return nil, err
+	var (
+		deps   int64
+		parent *Customer
+		err    error
+	)
+	if doc.ParentKey != "" {
+		parent, err = s.getCustomer(ctx, "_id", doc.ParentKey)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deps, err = s.cdb.CountDocuments(ctx, bson.M{"parent_key": doc.Key})
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	var (
+		gracePeriodStart   int64
+		subscriptionStatus string
+		billable           bool
+		delinquent         bool
+		dailyUsage         map[string]*pb.Usage
+	)
+	if parent != nil {
+		gracePeriodStart = parent.GracePeriodStart
+		subscriptionStatus = parent.SubscriptionStatus
+		billable = parent.Billable
+		delinquent = parent.Delinquent
+		dailyUsage = s.dailyUsageToPb(parent.DailyUsage)
+	} else {
+		gracePeriodStart = doc.GracePeriodStart
+		subscriptionStatus = doc.SubscriptionStatus
+		billable = doc.Billable
+		delinquent = doc.Delinquent
+		dailyUsage = s.dailyUsageToPb(doc.DailyUsage)
+	}
+
 	var gracePeriodEnd int64
-	if doc.GracePeriodStart > 0 {
-		gracePeriodEnd = doc.GracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
+	if gracePeriodStart > 0 {
+		gracePeriodEnd = gracePeriodStart + int64(s.config.FreeQuotaGracePeriod.Seconds())
 	}
 	return &pb.GetCustomerResponse{
 		Key:                doc.Key,
@@ -695,14 +729,14 @@ func (s *Service) customerToPb(ctx context.Context, doc *Customer) (*pb.GetCusto
 		Email:              doc.Email,
 		AccountType:        int32(doc.AccountType),
 		AccountStatus:      doc.AccountStatus(),
-		SubscriptionStatus: doc.SubscriptionStatus,
+		SubscriptionStatus: subscriptionStatus,
 		Balance:            doc.Balance,
-		Billable:           doc.Billable,
-		Delinquent:         doc.Delinquent,
+		Billable:           billable,
+		Delinquent:         delinquent,
 		CreatedAt:          doc.CreatedAt,
 		GracePeriodEnd:     gracePeriodEnd,
 		InvoicePeriod:      periodToPb(doc.InvoicePeriod),
-		DailyUsage:         s.dailyUsageToPb(doc.DailyUsage),
+		DailyUsage:         dailyUsage,
 		Dependents:         deps,
 	}, nil
 }
@@ -713,6 +747,11 @@ func (s *Service) GetCustomerSession(ctx context.Context, req *pb.GetCustomerSes
 	if err != nil {
 		return nil, err
 	}
+
+	if doc.ParentKey != "" {
+		return nil, fmt.Errorf("customer %s is a dependent; billing not permitted", doc.CustomerID)
+	}
+
 	session, err := s.stripe.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(doc.CustomerID),
 		ReturnURL: stripe.String(s.config.StripeSessionReturnURL),
