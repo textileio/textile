@@ -475,14 +475,11 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 			grpcm.WithUnaryServerChain(auth.UnaryServerInterceptor(t.noAuthFunc)),
 			grpcm.WithStreamServerChain(auth.StreamServerInterceptor(t.noAuthFunc)),
 			grpc.KeepaliveParams(keepalive.ServerParameters{
-				MaxConnectionIdle:     time.Hour * 24,
-				MaxConnectionAge:      time.Hour * 24,
-				MaxConnectionAgeGrace: time.Hour * 24,
-				Time:                  time.Hour * 2,
-				Timeout:               time.Hour * 2,
+				Time:    time.Second * 20,
+				Timeout: time.Second * 10,
 			}),
 			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-				MinTime:             time.Minute * 5,
+				MinTime:             time.Second * 20,
 				PermitWithoutStream: true,
 			}),
 		}

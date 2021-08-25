@@ -146,6 +146,7 @@ message PushPathsRequest {
     message Header {
         string key = 1;
         string root = 2;
+        repeated string paths = 3;
     }
 
     message Chunk {
