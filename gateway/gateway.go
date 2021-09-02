@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-contrib/location"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/ipfs/go-cid"
@@ -148,6 +149,7 @@ func (g *Gateway) Start() {
 		host:    g.bucketsDomain,
 	}))
 	router.Use(gincors.New(cors.Options{}))
+	pprof.Register(router)
 
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusOK)

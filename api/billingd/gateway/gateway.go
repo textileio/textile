@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
@@ -82,6 +83,7 @@ func (g *Gateway) Start() {
 	}
 
 	router := gin.Default()
+	pprof.Register(router)
 	router.GET("/health", func(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusOK)
 	})

@@ -250,6 +250,7 @@ type PushPathsQueue struct {
 
 	q           []pushPath
 	len         int
+	startCh     chan []string
 	inCh        chan pushPath
 	inWaitCh    chan struct{}
 	outCh       chan PushPathsResult
@@ -375,6 +376,15 @@ func (c *PushPathsQueue) Next() (ok bool) {
 func (c *PushPathsQueue) start() {
 	go func() {
 		defer close(c.inWaitCh)
+
+		var paths []string
+		c.lk.Lock()
+		for _, p := range c.q {
+			paths = append(paths, p.path)
+		}
+		c.lk.Unlock()
+		c.startCh <- paths
+
 		for {
 			c.lk.Lock()
 			if c.closed {
@@ -391,7 +401,6 @@ func (c *PushPathsQueue) start() {
 			c.lk.Unlock()
 			c.inCh <- p
 		}
-
 	}()
 }
 
@@ -452,18 +461,8 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 		xr = args.root.String()
 	}
 
-	if err := stream.Send(&pb.PushPathsRequest{
-		Payload: &pb.PushPathsRequest_Header_{
-			Header: &pb.PushPathsRequest_Header{
-				Key:  key,
-				Root: xr,
-			},
-		},
-	}); err != nil {
-		return nil, err
-	}
-
 	q := &PushPathsQueue{
+		startCh:  make(chan []string),
 		inCh:     make(chan pushPath),
 		inWaitCh: make(chan struct{}),
 		outCh:    make(chan PushPathsResult),
@@ -543,33 +542,55 @@ func (c *Client) PushPaths(ctx context.Context, key string, opts ...Option) (*Pu
 	}
 
 	go func() {
-		for p := range q.inCh {
-			r, err := p.r()
-			if err != nil {
-				q.outCh <- PushPathsResult{err: err}
-				break
-			}
-			buf := make([]byte, chunkSize)
-			for {
-				n, err := r.Read(buf)
-				c := &pb.PushPathsRequest_Chunk{
-					Path: p.path,
+	loop:
+		for {
+			select {
+			case paths := <-q.startCh:
+				if len(paths) > 0 {
+					if err := stream.Send(&pb.PushPathsRequest{
+						Payload: &pb.PushPathsRequest_Header_{
+							Header: &pb.PushPathsRequest_Header{
+								Key:   key,
+								Root:  xr,
+								Paths: paths,
+							},
+						},
+					}); err != nil {
+						q.outCh <- PushPathsResult{err: err}
+						break loop
+					}
 				}
-				if n > 0 {
-					c.Data = make([]byte, n)
-					copy(c.Data, buf[:n])
-					if ok := sendChunk(c); !ok {
+			case p, ok := <-q.inCh:
+				if !ok {
+					break loop
+				}
+				r, err := p.r()
+				if err != nil {
+					q.outCh <- PushPathsResult{err: err}
+					break loop
+				}
+				buf := make([]byte, chunkSize)
+				for {
+					n, err := r.Read(buf)
+					c := &pb.PushPathsRequest_Chunk{
+						Path: p.path,
+					}
+					if n > 0 {
+						c.Data = make([]byte, n)
+						copy(c.Data, buf[:n])
+						if ok := sendChunk(c); !ok {
+							break
+						}
+					} else if err == io.EOF {
+						sendChunk(c)
+						break
+					} else if err != nil {
+						q.outCh <- PushPathsResult{err: err}
 						break
 					}
-				} else if err == io.EOF {
-					sendChunk(c)
-					break
-				} else if err != nil {
-					q.outCh <- PushPathsResult{err: err}
-					break
 				}
+				r.Close()
 			}
-			r.Close()
 		}
 	}()
 

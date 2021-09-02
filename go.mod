@@ -14,6 +14,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/filecoin-project/go-fil-markets v1.1.9
 	github.com/gin-contrib/location v0.0.2
+	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-contrib/static v0.0.1
 	github.com/gin-gonic/gin v1.7.4
 	github.com/gogo/status v1.1.0
@@ -74,7 +75,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5
-	github.com/textileio/go-threads v1.1.1
+	github.com/textileio/go-threads v1.1.2-0.20210828004955-e1f6dc25311a
 	github.com/textileio/powergate/v2 v2.3.0
 	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1
