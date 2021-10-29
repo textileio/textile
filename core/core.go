@@ -268,6 +268,8 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	// Configure threads
 	netOptions := []tc.NetOption{
 		tc.WithNetHostAddr(conf.AddrThreadsHost),
+		tc.WithNoNetPulling(true),
+		tc.WithNoExchangeEdgesMigration(true),
 		tc.WithNetDebug(conf.Debug),
 	}
 	if args.ThreadsMongoUri != "" {
