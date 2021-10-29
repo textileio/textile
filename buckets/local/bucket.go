@@ -137,6 +137,10 @@ func (b *Bucket) LocalSize() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	ig, err := IgnoreFile(bp)
+	if err != nil {
+		return 0, err
+	}
 	var size int64
 	err = filepath.Walk(bp, func(n string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -144,7 +148,7 @@ func (b *Bucket) LocalSize() (int64, error) {
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, bp+string(os.PathSeparator))
-			if Ignore(n) || (strings.HasPrefix(f, b.conf.Dir) && f != buckets.SeedName) {
+			if Ignore(n, ig) || (strings.HasPrefix(f, b.conf.Dir) && f != buckets.SeedName) {
 				return nil
 			}
 			size += info.Size()

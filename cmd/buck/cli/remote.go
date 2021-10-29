@@ -39,6 +39,10 @@ var remoteAddCmd = &cobra.Command{
 		defer cancel()
 		buck, err := bucks.GetLocalBucket(ctx, conf)
 		cmd.ErrCheck(err)
+		bp, err := buck.Path()
+		cmd.ErrCheck(err)
+		ig, err := local.IgnoreFile(bp)
+		cmd.ErrCheck(err)
 
 		var events chan local.Event
 		if !quiet {
@@ -62,7 +66,7 @@ var remoteAddCmd = &cobra.Command{
 			}
 			if !info.IsDir() {
 				f := strings.TrimPrefix(n, pth+string(os.PathSeparator))
-				if local.Ignore(n) ||
+				if local.Ignore(n, ig) ||
 					strings.Contains(f, buckets.SeedName) ||
 					strings.Contains(f, buck.ConfDir()) ||
 					strings.HasSuffix(f, local.PatchExt) {

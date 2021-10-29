@@ -30,6 +30,7 @@ import (
 	"github.com/ipfs/go-unixfs/importer/trickle"
 	options "github.com/ipfs/interface-go-ipfs-core/options"
 	mh "github.com/multiformats/go-multihash"
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
 func init() {
@@ -217,12 +218,16 @@ func (b *Repo) recursiveAddPath(
 	if err != nil {
 		return nil, nil, err
 	}
+	ig, err := IgnoreFile(b.path)
+	if err != nil {
+		return nil, nil, err
+	}
 	if err = filepath.Walk(abs, func(n string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() {
-			if Ignore(n) {
+			if Ignore(n, ig) {
 				return nil
 			}
 			p := n
@@ -435,13 +440,27 @@ func (b *Repo) Close() error {
 }
 
 // Ignore returns true if the path contains an ignored file.
-func Ignore(pth string) bool {
+func Ignore(pth string, ig *ignore.GitIgnore) bool {
 	for _, n := range ignoredFilenames {
 		if strings.HasSuffix(pth, n) {
 			return true
 		}
 	}
+	if ig != nil {
+		return ig.MatchesPath(pth)
+	}
 	return false
+}
+
+// IgnoreFile returns the ignore file at path if it exists
+func IgnoreFile(pth string) (*ignore.GitIgnore, error) {
+	ig, err := ignore.CompileIgnoreFile(filepath.Join(pth, ".buckignore"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return ig, nil
 }
 
 // addFile chunks reader with layout and adds blocks to the dag service.
