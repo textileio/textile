@@ -62,6 +62,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -75,7 +76,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5
-	github.com/textileio/go-threads v1.1.2-0.20211007203214-1842e70155ec
+	github.com/textileio/go-threads v1.1.2-0.20211029155120-3479a196d9b7
 	github.com/textileio/powergate/v2 v2.3.0
 	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1

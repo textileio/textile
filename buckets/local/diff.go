@@ -99,13 +99,21 @@ func (b *Bucket) DiffLocal() ([]Change, error) {
 }
 
 func (b *Bucket) walkPath(pth string) (names []string, err error) {
+	bp, err := b.Path()
+	if err != nil {
+		return
+	}
+	ig, err := IgnoreFile(bp)
+	if err != nil {
+		return
+	}
 	err = filepath.Walk(pth, func(n string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() {
 			f := strings.TrimPrefix(n, pth+string(os.PathSeparator))
-			if Ignore(n) ||
+			if Ignore(n, ig) ||
 				f == buckets.SeedName ||
 				strings.HasPrefix(f, b.conf.Dir) ||
 				strings.HasSuffix(f, PatchExt) {
