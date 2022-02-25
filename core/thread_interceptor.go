@@ -84,33 +84,17 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		default:
 			// If we're dealing with an existing thread, make sure that the owner
 			// owns the thread directly or via an API key.
-			threadID, ok := common.ThreadIDFromContext(ctx)
-			if ok {
-				th, err := t.collections.Threads.Get(ctx, threadID, account.Owner().Key)
-				if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
-					// Allow non-owners to interact with a limited set of APIs.
-					var isAllowed bool
-					for _, m := range allowedCrossUserMethods {
-						if method == m {
-							isAllowed = true
-							break
-						}
-					}
-					if !isAllowed {
-						return nil, status.Error(codes.PermissionDenied, "User does not own thread")
-					}
-				} else if err != nil {
-					return nil, err
-				}
-				if th != nil {
-					key, _ := mdb.APIKeyFromContext(ctx)
-					if key != nil && key.Type == mdb.UserKey {
-						// Extra user check for user API keys.
-						if key.Key != th.Key {
-							return nil, status.Error(codes.PermissionDenied, "Bad API key")
-						}
-					}
-				}
+			// Hub APIs that deal with threads require the id to be passed in the context.
+			// go-threads APIs take the ID as a request param, which means we have to
+			// extract it from the request.
+			threadIDFromCtx, _ := common.ThreadIDFromContext(ctx)
+			threadIDFromReq, err := getThreadIDFromRequest(method, req)
+			if err != nil {
+				return nil, err
+			}
+			ids := []thread.ID{threadIDFromCtx, threadIDFromReq}
+			if err := t.checkThreadOwner(ctx, method, ids, account); err != nil {
+				return nil, err
 			}
 		}
 
@@ -172,4 +156,81 @@ func (t *Textile) threadInterceptor() grpc.UnaryServerInterceptor {
 		}
 		return res, nil
 	}
+}
+
+func (t *Textile) checkThreadOwner(
+	ctx context.Context,
+	method string,
+	threadIDs []thread.ID,
+	account *mdb.AccountCtx,
+) error {
+	for _, id := range threadIDs {
+		if !id.Defined() {
+			continue
+		}
+		th, err := t.collections.Threads.Get(ctx, id, account.Owner().Key)
+		if err != nil && errors.Is(err, mongo.ErrNoDocuments) {
+			// Allow non-owners to interact with a limited set of APIs.
+			var isAllowed bool
+			for _, m := range allowedCrossUserMethods {
+				if method == m {
+					isAllowed = true
+					break
+				}
+			}
+			if !isAllowed {
+				return status.Error(codes.PermissionDenied, "User does not own thread")
+			}
+		} else if err != nil {
+			return err
+		}
+		if th != nil {
+			key, _ := mdb.APIKeyFromContext(ctx)
+			if key != nil && key.Type == mdb.UserKey {
+				// Extra user check for user API keys.
+				if key.Key != th.Key {
+					return status.Error(codes.PermissionDenied, "Bad API key")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func getThreadIDFromRequest(method string, req interface{}) (thread.ID, error) {
+	var id thread.ID
+	var err error
+	switch method {
+	case "/threads.pb.API/GetDBInfo":
+		id, err = thread.Cast(req.(*dbpb.GetDBInfoRequest).DbID)
+	case "/threads.pb.API/DeleteDB":
+		id, err = thread.Cast(req.(*dbpb.DeleteDBRequest).DbID)
+	case "/threads.pb.API/NewCollection":
+		id, err = thread.Cast(req.(*dbpb.NewCollectionRequest).DbID)
+	case "/threads.pb.API/UpdateCollection":
+		id, err = thread.Cast(req.(*dbpb.UpdateCollectionRequest).DbID)
+	case "/threads.pb.API/DeleteCollection":
+		id, err = thread.Cast(req.(*dbpb.DeleteCollectionRequest).DbID)
+	case "/threads.pb.API/GetCollectionInfo":
+		id, err = thread.Cast(req.(*dbpb.GetCollectionInfoRequest).DbID)
+	case "/threads.pb.API/GetCollectionIndexes":
+		id, err = thread.Cast(req.(*dbpb.GetCollectionIndexesRequest).DbID)
+	case "/threads.pb.API/ListCollections":
+		id, err = thread.Cast(req.(*dbpb.ListCollectionsRequest).DbID)
+	case "/threads.net.pb.API/GetThread":
+		id, err = thread.Cast(req.(*netpb.GetThreadRequest).ThreadID)
+	case "/threads.net.pb.API/PullThread":
+		id, err = thread.Cast(req.(*netpb.PullThreadRequest).ThreadID)
+	case "/threads.net.pb.API/DeleteThread":
+		id, err = thread.Cast(req.(*netpb.DeleteThreadRequest).ThreadID)
+	case "/threads.net.pb.API/AddReplicator":
+		id, err = thread.Cast(req.(*netpb.AddReplicatorRequest).ThreadID)
+	case "/threads.net.pb.API/CreateRecord":
+		id, err = thread.Cast(req.(*netpb.CreateRecordRequest).ThreadID)
+	case "/threads.net.pb.API/AddRecord":
+		id, err = thread.Cast(req.(*netpb.AddRecordRequest).ThreadID)
+	case "/threads.net.pb.API/GetRecord":
+		id, err = thread.Cast(req.(*netpb.GetRecordRequest).ThreadID)
+	}
+	return id, err
 }

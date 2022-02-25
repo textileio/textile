@@ -84,7 +84,8 @@ var (
 
 	// blockMethods are always blocked by auth.
 	blockMethods = []string{
-		"/threads.pb.API/ListDBs",
+		"/threads.pb.API/ListDBs",       // we don't want anyone to list all dbs
+		"/threads.net.pb.API/Subscribe", // there is no way to limit this API to thread owners
 	}
 
 	powergateServiceName = "powergate.user.v1.UserService"

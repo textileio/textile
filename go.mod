@@ -73,6 +73,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/stripe/stripe-go/v72 v72.10.0
 	github.com/tchap/go-patricia v2.3.0+incompatible // indirect
+	github.com/textileio/crypto v0.0.0-20210929130053-08edebc3361a // indirect
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5

@@ -30,7 +30,7 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Info provides API build information.
+// BuildInfo provides API build information.
 func (c *Client) BuildInfo(ctx context.Context) (*pb.BuildInfoResponse, error) {
 	return c.c.BuildInfo(ctx, &pb.BuildInfoRequest{})
 }
