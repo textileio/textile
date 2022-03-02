@@ -25,7 +25,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.2.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/improbable-eng/grpc-web v0.14.0
+	github.com/improbable-eng/grpc-web v0.14.1
 	github.com/ipfs/go-blockservice v0.1.4
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
@@ -77,7 +77,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5
-	github.com/textileio/go-threads v1.1.4
+	github.com/textileio/go-threads v1.1.5
 	github.com/textileio/powergate/v2 v2.3.0
 	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1
@@ -95,3 +95,5 @@ require (
 )
 
 replace github.com/ipfs/go-ipns => github.com/ipfs/go-ipns v0.0.2
+
+replace github.com/improbable-eng/grpc-web v0.14.0 => github.com/jsmouret/grpc-web v0.14.2-0.20211103063242-8c932b2237aa
