@@ -7,7 +7,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/caarlos0/spin v1.1.0
-	github.com/cenkalti/backoff/v4 v4.0.2
+	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/cloudflare/cloudflare-go v0.11.6
 	github.com/customerio/go-customerio v2.0.0+incompatible
@@ -83,7 +83,7 @@ require (
 	github.com/xakep666/mongo-migrate v0.2.1
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.mongodb.org/mongo-driver v1.8.1
-	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/text v0.3.6
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
@@ -96,4 +96,4 @@ require (
 
 replace github.com/ipfs/go-ipns => github.com/ipfs/go-ipns v0.0.2
 
-replace github.com/improbable-eng/grpc-web v0.14.0 => github.com/jsmouret/grpc-web v0.14.2-0.20211103063242-8c932b2237aa
+replace github.com/improbable-eng/grpc-web v0.14.1 => github.com/jsmouret/grpc-web v0.14.2-0.20211103063242-8c932b2237aa
