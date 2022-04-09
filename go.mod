@@ -77,7 +77,7 @@ require (
 	github.com/textileio/dcrypto v0.0.1
 	github.com/textileio/go-assets v0.0.0-20200430191519-b341e634e2b7
 	github.com/textileio/go-ds-mongo v0.1.5
-	github.com/textileio/go-threads v1.1.5
+	github.com/textileio/go-threads v1.1.6-0.20220406044848-cdd032536e1f
 	github.com/textileio/powergate/v2 v2.3.0
 	github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7
 	github.com/xakep666/mongo-migrate v0.2.1
@@ -86,7 +86,7 @@ require (
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/text v0.3.6
-	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
+	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 	google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea
 	google.golang.org/grpc v1.39.0
 	google.golang.org/protobuf v1.27.1

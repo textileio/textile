@@ -32,6 +32,7 @@ import (
 	"github.com/textileio/textile/v2/api/common"
 	mdb "github.com/textileio/textile/v2/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
@@ -68,6 +69,9 @@ type Gateway struct {
 	ipfs iface.CoreAPI
 
 	emailSessionBus *broadcast.Broadcaster
+
+	maxEventsPerSec int
+	maxBurstSize    int
 }
 
 // Config defines the gateway configuration.
@@ -81,6 +85,8 @@ type Config struct {
 	Collections     *mdb.Collections
 	IPFSClient      iface.CoreAPI
 	EmailSessionBus *broadcast.Broadcaster
+	MaxEventsPerSec int
+	MaxBurstSize    int
 	Hub             bool
 	Debug           bool
 }
@@ -111,6 +117,14 @@ func NewGateway(conf Config) (*Gateway, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if conf.MaxEventsPerSec < 1 {
+		conf.MaxEventsPerSec = 1000
+	}
+	if conf.MaxBurstSize < 1 {
+		conf.MaxBurstSize = 20
+	}
+
 	return &Gateway{
 		addr:            conf.Addr,
 		url:             conf.URL,
@@ -123,6 +137,8 @@ func NewGateway(conf Config) (*Gateway, error) {
 		hub:             conf.Hub,
 		ipfs:            conf.IPFSClient,
 		emailSessionBus: conf.EmailSessionBus,
+		maxEventsPerSec: conf.MaxEventsPerSec,
+		maxBurstSize:    conf.MaxBurstSize,
 	}, nil
 }
 
@@ -140,6 +156,7 @@ func (g *Gateway) Start() {
 	}
 	router.SetHTMLTemplate(temp)
 
+	router.Use(throttle(g.maxEventsPerSec, g.maxBurstSize))
 	router.Use(location.Default())
 	router.Use(static.Serve("", &fileSystem{Assets}))
 	router.Use(serveBucket(&bucketFS{
@@ -498,4 +515,18 @@ func (g *Gateway) toSubdomainURL(r *http.Request) (redirURL string, ok bool) {
 	scheme := urlparts[0]
 	host := urlparts[1]
 	return safeRedirectURL(fmt.Sprintf("%s://%s.%s.%s/%s%s", scheme, rootID, ns, host, rest, query))
+}
+
+func throttle(maxEventsPerSec int, maxBurstSize int) gin.HandlerFunc {
+	limiter := rate.NewLimiter(rate.Limit(maxEventsPerSec), maxBurstSize)
+
+	return func(context *gin.Context) {
+		if limiter.Allow() {
+			context.Next()
+			return
+		}
+
+		context.Error(errors.New("limit exceeded"))
+		context.AbortWithStatus(http.StatusTooManyRequests)
+	}
 }

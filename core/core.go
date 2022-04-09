@@ -198,7 +198,9 @@ type Config struct {
 	ArchiveJobPollIntervalFast time.Duration
 
 	// Gateway
-	UseSubdomains bool
+	UseSubdomains   bool
+	MaxEventsPerSec int
+	MaxBurstSize    int
 
 	// Cloudflare
 	DNSDomain string
@@ -547,6 +549,8 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		Collections:     t.collections,
 		IPFSClient:      ic,
 		EmailSessionBus: t.emailSessionBus,
+		MaxEventsPerSec: conf.MaxEventsPerSec,
+		MaxBurstSize:    conf.MaxBurstSize,
 		Hub:             conf.Hub,
 		Debug:           conf.Debug,
 	})

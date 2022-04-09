@@ -144,6 +144,14 @@ var (
 				Key:      "gateway.subdomains",
 				DefValue: false,
 			},
+			"gatewayMaxEventsPerSec": {
+				Key:      "gateway.max_events_per_sec",
+				DefValue: 1000,
+			},
+			"gatewayMaxBurstSize": {
+				Key:      "gateway.max_burst_size",
+				DefValue: 20,
+			},
 
 			// Cloudflare
 			"dnsDomain": {
@@ -308,6 +316,14 @@ func init() {
 		"gatewaySubdomains",
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
+	rootCmd.PersistentFlags().Int(
+		"gatewayMaxEventsPerSec",
+		config.Flags["gatewayMaxEventsPerSec"].DefValue.(int),
+		"Gateway max events per second")
+	rootCmd.PersistentFlags().Int(
+		"gatewayMaxBurstSize",
+		config.Flags["gatewayMaxBurstSize"].DefValue.(int),
+		"Gateway gateway max burst size")
 
 	// Cloudflare
 	// @todo: Change these to cloudflareDnsDomain, etc.
@@ -411,6 +427,8 @@ var rootCmd = &cobra.Command{
 
 		// Gateway
 		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
+		gatewayMaxEventsPerSec := config.Viper.GetInt("gateway.max_events_per_sec")
+		gatewayMaxBurstSize := config.Viper.GetInt("gateway.max_burst_size")
 
 		// Cloudflare
 		dnsDomain := config.Viper.GetString("dns.domain")
@@ -464,7 +482,9 @@ var rootCmd = &cobra.Command{
 			IPNSRepublishSchedule:    ipnsRepublishSchedule,
 			IPNSRepublishConcurrency: ipnsRepublishConcurrency,
 			// Gateway
-			UseSubdomains: gatewaySubdomains,
+			UseSubdomains:   gatewaySubdomains,
+			MaxEventsPerSec: gatewayMaxEventsPerSec,
+			MaxBurstSize:    gatewayMaxBurstSize,
 			// Cloudflare
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,

@@ -98,6 +98,14 @@ var (
 				Key:      "gateway.subdomains",
 				DefValue: false,
 			},
+			"gatewayMaxEventsPerSec": {
+				Key:      "gateway.max_events_per_sec",
+				DefValue: 1000,
+			},
+			"gatewayMaxBurstSize": {
+				Key:      "gateway.max_burst_size",
+				DefValue: 20,
+			},
 
 			// Cloudflare
 			// @todo: Change these to cloudflareDnsDomain, etc.
@@ -204,6 +212,14 @@ func init() {
 		"gatewaySubdomains",
 		config.Flags["gatewaySubdomains"].DefValue.(bool),
 		"Enable gateway namespace redirects to subdomains")
+	rootCmd.PersistentFlags().Int(
+		"gatewayMaxEventsPerSec",
+		config.Flags["gatewayMaxEventsPerSec"].DefValue.(int),
+		"Gateway max events per second")
+	rootCmd.PersistentFlags().Int(
+		"gatewayMaxBurstSize",
+		config.Flags["gatewayMaxBurstSize"].DefValue.(int),
+		"Gateway gateway max burst size")
 
 	// Cloudflare
 	rootCmd.PersistentFlags().String(
@@ -266,6 +282,10 @@ var rootCmd = &cobra.Command{
 		addrIpfsApi := cmd.AddrFromStr(config.Viper.GetString("addr.ipfs.api"))
 		addrPowergateApi := config.Viper.GetString("addr.powergate.api")
 
+		gatewaySubdomains := config.Viper.GetBool("gateway.subdomains")
+		gatewayMaxEventsPerSec := config.Viper.GetInt("gateway.max_events_per_sec")
+		gatewayMaxBurstSize := config.Viper.GetInt("gateway.max_burst_size")
+
 		dnsDomain := config.Viper.GetString("dns.domain")
 		dnsZoneID := config.Viper.GetString("dns.zone_id")
 		dnsToken := config.Viper.GetString("dns.token")
@@ -296,7 +316,9 @@ var rootCmd = &cobra.Command{
 			AddrPowergateAPI:         addrPowergateApi,
 			IPNSRepublishSchedule:    ipnsRepublishSchedule,
 			IPNSRepublishConcurrency: ipnsRepublishConcurrency,
-			UseSubdomains:            config.Viper.GetBool("gateway.subdomains"),
+			UseSubdomains:            gatewaySubdomains,
+			MaxEventsPerSec:          gatewayMaxEventsPerSec,
+			MaxBurstSize:             gatewayMaxBurstSize,
 
 			DNSDomain: dnsDomain,
 			DNSZoneID: dnsZoneID,
