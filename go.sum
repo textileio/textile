@@ -1894,6 +1894,8 @@ github.com/textileio/go-log/v2 v2.1.3-gke-1 h1:7e3xSUXQB8hn4uUe5fp41kLThW1o9T65g
 github.com/textileio/go-log/v2 v2.1.3-gke-1/go.mod h1:DwACkjFS3kjZZR/4Spx3aPfSsciyslwUe5bxV8CEU2w=
 github.com/textileio/go-threads v1.1.6-0.20220406044848-cdd032536e1f h1:E6Cshg8EsNVluIB6Q6XjVSL0QRm2+w5e5K5Ze1vDIhE=
 github.com/textileio/go-threads v1.1.6-0.20220406044848-cdd032536e1f/go.mod h1:yPnVPdm8mpCq+fEDw5AamqZy4cQ+wE9wOCaDm3BVEmQ=
+github.com/textileio/go-threads v1.1.6-0.20220409162902-a715c2402413 h1:Aw8sTmDHQ4we8dN3WCuR3KnUFTIkk/Tn3LOPq/cqvEs=
+github.com/textileio/go-threads v1.1.6-0.20220409162902-a715c2402413/go.mod h1:yPnVPdm8mpCq+fEDw5AamqZy4cQ+wE9wOCaDm3BVEmQ=
 github.com/textileio/powergate/v2 v2.3.0 h1:kelYh+ZWDQao1rL5YiMznQscd6CsDjgt6P/D1S5UYwQ=
 github.com/textileio/powergate/v2 v2.3.0/go.mod h1:2j2NL1oevaVdrI6MpKfHnfgUOy1D4L7eP3I+1czxDjw=
 github.com/textileio/swagger-ui v0.3.29-0.20210224180244-7d73a7a32fe7 h1:qUEurT6kJF+nFkiNjUPMJJ7hgg9OIDnb8iLn6VtBukE=
