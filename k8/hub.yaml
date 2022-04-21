@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hub
+spec:
+  ports:
+    - port: 3006
+      name: api
+    - port: 3007
+      name: webapi
+    - port: 8006
+      name: gateway
+  selector:
+    app: hub
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: threads-swarm
+spec:
+  externalTrafficPolicy: Local
+  selector:
+    app: hub
+  ports:
+    - port: 4006
+      name: threads-swarm
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hub
+  labels:
+    app: hub
+spec:
+  replicas: 0
+  serviceName: hub
+  selector:
+    matchLabels:
+      app: hub
+  template:
+    metadata:
+      labels:
+        app: hub
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 2000
+        fsGroup: 2000
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: hub
+          image: 'textile/hub:2.6.17'
+          imagePullPolicy: Always
+          ports:
+            - name: api
+              containerPort: 3006
+            - name: webapi
+              containerPort: 3007
+            - name: gateway
+              containerPort: 8006
+          env:
+            - name: HUB_LOG_DEBUG
+              value: 'true'
+            - name: HUB_ADDR_API
+              value: '/ip4/0.0.0.0/tcp/3006'
+            - name: HUB_ADDR_API_PROXY
+              value: '/ip4/0.0.0.0/tcp/3007'
+            - name: HUB_ADDR_MONGO_URI
+              value: 'mongodb://mongo-0.mongo,mongo-1.mongo:27017/?replicaSet=rs0&&retryWrites=true&w=majority'
+            - name: HUB_ADDR_MONGO_NAME
+              value: 'hub-edge_hub'
+            - name: HUB_ADDR_THREADS_HOST
+              value: '/ip4/0.0.0.0/tcp/4006'
+            - name: HUB_ADDR_THREADS_MONGO_URI
+              value: 'mongodb://mongo-0.mongo,mongo-1.mongo:27017/?replicaSet=rs0&&retryWrites=true&w=majority'
+            - name: HUB_ADDR_THREADS_MONGO_NAME
+              value: 'hub-edge_threads'
+            - name: HUB_ADDR_GATEWAY_HOST
+              value: '/ip4/0.0.0.0/tcp/8006'
+            - name: HUB_ADDR_GATEWAY_URL
+              value: 'https://hub.edge.textile.io'
+            - name: HUB_ADDR_IPFS_API
+              value: '/dns4/ipfs/tcp/5001'
+            - name: HUB_GATEWAY_SUBDOMAINS
+              value: 'false'
+            - name: HUB_THREADS_MAX_NUMBER_PER_OWNER
+              value: '100'
+            - name: HUB_IPNS_REPUBLISH_SCHEDULE
+              value: '0 * * * *'
+            - name: HUB_IPNS_REPUBLISH_CONCURRENCY
+              value: '1000'
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 1
+            limits:
+              memory: 2Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: hub-store
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 4Gi

@@ -1,0 +1,70 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hub-ingress
+  annotations:
+    kubernetes.io/ingress.class: 'nginx'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '600'
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '600'
+    nginx.ingress.kubernetes.io/proxy-body-size: '64000m'
+    kubernetes.io/ingress.allow-http: 'false'
+    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/cors-allow-headers: >-
+      DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,x-grpc-web,x-ipfs-ffs-auth
+spec:
+  tls:
+    - secretName: tls-cf-origin-edge-secret
+      hosts:
+        - webapi.hub.edge.textile.io
+        - hub.edge.textile.io
+  rules:
+    - host: webapi.hub.edge.textile.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hub
+                port:
+                  number: 3007
+    - host: hub.edge.textile.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hub
+                port:
+                  number: 8006
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hub-api-ingress
+  annotations:
+    kubernetes.io/ingress.class: 'nginx'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '600'
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '600'
+    nginx.ingress.kubernetes.io/proxy-body-size: '64000m'
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/grpc-backend: 'true'
+    nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
+    nginx.ingress.kubernetes.io/configuration-snippet: grpc_read_timeout 300s; grpc_send_timeout 300s; client_body_timeout 300s;
+spec:
+  tls:
+    - secretName: tls-le-api-edge-secret
+      hosts:
+        - api.hub.edge.textile.io
+  rules:
+    - host: api.hub.edge.textile.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hub
+                port:
+                  number: 3006

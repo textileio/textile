@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs
+spec:
+  ports:
+    - port: 5001
+      name: api
+    - port: 4001
+      name: swarm
+  selector:
+    app: ipfs
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-swarm
+spec:
+  externalTrafficPolicy: Local
+  selector:
+    app: ipfs
+  ports:
+    - port: 4001
+      name: ipfs-swarm
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ipfs
+  labels:
+    app: ipfs
+spec:
+  replicas: 0
+  serviceName: ipfs
+  selector:
+    matchLabels:
+      app: ipfs
+  template:
+    metadata:
+      labels:
+        app: ipfs
+    spec:
+      containers:
+        - name: ipfs
+          image: 'ipfs/go-ipfs:v0.9.1'
+          command:
+            - /usr/local/bin/start_ipfs
+          args:
+            - daemon
+            - '--migrate'
+            - '--enable-namesys-pubsub'
+          ports:
+            - containerPort: 5001
+          volumeMounts:
+            - name: ipfs-store
+              mountPath: /data/ipfs
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 1
+            limits:
+              memory: 2Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: ipfs-store
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
