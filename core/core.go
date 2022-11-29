@@ -351,27 +351,29 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 	}
 
 	jobFinalizedEvents := make(chan archive.JobEvent)
-	t.archiveTracker, err = tracker.New(
-		t.collections,
-		t.bucks,
-		t.pc,
-		t.internalHubSession,
-		conf.ArchiveJobPollIntervalSlow,
-		conf.ArchiveJobPollIntervalFast,
-		jobFinalizedEvents,
-	)
-	if err != nil {
-		return nil, err
-	}
 
-	filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
-		Prefix: datastore.NewKey("buckets/filretrieval"),
-	})
-	t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
-	if err != nil {
-		return nil, err
-	}
+	if t.pc != nil {
+		t.archiveTracker, err = tracker.New(
+			t.collections,
+			t.bucks,
+			t.pc,
+			t.internalHubSession,
+			conf.ArchiveJobPollIntervalSlow,
+			conf.ArchiveJobPollIntervalFast,
+			jobFinalizedEvents,
+		)
+		if err != nil {
+			return nil, err
+		}
 
+		filRetrievalDS := kt.WrapTxnDatastore(t.ts, ktipfs.PrefixTransform{
+			Prefix: datastore.NewKey("buckets/filretrieval"),
+		})
+		t.filRetrieval, err = retrieval.NewFilRetrieval(filRetrievalDS, t.pc, t.archiveTracker, jobFinalizedEvents, t.internalHubSession)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var hs *hubd.Service
 	var us *usersd.Service
 	if conf.Hub {
@@ -429,10 +431,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		FilRetrieval:              t.filRetrieval,
 	}
 
-	// We can avoid the chicken-egg-problem of below line in the future.
-	// For more info, see "TODO(**)" in buckd/service.go
-	t.filRetrieval.SetBucketCreator(bs)
-	t.filRetrieval.RunDaemon()
+	if t.filRetrieval != nil {
+		// We can avoid the chicken-egg-problem of below line in the future.
+		// For more info, see "TODO(**)" in buckd/service.go
+		t.filRetrieval.SetBucketCreator(bs)
+		t.filRetrieval.RunDaemon()
+	}
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
@@ -607,11 +611,13 @@ func (t *Textile) Close() error {
 	}
 	log.Info("gRPC was shutdown")
 
-	log.Info("closing fil-retrieval module")
-	if err := t.filRetrieval.Close(); err != nil {
-		log.Errorf("closing fil-retrieval module: %s", err)
-	} else {
-		log.Info("fil-retrieval was shutdown")
+	if t.filRetrieval != nil {
+		log.Info("closing fil-retrieval module")
+		if err := t.filRetrieval.Close(); err != nil {
+			log.Errorf("closing fil-retrieval module: %s", err)
+		} else {
+			log.Info("fil-retrieval was shutdown")
+		}
 	}
 
 	if err := t.th.Close(); err != nil {

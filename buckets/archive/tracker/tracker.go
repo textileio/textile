@@ -162,11 +162,11 @@ func (t *Tracker) checkPendingTrackings() {
 
 // processTrackedJob checks the status of the Job in Powergate, which
 // corresponds to bucket Archive action.
-// - If Job was successful: change its status as to not be tracked anymore,
-//   and call corresponding logic depending if was created for an Archive or Retrieval.
-// - If Job failed: change its status to not being tracked anymore.
-// - If encountered a transient error: It will reschedule the tracked job to
-//   be evaluated in a further iteration.
+//   - If Job was successful: change its status as to not be tracked anymore,
+//     and call corresponding logic depending if was created for an Archive or Retrieval.
+//   - If Job failed: change its status to not being tracked anymore.
+//   - If encountered a transient error: It will reschedule the tracked job to
+//     be evaluated in a further iteration.
 func (t *Tracker) processTrackedJob(a *mdb.TrackedJob) error {
 	ctx, cancel := context.WithTimeout(t.ctx, time.Second*10)
 	defer cancel()
