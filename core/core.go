@@ -431,10 +431,12 @@ func NewTextile(ctx context.Context, conf Config, opts ...Option) (*Textile, err
 		FilRetrieval:              t.filRetrieval,
 	}
 
-	// We can avoid the chicken-egg-problem of below line in the future.
-	// For more info, see "TODO(**)" in buckd/service.go
-	t.filRetrieval.SetBucketCreator(bs)
-	t.filRetrieval.RunDaemon()
+	if t.filRetrieval != nil {
+		// We can avoid the chicken-egg-problem of below line in the future.
+		// For more info, see "TODO(**)" in buckd/service.go
+		t.filRetrieval.SetBucketCreator(bs)
+		t.filRetrieval.RunDaemon()
+	}
 
 	// Start serving
 	ptarget, err := tutil.TCPAddrFromMultiAddr(conf.AddrAPIProxy)
