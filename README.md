@@ -1,3 +1,5 @@
+## DEPRECATION NOTICE: Textile's _hosted_ Hub infrastructure will be taken off-line on January 9th, 2023. At this time, all ThreadDB and Bucket data will no longer be available, and will subsequently be removed. See https://github.com/textileio/textile/issues/578v for further details.
+
 # textile
 
 [![Made by Textile](https://img.shields.io/badge/made%20by-Textile-informational.svg?style=popout-square)](https://textile.io)
@@ -150,7 +152,7 @@ The full spec is available [here](https://pkg.go.dev/github.com/textileio/textil
 
 ### The Hub
 
-The Hub daemon (`hubd`), a.k.a. _The Hub_, is a hosted wrapper around other Textile services that includes developer accounts for individuals and organizations. You are free to run your own, but we encourage the use of the official [Textile Hub](https://docs.textile.io/hub/).
+The Hub daemon (`hubd`), a.k.a. _The Hub_, is a hosted wrapper around other Textile services that includes developer accounts for individuals and organizations. You are encouraged to run your own, and we strongly discourage the use of the hosted [Textile Hub](https://docs.textile.io/hub/) as it will soon be shutting down.
 
 The layout of the `hub` client CLI mirrors the services wrapped by `hubd`:
 
