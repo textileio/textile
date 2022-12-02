@@ -1,4 +1,4 @@
-## DEPRECATION NOTICE: Textile's _hosted_ Hub infrastructure will be taken off-line on January 9th, 2023. At this time, all ThreadDB and Bucket data will no longer be available, and will subsequently be removed. See https://github.com/textileio/textile/issues/578v for further details.
+## DEPRECATION NOTICE: Textile's _hosted_ Hub infrastructure will be taken off-line on January 9th, 2023. At this time, all ThreadDB and Bucket data will no longer be available, and will subsequently be removed. See https://github.com/textileio/textile/issues/578 for further details.
 
 # textile
 
