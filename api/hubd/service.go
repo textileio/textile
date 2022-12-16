@@ -18,7 +18,6 @@ import (
 	pow "github.com/textileio/powergate/v2/api/client"
 	"github.com/textileio/textile/v2/api/billingd/analytics"
 	billing "github.com/textileio/textile/v2/api/billingd/client"
-	"github.com/textileio/textile/v2/api/common"
 	pb "github.com/textileio/textile/v2/api/hubd/pb"
 	"github.com/textileio/textile/v2/buckets"
 	bi "github.com/textileio/textile/v2/buildinfo"
@@ -27,7 +26,6 @@ import (
 	mdb "github.com/textileio/textile/v2/mongodb"
 	tdb "github.com/textileio/textile/v2/threaddb"
 	"github.com/textileio/textile/v2/util"
-	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -72,88 +70,8 @@ func (s *Service) BuildInfo(_ context.Context, _ *pb.BuildInfoRequest) (*pb.Buil
 func (s *Service) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.SignupResponse, error) {
 	log.Debugf("received signup request")
 
-	if err := s.Collections.Accounts.ValidateUsername(req.Username); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
-	}
-	if _, err := mail.ParseAddress(req.Email); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "Email address in not valid")
-	}
-
-	secret := getSessionSecret(s.EmailSessionSecret)
-	ectx, cancel := context.WithTimeout(ctx, emailTimeout)
-	defer cancel()
-	if err := s.EmailClient.ConfirmAddress(ectx, req.Email, req.Username, req.Email, s.GatewayURL, secret); err != nil {
-		return nil, err
-	}
-	if !s.awaitVerification(secret) {
-		return nil, status.Error(codes.Unauthenticated, "Could not verify email address")
-	}
-
-	var powInfo *mdb.PowInfo
-	if s.PowergateClient != nil {
-		res, err := s.PowergateClient.Admin.Users.Create(s.powergateAdminCtx(ctx))
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "Unable to create user: %v", err)
-		}
-		powInfo = &mdb.PowInfo{ID: res.User.Id, Token: res.User.Token}
-	}
-
-	dev, err := s.Collections.Accounts.CreateDev(ctx, req.Username, req.Email, powInfo)
-	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "Account exists")
-	}
-	session, err := s.Collections.Sessions.Create(ctx, dev.Key)
-	if err != nil {
-		return nil, err
-	}
-	ctx = common.NewSessionContext(ctx, session.ID)
-	tok, err := s.Threads.GetToken(ctx, dev.Secret)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.Collections.Accounts.SetToken(ctx, dev.Key, tok); err != nil {
-		return nil, err
-	}
-
-	// Check for pending invites
-	invites, err := s.Collections.Invites.ListByEmail(ctx, dev.Email)
-	if err != nil {
-		return nil, err
-	}
-	for _, invite := range invites {
-		if invite.Accepted {
-			if err := s.Collections.Accounts.AddMember(ctx, invite.Org, mdb.Member{
-				Key:      dev.Key,
-				Username: dev.Username,
-				Role:     mdb.OrgMember,
-			}); err != nil {
-				if err == mongo.ErrNoDocuments {
-					if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
-						return nil, err
-					}
-				} else {
-					return nil, err
-				}
-			}
-			if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
-				return nil, err
-			}
-		}
-		if time.Now().After(invite.ExpiresAt) {
-			if err := s.Collections.Invites.Delete(ctx, invite.Token); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	key, err := dev.Key.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	return &pb.SignupResponse{
-		Key:     key,
-		Session: session.ID,
-	}, nil
+	// NOTICE: this is an ad-hoc change to disable signups due to the Hub shutdown.
+	return nil, fmt.Errorf("signups are disabled")
 }
 
 func (s *Service) Signin(ctx context.Context, req *pb.SigninRequest) (*pb.SigninResponse, error) {
